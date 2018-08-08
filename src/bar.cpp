@@ -8,6 +8,7 @@
 #include "modules/workspaces.hpp"
 #include "modules/battery.hpp"
 #include "modules/memory.hpp"
+#include "modules/cpu.hpp"
 
 static void handle_geometry(void *data, struct wl_output *wl_output, int32_t x,
   int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel,
@@ -149,10 +150,12 @@ auto waybar::Bar::setup_widgets() -> void
   auto &workspace_selector = *new waybar::modules::WorkspaceSelector(*this);
   auto &battery = *new waybar::modules::Battery();
   auto &memory = *new waybar::modules::Memory();
+  auto &cpu = *new waybar::modules::Cpu();
 
   left.pack_start(workspace_selector, false, true, 0);
   // center.pack_start(workspace_selector, true, false, 10);
   right.pack_end(clock, false, false, 0);
   right.pack_end(battery, false, false, 0);
   right.pack_end(memory, false, false, 0);
+  right.pack_end(cpu, false, false, 0);
 }

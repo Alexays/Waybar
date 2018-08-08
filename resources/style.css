@@ -11,11 +11,6 @@ window {
     color: white;
 }
 
-.focused-window-title {
-    padding: 0px 10px;
-    min-height: 0px;
-}
-
 .workspace-selector button {
     padding: 0 5px;
     background: transparent;
@@ -28,15 +23,16 @@ window {
     border-bottom: 3px solid white;
 }
 
-.clock-widget {
-    background-color: #64727D;
+.clock-widget, .battery-status, .cpu-widget, .memory-widget {
     padding: 0 10px;
     margin: 0 5px;
 }
 
+.clock-widget {
+    background-color: #64727D;
+}
+
 .battery-status {
-    padding: 0 10px;
-    margin: 0 5px;
     background-color: #ffffff;
     color: black;
 }
@@ -46,8 +42,11 @@ window {
     background-color: #26A65B;
 }
 
+.cpu-widget {
+    background: #2ecc71;
+    color: #000000;
+}
+
 .memory-widget {
-    padding: 0 10px;
-    margin: 0 5px;
     background: #9b59b6;
 }
