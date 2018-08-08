@@ -1,3 +1,11 @@
+.DS_Store
+*~
+*.swp
+packagecache
+/build
+/dist
+/meson.egg-info
+
 # Prerequisites
 *.d
 
