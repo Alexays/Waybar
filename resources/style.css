@@ -1,0 +1,45 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+}
+
+window {
+    background: rgba(43, 48, 59, 0.5);
+    border-bottom: 3px solid rgba(100, 114, 125, 0.5);
+    color: white;
+}
+
+.focused-window-title {
+    padding: 0px 10px;
+    min-height: 0px;
+}
+
+.workspace-selector button {
+    padding: 0 5px;
+    background: transparent;
+    color: white;
+    border-bottom: 3px solid transparent;
+}
+
+.workspace-selector button.current {
+    background: #64727D;
+    border-bottom: 3px solid white;
+}
+
+.clock-widget {
+    background-color: #64727D;
+    padding: 0 10px;
+    margin: 0 5px;
+    border-bottom: 2px solid transparent;
+}
+
+.battery-status {
+    padding: 0 10px;
+    border-bottom: 2px solid transparent;
+}
+
+.battery-status.battery-charging {
+    background-color: #26A65B;
+}
