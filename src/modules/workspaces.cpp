@@ -1,4 +1,5 @@
 #include "modules/workspaces.hpp"
+#include "idle-client-protocol.h"
 #include "ipc/client.hpp"
 
 waybar::modules::WorkspaceSelector::WorkspaceSelector(Bar &bar)
