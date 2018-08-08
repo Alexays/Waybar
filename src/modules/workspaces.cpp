@@ -13,6 +13,7 @@ waybar::modules::WorkspaceSelector::WorkspaceSelector(Bar &bar)
   ipc_single_command(_ipcEventSocketfd, IPC_SUBSCRIBE, subscribe, &len);
   _thread = [this] {
     update();
+    _thread.sleep_for(chrono::milliseconds(250));
   };
 }
 
