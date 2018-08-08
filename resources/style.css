@@ -32,14 +32,22 @@ window {
     background-color: #64727D;
     padding: 0 10px;
     margin: 0 5px;
-    border-bottom: 2px solid transparent;
 }
 
 .battery-status {
     padding: 0 10px;
-    border-bottom: 2px solid transparent;
+    margin: 0 5px;
+    background-color: #ffffff;
+    color: black;
 }
 
 .battery-status.battery-charging {
+    color: white;
     background-color: #26A65B;
+}
+
+.memory-widget {
+    padding: 0 10px;
+    margin: 0 5px;
+    background: #9b59b6;
 }
