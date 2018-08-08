@@ -12,16 +12,18 @@ namespace waybar::modules {
     public:
       WorkspaceSelector(waybar::Bar &bar);
       auto update() -> void;
+      void updateThread();
       operator Gtk::Widget &();
+      util::SleeperThread *thread;
     private:
       void _addWorkspace(Json::Value node);
       Json::Value _getWorkspaces();
       Bar &_bar;
       Gtk::Box *_box;
       std::unordered_map<int, Gtk::Button> _buttons;
-      util::SleeperThread _thread;
       int _ipcSocketfd;
       int _ipcEventSocketfd;
+      struct org_kde_kwin_idle_timeout *_idle_timer;
   };
 
 }

@@ -1,9 +1,25 @@
 #include "modules/workspaces.hpp"
-#include "idle-client-protocol.h"
 #include "ipc/client.hpp"
 
+static void handle_idle(void *data, struct org_kde_kwin_idle_timeout *timer) {
+	auto o = reinterpret_cast<waybar::modules::WorkspaceSelector *>(data);
+  if (o->thread) {
+	  delete o->thread;
+  }
+}
+
+static void handle_resume(void *data, struct org_kde_kwin_idle_timeout *timer) {
+	auto o = reinterpret_cast<waybar::modules::WorkspaceSelector *>(data);
+	o->updateThread();
+}
+
+static const struct org_kde_kwin_idle_timeout_listener idle_timer_listener = {
+	.idle = handle_idle,
+	.resumed = handle_resume,
+};
+
 waybar::modules::WorkspaceSelector::WorkspaceSelector(Bar &bar)
-  : _bar(bar), _box(Gtk::manage(new Gtk::Box))
+  : thread(nullptr), _bar(bar), _box(Gtk::manage(new Gtk::Box))
 {
   _box->get_style_context()->add_class("workspace-selector");
   std::string socketPath = get_socketpath();
@@ -12,10 +28,20 @@ waybar::modules::WorkspaceSelector::WorkspaceSelector(Bar &bar)
   const char *subscribe = "[ \"workspace\", \"mode\" ]";
   uint32_t len = strlen(subscribe);
   ipc_single_command(_ipcEventSocketfd, IPC_SUBSCRIBE, subscribe, &len);
-  _thread = [this] {
+  _idle_timer =
+		org_kde_kwin_idle_get_idle_timeout(_bar.client.idle_manager,
+      _bar.client.seat, 10000); // 10 seconds
+  org_kde_kwin_idle_timeout_add_listener(_idle_timer,
+    &idle_timer_listener, this);
+  updateThread();
+}
+
+void waybar::modules::WorkspaceSelector::updateThread()
+{
+  thread = new waybar::util::SleeperThread([this] {
     update();
-    _thread.sleep_for(chrono::milliseconds(250));
-  };
+    thread->sleep_for(waybar::chrono::milliseconds(250));
+  });
 }
 
 auto waybar::modules::WorkspaceSelector::update() -> void
