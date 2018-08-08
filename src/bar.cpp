@@ -144,20 +144,6 @@ auto waybar::Bar::setup_widgets() -> void
   box1.pack_start(center, false, false);
   box1.pack_end(right, true, true);
 
-  auto &focused_window = *Gtk::manage(new Gtk::Label());
-  focused_window.get_style_context()->add_class("focused-window-title");
-  client.signals.focused_window_name.connect(
-      [&focused_window](std::string focused_window_name) {
-        if (focused_window_name.size() > 70)
-        {
-          focused_window_name.erase(67);
-          focused_window_name += "...";
-        }
-        focused_window.set_text(focused_window_name);
-      });
-
-  focused_window.set_hexpand(false);
-
   auto &clock = *new waybar::modules::Clock();
   auto &workspace_selector = *new waybar::modules::WorkspaceSelector(*this);
   auto &battery = *new waybar::modules::Battery();
