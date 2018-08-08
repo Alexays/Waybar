@@ -5,12 +5,15 @@ static void handle_idle(void *data, struct org_kde_kwin_idle_timeout *timer) {
 	auto o = reinterpret_cast<waybar::modules::WorkspaceSelector *>(data);
   if (o->thread) {
 	  delete o->thread;
+    o->thread = nullptr;
   }
 }
 
 static void handle_resume(void *data, struct org_kde_kwin_idle_timeout *timer) {
 	auto o = reinterpret_cast<waybar::modules::WorkspaceSelector *>(data);
-	o->updateThread();
+  if (!o->thread) {
+	  o->updateThread();
+  }
 }
 
 static const struct org_kde_kwin_idle_timeout_listener idle_timer_listener = {
