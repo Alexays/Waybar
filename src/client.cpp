@@ -58,11 +58,13 @@ waybar::Client::Client(int argc, char* argv[])
   configFile = getFirstValidPath({
     "$XDG_CONFIG_HOME/waybar/config",
     "$HOME/waybar/config",
+    "/etc/xdg/waybar/config",
     "./resources/config",
   });
   cssFile = getFirstValidPath({
     "$XDG_CONFIG_HOME/waybar/style.css",
     "$HOME/waybar/style.css",
+    "/etc/xdg/waybar/style.css",
     "./resources/style.css",
   });
 
