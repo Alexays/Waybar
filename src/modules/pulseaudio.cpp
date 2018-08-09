@@ -100,9 +100,13 @@ void waybar::modules::Pulseaudio::_serverInfoCb(pa_context *context,
 auto waybar::modules::Pulseaudio::update() -> void
 {
 	  auto format = _config["format"] ? _config["format"].asString() : "{}%";
-    if (_muted)
+    if (_muted) {
       format =
         _config["format-muted"] ? _config["format-muted"].asString() : format;
+      if (!_label.get_style_context()->has_class("muted"))
+        _label.get_style_context()->add_class("muted");
+    } else if (_label.get_style_context()->has_class("muted"))
+      _label.get_style_context()->remove_class("muted");
     _label.set_text(fmt::format(format, _volume));
 }
 
