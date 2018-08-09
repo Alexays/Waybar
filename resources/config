@@ -1,0 +1,4 @@
+{
+    "modules-left": ["workspaces"],
+    "modules-right": ["cpu", "memory", "battery", "clock"]
+}

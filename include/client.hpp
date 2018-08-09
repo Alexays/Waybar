@@ -21,7 +21,8 @@ namespace waybar {
 
   struct Client {
     uint32_t height = 30;
-    std::string css_file = "./resources/style.css";
+    std::string cssFile = "./resources/style.css";
+    std::string configFile = "./resources/config";
 
     Gtk::Main gtk_main;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <json/json.h>
 #include <gtkmm.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
@@ -19,9 +20,11 @@ namespace waybar {
     auto setWidth(int) -> void;
     auto toggle() -> void;
   private:
+    auto _setupConfig() -> void;
     auto _setupWidgets() -> void;
     auto _setupCss() -> void;
     int _width = 10;
+    Json::Value _config;
     Glib::RefPtr<Gtk::StyleContext> _styleContext;
     Glib::RefPtr<Gtk::CssProvider> _cssProvider;
   };

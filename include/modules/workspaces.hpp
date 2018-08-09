@@ -1,16 +1,16 @@
 #pragma once
 
-#include <json/json.h>
 #include <fmt/format.h>
 #include "bar.hpp"
 #include "client.hpp"
 #include "util/chrono.hpp"
+#include "IModule.hpp"
 
 namespace waybar::modules {
 
-  class WorkspaceSelector {
+  class Workspaces : public IModule {
     public:
-      WorkspaceSelector(waybar::Bar &bar);
+      Workspaces(waybar::Bar &bar);
       auto update() -> void;
       void updateThread();
       operator Gtk::Widget &();

@@ -1,5 +1,6 @@
 .DS_Store
 *~
+vgcore.*
 *.swp
 packagecache
 /subprojects/fmt-4.1.0

@@ -6,12 +6,13 @@
 #include <iostream>
 #include <fmt/format.h>
 #include "util/chrono.hpp"
+#include "IModule.hpp"
 
 namespace waybar::modules {
 
   namespace fs = std::filesystem;
 
-  class Battery {
+  class Battery : public IModule {
     public:
       Battery();
       auto update() -> void;
