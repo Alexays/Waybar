@@ -4,13 +4,14 @@
 
 waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
   : _config(config), _mainloop(nullptr), _mainloop_api(nullptr),
-    _context(nullptr), _volume(0), _muted(false)
+    _context(nullptr), _sinkIdx(0), _volume(0), _muted(false)
 {
   _label.get_style_context()->add_class("pulseaudio");
-  _mainloop = pa_mainloop_new();
+  _mainloop = pa_threaded_mainloop_new();
   if (!_mainloop)
     throw std::runtime_error("pa_mainloop_new() failed.");
-  _mainloop_api = pa_mainloop_get_api(_mainloop);
+  pa_threaded_mainloop_lock(_mainloop);
+  _mainloop_api = pa_threaded_mainloop_get_api(_mainloop);
   if (pa_signal_init(_mainloop_api) != 0)
     throw std::runtime_error("pa_signal_init() failed.");
   _context = pa_context_new(_mainloop_api, "waybar");
@@ -20,10 +21,9 @@ waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
     throw std::runtime_error(fmt::format("pa_context_connect() failed: {}",
       pa_strerror(pa_context_errno(_context))));
   pa_context_set_state_callback(_context, _contextStateCb, this);
-  _thread = std::thread([this]() {
-    if (pa_mainloop_run(_mainloop, nullptr) < 0)
-      throw std::runtime_error("pa_mainloop_run() failed.");
-  });
+  if (pa_threaded_mainloop_start(_mainloop) < 0)
+    throw std::runtime_error("pa_mainloop_run() failed.");
+  pa_threaded_mainloop_unlock(_mainloop);
 };
 
 void waybar::modules::Pulseaudio::_contextStateCb(pa_context *c, void *data)
@@ -80,8 +80,10 @@ void waybar::modules::Pulseaudio::_sinkInfoCb(pa_context *context,
   if (i) {
     auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
     float volume = (float)pa_cvolume_avg(&(i->volume)) / (float)PA_VOLUME_NORM;
+    pa->_sinkIdx = i->index;
     pa->_volume = volume * 100.0f;
     pa->_muted = i->mute;
+    pa->_desc = i->description;
     pa->update();
   }
 }
@@ -107,7 +109,8 @@ auto waybar::modules::Pulseaudio::update() -> void
         _label.get_style_context()->add_class("muted");
     } else if (_label.get_style_context()->has_class("muted"))
       _label.get_style_context()->remove_class("muted");
-    _label.set_text(fmt::format(format, _volume));
+    _label.set_label(fmt::format(format, _volume));
+    _label.set_tooltip_text(_desc);
 }
 
 waybar::modules::Pulseaudio::operator Gtk::Widget &() {
