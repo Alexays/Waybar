@@ -36,7 +36,37 @@ waybar::Client::Client(int argc, char* argv[])
   : gtk_main(argc, argv),
     gdk_display(Gdk::Display::get_default()),
     wlDisplay(gdk_wayland_display_get_wl_display(gdk_display->gobj()))
-{}
+{
+  auto getFirstValidPath = [] (std::vector<std::string> possiblePaths) {
+    wordexp_t p;
+
+    for (std::string path: possiblePaths) {
+      if (wordexp(path.c_str(), &p, 0) == 0) {
+        if (access(p.we_wordv[0], F_OK) == 0) {
+          std::string result = p.we_wordv[0];
+          wordfree(&p);
+          return result;
+        } else {
+          wordfree(&p);
+        }
+      }
+    }
+
+    return std::string();
+  };
+
+  configFile = getFirstValidPath({
+    "$XDG_CONFIG_HOME/waybar/config",
+    "$HOME/waybar/config",
+    "./resources/config",
+  });
+  cssFile = getFirstValidPath({
+    "$XDG_CONFIG_HOME/waybar/style.css",
+    "$HOME/waybar/style.css",
+    "./resources/style.css",
+  });
+
+}
 
 void waybar::Client::bind_interfaces()
 {
