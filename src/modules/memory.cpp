@@ -16,10 +16,10 @@ auto waybar::modules::Memory::update() -> void
 {
   struct sysinfo info;
   if (!sysinfo(&info)) {
-    int available = ((double)info.freeram / (double)info.totalram) * 100;
+    int available = 100 - ((double)info.freeram / (double)info.totalram) * 100;
     auto format = _config["format"] ? _config["format"].asString() : "{}%";
     _label.set_text(fmt::format(format, available));
-    auto used = (info.totalram - (info.totalram - info.freeram)) / std::pow(1024, 3);
+    auto used = (info.totalram - info.freeram) / std::pow(1024, 3);
     _label.set_tooltip_text(fmt::format("{:.{}f}Gb used", used, 1));
   }
 }
