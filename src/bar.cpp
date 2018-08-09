@@ -7,75 +7,16 @@
 #include "factory.hpp"
 #include "util/chrono.hpp"
 
-static void handleGeometry(void *data, struct wl_output *wl_output, int32_t x,
-  int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel,
-  const char *make, const char *model, int32_t transform)
-{
-  // Nothing here
-}
-
-static void handleMode(void *data, struct wl_output *wl_output, uint32_t f,
-  int32_t w, int32_t h, int32_t refresh)
-{
-  auto o = reinterpret_cast<waybar::Bar *>(data);
-  o->setWidth(w);
-}
-
-static void handleDone(void *data, struct wl_output *)
-{
-  // Nothing here
-}
-
-static void handleScale(void *data, struct wl_output *wl_output,
-  int32_t factor)
-{
-  // Nothing here
-}
-
-static const struct wl_output_listener outputListener = {
-    .geometry = handleGeometry,
-    .mode = handleMode,
-    .done = handleDone,
-    .scale = handleScale,
-};
-
-static void layerSurfaceHandleConfigure(
-  void *data, struct zwlr_layer_surface_v1 *surface, uint32_t serial,
-  uint32_t width, uint32_t height)
-{
-  auto o = reinterpret_cast<waybar::Bar *>(data);
-  o->window.show_all();
-  zwlr_layer_surface_v1_ack_configure(surface, serial);
-  if (o->client.height != height)
-  {
-    height = o->client.height;
-    std::cout << fmt::format("New Height: {}", height) << std::endl;
-    zwlr_layer_surface_v1_set_size(surface, width, height);
-    zwlr_layer_surface_v1_set_exclusive_zone(surface, o->visible ? height : 0);
-    wl_surface_commit(o->surface);
-  }
-}
-
-static void layerSurfaceHandleClosed(void *data,
-  struct zwlr_layer_surface_v1 *surface)
-{
-  auto o = reinterpret_cast<waybar::Bar *>(data);
-  zwlr_layer_surface_v1_destroy(o->layerSurface);
-  o->layerSurface = nullptr;
-  wl_surface_destroy(o->surface);
-  o->surface = nullptr;
-  o->window.close();
-}
-
-static const struct zwlr_layer_surface_v1_listener layerSurfaceListener = {
-  .configure = layerSurfaceHandleConfigure,
-  .closed = layerSurfaceHandleClosed,
-};
-
 waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},
     output(std::move(p_output))
 {
+  static const struct wl_output_listener outputListener = {
+    .geometry = _handleGeometry,
+    .mode = _handleMode,
+    .done = _handleDone,
+    .scale = _handleScale,
+  };
   wl_output_add_listener(*output, &outputListener, this);
   window.set_title("waybar");
   window.set_decorated(false);
@@ -93,9 +34,66 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
     ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
     ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
   zwlr_layer_surface_v1_set_size(layerSurface, _width, client.height);
+  static const struct zwlr_layer_surface_v1_listener layerSurfaceListener = {
+    .configure = _layerSurfaceHandleConfigure,
+    .closed = _layerSurfaceHandleClosed,
+  };
   zwlr_layer_surface_v1_add_listener(layerSurface, &layerSurfaceListener,
     this);
   wl_surface_commit(surface);
+}
+
+void waybar::Bar::_handleGeometry(void *data, struct wl_output *wl_output,
+  int32_t x, int32_t y, int32_t physical_width, int32_t physical_height,
+  int32_t subpixel, const char *make, const char *model, int32_t transform)
+{
+  // Nothing here
+}
+
+void waybar::Bar::_handleMode(void *data, struct wl_output *wl_output,
+  uint32_t f, int32_t w, int32_t h, int32_t refresh)
+{
+  auto o = reinterpret_cast<waybar::Bar *>(data);
+  o->setWidth(w);
+}
+
+void waybar::Bar::_handleDone(void *data, struct wl_output *)
+{
+  // Nothing here
+}
+
+void waybar::Bar::_handleScale(void *data, struct wl_output *wl_output,
+  int32_t factor)
+{
+  // Nothing here
+}
+
+void waybar::Bar::_layerSurfaceHandleConfigure(
+  void *data, struct zwlr_layer_surface_v1 *surface, uint32_t serial,
+  uint32_t width, uint32_t height)
+{
+  auto o = reinterpret_cast<waybar::Bar *>(data);
+  o->window.show_all();
+  zwlr_layer_surface_v1_ack_configure(surface, serial);
+  if (o->client.height != height)
+  {
+    height = o->client.height;
+    std::cout << fmt::format("New Height: {}", height) << std::endl;
+    zwlr_layer_surface_v1_set_size(surface, width, height);
+    zwlr_layer_surface_v1_set_exclusive_zone(surface, o->visible ? height : 0);
+    wl_surface_commit(o->surface);
+  }
+}
+
+void waybar::Bar::_layerSurfaceHandleClosed(void *data,
+  struct zwlr_layer_surface_v1 *surface)
+{
+  auto o = reinterpret_cast<waybar::Bar *>(data);
+  zwlr_layer_surface_v1_destroy(o->layerSurface);
+  o->layerSurface = nullptr;
+  wl_surface_destroy(o->surface);
+  o->surface = nullptr;
+  o->window.close();
 }
 
 auto waybar::Bar::setWidth(int width) -> void

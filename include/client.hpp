@@ -37,14 +37,14 @@ namespace waybar {
     struct wl_seat *seat;
     util::ptr_vec<Bar> bars;
 
-    struct {
-      sigc::signal<void(int, int)> workspace_state;
-      sigc::signal<void(std::string)> focused_window_name;
-    } signals;
-
     Client(int argc, char* argv[]);
     void bind_interfaces();
     auto setup_css();
     int main(int argc, char* argv[]);
+  private:
+    static void _handle_global(void *data, struct wl_registry *registry,
+      uint32_t name, const char *interface, uint32_t version);
+    static void _handle_global_remove(void *data,
+      struct wl_registry *registry, uint32_t name);
   };
 }
