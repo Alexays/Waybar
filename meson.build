@@ -51,3 +51,9 @@ executable(
     include_directories: [include_directories('include')],
     install: true,
 )
+
+install_data(
+    './resources/config',
+    './resources/style.css',
+    install_dir: '/etc/xdg/waybar',
+)
