@@ -12,13 +12,17 @@ namespace waybar::modules {
     public:
       Workspaces(waybar::Bar &bar);
       auto update() -> void;
-      void updateThread();
       operator Gtk::Widget &();
-      util::SleeperThread *thread;
     private:
+      void _updateThread();
+      static void _handle_idle(void *data,
+        struct org_kde_kwin_idle_timeout *timer);
+      static void _handle_resume(void *data,
+        struct org_kde_kwin_idle_timeout *timer);
       void _addWorkspace(Json::Value node);
       Json::Value _getWorkspaces();
       Bar &_bar;
+      util::SleeperThread *_thread;
       Gtk::Box *_box;
       std::unordered_map<int, Gtk::Button> _buttons;
       int _ipcSocketfd;
