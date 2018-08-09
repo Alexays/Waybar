@@ -44,6 +44,7 @@ auto waybar::modules::Battery::update() -> void
     }
     auto format = _config["format"] ? _config["format"].asString() : "{}%";
     _label.set_text(fmt::format(format, total / _batteries.size()));
+    _label.set_tooltip_text(charging ? "Charging" : "Discharging");
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
