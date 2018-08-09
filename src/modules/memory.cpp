@@ -7,7 +7,8 @@ waybar::modules::Memory::Memory(Json::Value config)
   _label.get_style_context()->add_class("memory");
   _thread = [this] {
     update();
-    _thread.sleep_for(chrono::seconds(30));
+    int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
+    _thread.sleep_for(chrono::seconds(interval));
   };
 };
 
