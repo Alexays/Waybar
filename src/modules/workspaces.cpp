@@ -50,11 +50,13 @@ void waybar::modules::Workspaces::updateThread()
 auto waybar::modules::Workspaces::update() -> void
 {
   Json::Value workspaces = _getWorkspaces();
+  bool hided = false;
   for (auto it = _buttons.begin(); it != _buttons.end(); ++it) {
     auto ws = std::find_if(workspaces.begin(), workspaces.end(),
       [it](auto node) -> bool { return node["num"].asInt() == it->first; });
     if (ws == workspaces.end()) {
       it->second.hide();
+      hided = true;
     }
   }
   for (auto node : workspaces) {
@@ -68,6 +70,9 @@ auto waybar::modules::Workspaces::update() -> void
         styleContext->remove_class("current");
       } else if (!styleContext->has_class("current") && isCurrent) {
         styleContext->add_class("current");
+      }
+      if (hided) {
+        _box->reorder_child(it->second, node["num"].asInt() - 1);
       }
       it->second.show();
     }
