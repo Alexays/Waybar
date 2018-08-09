@@ -12,6 +12,6 @@
     },
     "network": {
         "interface": "wlp2s0",
-        "format": "{} "
+        "format": "{essid} ({signalStrength}dBm) "
     }
 }
