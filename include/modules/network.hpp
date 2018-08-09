@@ -20,20 +20,6 @@ namespace waybar::modules {
       Network(Json::Value config);
       auto update() -> void;
       operator Gtk::Widget &();
-      typedef struct {
-        int flags;
-        char essid[IW_ESSID_MAX_SIZE + 1];
-        uint8_t bssid[ETH_ALEN];
-        int quality;
-        int quality_max;
-        int quality_average;
-        int signal_level;
-        int signal_level_max;
-        int noise_level;
-        int noise_level_max;
-        int bitrate;
-        double frequency;
-      } wireless_info_t;
     private:
       void _parseEssid(struct nlattr **bss);
       void _parseSignal(struct nlattr **bss);

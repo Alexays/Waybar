@@ -7,6 +7,7 @@
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
 #include "modules/network.hpp"
+#include "modules/pulseaudio.hpp"
 
 namespace waybar {
 

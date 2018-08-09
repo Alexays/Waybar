@@ -28,6 +28,7 @@ jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libnl = dependency('libnl-3.0')
 libnlgen = dependency('libnl-genl-3.0')
+libpulse = dependency('libpulse')
 
 subdir('protocol')
 
@@ -47,6 +48,7 @@ executable(
         gtkmm,
         libnl,
         libnlgen,
+        libpulse,
     ],
     include_directories: [include_directories('include')],
     install: true,

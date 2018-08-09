@@ -1,6 +1,6 @@
 {
     "modules-left": ["workspaces"],
-    "modules-right": ["network", "cpu", "memory", "battery", "clock"],
+    "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "clock"],
     "cpu": {
         "format": "{}% "
     },
@@ -13,5 +13,9 @@
     "network": {
         "interface": "wlp2s0",
         "format": "{essid} ({signalStrength}dBm) "
+    },
+    "pulseaudio": {
+        "format": "{}% ",
+        "format-muted": ""
     }
 }
