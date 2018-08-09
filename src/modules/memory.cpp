@@ -1,7 +1,8 @@
 #include "modules/memory.hpp"
 #include <iostream>
 
-waybar::modules::Memory::Memory()
+waybar::modules::Memory::Memory(Json::Value config)
+  : _config(config)
 {
   _label.get_style_context()->add_class("memory");
   _thread = [this] {
@@ -14,8 +15,9 @@ auto waybar::modules::Memory::update() -> void
 {
   struct sysinfo info;
   if (!sysinfo(&info)) {
-    double available = (double)info.freeram / (double)info.totalram;
-    _label.set_text(fmt::format("{:.{}f}% ", available * 100, 0));
+    int available = ((double)info.freeram / (double)info.totalram) * 100;
+    auto format = _config["format"] ? _config["format"].asString() : "{}%";
+    _label.set_text(fmt::format(format, available));
   }
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <json/json.h>
 #include <filesystem>
 #include <fstream>
 #include <gtkmm.h>
@@ -14,7 +15,7 @@ namespace waybar::modules {
 
   class Battery : public IModule {
     public:
-      Battery();
+      Battery(Json::Value config);
       auto update() -> void;
       operator Gtk::Widget&();
     private:
@@ -22,6 +23,7 @@ namespace waybar::modules {
       std::vector<fs::path> _batteries;
       util::SleeperThread _thread;
       Gtk::Label _label;
+      Json::Value _config;
   };
 
 }

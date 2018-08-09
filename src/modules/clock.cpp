@@ -1,6 +1,7 @@
 #include "modules/clock.hpp"
 
-waybar::modules::Clock::Clock()
+waybar::modules::Clock::Clock(Json::Value config)
+  : _config(config)
 {
   _label.get_style_context()->add_class("clock");
   _thread = [this] {
@@ -16,8 +17,9 @@ auto waybar::modules::Clock::update() -> void
 {
   auto t = std::time(nullptr);
   auto localtime = std::localtime(&t);
-  _label.set_text(
-      fmt::format("{:02}:{:02}", localtime->tm_hour, localtime->tm_min));
+  auto format =
+    _config["format"] ? _config["format"].asString() : "{:02}:{:02}";
+  _label.set_text(fmt::format(format, localtime->tm_hour, localtime->tm_min));
 }
 
 waybar::modules::Clock::operator Gtk::Widget &() {
