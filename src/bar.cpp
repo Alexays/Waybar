@@ -10,39 +10,39 @@
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
 
-static void handle_geometry(void *data, struct wl_output *wl_output, int32_t x,
+static void handleGeometry(void *data, struct wl_output *wl_output, int32_t x,
   int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel,
   const char *make, const char *model, int32_t transform)
 {
   // Nothing here
 }
 
-static void handle_mode(void *data, struct wl_output *wl_output, uint32_t f,
+static void handleMode(void *data, struct wl_output *wl_output, uint32_t f,
   int32_t w, int32_t h, int32_t refresh)
 {
   auto o = reinterpret_cast<waybar::Bar *>(data);
   o->setWidth(w);
 }
 
-static void handle_done(void *data, struct wl_output *)
+static void handleDone(void *data, struct wl_output *)
 {
   // Nothing here
 }
 
-static void handle_scale(void *data, struct wl_output *wl_output,
+static void handleScale(void *data, struct wl_output *wl_output,
   int32_t factor)
 {
   // Nothing here
 }
 
 static const struct wl_output_listener outputListener = {
-    .geometry = handle_geometry,
-    .mode = handle_mode,
-    .done = handle_done,
-    .scale = handle_scale,
+    .geometry = handleGeometry,
+    .mode = handleMode,
+    .done = handleDone,
+    .scale = handleScale,
 };
 
-static void layer_surface_handle_configure(
+static void layerSurfaceHandleConfigure(
   void *data, struct zwlr_layer_surface_v1 *surface, uint32_t serial,
   uint32_t width, uint32_t height)
 {
@@ -59,7 +59,7 @@ static void layer_surface_handle_configure(
   }
 }
 
-static void layer_surface_handle_closed(void *data,
+static void layerSurfaceHandleClosed(void *data,
   struct zwlr_layer_surface_v1 *surface)
 {
   auto o = reinterpret_cast<waybar::Bar *>(data);
@@ -71,8 +71,8 @@ static void layer_surface_handle_closed(void *data,
 }
 
 static const struct zwlr_layer_surface_v1_listener layerSurfaceListener = {
-    .configure = layer_surface_handle_configure,
-    .closed = layer_surface_handle_closed,
+  .configure = layerSurfaceHandleConfigure,
+  .closed = layerSurfaceHandleClosed,
 };
 
 waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
@@ -106,8 +106,7 @@ auto waybar::Bar::_setupCss() -> void
   _styleContext = Gtk::StyleContext::create();
 
   // load our css file, wherever that may be hiding
-  if (_cssProvider->load_from_path(client.css_file))
-  {
+  if (_cssProvider->load_from_path(client.css_file)) {
     Glib::RefPtr<Gdk::Screen> screen = window.get_screen();
     _styleContext->add_provider_for_screen(screen, _cssProvider,
       GTK_STYLE_PROVIDER_PRIORITY_USER);
@@ -116,8 +115,8 @@ auto waybar::Bar::_setupCss() -> void
 
 auto waybar::Bar::setWidth(int width) -> void
 {
-  std::cout << fmt::format("Bar width configured: {}", width) << std::endl;
   if (width == this->_width) return;
+  std::cout << fmt::format("Bar width configured: {}", width) << std::endl;
   this->_width = width;
   window.set_size_request(width);
   window.resize(width, client.height);
