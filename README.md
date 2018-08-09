@@ -3,6 +3,8 @@
 
 Highly customizable wayland bar for sway or wlroots based compositor.
 
+Available on [AUR](https://aur.archlinux.org/packages/waybar-git/)
+
 ![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 ![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview.png)
 
