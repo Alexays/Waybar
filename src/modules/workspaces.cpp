@@ -2,7 +2,7 @@
 #include "ipc/client.hpp"
 
 static void handle_idle(void *data, struct org_kde_kwin_idle_timeout *timer) {
-	auto o = reinterpret_cast<waybar::modules::WorkspaceSelector *>(data);
+	auto o = reinterpret_cast<waybar::modules::Workspaces *>(data);
   if (o->thread) {
 	  delete o->thread;
     o->thread = nullptr;
@@ -10,7 +10,7 @@ static void handle_idle(void *data, struct org_kde_kwin_idle_timeout *timer) {
 }
 
 static void handle_resume(void *data, struct org_kde_kwin_idle_timeout *timer) {
-	auto o = reinterpret_cast<waybar::modules::WorkspaceSelector *>(data);
+	auto o = reinterpret_cast<waybar::modules::Workspaces *>(data);
   if (!o->thread) {
 	  o->updateThread();
   }
@@ -21,7 +21,7 @@ static const struct org_kde_kwin_idle_timeout_listener idle_timer_listener = {
 	.resumed = handle_resume,
 };
 
-waybar::modules::WorkspaceSelector::WorkspaceSelector(Bar &bar)
+waybar::modules::Workspaces::Workspaces(Bar &bar)
   : thread(nullptr), _bar(bar), _box(Gtk::manage(new Gtk::Box))
 {
   _box->get_style_context()->add_class("workspaces");
@@ -39,7 +39,7 @@ waybar::modules::WorkspaceSelector::WorkspaceSelector(Bar &bar)
   updateThread();
 }
 
-void waybar::modules::WorkspaceSelector::updateThread()
+void waybar::modules::Workspaces::updateThread()
 {
   thread = new waybar::util::SleeperThread([this] {
     update();
@@ -47,7 +47,7 @@ void waybar::modules::WorkspaceSelector::updateThread()
   });
 }
 
-auto waybar::modules::WorkspaceSelector::update() -> void
+auto waybar::modules::Workspaces::update() -> void
 {
   Json::Value workspaces = _getWorkspaces();
   for (auto it = _buttons.begin(); it != _buttons.end(); ++it) {
@@ -74,7 +74,7 @@ auto waybar::modules::WorkspaceSelector::update() -> void
   }
 }
 
-void waybar::modules::WorkspaceSelector::_addWorkspace(Json::Value node)
+void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
 {
   auto pair = _buttons.emplace(node["num"].asInt(), node["name"].asString());
   auto &button = pair.first->second;
@@ -92,7 +92,7 @@ void waybar::modules::WorkspaceSelector::_addWorkspace(Json::Value node)
   button.show();
 }
 
-Json::Value waybar::modules::WorkspaceSelector::_getWorkspaces()
+Json::Value waybar::modules::Workspaces::_getWorkspaces()
 {
   uint32_t len = 0;
   Json::Value root;
@@ -110,6 +110,6 @@ Json::Value waybar::modules::WorkspaceSelector::_getWorkspaces()
   return root;
 }
 
-waybar::modules::WorkspaceSelector::operator Gtk::Widget &() {
+waybar::modules::Workspaces::operator Gtk::Widget &() {
   return *_box;
 }

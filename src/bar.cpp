@@ -1,14 +1,11 @@
 #include <condition_variable>
 #include <gdk/gdkwayland.h>
 #include <thread>
+#include <fstream>
 #include "bar.hpp"
 #include "client.hpp"
+#include "factory.hpp"
 #include "util/chrono.hpp"
-#include "modules/clock.hpp"
-#include "modules/workspaces.hpp"
-#include "modules/battery.hpp"
-#include "modules/memory.hpp"
-#include "modules/cpu.hpp"
 
 static void handleGeometry(void *data, struct wl_output *wl_output, int32_t x,
   int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel,
@@ -82,6 +79,7 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   wl_output_add_listener(*output, &outputListener, this);
   window.set_title("waybar");
   window.set_decorated(false);
+  _setupConfig();
   _setupCss();
   _setupWidgets();
   gtk_widget_realize(GTK_WIDGET(window.gobj()));
@@ -98,19 +96,6 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   zwlr_layer_surface_v1_add_listener(layerSurface, &layerSurfaceListener,
     this);
   wl_surface_commit(surface);
-}
-
-auto waybar::Bar::_setupCss() -> void
-{
-  _cssProvider = Gtk::CssProvider::create();
-  _styleContext = Gtk::StyleContext::create();
-
-  // load our css file, wherever that may be hiding
-  if (_cssProvider->load_from_path(client.css_file)) {
-    Glib::RefPtr<Gdk::Screen> screen = window.get_screen();
-    _styleContext->add_provider_for_screen(screen, _cssProvider,
-      GTK_STYLE_PROVIDER_PRIORITY_USER);
-  }
 }
 
 auto waybar::Bar::setWidth(int width) -> void
@@ -132,6 +117,36 @@ auto waybar::Bar::toggle() -> void
   wl_surface_commit(surface);
 }
 
+auto waybar::Bar::_setupConfig() -> void
+{
+  Json::Value root;
+  Json::CharReaderBuilder builder;
+  Json::CharReader* reader = builder.newCharReader();
+  std::string err;
+  std::ifstream file(client.configFile);
+  if (!file.is_open())
+    throw std::runtime_error("Can't open config file");
+  std::string str((std::istreambuf_iterator<char>(file)),
+    std::istreambuf_iterator<char>());
+  bool res = reader->parse(str.c_str(), str.c_str() + str.size(), &_config, &err);
+  delete reader;
+  if (!res)
+    throw std::runtime_error(err);
+}
+
+auto waybar::Bar::_setupCss() -> void
+{
+  _cssProvider = Gtk::CssProvider::create();
+  _styleContext = Gtk::StyleContext::create();
+
+  // load our css file, wherever that may be hiding
+  if (_cssProvider->load_from_path(client.cssFile)) {
+    Glib::RefPtr<Gdk::Screen> screen = window.get_screen();
+    _styleContext->add_provider_for_screen(screen, _cssProvider,
+      GTK_STYLE_PROVIDER_PRIORITY_USER);
+  }
+}
+
 auto waybar::Bar::_setupWidgets() -> void
 {
   auto &left = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
@@ -145,16 +160,25 @@ auto waybar::Bar::_setupWidgets() -> void
   box1.pack_start(center, false, false);
   box1.pack_end(right, true, true);
 
-  auto &clock = *new waybar::modules::Clock();
-  auto &workspace_selector = *new waybar::modules::WorkspaceSelector(*this);
-  auto &battery = *new waybar::modules::Battery();
-  auto &memory = *new waybar::modules::Memory();
-  auto &cpu = *new waybar::modules::Cpu();
+  Factory factory(*this, _config);
 
-  left.pack_start(workspace_selector, false, true, 0);
-  // center.pack_start(workspace_selector, true, false, 10);
-  right.pack_end(clock, false, false, 0);
-  right.pack_end(battery, false, false, 0);
-  right.pack_end(memory, false, false, 0);
-  right.pack_end(cpu, false, false, 0);
+  if (_config["modules-left"]) {
+    for (auto name : _config["modules-left"]) {
+      auto &module = factory.makeModule(name.asString());
+      left.pack_start(module, false, true, 0);
+    }
+  }
+  if (_config["modules-center"]) {
+    for (auto name : _config["modules-center"]) {
+      auto &module = factory.makeModule(name.asString());
+      center.pack_start(module, true, false, 10);
+    }
+  }
+  if (_config["modules-right"]) {
+    std::reverse(_config["modules-right"].begin(), _config["modules-right"].end());
+    for (auto name : _config["modules-right"]) {
+      auto &module = factory.makeModule(name.asString());
+      right.pack_end(module, false, false, 0);
+    }
+  }
 }
