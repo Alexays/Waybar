@@ -35,7 +35,8 @@ namespace waybar::modules {
         double frequency;
       } wireless_info_t;
     private:
-      void _parseEssid(struct nlattr** bss);
+      void _parseEssid(struct nlattr **bss);
+      void _parseSignal(struct nlattr **bss);
       bool _associatedOrJoined(struct nlattr **bss);
       static int _scanCb(struct nl_msg *msg, void *data);
       auto _getInfo() -> void;
@@ -44,6 +45,7 @@ namespace waybar::modules {
       Json::Value _config;
       std::size_t _ifid;
       std::string _essid;
+      int _signalStrength;
   };
 
 }
