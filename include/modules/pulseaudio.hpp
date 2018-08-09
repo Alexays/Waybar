@@ -4,7 +4,6 @@
 #include <json/json.h>
 #include <gtkmm.h>
 #include <fmt/format.h>
-#include <thread>
 #include "IModule.hpp"
 
 namespace waybar::modules {
@@ -23,13 +22,14 @@ namespace waybar::modules {
       static void _serverInfoCb(pa_context *context, const pa_server_info *i,
         void *data);
       Gtk::Label _label;
-      std::thread _thread;
       Json::Value _config;
-      pa_mainloop *_mainloop;
+      pa_threaded_mainloop *_mainloop;
       pa_mainloop_api *_mainloop_api;
       pa_context *_context;
+      uint32_t _sinkIdx{0};
       int _volume;
       bool _muted;
+      std::string _desc;
   };
 
 }
