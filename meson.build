@@ -26,6 +26,8 @@ wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
+libnl = dependency('libnl-3.0')
+libnlgen = dependency('libnl-genl-3.0')
 
 subdir('protocol')
 
@@ -43,6 +45,8 @@ executable(
         libinput,
         wayland_cursor,
         gtkmm,
+        libnl,
+        libnlgen,
     ],
     include_directories: [include_directories('include')],
     install: true,

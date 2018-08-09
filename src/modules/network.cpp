@@ -1,0 +1,123 @@
+#include "modules/network.hpp"
+
+#include <iostream>
+
+waybar::modules::Network::Network(Json::Value config)
+  : _config(config), _ifid(if_nametoindex(config["interface"].asString().c_str()))
+{
+  _label.get_style_context()->add_class("network");
+  _thread = [this] {
+    update();
+    _thread.sleep_for(chrono::minutes(1));
+  };
+};
+
+auto waybar::modules::Network::update() -> void
+{
+  _getInfo();
+  auto format = _config["format"] ? _config["format"].asString() : "{}";
+  _label.set_text(fmt::format(format, _essid));
+}
+
+int waybar::modules::Network::_scanCb(struct nl_msg *msg, void *data) {
+    auto net = static_cast<waybar::modules::Network *>(data);
+    auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
+    struct nlattr* tb[NL80211_ATTR_MAX + 1];
+    struct nlattr* bss[NL80211_BSS_MAX + 1];
+    struct nla_policy bss_policy[NL80211_BSS_MAX + 1]{};
+    bss_policy[NL80211_BSS_TSF].type = NLA_U64;
+    bss_policy[NL80211_BSS_FREQUENCY].type = NLA_U32;
+    bss_policy[NL80211_BSS_BSSID].type = NLA_UNSPEC;
+    bss_policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16;
+    bss_policy[NL80211_BSS_CAPABILITY].type = NLA_U16;
+    bss_policy[NL80211_BSS_INFORMATION_ELEMENTS].type = NLA_UNSPEC;
+    bss_policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32;
+    bss_policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8;
+    bss_policy[NL80211_BSS_STATUS].type = NLA_U32;
+
+    if (nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), nullptr) < 0)
+      return NL_SKIP;
+    if (!tb[NL80211_ATTR_BSS])
+      return NL_SKIP;
+    if (nla_parse_nested(bss, NL80211_BSS_MAX, tb[NL80211_ATTR_BSS], bss_policy))
+      return NL_SKIP;
+    if (!net->_associatedOrJoined(bss))
+      return NL_SKIP;
+    net->_parseEssid(bss);
+    // TODO: parse signal
+    return NL_SKIP;
+}
+
+void waybar::modules::Network::_parseEssid(struct nlattr **bss)
+{
+  _essid.clear();
+  if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
+    auto ies =
+      static_cast<char*>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
+    auto ies_len = nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS]);
+    const auto hdr_len = 2;
+    while (ies_len > hdr_len && ies[0] != 0) {
+      ies_len -= ies[1] + hdr_len;
+      ies += ies[1] + hdr_len;
+    }
+    if (ies_len > hdr_len && ies_len > ies[1] + hdr_len) {
+      auto essid_begin = ies + hdr_len;
+      auto essid_end = essid_begin + ies[1];
+      // Only use printable characters of the current locale
+      std::copy_if(essid_begin, essid_end, std::back_inserter(_essid),
+          [](char c) { return isprint(static_cast<unsigned char>(c)); });
+    }
+  }
+}
+
+bool waybar::modules::Network::_associatedOrJoined(struct nlattr** bss)
+{
+    if (!bss[NL80211_BSS_STATUS])
+      return false;
+    auto status = nla_get_u32(bss[NL80211_BSS_STATUS]);
+    switch (status) {
+      case NL80211_BSS_STATUS_ASSOCIATED:
+      case NL80211_BSS_STATUS_IBSS_JOINED:
+      case NL80211_BSS_STATUS_AUTHENTICATED:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+auto waybar::modules::Network::_getInfo() -> void
+{
+  if (_ifid == 0)
+    return;
+	struct nl_sock *sk = nl_socket_alloc();
+	if (genl_connect(sk) != 0) {
+    nl_socket_free(sk);
+    return;
+  }
+  if (nl_socket_modify_cb(sk, NL_CB_VALID, NL_CB_CUSTOM, _scanCb, this) < 0) {
+    nl_socket_free(sk);
+    return;
+  }
+  const int nl80211_id = genl_ctrl_resolve(sk, "nl80211");
+  if (nl80211_id < 0) {
+    nl_socket_free(sk);
+    return;
+  }
+  struct nl_msg *msg = nlmsg_alloc();
+  if (!msg) {
+    nl_socket_free(sk);
+    return;
+  }
+  if (!genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id, 0,
+    NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0) ||
+    nla_put_u32(msg, NL80211_ATTR_IFINDEX, _ifid) < 0) {
+    nlmsg_free(msg);
+    return;
+  }
+  nl_send_sync(sk, msg);
+  nl_socket_free(sk);
+}
+
+waybar::modules::Network::operator Gtk::Widget &() {
+  return _label;
+}
