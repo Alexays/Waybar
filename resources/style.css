@@ -23,7 +23,7 @@ window {
     border-bottom: 3px solid white;
 }
 
-.clock, .battery, .cpu, .memory {
+.clock, .battery, .cpu, .memory, .network {
     padding: 0 10px;
     margin: 0 5px;
 }
@@ -49,4 +49,8 @@ window {
 
 .memory {
     background: #9b59b6;
+}
+
+.network {
+    background: #2980b9;
 }

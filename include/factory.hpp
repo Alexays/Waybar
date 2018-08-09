@@ -6,6 +6,7 @@
 #include "modules/battery.hpp"
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
+#include "modules/network.hpp"
 
 namespace waybar {
 

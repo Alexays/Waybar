@@ -1,6 +1,6 @@
 {
     "modules-left": ["workspaces"],
-    "modules-right": ["cpu", "memory", "battery", "clock"],
+    "modules-right": ["network", "cpu", "memory", "battery", "clock"],
     "cpu": {
         "format": "{}% "
     },
@@ -9,5 +9,9 @@
     },
     "battery": {
         "format": "{}% "
+    },
+    "network": {
+        "interface": "wlp2s0",
+        "format": "{} "
     }
 }

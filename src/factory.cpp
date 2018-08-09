@@ -16,5 +16,7 @@ waybar::IModule &waybar::Factory::makeModule(std::string name)
     return *new waybar::modules::Cpu(_config[name]);
   if (name == "clock")
     return *new waybar::modules::Clock(_config[name]);
+  if (name == "network")
+    return *new waybar::modules::Network(_config[name]);
   throw std::runtime_error("Unknown module: " + name);
 }
