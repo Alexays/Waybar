@@ -15,6 +15,7 @@ Available on [AUR](https://aur.archlinux.org/packages/waybar-git/)
 - Local time
 - Battery
 - Network name
+- Pulseaudio
 - Used memory percentage
 - Cpu load percentage
 
