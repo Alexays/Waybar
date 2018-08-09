@@ -4,8 +4,8 @@ waybar::modules::Battery::Battery()
 {
   try {
     for (auto &node : fs::directory_iterator(_data_dir)) {
-      if (fs::is_directory(node) && fs::exists(node / "charge_now") &&
-          fs::exists(node / "charge_full")) {
+      if (fs::is_directory(node) && fs::exists(node / "capacity")
+        && fs::exists(node / "status")) {
         _batteries.push_back(node);
       }
     }
@@ -24,20 +24,24 @@ waybar::modules::Battery::Battery()
 auto waybar::modules::Battery::update() -> void
 {
   try {
+    int total = 0;
+    bool charging = false;
     for (auto &bat : _batteries) {
-      int full, now;
+      int capacity;
       std::string status;
-      std::ifstream(bat / "charge_now") >> now;
-      std::ifstream(bat / "charge_full") >> full;
+      std::ifstream(bat / "capacity") >> capacity;
+      total += capacity;
       std::ifstream(bat / "status") >> status;
       if (status == "Charging") {
-        _label.get_style_context()->add_class("charging");
-      } else {
-        _label.get_style_context()->remove_class("charging");
+        charging = true;
       }
-      int pct = float(now) / float(full) * 100.f;
-      _label.set_text_with_mnemonic(fmt::format("{}% {}", pct, ""));
     }
+    if (charging == true) {
+      _label.get_style_context()->add_class("charging");
+    } else {
+      _label.get_style_context()->remove_class("charging");
+    }
+    _label.set_text(fmt::format("{}% ", total / _batteries.size()));
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
