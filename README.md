@@ -12,6 +12,7 @@ Highly customizable wayland bar for sway or wlroots based compositor.
 - Sway workspaces
 - Local time
 - Battery
+- Network name
 - Used memory percentage
 - Cpu load percentage
 
