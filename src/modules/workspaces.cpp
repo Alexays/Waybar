@@ -69,7 +69,6 @@ void waybar::modules::Workspaces::_handle_idle(void *data,
   if (o->_thread) {
 	  delete o->_thread;
     o->_thread = nullptr;
-    std::cout << "IDLE" << std::endl;
   }
 }
 
@@ -78,7 +77,6 @@ void waybar::modules::Workspaces::_handle_resume(void *data,
 	auto o = reinterpret_cast<waybar::modules::Workspaces *>(data);
   if (!o->_thread) {
 	  o->_updateThread();
-    std::cout << "RESUME" << std::endl;
   }
 }
 
