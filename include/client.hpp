@@ -1,5 +1,8 @@
 #pragma once
 
+#include <unistd.h>
+#include <wordexp.h>
+
 #include <iostream>
 
 #include <fmt/format.h>
@@ -21,8 +24,8 @@ namespace waybar {
 
   struct Client {
     uint32_t height = 30;
-    std::string cssFile = "./resources/style.css";
-    std::string configFile = "./resources/config";
+    std::string cssFile;
+    std::string configFile;
 
     Gtk::Main gtk_main;
 
