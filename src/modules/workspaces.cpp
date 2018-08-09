@@ -24,7 +24,7 @@ static const struct org_kde_kwin_idle_timeout_listener idle_timer_listener = {
 waybar::modules::WorkspaceSelector::WorkspaceSelector(Bar &bar)
   : thread(nullptr), _bar(bar), _box(Gtk::manage(new Gtk::Box))
 {
-  _box->get_style_context()->add_class("workspace-selector");
+  _box->get_style_context()->add_class("workspaces");
   std::string socketPath = get_socketpath();
   _ipcSocketfd = ipc_open_socket(socketPath);
   _ipcEventSocketfd = ipc_open_socket(socketPath);

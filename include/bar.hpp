@@ -13,18 +13,17 @@ namespace waybar {
     Client& client;
     Gtk::Window window;
     struct wl_surface *surface;
-    struct zwlr_layer_surface_v1 *layer_surface;
+    struct zwlr_layer_surface_v1 *layerSurface;
     std::unique_ptr<struct wl_output *> output;
     bool visible = true;
-    auto set_width(int) -> void;
+    auto setWidth(int) -> void;
     auto toggle() -> void;
   private:
-    auto setup_widgets() -> void;
-    auto setup_css() -> void;
-
-    int width = 10;
-    Glib::RefPtr<Gtk::StyleContext> style_context;
-    Glib::RefPtr<Gtk::CssProvider> css_provider;
+    auto _setupWidgets() -> void;
+    auto _setupCss() -> void;
+    int _width = 10;
+    Glib::RefPtr<Gtk::StyleContext> _styleContext;
+    Glib::RefPtr<Gtk::CssProvider> _cssProvider;
   };
 
 }

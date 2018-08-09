@@ -11,42 +11,42 @@ window {
     color: white;
 }
 
-.workspace-selector button {
+.workspaces button {
     padding: 0 5px;
     background: transparent;
     color: white;
     border-bottom: 3px solid transparent;
 }
 
-.workspace-selector button.current {
+.workspaces button.current {
     background: #64727D;
     border-bottom: 3px solid white;
 }
 
-.clock-widget, .battery-status, .cpu-widget, .memory-widget {
+.clock, .battery, .cpu, .memory {
     padding: 0 10px;
     margin: 0 5px;
 }
 
-.clock-widget {
+.clock {
     background-color: #64727D;
 }
 
-.battery-status {
+.battery {
     background-color: #ffffff;
     color: black;
 }
 
-.battery-status.battery-charging {
+.battery.charging {
     color: white;
     background-color: #26A65B;
 }
 
-.cpu-widget {
+.cpu {
     background: #2ecc71;
     color: #000000;
 }
 
-.memory-widget {
+.memory {
     background: #9b59b6;
 }

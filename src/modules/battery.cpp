@@ -13,7 +13,7 @@ waybar::modules::Battery::Battery()
     std::cerr << e.what() << std::endl;
   }
 
-  _label.get_style_context()->add_class("battery-status");
+  _label.get_style_context()->add_class("battery");
 
   _thread = [this] {
     update();
@@ -31,9 +31,9 @@ auto waybar::modules::Battery::update() -> void
       std::ifstream(bat / "charge_full") >> full;
       std::ifstream(bat / "status") >> status;
       if (status == "Charging") {
-        _label.get_style_context()->add_class("battery-charging");
+        _label.get_style_context()->add_class("charging");
       } else {
-        _label.get_style_context()->remove_class("battery-charging");
+        _label.get_style_context()->remove_class("charging");
       }
       int pct = float(now) / float(full) * 100.f;
       _label.set_text_with_mnemonic(fmt::format("{}% {}", pct, ""));

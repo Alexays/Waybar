@@ -2,7 +2,7 @@
 
 waybar::modules::Clock::Clock()
 {
-  _label.get_style_context()->add_class("clock-widget");
+  _label.get_style_context()->add_class("clock");
   _thread = [this] {
     auto now = waybar::chrono::clock::now();
     auto t = std::time(nullptr);
