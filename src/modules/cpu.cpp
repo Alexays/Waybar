@@ -7,7 +7,8 @@ waybar::modules::Cpu::Cpu(Json::Value config)
   _label.get_style_context()->add_class("cpu");
   _thread = [this] {
     update();
-    _thread.sleep_for(chrono::seconds(10));
+    int interval = _config["interval"] ? _config["inveral"].asInt() : 10;
+    _thread.sleep_for(chrono::seconds(interval));
   };
 };
 
