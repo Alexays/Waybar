@@ -5,7 +5,6 @@
 #include <gtkmm.h>
 #include <fmt/format.h>
 #include <thread>
-#include "util/chrono.hpp"
 #include "IModule.hpp"
 
 namespace waybar::modules {
