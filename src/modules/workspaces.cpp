@@ -85,6 +85,7 @@ void waybar::modules::WorkspaceSelector::_addWorkspace(Json::Value node)
     ipc_single_command(_ipcSocketfd, IPC_COMMAND, value.c_str(), &size);
   });
   _box->pack_start(button, false, false, 0);
+  _box->reorder_child(button, node["num"].asInt() - 1);
   if (node["focused"].asBool()) {
     button.get_style_context()->add_class("current");
   }
