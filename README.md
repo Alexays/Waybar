@@ -15,4 +15,12 @@ Highly customizable wayland bar for sway or wlroots based compositor.
 - Used memory percentage
 - Cpu load percentage
 
+**How to compile**
+
+```bash
+meson build
+ninja -C build
+./build/waybar
+```
+
 Contributions welcome! - have fun
