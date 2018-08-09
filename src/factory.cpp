@@ -7,14 +7,14 @@ waybar::Factory::Factory(Bar &bar, Json::Value config)
 waybar::IModule &waybar::Factory::makeModule(std::string name)
 {
   if (name == "battery")
-    return *new waybar::modules::Battery();
+    return *new waybar::modules::Battery(_config[name]);
   if (name == "workspaces")
     return *new waybar::modules::Workspaces(_bar);
   if (name == "memory")
-    return *new waybar::modules::Memory();
+    return *new waybar::modules::Memory(_config[name]);
   if (name == "cpu")
-    return *new waybar::modules::Cpu();
+    return *new waybar::modules::Cpu(_config[name]);
   if (name == "clock")
-    return *new waybar::modules::Clock();
+    return *new waybar::modules::Clock(_config[name]);
   throw std::runtime_error("Unknown module: " + name);
 }

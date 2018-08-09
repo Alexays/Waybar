@@ -1,6 +1,7 @@
 #include "modules/battery.hpp"
 
-waybar::modules::Battery::Battery()
+waybar::modules::Battery::Battery(Json::Value config)
+  : _config(config)
 {
   try {
     for (auto &node : fs::directory_iterator(_data_dir)) {
@@ -41,7 +42,8 @@ auto waybar::modules::Battery::update() -> void
     } else {
       _label.get_style_context()->remove_class("charging");
     }
-    _label.set_text(fmt::format("{}% ", total / _batteries.size()));
+    auto format = _config["format"] ? _config["format"].asString() : "{}%";
+    _label.set_text(fmt::format(format, total / _batteries.size()));
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
