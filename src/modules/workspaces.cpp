@@ -59,7 +59,7 @@ void waybar::modules::Workspaces::_updateThread()
 {
   _thread = new waybar::util::SleeperThread([this] {
     update();
-    _thread->sleep_for(waybar::chrono::milliseconds(250));
+    _thread->sleep_for(waybar::chrono::milliseconds(150));
   });
 }
 

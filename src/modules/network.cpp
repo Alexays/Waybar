@@ -16,7 +16,10 @@ auto waybar::modules::Network::update() -> void
 {
   _getInfo();
   auto format = _config["format"] ? _config["format"].asString() : "{}";
-  _label.set_text(fmt::format(format, _essid));
+  _label.set_text(fmt::format(format,
+    fmt::arg("essid", _essid),
+    fmt::arg("signalStrength", _signalStrength)
+  ));
 }
 
 int waybar::modules::Network::_scanCb(struct nl_msg *msg, void *data) {
@@ -44,7 +47,8 @@ int waybar::modules::Network::_scanCb(struct nl_msg *msg, void *data) {
     if (!net->_associatedOrJoined(bss))
       return NL_SKIP;
     net->_parseEssid(bss);
-    // TODO: parse signal
+    net->_parseSignal(bss);
+    // TODO: parse quality
     return NL_SKIP;
 }
 
@@ -69,6 +73,14 @@ void waybar::modules::Network::_parseEssid(struct nlattr **bss)
     }
   }
 }
+
+void waybar::modules::Network::_parseSignal(struct nlattr **bss) {
+    if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
+      // signalstrength in dBm
+      _signalStrength =
+        static_cast<int>(nla_get_u32(bss[NL80211_BSS_SIGNAL_MBM])) / 100;
+    }
+  }
 
 bool waybar::modules::Network::_associatedOrJoined(struct nlattr** bss)
 {
