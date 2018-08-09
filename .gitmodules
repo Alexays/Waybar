@@ -1,0 +1,3 @@
+[submodule "package/archlinux"]
+	path = package/archlinux
+	url = https://aur.archlinux.org/waybar-git.git
