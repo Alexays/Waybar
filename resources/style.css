@@ -23,7 +23,7 @@ window {
     border-bottom: 3px solid white;
 }
 
-.clock, .battery, .cpu, .memory, .network {
+.clock, .battery, .cpu, .memory, .network, .pulseaudio {
     padding: 0 10px;
     margin: 0 5px;
 }
@@ -53,4 +53,9 @@ window {
 
 .network {
     background: #2980b9;
+}
+
+.pulseaudio {
+    background: #f1c40f;
+    color: black;
 }
