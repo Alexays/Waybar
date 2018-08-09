@@ -21,8 +21,7 @@ static void handle_mode(void *data, struct wl_output *wl_output, uint32_t f,
   int32_t w, int32_t h, int32_t refresh)
 {
   auto o = reinterpret_cast<waybar::Bar *>(data);
-  std::cout << fmt::format("Bar width configured: {}", w) << std::endl;
-  o->set_width(w);
+  o->setWidth(w);
 }
 
 static void handle_done(void *data, struct wl_output *)
@@ -64,10 +63,10 @@ static void layer_surface_handle_closed(void *data,
   struct zwlr_layer_surface_v1 *surface)
 {
   auto o = reinterpret_cast<waybar::Bar *>(data);
-  zwlr_layer_surface_v1_destroy(o->layer_surface);
-  o->layer_surface = NULL;
+  zwlr_layer_surface_v1_destroy(o->layerSurface);
+  o->layerSurface = nullptr;
   wl_surface_destroy(o->surface);
-  o->surface = NULL;
+  o->surface = nullptr;
   o->window.close();
 }
 
@@ -83,45 +82,46 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   wl_output_add_listener(*output, &outputListener, this);
   window.set_title("waybar");
   window.set_decorated(false);
-  // window.set_resizable(false);
-  setup_css();
-  setup_widgets();
+  _setupCss();
+  _setupWidgets();
   gtk_widget_realize(GTK_WIDGET(window.gobj()));
   GdkWindow *gdkWindow = gtk_widget_get_window(GTK_WIDGET(window.gobj()));
   gdk_wayland_window_set_use_custom_surface(gdkWindow);
   surface = gdk_wayland_window_get_wl_surface(gdkWindow);
-  layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+  layerSurface = zwlr_layer_shell_v1_get_layer_surface(
     client.layer_shell, surface, *output, ZWLR_LAYER_SHELL_V1_LAYER_TOP,
     "waybar");
-  zwlr_layer_surface_v1_set_anchor(layer_surface,
-    ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
+  zwlr_layer_surface_v1_set_anchor(layerSurface,
+    ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
     ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
-  zwlr_layer_surface_v1_set_size(layer_surface, width, client.height);
-  zwlr_layer_surface_v1_add_listener(layer_surface, &layerSurfaceListener,
+  zwlr_layer_surface_v1_set_size(layerSurface, _width, client.height);
+  zwlr_layer_surface_v1_add_listener(layerSurface, &layerSurfaceListener,
     this);
   wl_surface_commit(surface);
 }
 
-auto waybar::Bar::setup_css() -> void
+auto waybar::Bar::_setupCss() -> void
 {
-  css_provider = Gtk::CssProvider::create();
-  style_context = Gtk::StyleContext::create();
+  _cssProvider = Gtk::CssProvider::create();
+  _styleContext = Gtk::StyleContext::create();
 
   // load our css file, wherever that may be hiding
-  if (css_provider->load_from_path(client.css_file))
+  if (_cssProvider->load_from_path(client.css_file))
   {
     Glib::RefPtr<Gdk::Screen> screen = window.get_screen();
-    style_context->add_provider_for_screen(screen, css_provider,
-                                           GTK_STYLE_PROVIDER_PRIORITY_USER);
+    _styleContext->add_provider_for_screen(screen, _cssProvider,
+      GTK_STYLE_PROVIDER_PRIORITY_USER);
   }
 }
 
-auto waybar::Bar::set_width(int width) -> void
+auto waybar::Bar::setWidth(int width) -> void
 {
-  this->width = width;
+  std::cout << fmt::format("Bar width configured: {}", width) << std::endl;
+  if (width == this->_width) return;
+  this->_width = width;
   window.set_size_request(width);
   window.resize(width, client.height);
-  zwlr_layer_surface_v1_set_size(layer_surface, width, 40);
+  zwlr_layer_surface_v1_set_size(layerSurface, width, 40);
   wl_surface_commit(surface);
 }
 
@@ -129,11 +129,11 @@ auto waybar::Bar::toggle() -> void
 {
   visible = !visible;
   auto zone = visible ? client.height : 0;
-  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
+  zwlr_layer_surface_v1_set_exclusive_zone(layerSurface, zone);
   wl_surface_commit(surface);
 }
 
-auto waybar::Bar::setup_widgets() -> void
+auto waybar::Bar::_setupWidgets() -> void
 {
   auto &left = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
   auto &center = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
