@@ -12,7 +12,7 @@
     },
     "network": {
         "interface": "wlp2s0",
-        "format": "{essid} ({signalStrength}dBm) "
+        "format": "{essid} ({signalStrength}%) "
     },
     "pulseaudio": {
         "format": "{}% ",
