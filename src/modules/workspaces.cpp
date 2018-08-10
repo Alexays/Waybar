@@ -26,19 +26,20 @@ waybar::modules::Workspaces::Workspaces(Bar &bar)
 auto waybar::modules::Workspaces::update() -> void
 {
   Json::Value workspaces = _getWorkspaces();
-  bool hided = false;
+  bool needReorder = false;
   for (auto it = _buttons.begin(); it != _buttons.end(); ++it) {
     auto ws = std::find_if(workspaces.begin(), workspaces.end(),
       [it](auto node) -> bool { return node["num"].asInt() == it->first; });
     if (ws == workspaces.end()) {
       it->second.hide();
-      hided = true;
+      needReorder = true;
     }
   }
   for (auto node : workspaces) {
     auto it = _buttons.find(node["num"].asInt());
     if (it == _buttons.end()) {
       _addWorkspace(node);
+      needReorder = true;
     } else {
       auto styleContext = it->second.get_style_context();
       bool isCurrent = node["focused"].asBool();
@@ -47,9 +48,8 @@ auto waybar::modules::Workspaces::update() -> void
       } else if (isCurrent) {
         styleContext->add_class("current");
       }
-      if (hided) {
+      if (needReorder)
         _box->reorder_child(it->second, node["num"].asInt() - 1);
-      }
       it->second.show();
     }
   }
