@@ -67,9 +67,7 @@ void waybar::modules::Network::_parseEssid(struct nlattr **bss)
     if (ies_len > hdr_len && ies_len > ies[1] + hdr_len) {
       auto essid_begin = ies + hdr_len;
       auto essid_end = essid_begin + ies[1];
-      // Only use printable characters of the current locale
-      std::copy_if(essid_begin, essid_end, std::back_inserter(_essid),
-          [](char c) { return isprint(static_cast<unsigned char>(c)); });
+      std::copy(essid_begin, essid_end, std::back_inserter(_essid));
     }
   }
 }
