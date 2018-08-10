@@ -1,5 +1,5 @@
 {
-    "modules-left": ["workspaces"],
+    "modules-left": ["workspaces", "custom/spotify"],
     "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "clock"],
     "cpu": {
         "format": "{}% "
@@ -17,5 +17,9 @@
     "pulseaudio": {
         "format": "{}% ",
         "format-muted": ""
+    },
+    "custom/spotify": {
+        "format": " {}",
+        "exec": "$HOME/.bin/mediaplayer.sh"
     }
 }
