@@ -10,8 +10,6 @@ waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
     throw std::runtime_error("pa_mainloop_new() failed.");
   pa_threaded_mainloop_lock(_mainloop);
   _mainloop_api = pa_threaded_mainloop_get_api(_mainloop);
-  if (pa_signal_init(_mainloop_api) != 0)
-    throw std::runtime_error("pa_signal_init() failed.");
   _context = pa_context_new(_mainloop_api, "waybar");
   if (!_context)
     throw std::runtime_error("pa_context_new() failed.");
