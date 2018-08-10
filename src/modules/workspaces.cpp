@@ -22,6 +22,7 @@ waybar::modules::Workspaces::Workspaces(Bar &bar)
 
 auto waybar::modules::Workspaces::update() -> void
 {
+  if (_bar.outputName.empty()) return;
   Json::Value workspaces = _getWorkspaces();
   bool needReorder = false;
   for (auto it = _buttons.begin(); it != _buttons.end(); ++it) {
@@ -34,7 +35,7 @@ auto waybar::modules::Workspaces::update() -> void
   }
   for (auto node : workspaces) {
     auto it = _buttons.find(node["num"].asInt());
-    if (it == _buttons.end()) {
+    if (it == _buttons.end() && _bar.outputName == node["output"].asString()) {
       _addWorkspace(node);
       needReorder = true;
     } else {

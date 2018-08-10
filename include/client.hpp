@@ -12,7 +12,6 @@
 #include <wayland-client.h>
 
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
-#include "idle-client-protocol.h"
 
 #include "util/ptr_vec.hpp"
 
@@ -32,7 +31,7 @@ namespace waybar {
     struct wl_display *wlDisplay;
     struct wl_registry *registry;
     struct zwlr_layer_shell_v1 *layer_shell;
-    struct org_kde_kwin_idle *idle_manager;
+    struct zxdg_output_manager_v1 *xdg_output_manager;
     struct wl_seat *seat;
     util::ptr_vec<Bar> bars;
 

@@ -50,13 +50,15 @@ void waybar::Client::_handle_global(void *data, struct wl_registry *registry,
     *output = (struct wl_output *)wl_registry_bind(registry, name,
       &wl_output_interface, version);
     o->bars.emplace_back(*o, std::move(output));
-  } else if (!strcmp(interface, org_kde_kwin_idle_interface.name)) {
-    o->idle_manager = (org_kde_kwin_idle *)wl_registry_bind(registry, name,
-      &org_kde_kwin_idle_interface, version);
   } else if (!strcmp(interface, wl_seat_interface.name)) {
     o->seat = (struct wl_seat *)wl_registry_bind(registry, name,
       &wl_seat_interface, version);
-  }
+  } else if (!strcmp(interface, zxdg_output_manager_v1_interface.name)
+    && version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
+      o->xdg_output_manager =
+        (struct zxdg_output_manager_v1 *)wl_registry_bind(registry, name,
+        &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION);
+    }
 }
 
 void waybar::Client::_handle_global_remove(void *data,
