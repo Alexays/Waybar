@@ -12,7 +12,7 @@
 - Pulseaudio
 - Memory
 - Cpu load average
-- Custom script
+- Custom scripts
 
 **Configuration and Customization**
 
