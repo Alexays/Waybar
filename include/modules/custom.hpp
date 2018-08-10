@@ -3,7 +3,6 @@
 #include <json/json.h>
 #include <gtkmm.h>
 #include <fmt/format.h>
-#include <thread>
 #include "util/chrono.hpp"
 #include "IModule.hpp"
 

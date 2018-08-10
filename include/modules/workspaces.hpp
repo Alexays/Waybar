@@ -14,20 +14,14 @@ namespace waybar::modules {
       auto update() -> void;
       operator Gtk::Widget &();
     private:
-      void _updateThread();
-      static void _handle_idle(void *data,
-        struct org_kde_kwin_idle_timeout *timer);
-      static void _handle_resume(void *data,
-        struct org_kde_kwin_idle_timeout *timer);
       void _addWorkspace(Json::Value node);
       Json::Value _getWorkspaces();
       Bar &_bar;
-      util::SleeperThread *_thread;
-      Gtk::Box *_box;
+      waybar::util::SleeperThread _thread;
+      Gtk::Box _box;
       std::unordered_map<int, Gtk::Button> _buttons;
       int _ipcSocketfd;
       int _ipcEventSocketfd;
-      struct org_kde_kwin_idle_timeout *_idle_timer;
   };
 
 }
