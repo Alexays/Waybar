@@ -31,6 +31,7 @@ namespace waybar::modules {
       Json::Value _config;
       std::size_t _ifid;
       std::string _essid;
+      int _signalStrengthdBm;
       int _signalStrength;
   };
 

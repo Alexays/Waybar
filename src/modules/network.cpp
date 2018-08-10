@@ -18,6 +18,7 @@ auto waybar::modules::Network::update() -> void
   auto format = _config["format"] ? _config["format"].asString() : "{}";
   _label.set_text(fmt::format(format,
     fmt::arg("essid", _essid),
+    fmt::arg("signaldBm", _signalStrengthdBm),
     fmt::arg("signalStrength", _signalStrength)
   ));
 }
@@ -75,8 +76,14 @@ void waybar::modules::Network::_parseEssid(struct nlattr **bss)
 void waybar::modules::Network::_parseSignal(struct nlattr **bss) {
     if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
       // signalstrength in dBm
-      _signalStrength =
+      _signalStrengthdBm =
         static_cast<int>(nla_get_u32(bss[NL80211_BSS_SIGNAL_MBM])) / 100;
+
+      // WiFi-hardware usually operates in the range -90 to -20dBm.
+      const int hardwareMax = -20;
+      const int hardwareMin = -90;
+      _signalStrength = ((double)(_signalStrengthdBm - hardwareMin)
+        / (double)(hardwareMax - hardwareMin)) * 100;
     }
   }
 
