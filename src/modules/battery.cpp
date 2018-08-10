@@ -37,7 +37,7 @@ auto waybar::modules::Battery::update() -> void
         charging = true;
       }
     }
-    if (charging == true) {
+    if (charging) {
       _label.get_style_context()->add_class("charging");
     } else {
       _label.get_style_context()->remove_class("charging");

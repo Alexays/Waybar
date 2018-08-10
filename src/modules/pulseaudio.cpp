@@ -103,9 +103,8 @@ auto waybar::modules::Pulseaudio::update() -> void
     if (_muted) {
       format =
         _config["format-muted"] ? _config["format-muted"].asString() : format;
-      if (!_label.get_style_context()->has_class("muted"))
-        _label.get_style_context()->add_class("muted");
-    } else if (_label.get_style_context()->has_class("muted"))
+      _label.get_style_context()->add_class("muted");
+    } else
       _label.get_style_context()->remove_class("muted");
     _label.set_label(fmt::format(format, _volume));
     _label.set_tooltip_text(_desc);

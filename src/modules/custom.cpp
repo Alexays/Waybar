@@ -4,7 +4,6 @@
 waybar::modules::Custom::Custom(std::string name, Json::Value config)
   : _name(name), _config(config)
 {
-  _label.get_style_context()->add_class("custom-" + name);
   if (!_config["exec"]) {
     std::cerr << name + " has no exec path." << std::endl;
     return;
@@ -36,9 +35,11 @@ auto waybar::modules::Custom::update() -> void
   }
 
   // Hide label if output is empty
-  if (output.empty())
+  if (output.empty()) {
+    _label.get_style_context()->remove_class("custom-" + _name);
     _label.hide();
-  else {
+  } else {
+    _label.get_style_context()->add_class("custom-" + _name);
     auto format = _config["format"] ? _config["format"].asString() : "{}";
     _label.set_text(fmt::format(format, output));
     _label.show();
