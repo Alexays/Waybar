@@ -1,6 +1,10 @@
 {
+    // "layer": "top", // Waybar at top layer
+    // "position": "bottom", // Waybar at the bottom of your screen
+    // Choose the order of the modules
     "modules-left": ["workspaces", "custom/spotify"],
     "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "clock"],
+    // Modules configuration
     "cpu": {
         "format": "{}% "
     },
