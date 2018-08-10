@@ -42,9 +42,9 @@ auto waybar::modules::Workspaces::update() -> void
     } else {
       auto styleContext = it->second.get_style_context();
       bool isCurrent = node["focused"].asBool();
-      if (styleContext->has_class("current") && !isCurrent) {
+      if (!isCurrent) {
         styleContext->remove_class("current");
-      } else if (!styleContext->has_class("current") && isCurrent) {
+      } else if (isCurrent) {
         styleContext->add_class("current");
       }
       if (hided) {
