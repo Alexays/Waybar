@@ -23,7 +23,6 @@
 namespace waybar {
 
   struct Client {
-    uint32_t height = 30;
     std::string cssFile;
     std::string configFile;
 

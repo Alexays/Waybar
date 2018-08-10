@@ -24,6 +24,8 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   _setupConfig();
   _setupCss();
   _setupWidgets();
+  if (_config["height"])
+    _height = _config["height"].asUInt();
   bool positionBottom = _config["position"] == "bottom";
   bool layerTop = _config["layer"] == "top";
   gtk_widget_realize(GTK_WIDGET(window.gobj()));
@@ -37,7 +39,7 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   zwlr_layer_surface_v1_set_anchor(layerSurface,
     ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
     (positionBottom ? ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM : ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP));
-  zwlr_layer_surface_v1_set_size(layerSurface, _width, client.height);
+  zwlr_layer_surface_v1_set_size(layerSurface, _width, _height);
   static const struct zwlr_layer_surface_v1_listener layerSurfaceListener = {
     .configure = _layerSurfaceHandleConfigure,
     .closed = _layerSurfaceHandleClosed,
@@ -79,9 +81,9 @@ void waybar::Bar::_layerSurfaceHandleConfigure(
   auto o = reinterpret_cast<waybar::Bar *>(data);
   o->window.show_all();
   zwlr_layer_surface_v1_ack_configure(surface, serial);
-  if (o->client.height != height)
+  if (o->_height != height)
   {
-    height = o->client.height;
+    height = o->_height;
     std::cout << fmt::format("New Height: {}", height) << std::endl;
     zwlr_layer_surface_v1_set_size(surface, width, height);
     zwlr_layer_surface_v1_set_exclusive_zone(surface, o->visible ? height : 0);
@@ -100,13 +102,13 @@ void waybar::Bar::_layerSurfaceHandleClosed(void *data,
   o->window.close();
 }
 
-auto waybar::Bar::setWidth(int width) -> void
+auto waybar::Bar::setWidth(uint32_t width) -> void
 {
   if (width == this->_width) return;
   std::cout << fmt::format("Bar width configured: {}", width) << std::endl;
   this->_width = width;
   window.set_size_request(width);
-  window.resize(width, client.height);
+  window.resize(width, _height);
   zwlr_layer_surface_v1_set_size(layerSurface, width, 40);
   wl_surface_commit(surface);
 }
@@ -114,7 +116,7 @@ auto waybar::Bar::setWidth(int width) -> void
 auto waybar::Bar::toggle() -> void
 {
   visible = !visible;
-  auto zone = visible ? client.height : 0;
+  auto zone = visible ? _height : 0;
   zwlr_layer_surface_v1_set_exclusive_zone(layerSurface, zone);
   wl_surface_commit(surface);
 }
