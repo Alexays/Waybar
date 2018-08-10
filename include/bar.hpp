@@ -17,7 +17,7 @@ namespace waybar {
     struct zwlr_layer_surface_v1 *layerSurface;
     std::unique_ptr<struct wl_output *> output;
     bool visible = true;
-    auto setWidth(int) -> void;
+    auto setWidth(uint32_t) -> void;
     auto toggle() -> void;
   private:
     static void _handleGeometry(void *data, struct wl_output *wl_output,
@@ -36,7 +36,8 @@ namespace waybar {
     auto _setupConfig() -> void;
     auto _setupWidgets() -> void;
     auto _setupCss() -> void;
-    int _width = 10;
+    uint32_t _width = 10;
+    uint32_t _height = 30;
     Json::Value _config;
     Glib::RefPtr<Gtk::StyleContext> _styleContext;
     Glib::RefPtr<Gtk::CssProvider> _cssProvider;
