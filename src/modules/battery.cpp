@@ -15,7 +15,7 @@ waybar::modules::Battery::Battery(Json::Value config)
   }
 
   if (!_batteries.size()) {
-    std::cerr << "No battries." << std::endl;
+    std::cerr << "No batteries." << std::endl;
     return;
   }
 
