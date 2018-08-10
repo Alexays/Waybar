@@ -8,9 +8,11 @@ waybar::modules::Custom::Custom(std::string name, Json::Value config)
     std::cerr << name + " has no exec path." << std::endl;
     return;
   }
-  _thread = [this] {
-    update();
-    int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
+  int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
+  _thread = [this, interval] {
+    Glib::signal_idle().connect_once([this] {
+      update();
+    });
     _thread.sleep_for(chrono::seconds(interval));
   };
 };

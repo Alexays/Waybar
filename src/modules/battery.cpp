@@ -20,10 +20,10 @@ waybar::modules::Battery::Battery(Json::Value config)
   }
 
   _label.get_style_context()->add_class("battery");
-
-  _thread = [this] {
+  int interval = _config["interval"] ? _config["inveral"].asInt() : 1;
+  _thread = [this, interval] {
     update();
-    _thread.sleep_for(chrono::minutes(1));
+    _thread.sleep_for(chrono::seconds(interval));
   };
 }
 

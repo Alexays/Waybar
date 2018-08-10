@@ -4,8 +4,11 @@ waybar::modules::Network::Network(Json::Value config)
   : _config(config), _ifid(if_nametoindex(config["interface"].asString().c_str()))
 {
   _label.get_style_context()->add_class("network");
-  _thread = [this] {
-    update();
+  int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
+  _thread = [this, interval] {
+    Glib::signal_idle().connect_once([this] {
+      update();
+    });
     _thread.sleep_for(chrono::minutes(1));
   };
 };

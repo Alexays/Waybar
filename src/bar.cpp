@@ -5,7 +5,6 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
-#include "util/chrono.hpp"
 
 waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},

@@ -4,9 +4,11 @@ waybar::modules::Memory::Memory(Json::Value config)
   : _config(config)
 {
   _label.get_style_context()->add_class("memory");
-  _thread = [this] {
-    update();
-    int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
+  int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
+  _thread = [this, interval] {
+    Glib::signal_idle().connect_once([this] {
+      update();
+    });
     _thread.sleep_for(chrono::seconds(interval));
   };
 };
