@@ -1,7 +1,5 @@
 #include "modules/pulseaudio.hpp"
 
-#include <iostream>
-
 waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
   : _config(config), _mainloop(nullptr), _mainloop_api(nullptr),
     _context(nullptr), _sinkIdx(0), _volume(0), _muted(false)

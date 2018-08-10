@@ -20,5 +20,7 @@ waybar::IModule &waybar::Factory::makeModule(std::string name)
     return *new waybar::modules::Network(_config[name]);
   if (name == "pulseaudio")
     return *new waybar::modules::Pulseaudio(_config[name]);
+  if (!name.compare(0, 7, "custom/") && name.size() > 7)
+    return *new waybar::modules::Custom(name.substr(7), _config[name]);
   throw std::runtime_error("Unknown module: " + name);
 }

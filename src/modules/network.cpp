@@ -1,7 +1,5 @@
 #include "modules/network.hpp"
 
-#include <iostream>
-
 waybar::modules::Network::Network(Json::Value config)
   : _config(config), _ifid(if_nametoindex(config["interface"].asString().c_str()))
 {

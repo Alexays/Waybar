@@ -1,5 +1,4 @@
 #include "modules/cpu.hpp"
-#include <iostream>
 
 waybar::modules::Cpu::Cpu(Json::Value config)
   : _config(config)
