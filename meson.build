@@ -1,4 +1,9 @@
-project('waybar', 'cpp', 'c', default_options : ['cpp_std=c++17'])
+project(
+    'waybar', 'cpp', 'c',
+    version: '0.0.1',
+    license: 'MIT',
+    default_options : ['cpp_std=c++17'],
+)
 
 cpp_args = []
 cpp_link_args = []
