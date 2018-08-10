@@ -14,6 +14,11 @@ waybar::modules::Battery::Battery(Json::Value config)
     std::cerr << e.what() << std::endl;
   }
 
+  if (!_batteries.size()) {
+    std::cerr << "No battries." << std::endl;
+    return;
+  }
+
   _label.get_style_context()->add_class("battery");
 
   _thread = [this] {
