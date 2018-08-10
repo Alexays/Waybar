@@ -16,8 +16,17 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
     .done = _handleDone,
     .scale = _handleScale,
   };
-
+  static const struct zxdg_output_v1_listener xdgOutputListener = {
+    .logical_position = _handleLogicalPosition,
+    .logical_size = _handleLogicalSize,
+    .done = _handleDone,
+    .name = _handleName,
+    .description = _handleDescription,
+  };
   wl_output_add_listener(*output, &outputListener, this);
+  _xdgOutput =
+    zxdg_output_manager_v1_get_xdg_output(client.xdg_output_manager, *output);
+	zxdg_output_v1_add_listener(_xdgOutput, &xdgOutputListener, this);
   window.set_title("waybar");
   window.set_decorated(false);
   _setupConfig();
@@ -46,6 +55,36 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   zwlr_layer_surface_v1_add_listener(layerSurface, &layerSurfaceListener,
     this);
   wl_surface_commit(surface);
+}
+
+void waybar::Bar::_handleLogicalPosition(void *data,
+  struct zxdg_output_v1 *zxdg_output_v1, int32_t x, int32_t y)
+{
+  // Nothing here
+}
+
+void waybar::Bar::_handleLogicalSize(void *data,
+  struct zxdg_output_v1 *zxdg_output_v1, int32_t width, int32_t height)
+{
+  // Nothing here
+}
+
+void waybar::Bar::_handleDone(void *data, struct zxdg_output_v1 *zxdg_output_v1)
+{
+  // Nothing here
+}
+
+void waybar::Bar::_handleName(void *data, struct zxdg_output_v1 *xdg_output,
+  const char *name)
+{
+	auto o = reinterpret_cast<waybar::Bar *>(data);
+  o->outputName = name;
+}
+
+void waybar::Bar::_handleDescription(void *data,
+  struct zxdg_output_v1 *zxdg_output_v1, const char *description)
+{
+  // Nothing here
 }
 
 void waybar::Bar::_handleGeometry(void *data, struct wl_output *wl_output,

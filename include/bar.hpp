@@ -3,6 +3,7 @@
 #include <json/json.h>
 #include <gtkmm.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {
 
@@ -17,9 +18,19 @@ namespace waybar {
     struct zwlr_layer_surface_v1 *layerSurface;
     std::unique_ptr<struct wl_output *> output;
     bool visible = true;
+    std::string outputName;
     auto setWidth(uint32_t) -> void;
     auto toggle() -> void;
   private:
+    static void _handleLogicalPosition(void *data,
+      struct zxdg_output_v1 *zxdg_output_v1, int32_t x, int32_t y);
+    static void _handleLogicalSize(void *data,
+      struct zxdg_output_v1 *zxdg_output_v1, int32_t width, int32_t height);
+    static void _handleDone(void *data, struct zxdg_output_v1 *zxdg_output_v1);
+    static void _handleName(void *data, struct zxdg_output_v1 *xdg_output,
+      const char *name);
+    static void _handleDescription(void *data,
+      struct zxdg_output_v1 *zxdg_output_v1, const char *description);
     static void _handleGeometry(void *data, struct wl_output *wl_output,
       int32_t x, int32_t y, int32_t physical_width, int32_t physical_height,
       int32_t subpixel, const char *make, const char *model, int32_t transform);
@@ -41,6 +52,7 @@ namespace waybar {
     Json::Value _config;
     Glib::RefPtr<Gtk::StyleContext> _styleContext;
     Glib::RefPtr<Gtk::CssProvider> _cssProvider;
+    struct zxdg_output_v1 *_xdgOutput;
   };
 
 }
