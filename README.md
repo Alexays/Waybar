@@ -1,30 +1,33 @@
-# Waybar
+# Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 **Proof of concept**
 
-Highly customizable wayland bar for sway or wlroots based compositor.
-
-Available on [AUR](https://aur.archlinux.org/packages/waybar-git/)
-
-![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
-![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview.png)
+> Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
+> Available on [AUR](https://aur.archlinux.org/packages/waybar-git/)
 
 **Current features**
-- Configuration via [JSON file](./resources/config)
-- Customization via [CSS file](./resources/style.css)
-- Sway workspaces
+- Sway Workspaces
 - Local time
 - Battery
-- Network name
+- Network
 - Pulseaudio
-- Used memory percentage
-- Cpu load percentage
+- Memory
+- Cpu load average
 
-**How to compile**
+**Configuration and Customization**
+
+[See the wiki for more details](https://github.com/Alexays/Waybar/wiki).
+
+**How to build**
 
 ```bash
-meson build
-ninja -C build
-./build/waybar
+$ git clone https://github.com/Alexays/Waybar
+$ meson build
+$ ninja -C build
+$ ./build/waybar
 ```
 
-Contributions welcome! - have fun
+Contributions welcome! - have fun :)
+
+## License
+
+Waybar is licensed under the MIT license. [See LICENSE for more information](https://github.com/Alexays/Waybar/blob/master/LICENSE).
