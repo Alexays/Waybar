@@ -24,13 +24,15 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   _setupConfig();
   _setupCss();
   _setupWidgets();
-  bool positionBottom = (_config["position"] == "bottom");
+  bool positionBottom = _config["position"] == "bottom";
+  bool layerTop = _config["layer"] == "top";
   gtk_widget_realize(GTK_WIDGET(window.gobj()));
   GdkWindow *gdkWindow = gtk_widget_get_window(GTK_WIDGET(window.gobj()));
   gdk_wayland_window_set_use_custom_surface(gdkWindow);
   surface = gdk_wayland_window_get_wl_surface(gdkWindow);
   layerSurface = zwlr_layer_shell_v1_get_layer_surface(
-    client.layer_shell, surface, *output, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM,
+    client.layer_shell, surface, *output,
+    (layerTop ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM),
     "waybar");
   zwlr_layer_surface_v1_set_anchor(layerSurface,
     ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
