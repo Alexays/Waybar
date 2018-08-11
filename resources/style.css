@@ -42,6 +42,11 @@ window {
     background-color: #26A65B;
 }
 
+.battery.warning {
+    background: #f53c3c;
+    color: white;
+}
+
 .cpu {
     background: #2ecc71;
     color: #000000;
