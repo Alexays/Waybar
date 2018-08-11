@@ -17,9 +17,7 @@ waybar::modules::Workspaces::Workspaces(Bar &bar)
     return;
   }
   _thread = [this] {
-    Glib::signal_idle().connect_once([this] {
-      update();
-    });
+    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Workspaces::update));
     _thread.sleep_for(chrono::milliseconds(250));
   };
 }
@@ -95,7 +93,7 @@ Json::Value waybar::modules::Workspaces::_getWorkspaces()
     delete reader;
     if (!res) {
       std::cerr << err << std::endl;
-      return nullptr;
+      return root;
     }
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
