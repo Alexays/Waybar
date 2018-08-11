@@ -13,8 +13,6 @@
 
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
-#include "util/ptr_vec.hpp"
-
 #include <gdk/gdkwayland.h>
 
 #include "bar.hpp"
@@ -33,7 +31,7 @@ namespace waybar {
     struct zwlr_layer_shell_v1 *layer_shell;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct wl_seat *seat;
-    util::ptr_vec<Bar> bars;
+    std::vector<std::unique_ptr<Bar>> bars;
 
     Client(int argc, char* argv[]);
     void bind_interfaces();

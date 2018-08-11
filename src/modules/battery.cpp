@@ -42,14 +42,18 @@ auto waybar::modules::Battery::update() -> void
         charging = true;
       }
     }
-    if (charging) {
-      _label.get_style_context()->add_class("charging");
-    } else {
-      _label.get_style_context()->remove_class("charging");
-    }
     auto format = _config["format"] ? _config["format"].asString() : "{}%";
-    _label.set_text(fmt::format(format, total / _batteries.size()));
+    auto value = total / _batteries.size();
+    _label.set_text(fmt::format(format, value));
     _label.set_tooltip_text(charging ? "Charging" : "Discharging");
+    if (charging)
+      _label.get_style_context()->add_class("charging");
+    else
+      _label.get_style_context()->remove_class("charging");
+    if (value < 52 && !charging)
+      _label.get_style_context()->add_class("warning");
+    else
+      _label.get_style_context()->remove_class("warning");
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
