@@ -95,7 +95,6 @@ std::string ipc_single_command(int socketfd, uint32_t type, const char *payload,
 	}
 
 	struct ipc_response resp = ipc_recv_response(socketfd);
-	std::string response = resp.payload;
 	*len = resp.size;
-	return response;
+	return resp.payload;
 }

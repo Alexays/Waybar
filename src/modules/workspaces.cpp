@@ -5,12 +5,17 @@ waybar::modules::Workspaces::Workspaces(Bar &bar)
   : _bar(bar)
 {
   _box.get_style_context()->add_class("workspaces");
-  std::string socketPath = get_socketpath();
-  _ipcSocketfd = ipc_open_socket(socketPath);
-  _ipcEventSocketfd = ipc_open_socket(socketPath);
-  const char *subscribe = "[ \"workspace\", \"mode\" ]";
-  uint32_t len = strlen(subscribe);
-  ipc_single_command(_ipcEventSocketfd, IPC_SUBSCRIBE, subscribe, &len);
+  try {
+    std::string socketPath = get_socketpath();
+    _ipcSocketfd = ipc_open_socket(socketPath);
+    _ipcEventSocketfd = ipc_open_socket(socketPath);
+    const char *subscribe = "[ \"workspace\", \"mode\" ]";
+    uint32_t len = strlen(subscribe);
+    ipc_single_command(_ipcEventSocketfd, IPC_SUBSCRIBE, subscribe, &len);
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+    return;
+  }
   _thread = [this] {
     Glib::signal_idle().connect_once([this] {
       update();
@@ -60,9 +65,13 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
   _box.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
-    auto value = fmt::format("workspace \"{}\"", pair.first->first);
-    uint32_t size = value.size();
-    ipc_single_command(_ipcSocketfd, IPC_COMMAND, value.c_str(), &size);
+    try {
+      auto value = fmt::format("workspace \"{}\"", pair.first->first);
+      uint32_t size = value.size();
+      ipc_single_command(_ipcSocketfd, IPC_COMMAND, value.c_str(), &size);
+    } catch (const std::exception& e) {
+      std::cerr << e.what() << std::endl;
+    }
   });
   _box.reorder_child(button, node["num"].asInt() - 1);
   if (node["focused"].asBool()) {
@@ -77,14 +86,19 @@ Json::Value waybar::modules::Workspaces::_getWorkspaces()
   Json::Value root;
   Json::CharReaderBuilder builder;
   Json::CharReader* reader = builder.newCharReader();
-  std::string err;
-  std::string str = ipc_single_command(_ipcSocketfd, IPC_GET_WORKSPACES,
-    nullptr, &len);
-  bool res = reader->parse(str.c_str(), str.c_str() + str.size(), &root, &err);
-  delete reader;
-  if (!res) {
-    std::cerr << err << std::endl;
-    return nullptr;
+  try {
+    std::string str = ipc_single_command(_ipcSocketfd, IPC_GET_WORKSPACES,
+      nullptr, &len);
+    std::string err;
+    bool res =
+      reader->parse(str.c_str(), str.c_str() + str.size(), &root, &err);
+    delete reader;
+    if (!res) {
+      std::cerr << err << std::endl;
+      return nullptr;
+    }
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
   }
   return root;
 }
