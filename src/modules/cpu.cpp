@@ -6,9 +6,7 @@ waybar::modules::Cpu::Cpu(Json::Value config)
   _label.get_style_context()->add_class("cpu");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 10;
   _thread = [this, interval] {
-    Glib::signal_idle().connect_once([this] {
-      update();
-    });
+    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Cpu::update));
     _thread.sleep_for(chrono::seconds(interval));
   };
 };

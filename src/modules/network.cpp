@@ -6,9 +6,7 @@ waybar::modules::Network::Network(Json::Value config)
   _label.get_style_context()->add_class("network");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
   _thread = [this, interval] {
-    Glib::signal_idle().connect_once([this] {
-      update();
-    });
+    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Network::update));
     _thread.sleep_for(chrono::minutes(1));
   };
 };

@@ -80,7 +80,7 @@ void waybar::modules::Pulseaudio::_sinkInfoCb(pa_context *context,
     pa->_volume = volume * 100.0f;
     pa->_muted = i->mute;
     pa->_desc = i->description;
-    pa->update();
+    Glib::signal_idle().connect_once(sigc::mem_fun(*pa, &Pulseaudio::update));
   }
 }
 

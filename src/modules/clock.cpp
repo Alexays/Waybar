@@ -5,9 +5,7 @@ waybar::modules::Clock::Clock(Json::Value config)
 {
   _label.get_style_context()->add_class("clock");
   _thread = [this] {
-    Glib::signal_idle().connect_once([this] {
-      update();
-    });
+    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Clock::update));
     auto now = waybar::chrono::clock::now();
     auto timeout =
       std::chrono::floor<std::chrono::minutes>(now + std::chrono::minutes(1));

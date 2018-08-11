@@ -22,7 +22,7 @@ waybar::modules::Battery::Battery(Json::Value config)
   _label.get_style_context()->add_class("battery");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 1;
   _thread = [this, interval] {
-    update();
+    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Battery::update));
     _thread.sleep_for(chrono::seconds(interval));
   };
 }
