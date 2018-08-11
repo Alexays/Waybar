@@ -19,6 +19,7 @@ namespace waybar::modules {
       auto update() -> void;
       operator Gtk::Widget&();
     private:
+      std::string _getIcon(uint32_t percentage);
       static inline const fs::path _data_dir = "/sys/class/power_supply/";
       std::vector<fs::path> _batteries;
       util::SleeperThread _thread;

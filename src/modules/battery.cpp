@@ -44,7 +44,8 @@ auto waybar::modules::Battery::update() -> void
     }
     auto format = _config["format"] ? _config["format"].asString() : "{}%";
     auto value = total / _batteries.size();
-    _label.set_text(fmt::format(format, value));
+    _label.set_text(fmt::format(format, fmt::arg("value", value),
+      fmt::arg("icon", _getIcon(value))));
     _label.set_tooltip_text(charging ? "Charging" : "Discharging");
     if (charging)
       _label.get_style_context()->add_class("charging");
@@ -57,6 +58,13 @@ auto waybar::modules::Battery::update() -> void
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
+}
+
+std::string waybar::modules::Battery::_getIcon(uint32_t percentage)
+{
+  if (!_config["format-icons"] || !_config["format-icons"].isArray()) return "";
+  auto step = 100 / _config["format-icons"].size();
+  return _config["format-icons"][percentage / step].asString();
 }
 
 waybar::modules::Battery::operator Gtk::Widget &()
