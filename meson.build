@@ -6,7 +6,7 @@ project(
 )
 
 cpp_args = []
-cpp_link_args = ['-g']
+cpp_link_args = []
 
 if false # libc++
     cpp_args += ['-stdlib=libc++']
