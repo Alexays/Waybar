@@ -50,7 +50,7 @@ auto waybar::modules::Battery::update() -> void
       _label.get_style_context()->add_class("charging");
     else
       _label.get_style_context()->remove_class("charging");
-    if (value < 52 && !charging)
+    if (value < 16 && !charging)
       _label.get_style_context()->add_class("warning");
     else
       _label.get_style_context()->remove_class("warning");
