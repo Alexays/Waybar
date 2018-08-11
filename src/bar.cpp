@@ -10,12 +10,6 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},
     output(std::move(p_output))
 {
-  static const struct wl_output_listener outputListener = {
-    .geometry = _handleGeometry,
-    .mode = _handleMode,
-    .done = _handleDone,
-    .scale = _handleScale,
-  };
   static const struct zxdg_output_v1_listener xdgOutputListener = {
     .logical_position = _handleLogicalPosition,
     .logical_size = _handleLogicalSize,
@@ -23,7 +17,6 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
     .name = _handleName,
     .description = _handleDescription,
   };
-  wl_output_add_listener(*output, &outputListener, this);
   _xdgOutput =
     zxdg_output_manager_v1_get_xdg_output(client.xdg_output_manager, *output);
 	zxdg_output_v1_add_listener(_xdgOutput, &xdgOutputListener, this);
@@ -87,43 +80,18 @@ void waybar::Bar::_handleDescription(void *data,
   // Nothing here
 }
 
-void waybar::Bar::_handleGeometry(void *data, struct wl_output *wl_output,
-  int32_t x, int32_t y, int32_t physical_width, int32_t physical_height,
-  int32_t subpixel, const char *make, const char *model, int32_t transform)
-{
-  // Nothing here
-}
-
-void waybar::Bar::_handleMode(void *data, struct wl_output *wl_output,
-  uint32_t f, int32_t w, int32_t h, int32_t refresh)
-{
-  auto o = reinterpret_cast<waybar::Bar *>(data);
-  // If the width is configured we force it
-  o->setWidth(o->_config["width"] ? o->_config["width"].asUInt() : w);
-}
-
-void waybar::Bar::_handleDone(void *data, struct wl_output *)
-{
-  // Nothing here
-}
-
-void waybar::Bar::_handleScale(void *data, struct wl_output *wl_output,
-  int32_t factor)
-{
-  // Nothing here
-}
-
 void waybar::Bar::_layerSurfaceHandleConfigure(
   void *data, struct zwlr_layer_surface_v1 *surface, uint32_t serial,
   uint32_t width, uint32_t height)
 {
   auto o = reinterpret_cast<waybar::Bar *>(data);
   o->window.show_all();
+  o->setWidth(o->_config["width"] ? o->_config["width"].asUInt() : width);
   zwlr_layer_surface_v1_ack_configure(surface, serial);
   if (o->_height != height) {
     height = o->_height;
     std::cout << fmt::format("New Height: {}", height) << std::endl;
-    zwlr_layer_surface_v1_set_size(surface, width, height);
+    zwlr_layer_surface_v1_set_size(surface, o->_width, height);
     zwlr_layer_surface_v1_set_exclusive_zone(surface, o->visible ? height : 0);
     wl_surface_commit(o->surface);
   }
@@ -147,7 +115,7 @@ auto waybar::Bar::setWidth(uint32_t width) -> void
   this->_width = width;
   window.set_size_request(width);
   window.resize(width, _height);
-  zwlr_layer_surface_v1_set_size(layerSurface, width, 40);
+  zwlr_layer_surface_v1_set_size(layerSurface, width, _height + 1);
   wl_surface_commit(surface);
 }
 
