@@ -14,7 +14,8 @@
         "format": "{}% "
     },
     "battery": {
-        "format": "{}% "
+        "format": "{value}% {icon}",
+        "format-icons": ["", "", "", "", ""]
     },
     "network": {
         "interface": "wlp2s0",
