@@ -98,7 +98,8 @@ void waybar::Bar::_handleMode(void *data, struct wl_output *wl_output,
   uint32_t f, int32_t w, int32_t h, int32_t refresh)
 {
   auto o = reinterpret_cast<waybar::Bar *>(data);
-  o->setWidth(w);
+  // If the width is configured we force it
+  o->setWidth(o->_config["width"] ? o->_config["width"].asUInt() : w);
 }
 
 void waybar::Bar::_handleDone(void *data, struct wl_output *)
@@ -119,8 +120,7 @@ void waybar::Bar::_layerSurfaceHandleConfigure(
   auto o = reinterpret_cast<waybar::Bar *>(data);
   o->window.show_all();
   zwlr_layer_surface_v1_ack_configure(surface, serial);
-  if (o->_height != height)
-  {
+  if (o->_height != height) {
     height = o->_height;
     std::cout << fmt::format("New Height: {}", height) << std::endl;
     zwlr_layer_surface_v1_set_size(surface, width, height);
