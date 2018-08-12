@@ -5,9 +5,7 @@
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
 #include <linux/nl80211.h>
-#include <iwlib.h> // TODO
 #include <json/json.h>
-#include <gtkmm.h>
 #include <fmt/format.h>
 #include "util/chrono.hpp"
 #include "IModule.hpp"

@@ -3,7 +3,6 @@
 #include <json/json.h>
 #include <filesystem>
 #include <fstream>
-#include <gtkmm.h>
 #include <iostream>
 #include <fmt/format.h>
 #include "util/chrono.hpp"

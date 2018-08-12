@@ -1,7 +1,6 @@
 #pragma once
 
 #include <json/json.h>
-#include <gtkmm.h>
 #include <fmt/format.h>
 #include <sys/sysinfo.h>
 #include "util/chrono.hpp"

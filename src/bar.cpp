@@ -1,7 +1,3 @@
-#include <condition_variable>
-#include <gdk/gdkwayland.h>
-#include <thread>
-#include <fstream>
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"

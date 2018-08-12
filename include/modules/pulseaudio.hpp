@@ -2,7 +2,6 @@
 
 #include <pulse/pulseaudio.h>
 #include <json/json.h>
-#include <gtkmm.h>
 #include <fmt/format.h>
 #include "IModule.hpp"
 
