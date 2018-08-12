@@ -1,7 +1,6 @@
 #pragma once
 
 #include <json/json.h>
-#include <gtkmm.h>
 #include <fmt/format.h>
 #include "util/chrono.hpp"
 #include "IModule.hpp"

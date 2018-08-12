@@ -1,5 +1,7 @@
 #pragma once
 
+#include <gtkmm.h>
+
 namespace waybar {
   class IModule {
 	  public:

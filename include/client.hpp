@@ -3,15 +3,10 @@
 #include <unistd.h>
 #include <wordexp.h>
 
-#include <iostream>
-
 #include <fmt/format.h>
 
 #include <gdk/gdk.h>
-#include <gtkmm.h>
 #include <wayland-client.h>
-
-#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #include <gdk/gdkwayland.h>
 

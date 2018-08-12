@@ -1,7 +1,5 @@
-#include <gtkmm.h>
-#include <wayland-client.hpp>
-#include <gdk/gdkwayland.h>
 #include <csignal>
+#include <iostream>
 #include "client.hpp"
 
 namespace waybar {
