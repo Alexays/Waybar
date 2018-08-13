@@ -1,6 +1,7 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
+#include "util/json.hpp"
 
 waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},
@@ -125,19 +126,13 @@ auto waybar::Bar::toggle() -> void
 
 auto waybar::Bar::_setupConfig() -> void
 {
-  Json::Value root;
-  Json::CharReaderBuilder builder;
-  Json::CharReader* reader = builder.newCharReader();
-  std::string err;
+  util::JsonParser parser;
   std::ifstream file(client.configFile);
   if (!file.is_open())
     throw std::runtime_error("Can't open config file");
   std::string str((std::istreambuf_iterator<char>(file)),
     std::istreambuf_iterator<char>());
-  bool res = reader->parse(str.c_str(), str.c_str() + str.size(), &_config, &err);
-  delete reader;
-  if (!res)
-    throw std::runtime_error(err);
+  _config = parser.parse(str);
 }
 
 auto waybar::Bar::_setupCss() -> void

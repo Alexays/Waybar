@@ -4,6 +4,7 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "util/chrono.hpp"
+#include "util/json.hpp"
 #include "IModule.hpp"
 
 namespace waybar::modules {
@@ -15,13 +16,16 @@ namespace waybar::modules {
       operator Gtk::Widget &();
     private:
       void _addWorkspace(Json::Value node);
-      Json::Value _getWorkspaces();
+      Json::Value _getWorkspaces(const std::string data);
       Bar &_bar;
       waybar::util::SleeperThread _thread;
       Gtk::Box _box;
+      util::JsonParser _parser;
+      std::mutex _mutex;
       std::unordered_map<int, Gtk::Button> _buttons;
-      int _ipcSocketfd;
-      int _ipcEventSocketfd;
+      Json::Value _workspaces;
+      int _ipcfd;
+      int _ipcEventfd;
   };
 
 }
