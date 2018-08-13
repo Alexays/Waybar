@@ -2,7 +2,7 @@
 #include "ipc/client.hpp"
 
 waybar::modules::Workspaces::Workspaces(Bar &bar)
-  : _bar(bar)
+  : _bar(bar), _scrolling(false)
 {
   _box.get_style_context()->add_class("workspaces");
   std::string socketPath = get_socketpath();
@@ -80,11 +80,58 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
       std::cerr << e.what() << std::endl;
     }
   });
+  button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  button.signal_scroll_event()
+    .connect(sigc::mem_fun(*this, &Workspaces::_handleScroll));
   _box.reorder_child(button, node["num"].asInt() - 1);
-  if (node["focused"].asBool()) {
+  if (node["focused"].asBool())
     button.get_style_context()->add_class("current");
-  }
   button.show();
+}
+
+bool waybar::modules::Workspaces::_handleScroll(GdkEventScroll *e)
+{
+  std::lock_guard<std::mutex> lock(_mutex);
+  if (_scrolling)
+    return false;
+  _scrolling = true;
+  gdouble delta_x, delta_y;
+  int nextId = -1;
+  for (auto& node : _workspaces)
+    if (node["focused"].asBool()) {
+      nextId = node["num"].asInt();
+      break;
+    }
+  if (nextId == -1) {
+    _scrolling = false;
+    return false;
+  }
+  int id = nextId;
+  if (e->direction == GDK_SCROLL_UP || e->direction == GDK_SCROLL_LEFT)
+      nextId += 1;
+  if (e->direction == GDK_SCROLL_DOWN || e->direction == GDK_SCROLL_RIGHT)
+      nextId -= 1;
+  if (e->direction == GDK_SCROLL_SMOOTH) {
+    gdk_event_get_scroll_deltas ((const GdkEvent *) e, &delta_x, &delta_y);
+    // TODO: handle delta_y
+    if (delta_x < 0)
+      nextId += 1;
+    else if (delta_x > 0)
+      nextId -= 1;
+  }
+  if (nextId > _workspaces[_workspaces.size() - 1]["num"].asInt())
+    nextId = _workspaces[0]["num"].asInt();
+  if (nextId < _workspaces[0]["num"].asInt())
+    nextId = _workspaces[_workspaces.size() - 1]["num"].asInt();
+  if (id == nextId) {
+    _scrolling = false;
+    return false;
+  }
+  auto value = fmt::format("workspace \"{}\"", nextId);
+  uint32_t size = value.size();
+  ipc_single_command(_ipcfd, IPC_COMMAND, value.c_str(), &size);
+  _scrolling = false;
+  return true;
 }
 
 Json::Value waybar::modules::Workspaces::_getWorkspaces(const std::string data)
