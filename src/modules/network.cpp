@@ -16,7 +16,7 @@ waybar::modules::Network::Network(Json::Value config)
 auto waybar::modules::Network::update() -> void
 {
   _getInfo();
-  auto format = _config["format"] ? _config["format"].asString() : "{}";
+  auto format = _config["format"] ? _config["format"].asString() : "{essid}";
   _label.set_text(fmt::format(format,
     fmt::arg("essid", _essid),
     fmt::arg("signaldBm", _signalStrengthdBm),

@@ -14,7 +14,7 @@
         "format": "{}% "
     },
     "battery": {
-        "format": "{value}% {icon}",
+        "format": "{capacity}% {icon}",
         "format-icons": ["", "", "", "", ""]
     },
     "network": {
@@ -22,8 +22,9 @@
         "format": "{essid} ({signalStrength}%) "
     },
     "pulseaudio": {
-        "format": "{}% ",
-        "format-muted": ""
+        "format": "{volume}% {icon}",
+        "format-muted": "",
+        "format-icons": ["", ""]
     },
     "custom/spotify": {
         "format": " {}",
