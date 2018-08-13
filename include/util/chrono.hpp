@@ -39,7 +39,9 @@ namespace waybar::util {
             func();
           } while (do_run);
         }}
-    {}
+    {
+      defined = true;
+    }
 
     SleeperThread& operator=(std::function<void()> func)
     {
@@ -48,6 +50,7 @@ namespace waybar::util {
           func();
         } while (do_run);
       });
+      defined = true;
       return *this;
     }
 
@@ -72,14 +75,17 @@ namespace waybar::util {
     ~SleeperThread()
     {
       do_run = false;
-      condvar.notify_all();
-      thread.join();
+      if (defined) {
+        condvar.notify_all();
+        thread.join();
+      }
     }
 
   private:
     std::thread thread;
     std::condition_variable condvar;
     std::mutex mutex;
+    bool defined = false;
     bool do_run = true;
   };
 

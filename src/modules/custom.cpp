@@ -4,10 +4,8 @@
 waybar::modules::Custom::Custom(std::string name, Json::Value config)
   : _name(name), _config(config)
 {
-  if (!_config["exec"]) {
-    std::cerr << name + " has no exec path." << std::endl;
-    return;
-  }
+  if (!_config["exec"])
+    throw std::runtime_error(name + " has no exec path.");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
   _thread = [this, interval] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Custom::update));
