@@ -5,17 +5,12 @@ waybar::modules::Workspaces::Workspaces(Bar &bar)
   : _bar(bar)
 {
   _box.get_style_context()->add_class("workspaces");
-  try {
-    std::string socketPath = get_socketpath();
-    _ipcSocketfd = ipc_open_socket(socketPath);
-    _ipcEventSocketfd = ipc_open_socket(socketPath);
-    const char *subscribe = "[ \"workspace\", \"mode\" ]";
-    uint32_t len = strlen(subscribe);
-    ipc_single_command(_ipcEventSocketfd, IPC_SUBSCRIBE, subscribe, &len);
-  } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
-    return;
-  }
+  std::string socketPath = get_socketpath();
+  _ipcSocketfd = ipc_open_socket(socketPath);
+  _ipcEventSocketfd = ipc_open_socket(socketPath);
+  const char *subscribe = "[ \"workspace\", \"mode\" ]";
+  uint32_t len = strlen(subscribe);
+  ipc_single_command(_ipcEventSocketfd, IPC_SUBSCRIBE, subscribe, &len);
   _thread = [this] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Workspaces::update));
     _thread.sleep_for(chrono::milliseconds(250));

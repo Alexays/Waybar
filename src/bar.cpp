@@ -167,24 +167,27 @@ auto waybar::Bar::_setupWidgets() -> void
   box1.pack_end(right, true, true);
 
   Factory factory(*this, _config);
-
+  
   if (_config["modules-left"]) {
     for (auto name : _config["modules-left"]) {
-      auto &module = factory.makeModule(name.asString());
-      left.pack_start(module, false, true, 0);
+      auto module = factory.makeModule(name.asString());
+      if (module)
+        left.pack_start(*module, false, true, 0);
     }
   }
   if (_config["modules-center"]) {
     for (auto name : _config["modules-center"]) {
-      auto &module = factory.makeModule(name.asString());
-      center.pack_start(module, true, false, 10);
+      auto module = factory.makeModule(name.asString());
+      if (module)
+        center.pack_start(*module, true, false, 10);
     }
   }
   if (_config["modules-right"]) {
     std::reverse(_config["modules-right"].begin(), _config["modules-right"].end());
     for (auto name : _config["modules-right"]) {
-      auto &module = factory.makeModule(name.asString());
-      right.pack_end(module, false, false, 0);
+      auto module = factory.makeModule(name.asString());
+      if (module)
+        right.pack_end(*module, false, false, 0);
     }
   }
 }

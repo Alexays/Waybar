@@ -5,62 +5,66 @@ waybar::modules::Battery::Battery(Json::Value config)
 {
   try {
     for (auto &node : fs::directory_iterator(_data_dir)) {
-      if (fs::is_directory(node) && fs::exists(node / "capacity")
-        && fs::exists(node / "status")) {
+      if (fs::is_directory(node) && fs::exists(node / "capacity"))
         _batteries.push_back(node);
-      }
     }
   } catch (fs::filesystem_error &e) {
-    std::cerr << e.what() << std::endl;
+    throw std::runtime_error(e.what());
   }
 
-  if (!_batteries.size()) {
-    std::cerr << "No batteries." << std::endl;
-    return;
-  }
+  if (!_batteries.size())
+    throw std::runtime_error("No batteries.");
 
+  auto fd = inotify_init();
+  if (fd == -1)
+    throw std::runtime_error("Unable to listen batteries.");
+  for (auto &bat : _batteries)
+    inotify_add_watch(fd, (bat / "uevent").c_str(), IN_ACCESS);
+  // Trigger first value
+  update();
   _label.get_style_context()->add_class("battery");
-  int interval = _config["interval"] ? _config["inveral"].asInt() : 1;
-  _thread = [this, interval] {
+  _thread = [this, fd] {
+    struct inotify_event event;
+    int nbytes = read(fd, &event, sizeof(event));
+    if (nbytes != sizeof(event))
+      return;
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Battery::update));
-    _thread.sleep_for(chrono::seconds(interval));
   };
 }
 
 auto waybar::modules::Battery::update() -> void
 {
   try {
-    int total = 0;
+    uint16_t total = 0;
     bool charging = false;
+    std::string status;
     for (auto &bat : _batteries) {
-      int capacity;
-      std::string status;
+      uint16_t capacity;
       std::ifstream(bat / "capacity") >> capacity;
-      total += capacity;
       std::ifstream(bat / "status") >> status;
-      if (status == "Charging") {
+      if (status == "Charging")
         charging = true;
-      }
+      total += capacity;
     }
+    uint16_t capacity = total / _batteries.size();
     auto format = _config["format"] ? _config["format"].asString() : "{}%";
-    auto value = total / _batteries.size();
-    _label.set_text(fmt::format(format, fmt::arg("value", value),
-      fmt::arg("icon", _getIcon(value))));
-    _label.set_tooltip_text(charging ? "Charging" : "Discharging");
+    _label.set_text(fmt::format(format, fmt::arg("value", capacity),
+      fmt::arg("icon", _getIcon(capacity))));
+    _label.set_tooltip_text(status);
     if (charging)
       _label.get_style_context()->add_class("charging");
     else
       _label.get_style_context()->remove_class("charging");
-    if (value < 16 && !charging)
+    if (capacity < 16 && !charging)
       _label.get_style_context()->add_class("warning");
     else
       _label.get_style_context()->remove_class("warning");
-  } catch (std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
   }
 }
 
-std::string waybar::modules::Battery::_getIcon(uint32_t percentage)
+std::string waybar::modules::Battery::_getIcon(uint16_t percentage)
 {
   if (!_config["format-icons"] || !_config["format-icons"].isArray()) return "";
   auto step = 100 / _config["format-icons"].size();
