@@ -20,8 +20,8 @@ waybar::modules::Workspaces::Workspaces(Bar &bar)
       } else
         ipc_recv_response(_ipcEventfd);
       uint32_t len = 0;
-      auto str = ipc_single_command(_ipcfd, IPC_GET_WORKSPACES, nullptr, &len);
       std::lock_guard<std::mutex> lock(_mutex);
+      auto str = ipc_single_command(_ipcfd, IPC_GET_WORKSPACES, nullptr, &len);
       _workspaces = _getWorkspaces(str);
       Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Workspaces::update));
     } catch (const std::exception& e) {
@@ -72,6 +72,7 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
     try {
+      std::lock_guard<std::mutex> lock(_mutex);
       auto value = fmt::format("workspace \"{}\"", pair.first->first);
       uint32_t size = value.size();
       ipc_single_command(_ipcfd, IPC_COMMAND, value.c_str(), &size);
