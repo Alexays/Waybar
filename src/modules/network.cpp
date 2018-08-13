@@ -1,8 +1,10 @@
 #include "modules/network.hpp"
 
 waybar::modules::Network::Network(Json::Value config)
-  : _config(config), _ifid(if_nametoindex(config["interface"].asString().c_str()))
+  : _config(config), _ifid(if_nametoindex(config["interface"].asCString()))
 {
+  if (_ifid == 0)
+    throw std::runtime_error("Can't found network interface");
   _label.get_style_context()->add_class("network");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
   _thread = [this, interval] {
@@ -103,8 +105,6 @@ bool waybar::modules::Network::_associatedOrJoined(struct nlattr** bss)
 
 auto waybar::modules::Network::_getInfo() -> void
 {
-  if (_ifid == 0)
-    return;
 	struct nl_sock *sk = nl_socket_alloc();
 	if (genl_connect(sk) != 0) {
     nl_socket_free(sk);
