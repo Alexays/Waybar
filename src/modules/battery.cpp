@@ -5,7 +5,8 @@ waybar::modules::Battery::Battery(Json::Value config)
 {
   try {
     for (auto &node : fs::directory_iterator(_data_dir)) {
-      if (fs::is_directory(node) && fs::exists(node / "capacity"))
+      if (fs::is_directory(node) && fs::exists(node / "capacity")
+        && fs::exists(node / "status") && fs::exists(node / "uevent"))
         _batteries.push_back(node);
     }
   } catch (fs::filesystem_error &e) {
