@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fmt/format.h>
 #include <sys/inotify.h>
+#include <algorithm>
 #include "util/chrono.hpp"
 #include "IModule.hpp"
 

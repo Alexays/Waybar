@@ -97,15 +97,25 @@ void waybar::modules::Pulseaudio::_serverInfoCb(pa_context *context,
 
 auto waybar::modules::Pulseaudio::update() -> void
 {
-	  auto format = _config["format"] ? _config["format"].asString() : "{}%";
+	  auto format = _config["format"] ? _config["format"].asString() : "{volume}%";
     if (_muted) {
       format =
         _config["format-muted"] ? _config["format-muted"].asString() : format;
       _label.get_style_context()->add_class("muted");
     } else
       _label.get_style_context()->remove_class("muted");
-    _label.set_label(fmt::format(format, _volume));
+    _label.set_label(fmt::format(format,
+      fmt::arg("volume", _volume),
+      fmt::arg("icon", _getIcon(_volume))));
     _label.set_tooltip_text(_desc);
+}
+
+std::string waybar::modules::Pulseaudio::_getIcon(uint16_t percentage)
+{
+  if (!_config["format-icons"] || !_config["format-icons"].isArray()) return "";
+  auto size = _config["format-icons"].size();
+  auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
+  return _config["format-icons"][idx].asString();
 }
 
 waybar::modules::Pulseaudio::operator Gtk::Widget &() {

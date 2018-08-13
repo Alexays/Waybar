@@ -3,6 +3,7 @@
 #include <pulse/pulseaudio.h>
 #include <json/json.h>
 #include <fmt/format.h>
+#include <algorithm>
 #include "IModule.hpp"
 
 namespace waybar::modules {
@@ -13,6 +14,7 @@ namespace waybar::modules {
       auto update() -> void;
       operator Gtk::Widget &();
     private:
+      std::string _getIcon(uint16_t percentage);
       static void _subscribeCb(pa_context *context,
         pa_subscription_event_type_t type, uint32_t idx, void *data);
       static void _contextStateCb(pa_context *c, void *data);
