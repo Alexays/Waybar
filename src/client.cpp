@@ -46,10 +46,12 @@ void waybar::Client::_handle_global(void *data, struct wl_registry *registry,
     o->layer_shell = (zwlr_layer_shell_v1 *)wl_registry_bind(registry, name,
       &zwlr_layer_shell_v1_interface, version);
   } else if (!strcmp(interface, wl_output_interface.name)) {
-    auto output = std::make_unique<struct wl_output *>();
-    *output = (struct wl_output *)wl_registry_bind(registry, name,
+    o->wlOutput = (struct wl_output *)wl_registry_bind(registry, name,
       &wl_output_interface, version);
-    o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output)));
+    auto output = std::make_unique<struct wl_output *>();
+    *output = o->wlOutput;
+    if (o->xdg_output_manager)
+      o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output)));
   } else if (!strcmp(interface, wl_seat_interface.name)) {
     o->seat = (struct wl_seat *)wl_registry_bind(registry, name,
       &wl_seat_interface, version);
@@ -58,6 +60,11 @@ void waybar::Client::_handle_global(void *data, struct wl_registry *registry,
       o->xdg_output_manager =
         (struct zxdg_output_manager_v1 *)wl_registry_bind(registry, name,
         &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION);
+      if (o->wlOutput) {
+        auto output = std::make_unique<struct wl_output *>();
+        *output = o->wlOutput;
+        o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output)));
+      }
     }
 }
 
