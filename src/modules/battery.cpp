@@ -57,7 +57,8 @@ auto waybar::modules::Battery::update() -> void
       _label.get_style_context()->add_class("charging");
     else
       _label.get_style_context()->remove_class("charging");
-    if (capacity < 16 && !charging)
+    auto critical = _config["critical"] ? _config["critical"].asUInt() : 15;
+    if (capacity <= critical && !charging)
       _label.get_style_context()->add_class("warning");
     else
       _label.get_style_context()->remove_class("warning");

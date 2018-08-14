@@ -58,10 +58,12 @@ auto waybar::modules::Workspaces::update() -> void
         button.get_style_context()->add_class("current");
       }
       if (needReorder)
-        _box.reorder_child(button, node["num"].asInt() - 1);
+        _box.reorder_child(button, node["num"].asInt());
       button.show();
     }
   }
+  if (_scrolling)
+    _scrolling = false;
 }
 
 void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
@@ -83,7 +85,7 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
   button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   button.signal_scroll_event()
     .connect(sigc::mem_fun(*this, &Workspaces::_handleScroll));
-  _box.reorder_child(button, node["num"].asInt() - 1);
+  _box.reorder_child(button, node["num"].asInt());
   if (node["focused"].asBool())
     button.get_style_context()->add_class("current");
   button.show();
@@ -92,46 +94,68 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
 bool waybar::modules::Workspaces::_handleScroll(GdkEventScroll *e)
 {
   std::lock_guard<std::mutex> lock(_mutex);
+  // Avoid concurrent scroll event
   if (_scrolling)
     return false;
   _scrolling = true;
-  gdouble delta_x, delta_y;
-  int nextId = -1;
-  for (auto& node : _workspaces)
-    if (node["focused"].asBool()) {
-      nextId = node["num"].asInt();
+  int id = -1;
+  uint16_t idx = 0;
+  for (; idx < _workspaces.size(); idx += 1)
+    if (_workspaces[idx]["focused"].asBool()) {
+      id = _workspaces[idx]["num"].asInt();
       break;
     }
-  if (nextId == -1) {
+  if (id == -1) {
     _scrolling = false;
     return false;
   }
-  int id = nextId;
-  if (e->direction == GDK_SCROLL_UP || e->direction == GDK_SCROLL_LEFT)
-      nextId += 1;
-  if (e->direction == GDK_SCROLL_DOWN || e->direction == GDK_SCROLL_RIGHT)
-      nextId -= 1;
+  if (e->direction == GDK_SCROLL_UP)
+      id = _getNextWorkspace();
+  if (e->direction == GDK_SCROLL_DOWN)
+      id = _getPrevWorkspace();
   if (e->direction == GDK_SCROLL_SMOOTH) {
+    gdouble delta_x, delta_y;
     gdk_event_get_scroll_deltas ((const GdkEvent *) e, &delta_x, &delta_y);
-    // TODO: handle delta_y
-    if (delta_x < 0)
-      nextId += 1;
-    else if (delta_x > 0)
-      nextId -= 1;
+    if (delta_y < 0)
+      id = _getNextWorkspace();
+    else if (delta_y > 0)
+      id = _getPrevWorkspace();
   }
-  if (nextId > _workspaces[_workspaces.size() - 1]["num"].asInt())
-    nextId = _workspaces[0]["num"].asInt();
-  if (nextId < _workspaces[0]["num"].asInt())
-    nextId = _workspaces[_workspaces.size() - 1]["num"].asInt();
-  if (id == nextId) {
+  if (id == _workspaces[idx]["num"].asInt()) {
     _scrolling = false;
     return false;
   }
-  auto value = fmt::format("workspace \"{}\"", nextId);
+  auto value = fmt::format("workspace \"{}\"", id);
   uint32_t size = value.size();
   ipc_single_command(_ipcfd, IPC_COMMAND, value.c_str(), &size);
-  _scrolling = false;
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   return true;
+}
+
+int waybar::modules::Workspaces::_getPrevWorkspace()
+{
+  int current = -1;
+  for (uint16_t i = 0; i != _workspaces.size(); i += 1)
+    if (_workspaces[i]["focused"].asBool()) {
+      current = _workspaces[i]["num"].asInt();
+      if (i > 0)
+        return _workspaces[i - 1]["num"].asInt();
+      return _workspaces[_workspaces.size() - 1]["num"].asInt();
+    }
+  return current;
+}
+
+int waybar::modules::Workspaces::_getNextWorkspace()
+{
+  int current = -1;
+  for (uint16_t i = 0; i != _workspaces.size(); i += 1)
+    if (_workspaces[i]["focused"].asBool()) {
+      current = _workspaces[i]["num"].asInt();
+      if (i + 1U < _workspaces.size())
+        return _workspaces[i + 1]["num"].asInt();
+      return _workspaces[0]["num"].asInt();
+    }
+  return current;
 }
 
 Json::Value waybar::modules::Workspaces::_getWorkspaces(const std::string data)

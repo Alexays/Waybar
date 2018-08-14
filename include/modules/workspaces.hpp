@@ -18,6 +18,8 @@ namespace waybar::modules {
       void _addWorkspace(Json::Value node);
       Json::Value _getWorkspaces(const std::string data);
       bool _handleScroll(GdkEventScroll *e);
+      int _getPrevWorkspace();
+      int _getNextWorkspace();
       Bar &_bar;
       waybar::util::SleeperThread _thread;
       Gtk::Box _box;
