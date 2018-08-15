@@ -4,7 +4,7 @@ waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
   : _config(config), _mainloop(nullptr), _mainloop_api(nullptr),
     _context(nullptr), _sinkIdx(0), _volume(0), _muted(false)
 {
-  _label.get_style_context()->add_class("pulseaudio");
+  _label.set_name("pulseaudio");
   _mainloop = pa_threaded_mainloop_new();
   if (!_mainloop)
     throw std::runtime_error("pa_mainloop_new() failed.");

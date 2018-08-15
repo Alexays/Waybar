@@ -34,10 +34,10 @@ auto waybar::modules::Custom::update() -> void
 
   // Hide label if output is empty
   if (output.empty()) {
-    _label.get_style_context()->remove_class("custom-" + _name);
+    _label.set_name("");
     _label.hide();
   } else {
-    _label.get_style_context()->add_class("custom-" + _name);
+    _label.set_name("custom-" + _name);
     auto format = _config["format"] ? _config["format"].asString() : "{}";
     _label.set_text(fmt::format(format, output));
     _label.show();

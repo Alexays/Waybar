@@ -7,6 +7,15 @@
     "modules-left": ["workspaces", "custom/spotify"],
     "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "clock"],
     // Modules configuration
+    "workspaces": {
+        "format-icons": {
+            "1": "",
+            "2": "",
+            "3": "",
+            "4": "",
+            "5": ""
+        }
+    },
     "cpu": {
         "format": "{}% "
     },

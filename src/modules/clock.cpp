@@ -3,7 +3,7 @@
 waybar::modules::Clock::Clock(Json::Value config)
   : _config(config)
 {
-  _label.get_style_context()->add_class("clock");
+  _label.set_name("clock");
   _thread = [this] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Clock::update));
     auto now = waybar::chrono::clock::now();

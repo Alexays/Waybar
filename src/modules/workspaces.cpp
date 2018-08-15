@@ -1,10 +1,10 @@
 #include "modules/workspaces.hpp"
 #include "ipc/client.hpp"
 
-waybar::modules::Workspaces::Workspaces(Bar &bar)
-  : _bar(bar), _scrolling(false)
+waybar::modules::Workspaces::Workspaces(Bar &bar, Json::Value config)
+  : _bar(bar), _config(config), _scrolling(false)
 {
-  _box.get_style_context()->add_class("workspaces");
+  _box.set_name("workspaces");
   std::string socketPath = get_socketpath();
   _ipcfd = ipc_open_socket(socketPath);
   _ipcEventfd = ipc_open_socket(socketPath);
@@ -67,7 +67,8 @@ auto waybar::modules::Workspaces::update() -> void
 
 void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
 {
-  auto pair = _buttons.emplace(node["num"].asInt(), node["name"].asString());
+  auto pair = _buttons.emplace(node["num"].asInt(),
+    _getIcon(node["name"].asString()));
   auto &button = pair.first->second;
   _box.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
@@ -88,6 +89,15 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
   if (node["focused"].asBool())
     button.get_style_context()->add_class("current");
   button.show();
+}
+
+std::string waybar::modules::Workspaces::_getIcon(std::string name)
+{
+  if (_config["format-icons"][name])
+    return _config["format-icons"][name].asString();
+  if (_config["format-icons"]["default"])
+    return _config["format-icons"]["default"].asString();
+  return name;
 }
 
 bool waybar::modules::Workspaces::_handleScroll(GdkEventScroll *e)

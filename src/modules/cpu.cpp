@@ -3,7 +3,7 @@
 waybar::modules::Cpu::Cpu(Json::Value config)
   : _config(config)
 {
-  _label.get_style_context()->add_class("cpu");
+  _label.set_name("cpu");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 10;
   _thread = [this, interval] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Cpu::update));
