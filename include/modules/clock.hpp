@@ -2,6 +2,7 @@
 
 #include <json/json.h>
 #include <fmt/format.h>
+#include "fmt/time.h"
 #include "util/chrono.hpp"
 #include "IModule.hpp"
 

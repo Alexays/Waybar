@@ -15,11 +15,10 @@ waybar::modules::Clock::Clock(Json::Value config)
 
 auto waybar::modules::Clock::update() -> void
 {
-  auto t = std::time(nullptr);
-  auto localtime = std::localtime(&t);
+  auto localtime = fmt::localtime(std::time(nullptr));
   auto format =
-    _config["format"] ? _config["format"].asString() : "{:02}:{:02}";
-  _label.set_text(fmt::format(format, localtime->tm_hour, localtime->tm_min));
+    _config["format"] ? _config["format"].asString() : "{:%H:%M}";
+  _label.set_text(fmt::format(format, localtime));
 }
 
 waybar::modules::Clock::operator Gtk::Widget &() {
