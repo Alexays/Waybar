@@ -23,7 +23,7 @@ waybar::modules::Battery::Battery(Json::Value config)
     inotify_add_watch(fd, (bat / "uevent").c_str(), IN_ACCESS);
   // Trigger first value
   update();
-  _label.get_style_context()->add_class("battery");
+  _label.set_name("battery");
   _thread = [this, fd] {
     struct inotify_event event;
     int nbytes = read(fd, &event, sizeof(event));

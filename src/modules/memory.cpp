@@ -3,7 +3,7 @@
 waybar::modules::Memory::Memory(Json::Value config)
   : _config(config)
 {
-  _label.get_style_context()->add_class("memory");
+  _label.set_name("memory");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
   _thread = [this, interval] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Memory::update));
