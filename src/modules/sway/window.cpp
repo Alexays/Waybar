@@ -21,10 +21,11 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
       }
       auto res = ipc_recv_response(_ipcEventfd);
       auto parsed = _parser.parse(res.payload);
-      if (parsed["change"] != "focus")
-        return;
-      _window = parsed["container"]["name"].asString();
-      Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
+      if ((parsed["change"] == "focus" || parsed["change"] == "title")
+        && parsed["container"]["focused"].asBool()) {
+        _window = parsed["container"]["name"].asString();
+        Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
+      }
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
@@ -34,6 +35,7 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
 auto waybar::modules::sway::Window::update() -> void
 {
   _label.set_text(_window);
+  _label.set_tooltip_text(_window);
 }
 
 std::string waybar::modules::sway::Window::_getFocusedNode(Json::Value nodes)
