@@ -14,9 +14,8 @@ waybar::Client::Client(int argc, char* argv[])
           std::string result = p.we_wordv[0];
           wordfree(&p);
           return result;
-        } else {
-          wordfree(&p);
         }
+        wordfree(&p);
       }
     }
 
@@ -42,30 +41,23 @@ void waybar::Client::_handle_global(void *data, struct wl_registry *registry,
   uint32_t name, const char *interface, uint32_t version)
 {
   auto o = reinterpret_cast<waybar::Client *>(data);
-  if (!strcmp(interface, zwlr_layer_shell_v1_interface.name)) {
-    o->layer_shell = (zwlr_layer_shell_v1 *)wl_registry_bind(registry, name,
+  if (!strcmp(interface, zwlr_layer_shell_v1_interface.name))
+    o->layerShell = (zwlr_layer_shell_v1 *)wl_registry_bind(registry, name,
       &zwlr_layer_shell_v1_interface, version);
-  } else if (!strcmp(interface, wl_output_interface.name)) {
-    o->wlOutput = (struct wl_output *)wl_registry_bind(registry, name,
-      &wl_output_interface, version);
+  else if (!strcmp(interface, wl_output_interface.name)) {
     auto output = std::make_unique<struct wl_output *>();
-    *output = o->wlOutput;
-    if (o->xdg_output_manager)
+    *output = (struct wl_output *)wl_registry_bind(registry, name,
+      &wl_output_interface, version);
+    if (o->xdgOutputManager)
       o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output)));
-  } else if (!strcmp(interface, wl_seat_interface.name)) {
+  } else if (!strcmp(interface, wl_seat_interface.name))
     o->seat = (struct wl_seat *)wl_registry_bind(registry, name,
       &wl_seat_interface, version);
-  } else if (!strcmp(interface, zxdg_output_manager_v1_interface.name)
-    && version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
-      o->xdg_output_manager =
+  else if (!strcmp(interface, zxdg_output_manager_v1_interface.name)
+    && version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION)
+      o->xdgOutputManager =
         (struct zxdg_output_manager_v1 *)wl_registry_bind(registry, name,
         &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION);
-      if (o->wlOutput) {
-        auto output = std::make_unique<struct wl_output *>();
-        *output = o->wlOutput;
-        o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output)));
-      }
-    }
 }
 
 void waybar::Client::_handle_global_remove(void *data,

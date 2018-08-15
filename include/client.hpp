@@ -23,10 +23,9 @@ namespace waybar {
     Glib::RefPtr<Gdk::Display> gdk_display;
     struct wl_display *wlDisplay = nullptr;
     struct wl_registry *registry = nullptr;
-    struct zwlr_layer_shell_v1 *layer_shell = nullptr;
-    struct zxdg_output_manager_v1 *xdg_output_manager = nullptr;
+    struct zwlr_layer_shell_v1 *layerShell = nullptr;
+    struct zxdg_output_manager_v1 *xdgOutputManager = nullptr;
     struct wl_seat *seat = nullptr;
-    struct wl_output *wlOutput = nullptr;
     std::vector<std::unique_ptr<Bar>> bars;
 
     Client(int argc, char* argv[]);
