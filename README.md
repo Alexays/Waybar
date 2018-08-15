@@ -6,6 +6,7 @@
 
 **Current features**
 - Sway Workspaces
+- Sway focused window name
 - Local time
 - Battery
 - Network
