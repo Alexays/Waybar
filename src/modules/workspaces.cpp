@@ -67,9 +67,11 @@ auto waybar::modules::Workspaces::update() -> void
 
 void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
 {
-  auto pair = _buttons.emplace(node["num"].asInt(),
-    _getIcon(node["name"].asString()));
+  auto icon = _getIcon(node["name"].asString());
+  auto pair = _buttons.emplace(node["num"].asInt(), icon);
   auto &button = pair.first->second;
+  if (icon != node["name"].asString())
+    button.get_style_context()->add_class("icon");
   _box.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
