@@ -4,11 +4,12 @@ waybar::modules::Clock::Clock(Json::Value config)
   : _config(config)
 {
   _label.set_name("clock");
-  _thread = [this] {
-    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Clock::update));
+  int interval = _config["interval"] ? _config["inveral"].asInt() : 60;
+  _thread = [this, interval] {
     auto now = waybar::chrono::clock::now();
-    auto timeout =
-      std::chrono::floor<std::chrono::minutes>(now + std::chrono::minutes(1));
+    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Clock::update));
+    auto timeout = std::chrono::floor<std::chrono::seconds>(now
+      + std::chrono::seconds(interval));
     _thread.sleep_until(timeout);
   };
 };
