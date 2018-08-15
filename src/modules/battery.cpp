@@ -37,14 +37,14 @@ auto waybar::modules::Battery::update() -> void
 {
   try {
     uint16_t total = 0;
-    bool charging = false;
     std::string status;
     for (auto &bat : _batteries) {
       uint16_t capacity;
+      std::string _status;
       std::ifstream(bat / "capacity") >> capacity;
-      std::ifstream(bat / "status") >> status;
-      if (status == "Charging")
-        charging = true;
+      std::ifstream(bat / "status") >> _status;
+      if (_status != "Unknown")
+        status = _status;
       total += capacity;
     }
     uint16_t capacity = total / _batteries.size();
@@ -53,6 +53,7 @@ auto waybar::modules::Battery::update() -> void
     _label.set_text(fmt::format(format, fmt::arg("capacity", capacity),
       fmt::arg("icon", _getIcon(capacity))));
     _label.set_tooltip_text(status);
+    bool charging = status == "Charging";
     if (charging)
       _label.get_style_context()->add_class("charging");
     else
