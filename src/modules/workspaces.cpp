@@ -53,9 +53,17 @@ auto waybar::modules::Workspaces::update() -> void
     } else {
       auto &button = it->second;
       if (node["focused"].asBool())
-        button.get_style_context()->add_class("current");
+        button.get_style_context()->add_class("focused");
       else
-        button.get_style_context()->remove_class("current");
+        button.get_style_context()->remove_class("focused");
+      if (node["visible"].asBool())
+        button.get_style_context()->add_class("visible");
+      else
+        button.get_style_context()->remove_class("visible");
+      if (node["urgent"].asBool())
+        button.get_style_context()->add_class("urgent");
+      else
+        button.get_style_context()->remove_class("urgent");
       if (needReorder)
         _box.reorder_child(button, node["num"].asInt());
       button.show();
@@ -89,7 +97,11 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
     .connect(sigc::mem_fun(*this, &Workspaces::_handleScroll));
   _box.reorder_child(button, node["num"].asInt());
   if (node["focused"].asBool())
-    button.get_style_context()->add_class("current");
+    button.get_style_context()->add_class("focused");
+  if (node["visible"].asBool())
+    button.get_style_context()->add_class("visible");
+  if (node["urgent"].asBool())
+    button.get_style_context()->add_class("urgent");
   button.show();
 }
 
