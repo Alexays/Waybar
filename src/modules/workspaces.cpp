@@ -34,13 +34,14 @@ auto waybar::modules::Workspaces::update() -> void
 {
   std::lock_guard<std::mutex> lock(_mutex);
   bool needReorder = false;
-  for (auto it = _buttons.begin(); it != _buttons.end(); ++it) {
+  for (auto it = _buttons.begin(); it != _buttons.end();) {
     auto ws = std::find_if(_workspaces.begin(), _workspaces.end(),
       [it](auto node) -> bool { return node["num"].asInt() == it->first; });
     if (ws == _workspaces.end()) {
       it = _buttons.erase(it);
       needReorder = true;
-    }
+    } else
+      ++it;
   }
   for (auto node : _workspaces) {
     if (_bar.outputName != node["output"].asString())
@@ -51,12 +52,10 @@ auto waybar::modules::Workspaces::update() -> void
       needReorder = true;
     } else {
       auto &button = it->second;
-      bool isCurrent = node["focused"].asBool();
-      if (!isCurrent) {
-        button.get_style_context()->remove_class("current");
-      } else if (isCurrent) {
+      if (node["focused"].asBool())
         button.get_style_context()->add_class("current");
-      }
+      else
+        button.get_style_context()->remove_class("current");
       if (needReorder)
         _box.reorder_child(button, node["num"].asInt());
       button.show();
