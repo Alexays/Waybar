@@ -9,8 +9,10 @@ waybar::IModule *waybar::Factory::makeModule(std::string name)
   try {
     if (name == "battery")
       return new waybar::modules::Battery(_config[name]);
-    if (name == "workspaces")
-      return new waybar::modules::Workspaces(_bar, _config[name]);
+    if (name == "sway/workspaces")
+      return new waybar::modules::sway::Workspaces(_bar, _config[name]);
+    if (name == "sway/window")
+      return new waybar::modules::sway::Window(_bar, _config[name]);
     if (name == "memory")
       return new waybar::modules::Memory(_config[name]);
     if (name == "cpu")

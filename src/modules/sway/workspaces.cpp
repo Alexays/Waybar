@@ -1,7 +1,7 @@
-#include "modules/workspaces.hpp"
-#include "ipc/client.hpp"
+#include "modules/sway/workspaces.hpp"
+#include "modules/sway/ipc/client.hpp"
 
-waybar::modules::Workspaces::Workspaces(Bar &bar, Json::Value config)
+waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
   : _bar(bar), _config(config), _scrolling(false)
 {
   _box.set_name("workspaces");
@@ -22,15 +22,16 @@ waybar::modules::Workspaces::Workspaces(Bar &bar, Json::Value config)
       uint32_t len = 0;
       std::lock_guard<std::mutex> lock(_mutex);
       auto str = ipc_single_command(_ipcfd, IPC_GET_WORKSPACES, nullptr, &len);
-      _workspaces = _getWorkspaces(str);
-      Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Workspaces::update));
+      _workspaces = _parser.parse(str);
+      Glib::signal_idle()
+        .connect_once(sigc::mem_fun(*this, &Workspaces::update));
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
   };
 }
 
-auto waybar::modules::Workspaces::update() -> void
+auto waybar::modules::sway::Workspaces::update() -> void
 {
   std::lock_guard<std::mutex> lock(_mutex);
   bool needReorder = false;
@@ -73,7 +74,7 @@ auto waybar::modules::Workspaces::update() -> void
     _scrolling = false;
 }
 
-void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
+void waybar::modules::sway::Workspaces::_addWorkspace(Json::Value node)
 {
   auto icon = _getIcon(node["name"].asString());
   auto pair = _buttons.emplace(node["num"].asInt(), icon);
@@ -105,7 +106,7 @@ void waybar::modules::Workspaces::_addWorkspace(Json::Value node)
   button.show();
 }
 
-std::string waybar::modules::Workspaces::_getIcon(std::string name)
+std::string waybar::modules::sway::Workspaces::_getIcon(std::string name)
 {
   if (_config["format-icons"][name])
     return _config["format-icons"][name].asString();
@@ -114,7 +115,7 @@ std::string waybar::modules::Workspaces::_getIcon(std::string name)
   return name;
 }
 
-bool waybar::modules::Workspaces::_handleScroll(GdkEventScroll *e)
+bool waybar::modules::sway::Workspaces::_handleScroll(GdkEventScroll *e)
 {
   std::lock_guard<std::mutex> lock(_mutex);
   // Avoid concurrent scroll event
@@ -155,7 +156,7 @@ bool waybar::modules::Workspaces::_handleScroll(GdkEventScroll *e)
   return true;
 }
 
-int waybar::modules::Workspaces::_getPrevWorkspace()
+int waybar::modules::sway::Workspaces::_getPrevWorkspace()
 {
   int current = -1;
   for (uint16_t i = 0; i != _workspaces.size(); i += 1)
@@ -168,7 +169,7 @@ int waybar::modules::Workspaces::_getPrevWorkspace()
   return current;
 }
 
-int waybar::modules::Workspaces::_getNextWorkspace()
+int waybar::modules::sway::Workspaces::_getNextWorkspace()
 {
   int current = -1;
   for (uint16_t i = 0; i != _workspaces.size(); i += 1)
@@ -181,18 +182,6 @@ int waybar::modules::Workspaces::_getNextWorkspace()
   return current;
 }
 
-Json::Value waybar::modules::Workspaces::_getWorkspaces(const std::string data)
-{
-  Json::Value res;
-  try {
-    std::string err;
-    res = _parser.parse(data);
-  } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
-  }
-  return res;
-}
-
-waybar::modules::Workspaces::operator Gtk::Widget &() {
+waybar::modules::sway::Workspaces::operator Gtk::Widget &() {
   return _box;
 }

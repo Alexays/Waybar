@@ -2,7 +2,8 @@
 
 #include <json/json.h>
 #include "modules/clock.hpp"
-#include "modules/workspaces.hpp"
+#include "modules/sway/workspaces.hpp"
+#include "modules/sway/window.hpp"
 #include "modules/battery.hpp"
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
