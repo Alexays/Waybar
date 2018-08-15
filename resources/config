@@ -8,7 +8,7 @@
     "modules-center": ["sway/window"],
     "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "clock"],
     // Modules configuration
-    "workspaces": {
+    "sway/workspaces": {
         "format-icons": {
             "1": "",
             "2": "",
