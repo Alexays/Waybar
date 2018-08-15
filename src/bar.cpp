@@ -15,7 +15,7 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
     .description = _handleDescription,
   };
   _xdgOutput =
-    zxdg_output_manager_v1_get_xdg_output(client.xdg_output_manager, *output);
+    zxdg_output_manager_v1_get_xdg_output(client.xdgOutputManager, *output);
 	zxdg_output_v1_add_listener(_xdgOutput, &xdgOutputListener, this);
   window.set_title("waybar");
   window.set_decorated(false);
@@ -31,7 +31,7 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   gdk_wayland_window_set_use_custom_surface(gdkWindow);
   surface = gdk_wayland_window_get_wl_surface(gdkWindow);
   layerSurface = zwlr_layer_shell_v1_get_layer_surface(
-    client.layer_shell, surface, *output,
+    client.layerShell, surface, *output,
     (layerTop ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM),
     "waybar");
   zwlr_layer_surface_v1_set_anchor(layerSurface,
