@@ -13,11 +13,11 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
   ipc_single_command(_ipcEventfd, IPC_SUBSCRIBE, subscribe, &len);
   _thread = [this] {
     try {
-      if (_bar.outputName.empty()) {
-        // Wait for the name of the output
+      // Wait for the name of the output
+      if (!_config["all-outputs"].asBool() && _bar.outputName.empty()) {
         while (_bar.outputName.empty())
           _thread.sleep_for(chrono::milliseconds(150));
-      } else
+      } else if (_workspaces.size())
         ipc_recv_response(_ipcEventfd);
       uint32_t len = 0;
       std::lock_guard<std::mutex> lock(_mutex);
@@ -45,7 +45,8 @@ auto waybar::modules::sway::Workspaces::update() -> void
       ++it;
   }
   for (auto node : _workspaces) {
-    if (_bar.outputName != node["output"].asString())
+    if (!_config["all-outputs"].asBool()
+      && _bar.outputName != node["output"].asString())
       continue;
     auto it = _buttons.find(node["num"].asInt());
     if (it == _buttons.end()) {
