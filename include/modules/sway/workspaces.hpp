@@ -7,7 +7,7 @@
 #include "util/json.hpp"
 #include "IModule.hpp"
 
-namespace waybar::modules {
+namespace waybar::modules::sway {
 
   class Workspaces : public IModule {
     public:
@@ -17,7 +17,6 @@ namespace waybar::modules {
     private:
       void _addWorkspace(Json::Value node);
       std::string _getIcon(std::string name);
-      Json::Value _getWorkspaces(const std::string data);
       bool _handleScroll(GdkEventScroll *e);
       int _getPrevWorkspace();
       int _getNextWorkspace();

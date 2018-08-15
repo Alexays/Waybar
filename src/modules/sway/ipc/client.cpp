@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "ipc/client.hpp"
+#include "modules/sway/ipc/client.hpp"
 
 static const char ipc_magic[] = {'i', '3', '-', 'i', 'p', 'c'};
 static const size_t ipc_header_size = sizeof(ipc_magic)+8;
