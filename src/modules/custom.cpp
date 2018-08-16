@@ -41,8 +41,8 @@ auto waybar::modules::Custom::update() -> void
 
   // Hide label if output is empty
   if (output.empty()) {
-    label_.set_name("");
     label_.hide();
+    label_.set_name("");
   } else {
     label_.set_name("custom-" + name_);
     auto format = config_["format"] ? config_["format"].asString() : "{}";
