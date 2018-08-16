@@ -16,17 +16,17 @@ struct ipc_response {
 /**
  * Gets the path to the IPC socket from sway.
  */
-std::string get_socketpath(void);
+std::string getSocketPath(void);
 /**
  * Opens the sway socket.
  */
-int ipc_open_socket(std::string socket_path);
+int ipcOpenSocket(const std::string &socketPath);
 /**
  * Issues a single IPC command and returns the buffer. len will be updated with
  * the length of the buffer returned from sway.
  */
-std::string ipc_single_command(int socketfd, uint32_t type, const char *payload, uint32_t *len);
+std::string ipcSingleCommand(int socketfd, uint32_t type, const char *payload, uint32_t *len);
 /**
  * Receives a single IPC response and returns an ipc_response.
  */
-struct ipc_response ipc_recv_response(int socketfd);
+struct ipc_response ipcRecvResponse(int socketfd);

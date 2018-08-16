@@ -1,30 +1,39 @@
 #include "factory.hpp"
 
 waybar::Factory::Factory(Bar &bar, Json::Value config)
-  : _bar(bar), _config(config)
+  : _bar(bar), _config(std::move(config))
 {}
 
-waybar::IModule *waybar::Factory::makeModule(std::string name)
+waybar::IModule *waybar::Factory::makeModule(const std::string &name)
 {
   try {
-    if (name == "battery")
+    if (name == "battery") {
       return new waybar::modules::Battery(_config[name]);
-    if (name == "sway/workspaces")
+    }
+    if (name == "sway/workspaces") {
       return new waybar::modules::sway::Workspaces(_bar, _config[name]);
-    if (name == "sway/window")
+    }
+    if (name == "sway/window") {
       return new waybar::modules::sway::Window(_bar, _config[name]);
-    if (name == "memory")
+    }
+    if (name == "memory") {
       return new waybar::modules::Memory(_config[name]);
-    if (name == "cpu")
+    }
+    if (name == "cpu") {
       return new waybar::modules::Cpu(_config[name]);
-    if (name == "clock")
+    }
+    if (name == "clock") {
       return new waybar::modules::Clock(_config[name]);
-    if (name == "network")
+    }
+    if (name == "network") {
       return new waybar::modules::Network(_config[name]);
-    if (name == "pulseaudio")
+    }
+    if (name == "pulseaudio") {
       return new waybar::modules::Pulseaudio(_config[name]);
-    if (!name.compare(0, 7, "custom/") && name.size() > 7)
+    }
+    if (name.compare(0, 7, "custom/") == 0 && name.size() > 7) {
       return new waybar::modules::Custom(name.substr(7), _config[name]);
+    }
     std::cerr << "Unknown module: " + name << std::endl;
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
