@@ -105,8 +105,10 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
     }
   });
   button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  button.signal_scroll_event()
-    .connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  if (!config_["disable-scroll"].asBool()) {
+    button.signal_scroll_event()
+      .connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
   box_.reorder_child(button, node["num"].asInt());
   if (node["focused"].asBool()) {
     button.get_style_context()->add_class("focused");
