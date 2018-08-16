@@ -160,12 +160,11 @@ auto waybar::Bar::setupWidgets() -> void
   auto &center = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
   auto &right = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
 
-  auto &box1 = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
-  window.add(box1);
-  box1.set_homogeneous(true);
-  box1.pack_start(left, true, true);
-  box1.pack_start(center, false, false);
-  box1.pack_end(right, true, true);
+  auto &box = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
+  window.add(box);
+  box.pack_start(left, true, true);
+  box.set_center_widget(center);
+  box.pack_end(right, true, true);
 
   Factory factory(*this, config_);
 
@@ -181,7 +180,7 @@ auto waybar::Bar::setupWidgets() -> void
     for (const auto &name : config_["modules-center"]) {
       auto module = factory.makeModule(name.asString());
       if (module != nullptr) {
-        center.pack_start(*module, true, false, 10);
+        center.pack_start(*module, true, false, 0);
       }
     }
   }
