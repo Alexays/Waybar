@@ -12,20 +12,22 @@
 
 namespace waybar::modules {
 
-  namespace fs = std::filesystem;
+namespace fs = std::filesystem;
 
-  class Battery : public IModule {
-    public:
-      Battery(Json::Value config);
-      auto update() -> void;
-      operator Gtk::Widget&();
-    private:
-      std::string _getIcon(uint16_t percentage);
-      static inline const fs::path _data_dir = "/sys/class/power_supply/";
-      std::vector<fs::path> _batteries;
-      util::SleeperThread _thread;
-      Gtk::Label _label;
-      Json::Value _config;
-  };
+class Battery : public IModule {
+  public:
+    Battery(Json::Value);
+    auto update() -> void;
+    operator Gtk::Widget&();
+  private:
+    std::string getIcon(uint16_t percentage);
+
+    static inline const fs::path data_dir_ = "/sys/class/power_supply/";
+
+    Gtk::Label label_;
+    Json::Value config_;
+    util::SleeperThread thread_;
+    std::vector<fs::path> batteries_;
+};
 
 }

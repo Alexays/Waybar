@@ -10,13 +10,13 @@
     // Modules configuration
     "sway/workspaces": {
         // "all-outputs": true,
-        "format-icons": {
-            "1": "",
-            "2": "",
-            "3": "",
-            "4": "",
-            "5": ""
-        }
+        // "format-icons": {
+        //     "1": "",
+        //     "2": "",
+        //     "3": "",
+        //     "4": "",
+        //     "5": ""
+        // }
     },
     "cpu": {
         "format": "{}% "

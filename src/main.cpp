@@ -1,10 +1,12 @@
+#include "client.hpp"
 #include <csignal>
 #include <iostream>
-#include "client.hpp"
 
 namespace waybar {
-  static Client* client;
-}
+
+static Client* client;
+
+} // namespace waybar
 
 int main(int argc, char* argv[])
 {
@@ -13,7 +15,7 @@ int main(int argc, char* argv[])
     waybar::client = &c;
     std::signal(SIGUSR1, [] (int signal) {
       for (auto& bar : waybar::client->bars) {
-        bar.get()->toggle();
+        (*bar).toggle();
       }
     });
 

@@ -2,28 +2,23 @@
 #include "modules/sway/ipc/client.hpp"
 
 waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
-  : _bar(bar), _config(config)
+  : bar_(bar), config_(std::move(config))
 {
-  _label.set_name("window");
-  std::string socketPath = get_socketpath();
-  _ipcfd = ipc_open_socket(socketPath);
-  _ipcEventfd = ipc_open_socket(socketPath);
+  label_.set_name("window");
+  std::string socketPath = getSocketPath();
+  ipcfd_ = ipcOpenSocket(socketPath);
+  ipc_eventfd_ = ipcOpenSocket(socketPath);
   const char *subscribe = "[ \"window\" ]";
   uint32_t len = strlen(subscribe);
-  ipc_single_command(_ipcEventfd, IPC_SUBSCRIBE, subscribe, &len);
-  _getFocusedWindow();
-  _thread = [this] {
+  ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, subscribe, &len);
+  getFocusedWindow();
+  thread_ = [this] {
     try {
-      if (_bar.outputName.empty()) {
-        // Wait for the name of the output
-        while (_bar.outputName.empty())
-          _thread.sleep_for(chrono::milliseconds(150));
-      }
-      auto res = ipc_recv_response(_ipcEventfd);
-      auto parsed = _parser.parse(res.payload);
+      auto res = ipcRecvResponse(ipc_eventfd_);
+      auto parsed = parser_.parse(res.payload);
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
         && parsed["container"]["focused"].asBool()) {
-        _window = parsed["container"]["name"].asString();
+        window_ = parsed["container"]["name"].asString();
         Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
       }
     } catch (const std::exception& e) {
@@ -34,29 +29,31 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
 
 auto waybar::modules::sway::Window::update() -> void
 {
-  _label.set_text(_window);
-  _label.set_tooltip_text(_window);
+  label_.set_text(window_);
+  label_.set_tooltip_text(window_);
 }
 
-std::string waybar::modules::sway::Window::_getFocusedNode(Json::Value nodes)
+std::string waybar::modules::sway::Window::getFocusedNode(Json::Value nodes)
 {
   for (auto &node : nodes) {
-    if (node["focused"].asBool())
+    if (node["focused"].asBool()) {
       return node["name"].asString();
-    auto res = _getFocusedNode(node["nodes"]);
-    if (!res.empty())
+    }
+    auto res = getFocusedNode(node["nodes"]);
+    if (!res.empty()) {
       return res;
+    }
   }
   return std::string();
 }
 
-void waybar::modules::sway::Window::_getFocusedWindow()
+void waybar::modules::sway::Window::getFocusedWindow()
 {
   try {
     uint32_t len = 0;
-    auto res = ipc_single_command(_ipcfd, IPC_GET_TREE, nullptr, &len);
-    auto parsed = _parser.parse(res);
-    _window = _getFocusedNode(parsed["nodes"]);
+    auto res = ipcSingleCommand(ipcfd_, IPC_GET_TREE, nullptr, &len);
+    auto parsed = parser_.parse(res);
+    window_ = getFocusedNode(parsed["nodes"]);
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
@@ -64,5 +61,5 @@ void waybar::modules::sway::Window::_getFocusedWindow()
 }
 
 waybar::modules::sway::Window::operator Gtk::Widget &() {
-  return _label;
+  return label_;
 }

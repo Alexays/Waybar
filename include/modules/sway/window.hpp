@@ -9,22 +9,23 @@
 
 namespace waybar::modules::sway {
 
-  class Window : public IModule {
-    public:
-      Window(waybar::Bar &bar, Json::Value config);
-      auto update() -> void;
-      operator Gtk::Widget &();
-    private:
-      std::string _getFocusedNode(Json::Value nodes);
-      void _getFocusedWindow();
-      Bar &_bar;
-      Json::Value _config;
-      waybar::util::SleeperThread _thread;
-      Gtk::Label _label;
-      util::JsonParser _parser;
-      int _ipcfd;
-      int _ipcEventfd;
-      std::string _window;
-  };
+class Window : public IModule {
+  public:
+    Window(waybar::Bar&, Json::Value);
+    auto update() -> void;
+    operator Gtk::Widget &();
+  private:
+    std::string getFocusedNode(Json::Value nodes);
+    void getFocusedWindow();
+
+    Bar& bar_;
+    Json::Value config_;
+    waybar::util::SleeperThread thread_;
+    Gtk::Label label_;
+    util::JsonParser parser_;
+    int ipcfd_;
+    int ipc_eventfd_;
+    std::string window_;
+};
 
 }
