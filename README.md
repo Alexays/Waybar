@@ -29,7 +29,7 @@ $ ninja -C build
 $ ./build/waybar
 ```
 
-Contributions welcome! - have fun :)
+Contributions welcome! - have fun :)<br>
 The style guidelines is [Google's](https://google.github.io/styleguide/cppguide.html)
 
 ## License
