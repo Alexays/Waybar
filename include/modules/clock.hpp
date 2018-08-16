@@ -8,15 +8,15 @@
 
 namespace waybar::modules {
 
-  class Clock : public IModule {
-    public:
-      Clock(Json::Value config);
-      auto update() -> void;
-      operator Gtk::Widget &();
-    private:
-      Gtk::Label _label;
-      waybar::util::SleeperThread _thread;
-      Json::Value _config;
-  };
+class Clock : public IModule {
+  public:
+    Clock(Json::Value);
+    auto update() -> void;
+    operator Gtk::Widget &();
+  private:
+    Gtk::Label label_;
+    waybar::util::SleeperThread thread_;
+    Json::Value config_;
+};
 
 }

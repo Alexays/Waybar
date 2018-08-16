@@ -4,7 +4,7 @@ waybar::modules::Memory::Memory(Json::Value config)
   : config_(std::move(config))
 {
   label_.set_name("memory");
-  int interval = config_["interval"] ? config_["inveral"].asInt() : 30;
+  uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
   thread_ = [this, interval] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Memory::update));
     thread_.sleep_for(chrono::seconds(interval));

@@ -14,7 +14,7 @@ namespace waybar::modules {
 
 class Network : public IModule {
   public:
-    Network(Json::Value config);
+    Network(Json::Value);
     auto update() -> void;
     operator Gtk::Widget &();
   private:

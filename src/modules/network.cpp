@@ -10,7 +10,7 @@ waybar::modules::Network::Network(Json::Value config)
     throw std::runtime_error("Can't found network interface");
   }
   label_.set_name("network");
-  auto interval = config_["interval"] ? config_["inveral"].asInt() : 30;
+  uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
   thread_ = [this, interval] {
     getInfo();
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Network::update));

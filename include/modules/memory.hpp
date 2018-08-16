@@ -10,7 +10,7 @@ namespace waybar::modules {
 
 class Memory : public IModule {
   public:
-    Memory(Json::Value config);
+    Memory(Json::Value);
     auto update() -> void;
     operator Gtk::Widget &();
   private:

@@ -2,15 +2,15 @@
 #include <iostream>
 
 waybar::modules::Custom::Custom(const std::string &name, Json::Value config)
-  : _name(name), _config(std::move(config))
+  : name_(name), config_(std::move(config))
 {
-  if (!_config["exec"]) {
-    throw std::runtime_error(name + " has no exec path.");
+  if (!config_["exec"]) {
+    throw std::runtime_error(name_ + " has no exec path.");
   }
-  int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
-  _thread = [this, interval] {
+  uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
+  thread_ = [this, interval] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Custom::update));
-    _thread.sleep_for(chrono::seconds(interval));
+    thread_.sleep_for(chrono::seconds(interval));
   };
 };
 
@@ -18,9 +18,9 @@ auto waybar::modules::Custom::update() -> void
 {
   std::array<char, 128> buffer = {0};
   std::string output;
-  std::shared_ptr<FILE> fp(popen(_config["exec"].asCString(), "r"), pclose);
+  std::shared_ptr<FILE> fp(popen(config_["exec"].asCString(), "r"), pclose);
   if (!fp) {
-    std::cerr << _name + " can't exec " + _config["exec"].asString() << std::endl;
+    std::cerr << name_ + " can't exec " + config_["exec"].asString() << std::endl;
     return;
   }
 
@@ -37,16 +37,16 @@ auto waybar::modules::Custom::update() -> void
 
   // Hide label if output is empty
   if (output.empty()) {
-    _label.set_name("");
-    _label.hide();
+    label_.set_name("");
+    label_.hide();
   } else {
-    _label.set_name("custom-" + _name);
-    auto format = _config["format"] ? _config["format"].asString() : "{}";
-    _label.set_text(fmt::format(format, output));
-    _label.show();
+    label_.set_name("custom-" + name_);
+    auto format = config_["format"] ? config_["format"].asString() : "{}";
+    label_.set_text(fmt::format(format, output));
+    label_.show();
   }
 }
 
 waybar::modules::Custom::operator Gtk::Widget &() {
-  return _label;
+  return label_;
 }

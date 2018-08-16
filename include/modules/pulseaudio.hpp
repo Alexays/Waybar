@@ -10,7 +10,7 @@ namespace waybar::modules {
 
 class Pulseaudio : public IModule {
   public:
-    Pulseaudio(Json::Value config);
+    Pulseaudio(Json::Value);
     auto update() -> void;
     operator Gtk::Widget &();
   private:
