@@ -9,6 +9,7 @@
     "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "clock"],
     // Modules configuration
     "sway/workspaces": {
+        // "disable-scroll": true,
         // "all-outputs": true,
         // "format-icons": {
         //     "1": "",
