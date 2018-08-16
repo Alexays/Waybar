@@ -8,29 +8,29 @@
 
 namespace waybar::modules {
 
-  class Pulseaudio : public IModule {
-    public:
-      Pulseaudio(Json::Value config);
-      auto update() -> void;
-      operator Gtk::Widget &();
-    private:
-      std::string _getIcon(uint16_t percentage);
-      static void _subscribeCb(pa_context *context,
-        pa_subscription_event_type_t type, uint32_t idx, void *data);
-      static void _contextStateCb(pa_context *c, void *data);
-      static void _sinkInfoCb(pa_context *context, const pa_sink_info *i,
-        int eol, void *data);
-      static void _serverInfoCb(pa_context *context, const pa_server_info *i,
-        void *data);
-      Gtk::Label _label;
-      Json::Value _config;
-      pa_threaded_mainloop *_mainloop;
-      pa_mainloop_api *_mainloop_api;
-      pa_context *_context;
-      uint32_t _sinkIdx{0};
-      int _volume;
-      bool _muted;
-      std::string _desc;
-  };
+class Pulseaudio : public IModule {
+  public:
+    Pulseaudio(Json::Value config);
+    auto update() -> void;
+    operator Gtk::Widget &();
+  private:
+    static void subscribeCb(pa_context*, pa_subscription_event_type_t,
+      uint32_t, void*);
+    static void contextStateCb(pa_context*, void*);
+    static void sinkInfoCb(pa_context*, const pa_sink_info*, int, void*);
+    static void serverInfoCb(pa_context*, const pa_server_info*, void*);
+
+    std::string getIcon(uint16_t);
+
+    Gtk::Label label_;
+    Json::Value config_;
+    pa_threaded_mainloop* mainloop_;
+    pa_mainloop_api* mainloop_api_;
+    pa_context* context_;
+    uint32_t sink_idx_{0};
+    uint16_t volume_;
+    bool muted_;
+    std::string desc_;
+};
 
 }

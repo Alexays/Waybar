@@ -40,4 +40,4 @@ private:
     struct wl_registry *registry, uint32_t name);
 };
 
-} // namespace waybar
+}

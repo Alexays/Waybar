@@ -22,4 +22,4 @@ class Factory {
     Json::Value _config;
 };
 
-} // namespace waybar
+}

@@ -50,4 +50,4 @@ class Bar {
     struct zxdg_output_v1 *xdg_output_;
 };
 
-} // namespace waybar
+}
