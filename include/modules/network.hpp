@@ -12,24 +12,26 @@
 
 namespace waybar::modules {
 
-  class Network : public IModule {
-    public:
-      Network(Json::Value config);
-      auto update() -> void;
-      operator Gtk::Widget &();
-    private:
-      void _parseEssid(struct nlattr **bss);
-      void _parseSignal(struct nlattr **bss);
-      bool _associatedOrJoined(struct nlattr **bss);
-      static int _scanCb(struct nl_msg *msg, void *data);
-      auto _getInfo() -> void;
-      Gtk::Label _label;
-      waybar::util::SleeperThread _thread;
-      Json::Value _config;
-      std::size_t _ifid;
-      std::string _essid;
-      int _signalStrengthdBm;
-      int _signalStrength;
-  };
+class Network : public IModule {
+  public:
+    Network(Json::Value config);
+    auto update() -> void;
+    operator Gtk::Widget &();
+  private:
+    static int scanCb(struct nl_msg*, void*);
+
+    void parseEssid(struct nlattr**);
+    void parseSignal(struct nlattr**);
+    bool associatedOrJoined(struct nlattr**);
+    auto getInfo() -> void;
+
+    Gtk::Label label_;
+    waybar::util::SleeperThread thread_;
+    Json::Value config_;
+    std::size_t ifid_;
+    std::string essid_;
+    int signal_strength_dbm_;
+    uint16_t signal_strength_;
+};
 
 }

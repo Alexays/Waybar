@@ -3,31 +3,32 @@
 #include <iostream>
 
 waybar::modules::Network::Network(Json::Value config)
-  : _config(std::move(config)), _ifid(if_nametoindex(_config["interface"].asCString()))
+  : config_(std::move(config)),
+    ifid_(if_nametoindex(config_["interface"].asCString()))
 {
-  if (_ifid == 0) {
+  if (ifid_ == 0) {
     throw std::runtime_error("Can't found network interface");
   }
-  _label.set_name("network");
-  int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
-  _thread = [this, interval] {
+  label_.set_name("network");
+  auto interval = config_["interval"] ? config_["inveral"].asInt() : 30;
+  thread_ = [this, interval] {
+    getInfo();
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Network::update));
-    _thread.sleep_for(chrono::seconds(interval));
+    thread_.sleep_for(chrono::seconds(interval));
   };
 };
 
 auto waybar::modules::Network::update() -> void
 {
-  _getInfo();
-  auto format = _config["format"] ? _config["format"].asString() : "{essid}";
-  _label.set_text(fmt::format(format,
-    fmt::arg("essid", _essid),
-    fmt::arg("signaldBm", _signalStrengthdBm),
-    fmt::arg("signalStrength", _signalStrength)
+  auto format = config_["format"] ? config_["format"].asString() : "{essid}";
+  label_.set_text(fmt::format(format,
+    fmt::arg("essid", essid_),
+    fmt::arg("signaldBm", signal_strength_dbm_),
+    fmt::arg("signalStrength", signal_strength_)
   ));
 }
 
-int waybar::modules::Network::_scanCb(struct nl_msg *msg, void *data) {
+int waybar::modules::Network::scanCb(struct nl_msg *msg, void *data) {
     auto net = static_cast<waybar::modules::Network *>(data);
     auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
     struct nlattr* tb[NL80211_ATTR_MAX + 1];
@@ -52,18 +53,18 @@ int waybar::modules::Network::_scanCb(struct nl_msg *msg, void *data) {
     if (nla_parse_nested(bss, NL80211_BSS_MAX, tb[NL80211_ATTR_BSS], bss_policy) != 0) {
       return NL_SKIP;
     }
-    if (!net->_associatedOrJoined(bss)) {
+    if (!net->associatedOrJoined(bss)) {
       return NL_SKIP;
     }
-    net->_parseEssid(bss);
-    net->_parseSignal(bss);
+    net->parseEssid(bss);
+    net->parseSignal(bss);
     // TODO(someone): parse quality
     return NL_SKIP;
 }
 
-void waybar::modules::Network::_parseEssid(struct nlattr **bss)
+void waybar::modules::Network::parseEssid(struct nlattr **bss)
 {
-  _essid.clear();
+  essid_.clear();
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
     auto ies =
       static_cast<char*>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
@@ -76,26 +77,26 @@ void waybar::modules::Network::_parseEssid(struct nlattr **bss)
     if (ies_len > hdr_len && ies_len > ies[1] + hdr_len) {
       auto essid_begin = ies + hdr_len;
       auto essid_end = essid_begin + ies[1];
-      std::copy(essid_begin, essid_end, std::back_inserter(_essid));
+      std::copy(essid_begin, essid_end, std::back_inserter(essid_));
     }
   }
 }
 
-void waybar::modules::Network::_parseSignal(struct nlattr **bss) {
+void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
       // signalstrength in dBm
-      _signalStrengthdBm =
+      signal_strength_dbm_ =
         static_cast<int>(nla_get_u32(bss[NL80211_BSS_SIGNAL_MBM])) / 100;
 
       // WiFi-hardware usually operates in the range -90 to -20dBm.
       const int hardwareMax = -20;
       const int hardwareMin = -90;
-      _signalStrength = (static_cast<double>(_signalStrengthdBm - hardwareMin)
-        / static_cast<double>(hardwareMax - hardwareMin)) * 100;
+      signal_strength_ = ((signal_strength_dbm_ - hardwareMin)
+        / double{hardwareMax - hardwareMin}) * 100;
     }
   }
 
-bool waybar::modules::Network::_associatedOrJoined(struct nlattr** bss)
+bool waybar::modules::Network::associatedOrJoined(struct nlattr** bss)
 {
     if (bss[NL80211_BSS_STATUS] == nullptr) {
       return false;
@@ -111,14 +112,14 @@ bool waybar::modules::Network::_associatedOrJoined(struct nlattr** bss)
     }
   }
 
-auto waybar::modules::Network::_getInfo() -> void
+auto waybar::modules::Network::getInfo() -> void
 {
 	struct nl_sock *sk = nl_socket_alloc();
 	if (genl_connect(sk) != 0) {
     nl_socket_free(sk);
     return;
   }
-  if (nl_socket_modify_cb(sk, NL_CB_VALID, NL_CB_CUSTOM, _scanCb, this) < 0) {
+  if (nl_socket_modify_cb(sk, NL_CB_VALID, NL_CB_CUSTOM, scanCb, this) < 0) {
     nl_socket_free(sk);
     return;
   }
@@ -132,8 +133,9 @@ auto waybar::modules::Network::_getInfo() -> void
     nl_socket_free(sk);
     return;
   }
-  if (genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id, 0, NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0) == nullptr
-    || nla_put_u32(msg, NL80211_ATTR_IFINDEX, _ifid) < 0) {
+  if (genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id, 0, NLM_F_DUMP,
+    NL80211_CMD_GET_SCAN, 0) == nullptr
+    || nla_put_u32(msg, NL80211_ATTR_IFINDEX, ifid_) < 0) {
     nlmsg_free(msg);
     return;
   }
@@ -142,5 +144,5 @@ auto waybar::modules::Network::_getInfo() -> void
 }
 
 waybar::modules::Network::operator Gtk::Widget &() {
-  return _label;
+  return label_;
 }
