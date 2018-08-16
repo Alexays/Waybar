@@ -30,6 +30,7 @@ $ ./build/waybar
 ```
 
 Contributions welcome! - have fun :)
+The style guidelines is [Google's](https://google.github.io/styleguide/cppguide.html)
 
 ## License
 

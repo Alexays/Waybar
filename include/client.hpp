@@ -14,28 +14,30 @@
 
 namespace waybar {
 
-  struct Client {
-    std::string cssFile;
-    std::string configFile;
+class Client {
+  public:
+    Client(int argc, char *argv[]);
+    int main(int argc, char *argv[]);
 
     Gtk::Main gtk_main;
-
+    std::string css_file;
+    std::string config_file;
     Glib::RefPtr<Gdk::Display> gdk_display;
-    struct wl_display *wlDisplay = nullptr;
+    struct wl_display *wl_display = nullptr;
     struct wl_registry *registry = nullptr;
-    struct zwlr_layer_shell_v1 *layerShell = nullptr;
-    struct zxdg_output_manager_v1 *xdgOutputManager = nullptr;
+    struct zwlr_layer_shell_v1 *layer_shell = nullptr;
+    struct zxdg_output_manager_v1 *xdg_output_manager = nullptr;
     struct wl_seat *seat = nullptr;
     std::vector<std::unique_ptr<Bar>> bars;
 
-    Client(int argc, char* argv[]);
-    void bind_interfaces();
-    auto setup_css();
-    int main(int argc, char* argv[]);
-  private:
-    static void _handle_global(void *data, struct wl_registry *registry,
-      uint32_t name, const char *interface, uint32_t version);
-    static void _handle_global_remove(void *data,
-      struct wl_registry *registry, uint32_t name);
-  };
-}
+private:
+  void bindInterfaces();
+  auto setupCss();
+
+  static void handleGlobal(void *data, struct wl_registry *registry,
+    uint32_t name, const char *interface, uint32_t version);
+  static void handleGlobalRemove(void *data,
+    struct wl_registry *registry, uint32_t name);
+};
+
+} // namespace waybar

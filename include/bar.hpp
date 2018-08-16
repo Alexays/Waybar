@@ -7,44 +7,47 @@
 
 namespace waybar {
 
-  struct Client;
+class Client;
 
-  struct Bar {
-    Bar(Client& client, std::unique_ptr<struct wl_output *>&& output);
+class Bar {
+  public:
+    Bar(Client&, std::unique_ptr<struct wl_output *>&&);
     Bar(const Bar&) = delete;
+
+    auto setWidth(uint32_t) -> void;
+    auto toggle() -> void;
+
     Client& client;
     Gtk::Window window;
     struct wl_surface *surface;
-    struct zwlr_layer_surface_v1 *layerSurface;
+    struct zwlr_layer_surface_v1 *layer_surface;
     std::unique_ptr<struct wl_output *> output;
-    bool visible = true;
     std::string outputName;
-    auto setWidth(uint32_t) -> void;
-    auto toggle() -> void;
+    bool visible = true;
   private:
-    static void _handleLogicalPosition(void *data,
-      struct zxdg_output_v1 *zxdg_output_v1, int32_t x, int32_t y);
-    static void _handleLogicalSize(void *data,
-      struct zxdg_output_v1 *zxdg_output_v1, int32_t width, int32_t height);
-    static void _handleDone(void *data, struct zxdg_output_v1 *zxdg_output_v1);
-    static void _handleName(void *data, struct zxdg_output_v1 *xdg_output,
-      const char *name);
-    static void _handleDescription(void *data,
-      struct zxdg_output_v1 *zxdg_output_v1, const char *description);
-    static void _layerSurfaceHandleConfigure(void *data,
-      struct zwlr_layer_surface_v1 *surface, uint32_t serial, uint32_t width,
-      uint32_t height);
-    static void _layerSurfaceHandleClosed(void *data,
-      struct zwlr_layer_surface_v1 *surface);
-    auto _setupConfig() -> void;
-    auto _setupWidgets() -> void;
-    auto _setupCss() -> void;
-    uint32_t _width = 0;
-    uint32_t _height = 30;
-    Json::Value _config;
-    Glib::RefPtr<Gtk::StyleContext> _styleContext;
-    Glib::RefPtr<Gtk::CssProvider> _cssProvider;
-    struct zxdg_output_v1 *_xdgOutput;
-  };
+    static void handleLogicalPosition(void *, struct zxdg_output_v1 *, int32_t,
+      int32_t);
+    static void handleLogicalSize(void *, struct zxdg_output_v1 *, int32_t,
+      int32_t);
+    static void handleDone(void *, struct zxdg_output_v1 *);
+    static void handleName(void *, struct zxdg_output_v1 *, const char *);
+    static void handleDescription(void *, struct zxdg_output_v1 *,
+      const char *);
+    static void layerSurfaceHandleConfigure(void *,
+      struct zwlr_layer_surface_v1 *, uint32_t, uint32_t, uint32_t);
+    static void layerSurfaceHandleClosed(void *,
+      struct zwlr_layer_surface_v1 *);
 
-}
+    auto setupConfig() -> void;
+    auto setupWidgets() -> void;
+    auto setupCss() -> void;
+
+    uint32_t width_ = 0;
+    uint32_t height_ = 30;
+    Json::Value config_;
+    Glib::RefPtr<Gtk::StyleContext> style_context_;
+    Glib::RefPtr<Gtk::CssProvider> css_provider_;
+    struct zxdg_output_v1 *xdg_output_;
+};
+
+} // namespace waybar

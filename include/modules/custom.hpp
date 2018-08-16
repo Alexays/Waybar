@@ -9,7 +9,7 @@ namespace waybar::modules {
 
   class Custom : public IModule {
     public:
-      Custom(std::string name, Json::Value config);
+      Custom(const std::string &name, Json::Value config);
       auto update() -> void;
       operator Gtk::Widget &();
     private:

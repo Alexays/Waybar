@@ -2,24 +2,19 @@
 #include "modules/sway/ipc/client.hpp"
 
 waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
-  : _bar(bar), _config(config)
+  : _bar(bar), _config(std::move(config))
 {
   _label.set_name("window");
-  std::string socketPath = get_socketpath();
-  _ipcfd = ipc_open_socket(socketPath);
-  _ipcEventfd = ipc_open_socket(socketPath);
+  std::string socketPath = getSocketPath();
+  _ipcfd = ipcOpenSocket(socketPath);
+  _ipcEventfd = ipcOpenSocket(socketPath);
   const char *subscribe = "[ \"window\" ]";
   uint32_t len = strlen(subscribe);
-  ipc_single_command(_ipcEventfd, IPC_SUBSCRIBE, subscribe, &len);
+  ipcSingleCommand(_ipcEventfd, IPC_SUBSCRIBE, subscribe, &len);
   _getFocusedWindow();
   _thread = [this] {
     try {
-      if (_bar.outputName.empty()) {
-        // Wait for the name of the output
-        while (_bar.outputName.empty())
-          _thread.sleep_for(chrono::milliseconds(150));
-      }
-      auto res = ipc_recv_response(_ipcEventfd);
+      auto res = ipcRecvResponse(_ipcEventfd);
       auto parsed = _parser.parse(res.payload);
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
         && parsed["container"]["focused"].asBool()) {
@@ -41,11 +36,13 @@ auto waybar::modules::sway::Window::update() -> void
 std::string waybar::modules::sway::Window::_getFocusedNode(Json::Value nodes)
 {
   for (auto &node : nodes) {
-    if (node["focused"].asBool())
+    if (node["focused"].asBool()) {
       return node["name"].asString();
+    }
     auto res = _getFocusedNode(node["nodes"]);
-    if (!res.empty())
+    if (!res.empty()) {
       return res;
+    }
   }
   return std::string();
 }
@@ -54,7 +51,7 @@ void waybar::modules::sway::Window::_getFocusedWindow()
 {
   try {
     uint32_t len = 0;
-    auto res = ipc_single_command(_ipcfd, IPC_GET_TREE, nullptr, &len);
+    auto res = ipcSingleCommand(_ipcfd, IPC_GET_TREE, nullptr, &len);
     auto parsed = _parser.parse(res);
     _window = _getFocusedNode(parsed["nodes"]);
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));

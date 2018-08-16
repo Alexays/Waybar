@@ -1,34 +1,37 @@
 #include "modules/battery.hpp"
 
 waybar::modules::Battery::Battery(Json::Value config)
-  : _config(config)
+  : _config(std::move(config))
 {
   try {
     for (auto &node : fs::directory_iterator(_data_dir)) {
       if (fs::is_directory(node) && fs::exists(node / "capacity")
-        && fs::exists(node / "status") && fs::exists(node / "uevent"))
+        && fs::exists(node / "status") && fs::exists(node / "uevent")) {
         _batteries.push_back(node);
+      }
     }
   } catch (fs::filesystem_error &e) {
     throw std::runtime_error(e.what());
   }
-
-  if (!_batteries.size())
+  if (_batteries.empty()) {
     throw std::runtime_error("No batteries.");
-
+  }
   auto fd = inotify_init();
-  if (fd == -1)
+  if (fd == -1) {
     throw std::runtime_error("Unable to listen batteries.");
-  for (auto &bat : _batteries)
+  }
+  for (auto &bat : _batteries) {
     inotify_add_watch(fd, (bat / "uevent").c_str(), IN_ACCESS);
+  }
   // Trigger first value
-  update();
+  Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Battery::update));
   _label.set_name("battery");
   _thread = [this, fd] {
-    struct inotify_event event;
+    struct inotify_event event = {};
     int nbytes = read(fd, &event, sizeof(event));
-    if (nbytes != sizeof(event))
+    if (nbytes != sizeof(event)) {
       return;
+    }
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Battery::update));
   };
 }
@@ -43,8 +46,9 @@ auto waybar::modules::Battery::update() -> void
       std::string _status;
       std::ifstream(bat / "capacity") >> capacity;
       std::ifstream(bat / "status") >> _status;
-      if (_status != "Unknown")
+      if (_status != "Unknown") {
         status = _status;
+      }
       total += capacity;
     }
     uint16_t capacity = total / _batteries.size();
@@ -54,15 +58,17 @@ auto waybar::modules::Battery::update() -> void
       fmt::arg("icon", _getIcon(capacity))));
     _label.set_tooltip_text(status);
     bool charging = status == "Charging";
-    if (charging)
+    if (charging) {
       _label.get_style_context()->add_class("charging");
-    else
+    } else {
       _label.get_style_context()->remove_class("charging");
+    }
     auto critical = _config["critical"] ? _config["critical"].asUInt() : 15;
-    if (capacity <= critical && !charging)
+    if (capacity <= critical && !charging) {
       _label.get_style_context()->add_class("warning");
-    else
+    } else {
       _label.get_style_context()->remove_class("warning");
+    }
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
   }
@@ -70,7 +76,9 @@ auto waybar::modules::Battery::update() -> void
 
 std::string waybar::modules::Battery::_getIcon(uint16_t percentage)
 {
-  if (!_config["format-icons"] || !_config["format-icons"].isArray()) return "";
+  if (!_config["format-icons"] || !_config["format-icons"].isArray()) {
+    return "";
+  }
   auto size = _config["format-icons"].size();
   auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
   return _config["format-icons"][idx].asString();

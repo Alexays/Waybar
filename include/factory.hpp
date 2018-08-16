@@ -13,13 +13,13 @@
 
 namespace waybar {
 
-  class Factory {
-	  public:
-      Factory(Bar &bar, Json::Value config);
-      IModule *makeModule(std::string name);
-    private:
-      Bar &_bar;
-      Json::Value _config;
-  };
+class Factory {
+  public:
+    Factory(Bar &bar, Json::Value config);
+    IModule *makeModule(const std::string &name);
+  private:
+    Bar &_bar;
+    Json::Value _config;
+};
 
-}
+} // namespace waybar

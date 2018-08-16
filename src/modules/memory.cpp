@@ -1,7 +1,7 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(Json::Value config)
-  : _config(config)
+  : _config(std::move(config))
 {
   _label.set_name("memory");
   int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
@@ -13,8 +13,8 @@ waybar::modules::Memory::Memory(Json::Value config)
 
 auto waybar::modules::Memory::update() -> void
 {
-  struct sysinfo info;
-  if (!sysinfo(&info)) {
+  struct sysinfo info = {};
+  if (sysinfo(&info) == 0) {
     auto total = info.totalram * info.mem_unit;
     auto freeram = info.freeram * info.mem_unit;
     int used_ram_percentage = 100 * (total - freeram) / total;

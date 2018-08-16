@@ -37,9 +37,11 @@ libpulse = dependency('libpulse')
 
 subdir('protocol')
 
+src_files = run_command('find', './src', '-name', '*.cpp').stdout().strip().split('\n')
+
 executable(
     'waybar',
-    run_command('find', './src', '-name', '*.cpp').stdout().strip().split('\n'),
+    src_files,
     dependencies: [
         thread_dep,
         wlroots,
@@ -64,3 +66,15 @@ install_data(
     './resources/style.css',
     install_dir: '/etc/xdg/waybar',
 )
+
+clangtidy = find_program('clang-tidy', required: false)
+
+if clangtidy.found()
+    run_target(
+        'tidy',
+        command: [
+            clangtidy,
+            '-checks=*,-fuchsia-default-arguments',
+            '-p', meson.build_root()
+        ] + src_files)
+endif
