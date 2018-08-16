@@ -7,6 +7,10 @@ waybar::modules::Custom::Custom(const std::string &name, Json::Value config)
   if (!config_["exec"]) {
     throw std::runtime_error(name_ + " has no exec path.");
   }
+  if (config_["max-length"]) {
+    label_.set_max_width_chars(config_["max-length"].asUInt());
+    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+  }
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
   thread_ = [this, interval] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Custom::update));
@@ -42,7 +46,9 @@ auto waybar::modules::Custom::update() -> void
   } else {
     label_.set_name("custom-" + name_);
     auto format = config_["format"] ? config_["format"].asString() : "{}";
-    label_.set_text(fmt::format(format, output));
+    auto str = fmt::format(format, output);
+    label_.set_text(str);
+    label_.set_tooltip_text(str);
     label_.show();
   }
 }
