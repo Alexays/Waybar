@@ -8,15 +8,15 @@
 
 namespace waybar::modules {
 
-  class Memory : public IModule {
-    public:
-      Memory(Json::Value config);
-      auto update() -> void;
-      operator Gtk::Widget &();
-    private:
-      Gtk::Label _label;
-      waybar::util::SleeperThread _thread;
-      Json::Value _config;
-  };
+class Memory : public IModule {
+  public:
+    Memory(Json::Value config);
+    auto update() -> void;
+    operator Gtk::Widget &();
+  private:
+    Gtk::Label label_;
+    waybar::util::SleeperThread thread_;
+    Json::Value config_;
+};
 
 }

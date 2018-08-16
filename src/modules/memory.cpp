@@ -1,13 +1,13 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(Json::Value config)
-  : _config(std::move(config))
+  : config_(std::move(config))
 {
-  _label.set_name("memory");
-  int interval = _config["interval"] ? _config["inveral"].asInt() : 30;
-  _thread = [this, interval] {
+  label_.set_name("memory");
+  int interval = config_["interval"] ? config_["inveral"].asInt() : 30;
+  thread_ = [this, interval] {
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Memory::update));
-    _thread.sleep_for(chrono::seconds(interval));
+    thread_.sleep_for(chrono::seconds(interval));
   };
 };
 
@@ -18,13 +18,13 @@ auto waybar::modules::Memory::update() -> void
     auto total = info.totalram * info.mem_unit;
     auto freeram = info.freeram * info.mem_unit;
     int used_ram_percentage = 100 * (total - freeram) / total;
-    auto format = _config["format"] ? _config["format"].asString() : "{}%";
-    _label.set_text(fmt::format(format, used_ram_percentage));
+    auto format = config_["format"] ? config_["format"].asString() : "{}%";
+    label_.set_text(fmt::format(format, used_ram_percentage));
     auto used_ram_gigabytes = (total - freeram) / std::pow(1024, 3);
-    _label.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
+    label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
   }
 }
 
 waybar::modules::Memory::operator Gtk::Widget &() {
-  return _label;
+  return label_;
 }
