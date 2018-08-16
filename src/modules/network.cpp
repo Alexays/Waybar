@@ -4,7 +4,8 @@
 
 waybar::modules::Network::Network(Json::Value config)
   : config_(std::move(config)),
-    ifid_(if_nametoindex(config_["interface"].asCString()))
+    ifid_(if_nametoindex(config_["interface"].asCString())),
+    signal_strength_dbm_(0), signal_strength_(0)
 {
   if (ifid_ == 0) {
     throw std::runtime_error("Can't found network interface");

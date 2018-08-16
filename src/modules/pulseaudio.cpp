@@ -64,7 +64,6 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context* context,
         pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
         break;
     default:
-        assert(0);
         break;
   }
 }
