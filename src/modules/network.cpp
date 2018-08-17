@@ -1,12 +1,5 @@
 #include "modules/network.hpp"
 
-#include <iostream>
-
-// TODO
-// before-loop & handle: detect interface
-// handle interface link -> detect interface
-// after detect interface -> get info
-
 waybar::modules::Network::Network(Json::Value config)
   : config_(std::move(config)), family_(AF_INET),
     signal_strength_dbm_(0), signal_strength_(0)
@@ -17,7 +10,8 @@ waybar::modules::Network::Network(Json::Value config)
   }
   nladdr_.nl_family = AF_NETLINK;
   nladdr_.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
-  if (bind(sock_fd_, (struct sockaddr *) &nladdr_, sizeof(nladdr_)) != 0) {
+  if (bind(sock_fd_, reinterpret_cast<struct sockaddr *>(&nladdr_),
+    sizeof(nladdr_)) != 0) {
     throw std::runtime_error("Can't bind network socket");
   }
   if (config_["interface"]) {
@@ -42,7 +36,7 @@ waybar::modules::Network::Network(Json::Value config)
     uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
       RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
     bool need_update = false;
-    for (struct nlmsghdr *nh = (struct nlmsghdr *)buf; NLMSG_OK(nh, len);
+    for (auto nh = reinterpret_cast<struct nlmsghdr *>(buf); NLMSG_OK(nh, len);
       nh = NLMSG_NEXT(nh, len)) {
       if (nh->nlmsg_type == NLMSG_DONE) {
         break;
@@ -51,7 +45,7 @@ waybar::modules::Network::Network(Json::Value config)
         continue;
       }
       if (nh->nlmsg_type < RTM_NEWADDR) {
-        struct ifinfomsg *rtif = (struct ifinfomsg *)NLMSG_DATA(nh);
+        auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
         if (rtif->ifi_index == static_cast<int>(ifid_)) {
           need_update = true;
           if (!(rtif->ifi_flags & IFF_RUNNING)) {
@@ -121,11 +115,11 @@ int waybar::modules::Network::getExternalInterface()
   }
 
   /* Build the RTM_GETROUTE request. */
-  hdr = (struct nlmsghdr *)req;
+  hdr = static_cast<struct nlmsghdr *>(req);
   hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*rt));
   hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
   hdr->nlmsg_type = RTM_GETROUTE;
-  rt = (struct rtmsg *)NLMSG_DATA(hdr);
+  rt = static_cast<struct rtmsg *>(NLMSG_DATA(hdr));
   rt->rtm_family = family_;
   rt->rtm_table = RT_TABLE_MAIN;
 
@@ -152,7 +146,7 @@ int waybar::modules::Network::getExternalInterface()
     }
 
     /* Parse the response payload into netlink messages. */
-    for (hdr = (struct nlmsghdr *)resp; NLMSG_OK(hdr, len);
+    for (hdr = static_cast<struct nlmsghdr *>(resp); NLMSG_OK(hdr, len);
       hdr = NLMSG_NEXT(hdr, len)) {
       if (hdr->nlmsg_type == NLMSG_DONE) {
         goto out;
@@ -173,7 +167,7 @@ int waybar::modules::Network::getExternalInterface()
       /* Find the message(s) concerting the main routing table, each message
        * corresponds to a single routing table entry.
        */
-      rt = (struct rtmsg *)NLMSG_DATA(hdr);
+      rt = static_cast<struct rtmsg *>(NLMSG_DATA(hdr));
       if (rt->rtm_table != RT_TABLE_MAIN) {
         continue;
       }
@@ -216,7 +210,7 @@ int waybar::modules::Network::getExternalInterface()
           }
           case RTA_OIF:
             /* The output interface index. */
-            temp_idx = *(int*)RTA_DATA(attr);
+            temp_idx = *static_cast<int*>(RTA_DATA(attr));
             break;
           default:
             break;

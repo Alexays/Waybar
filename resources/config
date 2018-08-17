@@ -30,6 +30,7 @@
         "format-icons": ["", "", "", "", ""]
     },
     "network": {
+        // "interface": "wlp2s0", // (Optional) To force the use of this interface
         "format": "{essid} ({signalStrength}%) ",
         "format-disconnected": "Disconnected ⚠"
     },
