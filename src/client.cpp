@@ -82,5 +82,11 @@ int waybar::Client::main(int /*argc*/, char* /*argv*/[])
 {
   bindInterfaces();
   gtk_main.run();
+  bars.clear();
+  zxdg_output_manager_v1_destroy(xdg_output_manager);
+  zwlr_layer_shell_v1_destroy(layer_shell);
+  wl_registry_destroy(registry);
+  wl_seat_destroy(seat);
+  wl_display_disconnect(wl_display);
   return 0;
 }
