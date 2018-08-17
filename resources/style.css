@@ -76,6 +76,10 @@ window {
     background: #2980b9;
 }
 
+#network.disconnected {
+    background: #f53c3c;
+}
+
 #pulseaudio {
     background: #f1c40f;
     color: black;

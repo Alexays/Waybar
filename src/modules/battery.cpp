@@ -27,7 +27,7 @@ waybar::modules::Battery::Battery(Json::Value config)
   Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Battery::update));
   label_.set_name("battery");
   thread_ = [this, fd] {
-    struct inotify_event event = {};
+    struct inotify_event event = {0};
     int nbytes = read(fd, &event, sizeof(event));
     if (nbytes != sizeof(event)) {
       return;

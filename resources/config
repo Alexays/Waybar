@@ -30,8 +30,10 @@
         "format-icons": ["", "", "", "", ""]
     },
     "network": {
-        "interface": "wlp2s0",
-        "format": "{essid} ({signalStrength}%) "
+        // "interface": "wlp2s0", // (Optional) To force the use of this interface
+        "format-wifi": "{essid} ({signalStrength}%) ",
+        "format-ethernet": "{ifname} ",
+        "format-disconnected": "Disconnected ⚠"
     },
     "pulseaudio": {
         "format": "{volume}% {icon}",
