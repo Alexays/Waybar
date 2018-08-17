@@ -34,7 +34,7 @@ std::string getSocketPath() {
 }
 
 int ipcOpenSocket(const std::string &socketPath) {
-  struct sockaddr_un addr = {};
+  struct sockaddr_un addr = {0};
   int socketfd;
   if ((socketfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
     throw std::runtime_error("Unable to open Unix socket");
