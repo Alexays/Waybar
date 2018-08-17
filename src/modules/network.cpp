@@ -55,7 +55,7 @@ waybar::modules::Network::Network(Json::Value config)
       }
     }
     if (ifid_ <= 0 && !config_["interface"]) {
-      // Need to wait a second before get external interface
+      // Need to wait before get external interface
       thread_.sleep_for(std::chrono::seconds(1));
       ifid_ = getExternalInterface();
       if (ifid_ > 0) {
@@ -74,12 +74,19 @@ waybar::modules::Network::Network(Json::Value config)
 
 auto waybar::modules::Network::update() -> void
 {
-  auto format = config_["format"] ? config_["format"].asString() : "{essid}";
+  auto format = config_["format"] ? config_["format"].asString() : "{ifname}";
   if (ifid_ <= 0) {
     format = config_["format-disconnected"]
       ? config_["format-disconnected"].asString() : format;
     label_.get_style_context()->add_class("disconnected");
   } else {
+    if (essid_.empty()) {
+      format = config_["format-ethernet"]
+        ? config_["format-ethernet"].asString() : format;
+    } else {
+      format = config_["format-wifi"]
+        ? config_["format-wifi"].asString() : format;
+    }
     label_.get_style_context()->remove_class("disconnected");
   }
   label_.set_text(fmt::format(format,
