@@ -18,8 +18,12 @@ class Network : public IModule {
     auto update() -> void;
     operator Gtk::Widget &();
   private:
+    static uint64_t netlinkRequest(int, void*, uint32_t, uint32_t groups = 0);
+    static uint64_t netlinkResponse(int, void*, uint32_t, uint32_t groups = 0);
     static int scanCb(struct nl_msg*, void*);
 
+    void disconnected();
+    int getExternalInterface();
     void parseEssid(struct nlattr**);
     void parseSignal(struct nlattr**);
     bool associatedOrJoined(struct nlattr**);
@@ -28,8 +32,14 @@ class Network : public IModule {
     Gtk::Label label_;
     waybar::util::SleeperThread thread_;
     Json::Value config_;
-    std::size_t ifid_;
+
+    int ifid_;
+    sa_family_t family_;
+    int sock_fd_;
+    struct sockaddr_nl nladdr_ = {0};
+
     std::string essid_;
+    std::string ifname_;
     int signal_strength_dbm_;
     uint16_t signal_strength_;
 };
