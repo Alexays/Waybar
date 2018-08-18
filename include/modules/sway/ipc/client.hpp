@@ -25,7 +25,8 @@ int ipcOpenSocket(const std::string &socketPath);
  * Issues a single IPC command and returns the buffer. len will be updated with
  * the length of the buffer returned from sway.
  */
-std::string ipcSingleCommand(int socketfd, uint32_t type, const char *payload, uint32_t *len);
+struct ipc_response ipcSingleCommand(int socketfd, uint32_t type,
+  const std::string& payload);
 /**
  * Receives a single IPC response and returns an ipc_response.
  */

@@ -8,9 +8,7 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
   std::string socketPath = getSocketPath();
   ipcfd_ = ipcOpenSocket(socketPath);
   ipc_eventfd_ = ipcOpenSocket(socketPath);
-  const char *subscribe = "[ \"workspace\" ]";
-  uint32_t len = strlen(subscribe);
-  ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, subscribe, &len);
+  ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, "[ \"workspace\" ]");
   thread_ = [this] {
     try {
       // Wait for the name of the output
@@ -21,10 +19,9 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
       } else if (!workspaces_.empty()) {
         ipcRecvResponse(ipc_eventfd_);
       }
-      uint32_t len = 0;
       std::lock_guard<std::mutex> lock(mutex_);
-      auto str = ipcSingleCommand(ipcfd_, IPC_GET_WORKSPACES, nullptr, &len);
-      workspaces_ = parser_.parse(str);
+      auto res = ipcSingleCommand(ipcfd_, IPC_GET_WORKSPACES, "");
+      workspaces_ = parser_.parse(res.payload);
       Glib::signal_idle()
         .connect_once(sigc::mem_fun(*this, &Workspaces::update));
     } catch (const std::exception& e) {
@@ -97,9 +94,8 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
   button.signal_clicked().connect([this, pair] {
     try {
       std::lock_guard<std::mutex> lock(mutex_);
-      auto value = fmt::format("workspace \"{}\"", pair.first->first);
-      uint32_t size = value.size();
-      ipcSingleCommand(ipcfd_, IPC_COMMAND, value.c_str(), &size);
+      auto cmd = fmt::format("workspace \"{}\"", pair.first->first);
+      ipcSingleCommand(ipcfd_, IPC_COMMAND, cmd);
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
@@ -173,9 +169,7 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
     scrolling_ = false;
     return false;
   }
-  auto value = fmt::format("workspace \"{}\"", id);
-  uint32_t size = value.size();
-  ipcSingleCommand(ipcfd_, IPC_COMMAND, value.c_str(), &size);
+  ipcSingleCommand(ipcfd_, IPC_COMMAND, fmt::format("workspace \"{}\"", id));
   std::this_thread::sleep_for(std::chrono::milliseconds(150));
   return true;
 }

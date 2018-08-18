@@ -8,9 +8,7 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
   std::string socketPath = getSocketPath();
   ipcfd_ = ipcOpenSocket(socketPath);
   ipc_eventfd_ = ipcOpenSocket(socketPath);
-  const char *subscribe = "[ \"window\" ]";
-  uint32_t len = strlen(subscribe);
-  ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, subscribe, &len);
+  ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, "[ \"window\" ]");
   getFocusedWindow();
   thread_ = [this] {
     try {
@@ -50,9 +48,8 @@ std::string waybar::modules::sway::Window::getFocusedNode(Json::Value nodes)
 void waybar::modules::sway::Window::getFocusedWindow()
 {
   try {
-    uint32_t len = 0;
-    auto res = ipcSingleCommand(ipcfd_, IPC_GET_TREE, nullptr, &len);
-    auto parsed = parser_.parse(res);
+    auto res = ipcSingleCommand(ipcfd_, IPC_GET_TREE, "");
+    auto parsed = parser_.parse(res.payload);
     window_ = getFocusedNode(parsed["nodes"]);
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
   } catch (const std::exception &e) {
