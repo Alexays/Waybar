@@ -16,7 +16,7 @@ waybar::modules::Battery::Battery(Json::Value config)
   if (batteries_.empty()) {
     throw std::runtime_error("No batteries.");
   }
-  auto fd = inotify_init();
+  auto fd = inotify_init1(IN_CLOEXEC);
   if (fd == -1) {
     throw std::runtime_error("Unable to listen batteries.");
   }

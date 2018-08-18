@@ -9,11 +9,6 @@ waybar::ALabel::ALabel(Json::Value config)
   }
 }
 
-waybar::ALabel::~ALabel()
-{
-  // Nothing here
-}
-
 auto waybar::ALabel::update() -> void
 {
   // Nothing here

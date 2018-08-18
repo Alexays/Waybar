@@ -8,7 +8,7 @@ namespace waybar {
 class ALabel : public IModule {
   public:
     ALabel(Json::Value);
-    virtual ~ALabel();
+    virtual ~ALabel() = default;
     virtual auto update() -> void;
     virtual operator Gtk::Widget &();
   protected:
