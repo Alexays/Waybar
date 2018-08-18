@@ -2,8 +2,8 @@
 
 #include <fmt/format.h>
 #include <iostream>
-#include <sys/wait.h>
 #include "util/chrono.hpp"
+#include "util/command.hpp"
 #include "ALabel.hpp"
 
 namespace waybar::modules {
