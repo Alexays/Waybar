@@ -10,22 +10,8 @@ waybar::modules::Custom::Custom(std::string name, Json::Value config)
   thread_ = [this, interval] {
     bool can_update = true;
     if (config_["exec-if"]) {
-      auto pid = fork();
-      int res = 0;
-      if (pid == 0) {
-        std::istringstream iss(config_["exec-if"].asString());
-        std::vector<char*> av;
-        for (std::string s; iss >> s;) {
-          // Need to copy otherwise values are the same
-          char *str = new char[s.size() + 1];
-          memcpy(str, s.c_str(), s.size() + 1);
-          av.push_back(str);
-        }
-        av.push_back(0);
-        execvp(av.front(), av.data());
-        _exit(127);
-      } else if (pid > 0 && waitpid(pid, &res, 0) != -1
-        && WEXITSTATUS(res) != 0) {
+      auto res = waybar::util::command::exec(config_["exec-if"].asString());
+      if (res.exit_code != 0) {
         can_update = false;
       }
     }
@@ -38,33 +24,16 @@ waybar::modules::Custom::Custom(std::string name, Json::Value config)
 
 auto waybar::modules::Custom::update() -> void
 {
-  std::array<char, 128> buffer = {0};
-  std::string output;
-  std::shared_ptr<FILE> fp(popen(config_["exec"].asCString(), "r"), pclose);
-  if (!fp) {
-    std::cerr << name_ + " can't exec " + config_["exec"].asString() << std::endl;
-    return;
-  }
-
-  while (feof(fp.get()) == 0) {
-    if (fgets(buffer.data(), 128, fp.get()) != nullptr) {
-        output += buffer.data();
-    }
-  }
-
-  // Remove last newline
-  if (!output.empty() && output[output.length()-1] == '\n') {
-    output.erase(output.length()-1);
-  }
+  auto res = waybar::util::command::exec(config_["exec"].asString());
 
   // Hide label if output is empty
-  if (output.empty()) {
+  if (res.out.empty() || res.exit_code != 0) {
     label_.hide();
     label_.set_name("");
   } else {
     label_.set_name("custom-" + name_);
     auto format = config_["format"] ? config_["format"].asString() : "{}";
-    auto str = fmt::format(format, output);
+    auto str = fmt::format(format, res.out);
     label_.set_text(str);
     label_.set_tooltip_text(str);
     label_.show();
