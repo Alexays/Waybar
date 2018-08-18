@@ -4,7 +4,7 @@ waybar::Factory::Factory(Bar &bar, Json::Value config)
   : _bar(bar), _config(std::move(config))
 {}
 
-waybar::IModule *waybar::Factory::makeModule(const std::string &name)
+waybar::IModule* waybar::Factory::makeModule(const std::string &name)
 {
   try {
     if (name == "battery") {
@@ -34,13 +34,12 @@ waybar::IModule *waybar::Factory::makeModule(const std::string &name)
     if (name.compare(0, 7, "custom/") == 0 && name.size() > 7) {
       return new waybar::modules::Custom(name.substr(7), _config[name]);
     }
-    std::cerr << "Unknown module: " + name << std::endl;
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
-    std::cerr << err << std::endl;
+    throw std::runtime_error(err);
   } catch (...) {
     auto err = fmt::format("Disabling module \"{}\", Unknown reason", name);
-    std::cerr << err << std::endl;
+    throw std::runtime_error(err);
   }
-  return nullptr;
+  throw std::runtime_error("Unknown module: " + name);
 }

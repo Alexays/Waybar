@@ -16,6 +16,7 @@ namespace fs = std::filesystem;
 class Battery : public ALabel {
   public:
     Battery(Json::Value);
+    ~Battery();
     auto update() -> void;
   private:
     std::string getIcon(uint16_t percentage);
@@ -24,6 +25,7 @@ class Battery : public ALabel {
 
     util::SleeperThread thread_;
     std::vector<fs::path> batteries_;
+    int fd_;
 };
 
 }

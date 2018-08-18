@@ -16,24 +16,29 @@ waybar::modules::Battery::Battery(Json::Value config)
   if (batteries_.empty()) {
     throw std::runtime_error("No batteries.");
   }
-  auto fd = inotify_init1(IN_CLOEXEC);
-  if (fd == -1) {
+  fd_ = inotify_init1(IN_CLOEXEC);
+  if (fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
   }
   for (auto &bat : batteries_) {
-    inotify_add_watch(fd, (bat / "uevent").c_str(), IN_ACCESS);
+    inotify_add_watch(fd_, (bat / "uevent").c_str(), IN_ACCESS);
   }
   // Trigger first value
   Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Battery::update));
   label_.set_name("battery");
-  thread_ = [this, fd] {
+  thread_ = [this] {
     struct inotify_event event = {0};
-    int nbytes = read(fd, &event, sizeof(event));
+    int nbytes = read(fd_, &event, sizeof(event));
     if (nbytes != sizeof(event)) {
       return;
     }
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Battery::update));
   };
+}
+
+waybar::modules::Battery::~Battery()
+{
+  close(fd_);
 }
 
 auto waybar::modules::Battery::update() -> void

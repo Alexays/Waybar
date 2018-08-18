@@ -48,7 +48,7 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry,
     *output = static_cast<struct wl_output *>(wl_registry_bind(registry, name,
       &wl_output_interface, version));
     if (o->xdg_output_manager != nullptr) {
-      o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output)));
+      o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output), name));
     }
   } else if (strcmp(interface, wl_seat_interface.name) == 0) {
     o->seat = static_cast<struct wl_seat *>(wl_registry_bind(registry, name,
@@ -61,10 +61,16 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry,
   }
 }
 
-void waybar::Client::handleGlobalRemove(void* /*data*/,
-  struct wl_registry* /*registry*/, uint32_t /*name*/)
+void waybar::Client::handleGlobalRemove(void* data,
+  struct wl_registry* /*registry*/, uint32_t name)
 {
-    // TODO(someone)
+  auto o = static_cast<waybar::Client *>(data);
+  for (auto it = o->bars.begin(); it != o->bars.end(); ++it) {
+    if ((**it).wl_name == name) {
+      o->bars.erase(it);
+      break;
+    }
+  }
 }
 
 void waybar::Client::bindInterfaces()

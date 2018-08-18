@@ -10,6 +10,7 @@ namespace waybar::modules {
 class Pulseaudio : public ALabel {
   public:
     Pulseaudio(Json::Value);
+    ~Pulseaudio();
     auto update() -> void;
   private:
     static void subscribeCb(pa_context*, pa_subscription_event_type_t,

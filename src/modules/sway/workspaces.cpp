@@ -12,8 +12,8 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
   thread_ = [this] {
     try {
       // Wait for the name of the output
-      if (!config_["all-outputs"].asBool() && bar_.outputName.empty()) {
-        while (bar_.outputName.empty()) {
+      if (!config_["all-outputs"].asBool() && bar_.output_name.empty()) {
+        while (bar_.output_name.empty()) {
           thread_.sleep_for(chrono::milliseconds(150));
         }
       } else if (!workspaces_.empty()) {
@@ -28,6 +28,12 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
       std::cerr << e.what() << std::endl;
     }
   };
+}
+
+waybar::modules::sway::Workspaces::~Workspaces()
+{
+  close(ipcfd_);
+  close(ipc_eventfd_);
 }
 
 auto waybar::modules::sway::Workspaces::update() -> void
@@ -46,7 +52,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
   }
   for (auto node : workspaces_) {
     if (!config_["all-outputs"].asBool()
-      && bar_.outputName != node["output"].asString()) {
+      && bar_.output_name != node["output"].asString()) {
       continue;
     }
     auto it = buttons_.find(node["num"].asInt());

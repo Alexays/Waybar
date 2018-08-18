@@ -72,6 +72,11 @@ waybar::modules::Network::Network(Json::Value config)
   };
 }
 
+waybar::modules::Network::~Network()
+{
+  close(sock_fd_);
+}
+
 auto waybar::modules::Network::update() -> void
 {
   auto format = config_["format"] ? config_["format"].asString() : "{ifname}";

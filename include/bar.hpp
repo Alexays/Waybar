@@ -4,17 +4,18 @@
 #include <gtkmm.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
+#include "IModule.hpp"
 
 namespace waybar {
 
 class Client;
+class Factory;
 
 class Bar {
   public:
-    Bar(Client&, std::unique_ptr<struct wl_output *>&&);
+    Bar(Client&, std::unique_ptr<struct wl_output *>&&, uint32_t wl_name);
     Bar(const Bar&) = delete;
 
-    auto setWidth(uint32_t) -> void;
     auto toggle() -> void;
 
     Client& client;
@@ -22,7 +23,8 @@ class Bar {
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
     std::unique_ptr<struct wl_output *> output;
-    std::string outputName;
+    std::string output_name;
+    uint32_t wl_name;
     bool visible = true;
   private:
     static void handleLogicalPosition(void *, struct zxdg_output_v1 *, int32_t,
@@ -41,6 +43,7 @@ class Bar {
     auto setupConfig() -> void;
     auto setupWidgets() -> void;
     auto setupCss() -> void;
+    void getModules(Factory factory, const std::string& pos);
 
     uint32_t width_ = 0;
     uint32_t height_ = 30;
@@ -48,6 +51,9 @@ class Bar {
     Glib::RefPtr<Gtk::StyleContext> style_context_;
     Glib::RefPtr<Gtk::CssProvider> css_provider_;
     struct zxdg_output_v1 *xdg_output_;
+    std::vector<std::unique_ptr<waybar::IModule>> modules_left_;
+    std::vector<std::unique_ptr<waybar::IModule>> modules_center_;
+    std::vector<std::unique_ptr<waybar::IModule>> modules_right_;
 };
 
 }

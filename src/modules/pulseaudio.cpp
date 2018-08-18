@@ -28,6 +28,11 @@ waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
+waybar::modules::Pulseaudio::~Pulseaudio()
+{
+  mainloop_api_->quit(mainloop_api_, 0);
+}
+
 void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data)
 {
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);

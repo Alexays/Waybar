@@ -39,9 +39,7 @@ struct SleeperThread {
           func();
         } while (do_run);
       }}
-  {
-    defined = true;
-  }
+  {}
 
   SleeperThread& operator=(std::function<void()> func)
   {
@@ -50,7 +48,6 @@ struct SleeperThread {
         func();
       } while (do_run);
     });
-    defined = true;
     return *this;
   }
 
@@ -75,17 +72,14 @@ struct SleeperThread {
   ~SleeperThread()
   {
     do_run = false;
-    if (defined) {
-      condvar.notify_all();
-      thread.join();
-    }
+    condvar.notify_all();
+    thread.detach();
   }
 
 private:
   std::thread thread;
   std::condition_variable condvar;
   std::mutex mutex;
-  bool defined = false;
   bool do_run = true;
 };
 

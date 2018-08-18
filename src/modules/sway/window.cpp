@@ -25,6 +25,12 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
   };
 }
 
+waybar::modules::sway::Window::~Window()
+{
+  close(ipcfd_);
+  close(ipc_eventfd_);
+}
+
 auto waybar::modules::sway::Window::update() -> void
 {
   label_.set_text(window_);
