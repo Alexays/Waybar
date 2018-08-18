@@ -31,6 +31,8 @@ waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
 waybar::modules::Pulseaudio::~Pulseaudio()
 {
   mainloop_api_->quit(mainloop_api_, 0);
+  pa_threaded_mainloop_stop(mainloop_);
+  pa_threaded_mainloop_free(mainloop_);
 }
 
 void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data)
