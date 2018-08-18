@@ -46,6 +46,7 @@
     "custom/spotify": {
         "format": " {}",
         "max-length": 40,
-        "exec": "$HOME/.bin/mediaplayer.sh"
+        "exec": "$HOME/.bin/mediaplayer.sh",
+        "exec-if": "pgrep spotify"
     }
 }

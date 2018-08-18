@@ -1,15 +1,37 @@
 #include "modules/custom.hpp"
-#include <iostream>
 
-waybar::modules::Custom::Custom(const std::string &name, Json::Value config)
-  : ALabel(std::move(config)), name_(name)
+waybar::modules::Custom::Custom(std::string name, Json::Value config)
+  : ALabel(std::move(config)), name_(std::move(name))
 {
   if (!config_["exec"]) {
     throw std::runtime_error(name_ + " has no exec path.");
   }
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
   thread_ = [this, interval] {
-    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Custom::update));
+    bool can_update = true;
+    if (config_["exec-if"]) {
+      auto pid = fork();
+      int res = 0;
+      if (pid == 0) {
+        std::istringstream iss(config_["exec-if"].asString());
+        std::vector<char*> av;
+        for (std::string s; iss >> s;) {
+          // Need to copy otherwise values are the same
+          char *str = new char[s.size() + 1];
+          memcpy(str, s.c_str(), s.size() + 1);
+          av.push_back(str);
+        }
+        av.push_back(0);
+        execvp(av.front(), av.data());
+        _exit(127);
+      } else if (pid > 0 && waitpid(pid, &res, 0) != -1
+        && WEXITSTATUS(res) != 0) {
+        can_update = false;
+      }
+    }
+    if (can_update) {
+      Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Custom::update));
+    }
     thread_.sleep_for(chrono::seconds(interval));
   };
 }
