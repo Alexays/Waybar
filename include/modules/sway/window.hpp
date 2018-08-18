@@ -5,23 +5,20 @@
 #include "client.hpp"
 #include "util/chrono.hpp"
 #include "util/json.hpp"
-#include "IModule.hpp"
+#include "ALabel.hpp"
 
 namespace waybar::modules::sway {
 
-class Window : public IModule {
+class Window : public ALabel {
   public:
     Window(waybar::Bar&, Json::Value);
     auto update() -> void;
-    operator Gtk::Widget &();
   private:
     std::string getFocusedNode(Json::Value nodes);
     void getFocusedWindow();
 
     Bar& bar_;
-    Json::Value config_;
     waybar::util::SleeperThread thread_;
-    Gtk::Label label_;
     util::JsonParser parser_;
     int ipcfd_;
     int ipc_eventfd_;

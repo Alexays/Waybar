@@ -1,7 +1,7 @@
 #include "modules/pulseaudio.hpp"
 
 waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
-  : config_(std::move(config)), mainloop_(nullptr), mainloop_api_(nullptr),
+  : ALabel(std::move(config)), mainloop_(nullptr), mainloop_api_(nullptr),
     context_(nullptr), sink_idx_(0), volume_(0), muted_(false)
 {
   label_.set_name("pulseaudio");
@@ -26,7 +26,7 @@ waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
     throw std::runtime_error("pa_mainloop_run() failed.");
   }
   pa_threaded_mainloop_unlock(mainloop_);
-};
+}
 
 void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data)
 {
@@ -122,8 +122,4 @@ std::string waybar::modules::Pulseaudio::getIcon(uint16_t percentage)
   auto size = config_["format-icons"].size();
   auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
   return config_["format-icons"][idx].asString();
-}
-
-waybar::modules::Pulseaudio::operator Gtk::Widget &() {
-  return label_;
 }

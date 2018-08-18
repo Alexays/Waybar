@@ -1,18 +1,16 @@
 #pragma once
 
 #include <pulse/pulseaudio.h>
-#include <json/json.h>
 #include <fmt/format.h>
 #include <algorithm>
-#include "IModule.hpp"
+#include "ALabel.hpp"
 
 namespace waybar::modules {
 
-class Pulseaudio : public IModule {
+class Pulseaudio : public ALabel {
   public:
     Pulseaudio(Json::Value);
     auto update() -> void;
-    operator Gtk::Widget &();
   private:
     static void subscribeCb(pa_context*, pa_subscription_event_type_t,
       uint32_t, void*);
@@ -22,8 +20,6 @@ class Pulseaudio : public IModule {
 
     std::string getIcon(uint16_t);
 
-    Gtk::Label label_;
-    Json::Value config_;
     pa_threaded_mainloop* mainloop_;
     pa_mainloop_api* mainloop_api_;
     pa_context* context_;

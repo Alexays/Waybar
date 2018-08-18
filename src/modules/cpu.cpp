@@ -1,7 +1,7 @@
 #include "modules/cpu.hpp"
 
 waybar::modules::Cpu::Cpu(Json::Value config)
-  : config_(std::move(config))
+  : ALabel(std::move(config))
 {
   label_.set_name("cpu");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 10;
@@ -9,7 +9,7 @@ waybar::modules::Cpu::Cpu(Json::Value config)
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Cpu::update));
     thread_.sleep_for(chrono::seconds(interval));
   };
-};
+}
 
 auto waybar::modules::Cpu::update() -> void
 {
@@ -20,8 +20,4 @@ auto waybar::modules::Cpu::update() -> void
     auto format = config_["format"] ? config_["format"].asString() : "{}%";
     label_.set_text(fmt::format(format, load));
   }
-}
-
-waybar::modules::Cpu::operator Gtk::Widget &() {
-  return label_;
 }

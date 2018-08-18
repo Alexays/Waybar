@@ -2,7 +2,7 @@
 #include "modules/sway/ipc/client.hpp"
 
 waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
-  : bar_(bar), config_(std::move(config))
+  : ALabel(std::move(config)), bar_(bar)
 {
   label_.set_name("window");
   std::string socketPath = getSocketPath();
@@ -58,8 +58,4 @@ void waybar::modules::sway::Window::getFocusedWindow()
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
-}
-
-waybar::modules::sway::Window::operator Gtk::Widget &() {
-  return label_;
 }

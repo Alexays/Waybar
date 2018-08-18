@@ -1,7 +1,7 @@
 #include "modules/battery.hpp"
 
 waybar::modules::Battery::Battery(Json::Value config)
-  : config_(std::move(config))
+  : ALabel(std::move(config))
 {
   try {
     for (auto &node : fs::directory_iterator(data_dir_)) {
@@ -82,9 +82,4 @@ std::string waybar::modules::Battery::getIcon(uint16_t percentage)
   auto size = config_["format-icons"].size();
   auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
   return config_["format-icons"][idx].asString();
-}
-
-waybar::modules::Battery::operator Gtk::Widget &()
-{
-  return label_;
 }
