@@ -5,8 +5,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-static const char ipc_magic[] = {'i', '3', '-', 'i', 'p', 'c'};
-static const size_t ipc_header_size = sizeof(ipc_magic)+8;
+static const std::string ipc_magic("i3-ipc");
+static const size_t ipc_header_size = ipc_magic.size() + 8;
 
 std::string getSocketPath() {
   const char *env = getenv("SWAYSOCK");
@@ -50,50 +50,48 @@ int ipcOpenSocket(const std::string &socketPath) {
 }
 
 struct ipc_response ipcRecvResponse(int socketfd) {
-  struct ipc_response response;
-  char data[ipc_header_size];
-  auto data32 = reinterpret_cast<uint32_t *>(data + sizeof(ipc_magic));
+  std::string header;
+  header.reserve(ipc_header_size);
+  auto data32 = reinterpret_cast<uint32_t *>(header.data() + ipc_magic.size());
   size_t total = 0;
 
   while (total < ipc_header_size) {
-    ssize_t received = recv(socketfd, data + total, ipc_header_size - total, 0);
-    if (received <= 0) {
+    ssize_t res =
+      ::recv(socketfd, header.data() + total, ipc_header_size - total, 0);
+    if (res <= 0) {
       throw std::runtime_error("Unable to receive IPC response");
     }
-    total += received;
+    total += res;
   }
 
   total = 0;
-  response.size = data32[0];
-  response.type = data32[1];
-  char payload[response.size + 1];
-
-  while (total < response.size) {
-    ssize_t received = recv(socketfd, payload + total, response.size - total, 0);
-    if (received < 0) {
+  std::string payload;
+  payload.reserve(data32[0]);
+  while (total < data32[0]) {
+    ssize_t res =
+      ::recv(socketfd, payload.data() + total, data32[0] - total, 0);
+    if (res < 0) {
       throw std::runtime_error("Unable to receive IPC response");
     }
-    total += received;
+    total += res;
   }
-  payload[response.size] = '\0';
-  response.payload = std::string(payload);
-  return response;
+  return { data32[0], data32[1], &payload.front() };
 }
 
-std::string ipcSingleCommand(int socketfd, uint32_t type, const char *payload, uint32_t *len) {
-  char data[ipc_header_size];
-  auto data32 = reinterpret_cast<uint32_t *>(data + sizeof(ipc_magic));
-  memcpy(data, ipc_magic, sizeof(ipc_magic));
-  data32[0] = *len;
+struct ipc_response ipcSingleCommand(int socketfd, uint32_t type,
+  const std::string& payload) {
+  std::string header;
+  header.reserve(ipc_header_size);
+  auto data32 = reinterpret_cast<uint32_t *>(header.data() + ipc_magic.size());
+  memcpy(header.data(), ipc_magic.c_str(), ipc_magic.size());
+  data32[0] = payload.size();
   data32[1] = type;
 
-  if (send(socketfd, data, ipc_header_size, 0) == -1) {
+  if (send(socketfd, header.data(), ipc_header_size, 0) == -1) {
     throw std::runtime_error("Unable to send IPC header");
   }
-  if (send(socketfd, payload, *len, 0) == -1) {
+  if (send(socketfd, payload.c_str(), payload.size(), 0) == -1) {
     throw std::runtime_error("Unable to send IPC payload");
   }
-  struct ipc_response resp = ipcRecvResponse(socketfd);
-  *len = resp.size;
-  return resp.payload;
+  return ipcRecvResponse(socketfd);
 }
