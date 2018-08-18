@@ -11,7 +11,7 @@ class Custom : public ALabel {
     Custom(const std::string&, Json::Value);
     auto update() -> void;
   private:
-    const std::string name_;
+    const std::string& name_;
     waybar::util::SleeperThread thread_;
 };
 

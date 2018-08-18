@@ -81,7 +81,7 @@ void waybar::Client::bindInterfaces()
 int waybar::Client::main(int /*argc*/, char* /*argv*/[])
 {
   bindInterfaces();
-  gtk_main.run();
+  Gtk::Main::run();
   bars.clear();
   zxdg_output_manager_v1_destroy(xdg_output_manager);
   zwlr_layer_shell_v1_destroy(layer_shell);

@@ -234,9 +234,9 @@ int waybar::modules::Network::getExternalInterface()
   } while (true);
 
 out:
-  if (req)
+  if (req != nullptr)
     free(req);
-  if (resp)
+  if (resp != nullptr)
     free(resp);
   return ifidx;
 }

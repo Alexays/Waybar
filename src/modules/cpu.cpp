@@ -15,7 +15,7 @@ auto waybar::modules::Cpu::update() -> void
 {
   struct sysinfo info = {0};
   if (sysinfo(&info) == 0) {
-    float f_load = 1.f / (1U << SI_LOAD_SHIFT);
+    float f_load = 1.f / (1u << SI_LOAD_SHIFT);
     uint16_t load = info.loads[0] * f_load * 100 / get_nprocs();
     auto format = config_["format"] ? config_["format"].asString() : "{}%";
     label_.set_text(fmt::format(format, load));
