@@ -1,22 +1,18 @@
 #pragma once
 
-#include <json/json.h>
 #include <fmt/format.h>
 #include <sys/sysinfo.h>
 #include "util/chrono.hpp"
-#include "IModule.hpp"
+#include "ALabel.hpp"
 
 namespace waybar::modules {
 
-class Memory : public IModule {
+class Memory : public ALabel {
   public:
     Memory(Json::Value);
     auto update() -> void;
-    operator Gtk::Widget &();
   private:
-    Gtk::Label label_;
     waybar::util::SleeperThread thread_;
-    Json::Value config_;
 };
 
 }

@@ -19,6 +19,9 @@
         //     "5": ""
         // }
     },
+    "sway/window": {
+        "max-length": 50
+    },
     "cpu": {
         "format": "{}% "
     },

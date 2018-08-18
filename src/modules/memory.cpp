@@ -1,7 +1,7 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(Json::Value config)
-  : config_(std::move(config))
+  : ALabel(std::move(config))
 {
   label_.set_name("memory");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
@@ -9,7 +9,7 @@ waybar::modules::Memory::Memory(Json::Value config)
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Memory::update));
     thread_.sleep_for(chrono::seconds(interval));
   };
-};
+}
 
 auto waybar::modules::Memory::update() -> void
 {
@@ -23,8 +23,4 @@ auto waybar::modules::Memory::update() -> void
     auto used_ram_gigabytes = (total - freeram) / std::pow(1024, 3);
     label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
   }
-}
-
-waybar::modules::Memory::operator Gtk::Widget &() {
-  return label_;
 }

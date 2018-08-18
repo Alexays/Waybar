@@ -1,7 +1,7 @@
 #include "modules/network.hpp"
 
 waybar::modules::Network::Network(Json::Value config)
-  : config_(std::move(config)), family_(AF_INET),
+  : ALabel(std::move(config)), family_(AF_INET),
     signal_strength_dbm_(0), signal_strength_(0)
 {
   sock_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
@@ -70,7 +70,7 @@ waybar::modules::Network::Network(Json::Value config)
       Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Network::update));
     }
   };
-};
+}
 
 auto waybar::modules::Network::update() -> void
 {
@@ -380,8 +380,4 @@ auto waybar::modules::Network::getInfo() -> void
   }
   nl_send_sync(sk, msg);
   nl_socket_free(sk);
-}
-
-waybar::modules::Network::operator Gtk::Widget &() {
-  return label_;
 }
