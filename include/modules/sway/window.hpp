@@ -12,6 +12,7 @@ namespace waybar::modules::sway {
 class Window : public ALabel {
   public:
     Window(waybar::Bar&, Json::Value);
+    ~Window();
     auto update() -> void;
   private:
     std::string getFocusedNode(Json::Value nodes);

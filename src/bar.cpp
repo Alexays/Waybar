@@ -3,9 +3,10 @@
 #include "factory.hpp"
 #include "util/json.hpp"
 
-waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
+waybar::Bar::Bar(Client &client,
+  std::unique_ptr<struct wl_output *> &&p_output, uint32_t p_wl_name)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},
-    output(std::move(p_output))
+    output(std::move(p_output)), wl_name(std::move(p_wl_name))
 {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
     .logical_position = handleLogicalPosition,
@@ -22,29 +23,39 @@ waybar::Bar::Bar(Client &client, std::unique_ptr<struct wl_output *> &&p_output)
   setupConfig();
   setupCss();
   setupWidgets();
-  if (config_["height"]) {
-    height_ = config_["height"].asUInt();
-  }
+
   Gtk::Widget& wrap(window);
   gtk_widget_realize(wrap.gobj());
   GdkWindow *gdk_window = gtk_widget_get_window(wrap.gobj());
   gdk_wayland_window_set_use_custom_surface(gdk_window);
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
+
   std::size_t layer_top = config_["layer"] == "top"
     ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(
     client.layer_shell, surface, *output, layer_top, "waybar");
-  std::size_t position_bottom = config_["position"] == "bottom"
-    ? ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM : ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-  zwlr_layer_surface_v1_set_anchor(layer_surface, position_bottom
-    | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
-  zwlr_layer_surface_v1_set_size(layer_surface, width_, height_);
+
   static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .configure = layerSurfaceHandleConfigure,
     .closed = layerSurfaceHandleClosed,
   };
   zwlr_layer_surface_v1_add_listener(layer_surface,
     &layer_surface_listener, this);
+
+  std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
+    | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+  if (config_["position"] == "bottom") {
+    anchor |= ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+  } else {
+    anchor |= ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
+  }
+
+  auto height = config_["height"] ? config_["height"].asUInt() : height_;
+  auto width = config_["width"] ? config_["width"].asUInt() : width_;
+  zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
+  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, height);
+  zwlr_layer_surface_v1_set_size(layer_surface, width, height);
+
   wl_surface_commit(surface);
 }
 
@@ -71,7 +82,7 @@ void waybar::Bar::handleName(void* data, struct zxdg_output_v1* /*xdg_output*/,
   const char* name)
 {
 	auto o = static_cast<waybar::Bar *>(data);
-  o->outputName = name;
+  o->output_name = name;
 }
 
 void waybar::Bar::handleDescription(void* /*data*/,
@@ -86,13 +97,17 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data,
 {
   auto o = static_cast<waybar::Bar *>(data);
   o->window.show_all();
-  o->setWidth(o->config_["width"] ? o->config_["width"].asUInt() : width);
   zwlr_layer_surface_v1_ack_configure(surface, serial);
-  if (o->height_ != height) {
-    height = o->height_;
-    std::cout << fmt::format("New Height: {}", height) << std::endl;
-    zwlr_layer_surface_v1_set_size(surface, o->width_, height);
-    zwlr_layer_surface_v1_set_exclusive_zone(surface, o->visible ? height : 0);
+  if (width != o->width_ || height != o->height_) {
+    o->width_ = width;
+    o->height_ = height;
+    std::cout << fmt::format(
+      "Bar configured (width: {}, height: {}) for output: {}",
+      o->width_, o->height_, o->output_name) << std::endl;
+    o->window.set_size_request(o->width_, o->height_);
+    o->window.resize(o->width_, o->height_);
+    zwlr_layer_surface_v1_set_exclusive_zone(surface, o->height_);
+    zwlr_layer_surface_v1_set_size(surface, o->width_, o->height_);
     wl_surface_commit(o->surface);
   }
 }
@@ -101,24 +116,13 @@ void waybar::Bar::layerSurfaceHandleClosed(void* data,
   struct zwlr_layer_surface_v1* /*surface*/)
 {
   auto o = static_cast<waybar::Bar *>(data);
+  std::cout << "Bar removed from output: " + o->output_name << std::endl;
   zwlr_layer_surface_v1_destroy(o->layer_surface);
-  o->layer_surface = nullptr;
-  wl_surface_destroy(o->surface);
-  o->surface = nullptr;
-  o->window.close();
-}
-
-auto waybar::Bar::setWidth(uint32_t width) -> void
-{
-  if (width == width_) {
-    return;
-  }
-  std::cout << fmt::format("Bar width configured: {}", width) << std::endl;
-  width_ = width;
-  window.set_size_request(width);
-  window.resize(width, height_);
-  zwlr_layer_surface_v1_set_size(layer_surface, width, height_ + 1);
-  wl_surface_commit(surface);
+  wl_output_destroy(*o->output);
+  zxdg_output_v1_destroy(o->xdg_output_);
+  o->modules_left_.clear();
+  o->modules_center_.clear();
+  o->modules_right_.clear();
 }
 
 auto waybar::Bar::toggle() -> void
@@ -154,6 +158,27 @@ auto waybar::Bar::setupCss() -> void
   }
 }
 
+void waybar::Bar::getModules(Factory factory, const std::string& pos)
+{
+  if (config_[pos]) {
+    for (const auto &name : config_[pos]) {
+      try {
+        if (pos == "modules-left") {
+          modules_left_.emplace_back(factory.makeModule(name.asString()));
+        }
+        if (pos == "modules-center") {
+          modules_center_.emplace_back(factory.makeModule(name.asString()));
+        }
+        if (pos == "modules-right") {
+          modules_right_.emplace_back(factory.makeModule(name.asString()));
+        }
+      } catch (const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+      }
+    }
+  }
+}
+
 auto waybar::Bar::setupWidgets() -> void
 {
   auto &left = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
@@ -167,30 +192,17 @@ auto waybar::Bar::setupWidgets() -> void
   box.pack_end(right, true, true);
 
   Factory factory(*this, config_);
-
-  if (config_["modules-left"]) {
-    for (const auto &name : config_["modules-left"]) {
-      auto module = factory.makeModule(name.asString());
-      if (module != nullptr) {
-        left.pack_start(*module, false, true, 0);
-      }
-    }
+  getModules(factory, "modules-left");
+  getModules(factory, "modules-center");
+  getModules(factory, "modules-right");
+  for (auto& module : modules_left_) {
+    left.pack_start(*module, false, true, 0);
   }
-  if (config_["modules-center"]) {
-    for (const auto &name : config_["modules-center"]) {
-      auto module = factory.makeModule(name.asString());
-      if (module != nullptr) {
-        center.pack_start(*module, true, false, 0);
-      }
-    }
+  for (auto& module : modules_center_) {
+    center.pack_start(*module, true, true, 0);
   }
-  if (config_["modules-right"]) {
-    std::reverse(config_["modules-right"].begin(), config_["modules-right"].end());
-    for (const auto &name : config_["modules-right"]) {
-      auto module = factory.makeModule(name.asString());
-      if (module != nullptr) {
-        right.pack_end(*module, false, false, 0);
-      }
-    }
+  std::reverse(modules_right_.begin(), modules_right_.end());
+  for (auto& module : modules_right_) {
+    right.pack_end(*module, false, false, 0);
   }
 }

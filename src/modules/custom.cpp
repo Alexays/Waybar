@@ -16,10 +16,11 @@ waybar::modules::Custom::Custom(std::string name, Json::Value config)
       }
     }
     if (can_update) {
-      Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Custom::update));
+      thread_.sig_update.emit();
     }
     thread_.sleep_for(chrono::seconds(interval));
   };
+  thread_.sig_update.connect(sigc::mem_fun(*this, &Custom::update));
 }
 
 auto waybar::modules::Custom::update() -> void

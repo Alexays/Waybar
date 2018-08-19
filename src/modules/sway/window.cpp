@@ -10,6 +10,7 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
   ipc_eventfd_ = ipcOpenSocket(socketPath);
   ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, "[ \"window\" ]");
   getFocusedWindow();
+  thread_.sig_update.connect(sigc::mem_fun(*this, &Window::update));
   thread_ = [this] {
     try {
       auto res = ipcRecvResponse(ipc_eventfd_);
@@ -17,12 +18,18 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
         && parsed["container"]["focused"].asBool()) {
         window_ = parsed["container"]["name"].asString();
-        Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
+        thread_.sig_update.emit();
       }
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
   };
+}
+
+waybar::modules::sway::Window::~Window()
+{
+  close(ipcfd_);
+  close(ipc_eventfd_);
 }
 
 auto waybar::modules::sway::Window::update() -> void

@@ -14,6 +14,7 @@ namespace waybar::modules {
 class Network : public ALabel {
   public:
     Network(Json::Value);
+    ~Network();
     auto update() -> void;
   private:
     static uint64_t netlinkRequest(int, void*, uint32_t, uint32_t groups = 0);
