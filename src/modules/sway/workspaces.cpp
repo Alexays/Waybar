@@ -20,6 +20,9 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
       } else if (!workspaces_.empty()) {
         ipcRecvResponse(ipc_eventfd_);
       }
+      std::lock_guard<std::mutex> lock(mutex_);
+      auto res = ipcSingleCommand(ipcfd_, IPC_GET_WORKSPACES, "");
+      workspaces_ = parser_.parse(res.payload);
       thread_.emit();
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
@@ -36,8 +39,6 @@ waybar::modules::sway::Workspaces::~Workspaces()
 auto waybar::modules::sway::Workspaces::update() -> void
 {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto res = ipcSingleCommand(ipcfd_, IPC_GET_WORKSPACES, "");
-  workspaces_ = parser_.parse(res.payload);
   bool needReorder = false;
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
