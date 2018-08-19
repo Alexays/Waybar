@@ -5,8 +5,9 @@ waybar::modules::Memory::Memory(Json::Value config)
 {
   label_.set_name("memory");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
+  thread_.sig_update.connect(sigc::mem_fun(*this, &Memory::update));
   thread_ = [this, interval] {
-    Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Memory::update));
+    thread_.sig_update.emit();
     thread_.sleep_for(chrono::seconds(interval));
   };
 }

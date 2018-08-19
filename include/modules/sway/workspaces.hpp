@@ -12,6 +12,7 @@ namespace waybar::modules::sway {
 class Workspaces : public IModule {
   public:
     Workspaces(waybar::Bar&, Json::Value);
+    ~Workspaces();
     auto update() -> void;
     operator Gtk::Widget &();
   private:

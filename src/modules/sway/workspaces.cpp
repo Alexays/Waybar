@@ -9,30 +9,35 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
   ipcfd_ = ipcOpenSocket(socketPath);
   ipc_eventfd_ = ipcOpenSocket(socketPath);
   ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, "[ \"workspace\" ]");
+  thread_.sig_update.connect(sigc::mem_fun(*this, &Workspaces::update));
   thread_ = [this] {
     try {
       // Wait for the name of the output
-      if (!config_["all-outputs"].asBool() && bar_.outputName.empty()) {
-        while (bar_.outputName.empty()) {
+      if (!config_["all-outputs"].asBool() && bar_.output_name.empty()) {
+        while (bar_.output_name.empty()) {
           thread_.sleep_for(chrono::milliseconds(150));
         }
       } else if (!workspaces_.empty()) {
         ipcRecvResponse(ipc_eventfd_);
       }
-      std::lock_guard<std::mutex> lock(mutex_);
-      auto res = ipcSingleCommand(ipcfd_, IPC_GET_WORKSPACES, "");
-      workspaces_ = parser_.parse(res.payload);
-      Glib::signal_idle()
-        .connect_once(sigc::mem_fun(*this, &Workspaces::update));
+      thread_.sig_update.emit();
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
   };
 }
 
+waybar::modules::sway::Workspaces::~Workspaces()
+{
+  close(ipcfd_);
+  close(ipc_eventfd_);
+}
+
 auto waybar::modules::sway::Workspaces::update() -> void
 {
   std::lock_guard<std::mutex> lock(mutex_);
+  auto res = ipcSingleCommand(ipcfd_, IPC_GET_WORKSPACES, "");
+  workspaces_ = parser_.parse(res.payload);
   bool needReorder = false;
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
@@ -46,7 +51,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
   }
   for (auto node : workspaces_) {
     if (!config_["all-outputs"].asBool()
-      && bar_.outputName != node["output"].asString()) {
+      && bar_.output_name != node["output"].asString()) {
       continue;
     }
     auto it = buttons_.find(node["num"].asInt());
