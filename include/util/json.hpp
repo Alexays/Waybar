@@ -14,12 +14,13 @@ struct JsonParser {
   {
     Json::Value root;
     std::string err;
-    if (_reader != nullptr) {
-      bool res =
-        _reader->parse(data.c_str(), data.c_str() + data.size(), &root, &err);
-      if (!res)
-        throw std::runtime_error(err);
+    if (_reader == nullptr) {
+      throw std::runtime_error("Unable to parse");
     }
+    bool res =
+      _reader->parse(data.c_str(), data.c_str() + data.size(), &root, &err);
+    if (!res)
+      throw std::runtime_error(err);
     return root;
   }
 

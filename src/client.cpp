@@ -1,7 +1,8 @@
 #include "client.hpp"
 
 waybar::Client::Client(int argc, char* argv[])
-  : gtk_main(argc, argv), gdk_display(Gdk::Display::get_default()),
+  : gtk_app(Gtk::Application::create(argc, argv, "org.alexays.waybar")),
+    gdk_display(Gdk::Display::get_default()),
     wl_display(gdk_wayland_display_get_wl_display(gdk_display->gobj()))
 {
   auto getFirstValidPath = [] (std::vector<std::string> possiblePaths) {
@@ -87,7 +88,8 @@ void waybar::Client::bindInterfaces()
 int waybar::Client::main(int /*argc*/, char* /*argv*/[])
 {
   bindInterfaces();
-  Gtk::Main::run();
+  gtk_app->hold();
+  gtk_app->run();
   bars.clear();
   zxdg_output_manager_v1_destroy(xdg_output_manager);
   zwlr_layer_shell_v1_destroy(layer_shell);

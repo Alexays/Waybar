@@ -29,8 +29,10 @@ waybar::modules::Network::Network(Json::Value config)
     }
   }
   label_.set_name("network");
+  // Trigger first values
   getInfo();
-  Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Network::update));
+  update();
+  thread_.sig_update.connect(sigc::mem_fun(*this, &Network::update));
   thread_ = [this] {
     char buf[4096];
     uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
@@ -67,7 +69,7 @@ waybar::modules::Network::Network(Json::Value config)
     }
     if (need_update) {
       getInfo();
-      Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Network::update));
+      thread_.sig_update.emit();
     }
   };
 }

@@ -19,7 +19,7 @@ class Client {
     Client(int argc, char *argv[]);
     int main(int argc, char *argv[]);
 
-    Gtk::Main gtk_main;
+    Glib::RefPtr<Gtk::Application> gtk_app;
     std::string css_file;
     std::string config_file;
     Glib::RefPtr<Gdk::Display> gdk_display;
