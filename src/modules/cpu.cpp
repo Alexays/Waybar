@@ -7,7 +7,7 @@ waybar::modules::Cpu::Cpu(Json::Value config)
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 10;
   thread_.sig_update.connect(sigc::mem_fun(*this, &Cpu::update));
   thread_ = [this, interval] {
-    thread_.sig_update.emit();
+    thread_.emit();
     thread_.sleep_for(chrono::seconds(interval));
   };
 }

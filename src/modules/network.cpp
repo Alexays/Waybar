@@ -69,7 +69,7 @@ waybar::modules::Network::Network(Json::Value config)
     }
     if (need_update) {
       getInfo();
-      thread_.sig_update.emit();
+      thread_.emit();
     }
   };
 }
