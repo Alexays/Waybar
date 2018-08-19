@@ -33,7 +33,7 @@ waybar::modules::Battery::Battery(Json::Value config)
     if (nbytes != sizeof(event)) {
       return;
     }
-    thread_.sig_update.emit();
+    thread_.emit();
   };
 }
 

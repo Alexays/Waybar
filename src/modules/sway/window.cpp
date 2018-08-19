@@ -18,7 +18,7 @@ waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
         && parsed["container"]["focused"].asBool()) {
         window_ = parsed["container"]["name"].asString();
-        thread_.sig_update.emit();
+        thread_.emit();
       }
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
@@ -41,7 +41,7 @@ auto waybar::modules::sway::Window::update() -> void
 std::string waybar::modules::sway::Window::getFocusedNode(Json::Value nodes)
 {
   for (auto &node : nodes) {
-    if (node["focused"].asBool()) {
+    if (node["focused"].asBool() && node["type"] == "con") {
       return node["name"].asString();
     }
     auto res = getFocusedNode(node["nodes"]);

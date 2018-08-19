@@ -70,6 +70,13 @@ struct SleeperThread {
     condvar_.notify_all();
   }
 
+  void emit()
+  {
+    Glib::signal_idle().connect_once([this] {
+      sig_update.emit();
+    });
+  }
+
   ~SleeperThread()
   {
     do_run_ = false;

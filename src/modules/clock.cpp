@@ -8,7 +8,7 @@ waybar::modules::Clock::Clock(Json::Value config)
   thread_.sig_update.connect(sigc::mem_fun(*this, &Clock::update));
   thread_ = [this, interval] {
     auto now = waybar::chrono::clock::now();
-    thread_.sig_update.emit();
+    thread_.emit();
     auto timeout = std::chrono::floor<std::chrono::seconds>(now
       + std::chrono::seconds(interval));
     thread_.sleep_until(timeout);

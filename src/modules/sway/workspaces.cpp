@@ -20,7 +20,7 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
       } else if (!workspaces_.empty()) {
         ipcRecvResponse(ipc_eventfd_);
       }
-      thread_.sig_update.emit();
+      thread_.emit();
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }

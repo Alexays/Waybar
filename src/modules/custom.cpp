@@ -16,7 +16,7 @@ waybar::modules::Custom::Custom(std::string name, Json::Value config)
       }
     }
     if (can_update) {
-      thread_.sig_update.emit();
+      thread_.emit();
     }
     thread_.sleep_for(chrono::seconds(interval));
   };
