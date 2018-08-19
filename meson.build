@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.0.4',
+    version: '0.0.5',
     license: 'MIT',
     default_options : ['cpp_std=c++17'],
 )
