@@ -136,7 +136,6 @@ std::string waybar::modules::sway::Workspaces::getIcon(std::string name)
 
 bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   // Avoid concurrent scroll event
   if (scrolling_) {
     return false;
@@ -144,6 +143,7 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
   scrolling_ = true;
   int id = -1;
   uint16_t idx = 0;
+  std::lock_guard<std::mutex> lock(mutex_);
   for (; idx < workspaces_.size(); idx += 1) {
     if (workspaces_[idx]["focused"].asBool()) {
       id = workspaces_[idx]["num"].asInt();
