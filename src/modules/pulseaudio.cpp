@@ -1,7 +1,7 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
-  : ALabel(std::move(config)), mainloop_(nullptr), mainloop_api_(nullptr),
+waybar::modules::Pulseaudio::Pulseaudio(const Json::Value& config)
+  : ALabel(config), mainloop_(nullptr), mainloop_api_(nullptr),
     context_(nullptr), sink_idx_(0), volume_(0), muted_(false)
 {
   label_.set_name("pulseaudio");

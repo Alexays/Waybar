@@ -1,8 +1,9 @@
 #include "modules/sway/workspaces.hpp"
 #include "modules/sway/ipc/client.hpp"
 
-waybar::modules::sway::Workspaces::Workspaces(Bar &bar, Json::Value config)
-  : bar_(bar), config_(std::move(config)), scrolling_(false)
+waybar::modules::sway::Workspaces::Workspaces(Bar &bar,
+  const Json::Value& config)
+  : bar_(bar), config_(config), scrolling_(false)
 {
   box_.set_name("workspaces");
   std::string socketPath = getSocketPath();

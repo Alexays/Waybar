@@ -1,7 +1,8 @@
 #include "modules/custom.hpp"
 
-waybar::modules::Custom::Custom(std::string name, Json::Value config)
-  : ALabel(std::move(config)), name_(std::move(name))
+waybar::modules::Custom::Custom(const std::string& name,
+  const Json::Value& config)
+  : ALabel(config), name_(name)
 {
   if (!config_["exec"]) {
     throw std::runtime_error(name_ + " has no exec path.");

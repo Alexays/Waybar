@@ -9,7 +9,7 @@ namespace waybar::modules {
 
 class Cpu : public ALabel {
   public:
-    Cpu(Json::Value);
+    Cpu(const Json::Value&);
     auto update() -> void;
   private:
     waybar::util::SleeperThread thread_;

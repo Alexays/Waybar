@@ -11,7 +11,7 @@ namespace waybar::modules::sway {
 
 class Window : public ALabel {
   public:
-    Window(waybar::Bar&, Json::Value);
+    Window(waybar::Bar&, const Json::Value&);
     ~Window();
     auto update() -> void;
   private:

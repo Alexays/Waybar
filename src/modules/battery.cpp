@@ -1,7 +1,7 @@
 #include "modules/battery.hpp"
 
-waybar::modules::Battery::Battery(Json::Value config)
-  : ALabel(std::move(config))
+waybar::modules::Battery::Battery(const Json::Value& config)
+  : ALabel(config)
 {
   try {
     for (auto &node : fs::directory_iterator(data_dir_)) {

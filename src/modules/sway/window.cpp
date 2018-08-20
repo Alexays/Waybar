@@ -1,8 +1,8 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/ipc/client.hpp"
 
-waybar::modules::sway::Window::Window(Bar &bar, Json::Value config)
-  : ALabel(std::move(config)), bar_(bar)
+waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
+  : ALabel(config), bar_(bar)
 {
   label_.set_name("window");
   std::string socketPath = getSocketPath();

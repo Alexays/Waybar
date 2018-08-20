@@ -13,7 +13,7 @@ namespace waybar::modules {
 
 class Network : public ALabel {
   public:
-    Network(Json::Value);
+    Network(const Json::Value&);
     ~Network();
     auto update() -> void;
   private:

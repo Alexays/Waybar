@@ -1,7 +1,7 @@
 #include "modules/network.hpp"
 
-waybar::modules::Network::Network(Json::Value config)
-  : ALabel(std::move(config)), family_(AF_INET),
+waybar::modules::Network::Network(const Json::Value& config)
+  : ALabel(config), family_(AF_INET),
     signal_strength_dbm_(0), signal_strength_(0)
 {
   sock_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
@@ -116,20 +116,18 @@ void waybar::modules::Network::disconnected()
 // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
 int waybar::modules::Network::getExternalInterface()
 {
+  static const uint32_t route_buffer_size = 8192;
   struct nlmsghdr *hdr = nullptr;
   struct rtmsg *rt = nullptr;
-  void *resp = nullptr;
+  char resp[route_buffer_size] = {0};
   int ifidx = -1;
 
-  /* Allocate space for the request. */
+  /* Prepare request. */
   uint32_t reqlen = NLMSG_SPACE(sizeof(*rt));
-  void *req = nullptr;
-  if ((req = calloc(1, reqlen)) == nullptr) {
-    goto out; /* ENOBUFS */
-  }
+  char req[reqlen] = {0};
 
   /* Build the RTM_GETROUTE request. */
-  hdr = static_cast<struct nlmsghdr *>(req);
+  hdr = reinterpret_cast<struct nlmsghdr *>(req);
   hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*rt));
   hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
   hdr->nlmsg_type = RTM_GETROUTE;
@@ -140,12 +138,6 @@ int waybar::modules::Network::getExternalInterface()
   /* Issue the query. */
   if (netlinkRequest(sock_fd_, req, reqlen) < 0) {
     goto out;
-  }
-
-  /* Allocate space for the response. */
-  static const uint32_t route_buffer_size = 8192;
-  if ((resp = calloc(1, route_buffer_size)) == nullptr) {
-    goto out; /* ENOBUFS */
   }
 
   /* Read the response(s).
@@ -160,7 +152,7 @@ int waybar::modules::Network::getExternalInterface()
     }
 
     /* Parse the response payload into netlink messages. */
-    for (hdr = static_cast<struct nlmsghdr *>(resp); NLMSG_OK(hdr, len);
+    for (hdr = reinterpret_cast<struct nlmsghdr *>(resp); NLMSG_OK(hdr, len);
       hdr = NLMSG_NEXT(hdr, len)) {
       if (hdr->nlmsg_type == NLMSG_DONE) {
         goto out;
@@ -241,10 +233,6 @@ int waybar::modules::Network::getExternalInterface()
   } while (true);
 
 out:
-  if (req != nullptr)
-    free(req);
-  if (resp != nullptr)
-    free(resp);
   return ifidx;
 }
 

@@ -1,7 +1,7 @@
 #include "modules/cpu.hpp"
 
-waybar::modules::Cpu::Cpu(Json::Value config)
-  : ALabel(std::move(config))
+waybar::modules::Cpu::Cpu(const Json::Value& config)
+  : ALabel(config)
 {
   label_.set_name("cpu");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 10;

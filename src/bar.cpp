@@ -3,10 +3,11 @@
 #include "factory.hpp"
 #include "util/json.hpp"
 
-waybar::Bar::Bar(Client &client,
+waybar::Bar::Bar(const Client& client,
   std::unique_ptr<struct wl_output *> &&p_output, uint32_t p_wl_name)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},
-    output(std::move(p_output)), wl_name(std::move(p_wl_name))
+    surface(nullptr), layer_surface(nullptr),
+    output(std::move(p_output)), wl_name(p_wl_name)
 {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
     .logical_position = handleLogicalPosition,
@@ -135,13 +136,13 @@ auto waybar::Bar::toggle() -> void
 
 auto waybar::Bar::setupConfig() -> void
 {
-  util::JsonParser parser;
   std::ifstream file(client.config_file);
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
   }
   std::string str((std::istreambuf_iterator<char>(file)),
     std::istreambuf_iterator<char>());
+  util::JsonParser parser;
   config_ = parser.parse(str);
 }
 
@@ -158,7 +159,7 @@ auto waybar::Bar::setupCss() -> void
   }
 }
 
-void waybar::Bar::getModules(Factory factory, const std::string& pos)
+void waybar::Bar::getModules(const Factory& factory, const std::string& pos)
 {
   if (config_[pos]) {
     for (const auto &name : config_[pos]) {

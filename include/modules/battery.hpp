@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 
 class Battery : public ALabel {
   public:
-    Battery(Json::Value);
+    Battery(const Json::Value&);
     ~Battery();
     auto update() -> void;
   private:
