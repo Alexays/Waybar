@@ -31,13 +31,43 @@ wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
-libnl = dependency('libnl-3.0')
-libnlgen = dependency('libnl-genl-3.0')
-libpulse = dependency('libpulse')
+libnl = dependency('libnl-3.0', required: false)
+libnlgen = dependency('libnl-genl-3.0', required: false)
+libpulse = dependency('libpulse', required: false)
+
+src_files = files(
+    'src/factory.cpp',
+    'src/ALabel.cpp',
+    'src/modules/memory.cpp',
+    'src/modules/battery.cpp',
+    'src/modules/clock.cpp',
+    'src/modules/custom.cpp',
+    'src/modules/cpu.cpp',
+    'src/main.cpp',
+    'src/bar.cpp',
+    'src/client.cpp'
+)
+
+if find_program('sway').found()
+    add_project_arguments('-DHAVE_SWAY', language: 'cpp')
+    src_files += [
+        'src/modules/sway/ipc/client.cpp',
+        'src/modules/sway/window.cpp',
+        'src/modules/sway/workspaces.cpp'
+    ]
+endif
+
+if libnl.found() and libnlgen.found()
+    add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
+    src_files += 'src/modules/network.cpp'
+endif
+
+if libpulse.found()
+    add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
+    src_files += 'src/modules/pulseaudio.cpp'
+endif
 
 subdir('protocol')
-
-src_files = run_command('find', './src', '-name', '*.cpp').stdout().strip().split('\n')
 
 executable(
     'waybar',
