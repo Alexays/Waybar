@@ -10,9 +10,11 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (name == "battery") {
       return new waybar::modules::Battery(config_[name]);
     }
+    #ifdef HAVE_SWAY
     if (name == "sway/workspaces") {
       return new waybar::modules::sway::Workspaces(bar_, config_[name]);
     }
+    #endif
     if (name == "sway/window") {
       return new waybar::modules::sway::Window(bar_, config_[name]);
     }
@@ -25,12 +27,16 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (name == "clock") {
       return new waybar::modules::Clock(config_[name]);
     }
+    #ifdef HAVE_LIBNL
     if (name == "network") {
       return new waybar::modules::Network(config_[name]);
     }
+    #endif
+    #ifdef HAVE_LIBPULSE
     if (name == "pulseaudio") {
       return new waybar::modules::Pulseaudio(config_[name]);
     }
+    #endif
     if (name.compare(0, 7, "custom/") == 0 && name.size() > 7) {
       return new waybar::modules::Custom(name.substr(7), config_[name]);
     }
