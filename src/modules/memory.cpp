@@ -1,13 +1,12 @@
 #include "modules/memory.hpp"
 
-waybar::modules::Memory::Memory(Json::Value config)
-  : ALabel(std::move(config))
+waybar::modules::Memory::Memory(const Json::Value& config)
+  : ALabel(config)
 {
   label_.set_name("memory");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
-  thread_.sig_update.connect(sigc::mem_fun(*this, &Memory::update));
   thread_ = [this, interval] {
-    thread_.emit();
+    dp.emit();
     thread_.sleep_for(chrono::seconds(interval));
   };
 }

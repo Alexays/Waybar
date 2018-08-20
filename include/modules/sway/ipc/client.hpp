@@ -1,33 +1,41 @@
 #pragma once
 
 #include <iostream>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include "ipc.hpp"
 
-/**
- * IPC response including type of IPC response, size of payload and the json
- * encoded payload string.
- */
-struct ipc_response {
-	uint32_t size;
-	uint32_t type;
-	std::string payload;
+namespace waybar::modules::sway {
+
+class Ipc {
+  public:
+    Ipc();
+    ~Ipc();
+
+		struct ipc_response {
+			uint32_t size;
+			uint32_t type;
+			std::string payload;
+		};
+
+		void connect();
+		struct ipc_response sendCmd(uint32_t type,
+			const std::string& payload = "") const;
+		void subscribe(const std::string& payload) const;
+		struct ipc_response handleEvent() const;
+  protected:
+		static inline const std::string ipc_magic_ = "i3-ipc";
+		static inline const size_t ipc_header_size_ = ipc_magic_.size() + 8;
+
+		const std::string getSocketPath() const;
+		int open(const std::string&) const;
+		struct ipc_response send(int fd, uint32_t type,
+			const std::string& payload = "") const;
+		struct ipc_response recv(int fd) const;
+
+		int fd_;
+		int fd_event_;
 };
 
-/**
- * Gets the path to the IPC socket from sway.
- */
-std::string getSocketPath(void);
-/**
- * Opens the sway socket.
- */
-int ipcOpenSocket(const std::string &socketPath);
-/**
- * Issues a single IPC command and returns the buffer. len will be updated with
- * the length of the buffer returned from sway.
- */
-struct ipc_response ipcSingleCommand(int socketfd, uint32_t type,
-  const std::string& payload);
-/**
- * Receives a single IPC response and returns an ipc_response.
- */
-struct ipc_response ipcRecvResponse(int socketfd);
+}

@@ -9,7 +9,7 @@ namespace waybar::modules {
 
 class Memory : public ALabel {
   public:
-    Memory(Json::Value);
+    Memory(const Json::Value&);
     auto update() -> void;
   private:
     waybar::util::SleeperThread thread_;

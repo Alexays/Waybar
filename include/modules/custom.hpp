@@ -10,10 +10,12 @@ namespace waybar::modules {
 
 class Custom : public ALabel {
   public:
-    Custom(std::string, Json::Value);
+    Custom(const std::string&, const Json::Value&);
     auto update() -> void;
   private:
-    std::string name_;
+    void worker();
+
+    const std::string& name_;
     waybar::util::SleeperThread thread_;
 };
 
