@@ -6,13 +6,13 @@
 #include "util/chrono.hpp"
 #include "util/json.hpp"
 #include "ALabel.hpp"
+#include "modules/sway/ipc/client.hpp"
 
 namespace waybar::modules::sway {
 
 class Window : public ALabel {
   public:
     Window(waybar::Bar&, const Json::Value&);
-    ~Window();
     auto update() -> void;
   private:
     std::string getFocusedNode(Json::Value nodes);
@@ -21,8 +21,7 @@ class Window : public ALabel {
     Bar& bar_;
     waybar::util::SleeperThread thread_;
     util::JsonParser parser_;
-    int ipcfd_;
-    int ipc_eventfd_;
+    Ipc ipc_;
     std::string window_;
 };
 

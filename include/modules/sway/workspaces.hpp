@@ -6,13 +6,13 @@
 #include "util/chrono.hpp"
 #include "util/json.hpp"
 #include "IModule.hpp"
+#include "modules/sway/ipc/client.hpp"
 
 namespace waybar::modules::sway {
 
 class Workspaces : public IModule {
   public:
     Workspaces(waybar::Bar&, const Json::Value&);
-    ~Workspaces();
     auto update() -> void;
     operator Gtk::Widget &();
   private:
@@ -31,8 +31,7 @@ class Workspaces : public IModule {
     bool scrolling_;
     std::unordered_map<int, Gtk::Button> buttons_;
     Json::Value workspaces_;
-    int ipcfd_;
-    int ipc_eventfd_;
+    Ipc ipc_;
 };
 
 }

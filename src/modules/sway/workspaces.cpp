@@ -1,15 +1,12 @@
 #include "modules/sway/workspaces.hpp"
-#include "modules/sway/ipc/client.hpp"
 
 waybar::modules::sway::Workspaces::Workspaces(Bar &bar,
   const Json::Value& config)
   : bar_(bar), config_(config), scrolling_(false)
 {
   box_.set_name("workspaces");
-  std::string socketPath = getSocketPath();
-  ipcfd_ = ipcOpenSocket(socketPath);
-  ipc_eventfd_ = ipcOpenSocket(socketPath);
-  ipcSingleCommand(ipc_eventfd_, IPC_SUBSCRIBE, "[ \"workspace\" ]");
+  ipc_.connect();
+  ipc_.subscribe("[ \"workspace\" ]");
   thread_.sig_update.connect(sigc::mem_fun(*this, &Workspaces::update));
   thread_ = [this] {
     try {
@@ -19,22 +16,16 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar,
           thread_.sleep_for(chrono::milliseconds(150));
         }
       } else if (!workspaces_.empty()) {
-        ipcRecvResponse(ipc_eventfd_);
+        ipc_.handleEvent();
       }
       std::lock_guard<std::mutex> lock(mutex_);
-      auto res = ipcSingleCommand(ipcfd_, IPC_GET_WORKSPACES, "");
+      auto res = ipc_.sendCmd(IPC_GET_WORKSPACES);
       workspaces_ = parser_.parse(res.payload);
       thread_.emit();
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
   };
-}
-
-waybar::modules::sway::Workspaces::~Workspaces()
-{
-  close(ipcfd_);
-  close(ipc_eventfd_);
 }
 
 auto waybar::modules::sway::Workspaces::update() -> void
@@ -102,7 +93,7 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
     try {
       std::lock_guard<std::mutex> lock(mutex_);
       auto cmd = fmt::format("workspace \"{}\"", pair.first->first);
-      ipcSingleCommand(ipcfd_, IPC_COMMAND, cmd);
+      ipc_.sendCmd(IPC_COMMAND, cmd);
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
@@ -176,7 +167,7 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
     scrolling_ = false;
     return false;
   }
-  ipcSingleCommand(ipcfd_, IPC_COMMAND, fmt::format("workspace \"{}\"", id));
+  ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", id));
   std::this_thread::sleep_for(std::chrono::milliseconds(150));
   return true;
 }

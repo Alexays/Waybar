@@ -151,7 +151,7 @@ auto waybar::Bar::setupCss() -> void
   css_provider_ = Gtk::CssProvider::create();
   style_context_ = Gtk::StyleContext::create();
 
-  // load our css file, wherever that may be hiding
+  // Load our css file, wherever that may be hiding
   if (css_provider_->load_from_path(client.css_file)) {
     Glib::RefPtr<Gdk::Screen> screen = window.get_screen();
     style_context_->add_provider_for_screen(screen, css_provider_,
