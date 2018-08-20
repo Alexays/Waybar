@@ -1,7 +1,7 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(Json::Value config)
-  : ALabel(std::move(config)), mainloop_(nullptr), mainloop_api_(nullptr),
+waybar::modules::Pulseaudio::Pulseaudio(const Json::Value& config)
+  : ALabel(config), mainloop_(nullptr), mainloop_api_(nullptr),
     context_(nullptr), sink_idx_(0), volume_(0), muted_(false)
 {
   label_.set_name("pulseaudio");
@@ -89,7 +89,7 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context* /*context*/,
     pa->volume_ = volume * 100.0f;
     pa->muted_ = i->mute != 0;
     pa->desc_ = i->description;
-    Glib::signal_idle().connect_once(sigc::mem_fun(*pa, &Pulseaudio::update));
+    pa->dp.emit();
   }
 }
 

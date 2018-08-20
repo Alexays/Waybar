@@ -1,6 +1,6 @@
 #pragma once
 
-#define event_mask(ev) (1 << (ev & 0x7F))
+#define event_mask(ev) (1u << (ev & 0x7F))
 
 enum ipc_command_type {
 	// i3 command types - see i3's I3_REPLY_TYPE constants

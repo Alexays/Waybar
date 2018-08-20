@@ -15,11 +15,11 @@ namespace waybar {
 
 class Factory {
   public:
-    Factory(Bar &bar, Json::Value config);
-    IModule* makeModule(const std::string &name);
+    Factory(Bar& bar, const Json::Value& config);
+    IModule* makeModule(const std::string &name) const;
   private:
-    Bar &_bar;
-    Json::Value _config;
+    Bar& bar_;
+    const Json::Value& config_;
 };
 
 }

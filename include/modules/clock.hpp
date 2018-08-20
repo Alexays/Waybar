@@ -9,7 +9,7 @@ namespace waybar::modules {
 
 class Clock : public ALabel {
   public:
-    Clock(Json::Value);
+    Clock(const Json::Value&);
     auto update() -> void;
   private:
     waybar::util::SleeperThread thread_;

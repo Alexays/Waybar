@@ -70,25 +70,12 @@ struct SleeperThread {
     condvar_.notify_all();
   }
 
-  void emit()
-  {
-    Glib::signal_idle().connect_once([this] {
-      sig_update.emit();
-    });
-  }
-
   ~SleeperThread()
   {
     do_run_ = false;
     condvar_.notify_all();
-    auto native_handle = thread_.native_handle();
-    pthread_cancel(native_handle);
-    if (thread_.joinable()) {
-      thread_.join();
-    }
+    thread_.detach();
   }
-
-  sigc::signal<void> sig_update;
 
 private:
   std::thread thread_;

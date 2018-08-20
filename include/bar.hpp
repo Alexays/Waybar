@@ -13,12 +13,12 @@ class Factory;
 
 class Bar {
   public:
-    Bar(Client&, std::unique_ptr<struct wl_output *>&&, uint32_t wl_name);
+    Bar(const Client&, std::unique_ptr<struct wl_output *>&&, uint32_t);
     Bar(const Bar&) = delete;
 
     auto toggle() -> void;
 
-    Client& client;
+    const Client& client;
     Gtk::Window window;
     struct wl_surface *surface;
     struct zwlr_layer_surface_v1 *layer_surface;
@@ -43,7 +43,7 @@ class Bar {
     auto setupConfig() -> void;
     auto setupWidgets() -> void;
     auto setupCss() -> void;
-    void getModules(Factory factory, const std::string& pos);
+    void getModules(const Factory&, const std::string&);
 
     uint32_t width_ = 0;
     uint32_t height_ = 30;

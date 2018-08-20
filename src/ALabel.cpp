@@ -1,7 +1,7 @@
 #include "ALabel.hpp"
 
-waybar::ALabel::ALabel(Json::Value config)
-  : config_(std::move(config))
+waybar::ALabel::ALabel(const Json::Value& config)
+  : config_(config)
 {
 	if (config_["max-length"]) {
     label_.set_max_width_chars(config_["max-length"].asUInt());

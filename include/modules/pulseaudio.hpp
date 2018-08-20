@@ -9,7 +9,7 @@ namespace waybar::modules {
 
 class Pulseaudio : public ALabel {
   public:
-    Pulseaudio(Json::Value);
+    Pulseaudio(const Json::Value&);
     ~Pulseaudio();
     auto update() -> void;
   private:

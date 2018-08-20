@@ -1,11 +1,17 @@
 #include "modules/custom.hpp"
 
-waybar::modules::Custom::Custom(std::string name, Json::Value config)
-  : ALabel(std::move(config)), name_(std::move(name))
+waybar::modules::Custom::Custom(const std::string& name,
+  const Json::Value& config)
+  : ALabel(config), name_(name)
 {
   if (!config_["exec"]) {
     throw std::runtime_error(name_ + " has no exec path.");
   }
+  worker();
+}
+
+void waybar::modules::Custom::worker()
+{
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
   thread_ = [this, interval] {
     bool can_update = true;
@@ -16,11 +22,10 @@ waybar::modules::Custom::Custom(std::string name, Json::Value config)
       }
     }
     if (can_update) {
-      thread_.emit();
+      dp.emit();
     }
     thread_.sleep_for(chrono::seconds(interval));
   };
-  thread_.sig_update.connect(sigc::mem_fun(*this, &Custom::update));
 }
 
 auto waybar::modules::Custom::update() -> void

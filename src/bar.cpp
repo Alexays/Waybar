@@ -3,10 +3,11 @@
 #include "factory.hpp"
 #include "util/json.hpp"
 
-waybar::Bar::Bar(Client &client,
+waybar::Bar::Bar(const Client& client,
   std::unique_ptr<struct wl_output *> &&p_output, uint32_t p_wl_name)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},
-    output(std::move(p_output)), wl_name(std::move(p_wl_name))
+    surface(nullptr), layer_surface(nullptr),
+    output(std::move(p_output)), wl_name(p_wl_name)
 {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
     .logical_position = handleLogicalPosition,
@@ -135,13 +136,13 @@ auto waybar::Bar::toggle() -> void
 
 auto waybar::Bar::setupConfig() -> void
 {
-  util::JsonParser parser;
   std::ifstream file(client.config_file);
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
   }
   std::string str((std::istreambuf_iterator<char>(file)),
     std::istreambuf_iterator<char>());
+  util::JsonParser parser;
   config_ = parser.parse(str);
 }
 
@@ -150,7 +151,7 @@ auto waybar::Bar::setupCss() -> void
   css_provider_ = Gtk::CssProvider::create();
   style_context_ = Gtk::StyleContext::create();
 
-  // load our css file, wherever that may be hiding
+  // Load our css file, wherever that may be hiding
   if (css_provider_->load_from_path(client.css_file)) {
     Glib::RefPtr<Gdk::Screen> screen = window.get_screen();
     style_context_->add_provider_for_screen(screen, css_provider_,
@@ -158,20 +159,22 @@ auto waybar::Bar::setupCss() -> void
   }
 }
 
-void waybar::Bar::getModules(Factory factory, const std::string& pos)
+void waybar::Bar::getModules(const Factory& factory, const std::string& pos)
 {
   if (config_[pos]) {
     for (const auto &name : config_[pos]) {
       try {
+        auto module = factory.makeModule(name.asString());
         if (pos == "modules-left") {
-          modules_left_.emplace_back(factory.makeModule(name.asString()));
+          modules_left_.emplace_back(module);
         }
         if (pos == "modules-center") {
-          modules_center_.emplace_back(factory.makeModule(name.asString()));
+          modules_center_.emplace_back(module);
         }
         if (pos == "modules-right") {
-          modules_right_.emplace_back(factory.makeModule(name.asString()));
+          modules_right_.emplace_back(module);
         }
+        module->dp.connect([module] { module->update(); });
       } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
       }
