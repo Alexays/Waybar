@@ -256,8 +256,9 @@ uint64_t waybar::modules::Network::netlinkResponse(int fd, void *resp,
   struct iovec iov = { resp, resplen };
   struct msghdr msg = { &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
   ret = recvmsg(fd, &msg, 0);
-  if (msg.msg_flags & MSG_TRUNC)
+  if (msg.msg_flags & MSG_TRUNC) {
     return -1;
+  }
   return ret;
 }
 

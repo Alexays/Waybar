@@ -122,8 +122,9 @@ struct waybar::modules::sway::Ipc::ipc_response
 void waybar::modules::sway::Ipc::subscribe(const std::string& payload) const
 {
   auto res = send(fd_event_, IPC_SUBSCRIBE, payload);
-  if (res.payload != "{\"success\": true}")
+  if (res.payload != "{\"success\": true}") {
     throw std::runtime_error("Unable to subscribe ipc event");
+  }
 }
 
 struct waybar::modules::sway::Ipc::ipc_response
