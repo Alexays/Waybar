@@ -164,15 +164,17 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos)
   if (config_[pos]) {
     for (const auto &name : config_[pos]) {
       try {
+        auto module = factory.makeModule(name.asString());
         if (pos == "modules-left") {
-          modules_left_.emplace_back(factory.makeModule(name.asString()));
+          modules_left_.emplace_back(module);
         }
         if (pos == "modules-center") {
-          modules_center_.emplace_back(factory.makeModule(name.asString()));
+          modules_center_.emplace_back(module);
         }
         if (pos == "modules-right") {
-          modules_right_.emplace_back(factory.makeModule(name.asString()));
+          modules_right_.emplace_back(module);
         }
+        module->dp.connect([module] { module->update(); });
       } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
       }

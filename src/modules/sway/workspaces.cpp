@@ -1,13 +1,18 @@
 #include "modules/sway/workspaces.hpp"
 
-waybar::modules::sway::Workspaces::Workspaces(Bar &bar,
+waybar::modules::sway::Workspaces::Workspaces(Bar& bar,
   const Json::Value& config)
   : bar_(bar), config_(config), scrolling_(false)
 {
   box_.set_name("workspaces");
   ipc_.connect();
   ipc_.subscribe("[ \"workspace\" ]");
-  thread_.sig_update.connect(sigc::mem_fun(*this, &Workspaces::update));
+  // Launch worker
+  worker();
+}
+
+void waybar::modules::sway::Workspaces::worker()
+{
   thread_ = [this] {
     try {
       // Wait for the name of the output
@@ -18,10 +23,12 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar,
       } else if (!workspaces_.empty()) {
         ipc_.handleEvent();
       }
-      std::lock_guard<std::mutex> lock(mutex_);
-      auto res = ipc_.sendCmd(IPC_GET_WORKSPACES);
-      workspaces_ = parser_.parse(res.payload);
-      thread_.emit();
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto res = ipc_.sendCmd(IPC_GET_WORKSPACES);
+        workspaces_ = parser_.parse(res.payload);
+      }
+      dp.emit();
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;
     }
@@ -30,8 +37,8 @@ waybar::modules::sway::Workspaces::Workspaces(Bar &bar,
 
 auto waybar::modules::sway::Workspaces::update() -> void
 {
-  std::lock_guard<std::mutex> lock(mutex_);
   bool needReorder = false;
+  std::lock_guard<std::mutex> lock(mutex_);
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
       [it](auto node) -> bool { return node["num"].asInt() == it->first; });
@@ -136,11 +143,13 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
   scrolling_ = true;
   int id = -1;
   uint16_t idx = 0;
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (; idx < workspaces_.size(); idx += 1) {
-    if (workspaces_[idx]["focused"].asBool()) {
-      id = workspaces_[idx]["num"].asInt();
-      break;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (; idx < workspaces_.size(); idx += 1) {
+      if (workspaces_[idx]["focused"].asBool()) {
+        id = workspaces_[idx]["num"].asInt();
+        break;
+      }
     }
   }
   if (id == -1) {
@@ -163,12 +172,15 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
       id = getPrevWorkspace();
     }
   }
-  if (id == workspaces_[idx]["num"].asInt()) {
-    scrolling_ = false;
-    return false;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (id == workspaces_[idx]["num"].asInt()) {
+      scrolling_ = false;
+      return false;
+    }
+    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", id));
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
   }
-  ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", id));
-  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   return true;
 }
 

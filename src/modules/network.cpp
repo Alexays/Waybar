@@ -31,8 +31,7 @@ waybar::modules::Network::Network(const Json::Value& config)
   label_.set_name("network");
   // Trigger first values
   getInfo();
-  update();
-  thread_.sig_update.connect(sigc::mem_fun(*this, &Network::update));
+  dp.emit();
   thread_ = [this] {
     char buf[4096];
     uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
@@ -69,7 +68,7 @@ waybar::modules::Network::Network(const Json::Value& config)
     }
     if (need_update) {
       getInfo();
-      thread_.emit();
+      dp.emit();
     }
   };
 }

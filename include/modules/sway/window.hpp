@@ -15,6 +15,7 @@ class Window : public ALabel {
     Window(waybar::Bar&, const Json::Value&);
     auto update() -> void;
   private:
+    void worker();
     std::string getFocusedNode(Json::Value nodes);
     void getFocusedWindow();
 

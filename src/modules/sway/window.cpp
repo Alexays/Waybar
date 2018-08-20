@@ -7,7 +7,12 @@ waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
   ipc_.connect();
   ipc_.subscribe("[ \"window\" ]");
   getFocusedWindow();
-  thread_.sig_update.connect(sigc::mem_fun(*this, &Window::update));
+  // Launch worker
+  worker();
+}
+
+void waybar::modules::sway::Window::worker()
+{
   thread_ = [this] {
     try {
       auto res = ipc_.handleEvent();
@@ -15,7 +20,7 @@ waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
         && parsed["container"]["focused"].asBool()) {
         window_ = parsed["container"]["name"].asString();
-        thread_.emit();
+        dp.emit();
       }
     } catch (const std::exception& e) {
       std::cerr << e.what() << std::endl;

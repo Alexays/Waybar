@@ -23,23 +23,27 @@ waybar::modules::Battery::Battery(const Json::Value& config)
   for (auto &bat : batteries_) {
     inotify_add_watch(fd_, (bat / "uevent").c_str(), IN_ACCESS);
   }
-  // Trigger first values
-  update();
   label_.set_name("battery");
-  thread_.sig_update.connect(sigc::mem_fun(*this, &Battery::update));
+  worker();
+}
+
+waybar::modules::Battery::~Battery()
+{
+  close(fd_);
+}
+
+void waybar::modules::Battery::worker()
+{
+  // Trigger first values
+  dp.emit();
   thread_ = [this] {
     struct inotify_event event = {0};
     int nbytes = read(fd_, &event, sizeof(event));
     if (nbytes != sizeof(event)) {
       return;
     }
-    thread_.emit();
+    dp.emit();
   };
-}
-
-waybar::modules::Battery::~Battery()
-{
-  close(fd_);
 }
 
 auto waybar::modules::Battery::update() -> void

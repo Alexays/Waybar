@@ -5,10 +5,9 @@ waybar::modules::Clock::Clock(const Json::Value& config)
 {
   label_.set_name("clock");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 60;
-  thread_.sig_update.connect(sigc::mem_fun(*this, &Clock::update));
   thread_ = [this, interval] {
     auto now = waybar::chrono::clock::now();
-    thread_.emit();
+    dp.emit();
     auto timeout = std::chrono::floor<std::chrono::seconds>(now
       + std::chrono::seconds(interval));
     thread_.sleep_until(timeout);

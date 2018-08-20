@@ -16,6 +16,7 @@ class Workspaces : public IModule {
     auto update() -> void;
     operator Gtk::Widget &();
   private:
+    void worker();
     void addWorkspace(Json::Value);
     std::string getIcon(std::string);
     bool handleScroll(GdkEventScroll*);
