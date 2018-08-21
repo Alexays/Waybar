@@ -1,6 +1,6 @@
 #include "modules/custom.hpp"
 
-waybar::modules::Custom::Custom(const std::string& name,
+waybar::modules::Custom::Custom(const std::string name,
   const Json::Value& config)
   : ALabel(config), name_(name)
 {

@@ -1,5 +1,5 @@
 {
-    // "layer": "top", // Waybar at top layer
+    "layer": "top", // Waybar at top layer
     // "position": "bottom", // Waybar at the bottom of your screen
     // "height": 30, // Waybar height
     // "width": 1280, // Waybar width
@@ -46,7 +46,7 @@
     "custom/spotify": {
         "format": " {}",
         "max-length": 40,
-        "exec": "$HOME/.bin/mediaplayer.sh",
+        "exec": "$HOME/.config/waybar/mediaplayer.sh",
         "exec-if": "pgrep spotify"
     }
 }

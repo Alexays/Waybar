@@ -35,7 +35,7 @@ waybar::modules::Battery::~Battery()
 void waybar::modules::Battery::worker()
 {
   // Trigger first values
-  dp.emit();
+  update();
   thread_ = [this] {
     struct inotify_event event = {0};
     int nbytes = read(fd_, &event, sizeof(event));
