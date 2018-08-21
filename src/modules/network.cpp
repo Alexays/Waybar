@@ -31,7 +31,7 @@ waybar::modules::Network::Network(const Json::Value& config)
   label_.set_name("network");
   // Trigger first values
   getInfo();
-  dp.emit();
+  update();
   thread_ = [this] {
     char buf[4096];
     uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
