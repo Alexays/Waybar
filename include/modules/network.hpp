@@ -22,6 +22,7 @@ class Network : public ALabel {
     static int scanCb(struct nl_msg*, void*);
 
     void disconnected();
+    void initNL80211();
     int getExternalInterface();
     void parseEssid(struct nlattr**);
     void parseSignal(struct nlattr**);
@@ -33,6 +34,8 @@ class Network : public ALabel {
     sa_family_t family_;
     int sock_fd_;
     struct sockaddr_nl nladdr_ = {0};
+    struct nl_sock* sk_ = nullptr;
+    int nl80211_id_;
 
     std::string essid_;
     std::string ifname_;

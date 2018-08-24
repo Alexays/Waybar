@@ -28,6 +28,7 @@ waybar::modules::Network::Network(const Json::Value& config)
       ifname_ = ifname;
     }
   }
+  initNL80211();
   label_.set_name("network");
   // Trigger first values
   getInfo();
@@ -76,6 +77,7 @@ waybar::modules::Network::Network(const Json::Value& config)
 waybar::modules::Network::~Network()
 {
   close(sock_fd_);
+  nl_socket_free(sk_);
 }
 
 auto waybar::modules::Network::update() -> void
@@ -110,6 +112,24 @@ void waybar::modules::Network::disconnected()
   signal_strength_ = 0;
   ifname_.clear();
   ifid_ = -1;
+}
+
+void waybar::modules::Network::initNL80211()
+{
+  sk_ = nl_socket_alloc();
+	if (genl_connect(sk_) != 0) {
+    nl_socket_free(sk_);
+    throw std::runtime_error("Can't connect to netlink socket");
+  }
+  if (nl_socket_modify_cb(sk_, NL_CB_VALID, NL_CB_CUSTOM, scanCb, this) < 0) {
+    nl_socket_free(sk_);
+    throw std::runtime_error("Can't connect to netlink socket");
+  }
+  nl80211_id_ = genl_ctrl_resolve(sk_, "nl80211");
+  if (nl80211_id_ < 0) {
+    nl_socket_free(sk_);
+    throw std::runtime_error("Can't resolve nl80211 interface");
+  }
 }
 
 // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
@@ -263,37 +283,37 @@ uint64_t waybar::modules::Network::netlinkResponse(int fd, void *resp,
 }
 
 int waybar::modules::Network::scanCb(struct nl_msg *msg, void *data) {
-    auto net = static_cast<waybar::modules::Network *>(data);
-    auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
-    struct nlattr* tb[NL80211_ATTR_MAX + 1];
-    struct nlattr* bss[NL80211_BSS_MAX + 1];
-    struct nla_policy bss_policy[NL80211_BSS_MAX + 1]{};
-    bss_policy[NL80211_BSS_TSF].type = NLA_U64;
-    bss_policy[NL80211_BSS_FREQUENCY].type = NLA_U32;
-    bss_policy[NL80211_BSS_BSSID].type = NLA_UNSPEC;
-    bss_policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16;
-    bss_policy[NL80211_BSS_CAPABILITY].type = NLA_U16;
-    bss_policy[NL80211_BSS_INFORMATION_ELEMENTS].type = NLA_UNSPEC;
-    bss_policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32;
-    bss_policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8;
-    bss_policy[NL80211_BSS_STATUS].type = NLA_U32;
+  auto net = static_cast<waybar::modules::Network *>(data);
+  auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
+  struct nlattr* tb[NL80211_ATTR_MAX + 1];
+  struct nlattr* bss[NL80211_BSS_MAX + 1];
+  struct nla_policy bss_policy[NL80211_BSS_MAX + 1]{};
+  bss_policy[NL80211_BSS_TSF].type = NLA_U64;
+  bss_policy[NL80211_BSS_FREQUENCY].type = NLA_U32;
+  bss_policy[NL80211_BSS_BSSID].type = NLA_UNSPEC;
+  bss_policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16;
+  bss_policy[NL80211_BSS_CAPABILITY].type = NLA_U16;
+  bss_policy[NL80211_BSS_INFORMATION_ELEMENTS].type = NLA_UNSPEC;
+  bss_policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32;
+  bss_policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8;
+  bss_policy[NL80211_BSS_STATUS].type = NLA_U32;
 
-    if (nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), nullptr) < 0) {
-      return NL_SKIP;
-    }
-    if (tb[NL80211_ATTR_BSS] == nullptr) {
-      return NL_SKIP;
-    }
-    if (nla_parse_nested(bss, NL80211_BSS_MAX, tb[NL80211_ATTR_BSS], bss_policy) != 0) {
-      return NL_SKIP;
-    }
-    if (!net->associatedOrJoined(bss)) {
-      return NL_SKIP;
-    }
-    net->parseEssid(bss);
-    net->parseSignal(bss);
-    // TODO(someone): parse quality
+  if (nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0), nullptr) < 0) {
     return NL_SKIP;
+  }
+  if (tb[NL80211_ATTR_BSS] == nullptr) {
+    return NL_SKIP;
+  }
+  if (nla_parse_nested(bss, NL80211_BSS_MAX, tb[NL80211_ATTR_BSS], bss_policy) != 0) {
+    return NL_SKIP;
+  }
+  if (!net->associatedOrJoined(bss)) {
+    return NL_SKIP;
+  }
+  net->parseEssid(bss);
+  net->parseSignal(bss);
+  // TODO(someone): parse quality
+  return NL_SKIP;
 }
 
 void waybar::modules::Network::parseEssid(struct nlattr **bss)
@@ -317,62 +337,47 @@ void waybar::modules::Network::parseEssid(struct nlattr **bss)
 }
 
 void waybar::modules::Network::parseSignal(struct nlattr **bss) {
-    if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
-      // signalstrength in dBm
-      signal_strength_dbm_ =
-        static_cast<int>(nla_get_u32(bss[NL80211_BSS_SIGNAL_MBM])) / 100;
+  if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
+    // signalstrength in dBm
+    signal_strength_dbm_ =
+      static_cast<int>(nla_get_u32(bss[NL80211_BSS_SIGNAL_MBM])) / 100;
 
-      // WiFi-hardware usually operates in the range -90 to -20dBm.
-      const int hardwareMax = -20;
-      const int hardwareMin = -90;
-      signal_strength_ = ((signal_strength_dbm_ - hardwareMin)
-        / double{hardwareMax - hardwareMin}) * 100;
-    }
+    // WiFi-hardware usually operates in the range -90 to -20dBm.
+    const int hardwareMax = -20;
+    const int hardwareMin = -90;
+    signal_strength_ = ((signal_strength_dbm_ - hardwareMin)
+      / double{hardwareMax - hardwareMin}) * 100;
   }
+}
 
 bool waybar::modules::Network::associatedOrJoined(struct nlattr** bss)
 {
-    if (bss[NL80211_BSS_STATUS] == nullptr) {
-      return false;
-    }
-    auto status = nla_get_u32(bss[NL80211_BSS_STATUS]);
-    switch (status) {
-      case NL80211_BSS_STATUS_ASSOCIATED:
-      case NL80211_BSS_STATUS_IBSS_JOINED:
-      case NL80211_BSS_STATUS_AUTHENTICATED:
-        return true;
-      default:
-        return false;
-    }
+  if (bss[NL80211_BSS_STATUS] == nullptr) {
+    return false;
   }
+  auto status = nla_get_u32(bss[NL80211_BSS_STATUS]);
+  switch (status) {
+    case NL80211_BSS_STATUS_ASSOCIATED:
+    case NL80211_BSS_STATUS_IBSS_JOINED:
+    case NL80211_BSS_STATUS_AUTHENTICATED:
+      return true;
+    default:
+      return false;
+  }
+}
 
 auto waybar::modules::Network::getInfo() -> void
 {
-	struct nl_sock *sk = nl_socket_alloc();
-	if (genl_connect(sk) != 0) {
-    nl_socket_free(sk);
+  struct nl_msg* nl_msg = nlmsg_alloc();
+  if (nl_msg == nullptr) {
+    nl_socket_free(sk_);
     return;
   }
-  if (nl_socket_modify_cb(sk, NL_CB_VALID, NL_CB_CUSTOM, scanCb, this) < 0) {
-    nl_socket_free(sk);
-    return;
-  }
-  const int nl80211_id = genl_ctrl_resolve(sk, "nl80211");
-  if (nl80211_id < 0) {
-    nl_socket_free(sk);
-    return;
-  }
-  struct nl_msg *msg = nlmsg_alloc();
-  if (msg == nullptr) {
-    nl_socket_free(sk);
-    return;
-  }
-  if (genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id, 0, NLM_F_DUMP,
+  if (genlmsg_put(nl_msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, NLM_F_DUMP,
     NL80211_CMD_GET_SCAN, 0) == nullptr
-    || nla_put_u32(msg, NL80211_ATTR_IFINDEX, ifid_) < 0) {
-    nlmsg_free(msg);
+    || nla_put_u32(nl_msg, NL80211_ATTR_IFINDEX, ifid_) < 0) {
+    nlmsg_free(nl_msg);
     return;
   }
-  nl_send_sync(sk, msg);
-  nl_socket_free(sk);
+  nl_send_sync(sk_, nl_msg);
 }
