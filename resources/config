@@ -46,7 +46,7 @@
     "custom/spotify": {
         "format": " {}",
         "max-length": 40,
-        "exec": "$HOME/.config/waybar/mediaplayer.sh",
+        "exec": "$HOME/.config/waybar/mediaplayer.sh", // Script in resources folder
         "exec-if": "pgrep spotify"
     }
 }
