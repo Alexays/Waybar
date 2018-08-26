@@ -22,6 +22,9 @@
     "sway/window": {
         "max-length": 50
     },
+    "clock": {
+        "format-alt": "{:%Y-%m-%d}"
+    },
     "cpu": {
         "format": "{}% "
     },

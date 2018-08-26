@@ -1,7 +1,7 @@
 #include "modules/sway/window.hpp"
 
 waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
-  : ALabel(config), bar_(bar)
+  : ALabel(config, "{}"), bar_(bar)
 {
   label_.set_name("window");
   ipc_.connect();
@@ -30,7 +30,7 @@ void waybar::modules::sway::Window::worker()
 
 auto waybar::modules::sway::Window::update() -> void
 {
-  label_.set_text(window_);
+  label_.set_text(fmt::format(format_, window_));
   label_.set_tooltip_text(window_);
 }
 

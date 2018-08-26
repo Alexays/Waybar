@@ -22,7 +22,6 @@ class Battery : public ALabel {
     static inline const fs::path data_dir_ = "/sys/class/power_supply/";
   
     void worker();
-    std::string getIcon(uint16_t percentage);
 
     util::SleeperThread thread_;
     std::vector<fs::path> batteries_;
