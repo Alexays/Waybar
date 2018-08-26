@@ -1,7 +1,7 @@
 #include "modules/pulseaudio.hpp"
 
 waybar::modules::Pulseaudio::Pulseaudio(const Json::Value& config)
-  : ALabel(config), mainloop_(nullptr), mainloop_api_(nullptr),
+  : ALabel(config, "{volume}%"), mainloop_(nullptr), mainloop_api_(nullptr),
     context_(nullptr), sink_idx_(0), volume_(0), muted_(false)
 {
   label_.set_name("pulseaudio");
@@ -100,33 +100,22 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context* /*context*/,
 void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context,
   const pa_server_info *i, void *data)
 {
-    pa_context_get_sink_info_by_name(context, i->default_sink_name,
-      sinkInfoCb, data);
+  pa_context_get_sink_info_by_name(context, i->default_sink_name,
+    sinkInfoCb, data);
 }
 
 auto waybar::modules::Pulseaudio::update() -> void
 {
-	  auto format =
-      config_["format"] ? config_["format"].asString() : "{volume}%";
-    if (muted_) {
-      format =
-        config_["format-muted"] ? config_["format-muted"].asString() : format;
-      label_.get_style_context()->add_class("muted");
-    } else {
-      label_.get_style_context()->remove_class("muted");
-    }
-    label_.set_label(fmt::format(format,
-      fmt::arg("volume", volume_),
-      fmt::arg("icon", getIcon(volume_))));
-    label_.set_tooltip_text(desc_);
-}
-
-std::string waybar::modules::Pulseaudio::getIcon(uint16_t percentage)
-{
-  if (!config_["format-icons"] || !config_["format-icons"].isArray()) {
-    return "";
+  auto format = format_;
+  if (muted_) {
+    format =
+      config_["format-muted"] ? config_["format-muted"].asString() : format;
+    label_.get_style_context()->add_class("muted");
+  } else {
+    label_.get_style_context()->remove_class("muted");
   }
-  auto size = config_["format-icons"].size();
-  auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
-  return config_["format-icons"][idx].asString();
+  label_.set_label(fmt::format(format,
+    fmt::arg("volume", volume_),
+    fmt::arg("icon", getIcon(volume_))));
+  label_.set_tooltip_text(desc_);
 }

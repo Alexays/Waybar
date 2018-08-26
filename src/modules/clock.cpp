@@ -1,7 +1,7 @@
 #include "modules/clock.hpp"
 
 waybar::modules::Clock::Clock(const Json::Value& config)
-  : ALabel(config)
+  : ALabel(config, "{:%H:%M}")
 {
   label_.set_name("clock");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 60;
@@ -17,6 +17,5 @@ waybar::modules::Clock::Clock(const Json::Value& config)
 auto waybar::modules::Clock::update() -> void
 {
   auto localtime = fmt::localtime(std::time(nullptr));
-  auto format = config_["format"] ? config_["format"].asString() : "{:%H:%M}";
-  label_.set_text(fmt::format(format, localtime));
+  label_.set_text(fmt::format(format_, localtime));
 }

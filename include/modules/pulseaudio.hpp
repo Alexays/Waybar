@@ -19,8 +19,6 @@ class Pulseaudio : public ALabel {
     static void sinkInfoCb(pa_context*, const pa_sink_info*, int, void*);
     static void serverInfoCb(pa_context*, const pa_server_info*, void*);
 
-    std::string getIcon(uint16_t);
-
     pa_threaded_mainloop* mainloop_;
     pa_mainloop_api* mainloop_api_;
     pa_context* context_;

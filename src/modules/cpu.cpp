@@ -1,7 +1,7 @@
 #include "modules/cpu.hpp"
 
 waybar::modules::Cpu::Cpu(const Json::Value& config)
-  : ALabel(config)
+  : ALabel(config, "{}%")
 {
   label_.set_name("cpu");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 10;
@@ -17,7 +17,6 @@ auto waybar::modules::Cpu::update() -> void
   if (sysinfo(&info) == 0) {
     float f_load = 1.f / (1u << SI_LOAD_SHIFT);
     uint16_t load = info.loads[0] * f_load * 100 / get_nprocs();
-    auto format = config_["format"] ? config_["format"].asString() : "{}%";
-    label_.set_text(fmt::format(format, load));
+    label_.set_text(fmt::format(format_, load));
   }
 }

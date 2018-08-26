@@ -2,7 +2,7 @@
 
 waybar::modules::Custom::Custom(const std::string name,
   const Json::Value& config)
-  : ALabel(config), name_(name)
+  : ALabel(config, "{}"), name_(name)
 {
   if (!config_["exec"]) {
     throw std::runtime_error(name_ + " has no exec path.");
@@ -38,8 +38,7 @@ auto waybar::modules::Custom::update() -> void
   if (res.out.empty() || res.exit_code != 0) {
     label_.hide();
   } else {
-    auto format = config_["format"] ? config_["format"].asString() : "{}";
-    auto str = fmt::format(format, res.out);
+    auto str = fmt::format(format_, res.out);
     label_.set_text(str);
     label_.set_tooltip_text(str);
     label_.show();

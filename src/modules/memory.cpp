@@ -1,7 +1,7 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(const Json::Value& config)
-  : ALabel(config)
+  : ALabel(config, "{}%")
 {
   label_.set_name("memory");
   uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
@@ -18,8 +18,7 @@ auto waybar::modules::Memory::update() -> void
     auto total = info.totalram * info.mem_unit;
     auto freeram = info.freeram * info.mem_unit;
     int used_ram_percentage = 100 * (total - freeram) / total;
-    auto format = config_["format"] ? config_["format"].asString() : "{}%";
-    label_.set_text(fmt::format(format, used_ram_percentage));
+    label_.set_text(fmt::format(format_, used_ram_percentage));
     auto used_ram_gigabytes = (total - freeram) / std::pow(1024, 3);
     label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
   }

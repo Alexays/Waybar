@@ -1,7 +1,7 @@
 #include "modules/battery.hpp"
 
 waybar::modules::Battery::Battery(const Json::Value& config)
-  : ALabel(config)
+  : ALabel(config, "{capacity}%")
 {
   try {
     for (auto &node : fs::directory_iterator(data_dir_)) {
@@ -62,9 +62,7 @@ auto waybar::modules::Battery::update() -> void
       total += capacity;
     }
     uint16_t capacity = total / batteries_.size();
-    auto format = config_["format"]
-      ? config_["format"].asString() : "{capacity}%";
-    label_.set_text(fmt::format(format, fmt::arg("capacity", capacity),
+    label_.set_text(fmt::format(format_, fmt::arg("capacity", capacity),
       fmt::arg("icon", getIcon(capacity))));
     label_.set_tooltip_text(status);
     bool charging = status == "Charging";
@@ -82,14 +80,4 @@ auto waybar::modules::Battery::update() -> void
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
   }
-}
-
-std::string waybar::modules::Battery::getIcon(uint16_t percentage)
-{
-  if (!config_["format-icons"] || !config_["format-icons"].isArray()) {
-    return "";
-  }
-  auto size = config_["format-icons"].size();
-  auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
-  return config_["format-icons"][idx].asString();
 }
