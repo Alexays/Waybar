@@ -7,7 +7,6 @@ waybar::modules::Custom::Custom(const std::string name,
   if (!config_["exec"]) {
     throw std::runtime_error(name_ + " has no exec path.");
   }
-  label_.set_name("custom-" + name_);
   worker();
 }
 
@@ -21,6 +20,7 @@ void waybar::modules::Custom::worker()
       if (res.exit_code != 0) {
         can_update = false;
         label_.hide();
+        label_.set_name("");
       }
     }
     if (can_update) {
@@ -37,7 +37,9 @@ auto waybar::modules::Custom::update() -> void
   // Hide label if output is empty
   if (res.out.empty() || res.exit_code != 0) {
     label_.hide();
+    label_.set_name("");
   } else {
+    label_.set_name("custom-" + name_);
     auto str = fmt::format(format_, res.out);
     label_.set_text(str);
     label_.set_tooltip_text(str);
