@@ -9,6 +9,7 @@
 #include "modules/battery.hpp"
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
+#include "modules/sni/tray.hpp"
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
 #endif
