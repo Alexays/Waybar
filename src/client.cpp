@@ -1,10 +1,16 @@
 #include "client.hpp"
 
 waybar::Client::Client(int argc, char* argv[])
-  : gtk_app(Gtk::Application::create(argc, argv, "org.alexays.waybar")),
-    gdk_display(Gdk::Display::get_default()),
-    wl_display(gdk_wayland_display_get_wl_display(gdk_display->gobj()))
+  : gtk_app(Gtk::Application::create(argc, argv, "fr.arouillard.waybar")),
+    gdk_display(Gdk::Display::get_default())
 {
+  if (!gdk_display) {
+    throw std::runtime_error("Can't find display");
+  }
+  if (!GDK_IS_WAYLAND_DISPLAY(gdk_display->gobj())) {
+    throw std::runtime_error("Bar need to run under Wayland");
+  }
+  wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   auto getFirstValidPath = [] (std::vector<std::string> possiblePaths) {
     wordexp_t p;
 
