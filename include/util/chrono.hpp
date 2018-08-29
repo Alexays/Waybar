@@ -74,7 +74,9 @@ struct SleeperThread {
   {
     do_run_ = false;
     condvar_.notify_all();
-    thread_.detach();
+    if (thread_.joinable()) {
+      thread_.detach();
+    }
   }
 
 private:

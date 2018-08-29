@@ -48,7 +48,7 @@ int waybar::modules::sway::Ipc::open(const std::string& socketPath) const
   addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
   int l = sizeof(struct sockaddr_un);
   if (::connect(fd, reinterpret_cast<struct sockaddr *>(&addr), l) == -1) {
-    throw std::runtime_error("Unable to connect to " + socketPath);
+    throw std::runtime_error("Unable to connect to Sway");
   }
   return fd;
 }
