@@ -36,10 +36,28 @@ foreach p : client_protocols
 	client_protos_headers += wayland_scanner_client.process(xml)
 endforeach
 
+gdbus_code = generator(
+    find_program('gdbus-codegen'),
+    output: '@BASENAME@.c',
+    arguments: ['--c-namespace', 'Sn', '--body', '--output', '@OUTPUT@', '@INPUT@']
+)
+
+gdbus_header = generator(
+    find_program('gdbus-codegen'),
+    output: '@BASENAME@.h',
+    arguments: ['--c-namespace', 'Sn', '--header', '--output', '@OUTPUT@', '@INPUT@']
+)
+
+client_protos_src += gdbus_code.process('./dbus-status-notifier-watcher.xml')
+client_protos_headers += gdbus_header.process('./dbus-status-notifier-watcher.xml')
+
+client_protos_src += gdbus_code.process('./dbus-status-notifier-item.xml')
+client_protos_headers += gdbus_header.process('./dbus-status-notifier-item.xml')
+
 lib_client_protos = static_library(
 	'client_protos',
 	client_protos_src + client_protos_headers,
-	dependencies: [wayland_client]
+	dependencies: [wayland_client, gtkmm]
 ) # for the include directory
 
 client_protos = declare_dependency(
