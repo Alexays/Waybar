@@ -46,6 +46,10 @@ src_files = files(
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
+    'src/modules/sni/tray.cpp',
+    'src/modules/sni/snw.cpp',
+    'src/modules/sni/snh.cpp',
+    'src/modules/sni/sni.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp'
@@ -88,7 +92,7 @@ executable(
         gtkmm,
         libnl,
         libnlgen,
-        libpulse,
+        libpulse
     ],
     include_directories: [include_directories('include')],
     install: true,
