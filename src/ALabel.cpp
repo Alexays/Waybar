@@ -36,14 +36,25 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& ev)
   return true;
 }
 
-std::string waybar::ALabel::getIcon(uint16_t percentage)
+std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt)
 {
-  if (!config_["format-icons"] || !config_["format-icons"].isArray()) {
-    return "";
+  auto format_icons = config_["format-icons"];
+  if (format_icons.isObject()) {
+    if (!alt.empty() && format_icons[alt]) {
+      format_icons = format_icons[alt];
+    } else {
+      format_icons = format_icons["default"];
+    }
   }
-  auto size = config_["format-icons"].size();
-  auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
-  return config_["format-icons"][idx].asString();
+  if (format_icons.isArray()) {
+    auto size = format_icons.size();
+    auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
+    format_icons = format_icons[idx];
+  }
+  if (format_icons.isString()) {
+    return format_icons.asString();
+  }
+  return "";
 }
 
 waybar::ALabel::operator Gtk::Widget &() {

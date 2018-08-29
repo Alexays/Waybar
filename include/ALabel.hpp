@@ -10,7 +10,7 @@ class ALabel : public IModule {
     ALabel(const Json::Value&, const std::string format);
     virtual ~ALabel() = default;
     virtual auto update() -> void;
-    virtual std::string getIcon(uint16_t percentage);
+    virtual std::string getIcon(uint16_t, const std::string& alt = "");
     virtual operator Gtk::Widget &();
   protected:
     Gtk::EventBox event_box_;
