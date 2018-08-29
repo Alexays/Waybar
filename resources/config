@@ -44,7 +44,11 @@
     "pulseaudio": {
         "format": "{volume}% {icon}",
         "format-muted": "",
-        "format-icons": ["", ""]
+        "format-icons": {
+            "headphones": "",
+            "handsfree": "",
+            "default": ["", ""]
+        }
     },
     "custom/spotify": {
         "format": " {}",

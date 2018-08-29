@@ -19,12 +19,15 @@ class Pulseaudio : public ALabel {
     static void sinkInfoCb(pa_context*, const pa_sink_info*, int, void*);
     static void serverInfoCb(pa_context*, const pa_server_info*, void*);
 
+    const std::string getPortIcon() const;
+
     pa_threaded_mainloop* mainloop_;
     pa_mainloop_api* mainloop_api_;
     pa_context* context_;
     uint32_t sink_idx_{0};
     uint16_t volume_;
     bool muted_;
+    std::string port_name_;
     std::string desc_;
 };
 

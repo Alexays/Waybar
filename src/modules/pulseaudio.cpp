@@ -89,6 +89,7 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context* /*context*/,
     pa->volume_ = volume * 100.0f;
     pa->muted_ = i->mute != 0;
     pa->desc_ = i->description;
+    pa->port_name_ = i->active_port->name;
     pa->dp.emit();
   }
 }
@@ -104,6 +105,27 @@ void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context,
     sinkInfoCb, data);
 }
 
+const std::string waybar::modules::Pulseaudio::getPortIcon() const
+{
+  std::vector<std::string> ports = {
+    "headphones",
+    "speaker",
+    "hdmi",
+    "headset",
+    "handsfree",
+    "portable",
+    "car",
+    "hifi",
+    "phone",
+  };
+  for (auto port : ports) {
+    if (port_name_.find(port) != std::string::npos) {
+      return port;
+    }
+  }
+  return "";
+}
+
 auto waybar::modules::Pulseaudio::update() -> void
 {
   auto format = format_;
@@ -111,11 +133,16 @@ auto waybar::modules::Pulseaudio::update() -> void
     format =
       config_["format-muted"] ? config_["format-muted"].asString() : format;
     label_.get_style_context()->add_class("muted");
+  } else if (port_name_.find("a2dp_sink") != std::string::npos) {
+    format = config_["format-bluetooth"]
+      ? config_["format-bluetooth"].asString() : format;
+    label_.get_style_context()->add_class("bluetooth");
   } else {
     label_.get_style_context()->remove_class("muted");
+    label_.get_style_context()->add_class("bluetooth");
   }
   label_.set_label(fmt::format(format,
     fmt::arg("volume", volume_),
-    fmt::arg("icon", getIcon(volume_))));
+    fmt::arg("icon", getIcon(volume_, getPortIcon()))));
   label_.set_tooltip_text(desc_);
 }
