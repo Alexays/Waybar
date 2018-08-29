@@ -2,14 +2,10 @@
 
 #include <unistd.h>
 #include <wordexp.h>
-
 #include <fmt/format.h>
-
 #include <gdk/gdk.h>
 #include <wayland-client.h>
-
 #include <gdk/gdkwayland.h>
-
 #include "bar.hpp"
 
 namespace waybar {
@@ -30,14 +26,14 @@ class Client {
     struct wl_seat *seat = nullptr;
     std::vector<std::unique_ptr<Bar>> bars;
 
-private:
-  void bindInterfaces();
-  auto setupCss();
+  private:
+    void bindInterfaces();
+    auto setupCss();
 
-  static void handleGlobal(void *data, struct wl_registry *registry,
-    uint32_t name, const char *interface, uint32_t version);
-  static void handleGlobalRemove(void *data,
-    struct wl_registry *registry, uint32_t name);
+    static void handleGlobal(void *data, struct wl_registry *registry,
+      uint32_t name, const char *interface, uint32_t version);
+    static void handleGlobalRemove(void *data,
+      struct wl_registry *registry, uint32_t name);
 };
 
 }

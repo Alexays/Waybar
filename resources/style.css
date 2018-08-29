@@ -27,7 +27,7 @@ window {
     border-bottom: 3px solid white;
 }
 
-#clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify {
+#clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify, #tray {
     padding: 0 10px;
     margin: 0 5px;
 }
@@ -93,4 +93,8 @@ window {
 #custom-spotify {
     background: #66cc99;
     color: #2a5c45;
+}
+
+#tray {
+    background-color: #2980b9;
 }
