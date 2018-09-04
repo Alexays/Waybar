@@ -36,7 +36,7 @@ auto waybar::modules::sway::Window::update() -> void
 
 std::string waybar::modules::sway::Window::getFocusedNode(Json::Value nodes)
 {
-  for (auto &node : nodes) {
+  for (auto const& node : nodes) {
     if (node["focused"].asBool() && node["type"] == "con") {
       return node["name"].asString();
     }
