@@ -2,20 +2,17 @@
 
 #include <iostream>
 
-waybar::modules::SNI::Item::Item(std::string bus_name, std::string object_path,
-  Glib::Dispatcher& dp)
-  : icon_size(16), effective_icon_size(0),
-    image(Gtk::manage(new Gtk::Image())),
-    bus_name_(bus_name), object_path_(object_path), dp_(dp)
+waybar::modules::SNI::Item::Item(std::string bn, std::string op,
+  Glib::Dispatcher* dp)
+  : bus_name(bn), object_path(op), event_box(),
+    icon_size(16), effective_icon_size(0),
+    image(Gtk::manage(new Gtk::Image())), dp_(dp)
 {
+  event_box.add(*image);
   cancellable_ = g_cancellable_new();
   sn_org_kde_status_notifier_item_proxy_new_for_bus(G_BUS_TYPE_SESSION,
-    G_DBUS_PROXY_FLAGS_NONE, bus_name_.c_str(), object_path_.c_str(),
+    G_DBUS_PROXY_FLAGS_NONE, bus_name.c_str(), object_path.c_str(),
     cancellable_, &Item::proxyReady, this);
-}
-
-waybar::modules::SNI::Item::~Item()
-{
 }
 
 void waybar::modules::SNI::Item::proxyReady(GObject* obj, GAsyncResult* res,
@@ -36,8 +33,8 @@ void waybar::modules::SNI::Item::proxyReady(GObject* obj, GAsyncResult* res,
     return;
   }
   auto conn = g_dbus_proxy_get_connection(G_DBUS_PROXY(proxy));
-  g_dbus_connection_call(conn, item->bus_name_.c_str(),
-    item->object_path_.c_str(), "org.freedesktop.DBus.Properties", "GetAll",
+  g_dbus_connection_call(conn, item->bus_name.c_str(),
+    item->object_path.c_str(), "org.freedesktop.DBus.Properties", "GetAll",
     g_variant_new("(s)", "org.kde.StatusNotifierItem"),
     G_VARIANT_TYPE("(a{sv})"), G_DBUS_CALL_FLAGS_NONE, -1,
     item->cancellable_, &Item::getAll, data);
@@ -103,8 +100,8 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
   g_variant_iter_free(it);
   g_variant_unref(properties);
   if (item->id.empty() || item->category.empty() || item->status.empty()) {
-    std::cerr << "Invalid Status Notifier Item: " + item->bus_name_ + ","
-      + item->object_path_ << std::endl;
+    std::cerr << "Invalid Status Notifier Item: " + item->bus_name + ","
+      + item->object_path << std::endl;
     return;
   }
   if (!item->icon_theme_path.empty()) {
@@ -113,7 +110,7 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
       item->icon_theme_path.c_str());
   }
   item->updateImage();
-  item->dp_.emit();
+  item->dp_->emit();
   // TODO: handle change
 }
 
@@ -144,11 +141,10 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(
   std::string name, int request_size)
 {
   int icon_size = 0;
-  Glib::RefPtr<Gtk::IconTheme> icon_theme =
-    Gtk::IconTheme::get_default();
+  Glib::RefPtr<Gtk::IconTheme> icon_theme = Gtk::IconTheme::get_default();
   icon_theme->rescan_if_needed();
   auto sizes = icon_theme->get_icon_sizes(name.c_str());
-  for (auto size : sizes) {
+  for (auto const& size : sizes) {
     // -1 == scalable
     if (size == request_size || size == -1) {
       icon_size = request_size;
