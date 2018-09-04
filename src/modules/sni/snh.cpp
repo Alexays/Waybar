@@ -2,7 +2,9 @@
 
 #include <iostream>
 
-waybar::modules::SNI::Host::Host(Glib::Dispatcher& dp)
+using namespace waybar::modules::SNI;
+
+Host::Host(Glib::Dispatcher* dp)
 : dp_(dp)
 {
   GBusNameOwnerFlags flags = static_cast<GBusNameOwnerFlags>(
@@ -14,11 +16,7 @@ waybar::modules::SNI::Host::Host(Glib::Dispatcher& dp)
     &Host::busAcquired, nullptr, nullptr, this, nullptr);
 }
 
-waybar::modules::SNI::Host::~Host()
-{
-}
-
-void waybar::modules::SNI::Host::busAcquired(GDBusConnection* connection,
+void Host::busAcquired(GDBusConnection* connection,
   const gchar* name, gpointer data)
 {
   auto host = static_cast<SNI::Host *>(data);
@@ -29,7 +27,7 @@ void waybar::modules::SNI::Host::busAcquired(GDBusConnection* connection,
     &Host::nameAppeared, &Host::nameVanished, data, nullptr);
 }
 
-void waybar::modules::SNI::Host::nameAppeared(GDBusConnection* connection,
+void Host::nameAppeared(GDBusConnection* connection,
   const gchar* name, const gchar* name_owner, gpointer data)
 {
   auto host = static_cast<SNI::Host *>(data);
@@ -45,7 +43,7 @@ void waybar::modules::SNI::Host::nameAppeared(GDBusConnection* connection,
     host->cancellable_, &Host::proxyReady, data);
 }
 
-void waybar::modules::SNI::Host::nameVanished(GDBusConnection* connection,
+void Host::nameVanished(GDBusConnection* connection,
   const gchar* name, gpointer data)
 {
   auto host = static_cast<SNI::Host *>(data);
@@ -55,7 +53,7 @@ void waybar::modules::SNI::Host::nameVanished(GDBusConnection* connection,
   host->items.clear();
 }
 
-void waybar::modules::SNI::Host::proxyReady(GObject* src, GAsyncResult* res,
+void Host::proxyReady(GObject* src, GAsyncResult* res,
   gpointer data)
 {
   GError* error = nullptr;
@@ -78,7 +76,7 @@ void waybar::modules::SNI::Host::proxyReady(GObject* src, GAsyncResult* res,
     &Host::registerHost, data);
 }
 
-void waybar::modules::SNI::Host::registerHost(GObject* src, GAsyncResult* res,
+void Host::registerHost(GObject* src, GAsyncResult* res,
   gpointer data)
 {
   GError* error = nullptr;
@@ -109,7 +107,7 @@ void waybar::modules::SNI::Host::registerHost(GObject* src, GAsyncResult* res,
   g_strfreev(items);
 }
 
-void waybar::modules::SNI::Host::itemRegistered(
+void Host::itemRegistered(
   SnOrgKdeStatusNotifierWatcher* watcher, const gchar* service, gpointer data)
 {
   std::cout << "Item registered" << std::endl;
@@ -117,32 +115,41 @@ void waybar::modules::SNI::Host::itemRegistered(
   host->addRegisteredItem(service);
 }
 
-void waybar::modules::SNI::Host::itemUnregistered(
+void Host::itemUnregistered(
   SnOrgKdeStatusNotifierWatcher* watcher, const gchar* service, gpointer data)
 {
-  std::cout << "Item Unregistered" << std::endl;
+  auto host = static_cast<SNI::Host *>(data);
+  auto [bus_name, object_path] = host->getBusNameAndObjectPath(service);
+  for (auto it = host->items.begin(); it != host->items.end(); ++it) {
+    if (it->bus_name == bus_name && it->object_path == object_path) {
+      host->items.erase(it);
+      std::cout << "Item Unregistered" << std::endl;
+      break;
+    }
+  }
+  host->dp_->emit();
 }
 
-void waybar::modules::SNI::Host::getBusNameAndObjectPath(const gchar* service,
-  gchar** bus_name, gchar** object_path)
+std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(
+  const gchar* service)
 {
-  gchar* tmp = g_strstr_len (service, -1, "/");
+  std::string bus_name;
+  std::string object_path;
+  gchar* tmp = g_strstr_len(service, -1, "/");
   if (tmp != nullptr) {
     gchar** str = g_strsplit(service, "/", 2);
-    *bus_name = g_strdup(str[0]);
-    *object_path = g_strdup(tmp);
+    bus_name = str[0];
+    object_path = tmp;
     g_strfreev(str);
   } else {
-    *bus_name = g_strdup(service);
-    *object_path = g_strdup("/StatusNotifierItem");
+    bus_name = service;
+    object_path = "/StatusNotifierItem";
   }
+  return { bus_name, object_path };
 }
 
-void waybar::modules::SNI::Host::addRegisteredItem(const gchar* service)
+void Host::addRegisteredItem(const gchar* service)
 {
-  gchar* bus_name = nullptr;
-  gchar* object_path = nullptr;
-
-  getBusNameAndObjectPath(service, &bus_name, &object_path);
+  auto [bus_name, object_path] = getBusNameAndObjectPath(service);
   items.emplace_back(bus_name, object_path, dp_);
 }

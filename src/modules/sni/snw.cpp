@@ -2,7 +2,9 @@
 
 #include <iostream>
 
-waybar::modules::SNI::Watcher::Watcher()
+using namespace waybar::modules::SNI;
+
+Watcher::Watcher()
 {
   GBusNameOwnerFlags flags = static_cast<GBusNameOwnerFlags>(
     G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT
@@ -13,12 +15,12 @@ waybar::modules::SNI::Watcher::Watcher()
   watcher_ = sn_org_kde_status_notifier_watcher_skeleton_new();
 }
 
-waybar::modules::SNI::Watcher::~Watcher()
+Watcher::~Watcher()
 {
 }
 
-void waybar::modules::SNI::Watcher::busAcquired(GDBusConnection* connection,
-  const gchar* name, gpointer data)
+void Watcher::busAcquired(GDBusConnection* connection, const gchar* name,
+  gpointer data)
 {
   GError* error = nullptr;
   auto host = static_cast<SNI::Watcher*>(data);
@@ -41,9 +43,8 @@ void waybar::modules::SNI::Watcher::busAcquired(GDBusConnection* connection,
   std::cout << "Bus aquired" << std::endl;
 }
 
-gboolean waybar::modules::SNI::Watcher::handleRegisterHost(
-  Watcher* obj, GDBusMethodInvocation* invocation,
-  const gchar* service)
+gboolean Watcher::handleRegisterHost(Watcher* obj,
+  GDBusMethodInvocation* invocation, const gchar* service)
 {
   const gchar* bus_name = service;
   const gchar* object_path = "/StatusNotifierHost";
@@ -64,7 +65,7 @@ gboolean waybar::modules::SNI::Watcher::handleRegisterHost(
       bus_name, object_path);
     return TRUE;
   }
-  watch = gfWatchNew(GF_WATCH_TYPE_HOST, service, bus_name, object_path);
+  watch = gfWatchNew(GF_WATCH_TYPE_HOST, service, bus_name, object_path, obj);
   obj->hosts_ = g_slist_prepend(obj->hosts_, watch);
   sn_org_kde_status_notifier_watcher_set_is_status_notifier_host_registered(
     obj->watcher_, TRUE);
@@ -78,9 +79,8 @@ gboolean waybar::modules::SNI::Watcher::handleRegisterHost(
   return TRUE;
 }
 
-gboolean waybar::modules::SNI::Watcher::handleRegisterItem(
-  Watcher* obj, GDBusMethodInvocation* invocation,
-  const gchar* service)
+gboolean Watcher::handleRegisterItem(Watcher* obj,
+  GDBusMethodInvocation* invocation, const gchar* service)
 {
   const gchar* bus_name = service;
   const gchar* object_path = "/StatusNotifierItem";
@@ -102,7 +102,7 @@ gboolean waybar::modules::SNI::Watcher::handleRegisterItem(
       obj->watcher_, invocation);
     return TRUE;
   }
-  watch = gfWatchNew(GF_WATCH_TYPE_ITEM, service, bus_name, object_path);
+  watch = gfWatchNew(GF_WATCH_TYPE_ITEM, service, bus_name, object_path, obj);
   obj->items_ = g_slist_prepend(obj->items_, watch);
   obj->updateRegisteredItems(obj->watcher_);
   gchar* tmp = g_strdup_printf("%s%s", bus_name, object_path);
@@ -114,8 +114,8 @@ gboolean waybar::modules::SNI::Watcher::handleRegisterItem(
   return TRUE;
 }
 
-waybar::modules::SNI::GfWatch* waybar::modules::SNI::Watcher::gfWatchFind(
-  GSList* list, const gchar* bus_name, const gchar* object_path)
+Watcher::GfWatch* Watcher::gfWatchFind(GSList* list, const gchar* bus_name,
+  const gchar* object_path)
 {
   for (GSList* l = list; l != nullptr; l = g_slist_next (l)) {
     GfWatch* watch = static_cast<GfWatch*>(l->data);
@@ -127,12 +127,12 @@ waybar::modules::SNI::GfWatch* waybar::modules::SNI::Watcher::gfWatchFind(
   return nullptr;
 }
 
-waybar::modules::SNI::GfWatch* waybar::modules::SNI::Watcher::gfWatchNew(
-  GfWatchType type, const gchar* service, const gchar* bus_name,
-  const gchar* object_path)
+Watcher::GfWatch* Watcher::gfWatchNew(GfWatchType type, const gchar* service,
+  const gchar* bus_name, const gchar* object_path, Watcher* watcher)
 {
   GfWatch* watch = g_new0(GfWatch, 1);
   watch->type = type;
+  watch->watcher = watcher;
   watch->service = g_strdup(service);
   watch->bus_name = g_strdup(bus_name);
   watch->object_path = g_strdup(object_path);
@@ -142,26 +142,40 @@ waybar::modules::SNI::GfWatch* waybar::modules::SNI::Watcher::gfWatchNew(
   return watch;
 }
 
-void waybar::modules::SNI::Watcher::nameVanished(GDBusConnection* connection,
-  const char* name, gpointer data)
+void Watcher::nameVanished(GDBusConnection* connection, const char* name,
+  gpointer data)
 {
-  //TODO
-  std::cout << "name vanished" << std::endl;
+  auto watch = static_cast<GfWatch *>(data);
+  if (watch->type == GF_WATCH_TYPE_HOST) {
+    watch->watcher->hosts_ = g_slist_remove(watch->watcher->hosts_, watch);
+    if (watch->watcher->hosts_ == nullptr)  {
+      sn_org_kde_status_notifier_watcher_set_is_status_notifier_host_registered(
+        watch->watcher->watcher_, FALSE);
+      sn_org_kde_status_notifier_watcher_emit_status_notifier_host_registered(
+        watch->watcher->watcher_);
+    }
+  } else if (watch->type == GF_WATCH_TYPE_ITEM) {
+    watch->watcher->items_ = g_slist_remove(watch->watcher->items_, watch);
+    watch->watcher->updateRegisteredItems(watch->watcher->watcher_);
+    gchar* tmp = g_strdup_printf("%s%s", watch->bus_name, watch->object_path);
+    sn_org_kde_status_notifier_watcher_emit_status_notifier_item_unregistered(
+      watch->watcher->watcher_, tmp);
+    g_free(tmp);
+  }
 }
 
-void waybar::modules::SNI::Watcher::updateRegisteredItems(
-  SnOrgKdeStatusNotifierWatcher* obj)
+void Watcher::updateRegisteredItems(SnOrgKdeStatusNotifierWatcher* obj)
 {
   GVariantBuilder builder;
   g_variant_builder_init(&builder, G_VARIANT_TYPE("as")); 
   for (GSList* l = items_; l != nullptr; l = g_slist_next(l)) {
     GfWatch* watch = static_cast<GfWatch*>(l->data);
-    gchar* item = g_strdup_printf ("%s%s", watch->bus_name, watch->object_path);
-    g_variant_builder_add (&builder, "s", item);
-    g_free (item);
+    gchar* item = g_strdup_printf("%s%s", watch->bus_name, watch->object_path);
+    g_variant_builder_add(&builder, "s", item);
+    g_free(item);
   }
   GVariant* variant = g_variant_builder_end(&builder);
-  const gchar** items = g_variant_get_strv (variant, nullptr);
+  const gchar** items = g_variant_get_strv(variant, nullptr);
   sn_org_kde_status_notifier_watcher_set_registered_status_notifier_items(
     obj, items);
   g_variant_unref(variant);

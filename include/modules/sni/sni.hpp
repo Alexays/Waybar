@@ -7,8 +7,12 @@ namespace waybar::modules::SNI {
 
 class Item {
   public:
-    Item(std::string, std::string, Glib::Dispatcher&);
-    ~Item();
+    Item(std::string, std::string, Glib::Dispatcher*);
+
+    std::string bus_name;
+    std::string object_path;
+    Gtk::EventBox event_box;
+
     int icon_size;
     int effective_icon_size;
     Gtk::Image* image;
@@ -31,9 +35,7 @@ class Item {
 
     void updateImage();
     Glib::RefPtr<Gdk::Pixbuf> getIconByName(std::string name, int size);
-    std::string bus_name_;
-    std::string object_path_;
-    Glib::Dispatcher& dp_;
+    Glib::Dispatcher* dp_;
     GCancellable* cancellable_ = nullptr;
     SnOrgKdeStatusNotifierItem* proxy_ = nullptr;
 };
