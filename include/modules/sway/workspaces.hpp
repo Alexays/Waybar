@@ -18,7 +18,7 @@ class Workspaces : public IModule {
   private:
     void worker();
     void addWorkspace(Json::Value);
-    std::string getIcon(std::string);
+    std::string getIcon(std::string, Json::Value);
     bool handleScroll(GdkEventScroll*);
     int getPrevWorkspace();
     int getNextWorkspace();
