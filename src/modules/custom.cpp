@@ -24,6 +24,7 @@ void waybar::modules::Custom::worker()
       }
     }
     if (can_update) {
+      output_ = waybar::util::command::exec(config_["exec"].asString());
       dp.emit();
     }
     thread_.sleep_for(chrono::seconds(interval));
@@ -32,15 +33,13 @@ void waybar::modules::Custom::worker()
 
 auto waybar::modules::Custom::update() -> void
 {
-  auto res = waybar::util::command::exec(config_["exec"].asString());
-
   // Hide label if output is empty
-  if (res.out.empty() || res.exit_code != 0) {
+  if (output_.out.empty() || output_.exit_code != 0) {
     label_.hide();
     label_.set_name("");
   } else {
     label_.set_name("custom-" + name_);
-    auto str = fmt::format(format_, res.out);
+    auto str = fmt::format(format_, output_.out);
     label_.set_text(str);
     label_.set_tooltip_text(str);
     label_.show();

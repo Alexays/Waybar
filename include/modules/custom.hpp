@@ -17,6 +17,7 @@ class Custom : public ALabel {
 
     const std::string name_;
     waybar::util::SleeperThread thread_;
+    waybar::util::command::res output_;
 };
 
 }
