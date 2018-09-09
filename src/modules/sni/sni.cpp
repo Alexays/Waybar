@@ -74,6 +74,7 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
     } else if (g_strcmp0(key, "IconName") == 0) {
       item->icon_name = g_variant_dup_string(value, nullptr);
     } else if (g_strcmp0(key, "IconPixmap") == 0) {
+      item->icon_pixmap = item->extractPixBuf(value);
       // TODO: icon pixmap
     } else if (g_strcmp0(key, "OverlayIconName") == 0) {
       item->overlay_icon_name = g_variant_dup_string(value, nullptr);
@@ -114,6 +115,55 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
   // TODO: handle change
 }
 
+Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::extractPixBuf(
+  GVariant* variant)
+{
+  GVariantIter* it;
+  g_variant_get(variant, "a(iiay)", &it);
+  if (it == nullptr) {
+    return Glib::RefPtr<Gdk::Pixbuf>{};
+  }
+  GVariant* val;
+  gint lwidth = 0;
+  gint lheight = 0;
+  gint width;
+  gint height;
+  guchar* array = nullptr;
+  while (g_variant_iter_loop(it, "(ii@ay)", &width, &height, &val)) {
+    if (width > 0 && height > 0 && val != nullptr
+      && width * height > lwidth * lheight) {
+        auto size = g_variant_get_size(val);
+        /* Sanity check */
+        if (size == 4U * width * height) {
+          /* Find the largest image */
+          gconstpointer data = g_variant_get_data(val);
+          if (data != nullptr) {
+            if (array != nullptr) {
+              g_free(array);
+            }
+            array = static_cast<guchar*>(g_memdup(data, size));
+            lwidth = width;
+            lheight = height;
+          }
+        }
+      }
+  }
+  g_variant_iter_free(it);
+  if (array != nullptr) {
+    /* argb to rgba */
+    for (uint32_t i = 0; i < 4U * lwidth * lheight; i += 4) {
+      guchar alpha = array[i];
+      array[i] = array[i + 1];
+      array[i + 1] = array[i + 2];
+      array[i + 2] = array[i + 3];
+      array[i + 3] = alpha;
+    }
+    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB,
+      true, 8, lwidth, lheight, 4 * lwidth);
+  }
+  return Glib::RefPtr<Gdk::Pixbuf>{};
+}
+
 void waybar::modules::SNI::Item::updateImage()
 {
   if (!icon_name.empty()) {
@@ -131,6 +181,8 @@ void waybar::modules::SNI::Item::updateImage()
       pixbuf = getIconByName("image-missing", icon_size);
     }
     image->set(pixbuf);
+  } else if (icon_pixmap) {
+    image->set(icon_pixmap);
   } else {
     image->set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
     image->set_pixel_size(icon_size);
