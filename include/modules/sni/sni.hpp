@@ -23,6 +23,7 @@ class Item {
     std::string title;
     int32_t window_id;
     std::string icon_name;
+    Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
     std::string overlay_icon_name;
     std::string attention_icon_name;
     std::string attention_movie_name;
@@ -34,6 +35,7 @@ class Item {
     static void getAll(GObject* obj, GAsyncResult* res, gpointer data);
 
     void updateImage();
+    Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
     Glib::RefPtr<Gdk::Pixbuf> getIconByName(std::string name, int size);
     Glib::Dispatcher* dp_;
     GCancellable* cancellable_ = nullptr;
