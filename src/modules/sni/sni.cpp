@@ -75,7 +75,6 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
       item->icon_name = g_variant_dup_string(value, nullptr);
     } else if (g_strcmp0(key, "IconPixmap") == 0) {
       item->icon_pixmap = item->extractPixBuf(value);
-      // TODO: icon pixmap
     } else if (g_strcmp0(key, "OverlayIconName") == 0) {
       item->overlay_icon_name = g_variant_dup_string(value, nullptr);
     } else if (g_strcmp0(key, "OverlayIconPixmap") == 0) {
