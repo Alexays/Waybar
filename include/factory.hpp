@@ -19,6 +19,8 @@
 
 namespace waybar {
 
+class Bar;
+
 class Factory {
   public:
     Factory(Bar& bar, const Json::Value& config);
