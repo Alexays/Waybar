@@ -13,7 +13,7 @@ waybar::modules::Cpu::Cpu(const Json::Value& config)
 
 auto waybar::modules::Cpu::update() -> void
 {
-  struct sysinfo info = {0};
+  struct sysinfo info = {};
   if (sysinfo(&info) == 0) {
     float f_load = 1.f / (1u << SI_LOAD_SHIFT);
     uint16_t load = info.loads[0] * f_load * 100 / get_nprocs();
