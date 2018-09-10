@@ -165,7 +165,7 @@ int waybar::modules::Network::getExternalInterface()
    * consume responses till NLMSG_DONE/NLMSG_ERROR is encountered).
    */
   do {
-    uint64_t len = netlinkResponse(sock_fd_, resp, route_buffer_size);
+    auto len = netlinkResponse(sock_fd_, resp, route_buffer_size);
     if (len < 0) {
       goto out;
     }
@@ -228,7 +228,7 @@ int waybar::modules::Network::getExternalInterface()
               break;
             }
             for (uint32_t i = 0; i < dstlen; i += 1) {
-              c |= *(unsigned char *)(RTA_DATA(attr) + i);
+              c |= *((unsigned char *)RTA_DATA(attr) + i);
             }
             has_destination = (c == 0);
             break;
@@ -255,10 +255,10 @@ out:
   return ifidx;
 }
 
-uint64_t waybar::modules::Network::netlinkRequest(int fd, void *req,
+int waybar::modules::Network::netlinkRequest(int fd, void *req,
   uint32_t reqlen, uint32_t groups)
 {
-  struct sockaddr_nl sa = {0};
+  struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec iov = { req, reqlen };
@@ -266,11 +266,11 @@ uint64_t waybar::modules::Network::netlinkRequest(int fd, void *req,
   return sendmsg(fd, &msg, 0);
 }
 
-uint64_t waybar::modules::Network::netlinkResponse(int fd, void *resp,
+int waybar::modules::Network::netlinkResponse(int fd, void *resp,
   uint32_t resplen, uint32_t groups)
 {
-  uint64_t ret;
-  struct sockaddr_nl sa = {0};
+  int ret;
+  struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec iov = { resp, resplen };
