@@ -33,10 +33,14 @@ class Item {
   private:
     static void proxyReady(GObject* obj, GAsyncResult* res, gpointer data);
     static void getAll(GObject* obj, GAsyncResult* res, gpointer data);
+    static void handleActivate(GObject*, GAsyncResult*, gpointer);
+    static void handleSecondaryActivate(GObject*, GAsyncResult*, gpointer);
 
     void updateImage();
     Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
     Glib::RefPtr<Gdk::Pixbuf> getIconByName(std::string name, int size);
+    bool handleClick(GdkEventButton* const& /*ev*/);
+
     Glib::Dispatcher* dp_;
     GCancellable* cancellable_ = nullptr;
     SnOrgKdeStatusNotifierItem* proxy_ = nullptr;
