@@ -9,6 +9,9 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op,
     image(Gtk::manage(new Gtk::Image())), dp_(dp)
 {
   event_box.add(*image);
+  event_box.add_events(Gdk::BUTTON_PRESS_MASK);
+  event_box.signal_button_press_event()
+    .connect(sigc::mem_fun(*this, &Item::handleClick));
   cancellable_ = g_cancellable_new();
   sn_org_kde_status_notifier_item_proxy_new_for_bus(G_BUS_TYPE_SESSION,
     G_DBUS_PROXY_FLAGS_NONE, bus_name.c_str(), object_path.c_str(),
@@ -70,7 +73,7 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
     } else if (g_strcmp0(key, "Status") == 0) {
       item->status = g_variant_dup_string(value, nullptr);
     } else if (g_strcmp0(key, "WindowId") == 0) {
-      item->window_id = g_variant_get_int32 (value);
+      item->window_id = g_variant_get_int32(value);
     } else if (g_strcmp0(key, "IconName") == 0) {
       item->icon_name = g_variant_dup_string(value, nullptr);
     } else if (g_strcmp0(key, "IconPixmap") == 0) {
@@ -209,4 +212,34 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(
   }
   return icon_theme->load_icon(name.c_str(), icon_size,
     Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+}
+
+void waybar::modules::SNI::Item::handleActivate(GObject* src, GAsyncResult* res,
+  gpointer data)
+{
+  auto item = static_cast<SNI::Item *>(data);
+  sn_org_kde_status_notifier_item_call_activate_finish(item->proxy_, res,
+    nullptr);
+}
+
+void waybar::modules::SNI::Item::handleSecondaryActivate(GObject* src,
+  GAsyncResult* res, gpointer data)
+{
+  auto item = static_cast<SNI::Item *>(data);
+  sn_org_kde_status_notifier_item_call_secondary_activate_finish(item->proxy_,
+    res, nullptr);
+}
+
+bool waybar::modules::SNI::Item::handleClick(GdkEventButton* const& ev)
+{
+  if (ev->type == GDK_BUTTON_PRESS) {
+    sn_org_kde_status_notifier_item_call_activate(proxy_, ev->x, ev->y, nullptr,
+      &Item::handleActivate, this);
+  } else if (ev->type == GDK_2BUTTON_PRESS) {
+    sn_org_kde_status_notifier_item_call_secondary_activate(proxy_, ev->x,
+      ev->y, nullptr, &Item::handleSecondaryActivate, this);
+  } else {
+    return false;
+  }
+  return true;
 }
