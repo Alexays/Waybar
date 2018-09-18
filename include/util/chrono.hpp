@@ -70,13 +70,18 @@ struct SleeperThread {
     condvar_.notify_all();
   }
 
-  ~SleeperThread()
+  auto stop()
   {
     do_run_ = false;
     condvar_.notify_all();
     if (thread_.joinable()) {
       thread_.detach();
     }
+  }
+
+  ~SleeperThread()
+  {
+    stop();
   }
 
 private:
