@@ -1,7 +1,7 @@
 #include "modules/sway/window.hpp"
 
 waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
-  : ALabel(config, "{}"), bar_(bar)
+  : ALabel(config, "{}"), bar_(bar), windowId_(-1)
 {
   label_.set_name("window");
   ipc_.connect();
@@ -20,6 +20,13 @@ void waybar::modules::sway::Window::worker()
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
         && parsed["container"]["focused"].asBool()) {
         window_ = parsed["container"]["name"].asString();
+        windowId_ = parsed["container"]["id"].asInt();
+        dp.emit();
+      } else if (parsed["change"] == "close"
+        && parsed["container"]["focused"].asBool()
+        && windowId_ == parsed["container"]["id"].asInt()) {
+        window_.clear();
+        windowId_ = -1;
         dp.emit();
       }
     } catch (const std::exception& e) {
@@ -34,18 +41,19 @@ auto waybar::modules::sway::Window::update() -> void
   label_.set_tooltip_text(window_);
 }
 
-std::string waybar::modules::sway::Window::getFocusedNode(Json::Value nodes)
+std::tuple<int, std::string> waybar::modules::sway::Window::getFocusedNode(
+  Json::Value nodes)
 {
   for (auto &node : nodes) {
     if (node["focused"].asBool() && node["type"] == "con") {
-      return node["name"].asString();
+      return { node["id"].asInt(), node["name"].asString() };
     }
-    auto res = getFocusedNode(node["nodes"]);
-    if (!res.empty()) {
-      return res;
+    auto [id, name] = getFocusedNode(node["nodes"]);
+    if (id > -1 && !name.empty()) {
+      return { id, name };
     }
   }
-  return std::string();
+  return { -1, std::string() };
 }
 
 void waybar::modules::sway::Window::getFocusedWindow()
@@ -53,7 +61,9 @@ void waybar::modules::sway::Window::getFocusedWindow()
   try {
     auto res = ipc_.sendCmd(IPC_GET_TREE);
     auto parsed = parser_.parse(res.payload);
-    window_ = getFocusedNode(parsed["nodes"]);
+    auto [id, name] = getFocusedNode(parsed["nodes"]);
+    windowId_ = id;
+    window_ = name;
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
