@@ -13,7 +13,8 @@ class Custom : public ALabel {
     Custom(const std::string, const Json::Value&);
     auto update() -> void;
   private:
-    void worker();
+    void delayWorker();
+    void continuousWorker();
 
     const std::string name_;
     waybar::util::SleeperThread thread_;

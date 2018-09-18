@@ -7,12 +7,16 @@ waybar::modules::Custom::Custom(const std::string name,
   if (!config_["exec"]) {
     throw std::runtime_error(name_ + " has no exec path.");
   }
-  worker();
+  if (config_["interval"]) {
+    delayWorker();
+  } else {
+    continuousWorker();
+  }
 }
 
-void waybar::modules::Custom::worker()
+void waybar::modules::Custom::delayWorker()
 {
-  uint32_t interval = config_["interval"] ? config_["inveral"].asUInt() : 30;
+  auto interval = config_["interval"].asUInt();
   thread_ = [this, interval] {
     bool can_update = true;
     if (config_["exec-if"]) {
@@ -28,6 +32,34 @@ void waybar::modules::Custom::worker()
       dp.emit();
     }
     thread_.sleep_for(chrono::seconds(interval));
+  };
+}
+
+void waybar::modules::Custom::continuousWorker()
+{
+  auto cmd = config_["exec"].asString();
+  FILE* fp(popen(cmd.c_str(), "r"));
+  if (!fp) {
+    throw std::runtime_error("Unable to open " + cmd);
+  }
+  thread_ = [this, fp] {
+    char* buff = nullptr;
+    size_t len = 0;
+    if (getline(&buff, &len, fp) == -1) {
+      thread_.stop();
+      output_ = { 1, "" };
+      dp.emit();
+      return;
+    }
+
+    std::string output = buff;
+
+    // Remove last newline
+    if (!output.empty() && output[output.length()-1] == '\n') {
+      output.erase(output.length()-1);
+    }
+    output_ = { 0, output };
+    dp.emit();
   };
 }
 
