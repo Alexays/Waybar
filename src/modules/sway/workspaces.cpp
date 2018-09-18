@@ -79,7 +79,13 @@ auto waybar::modules::sway::Workspaces::update() -> void
         box_.reorder_child(button, node["num"].asInt());
       }
       auto icon = getIcon(node["name"].asString(), node);
-      button.set_label(icon);
+      if (config_["format"]) {
+        auto format = config_["format"].asString();
+        button.set_label(fmt::format(format, fmt::arg("icon", icon),
+          fmt::arg("name", node["name"].asString())));
+      } else {
+        button.set_label(icon);
+      }
       button.show();
     }
   }
@@ -91,11 +97,12 @@ auto waybar::modules::sway::Workspaces::update() -> void
 void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
 {
   auto icon = getIcon(node["name"].asString(), node);
-  auto pair = buttons_.emplace(node["num"].asInt(), icon);
+  auto format = config_["format"]
+    ? fmt::format(config_["format"].asString(), fmt::arg("icon", icon),
+      fmt::arg("name", node["name"].asString()))
+    : icon;
+  auto pair = buttons_.emplace(node["num"].asInt(), format);
   auto &button = pair.first->second;
-  if (icon != node["name"].asString()) {
-    button.get_style_context()->add_class("icon");
-  }
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
