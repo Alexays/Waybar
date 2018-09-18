@@ -46,6 +46,7 @@ void waybar::modules::Custom::continuousWorker()
     char* buff = nullptr;
     size_t len = 0;
     if (getline(&buff, &len, fp) == -1) {
+      pclose(fp);
       thread_.stop();
       output_ = { 1, "" };
       dp.emit();
