@@ -32,6 +32,7 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
+dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4')
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libnl = dependency('libnl-3.0', required: false)
@@ -90,6 +91,7 @@ executable(
         libinput,
         wayland_cursor,
         gtkmm,
+        dbusmenu_gtk,
         libnl,
         libnlgen,
         libpulse
