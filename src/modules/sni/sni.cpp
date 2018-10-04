@@ -1,29 +1,27 @@
 #include "modules/sni/sni.hpp"
 
+#include <libdbusmenu-gtk/dbusmenu-gtk.h>
+
 #include <iostream>
 
 waybar::modules::SNI::Item::Item(std::string bus_name, std::string object_path,
-  Glib::Dispatcher& dp)
-  : icon_size(16), effective_icon_size(0),
-    image(Gtk::manage(new Gtk::Image())),
-    bus_name_(bus_name), object_path_(object_path), dp_(dp)
-{
+                                 Glib::Dispatcher &dp)
+    : icon_size(16), effective_icon_size(0),
+      image(Gtk::manage(new Gtk::Image())), bus_name_(bus_name),
+      object_path_(object_path), dp_(dp) {
   cancellable_ = g_cancellable_new();
-  sn_org_kde_status_notifier_item_proxy_new_for_bus(G_BUS_TYPE_SESSION,
-    G_DBUS_PROXY_FLAGS_NONE, bus_name_.c_str(), object_path_.c_str(),
-    cancellable_, &Item::proxyReady, this);
+  sn_org_kde_status_notifier_item_proxy_new_for_bus(
+      G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, bus_name_.c_str(),
+      object_path_.c_str(), cancellable_, &Item::proxyReady, this);
 }
 
-waybar::modules::SNI::Item::~Item()
-{
-}
+waybar::modules::SNI::Item::~Item() {}
 
-void waybar::modules::SNI::Item::proxyReady(GObject* obj, GAsyncResult* res,
-  gpointer data)
-{
-  GError* error = nullptr;
-  SnOrgKdeStatusNotifierItem* proxy =
-    sn_org_kde_status_notifier_item_proxy_new_for_bus_finish(res, &error);
+void waybar::modules::SNI::Item::proxyReady(GObject *obj, GAsyncResult *res,
+                                            gpointer data) {
+  GError *error = nullptr;
+  SnOrgKdeStatusNotifierItem *proxy =
+      sn_org_kde_status_notifier_item_proxy_new_for_bus_finish(res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
     g_error_free(error);
     return;
@@ -37,18 +35,24 @@ void waybar::modules::SNI::Item::proxyReady(GObject* obj, GAsyncResult* res,
   }
   auto conn = g_dbus_proxy_get_connection(G_DBUS_PROXY(proxy));
   g_dbus_connection_call(conn, item->bus_name_.c_str(),
-    item->object_path_.c_str(), "org.freedesktop.DBus.Properties", "GetAll",
-    g_variant_new("(s)", "org.kde.StatusNotifierItem"),
-    G_VARIANT_TYPE("(a{sv})"), G_DBUS_CALL_FLAGS_NONE, -1,
-    item->cancellable_, &Item::getAll, data);
+                         item->object_path_.c_str(),
+                         "org.freedesktop.DBus.Properties", "GetAll",
+                         g_variant_new("(s)", "org.kde.StatusNotifierItem"),
+                         G_VARIANT_TYPE("(a{sv})"), G_DBUS_CALL_FLAGS_NONE, -1,
+                         item->cancellable_, &Item::getAll, data);
 }
 
-void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
-  gpointer data)
-{
-  GError* error = nullptr;
+static auto nonull(const char *c) {
+  if (c != nullptr)
+    return c;
+  return "";
+}
+
+void waybar::modules::SNI::Item::getAll(GObject *obj, GAsyncResult *res,
+                                        gpointer data) {
+  GError *error = nullptr;
   auto conn = G_DBUS_CONNECTION(obj);
-  GVariant* properties = g_dbus_connection_call_finish(conn, res, &error);
+  GVariant *properties = g_dbus_connection_call_finish(conn, res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
     g_error_free(error);
     return;
@@ -59,41 +63,41 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
     g_error_free(error);
     return;
   }
-  GVariantIter* it = nullptr;
+  GVariantIter *it = nullptr;
   g_variant_get(properties, "(a{sv})", &it);
-  gchar* key;
-  GVariant* value;
+  gchar *key;
+  GVariant *value;
   while (g_variant_iter_next(it, "{sv}", &key, &value)) {
     if (g_strcmp0(key, "Category") == 0) {
-      item->category = g_variant_dup_string(value, nullptr);
+      item->category = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "Id") == 0) {
-      item->id = g_variant_dup_string(value, nullptr);
+      item->id = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "Title") == 0) {
-      item->title = g_variant_dup_string(value, nullptr);
+      item->title = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "Status") == 0) {
-      item->status = g_variant_dup_string(value, nullptr);
+      item->status = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "WindowId") == 0) {
-      item->window_id = g_variant_get_int32 (value);
+      item->window_id = g_variant_get_int32(value);
     } else if (g_strcmp0(key, "IconName") == 0) {
-      item->icon_name = g_variant_dup_string(value, nullptr);
+      item->icon_name = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "IconPixmap") == 0) {
       // TODO: icon pixmap
     } else if (g_strcmp0(key, "OverlayIconName") == 0) {
-      item->overlay_icon_name = g_variant_dup_string(value, nullptr);
+      item->overlay_icon_name = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "OverlayIconPixmap") == 0) {
       // TODO: overlay_icon_pixmap
     } else if (g_strcmp0(key, "AttentionIconName") == 0) {
-      item->attention_icon_name = g_variant_dup_string(value, nullptr);
+      item->attention_icon_name = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "AttentionIconPixmap") == 0) {
       // TODO: attention_icon_pixmap
     } else if (g_strcmp0(key, "AttentionMovieName") == 0) {
-      item->attention_movie_name = g_variant_dup_string(value, nullptr);
+      item->attention_movie_name = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "ToolTip") == 0) {
       // TODO: tooltip
     } else if (g_strcmp0(key, "IconThemePath") == 0) {
-      item->icon_theme_path = g_variant_dup_string(value, nullptr);
+      item->icon_theme_path = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "Menu") == 0) {
-      item->menu = g_variant_dup_string(value, nullptr);
+      item->menu = nonull(g_variant_dup_string(value, nullptr));
     } else if (g_strcmp0(key, "ItemIsMenu") == 0) {
       item->item_is_menu = g_variant_get_boolean(value);
     }
@@ -103,31 +107,37 @@ void waybar::modules::SNI::Item::getAll(GObject* obj, GAsyncResult* res,
   g_variant_iter_free(it);
   g_variant_unref(properties);
   if (item->id.empty() || item->category.empty() || item->status.empty()) {
-    std::cerr << "Invalid Status Notifier Item: " + item->bus_name_ + ","
-      + item->object_path_ << std::endl;
+    std::cerr << "Invalid Status Notifier Item: " + item->bus_name_ + "," +
+                     item->object_path_
+              << std::endl;
     return;
   }
   if (!item->icon_theme_path.empty()) {
-    GtkIconTheme* icon_theme = gtk_icon_theme_get_default();
+    GtkIconTheme *icon_theme = gtk_icon_theme_get_default();
     gtk_icon_theme_append_search_path(icon_theme,
-      item->icon_theme_path.c_str());
+                                      item->icon_theme_path.c_str());
   }
   item->updateImage();
   item->dp_.emit();
   // TODO: handle change
 }
 
-void waybar::modules::SNI::Item::updateImage()
-{
+void waybar::modules::SNI::Item::updateImage() {
   if (!icon_name.empty()) {
     auto pixbuf = getIconByName(icon_name, icon_size);
     if (pixbuf->gobj() == nullptr) {
       // Try to find icons specified by path and filename
-      pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
-      if (pixbuf->gobj() != nullptr) {
-        // An icon specified by path and filename may be the wrong size for the tray
-        pixbuf->scale_simple(icon_size - 2, icon_size - 2,
-          Gdk::InterpType::INTERP_BILINEAR);
+      try {
+        pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
+        if (pixbuf->gobj() != nullptr) {
+          // An icon specified by path and filename may be the wrong size for
+          // the tray
+          pixbuf->scale_simple(icon_size - 2, icon_size - 2,
+                               Gdk::InterpType::INTERP_BILINEAR);
+        }
+      } catch (Glib::Error &e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+        pixbuf = getIconByName("image-missing", icon_size);
       }
     }
     if (pixbuf->gobj() == nullptr) {
@@ -138,14 +148,37 @@ void waybar::modules::SNI::Item::updateImage()
     image->set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
     image->set_pixel_size(icon_size);
   }
+  auto *evt_box = Gtk::manage(new Gtk::EventBox());
+  evt_box->add(*image);
+  widget = evt_box;
+  if (!menu.empty()) {
+    auto *dbmenu = dbusmenu_gtkmenu_new(bus_name_.data(), menu.data());
+    Gtk::Menu *dmenu = Glib::wrap(GTK_MENU(dbmenu), false);
+    if (dbmenu && dmenu) {
+      widget->signal_button_press_event().connect(
+          [this, dmenu](GdkEventButton *btn) {
+            if (!dmenu->get_parent()) {
+              dmenu->reparent(*image);
+            }
+            if (!dmenu->get_attach_widget()) {
+              dmenu->attach_to_widget(*widget);
+            }
+            dmenu->popup(btn->button, btn->time);
+            return true;
+          });
+    }
+  } else {
+    widget->signal_button_press_event().connect([this](GdkEventButton *btn) {
+      std::cout << this->menu << std::endl;
+      return true;
+    });
+  }
 }
 
-Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(
-  std::string name, int request_size)
-{
+Glib::RefPtr<Gdk::Pixbuf>
+waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
   int icon_size = 0;
-  Glib::RefPtr<Gtk::IconTheme> icon_theme =
-    Gtk::IconTheme::get_default();
+  Glib::RefPtr<Gtk::IconTheme> icon_theme = Gtk::IconTheme::get_default();
   icon_theme->rescan_if_needed();
   auto sizes = icon_theme->get_icon_sizes(name.c_str());
   for (auto size : sizes) {
@@ -161,5 +194,5 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(
     icon_size = request_size;
   }
   return icon_theme->load_icon(name.c_str(), icon_size,
-    Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }

@@ -142,7 +142,7 @@ int waybar::modules::Network::getExternalInterface()
   int ifidx = -1;
 
   /* Prepare request. */
-  uint32_t reqlen = NLMSG_SPACE(sizeof(*rt));
+  constexpr uint32_t reqlen = NLMSG_SPACE(sizeof(*rt));
   char req[reqlen] = {0};
 
   /* Build the RTM_GETROUTE request. */
@@ -228,7 +228,7 @@ int waybar::modules::Network::getExternalInterface()
               break;
             }
             for (uint32_t i = 0; i < dstlen; i += 1) {
-              c |= *(unsigned char *)(RTA_DATA(attr) + i);
+              c |= *((unsigned char *)RTA_DATA(attr) + i);
             }
             has_destination = (c == 0);
             break;

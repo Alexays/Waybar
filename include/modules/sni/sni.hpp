@@ -11,7 +11,8 @@ class Item {
     ~Item();
     int icon_size;
     int effective_icon_size;
-    Gtk::Image* image;
+    Gtk::Widget* widget = nullptr;
+    Gtk::Image* image = nullptr;
     std::string category;
     std::string id;
     std::string status;

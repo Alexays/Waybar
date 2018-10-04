@@ -2,16 +2,15 @@
 
 #include <iostream>
 
-waybar::modules::SNI::Tray::Tray(const Json::Value& config)
-  : config_(config), watcher_(), host_(dp)
-{
-}
+waybar::modules::SNI::Tray::Tray(const Json::Value &config)
+    : config_(config), watcher_(), host_(dp) {}
 
-auto waybar::modules::SNI::Tray::update() -> void
-{
+auto waybar::modules::SNI::Tray::update() -> void {
   for (auto item : host_.items) {
-    item.image->set_tooltip_text(item.title);
-    box_.pack_start(*item.image);
+    if (item.widget) {
+      item.widget->set_tooltip_text(item.title);
+      box_.pack_start(*item.widget);
+    }
   }
   if (box_.get_children().size() > 0) {
     box_.set_name("tray");
@@ -21,6 +20,4 @@ auto waybar::modules::SNI::Tray::update() -> void
   }
 }
 
-waybar::modules::SNI::Tray::operator Gtk::Widget &() {
-  return box_;
-}
+waybar::modules::SNI::Tray::operator Gtk::Widget &() { return box_; }
