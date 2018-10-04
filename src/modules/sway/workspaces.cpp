@@ -78,6 +78,14 @@ auto waybar::modules::sway::Workspaces::update() -> void
       if (needReorder) {
         box_.reorder_child(button, node["num"].asInt());
       }
+      auto icon = getIcon(node["name"].asString(), node);
+      if (config_["format"]) {
+        auto format = config_["format"].asString();
+        button.set_label(fmt::format(format, fmt::arg("icon", icon),
+          fmt::arg("name", node["name"].asString())));
+      } else {
+        button.set_label(icon);
+      }
       button.show();
     }
   }
@@ -88,12 +96,13 @@ auto waybar::modules::sway::Workspaces::update() -> void
 
 void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
 {
-  auto icon = getIcon(node["name"].asString());
-  auto pair = buttons_.emplace(node["num"].asInt(), icon);
+  auto icon = getIcon(node["name"].asString(), node);
+  auto format = config_["format"]
+    ? fmt::format(config_["format"].asString(), fmt::arg("icon", icon),
+      fmt::arg("name", node["name"].asString()))
+    : icon;
+  auto pair = buttons_.emplace(node["num"].asInt(), format);
   auto &button = pair.first->second;
-  if (icon != node["name"].asString()) {
-    button.get_style_context()->add_class("icon");
-  }
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
@@ -123,13 +132,19 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
   button.show();
 }
 
-std::string waybar::modules::sway::Workspaces::getIcon(std::string name)
+std::string waybar::modules::sway::Workspaces::getIcon(std::string name,
+  Json::Value node)
 {
-  if (config_["format-icons"][name]) {
-    return config_["format-icons"][name].asString();
-  }
-  if (config_["format-icons"]["default"]) {
-    return config_["format-icons"]["default"].asString();
+  std::vector<std::string> keys = {
+    name, "urgent", "focused", "visible", "default"};
+  for (auto const& key : keys) {
+    if (key == "focused" || key == "visible" || key == "urgent") {
+      if (config_["format-icons"][key] && node[key].asBool()) {
+        return config_["format-icons"][key].asString();
+      }
+    } else if (config_["format-icons"][key]) {
+      return config_["format-icons"][key].asString();
+    }
   }
   return name;
 }

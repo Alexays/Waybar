@@ -14,10 +14,10 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (name == "sway/workspaces") {
       return new waybar::modules::sway::Workspaces(bar_, config_[name]);
     }
-    #endif
     if (name == "sway/window") {
       return new waybar::modules::sway::Window(bar_, config_[name]);
     }
+    #endif
     if (name == "memory") {
       return new waybar::modules::Memory(config_[name]);
     }

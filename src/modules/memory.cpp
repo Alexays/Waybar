@@ -13,7 +13,7 @@ waybar::modules::Memory::Memory(const Json::Value& config)
 
 auto waybar::modules::Memory::update() -> void
 {
-  struct sysinfo info = {0};
+  struct sysinfo info = {};
   if (sysinfo(&info) == 0) {
     auto total = info.totalram * info.mem_unit;
     auto freeram = info.freeram * info.mem_unit;

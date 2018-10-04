@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <tuple>
 #include "bar.hpp"
 #include "client.hpp"
 #include "util/chrono.hpp"
@@ -16,7 +17,7 @@ class Window : public ALabel {
     auto update() -> void;
   private:
     void worker();
-    std::string getFocusedNode(Json::Value nodes);
+    std::tuple<int, std::string> getFocusedNode(Json::Value nodes);
     void getFocusedWindow();
 
     Bar& bar_;
@@ -24,6 +25,7 @@ class Window : public ALabel {
     util::JsonParser parser_;
     Ipc ipc_;
     std::string window_;
+    int windowId_;
 };
 
 }
