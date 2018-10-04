@@ -4,12 +4,12 @@
 
 namespace waybar::util::command {
 
-struct cmd_res {
+struct res {
   int exit_code;
   std::string out;
 };
 
-inline struct cmd_res exec(const std::string cmd)
+inline struct res exec(const std::string cmd)
 {
   FILE* fp(popen(cmd.c_str(), "r"));
   if (!fp) {

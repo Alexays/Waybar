@@ -18,10 +18,6 @@ window {
     border-bottom: 3px solid transparent;
 }
 
-#workspaces button.icon label {
-    font-size: 10px;
-}
-
 #workspaces button.focused {
     background: #64727D;
     border-bottom: 3px solid white;

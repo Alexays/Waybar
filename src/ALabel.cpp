@@ -24,7 +24,7 @@ auto waybar::ALabel::update() -> void
   // Nothing here
 }
 
-bool waybar::ALabel::handleToggle(GdkEventButton* const& ev)
+bool waybar::ALabel::handleToggle(GdkEventButton* const& /*ev*/)
 {
   alt = !alt;
   if (alt) {

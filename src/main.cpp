@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
   try {
     waybar::Client c(argc, argv);
     waybar::client = &c;
-    std::signal(SIGUSR1, [] (int signal) {
+    std::signal(SIGUSR1, [] (int /*signal*/) {
       for (auto& bar : waybar::client->bars) {
         (*bar).toggle();
       }

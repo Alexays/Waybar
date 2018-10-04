@@ -17,8 +17,8 @@ class Network : public ALabel {
     ~Network();
     auto update() -> void;
   private:
-    static uint64_t netlinkRequest(int, void*, uint32_t, uint32_t groups = 0);
-    static uint64_t netlinkResponse(int, void*, uint32_t, uint32_t groups = 0);
+    static int netlinkRequest(int, void*, uint32_t, uint32_t groups = 0);
+    static int netlinkResponse(int, void*, uint32_t, uint32_t groups = 0);
     static int scanCb(struct nl_msg*, void*);
 
     void disconnected();
@@ -33,7 +33,7 @@ class Network : public ALabel {
     int ifid_;
     sa_family_t family_;
     int sock_fd_;
-    struct sockaddr_nl nladdr_ = {0};
+    struct sockaddr_nl nladdr_ = {};
     struct nl_sock* sk_ = nullptr;
     int nl80211_id_;
 
