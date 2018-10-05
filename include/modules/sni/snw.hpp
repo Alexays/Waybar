@@ -1,7 +1,7 @@
 #pragma once
 
-#include <dbus-status-notifier-watcher.h>
 #include <gtkmm.h>
+#include <dbus-status-notifier-watcher.h>
 
 namespace waybar::modules::SNI {
 
@@ -44,3 +44,4 @@ private:
 };
 
 } // namespace waybar::modules::SNI
+
