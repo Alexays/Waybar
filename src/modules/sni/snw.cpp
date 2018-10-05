@@ -2,7 +2,6 @@
 
 #include <iostream>
 
-
 using namespace waybar::modules::SNI;
 
 Watcher::Watcher()
@@ -43,7 +42,6 @@ void Watcher::busAcquired(GDBusConnection* connection, const gchar* name,
     host->watcher_, TRUE);
   std::cout << "Bus aquired" << std::endl;
 }
-
 
 gboolean Watcher::handleRegisterHost(Watcher* obj,
   GDBusMethodInvocation* invocation, const gchar* service)

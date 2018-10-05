@@ -165,7 +165,8 @@ waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
 
-void waybar::modules::SNI::Item::updateImage() {
+void waybar::modules::SNI::Item::updateImage()
+{
   if (!icon_name.empty()) {
     auto pixbuf = getIconByName(icon_name, icon_size);
     if (pixbuf->gobj() == nullptr) {
