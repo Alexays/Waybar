@@ -82,7 +82,8 @@ auto waybar::modules::sway::Workspaces::update() -> void
       if (config_["format"]) {
         auto format = config_["format"].asString();
         button.set_label(fmt::format(format, fmt::arg("icon", icon),
-          fmt::arg("name", node["name"].asString())));
+          fmt::arg("name", node["name"].asString()),
+          fmt::arg("index", node["num"].asString())));
       } else {
         button.set_label(icon);
       }
