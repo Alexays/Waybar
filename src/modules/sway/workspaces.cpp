@@ -49,7 +49,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
       ++it;
     }
   }
-  for (auto node : workspaces_) {
+  for (auto const& node : workspaces_) {
     if (!config_["all-outputs"].asBool()
       && bar_.output_name != node["output"].asString()) {
       continue;

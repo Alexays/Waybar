@@ -4,7 +4,7 @@ waybar::modules::Battery::Battery(const Json::Value& config)
   : ALabel(config, "{capacity}%")
 {
   try {
-    for (auto &node : fs::directory_iterator(data_dir_)) {
+    for (auto const& node : fs::directory_iterator(data_dir_)) {
       if (fs::is_directory(node) && fs::exists(node / "capacity")
         && fs::exists(node / "status") && fs::exists(node / "uevent")) {
         batteries_.push_back(node);
@@ -20,7 +20,7 @@ waybar::modules::Battery::Battery(const Json::Value& config)
   if (fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
   }
-  for (auto &bat : batteries_) {
+  for (auto const& bat : batteries_) {
     inotify_add_watch(fd_, (bat / "uevent").c_str(), IN_ACCESS);
   }
   label_.set_name("battery");
@@ -51,7 +51,7 @@ auto waybar::modules::Battery::update() -> void
   try {
     uint16_t total = 0;
     std::string status;
-    for (auto &bat : batteries_) {
+    for (auto const& bat : batteries_) {
       uint16_t capacity;
       std::string _status;
       std::ifstream(bat / "capacity") >> capacity;

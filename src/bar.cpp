@@ -21,6 +21,7 @@ waybar::Bar::Bar(const Client& client,
 	zxdg_output_v1_add_listener(xdg_output_, &xdgOutputListener, this);
   window.set_title("waybar");
   window.set_decorated(false);
+  window.set_name("waybar");
   window.set_resizable(false);
   setupConfig();
   setupCss();
@@ -199,14 +200,14 @@ auto waybar::Bar::setupWidgets() -> void
   getModules(factory, "modules-left");
   getModules(factory, "modules-center");
   getModules(factory, "modules-right");
-  for (auto& module : modules_left_) {
+  for (auto const& module : modules_left_) {
     left.pack_start(*module, false, true, 0);
   }
-  for (auto& module : modules_center_) {
+  for (auto const& module : modules_center_) {
     center.pack_start(*module, true, true, 0);
   }
   std::reverse(modules_right_.begin(), modules_right_.end());
-  for (auto& module : modules_right_) {
+  for (auto const& module : modules_right_) {
     right.pack_end(*module, false, false, 0);
   }
 }

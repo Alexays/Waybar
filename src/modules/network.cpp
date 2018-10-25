@@ -142,7 +142,7 @@ int waybar::modules::Network::getExternalInterface()
   int ifidx = -1;
 
   /* Prepare request. */
-  uint32_t reqlen = NLMSG_SPACE(sizeof(*rt));
+  constexpr uint32_t reqlen = NLMSG_SPACE(sizeof(*rt));
   char req[reqlen] = {0};
 
   /* Build the RTM_GETROUTE request. */
