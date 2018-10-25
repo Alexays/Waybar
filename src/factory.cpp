@@ -27,7 +27,7 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (name == "clock") {
       return new waybar::modules::Clock(config_[name]);
     }
-    #ifdef DHAVE_DBUSMENU
+    #ifdef HAVE_DBUSMENU
     if (name == "tray") {
       return new waybar::modules::SNI::Tray(config_[name]);
     }
