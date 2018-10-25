@@ -100,7 +100,8 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
   auto icon = getIcon(node["name"].asString(), node);
   auto format = config_["format"]
     ? fmt::format(config_["format"].asString(), fmt::arg("icon", icon),
-      fmt::arg("name", node["name"].asString()))
+      fmt::arg("name", node["name"].asString()),
+      fmt::arg("index", node["num"].asString()))
     : icon;
   auto pair = buttons_.emplace(node["num"].asInt(), format);
   auto &button = pair.first->second;
