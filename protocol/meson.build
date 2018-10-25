@@ -36,14 +36,16 @@ foreach p : client_protocols
 	client_protos_headers += wayland_scanner_client.process(xml)
 endforeach
 
+gdbus_codegen = find_program('gdbus-codegen')
+
 gdbus_code = generator(
-    find_program('gdbus-codegen'),
+    gdbus_codegen,
     output: '@BASENAME@.c',
     arguments: ['--c-namespace', 'Sn', '--body', '--output', '@OUTPUT@', '@INPUT@']
 )
 
 gdbus_header = generator(
-    find_program('gdbus-codegen'),
+    gdbus_codegen,
     output: '@BASENAME@.h',
     arguments: ['--c-namespace', 'Sn', '--header', '--output', '@OUTPUT@', '@INPUT@']
 )
