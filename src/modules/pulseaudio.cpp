@@ -86,7 +86,7 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context* /*context*/,
     float volume = static_cast<float>(pa_cvolume_avg(&(i->volume)))
       / float{PA_VOLUME_NORM};
     pa->sink_idx_ = i->index;
-    pa->volume_ = volume * 100.0f;
+    pa->volume_ = std::round(volume * 100.0f);
     pa->muted_ = i->mute != 0;
     pa->desc_ = i->description;
     pa->port_name_ = i->active_port->name;
