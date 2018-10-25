@@ -32,6 +32,7 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
+dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4')
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
@@ -46,6 +47,10 @@ src_files = files(
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
+    'src/modules/sni/tray.cpp',
+    'src/modules/sni/snw.cpp',
+    'src/modules/sni/snh.cpp',
+    'src/modules/sni/sni.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp'
@@ -86,9 +91,10 @@ executable(
         libinput,
         wayland_cursor,
         gtkmm,
+        dbusmenu_gtk,
         libnl,
         libnlgen,
-        libpulse,
+        libpulse
     ],
     include_directories: [include_directories('include')],
     install: true,
