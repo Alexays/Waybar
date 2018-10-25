@@ -4,16 +4,27 @@ waybar::modules::Battery::Battery(const Json::Value& config)
   : ALabel(config, "{capacity}%")
 {
   try {
-    for (auto const& node : fs::directory_iterator(data_dir_)) {
-      if (fs::is_directory(node) && fs::exists(node / "capacity")
-        && fs::exists(node / "status") && fs::exists(node / "uevent")) {
-        batteries_.push_back(node);
+    if (config_["bat"]) {
+      auto dir = data_dir_ / config_["bat"].asString();
+      if (fs::is_directory(dir) && fs::exists(dir / "capacity")
+        && fs::exists(dir / "status") && fs::exists(dir / "uevent")) {
+        batteries_.push_back(dir);
+      }
+    } else {
+      for (auto const& node : fs::directory_iterator(data_dir_)) {
+        if (fs::is_directory(node) && fs::exists(node / "capacity")
+          && fs::exists(node / "status") && fs::exists(node / "uevent")) {
+          batteries_.push_back(node);
+        }
       }
     }
   } catch (fs::filesystem_error &e) {
     throw std::runtime_error(e.what());
   }
   if (batteries_.empty()) {
+    if (config_["bat"]) {
+      throw std::runtime_error("No battery named " + config_["bat"].asString());
+    }
     throw std::runtime_error("No batteries.");
   }
   fd_ = inotify_init1(IN_CLOEXEC);

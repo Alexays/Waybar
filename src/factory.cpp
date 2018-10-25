@@ -7,43 +7,44 @@ waybar::Factory::Factory(Bar& bar, const Json::Value& config)
 waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
 {
   try {
-    if (name == "battery") {
+    auto ref = name.substr(0, name.find("#"));
+    if (ref == "battery") {
       return new waybar::modules::Battery(config_[name]);
     }
     #ifdef HAVE_SWAY
-    if (name == "sway/workspaces") {
+    if (ref == "sway/workspaces") {
       return new waybar::modules::sway::Workspaces(bar_, config_[name]);
     }
-    if (name == "sway/window") {
+    if (ref == "sway/window") {
       return new waybar::modules::sway::Window(bar_, config_[name]);
     }
     #endif
-    if (name == "memory") {
+    if (ref == "memory") {
       return new waybar::modules::Memory(config_[name]);
     }
-    if (name == "cpu") {
+    if (ref == "cpu") {
       return new waybar::modules::Cpu(config_[name]);
     }
-    if (name == "clock") {
+    if (ref == "clock") {
       return new waybar::modules::Clock(config_[name]);
     }
     #ifdef HAVE_DBUSMENU
-    if (name == "tray") {
+    if (ref == "tray") {
       return new waybar::modules::SNI::Tray(config_[name]);
     }
     #endif
     #ifdef HAVE_LIBNL
-    if (name == "network") {
+    if (ref == "network") {
       return new waybar::modules::Network(config_[name]);
     }
     #endif
     #ifdef HAVE_LIBPULSE
-    if (name == "pulseaudio") {
+    if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(config_[name]);
     }
     #endif
-    if (name.compare(0, 7, "custom/") == 0 && name.size() > 7) {
-      return new waybar::modules::Custom(name.substr(7), config_[name]);
+    if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
+      return new waybar::modules::Custom(ref.substr(7), config_[name]);
     }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
