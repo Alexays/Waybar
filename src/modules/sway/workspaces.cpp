@@ -82,7 +82,8 @@ auto waybar::modules::sway::Workspaces::update() -> void
       if (config_["format"]) {
         auto format = config_["format"].asString();
         button.set_label(fmt::format(format, fmt::arg("icon", icon),
-          fmt::arg("name", node["name"].asString())));
+          fmt::arg("name", node["name"].asString()),
+          fmt::arg("index", node["num"].asString())));
       } else {
         button.set_label(icon);
       }
@@ -99,7 +100,8 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
   auto icon = getIcon(node["name"].asString(), node);
   auto format = config_["format"]
     ? fmt::format(config_["format"].asString(), fmt::arg("icon", icon),
-      fmt::arg("name", node["name"].asString()))
+      fmt::arg("name", node["name"].asString()),
+      fmt::arg("index", node["num"].asString()))
     : icon;
   auto pair = buttons_.emplace(node["num"].asInt(), format);
   auto &button = pair.first->second;

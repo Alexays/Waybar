@@ -22,6 +22,7 @@ waybar::Bar::Bar(const Client& client,
   window.set_title("waybar");
   window.set_decorated(false);
   window.set_name("waybar");
+  window.set_resizable(false);
   setupConfig();
   setupCss();
   setupWidgets();
