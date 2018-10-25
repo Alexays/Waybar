@@ -40,7 +40,6 @@ void Watcher::busAcquired(GDBusConnection* connection, const gchar* name,
   sn_org_kde_status_notifier_watcher_set_protocol_version(host->watcher_, 0);
   sn_org_kde_status_notifier_watcher_set_is_status_notifier_host_registered(
     host->watcher_, TRUE);
-  std::cout << "Bus aquired" << std::endl;
 }
 
 gboolean Watcher::handleRegisterHost(Watcher* obj,
@@ -75,7 +74,6 @@ gboolean Watcher::handleRegisterHost(Watcher* obj,
   }
   sn_org_kde_status_notifier_watcher_complete_register_status_notifier_host(
     obj->watcher_, invocation);
-  std::cout << "Host registered: " << bus_name << std::endl;
   return TRUE;
 }
 
