@@ -35,9 +35,9 @@ gtkmm = dependency('gtkmm-3.0')
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4')
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
-libnl = dependency('libnl-3.0', required: false)
-libnlgen = dependency('libnl-genl-3.0', required: false)
-libpulse = dependency('libpulse', required: false)
+libnl = dependency('libnl-3.0', required: get_option('libnl'))
+libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
+libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 
 src_files = files(
     'src/factory.cpp',
