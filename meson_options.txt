@@ -1,2 +1,3 @@
 option('libnl', type: 'feature', value: 'auto', description: 'Enable libnl support for network related features')
 option('pulseaudio', type: 'feature', value: 'auto', description: 'Enable support for pulseaudio')
+option('dbusmenu-gtk', type: 'feature', value: 'auto', description: 'Enable support for tray')

@@ -32,7 +32,7 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
-dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4')
+dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
@@ -47,10 +47,6 @@ src_files = files(
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
-    'src/modules/sni/tray.cpp',
-    'src/modules/sni/snw.cpp',
-    'src/modules/sni/snh.cpp',
-    'src/modules/sni/sni.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp'
@@ -73,6 +69,16 @@ endif
 if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += 'src/modules/pulseaudio.cpp'
+endif
+
+if dbusmenu_gtk.found()
+    add_project_arguments('-DHAVE_DBUSMENU', language: 'cpp')
+    src_files += files(
+        'src/modules/sni/tray.cpp',
+        'src/modules/sni/snw.cpp',
+        'src/modules/sni/snh.cpp',
+        'src/modules/sni/sni.cpp'
+    )
 endif
 
 subdir('protocol')
