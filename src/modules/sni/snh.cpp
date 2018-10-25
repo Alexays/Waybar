@@ -32,7 +32,7 @@ void Host::nameAppeared(GDBusConnection* connection,
 {
   auto host = static_cast<SNI::Host *>(data);
   if (host->cancellable_ != nullptr) {
-    std::cout << "WTF" << std::endl;
+    // TODO
   }
   host->cancellable_ = g_cancellable_new();
   sn_org_kde_status_notifier_watcher_proxy_new(
@@ -110,7 +110,6 @@ void Host::registerHost(GObject* src, GAsyncResult* res,
 void Host::itemRegistered(
   SnOrgKdeStatusNotifierWatcher* watcher, const gchar* service, gpointer data)
 {
-  std::cout << "Item registered" << std::endl;
   auto host = static_cast<SNI::Host *>(data);
   host->addRegisteredItem(service);
 }
@@ -123,7 +122,6 @@ void Host::itemUnregistered(
   for (auto it = host->items.begin(); it != host->items.end(); ++it) {
     if (it->bus_name == bus_name && it->object_path == object_path) {
       host->items.erase(it);
-      std::cout << "Item Unregistered" << std::endl;
       break;
     }
   }
