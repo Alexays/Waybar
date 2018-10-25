@@ -9,7 +9,9 @@
 #include "modules/battery.hpp"
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
+#ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"
+#endif
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
 #endif
