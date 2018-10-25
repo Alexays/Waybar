@@ -24,6 +24,7 @@ class Battery : public ALabel {
     void worker();
 
     util::SleeperThread thread_;
+    util::SleeperThread threadTimer_;
     std::vector<fs::path> batteries_;
     int fd_;
 };

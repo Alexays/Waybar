@@ -47,12 +47,18 @@ void waybar::modules::Battery::worker()
 {
   // Trigger first values
   update();
+  uint32_t interval = config_["interval"] ? config_["interval"].asUInt() : 60;
+  threadTimer_ = [this, interval] {
+    thread_.sleep_for(chrono::seconds(interval));
+    dp.emit();
+  };
   thread_ = [this] {
     struct inotify_event event = {0};
     int nbytes = read(fd_, &event, sizeof(event));
     if (nbytes != sizeof(event)) {
       return;
     }
+    threadTimer_.stop();
     dp.emit();
   };
 }
