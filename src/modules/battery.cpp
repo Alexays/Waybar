@@ -4,7 +4,7 @@ waybar::modules::Battery::Battery(const Json::Value& config)
   : ALabel(config, "{capacity}%")
 {
   try {
-    if (config_["bat"]) {
+    if (config_["bat"].isString()) {
       auto dir = data_dir_ / config_["bat"].asString();
       if (fs::is_directory(dir) && fs::exists(dir / "capacity")
         && fs::exists(dir / "status") && fs::exists(dir / "uevent")) {
@@ -22,7 +22,7 @@ waybar::modules::Battery::Battery(const Json::Value& config)
     throw std::runtime_error(e.what());
   }
   if (batteries_.empty()) {
-    if (config_["bat"]) {
+    if (config_["bat"].isString()) {
       throw std::runtime_error("No battery named " + config_["bat"].asString());
     }
     throw std::runtime_error("No batteries.");
@@ -47,7 +47,7 @@ void waybar::modules::Battery::worker()
 {
   // Trigger first values
   update();
-  uint32_t interval = config_["interval"] ? config_["interval"].asUInt() : 60;
+  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 60;
   threadTimer_ = [this, interval] {
     thread_.sleep_for(chrono::seconds(interval));
     dp.emit();
@@ -88,7 +88,7 @@ auto waybar::modules::Battery::update() -> void
     } else {
       label_.get_style_context()->remove_class("charging");
     }
-    auto critical = config_["critical"] ? config_["critical"].asUInt() : 15;
+    auto critical = config_["critical"].isUInt() ? config_["critical"].asUInt() : 15;
     if (capacity <= critical && !charging) {
       label_.get_style_context()->add_class("warning");
     } else {

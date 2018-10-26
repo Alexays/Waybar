@@ -79,7 +79,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
         box_.reorder_child(button, node["num"].asInt());
       }
       auto icon = getIcon(node["name"].asString(), node);
-      if (config_["format"]) {
+      if (config_["format"].isString()) {
         auto format = config_["format"].asString();
         button.set_label(fmt::format(format, fmt::arg("icon", icon),
           fmt::arg("name", node["name"].asString()),
@@ -98,7 +98,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
 void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
 {
   auto icon = getIcon(node["name"].asString(), node);
-  auto format = config_["format"]
+  auto format = config_["format"].isString()
     ? fmt::format(config_["format"].asString(), fmt::arg("icon", icon),
       fmt::arg("name", node["name"].asString()),
       fmt::arg("index", node["num"].asString()))
@@ -141,10 +141,10 @@ std::string waybar::modules::sway::Workspaces::getIcon(std::string name,
     name, "urgent", "focused", "visible", "default"};
   for (auto const& key : keys) {
     if (key == "focused" || key == "visible" || key == "urgent") {
-      if (config_["format-icons"][key] && node[key].asBool()) {
+      if (config_["format-icons"][key].isString() && node[key].asBool()) {
         return config_["format-icons"][key].asString();
       }
-    } else if (config_["format-icons"][key]) {
+    } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
     }
   }

@@ -53,8 +53,8 @@ waybar::Bar::Bar(const Client& client,
     anchor |= ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
   }
 
-  auto height = config_["height"] ? config_["height"].asUInt() : height_;
-  auto width = config_["width"] ? config_["width"].asUInt() : width_;
+  auto height = config_["height"].isUInt() ? config_["height"].asUInt() : height_;
+  auto width = config_["width"].isUInt() ? config_["width"].asUInt() : width_;
   zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
   zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, height);
   zwlr_layer_surface_v1_set_size(layer_surface, width, height);
@@ -163,7 +163,7 @@ auto waybar::Bar::setupCss() -> void
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos)
 {
-  if (config_[pos]) {
+  if (config_[pos].isArray()) {
     for (const auto &name : config_[pos]) {
       try {
         auto module = factory.makeModule(name.asString());
