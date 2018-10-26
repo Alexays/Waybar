@@ -13,6 +13,7 @@ Watcher::Watcher()
     "org.kde.StatusNotifierWatcher", flags,
     &Watcher::busAcquired, nullptr, nullptr, this, nullptr);
   watcher_ = sn_watcher_skeleton_new();
+  sn_watcher_set_protocol_version(watcher_, 1);
 }
 
 Watcher::~Watcher()
