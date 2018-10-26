@@ -19,10 +19,8 @@ class Host {
     static void nameVanished(GDBusConnection*, const gchar*, gpointer);
     static void proxyReady(GObject*, GAsyncResult*, gpointer);
     static void registerHost(GObject*, GAsyncResult*, gpointer);
-    static void itemRegistered(SnOrgKdeStatusNotifierWatcher*, const gchar*,
-      gpointer);
-    static void itemUnregistered(SnOrgKdeStatusNotifierWatcher*, const gchar*,
-      gpointer);
+    static void itemRegistered(SnWatcher*, const gchar*, gpointer);
+    static void itemUnregistered(SnWatcher*, const gchar*, gpointer);
 
     std::tuple<std::string, std::string> getBusNameAndObjectPath(const gchar*);
     void addRegisteredItem(const gchar* service);
@@ -33,7 +31,7 @@ class Host {
     std::string object_path_;
     Glib::Dispatcher* dp_;
     GCancellable* cancellable_ = nullptr;
-    SnOrgKdeStatusNotifierWatcher* watcher_ = nullptr;
+    SnWatcher* watcher_ = nullptr;
 };
 
 }

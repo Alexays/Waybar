@@ -12,7 +12,7 @@ Watcher::Watcher()
   bus_name_id_ = g_bus_own_name(G_BUS_TYPE_SESSION,
     "org.kde.StatusNotifierWatcher", flags,
     &Watcher::busAcquired, nullptr, nullptr, this, nullptr);
-  watcher_ = sn_org_kde_status_notifier_watcher_skeleton_new();
+  watcher_ = sn_watcher_skeleton_new();
 }
 
 Watcher::~Watcher()
@@ -32,14 +32,13 @@ void Watcher::busAcquired(GDBusConnection* connection, const gchar* name,
     return;
   }
   g_signal_connect_swapped(host->watcher_,
-    "handle-register-status-notifier-item",
+    "handle-register-item",
     G_CALLBACK(&Watcher::handleRegisterItem), data);
   g_signal_connect_swapped(host->watcher_,
-    "handle-register-status-notifier-host",
+    "handle-register-host",
     G_CALLBACK(&Watcher::handleRegisterHost), data);
-  sn_org_kde_status_notifier_watcher_set_protocol_version(host->watcher_, 0);
-  sn_org_kde_status_notifier_watcher_set_is_status_notifier_host_registered(
-    host->watcher_, TRUE);
+  sn_watcher_set_protocol_version(host->watcher_, 0);
+  sn_watcher_set_is_host_registered(host->watcher_, TRUE);
 }
 
 gboolean Watcher::handleRegisterHost(Watcher* obj,
@@ -66,14 +65,11 @@ gboolean Watcher::handleRegisterHost(Watcher* obj,
   }
   watch = gfWatchNew(GF_WATCH_TYPE_HOST, service, bus_name, object_path, obj);
   obj->hosts_ = g_slist_prepend(obj->hosts_, watch);
-  sn_org_kde_status_notifier_watcher_set_is_status_notifier_host_registered(
-    obj->watcher_, TRUE);
+  sn_watcher_set_is_host_registered(obj->watcher_, TRUE);
   if (g_slist_length(obj->hosts_)) {
-    sn_org_kde_status_notifier_watcher_emit_status_notifier_host_registered(
-      obj->watcher_);
+    sn_watcher_emit_host_registered(obj->watcher_);
   }
-  sn_org_kde_status_notifier_watcher_complete_register_status_notifier_host(
-    obj->watcher_, invocation);
+  sn_watcher_complete_register_host(obj->watcher_, invocation);
   return TRUE;
 }
 
@@ -96,19 +92,16 @@ gboolean Watcher::handleRegisterItem(Watcher* obj,
   if (watch != nullptr) {
     g_warning("Status Notifier Item with bus name '%s' and object path '%s' is already registered",
       bus_name, object_path);
-    sn_org_kde_status_notifier_watcher_complete_register_status_notifier_item(
-      obj->watcher_, invocation);
+    sn_watcher_complete_register_item(obj->watcher_, invocation);
     return TRUE;
   }
   watch = gfWatchNew(GF_WATCH_TYPE_ITEM, service, bus_name, object_path, obj);
   obj->items_ = g_slist_prepend(obj->items_, watch);
   obj->updateRegisteredItems(obj->watcher_);
   gchar* tmp = g_strdup_printf("%s%s", bus_name, object_path);
-  sn_org_kde_status_notifier_watcher_emit_status_notifier_item_registered(
-    obj->watcher_, tmp);
+  sn_watcher_emit_item_registered(obj->watcher_, tmp);
   g_free(tmp);
-  sn_org_kde_status_notifier_watcher_complete_register_status_notifier_item(
-    obj->watcher_, invocation);
+  sn_watcher_complete_register_item(obj->watcher_, invocation);
   return TRUE;
 }
 
@@ -147,22 +140,19 @@ void Watcher::nameVanished(GDBusConnection* connection, const char* name,
   if (watch->type == GF_WATCH_TYPE_HOST) {
     watch->watcher->hosts_ = g_slist_remove(watch->watcher->hosts_, watch);
     if (watch->watcher->hosts_ == nullptr)  {
-      sn_org_kde_status_notifier_watcher_set_is_status_notifier_host_registered(
-        watch->watcher->watcher_, FALSE);
-      sn_org_kde_status_notifier_watcher_emit_status_notifier_host_registered(
-        watch->watcher->watcher_);
+      sn_watcher_set_is_host_registered(watch->watcher->watcher_, FALSE);
+      sn_watcher_emit_host_registered(watch->watcher->watcher_);
     }
   } else if (watch->type == GF_WATCH_TYPE_ITEM) {
     watch->watcher->items_ = g_slist_remove(watch->watcher->items_, watch);
     watch->watcher->updateRegisteredItems(watch->watcher->watcher_);
     gchar* tmp = g_strdup_printf("%s%s", watch->bus_name, watch->object_path);
-    sn_org_kde_status_notifier_watcher_emit_status_notifier_item_unregistered(
-      watch->watcher->watcher_, tmp);
+    sn_watcher_emit_item_unregistered(watch->watcher->watcher_, tmp);
     g_free(tmp);
   }
 }
 
-void Watcher::updateRegisteredItems(SnOrgKdeStatusNotifierWatcher* obj)
+void Watcher::updateRegisteredItems(SnWatcher* obj)
 {
   GVariantBuilder builder;
   g_variant_builder_init(&builder, G_VARIANT_TYPE("as")); 
@@ -174,8 +164,7 @@ void Watcher::updateRegisteredItems(SnOrgKdeStatusNotifierWatcher* obj)
   }
   GVariant* variant = g_variant_builder_end(&builder);
   const gchar** items = g_variant_get_strv(variant, nullptr);
-  sn_org_kde_status_notifier_watcher_set_registered_status_notifier_items(
-    obj, items);
+  sn_watcher_set_registered_items(obj, items);
   g_variant_unref(variant);
   g_free(items);
 }

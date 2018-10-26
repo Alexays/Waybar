@@ -34,13 +34,13 @@ private:
   static void nameVanished(GDBusConnection *connection, const char *name,
                            gpointer data);
 
-  void updateRegisteredItems(SnOrgKdeStatusNotifierWatcher *obj);
+  void updateRegisteredItems(SnWatcher *obj);
 
   uint32_t bus_name_id_;
   uint32_t watcher_id_;
   GSList *hosts_ = nullptr;
   GSList *items_ = nullptr;
-  SnOrgKdeStatusNotifierWatcher *watcher_ = nullptr;
+  SnWatcher *watcher_ = nullptr;
 };
 
 } // namespace waybar::modules::SNI

@@ -45,7 +45,7 @@ private:
 
   Glib::Dispatcher *dp_;
   GCancellable *cancellable_ = nullptr;
-  SnOrgKdeStatusNotifierItem *proxy_ = nullptr;
+  SnItem *proxy_ = nullptr;
 };
 
 } // namespace waybar::modules::SNI
