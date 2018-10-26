@@ -2,6 +2,7 @@
 
 #include <dbus-status-notifier-item.h>
 #include <gtkmm.h>
+#include <filesystem>
 
 namespace waybar::modules::SNI {
 
