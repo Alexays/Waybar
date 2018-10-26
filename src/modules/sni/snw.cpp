@@ -65,8 +65,8 @@ gboolean Watcher::handleRegisterHost(Watcher* obj,
   }
   watch = gfWatchNew(GF_WATCH_TYPE_HOST, service, bus_name, object_path, obj);
   obj->hosts_ = g_slist_prepend(obj->hosts_, watch);
-  sn_watcher_set_is_host_registered(obj->watcher_, TRUE);
-  if (g_slist_length(obj->hosts_)) {
+  if (!sn_watcher_get_is_host_registered(obj->watcher_)) {
+    sn_watcher_set_is_host_registered(obj->watcher_, TRUE);
     sn_watcher_emit_host_registered(obj->watcher_);
   }
   sn_watcher_complete_register_host(obj->watcher_, invocation);
