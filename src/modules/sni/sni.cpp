@@ -167,32 +167,28 @@ waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
 
 void waybar::modules::SNI::Item::updateImage()
 {
+  image->set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
+  image->set_pixel_size(icon_size);
   if (!icon_name.empty()) {
-    auto pixbuf = getIconByName(icon_name, icon_size);
-    if (pixbuf->gobj() == nullptr) {
+    try {
       // Try to find icons specified by path and filename
-      try {
-        pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
+      if (std::filesystem::exists(icon_name)) {
+        auto pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
         if (pixbuf->gobj() != nullptr) {
           // An icon specified by path and filename may be the wrong size for
           // the tray
           pixbuf->scale_simple(icon_size - 2, icon_size - 2,
-                               Gdk::InterpType::INTERP_BILINEAR);
+            Gdk::InterpType::INTERP_BILINEAR);
+          image->set(pixbuf);
         }
-      } catch (Glib::Error &e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-        pixbuf = getIconByName("image-missing", icon_size);
+      } else {
+        image->set(getIconByName(icon_name, icon_size));
       }
+    } catch (Glib::Error &e) {
+      std::cerr << "Exception: " << e.what() << std::endl;
     }
-    if (pixbuf->gobj() == nullptr) {
-      pixbuf = getIconByName("image-missing", icon_size);
-    }
-    image->set(pixbuf);
   } else if (icon_pixmap) {
     image->set(icon_pixmap);
-  } else {
-    image->set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
-    image->set_pixel_size(icon_size);
   }
   if (!menu.empty()) {
     auto *dbmenu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
