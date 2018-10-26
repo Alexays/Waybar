@@ -3,7 +3,12 @@
 #include <iostream>
 
 waybar::modules::SNI::Tray::Tray(const Json::Value &config)
-    : config_(config), watcher_(), host_(&dp) {}
+    : config_(config), watcher_(), host_(&dp)
+{
+  if (config_["spacing"].isUInt()) {
+    box_.set_spacing(config_["spacing"].asUInt());
+  }
+}
 
 auto waybar::modules::SNI::Tray::update() -> void {
   for (auto &item : host_.items) {

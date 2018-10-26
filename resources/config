@@ -26,6 +26,9 @@
     "sway/window": {
         "max-length": 50
     },
+    "tray": {
+        "spacing": 10
+    },
     "clock": {
         "format-alt": "{:%Y-%m-%d}"
     },
