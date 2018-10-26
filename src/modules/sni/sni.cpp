@@ -4,9 +4,13 @@
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 
 waybar::modules::SNI::Item::Item(std::string bn, std::string op,
-                                 Glib::Dispatcher *dp)
+  Glib::Dispatcher *dp, Json::Value config)
     : bus_name(bn), object_path(op), event_box(), icon_size(16),
-      effective_icon_size(0), image(Gtk::manage(new Gtk::Image())), dp_(dp) {
+      effective_icon_size(0), image(Gtk::manage(new Gtk::Image())),
+      dp_(dp), config_(config) {
+  if (config_["icon-size"].isUInt()) {
+    icon_size = config_["icon-size"].asUInt();
+  }
   event_box.add(*image);
   event_box.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box.signal_button_press_event().connect(
@@ -20,8 +24,7 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op,
 void waybar::modules::SNI::Item::proxyReady(GObject *obj, GAsyncResult *res,
                                             gpointer data) {
   GError *error = nullptr;
-  SnItem *proxy =
-      sn_item_proxy_new_for_bus_finish(res, &error);
+  SnItem *proxy = sn_item_proxy_new_for_bus_finish(res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
     g_error_free(error);
     return;
@@ -113,6 +116,7 @@ void waybar::modules::SNI::Item::getAll(GObject *obj, GAsyncResult *res,
                                       item->icon_theme_path.c_str());
   }
   item->updateImage();
+  item->updateMenu();
   item->dp_->emit();
   // TODO: handle change
 }
@@ -165,6 +169,17 @@ waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
 
+void waybar::modules::SNI::Item::updateMenu()
+{
+  event_box.set_tooltip_text(title);
+  if (!menu.empty()) {
+    auto *dbmenu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
+    if (dbmenu) {
+      gtk_menu = Glib::wrap(GTK_MENU(dbmenu), false);
+    }
+  }
+}
+
 void waybar::modules::SNI::Item::updateImage()
 {
   image->set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
@@ -177,7 +192,7 @@ void waybar::modules::SNI::Item::updateImage()
         if (pixbuf->gobj() != nullptr) {
           // An icon specified by path and filename may be the wrong size for
           // the tray
-          pixbuf->scale_simple(icon_size - 2, icon_size - 2,
+          pixbuf = pixbuf->scale_simple(icon_size, icon_size,
             Gdk::InterpType::INTERP_BILINEAR);
           image->set(pixbuf);
         }
@@ -188,18 +203,16 @@ void waybar::modules::SNI::Item::updateImage()
       std::cerr << "Exception: " << e.what() << std::endl;
     }
   } else if (icon_pixmap) {
+    // An icon extracted may be the wrong size for the tray
+    icon_pixmap = icon_pixmap->scale_simple(icon_size, icon_size,
+      Gdk::InterpType::INTERP_BILINEAR);
     image->set(icon_pixmap);
-  }
-  if (!menu.empty()) {
-    auto *dbmenu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
-    if (dbmenu)
-      gtk_menu = Glib::wrap(GTK_MENU(dbmenu), false);
   }
 }
 
 Glib::RefPtr<Gdk::Pixbuf>
 waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
-  int icon_size = 0;
+  int tmp_size = 0;
   Glib::RefPtr<Gtk::IconTheme> icon_theme = Gtk::IconTheme::get_default();
   icon_theme->rescan_if_needed();
   auto sizes = icon_theme->get_icon_sizes(name.c_str());
@@ -207,32 +220,30 @@ waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
   for (auto const &size : sizes) {
     // -1 == scalable
     if (size == request_size || size == -1) {
-      icon_size = request_size;
+      tmp_size = request_size;
       break;
-    } else if (size < request_size || size > icon_size) {
-      icon_size = size;
+    } else if (size < request_size || size > tmp_size) {
+      tmp_size = size;
     }
   }
-  if (icon_size == 0) {
-    icon_size = request_size;
+  if (tmp_size == 0) {
+    tmp_size = request_size;
   }
-  return icon_theme->load_icon(name.c_str(), icon_size,
+  return icon_theme->load_icon(name.c_str(), tmp_size,
                                Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
 void waybar::modules::SNI::Item::handleActivate(GObject *src, GAsyncResult *res,
                                                 gpointer data) {
   auto item = static_cast<SNI::Item *>(data);
-  sn_item_call_activate_finish(item->proxy_, res,
-                                                       nullptr);
+  sn_item_call_activate_finish(item->proxy_, res, nullptr);
 }
 
 void waybar::modules::SNI::Item::handleSecondaryActivate(GObject *src,
                                                          GAsyncResult *res,
                                                          gpointer data) {
   auto item = static_cast<SNI::Item *>(data);
-  sn_item_call_secondary_activate_finish(item->proxy_,
-                                                                 res, nullptr);
+  sn_item_call_secondary_activate_finish(item->proxy_, res, nullptr);
 }
 
 bool waybar::modules::SNI::Item::handleClick(GdkEventButton *const &ev) {

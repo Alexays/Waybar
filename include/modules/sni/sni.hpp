@@ -2,13 +2,14 @@
 
 #include <dbus-status-notifier-item.h>
 #include <gtkmm.h>
+#include <json/json.h>
 #include <filesystem>
 
 namespace waybar::modules::SNI {
 
 class Item {
 public:
-  Item(std::string, std::string, Glib::Dispatcher *);
+  Item(std::string, std::string, Glib::Dispatcher*, Json::Value);
 
   std::string bus_name;
   std::string object_path;
@@ -40,6 +41,7 @@ private:
   static void handleSecondaryActivate(GObject *, GAsyncResult *, gpointer);
 
   void updateImage();
+  void updateMenu();
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant *variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(std::string name, int size);
   bool handleClick(GdkEventButton *const & /*ev*/);
@@ -47,6 +49,7 @@ private:
   Glib::Dispatcher *dp_;
   GCancellable *cancellable_ = nullptr;
   SnItem *proxy_ = nullptr;
+  Json::Value config_;
 };
 
 } // namespace waybar::modules::SNI

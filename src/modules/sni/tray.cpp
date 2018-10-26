@@ -3,7 +3,7 @@
 #include <iostream>
 
 waybar::modules::SNI::Tray::Tray(const Json::Value &config)
-    : config_(config), watcher_(), host_(&dp)
+    : config_(config), watcher_(), host_(&dp, config)
 {
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
@@ -11,8 +11,9 @@ waybar::modules::SNI::Tray::Tray(const Json::Value &config)
 }
 
 auto waybar::modules::SNI::Tray::update() -> void {
+  auto childrens = box_.get_children();
+  childrens.erase(childrens.begin(), childrens.end());
   for (auto &item : host_.items) {
-    item.event_box.set_tooltip_text(item.title);
     box_.pack_start(item.event_box);
   }
   if (box_.get_children().size() > 0) {
@@ -23,4 +24,6 @@ auto waybar::modules::SNI::Tray::update() -> void {
   }
 }
 
-waybar::modules::SNI::Tray::operator Gtk::Widget &() { return box_; }
+waybar::modules::SNI::Tray::operator Gtk::Widget &() {
+  return box_;
+}
