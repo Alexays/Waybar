@@ -12,7 +12,7 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op,
   event_box.signal_button_press_event().connect(
       sigc::mem_fun(*this, &Item::handleClick));
   cancellable_ = g_cancellable_new();
-  sn_org_kde_status_notifier_item_proxy_new_for_bus(
+  sn_item_proxy_new_for_bus(
       G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, bus_name.c_str(),
       object_path.c_str(), cancellable_, &Item::proxyReady, this);
 }
@@ -20,8 +20,8 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op,
 void waybar::modules::SNI::Item::proxyReady(GObject *obj, GAsyncResult *res,
                                             gpointer data) {
   GError *error = nullptr;
-  SnOrgKdeStatusNotifierItem *proxy =
-      sn_org_kde_status_notifier_item_proxy_new_for_bus_finish(res, &error);
+  SnItem *proxy =
+      sn_item_proxy_new_for_bus_finish(res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
     g_error_free(error);
     return;
@@ -227,7 +227,7 @@ waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
 void waybar::modules::SNI::Item::handleActivate(GObject *src, GAsyncResult *res,
                                                 gpointer data) {
   auto item = static_cast<SNI::Item *>(data);
-  sn_org_kde_status_notifier_item_call_activate_finish(item->proxy_, res,
+  sn_item_call_activate_finish(item->proxy_, res,
                                                        nullptr);
 }
 
@@ -235,7 +235,7 @@ void waybar::modules::SNI::Item::handleSecondaryActivate(GObject *src,
                                                          GAsyncResult *res,
                                                          gpointer data) {
   auto item = static_cast<SNI::Item *>(data);
-  sn_org_kde_status_notifier_item_call_secondary_activate_finish(item->proxy_,
+  sn_item_call_secondary_activate_finish(item->proxy_,
                                                                  res, nullptr);
 }
 
@@ -247,11 +247,11 @@ bool waybar::modules::SNI::Item::handleClick(GdkEventButton *const &ev) {
       }
       gtk_menu->popup(ev->button, ev->time);
     } else {
-      sn_org_kde_status_notifier_item_call_activate(
+      sn_item_call_activate(
           proxy_, ev->x, ev->y, nullptr, &Item::handleActivate, this);
     }
   } else if (ev->type == GDK_2BUTTON_PRESS) {
-    sn_org_kde_status_notifier_item_call_secondary_activate(
+    sn_item_call_secondary_activate(
         proxy_, ev->x, ev->y, nullptr, &Item::handleSecondaryActivate, this);
   } else {
     return false;

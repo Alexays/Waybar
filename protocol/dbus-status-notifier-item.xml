@@ -2,6 +2,7 @@
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node>
 <interface name="org.kde.StatusNotifierItem">
+    <annotation name="org.gtk.GDBus.C.Name" value="Item" />
     <property name="Category" type="s" access="read"/>
     <property name="Id" type="s" access="read"/>
     <property name="Title" type="s" access="read"/>
