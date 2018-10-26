@@ -131,10 +131,10 @@ auto waybar::modules::Pulseaudio::update() -> void
   auto format = format_;
   if (muted_) {
     format =
-      config_["format-muted"] ? config_["format-muted"].asString() : format;
+      config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
     label_.get_style_context()->add_class("muted");
   } else if (port_name_.find("a2dp_sink") != std::string::npos) {
-    format = config_["format-bluetooth"]
+    format = config_["format-bluetooth"].isString()
       ? config_["format-bluetooth"].asString() : format;
     label_.get_style_context()->add_class("bluetooth");
   } else {

@@ -4,10 +4,10 @@ waybar::modules::Custom::Custom(const std::string name,
   const Json::Value& config)
   : ALabel(config, "{}"), name_(name)
 {
-  if (!config_["exec"]) {
+  if (!config_["exec"].isString()) {
     throw std::runtime_error(name_ + " has no exec path.");
   }
-  if (config_["interval"]) {
+  if (config_["interval"].isUInt()) {
     delayWorker();
   } else {
     continuousWorker();
@@ -19,7 +19,7 @@ void waybar::modules::Custom::delayWorker()
   auto interval = config_["interval"].asUInt();
   thread_ = [this, interval] {
     bool can_update = true;
-    if (config_["exec-if"]) {
+    if (config_["exec-if"].isString()) {
       auto res = waybar::util::command::exec(config_["exec-if"].asString());
       if (res.exit_code != 0) {
         can_update = false;

@@ -4,15 +4,15 @@
 
 waybar::ALabel::ALabel(const Json::Value& config, const std::string format)
   : config_(config),
-    format_(config_["format"] ? config_["format"].asString() : format),
+    format_(config_["format"].isString() ? config_["format"].asString() : format),
     default_format_(format_)
 {
   event_box_.add(label_);
-	if (config_["max-length"]) {
+	if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asUInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
   }
-  if (config_["format-alt"]) {
+  if (config_["format-alt"].isString()) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event()
       .connect(sigc::mem_fun(*this, &ALabel::handleToggle));

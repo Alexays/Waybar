@@ -4,7 +4,7 @@ waybar::modules::Cpu::Cpu(const Json::Value& config)
   : ALabel(config, "{}%")
 {
   label_.set_name("cpu");
-  uint32_t interval = config_["interval"] ? config_["interval"].asUInt() : 10;
+  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 10;
   thread_ = [this, interval] {
     dp.emit();
     thread_.sleep_for(chrono::seconds(interval));

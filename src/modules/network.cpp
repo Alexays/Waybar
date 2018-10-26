@@ -14,7 +14,7 @@ waybar::modules::Network::Network(const Json::Value& config)
     sizeof(nladdr_)) != 0) {
     throw std::runtime_error("Can't bind network socket");
   }
-  if (config_["interface"]) {
+  if (config_["interface"].isString()) {
     ifid_ = if_nametoindex(config_["interface"].asCString());
     ifname_ = config_["interface"].asString();
     if (ifid_ <= 0) {
@@ -56,7 +56,7 @@ waybar::modules::Network::Network(const Json::Value& config)
         }
       }
     }
-    if (ifid_ <= 0 && !config_["interface"]) {
+    if (ifid_ <= 0 && !config_["interface"].isString()) {
       // Need to wait before get external interface
       thread_.sleep_for(std::chrono::seconds(1));
       ifid_ = getExternalInterface();
@@ -84,15 +84,15 @@ auto waybar::modules::Network::update() -> void
 {
   auto format = format_;
   if (ifid_ <= 0) {
-    format = config_["format-disconnected"]
+    format = config_["format-disconnected"].isString()
       ? config_["format-disconnected"].asString() : format;
     label_.get_style_context()->add_class("disconnected");
   } else {
     if (essid_.empty()) {
-      format = config_["format-ethernet"]
+      format = config_["format-ethernet"].isString()
         ? config_["format-ethernet"].asString() : format;
     } else {
-      format = config_["format-wifi"]
+      format = config_["format-wifi"].isString()
         ? config_["format-wifi"].asString() : format;
     }
     label_.get_style_context()->remove_class("disconnected");
