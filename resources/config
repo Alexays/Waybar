@@ -27,6 +27,7 @@
         "max-length": 50
     },
     "tray": {
+        // "icon-size": 21,
         "spacing": 10
     },
     "clock": {

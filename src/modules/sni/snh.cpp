@@ -4,8 +4,8 @@
 
 using namespace waybar::modules::SNI;
 
-Host::Host(Glib::Dispatcher* dp)
-: dp_(dp)
+Host::Host(Glib::Dispatcher* dp, const Json::Value &config)
+: dp_(dp), config_(config)
 {
   GBusNameOwnerFlags flags = static_cast<GBusNameOwnerFlags>(
     G_BUS_NAME_OWNER_FLAGS_NONE);
@@ -146,5 +146,5 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(
 void Host::addRegisteredItem(const gchar* service)
 {
   auto [bus_name, object_path] = getBusNameAndObjectPath(service);
-  items.emplace_back(bus_name, object_path, dp_);
+  items.emplace_back(bus_name, object_path, dp_, config_);
 }

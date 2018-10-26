@@ -1,7 +1,7 @@
 #pragma once
 
 #include <gtkmm.h>
-
+#include <json/json.h>
 #include <tuple>
 #include <dbus-status-notifier-watcher.h>
 #include "modules/sni/sni.hpp"
@@ -10,7 +10,7 @@ namespace waybar::modules::SNI {
 
 class Host {
   public:
-    Host(Glib::Dispatcher*);
+    Host(Glib::Dispatcher*, const Json::Value&);
     std::vector<Item> items;
   private:
     static void busAcquired(GDBusConnection*, const gchar*, gpointer);
@@ -32,6 +32,7 @@ class Host {
     Glib::Dispatcher* dp_;
     GCancellable* cancellable_ = nullptr;
     SnWatcher* watcher_ = nullptr;
+    const Json::Value &config_;
 };
 
 }
