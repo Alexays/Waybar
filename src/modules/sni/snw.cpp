@@ -31,14 +31,10 @@ void Watcher::busAcquired(GDBusConnection* connection, const gchar* name,
     g_error_free(error);
     return;
   }
-  g_signal_connect_swapped(host->watcher_,
-    "handle-register-item",
+  g_signal_connect_swapped(host->watcher_, "handle-register-item",
     G_CALLBACK(&Watcher::handleRegisterItem), data);
-  g_signal_connect_swapped(host->watcher_,
-    "handle-register-host",
+  g_signal_connect_swapped(host->watcher_, "handle-register-host",
     G_CALLBACK(&Watcher::handleRegisterHost), data);
-  sn_watcher_set_protocol_version(host->watcher_, 0);
-  sn_watcher_set_is_host_registered(host->watcher_, TRUE);
 }
 
 gboolean Watcher::handleRegisterHost(Watcher* obj,
