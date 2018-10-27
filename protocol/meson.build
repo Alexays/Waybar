@@ -62,7 +62,7 @@ client_protos_headers += gdbus_header.process('./dbus-menu.xml')
 lib_client_protos = static_library(
 	'client_protos',
 	client_protos_src + client_protos_headers,
-	dependencies: [wayland_client, gtkmm],
+	dependencies: [wayland_client, gtkmm, giounix],
 	include_directories: include_directories('..'),
 ) # for the include directory
 
