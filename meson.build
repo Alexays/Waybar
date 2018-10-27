@@ -109,7 +109,7 @@ executable(
 install_data(
     './resources/config',
     './resources/style.css',
-    install_dir: '/etc/xdg/waybar',
+    install_dir: join_paths(get_option('out'), 'etc/xdg/waybar')
 )
 
 clangtidy = find_program('clang-tidy', required: false)
