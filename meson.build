@@ -33,6 +33,7 @@ wayland_protos = dependency('wayland-protocols')
 wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
+giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
@@ -98,6 +99,7 @@ executable(
         wayland_cursor,
         gtkmm,
         dbusmenu_gtk,
+        giounix,
         libnl,
         libnlgen,
         libpulse
