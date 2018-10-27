@@ -89,7 +89,7 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context* /*context*/,
     pa->volume_ = std::round(volume * 100.0f);
     pa->muted_ = i->mute != 0;
     pa->desc_ = i->description;
-    pa->port_name_ = i->active_port->name;
+    pa->port_name_ = i->active_port ? i->active_port->name : "Unknown";
     pa->dp.emit();
   }
 }
