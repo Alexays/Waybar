@@ -5,6 +5,7 @@
 waybar::modules::SNI::Tray::Tray(const Json::Value &config)
     : config_(config), watcher_(), host_(&dp, config)
 {
+  std::cout << "Tray is in beta, so there may be bugs or even be unusable." << std::endl;
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
   }
