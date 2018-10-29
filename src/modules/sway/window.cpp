@@ -5,7 +5,7 @@ waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
 {
   label_.set_name("window");
   ipc_.connect();
-  ipc_.subscribe("[ \"window\" ]");
+  ipc_.subscribe("[\"window\",\"workspace\"]");
   getFocusedWindow();
   // Launch worker
   worker();
@@ -22,9 +22,11 @@ void waybar::modules::sway::Window::worker()
         window_ = parsed["container"]["name"].asString();
         windowId_ = parsed["container"]["id"].asInt();
         dp.emit();
-      } else if (parsed["change"] == "close"
+      } else if ((parsed["change"] == "close"
         && parsed["container"]["focused"].asBool()
-        && windowId_ == parsed["container"]["id"].asInt()) {
+        && windowId_ == parsed["container"]["id"].asInt())
+        || (parsed["change"] == "focus" && parsed["current"]["focus"].isArray()
+        && parsed["current"]["focus"].empty())) {
         window_.clear();
         windowId_ = -1;
         dp.emit();

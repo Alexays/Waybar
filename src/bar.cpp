@@ -20,16 +20,15 @@ waybar::Bar::Bar(const Client& client,
     zxdg_output_manager_v1_get_xdg_output(client.xdg_output_manager, *output);
 	zxdg_output_v1_add_listener(xdg_output_, &xdgOutputListener, this);
   window.set_title("waybar");
-  window.set_decorated(false);
   window.set_name("waybar");
+  window.set_decorated(false);
   window.set_resizable(false);
   setupConfig();
   setupCss();
-  setupWidgets();
 
-  Gtk::Widget& wrap(window);
-  gtk_widget_realize(wrap.gobj());
-  GdkWindow *gdk_window = gtk_widget_get_window(wrap.gobj());
+  auto wrap = reinterpret_cast<GtkWidget*>(window.gobj());
+  gtk_widget_realize(wrap);
+  GdkWindow *gdk_window = gtk_widget_get_window(wrap);
   gdk_wayland_window_set_use_custom_surface(gdk_window);
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 
@@ -60,6 +59,8 @@ waybar::Bar::Bar(const Client& client,
   zwlr_layer_surface_v1_set_size(layer_surface, width, height);
 
   wl_surface_commit(surface);
+
+  setupWidgets();
 }
 
 void waybar::Bar::handleLogicalPosition(void* /*data*/,
