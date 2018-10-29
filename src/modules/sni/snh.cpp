@@ -33,6 +33,7 @@ void Host::nameAppeared(GDBusConnection* connection,
   auto host = static_cast<SNI::Host *>(data);
   if (host->cancellable_ != nullptr) {
     // TODO
+    return;
   }
   host->cancellable_ = g_cancellable_new();
   sn_watcher_proxy_new(
