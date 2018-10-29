@@ -29,7 +29,24 @@ inline struct res exec(const std::string cmd)
     output.erase(output.length()-1);
   }
   int exit_code = WEXITSTATUS(pclose(fp));
-  return { exit_code, output };
+  return {exit_code, output};
 }
 
+inline bool forkExec(std::string cmd) {
+  if (cmd == "") return true;
+
+  printf("fork exec command %s\n", cmd.c_str());
+  int32_t pid = fork();
+
+  if (pid < 0) {
+    printf("Unable to exec cmd %s, error %s", cmd.c_str(), strerror(errno));
+    return false;
+  }
+
+  // Child executes the command
+  if (!pid) execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
+
+  return true;
 }
+
+}  // namespace waybar::util::command
