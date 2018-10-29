@@ -1,9 +1,14 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const Json::Value& config)
-  : ALabel(config, "{volume}%"), mainloop_(nullptr), mainloop_api_(nullptr),
-    context_(nullptr), sink_idx_(0), volume_(0), muted_(false)
-{
+waybar::modules::Pulseaudio::Pulseaudio(const Json::Value &config)
+    : ALabel(config, "{volume}%"),
+      mainloop_(nullptr),
+      mainloop_api_(nullptr),
+      context_(nullptr),
+      sink_idx_(0),
+      volume_(0),
+      muted_(false),
+      scrolling_(false) {
   label_.set_name("pulseaudio");
   mainloop_ = pa_threaded_mainloop_new();
   if (mainloop_ == nullptr) {
@@ -26,10 +31,18 @@ waybar::modules::Pulseaudio::Pulseaudio(const Json::Value& config)
     throw std::runtime_error("pa_mainloop_run() failed.");
   }
   pa_threaded_mainloop_unlock(mainloop_);
+
+  // define the pulse scroll events only when no user provided
+  // events are configured
+  if (!config["on-scroll-up"].isString() &&
+      !config["on-scroll-down"].isString()) {
+    event_box_.add_events(Gdk::SCROLL_MASK);
+    event_box_.signal_scroll_event().connect(
+        sigc::mem_fun(*this, &Pulseaudio::handleScroll));
+  }
 }
 
-waybar::modules::Pulseaudio::~Pulseaudio()
-{
+waybar::modules::Pulseaudio::~Pulseaudio() {
   mainloop_api_->quit(mainloop_api_, 0);
   pa_threaded_mainloop_stop(mainloop_);
   pa_threaded_mainloop_free(mainloop_);
@@ -58,6 +71,47 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data)
   }
 }
 
+bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+  // Avoid concurrent scroll event
+  bool direction_up = false;
+  // XXX/TODO: Change of 100 corresponds to 1%, does that always hold true?
+  uint16_t change = 100;
+  pa_cvolume pa_volume = pa_volume_;
+
+  if (scrolling_) {
+    return false;
+  }
+  scrolling_ = true;
+  if (e->direction == GDK_SCROLL_UP) {
+    direction_up = true;
+  }
+  if (e->direction == GDK_SCROLL_DOWN) {
+    direction_up = false;
+  }
+
+  if (e->direction == GDK_SCROLL_SMOOTH) {
+    gdouble delta_x, delta_y;
+    gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x,
+                                &delta_y);
+    if (delta_y < 0) {
+      direction_up = true;
+    } else if (delta_y > 0) {
+      direction_up = false;
+    }
+  }
+
+  if (direction_up) {
+    if (volume_ + 1 < 100) pa_cvolume_inc(&pa_volume, change);
+  } else {
+    if (volume_ - 1 > 0) pa_cvolume_dec(&pa_volume, change);
+  }
+
+  pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume,
+                                      volumeModifyCb, this);
+
+  return true;
+}
+
 /*
  * Called when an event we subscribed to occurs.
  */
@@ -76,15 +130,28 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context* context,
 }
 
 /*
+ * Called in response to a volume change request
+ */
+void waybar::modules::Pulseaudio::volumeModifyCb(pa_context *c, int success,
+                                                 void *data) {
+  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+  if (success) {
+    pa_context_get_sink_info_by_index(pa->context_, pa->sink_idx_, sinkInfoCb,
+                                      data);
+  }
+}
+
+/*
  * Called when the requested sink information is ready.
  */
-void waybar::modules::Pulseaudio::sinkInfoCb(pa_context* /*context*/,
-  const pa_sink_info* i, int /*eol*/, void* data)
-{
+void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/,
+                                             const pa_sink_info *i, int /*eol*/,
+                                             void *data) {
   if (i != nullptr) {
     auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
-    float volume = static_cast<float>(pa_cvolume_avg(&(i->volume)))
-      / float{PA_VOLUME_NORM};
+    pa->pa_volume_ = i->volume;
+    float volume = static_cast<float>(pa_cvolume_avg(&(pa->pa_volume_))) /
+                   float{PA_VOLUME_NORM};
     pa->sink_idx_ = i->index;
     pa->volume_ = std::round(volume * 100.0f);
     pa->muted_ = i->mute != 0;
@@ -141,8 +208,11 @@ auto waybar::modules::Pulseaudio::update() -> void
     label_.get_style_context()->remove_class("muted");
     label_.get_style_context()->add_class("bluetooth");
   }
-  label_.set_label(fmt::format(format,
-    fmt::arg("volume", volume_),
-    fmt::arg("icon", getIcon(volume_, getPortIcon()))));
+  label_.set_label(
+      fmt::format(format, fmt::arg("volume", volume_),
+                  fmt::arg("icon", getIcon(volume_, getPortIcon()))));
   label_.set_tooltip_text(desc_);
+  if (scrolling_) {
+    scrolling_ = false;
+  }
 }
