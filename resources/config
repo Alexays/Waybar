@@ -43,6 +43,8 @@
         "format": "{}% "
     },
     "battery": {
+        // "warning": 30, // Default value: 30
+        // "critical": 15, // Default value: 15
         "format": "{capacity}% {icon}",
         "format-icons": ["", "", "", "", ""]
     },
