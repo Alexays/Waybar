@@ -3,6 +3,7 @@
 #include <json/json.h>
 #include "modules/clock.hpp"
 #ifdef HAVE_SWAY
+#include "modules/sway/mode.hpp"
 #include "modules/sway/workspaces.hpp"
 #include "modules/sway/window.hpp"
 #endif
