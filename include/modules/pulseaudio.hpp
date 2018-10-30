@@ -1,7 +1,8 @@
 #pragma once
 
-#include <pulse/pulseaudio.h>
 #include <fmt/format.h>
+#include <pulse/pulseaudio.h>
+#include <pulse/volume.h>
 #include <algorithm>
 #include "ALabel.hpp"
 
@@ -18,6 +19,8 @@ class Pulseaudio : public ALabel {
     static void contextStateCb(pa_context*, void*);
     static void sinkInfoCb(pa_context*, const pa_sink_info*, int, void*);
     static void serverInfoCb(pa_context*, const pa_server_info*, void*);
+    static void volumeModifyCb(pa_context*, int, void*);
+    bool handleScroll(GdkEventScroll* e);
 
     const std::string getPortIcon() const;
 
@@ -26,9 +29,11 @@ class Pulseaudio : public ALabel {
     pa_context* context_;
     uint32_t sink_idx_{0};
     uint16_t volume_;
+    pa_cvolume pa_volume_;
     bool muted_;
     std::string port_name_;
     std::string desc_;
+    bool scrolling_;
 };
 
-}
+}  // namespace waybar::modules
