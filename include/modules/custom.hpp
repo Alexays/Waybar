@@ -15,8 +15,13 @@ class Custom : public ALabel {
   private:
     void delayWorker();
     void continuousWorker();
+    void parseOutput();
 
     const std::string name_;
+    std::string text_;
+    std::string tooltip_;
+    std::string class_;
+    std::string prevclass_;
     waybar::util::SleeperThread thread_;
     waybar::util::command::res output_;
 };
