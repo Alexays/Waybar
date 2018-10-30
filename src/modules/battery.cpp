@@ -88,10 +88,16 @@ auto waybar::modules::Battery::update() -> void
     } else {
       label_.get_style_context()->remove_class("charging");
     }
+    auto warning = config_["warning"].isUInt() ? config_["warning"].asUInt() : 30;
     auto critical = config_["critical"].isUInt() ? config_["critical"].asUInt() : 15;
     if (capacity <= critical && !charging) {
+      label_.get_style_context()->add_class("critical");
+      label_.get_style_context()->remove_class("warning");
+    } else if (capacity <= warning && !charging) {
       label_.get_style_context()->add_class("warning");
+      label_.get_style_context()->remove_class("critical");
     } else {
+      label_.get_style_context()->remove_class("critical");
       label_.get_style_context()->remove_class("warning");
     }
   } catch (const std::exception& e) {
