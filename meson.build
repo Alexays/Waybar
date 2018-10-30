@@ -57,6 +57,7 @@ if find_program('sway', required : false).found()
     add_project_arguments('-DHAVE_SWAY', language: 'cpp')
     src_files += [
         'src/modules/sway/ipc/client.cpp',
+        'src/modules/sway/mode.cpp',
         'src/modules/sway/window.cpp',
         'src/modules/sway/workspaces.cpp'
     ]
