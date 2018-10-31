@@ -73,7 +73,12 @@ auto waybar::modules::Custom::update() -> void
   } else {
     label_.set_name("custom-" + name_);
 
-    parseOutput();
+    if (config_["return-type"].asString() == "json") {
+      parseOutputJson();
+    } else {
+      parseOutputRaw();
+    }
+
     auto str = fmt::format(format_, text_);
     label_.set_text(str);
     if (text_ == tooltip_) {
@@ -96,7 +101,7 @@ auto waybar::modules::Custom::update() -> void
   }
 }
 
-void waybar::modules::Custom::parseOutput()
+void waybar::modules::Custom::parseOutputRaw()
 {
   std::istringstream output(output_.out);
   std::string line;
@@ -114,5 +119,18 @@ void waybar::modules::Custom::parseOutput()
       break;
     }
     i++;
+  }
+}
+
+void waybar::modules::Custom::parseOutputJson()
+{
+  std::istringstream output(output_.out);
+  std::string line;
+  while (getline(output, line)) {
+    auto parsed = parser_.parse(line);
+    text_ = parsed["text"].asString();
+    tooltip_ = parsed["tooltip"].asString();
+    class_ = parsed["class"].asString();
+    break;
   }
 }
