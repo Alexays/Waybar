@@ -35,7 +35,6 @@ inline struct res exec(const std::string cmd)
 inline bool forkExec(std::string cmd) {
   if (cmd == "") return true;
 
-  printf("fork exec command %s\n", cmd.c_str());
   int32_t pid = fork();
 
   if (pid < 0) {

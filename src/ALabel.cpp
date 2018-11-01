@@ -21,28 +21,19 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string format)
 
   // configure events' user commands
   if (config_["on-click"].isString()) {
-    std::string cmd = config_["on-click"].asString();
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &ALabel::handleToggle));
-
-    button_press_cmd_ = cmd;
   }
   if (config_["on-scroll-up"].isString()) {
-    std::string cmd = config_["on-scroll-up"].asString();
     event_box_.add_events(Gdk::SCROLL_MASK);
     event_box_.signal_scroll_event().connect(
       sigc::mem_fun(*this, &ALabel::handleScroll));
-
-    scroll_up_cmd_ = cmd;
   }
   if (config_["on-scroll-down"].isString()) {
-    std::string cmd = config_["on-scroll-down"].asString();
     event_box_.add_events(Gdk::SCROLL_MASK);
     event_box_.signal_scroll_event().connect(
       sigc::mem_fun(*this, &ALabel::handleScroll));
-
-    scroll_down_cmd_ = cmd;
   }
 }
 
@@ -51,8 +42,8 @@ auto waybar::ALabel::update() -> void {
 }
 
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
-  if (button_press_cmd_ != "" && e->button == 1) {
-    waybar::util::command::forkExec(button_press_cmd_);
+  if (config_["on-click"].isString() && e->button == 1) {
+    waybar::util::command::forkExec(config_["on-click"].asString());
   } else {
     alt = !alt;
     if (alt) {
@@ -69,35 +60,31 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
 bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
 
   // Avoid concurrent scroll event
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    bool direction_up = false;
+  std::lock_guard<std::mutex> lock(mutex_);
+  bool direction_up = false;
 
-    if (e->direction == GDK_SCROLL_UP) {
+  if (e->direction == GDK_SCROLL_UP) {
+    direction_up = true;
+  }
+  if (e->direction == GDK_SCROLL_DOWN) {
+    direction_up = false;
+  }
+  if (e->direction == GDK_SCROLL_SMOOTH) {
+    gdouble delta_x, delta_y;
+    gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent*>(e),
+                                &delta_x, &delta_y);
+    if (delta_y < 0) {
       direction_up = true;
-    }
-    if (e->direction == GDK_SCROLL_DOWN) {
+    } else if (delta_y > 0) {
       direction_up = false;
     }
-    if (e->direction == GDK_SCROLL_SMOOTH) {
-      gdouble delta_x, delta_y;
-      gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent*>(e),
-                                  &delta_x, &delta_y);
-      if (delta_y < 0) {
-        direction_up = true;
-      } else if (delta_y > 0) {
-        direction_up = false;
-      }
-    }
-
-    if (direction_up)
-      waybar::util::command::forkExec(scroll_up_cmd_);
-    else
-      waybar::util::command::forkExec(scroll_down_cmd_);
-
-    dp.emit();
   }
-
+  if (direction_up && config_["on-scroll-up"].isString()) {
+    waybar::util::command::forkExec(config_["on-scroll-up"].asString());
+  } else if (config_["on-scroll-down"].isString()) {
+    waybar::util::command::forkExec(config_["on-scroll-down"].asString());
+  }
+  dp.emit();
   return true;
 }
 
