@@ -105,11 +105,18 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data,
   if (width != o->width_ || height != o->height_) {
     o->width_ = width;
     o->height_ = height;
+    o->window.set_size_request(o->width_, o->height_);
+    o->window.resize(o->width_, o->height_);
+
+    int dummy_width, min_height;
+    o->window.get_size(dummy_width, min_height);
+    if (o->height_ < min_height) {
+      o->height_ = min_height;
+    }
     std::cout << fmt::format(
       "Bar configured (width: {}, height: {}) for output: {}",
       o->width_, o->height_, o->output_name) << std::endl;
-    o->window.set_size_request(o->width_, o->height_);
-    o->window.resize(o->width_, o->height_);
+
     zwlr_layer_surface_v1_set_exclusive_zone(surface, o->height_);
     zwlr_layer_surface_v1_set_size(surface, o->width_, o->height_);
     wl_surface_commit(o->surface);
