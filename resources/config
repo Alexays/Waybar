@@ -69,7 +69,8 @@
             "portable": "",
             "car": "",
             "default": ["", ""]
-        }
+        },
+        "on-click": "pavucontrol"
     },
     "custom/spotify": {
         "format": " {}",

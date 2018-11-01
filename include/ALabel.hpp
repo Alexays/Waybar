@@ -18,9 +18,6 @@ class ALabel : public IModule {
   Gtk::Label label_;
   const Json::Value& config_;
   std::string format_;
-  std::string button_press_cmd_ = "";
-  std::string scroll_up_cmd_ = "";
-  std::string scroll_down_cmd_ = "";
   std::mutex mutex_;
 
  private:
