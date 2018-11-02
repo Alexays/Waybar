@@ -83,6 +83,10 @@ if dbusmenu_gtk.found()
     )
 endif
 
+if get_option('filesystem-experimental')
+    add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
+endif
+
 subdir('protocol')
 
 executable(
