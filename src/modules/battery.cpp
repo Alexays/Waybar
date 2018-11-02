@@ -66,7 +66,7 @@ std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
 {
   try {
     uint16_t total = 0;
-    std::string status;
+    std::string status = "Unknown";
     for (auto const& bat : batteries_) {
       uint16_t capacity;
       std::string _status;
@@ -85,7 +85,7 @@ std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
   }
 }
 
-std::string waybar::modules::Battery::getState(uint16_t capacity, bool charging)
+std::string waybar::modules::Battery::getState(uint16_t capacity)
 {
   // Get current state
   std::vector<std::pair<std::string, uint16_t>> states;
@@ -102,7 +102,7 @@ std::string waybar::modules::Battery::getState(uint16_t capacity, bool charging)
   });
   std::string validState = "";
   for (auto state : states) {
-    if (capacity <= state.second && !charging && validState.empty()) {
+    if (capacity <= state.second && validState.empty()) {
       label_.get_style_context()->add_class(state.first);
       validState = state.first;
     } else {
@@ -116,21 +116,17 @@ auto waybar::modules::Battery::update() -> void
 {
   auto [capacity, status] = getInfos();
   label_.set_tooltip_text(status);
-  bool charging = status == "Charging";
+  std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
-  if (charging) {
-    label_.get_style_context()->add_class("charging");
-    if (config_["format-charging"].isString()) {
-      format = config_["format-charging"].asString();
-    }
-  } else {
-    label_.get_style_context()->remove_class("charging");
-    if (status == "Full" && config_["format-full"].isString()) {
-      format = config_["format-full"].asString();
-    }
-  }
-  auto state = getState(capacity, charging);
-  if (!state.empty() && config_["format-" + state].isString()) {
+  auto state = getState(capacity);
+  label_.get_style_context()->remove_class(old_status_);
+  label_.get_style_context()->add_class(status);
+  old_status_ = status;
+  if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
+    format = config_["format-" + status + "-" + state].asString();
+  } else if (config_["format-" + status].isString()) {
+    format = config_["format-" + status].asString();
+  } else if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
   }
   if (format.empty()) {
