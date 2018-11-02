@@ -74,7 +74,7 @@ std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
       std::ifstream(bat / "status") >> _status;
       if (_status != "Unknown") {
         status = _status;
-      }else if (config_["full-is-unknown"].isString() && config_["full-is-unknown"] == "true") {
+      } else if (config_["full-is-unknown"].isString() && config_["full-is-unknown"] == "true") {
         status = "Full"; //Some notebooks (e.g. Thinkpad T430s) report a full battery as "Unknown".
       }
       total += capacity;
@@ -127,12 +127,12 @@ auto waybar::modules::Battery::update() -> void
     }
   } else {
     label_.get_style_context()->remove_class("charging");
-    if (status == "Full"){
+    if (status == "Full") {
       label_.get_style_context()->add_class("full");
       if (config_["format-full"].isString()) {
         format = config_["format-full"].asString();
       }
-    }else{
+    } else {
       label_.get_style_context()->remove_class("full");
     }
   }
