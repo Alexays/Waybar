@@ -3,7 +3,7 @@
     border-radius: 0;
     font-family: Roboto, Helvetica, Arial, sans-serif;
     font-size: 13px;
-    min-height: 0px;
+    min-height: 0;
 }
 
 window#waybar {
