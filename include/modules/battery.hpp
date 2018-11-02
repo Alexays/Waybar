@@ -23,12 +23,13 @@ class Battery : public ALabel {
   
     void worker();
     std::tuple<uint16_t, std::string> getInfos();
-    std::string getState(uint16_t, bool);
+    std::string getState(uint16_t);
 
     util::SleeperThread thread_;
     util::SleeperThread threadTimer_;
     std::vector<fs::path> batteries_;
     int fd_;
+    std::string old_status_;
 };
 
 }
