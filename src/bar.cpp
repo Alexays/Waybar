@@ -110,7 +110,9 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data,
 
     int dummy_width, min_height;
     o->window.get_size(dummy_width, min_height);
-    if (o->height_ < min_height) {
+    if (o->height_ < static_cast<uint32_t>(min_height)) {
+      std::cout << fmt::format("Requested height: {} exceeds the minimum \
+height: {} required by the modules", o->height_, min_height) << std::endl;
       o->height_ = min_height;
     }
     std::cout << fmt::format(
