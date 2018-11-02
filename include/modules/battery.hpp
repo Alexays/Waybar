@@ -22,6 +22,8 @@ class Battery : public ALabel {
     static inline const fs::path data_dir_ = "/sys/class/power_supply/";
   
     void worker();
+    std::tuple<uint16_t, std::string> getInfos();
+    std::string getState(uint16_t, bool);
 
     util::SleeperThread thread_;
     util::SleeperThread threadTimer_;
