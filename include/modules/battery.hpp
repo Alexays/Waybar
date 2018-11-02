@@ -29,7 +29,7 @@ class Battery : public ALabel {
     util::SleeperThread threadTimer_;
     std::vector<fs::path> batteries_;
     int fd_;
-    std::string old_state_;
+    std::string old_status_;
 };
 
 }

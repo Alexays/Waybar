@@ -34,6 +34,7 @@ waybar::modules::Battery::Battery(const Json::Value& config)
   for (auto const& bat : batteries_) {
     inotify_add_watch(fd_, (bat / "uevent").c_str(), IN_ACCESS);
   }
+  old_status_ = "";
   worker();
 }
 
@@ -85,7 +86,7 @@ std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
   }
 }
 
-std::string waybar::modules::Battery::getState(uint16_t capacity, bool charging)
+std::string waybar::modules::Battery::getState(uint16_t capacity)
 {
   // Get current state
   std::vector<std::pair<std::string, uint16_t>> states;
@@ -102,7 +103,7 @@ std::string waybar::modules::Battery::getState(uint16_t capacity, bool charging)
   });
   std::string validState = "";
   for (auto state : states) {
-    if (capacity <= state.second && !charging && validState.empty()) {
+    if (capacity <= state.second && validState.empty()) {
       label_.get_style_context()->add_class(state.first);
       validState = state.first;
     } else {
@@ -118,7 +119,7 @@ auto waybar::modules::Battery::update() -> void
   label_.set_tooltip_text(status);
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
-  auto state = getState(capacity, charging);
+  auto state = getState(capacity);
   label_.get_style_context()->remove_class(old_status_);
   label_.get_style_context()->add_class(status);
   old_status_ = status;
