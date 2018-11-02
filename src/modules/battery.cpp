@@ -74,8 +74,6 @@ std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
       std::ifstream(bat / "status") >> _status;
       if (_status != "Unknown") {
         status = _status;
-      } else if (config_["full-is-unknown"].isString() && config_["full-is-unknown"] == "true") {
-        status = "Full"; //Some notebooks (e.g. Thinkpad T430s) report a full battery as "Unknown".
       }
       total += capacity;
     }
@@ -118,26 +116,17 @@ auto waybar::modules::Battery::update() -> void
 {
   auto [capacity, status] = getInfos();
   label_.set_tooltip_text(status);
-  bool charging = status == "Charging";
+  std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
-  if (charging) {
-    label_.get_style_context()->add_class("charging");
-    if (config_["format-charging"].isString()) {
-      format = config_["format-charging"].asString();
-    }
-  } else {
-    label_.get_style_context()->remove_class("charging");
-    if (status == "Full") {
-      label_.get_style_context()->add_class("full");
-      if (config_["format-full"].isString()) {
-        format = config_["format-full"].asString();
-      }
-    } else {
-      label_.get_style_context()->remove_class("full");
-    }
-  }
   auto state = getState(capacity, charging);
-  if (!state.empty() && config_["format-" + state].isString()) {
+  label_.get_style_context()->remove_class(old_status_);
+  label_.get_style_context()->add_class(status);
+  old_status_ = status;
+  if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
+    format = config_["format-" + status + "-" + state].asString();
+  }else if (config_["format-" + status].isString()) {
+    format = config_["format-" + status].asString();
+  }else if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
   }
   if (format.empty()) {
