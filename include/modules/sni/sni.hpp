@@ -3,7 +3,11 @@
 #include <dbus-status-notifier-item.h>
 #include <gtkmm.h>
 #include <json/json.h>
-#include <filesystem>
+#ifdef FILESYSTEM_EXPERIMENTAL
+  #include <experimental/filesystem>
+#else
+  #include <filesystem>
+#endif
 
 namespace waybar::modules::SNI {
 
