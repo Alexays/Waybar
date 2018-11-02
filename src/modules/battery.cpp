@@ -34,7 +34,6 @@ waybar::modules::Battery::Battery(const Json::Value& config)
   for (auto const& bat : batteries_) {
     inotify_add_watch(fd_, (bat / "uevent").c_str(), IN_ACCESS);
   }
-  old_status_ = "";
   worker();
 }
 
@@ -67,7 +66,7 @@ std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
 {
   try {
     uint16_t total = 0;
-    std::string status;
+    std::string status = "Unknown";
     for (auto const& bat : batteries_) {
       uint16_t capacity;
       std::string _status;
@@ -125,9 +124,9 @@ auto waybar::modules::Battery::update() -> void
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
-  }else if (config_["format-" + status].isString()) {
+  } else if (config_["format-" + status].isString()) {
     format = config_["format-" + status].asString();
-  }else if (!state.empty() && config_["format-" + state].isString()) {
+  } else if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
   }
   if (format.empty()) {
