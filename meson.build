@@ -83,6 +83,12 @@ if dbusmenu_gtk.found()
     )
 endif
 
+compiler = meson.get_compiler('cpp')
+
+if not compiler.has_header('filesystem')
+    add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
+endif
+
 subdir('protocol')
 
 executable(

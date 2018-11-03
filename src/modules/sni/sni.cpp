@@ -190,7 +190,11 @@ void waybar::modules::SNI::Item::updateImage()
   if (!icon_name.empty()) {
     try {
       // Try to find icons specified by path and filename
+#ifdef FILESYSTEM_EXPERIMENTAL
+      if (std::experimental::filesystem::exists(icon_name)) {
+#else
       if (std::filesystem::exists(icon_name)) {
+#endif
         auto pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
         if (pixbuf->gobj() != nullptr) {
           // An icon specified by path and filename may be the wrong size for
