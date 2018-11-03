@@ -119,8 +119,6 @@ height: {} required by the modules", o->height_, min_height) << std::endl;
       "Bar configured (width: {}, height: {}) for output: {}",
       o->width_, o->height_, o->output_name) << std::endl;
 
-    zwlr_layer_surface_v1_set_exclusive_zone(surface, o->height_);
-    zwlr_layer_surface_v1_set_size(surface, o->width_, o->height_);
     wl_surface_commit(o->surface);
   }
 }
