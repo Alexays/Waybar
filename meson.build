@@ -83,11 +83,9 @@ if dbusmenu_gtk.found()
     )
 endif
 
-test_fs = '''#include <filesystem>
-int main(void){}'''
 compiler = meson.get_compiler('cpp')
 
-if not compiler.compiles(test_fs, name : 'is filesystem still in experimental?')
+if not compiler.has_header('filesystem')
     add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
 endif
 
