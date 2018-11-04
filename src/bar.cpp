@@ -144,6 +144,21 @@ auto waybar::Bar::toggle() -> void
   wl_surface_commit(surface);
 }
 
+void waybar::Bar::handleSeat(struct wl_seat* seat, uint32_t caps) {
+  zwlr_layer_surface_v1_get_keyboard_modifiers(layer_surface, 1, seat);
+  wl_surface_commit(surface);
+
+  for (auto it = modules_left_.begin(); it != modules_left_.end(); ++it) {
+    (*it)->handleSeat(seat, caps);
+  }
+  for (auto it = modules_center_.begin(); it != modules_center_.end(); ++it) {
+    (*it)->handleSeat(seat, caps);
+  }
+  for (auto it = modules_right_.begin(); it != modules_right_.end(); ++it) {
+    (*it)->handleSeat(seat, caps);
+  }
+}
+
 auto waybar::Bar::setupConfig() -> void
 {
   std::ifstream file(client.config_file);

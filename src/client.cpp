@@ -43,6 +43,13 @@ waybar::Client::Client(int argc, char* argv[])
 
 }
 
+void waybar::Client::seatCapabilities(void *data, struct wl_seat *wl_seat, uint32_t caps) {
+  auto o = static_cast<waybar::Client *>(data);
+  for (auto it = o->bars.begin(); it != o->bars.end(); ++it) {
+    (*it)->handleSeat(wl_seat, caps);
+  }
+}
+
 void waybar::Client::handleGlobal(void *data, struct wl_registry *registry,
   uint32_t name, const char *interface, uint32_t version)
 {
@@ -58,8 +65,13 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry,
       o->bars.emplace_back(std::make_unique<Bar>(*o, std::move(output), name));
     }
   } else if (strcmp(interface, wl_seat_interface.name) == 0) {
+    static const struct wl_seat_listener seat_listener = {
+                                                          seatCapabilities,
+                                                          seatName
+    };
     o->seat = static_cast<struct wl_seat *>(wl_registry_bind(registry, name,
       &wl_seat_interface, version));
+    wl_seat_add_listener(o->seat, &seat_listener, o);
   } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0
     && version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
       o->xdg_output_manager = static_cast<struct zxdg_output_manager_v1 *>(

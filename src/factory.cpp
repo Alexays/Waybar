@@ -46,6 +46,9 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
       return new waybar::modules::Pulseaudio(config_[name]);
     }
     #endif
+    if (ref == "kbdlayout") {
+      return new waybar::modules::KbdLayout(config_[name]);
+    }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), config_[name]);
     }

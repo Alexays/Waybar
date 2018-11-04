@@ -29,7 +29,7 @@ window#waybar {
     border-bottom: 3px solid white;
 }
 
-#clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify, #tray, #mode {
+#clock, #battery, #cpu, #memory, #network, #pulseaudio, #custom-spotify, #tray, #mode, kbdlayout {
     padding: 0 10px;
     margin: 0 5px;
 }
@@ -99,4 +99,9 @@ window#waybar {
 
 #tray {
     background-color: #2980b9;
+}
+
+#kbdlayout {
+    background: #1f4d96;
+    color: white;
 }

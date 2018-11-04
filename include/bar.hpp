@@ -17,6 +17,7 @@ class Bar {
     Bar(const Bar&) = delete;
 
     auto toggle() -> void;
+  void handleSeat(struct wl_seat*, uint32_t);
 
     const Client& client;
     Gtk::Window window;

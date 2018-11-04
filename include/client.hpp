@@ -34,6 +34,8 @@ class Client {
       uint32_t name, const char *interface, uint32_t version);
     static void handleGlobalRemove(void *data,
       struct wl_registry *registry, uint32_t name);
+  static void seatName(void *data, struct wl_seat *wl_seat, const char *name) {}
+  static void seatCapabilities(void *data, struct wl_seat *wl_seat, uint32_t caps);
 };
 
 }
