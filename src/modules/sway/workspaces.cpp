@@ -41,7 +41,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
   std::lock_guard<std::mutex> lock(mutex_);
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
-      [it](auto node) -> bool { return node["num"].asInt() == it->first; });
+      [it](auto node) -> bool { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end()) {
       it = buttons_.erase(it);
       needReorder = true;
@@ -54,7 +54,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
       && bar_.output_name != node["output"].asString()) {
       continue;
     }
-    auto it = buttons_.find(node["num"].asInt());
+    auto it = buttons_.find(node["name"].asString());
     if (it == buttons_.end()) {
       addWorkspace(node);
       needReorder = true;
@@ -103,7 +103,7 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
       fmt::arg("name", node["name"].asString()),
       fmt::arg("index", node["num"].asString()))
     : icon;
-  auto pair = buttons_.emplace(node["num"].asInt(), format);
+  auto pair = buttons_.emplace(node["name"].asString(), format);
   auto &button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
@@ -158,73 +158,73 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
     return false;
   }
   scrolling_ = true;
-  int id = -1;
+  std::string name;
   uint16_t idx = 0;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     for (; idx < workspaces_.size(); idx += 1) {
       if (workspaces_[idx]["focused"].asBool()) {
-        id = workspaces_[idx]["num"].asInt();
+        name = workspaces_[idx]["name"].asString();
         break;
       }
     }
   }
-  if (id == -1) {
+  if (name.empty()) {
     scrolling_ = false;
     return false;
   }
   if (e->direction == GDK_SCROLL_UP) {
-      id = getNextWorkspace();
+      name = getNextWorkspace();
   }
   if (e->direction == GDK_SCROLL_DOWN) {
-      id = getPrevWorkspace();
+      name = getPrevWorkspace();
   }
   if (e->direction == GDK_SCROLL_SMOOTH) {
     gdouble delta_x, delta_y;
     gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e),
       &delta_x, &delta_y);
     if (delta_y < 0) {
-      id = getNextWorkspace();
+      name = getNextWorkspace();
     } else if (delta_y > 0) {
-      id = getPrevWorkspace();
+      name = getPrevWorkspace();
     }
   }
-  {
+  if (!name.empty()) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (id == workspaces_[idx]["num"].asInt()) {
+    if (name == workspaces_[idx]["name"].asString()) {
       scrolling_ = false;
       return false;
     }
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", id));
+    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
   }
   return true;
 }
 
-int waybar::modules::sway::Workspaces::getPrevWorkspace()
+std::string waybar::modules::sway::Workspaces::getPrevWorkspace()
 {
   for (uint16_t i = 0; i != workspaces_.size(); i += 1) {
     if (workspaces_[i]["focused"].asBool()) {
       if (i > 0) {
-        return workspaces_[i - 1]["num"].asInt();
+        return workspaces_[i - 1]["name"].asString();
       }
-      return workspaces_[workspaces_.size() - 1]["num"].asInt();
+      return workspaces_[workspaces_.size() - 1]["name"].asString();
     }
   }
-  return -1;
+  return "";
 }
 
-int waybar::modules::sway::Workspaces::getNextWorkspace()
+std::string waybar::modules::sway::Workspaces::getNextWorkspace()
 {
   for (uint16_t i = 0; i != workspaces_.size(); i += 1) {
     if (workspaces_[i]["focused"].asBool()) {
       if (i + 1U < workspaces_.size()) {
-        return workspaces_[i + 1]["num"].asInt();
+        return workspaces_[i + 1]["name"].asString();
       }
-      return workspaces_[0]["num"].asInt();
+      return workspaces_[0]["String"].asString();
     }
   }
-  return -1;
+  return "";
 }
 
 waybar::modules::sway::Workspaces::operator Gtk::Widget &() {
