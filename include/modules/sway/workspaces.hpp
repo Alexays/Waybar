@@ -20,8 +20,8 @@ class Workspaces : public IModule {
     void addWorkspace(Json::Value);
     std::string getIcon(std::string, Json::Value);
     bool handleScroll(GdkEventScroll*);
-    int getPrevWorkspace();
-    int getNextWorkspace();
+    std::string getPrevWorkspace();
+    std::string getNextWorkspace();
 
     Bar& bar_;
     const Json::Value& config_;
@@ -30,7 +30,7 @@ class Workspaces : public IModule {
     util::JsonParser parser_;
     std::mutex mutex_;
     bool scrolling_;
-    std::unordered_map<int, Gtk::Button> buttons_;
+    std::unordered_map<std::string, Gtk::Button> buttons_;
     Json::Value workspaces_;
     Ipc ipc_;
 };
