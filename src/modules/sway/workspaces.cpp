@@ -42,7 +42,9 @@ auto waybar::modules::sway::Workspaces::update() -> void
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
       [it](auto node) -> bool { return node["name"].asString() == it->first; });
-    if (ws == workspaces_.end()) {
+    if (ws == workspaces_.end() ||
+            (!config_["all-outputs"].asBool() &&
+             (*ws)["output"].asString() != bar_.output_name)) {
       it = buttons_.erase(it);
       needReorder = true;
     } else {
