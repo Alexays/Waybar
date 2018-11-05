@@ -1,0 +1,28 @@
+sudo: required
+language: cpp
+compiler:
+  - gcc
+  - clang
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    - llvm-toolchain-precise
+    packages:
+    - gcc-5
+    - g++-5
+    - clang-3.8
+
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install ninja python3-pip python3-dev build-essential
+  - sudo pip3 install --upgrade pip
+  - sudo pip3 install meson
+
+script:
+  - mkdir build
+  - meson build
+  - cd build
+  - ninja
+  - ninja test
