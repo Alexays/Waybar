@@ -25,7 +25,7 @@
     THIS SOFTWARE.
   </copyright>
 
-  <interface name="zwlr_layer_shell_v1" version="1">
+  <interface name="zwlr_layer_shell_v1" version="2">
     <description summary="create surfaces that are layers of the desktop">
       Clients can use this interface to assign the surface_layer role to
       wl_surfaces. Such surfaces are assigned to a "layer" of the output and
@@ -84,7 +84,7 @@
     </enum>
   </interface>
 
-  <interface name="zwlr_layer_surface_v1" version="1">
+  <interface name="zwlr_layer_surface_v1" version="2">
     <description summary="layer metadata interface">
       An interface that may be implemented by a wl_surface, for surfaces that
       are designed to be rendered as a layer of a stacked desktop-like
@@ -140,7 +140,7 @@
         how they should interact with surfaces that do. If set to zero, the
         surface indicates that it would like to be moved to avoid occluding
         surfaces with a positive excluzive zone. If set to -1, the surface
-        indicates that it would not like to be moved to accomodate for other
+        indicates that it would not like to be moved to accommodate for other
         surfaces, and the compositor should extend it all the way to the edges
         it is anchored to.
 
@@ -281,5 +281,20 @@
       <entry name="left" value="4" summary="the left edge of the anchor rectangle"/>
       <entry name="right" value="8" summary="the right edge of the anchor rectangle"/>
     </enum>
+
+    <!-- version 2 additions -->
+
+    <request name="get_keyboard_modifiers" since="2">
+      <description summary="requests keyboard modifier events">
+        Keyboard modifier events would be sent to the client when need_events
+        is set to 1. Useful when the client wants to know about the current
+        layout.
+
+        Events is double-buffered, see wl_surface.commit.
+      </description>
+      <arg name="need_events" type="uint"/>
+      <arg name="seat" type="object" interface="wl_seat" allow-null="true"/>
+    </request>
+
   </interface>
 </protocol>
