@@ -8,6 +8,7 @@ addons:
     apt:
         sources:
             - ubuntu-toolchain-r-test
+            - debian-sid
         packages:
             - gcc-7
             - g++-7
