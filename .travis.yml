@@ -5,20 +5,21 @@ language: python
 python: 3.6
 
 addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - gcc-7
-      - g++-7
-      - libinput10
-      - libinput-dev
-      - wayland-protocols
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - gcc-7
+            - g++-7
+            - libinput10
+            - libinput-dev
+            - wayland-protocols
+            - wayland
 
 matrix:
-  include:
-    - env: CC=gcc-7 CXX=g++-7
-    - env: CC=clang CXX=clang++
+    include:
+        - env: CC=gcc-7 CXX=g++-7
+        - env: CC=clang CXX=clang++
 
 install:
     - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
