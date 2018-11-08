@@ -25,8 +25,7 @@ void waybar::modules::Memory::parseMeminfo()
   int memtotal, memfree, memavail, membuffer, memcache;
   FILE* info = fopen("/proc/meminfo","r");
   if(fscanf (info, "MemTotal: %d kB MemFree: %d kB Buffers: %d kB Cached: %d kB",&memtotal, &memfree, &membuffer, &memcache) < 4) { // Old meminfo format 
-    fclose(info);
-    info = fopen("/proc/meminfo","r"); 
+    rewind(info);
     if(fscanf(info, "MemTotal: %d kB MemFree: %d kB MemAvailable: %d kB Buffers: %d kB Cached: %d kB",&memtotal, &memfree, &memavail, &membuffer, &memcache) < 5) { // Current meminfo format
       memtotal_ = -1;
       memfree_ = -1;
