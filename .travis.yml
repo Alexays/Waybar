@@ -24,6 +24,9 @@ matrix:
         - env: CC=gcc-7 CXX=g++-7
         - env: CC=clang CXX=clang++
 
+before_install:
+    - git clone https://github.com/swaywm/wlroots subprojects/wlroots
+
 install:
     - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
     - mkdir -p "$HOME/.local/bin"
