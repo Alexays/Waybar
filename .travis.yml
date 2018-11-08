@@ -1,28 +1,32 @@
-sudo: required
-language: cpp
-compiler:
-  - gcc
-  - clang
+dist: xenial
+os: linux
+language: python
+
+python: 3.6
 
 addons:
   apt:
     sources:
-    - ubuntu-toolchain-r-test
-    - llvm-toolchain-precise
+      - ubuntu-toolchain-r-test
     packages:
-    - gcc-5
-    - g++-5
-    - clang-3.8
+      - gcc-7
+      - g++-7
 
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install ninja python3-pip python3-dev build-essential
-  - sudo pip3 install --upgrade pip
-  - sudo pip3 install meson
+matrix:
+  include:
+    - env: CC=gcc-7 CXX=g++-7
+    - env: CC=clang CXX=clang++
+
+install:
+    - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
+    - mkdir -p "$HOME/.local/bin"
+    - unzip ninja-linux.zip -d ${HOME}/.local/bin
+    - export PATH="$HOME/.local/bin:$PATH"
+    - pip install meson
+
+before_script:
+    - mkdir build
 
 script:
-  - mkdir build
-  - meson build
-  - cd build
-  - ninja
-  - ninja test
+    - meson build
+    - ninja -C build
