@@ -1,13 +1,14 @@
 dist: xenial
 os: linux
 language: python
+sudo: required
 
 python: 3.6
 
 addons:
     apt:
         sources:
-            - debian-sid
+            - ubuntu-toolchain-r-test
         packages:
             - gcc-7
             - g++-7
@@ -17,7 +18,6 @@ addons:
             - libwayland-client0
             - libwayland-cursor0
             - libwayland-bin
-            - libwayland-dev
 
 matrix:
     include:
@@ -26,6 +26,8 @@ matrix:
 
 before_install:
     - git clone https://github.com/swaywm/wlroots subprojects/wlroots
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-dev_1.16.0-1_i386.deb
+    - sudo dpkg -i libwayland-dev_1.16.0-1_i386.deb
 
 install:
     - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
