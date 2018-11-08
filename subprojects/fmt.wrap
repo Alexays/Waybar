@@ -1,0 +1,10 @@
+[wrap-file]
+directory = fmt-5.2.1
+
+source_url = https://github.com/fmtlib/fmt/archive/5.2.1.tar.gz
+source_filename = fmt-5.2.1.tar.gz
+source_hash = 3c812a18e9f72a88631ab4732a97ce9ef5bcbefb3235e9fd465f059ba204359b
+
+patch_url = https://wrapdb.mesonbuild.com/v1/projects/fmt/5.2.1/1/get_zip
+patch_filename = fmt-5.2.1-1-wrap.zip
+patch_hash = 7add08bb4e168c0809e88c6aa64ed5c3494b74deb6be12a93e1e4dc5bb3a1fc1

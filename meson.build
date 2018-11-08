@@ -4,7 +4,8 @@ project(
     license: 'MIT',
     default_options : [
         'cpp_std=c++17',
-        'buildtype=release'
+        'buildtype=release',
+        'default_library=static'
     ],
 )
 
@@ -17,8 +18,13 @@ if false # libc++
 
     cpp_link_args += ['-lc++fs']
 else
-    # TODO: For std::filesystem in libstdc++. Still unstable? Or why is it not in libstdc++ proper yet?
     cpp_link_args += ['-lstdc++fs']
+endif
+
+compiler = meson.get_compiler('cpp')
+
+if not compiler.has_header('filesystem')
+    add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
 endif
 
 add_global_arguments(cpp_args, language : 'cpp')
@@ -26,7 +32,7 @@ add_global_link_arguments(cpp_link_args, language : 'cpp')
 
 thread_dep = dependency('threads')
 libinput = dependency('libinput')
-fmt = dependency('fmt', fallback: ['fmtlib', 'fmt_dep'])
+fmt = dependency('fmt', version : ['>=5.2.1'], fallback : ['fmt', 'fmt_dep'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -81,12 +87,6 @@ if dbusmenu_gtk.found()
         'src/modules/sni/snh.cpp',
         'src/modules/sni/sni.cpp'
     )
-endif
-
-compiler = meson.get_compiler('cpp')
-
-if not compiler.has_header('filesystem')
-    add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
 endif
 
 subdir('protocol')
