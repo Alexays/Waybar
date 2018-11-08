@@ -13,6 +13,7 @@ addons:
       - g++-7
       - libinput10
       - libinput-dev
+      - wayland-protocols
 
 matrix:
   include:
