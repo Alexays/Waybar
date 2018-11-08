@@ -23,14 +23,14 @@ matrix:
 
 before_install:
     - git clone https://github.com/swaywm/wlroots subprojects/wlroots
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-client0_1.16.0-1_i386.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-cursor0_1.16.0-1_i386.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-bin_1.16.0-1_i386.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-dev_1.16.0-1_i386.deb
-    - sudo dpkg -i libwayland-client0_1.16.0-1_i386.deb
-    - sudo dpkg -i libwayland-cursor0_1.16.0-1_i386.deb
-    - sudo dpkg -i libwayland-bin_1.16.0-1_i386.deb
-    - sudo dpkg -i libwayland-dev_1.16.0-1_i386.deb
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-client0_1.16.0-1_amd64.deb
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-cursor0_1.16.0-1_amd64.deb
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-bin_1.16.0-1_amd64.deb
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-dev_1.16.0-1_amd64.deb
+    - sudo dpkg -i libwayland-client0_1.16.0-1_amd64.deb
+    - sudo dpkg -i libwayland-cursor0_1.16.0-1_amd64.deb
+    - sudo dpkg -i libwayland-bin_1.16.0-1_amd64.deb
+    - sudo dpkg -i libwayland-dev_1.16.0-1_amd64.deb
 
 install:
     - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
