@@ -15,9 +15,6 @@ addons:
             - libinput10
             - libinput-dev
             - wayland-protocols
-            - libwayland-client0
-            - libwayland-cursor0
-            - libwayland-bin
 
 matrix:
     include:
@@ -26,7 +23,13 @@ matrix:
 
 before_install:
     - git clone https://github.com/swaywm/wlroots subprojects/wlroots
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-client0_1.16.0-1_i386.deb
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-cursor0_1.16.0-1_i386.deb
+    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-bin_1.16.0-1_i386.deb
     - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-dev_1.16.0-1_i386.deb
+    - sudo dpkg -i libwayland-client0_1.16.0-1_i386.deb
+    - sudo dpkg -i libwayland-cursor0_1.16.0-1_i386.deb
+    - sudo dpkg -i libwayland-bin_1.16.0-1_i386.deb
     - sudo dpkg -i libwayland-dev_1.16.0-1_i386.deb
 
 install:
