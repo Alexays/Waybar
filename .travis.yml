@@ -16,6 +16,7 @@ addons:
             - wayland-protocols
             - libwayland-client0
             - libwayland-cursor0
+            - libwayland-bin
 
 matrix:
     include:
