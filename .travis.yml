@@ -17,6 +17,7 @@ addons:
             - libwayland-client0
             - libwayland-cursor0
             - libwayland-bin
+            - libwayland-dev
 
 matrix:
     include:
