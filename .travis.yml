@@ -14,7 +14,8 @@ addons:
             - libinput10
             - libinput-dev
             - wayland-protocols
-            - wayland
+            - libwayland-client0
+            - libwayland-cursor0
 
 matrix:
     include:
