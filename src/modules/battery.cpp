@@ -57,7 +57,8 @@ void waybar::modules::Battery::worker()
     if (nbytes != sizeof(event)) {
       return;
     }
-    threadTimer_.stop();
+    // TODO: don't stop timer for now since there is some bugs :?
+    // threadTimer_.stop();
     dp.emit();
   };
 }
