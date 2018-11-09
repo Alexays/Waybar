@@ -1,4 +1,4 @@
-# Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
+# Waybar [![Travis](https://travis-ci.org/Alexays/Waybar.svg?branch=master)](https://travis-ci.org/Alexays/Waybar) [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 **Proof of concept**
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
