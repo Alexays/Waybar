@@ -5,6 +5,7 @@ services:
 
 env:
     - distro: debian
+    - distro: archlinux
 
 before_install:
     - docker pull alexays/waybar:${distro}
