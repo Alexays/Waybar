@@ -1,7 +1,7 @@
 FROM debian:sid
 
 RUN apt-get update && \
-    apt-get install -y build-essential && \
+    apt-get install -y build-essential meson && \
     apt-get clean
 
 ADD . /root
