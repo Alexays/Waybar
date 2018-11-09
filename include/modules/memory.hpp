@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <stdio.h>
+#include <fstream>
 #include "util/chrono.hpp"
 #include "ALabel.hpp"
 
