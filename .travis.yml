@@ -10,4 +10,4 @@ before_install:
     - docker pull alexays/waybar:${distro}
 
 script:
-    - docker run alexays/waybar:${distro} /bin/sh -c "cd /root && TRAVIS=true meson build && ninja -C build"
+    - docker run waybar /bin/sh -c "git clone https://github.com/Alexays/Waybar && cd Waybar && git clone https://github.com/swaywm/wlroots subprojects/wlroots && meson build && ninja -C build"
