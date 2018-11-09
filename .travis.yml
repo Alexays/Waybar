@@ -1,4 +1,4 @@
-dist: xenial
+dist: trusty
 os: linux
 language: python
 sudo: required
@@ -8,7 +8,7 @@ python: 3.6
 addons:
     apt:
         sources:
-            - ubuntu-toolchain-r-test
+            - debian-sid
         packages:
             - gcc-7
             - g++-7
@@ -22,22 +22,22 @@ matrix:
 
 before_install:
     - git clone https://github.com/swaywm/wlroots subprojects/wlroots
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-client0_1.16.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-cursor0_1.16.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-bin_1.16.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/libx/libxcb/libxcb1_1.13.1-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/m/mesa/libgbm1_18.1.9-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/libx/libxcb/libxcb-dri3-0_1.13.1-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/libg/libglvnd/libglvnd0_1.1.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/m/mesa/libegl-mesa0_18.1.9-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/libg/libglvnd/libegl1_1.1.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/m/mesa/libwayland-egl1-mesa_18.1.9-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-egl1_1.16.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-server0_1.16.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-dev_1.16.0-1_amd64.deb
-    - wget http://http.us.debian.org/debian/pool/main/w/wayland-protocols/wayland-protocols_1.16-1_all.deb
-    - wget http://http.us.debian.org/debian/pool/main/m/mesa/libegl1-mesa-dev_18.1.9-1_amd64.deb
-    - sudo dpkg -i libwayland-client0_1.16.0-1_amd64.deb libwayland-cursor0_1.16.0-1_amd64.deb libwayland-bin_1.16.0-1_amd64.deb libxcb1_1.13.1-1_amd64.deb libgbm1_18.1.9-1_amd64.deb libxcb-dri3-0_1.13.1-1_amd64.deb libglvnd0_1.1.0-1_amd64.deb libegl-mesa0_18.1.9-1_amd64.deb libegl1_1.1.0-1_amd64.deb libwayland-egl1-mesa_18.1.9-1_amd64.deb libwayland-egl1_1.16.0-1_amd64.deb libwayland-server0_1.16.0-1_amd64.deb libwayland-dev_1.16.0-1_amd64.deb wayland-protocols_1.16-1_all.deb libegl1-mesa-dev_18.1.9-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-client0_1.16.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-cursor0_1.16.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-bin_1.16.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/libx/libxcb/libxcb1_1.13.1-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/m/mesa/libgbm1_18.1.9-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/libx/libxcb/libxcb-dri3-0_1.13.1-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/libg/libglvnd/libglvnd0_1.1.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/m/mesa/libegl-mesa0_18.1.9-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/libg/libglvnd/libegl1_1.1.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/m/mesa/libwayland-egl1-mesa_18.1.9-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-egl1_1.16.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-server0_1.16.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/w/wayland/libwayland-dev_1.16.0-1_amd64.deb
+    # - wget http://http.us.debian.org/debian/pool/main/w/wayland-protocols/wayland-protocols_1.16-1_all.deb
+    # - wget http://http.us.debian.org/debian/pool/main/m/mesa/libegl1-mesa-dev_18.1.9-1_amd64.deb
+    # - sudo dpkg -i libwayland-client0_1.16.0-1_amd64.deb libwayland-cursor0_1.16.0-1_amd64.deb libwayland-bin_1.16.0-1_amd64.deb libxcb1_1.13.1-1_amd64.deb libgbm1_18.1.9-1_amd64.deb libxcb-dri3-0_1.13.1-1_amd64.deb libglvnd0_1.1.0-1_amd64.deb libegl-mesa0_18.1.9-1_amd64.deb libegl1_1.1.0-1_amd64.deb libwayland-egl1-mesa_18.1.9-1_amd64.deb libwayland-egl1_1.16.0-1_amd64.deb libwayland-server0_1.16.0-1_amd64.deb libwayland-dev_1.16.0-1_amd64.deb wayland-protocols_1.16-1_all.deb libegl1-mesa-dev_18.1.9-1_amd64.deb
 
 install:
     - wget https://github.com/ninja-build/ninja/releases/download/v1.8.2/ninja-linux.zip
