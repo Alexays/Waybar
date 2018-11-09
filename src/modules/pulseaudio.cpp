@@ -74,8 +74,7 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data)
 bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   // Avoid concurrent scroll event
   bool direction_up = false;
-  // XXX/TODO: Change of 100 corresponds to 1%, does that always hold true?
-  uint16_t change = 100;
+  uint16_t change = config_["scroll-step"].isUInt() ? config_["scroll-step"].asUInt() * 100 : 100;
   pa_cvolume pa_volume = pa_volume_;
 
   if (scrolling_) {
