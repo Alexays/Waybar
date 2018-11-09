@@ -12,6 +12,7 @@ class Memory : public ALabel {
     Memory(const Json::Value&);
     auto update() -> void;
   private:
+    static inline const std::string data_dir_ = "/proc/meminfo";
     unsigned long memtotal_;
     unsigned long memfree_;
     void parseMeminfo();
