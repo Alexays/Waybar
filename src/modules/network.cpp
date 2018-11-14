@@ -26,6 +26,7 @@ waybar::modules::Network::Network(const Json::Value& config)
       char ifname[IF_NAMESIZE];
       if_indextoname(ifid_, ifname);
       ifname_ = ifname;
+      getInterfaceAddress();
     }
   }
   initNL80211();
@@ -64,6 +65,7 @@ waybar::modules::Network::Network(const Json::Value& config)
         char ifname[IF_NAMESIZE];
         if_indextoname(ifid_, ifname);
         ifname_ = ifname;
+        getInterfaceAddress();
         need_update = true;
       }
     }
@@ -101,7 +103,10 @@ auto waybar::modules::Network::update() -> void
     fmt::arg("essid", essid_),
     fmt::arg("signaldBm", signal_strength_dbm_),
     fmt::arg("signalStrength", signal_strength_),
-    fmt::arg("ifname", ifname_)
+    fmt::arg("ifname", ifname_),
+    fmt::arg("netmask", netmask_),
+    fmt::arg("ipaddr", ipaddr_),
+    fmt::arg("cidr", cidr_)
   ));
 }
 
@@ -110,6 +115,9 @@ void waybar::modules::Network::disconnected()
   essid_.clear();
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
+  ipaddr_.clear();
+  netmask_.clear();
+  cidr_ = 0;
   ifname_.clear();
   ifid_ = -1;
 }
@@ -253,6 +261,36 @@ int waybar::modules::Network::getExternalInterface()
 
 out:
   return ifidx;
+}
+
+void waybar::modules::Network::getInterfaceAddress() {
+  unsigned int cidrRaw;
+  struct ifaddrs *ifaddr, *ifa;
+  int success = getifaddrs(&ifaddr);
+  if (success == 0) {
+    ifa = ifaddr;
+    while (ifa != NULL && ipaddr_.empty() && netmask_.empty()) {
+      if (ifa->ifa_addr->sa_family == family_) {
+        if (strcmp(ifa->ifa_name, ifname_.c_str()) == 0) {
+          ipaddr_ = inet_ntoa(((struct sockaddr_in*)ifa->ifa_addr)->sin_addr);
+          netmask_ = inet_ntoa(((struct sockaddr_in*)ifa->ifa_netmask)->sin_addr);
+          cidrRaw = ((struct sockaddr_in *)(ifa->ifa_netmask))->sin_addr.s_addr;
+          unsigned int cidr = 0;
+          while (cidrRaw) {
+              cidr += cidrRaw & 1;
+              cidrRaw >>= 1;
+          }
+          cidr_ = cidr;
+        }
+      }
+      ifa = ifa->ifa_next;
+    }
+    freeifaddrs(ifaddr);
+  } else {
+    ipaddr_.clear();
+    netmask_.clear();
+    cidr_ = 0;
+  }
 }
 
 int waybar::modules::Network::netlinkRequest(int fd, void *req,
