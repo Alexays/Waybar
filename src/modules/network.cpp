@@ -269,11 +269,11 @@ void waybar::modules::Network::getInterfaceAddress() {
   int success = getifaddrs(&ifaddr);
   if (success == 0) {
     ifa = ifaddr;
-    while(ifa != NULL && ipaddr_.empty() && netmask_.empty()) {
-      if(ifa->ifa_addr->sa_family == family_) {
-        if(strcmp(ifa->ifa_name, ifname_.c_str()) == 0){
-          ipaddr_=inet_ntoa(((struct sockaddr_in*)ifa->ifa_addr)->sin_addr);
-          netmask_=inet_ntoa(((struct sockaddr_in*)ifa->ifa_netmask)->sin_addr);
+    while (ifa != NULL && ipaddr_.empty() && netmask_.empty()) {
+      if (ifa->ifa_addr->sa_family == family_) {
+        if (strcmp(ifa->ifa_name, ifname_.c_str()) == 0) {
+          ipaddr_ = inet_ntoa(((struct sockaddr_in*)ifa->ifa_addr)->sin_addr);
+          netmask_ = inet_ntoa(((struct sockaddr_in*)ifa->ifa_netmask)->sin_addr);
           cidrRaw = ((struct sockaddr_in *)(ifa->ifa_netmask))->sin_addr.s_addr;
           unsigned int cidr = 0;
           while (cidrRaw) {
@@ -285,8 +285,12 @@ void waybar::modules::Network::getInterfaceAddress() {
       }
       ifa = ifa->ifa_next;
     }
+    freeifaddrs(ifaddr);
+  } else {
+    ipaddr_.clear();
+    netmask_.clear();
+    cidr_ = 0;
   }
-  freeifaddrs(ifaddr);
 }
 
 int waybar::modules::Network::netlinkRequest(int fd, void *req,
