@@ -269,8 +269,8 @@ void waybar::modules::Network::getInterfaceAddress() {
   int success = getifaddrs(&ifaddr);
   if (success == 0) {
     ifa = ifaddr;
-    while (ifa != NULL && ipaddr_.empty() && netmask_.empty()) {
-      if (ifa->ifa_addr->sa_family == family_) {
+    while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
+      if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_) {
         if (strcmp(ifa->ifa_name, ifname_.c_str()) == 0) {
           ipaddr_ = inet_ntoa(((struct sockaddr_in*)ifa->ifa_addr)->sin_addr);
           netmask_ = inet_ntoa(((struct sockaddr_in*)ifa->ifa_netmask)->sin_addr);
