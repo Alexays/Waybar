@@ -1,6 +1,8 @@
 #pragma once
 
 #include <net/if.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <netlink/netlink.h>
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
@@ -24,6 +26,7 @@ class Network : public ALabel {
     void disconnected();
     void initNL80211();
     int getExternalInterface();
+    void getInterfaceAddress();
     void parseEssid(struct nlattr**);
     void parseSignal(struct nlattr**);
     bool associatedOrJoined(struct nlattr**);
@@ -39,6 +42,9 @@ class Network : public ALabel {
 
     std::string essid_;
     std::string ifname_;
+    std::string ipaddr_;
+    std::string netmask_;
+    int cidr_;
     int signal_strength_dbm_;
     uint16_t signal_strength_;
 };
