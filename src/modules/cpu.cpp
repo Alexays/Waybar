@@ -1,7 +1,5 @@
 #include "modules/cpu.hpp"
 
-using ctx = fmt::format_context;
-
 waybar::modules::Cpu::Cpu(const Json::Value& config)
   : ALabel(config, "{usage}%")
 {
