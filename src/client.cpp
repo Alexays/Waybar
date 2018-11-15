@@ -1,4 +1,5 @@
 #include "client.hpp"
+#include <iostream>
 
 waybar::Client::Client(int argc, char* argv[])
   : gtk_app(Gtk::Application::create(argc, argv, "fr.arouillard.waybar")),
@@ -40,7 +41,7 @@ waybar::Client::Client(int argc, char* argv[])
     "/etc/xdg/waybar/style.css",
     "./resources/style.css",
   });
-
+  std::cout << "Resources files: " + config_file + ", " + css_file << std::endl;
 }
 
 void waybar::Client::handleGlobal(void *data, struct wl_registry *registry,

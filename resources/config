@@ -37,7 +37,7 @@
         "format-alt": "{:%Y-%m-%d}"
     },
     "cpu": {
-        "format": "{}% "
+        "format": "{usage}% "
     },
     "memory": {
         "format": "{}% "
