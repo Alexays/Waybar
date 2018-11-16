@@ -13,9 +13,9 @@ waybar::modules::SNI::Tray::Tray(const Json::Value &config)
 
 auto waybar::modules::SNI::Tray::update() -> void {
   auto childrens = box_.get_children();
-  childrens.erase(childrens.begin(), childrens.end());
+  // childrens.erase(childrens.begin(), childrens.end());
   for (auto &item : host_.items) {
-    box_.pack_start(item.event_box);
+    box_.pack_start(*item.event_box);
   }
   if (box_.get_children().size() > 0) {
     box_.set_name("tray");
