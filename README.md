@@ -5,8 +5,7 @@
 > Available on [AUR](https://aur.archlinux.org/packages/waybar-git/)
 
 **Current features**
-- Sway Workspaces
-- Sway focused window name
+- Sway (Workspaces, Binding mode, Focused window name)
 - Tray (Beta) [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
 - Battery
