@@ -3,6 +3,7 @@
 #include <dbus-status-notifier-item.h>
 #include <gtkmm.h>
 #include <json/json.h>
+#include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #ifdef FILESYSTEM_EXPERIMENTAL
   #include <experimental/filesystem>
 #else
@@ -17,12 +18,11 @@ public:
 
   std::string bus_name;
   std::string object_path;
-  Gtk::EventBox event_box;
+  Gtk::EventBox *event_box;
 
   int icon_size;
   int effective_icon_size;
   Gtk::Image *image;
-  Gtk::Menu *gtk_menu = nullptr;
   std::string category;
   std::string id;
   std::string status;
@@ -35,7 +35,8 @@ public:
   std::string attention_icon_name;
   std::string attention_movie_name;
   std::string icon_theme_path;
-  std::string menu;
+  DbusmenuGtkMenu *menu = nullptr;
+  Gtk::Menu *gtk_menu = nullptr;
   bool item_is_menu;
 
 private:
@@ -45,7 +46,7 @@ private:
   static void handleSecondaryActivate(GObject *, GAsyncResult *, gpointer);
 
   void updateImage();
-  void updateMenu();
+  bool showMenu(GdkEventButton *const &ev);
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant *variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(std::string name, int size);
   bool handleClick(GdkEventButton *const & /*ev*/);
