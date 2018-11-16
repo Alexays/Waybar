@@ -34,6 +34,17 @@ waybar::modules::Network::Network(const Json::Value& config)
   // Trigger first values
   getInfo();
   update();
+  worker();
+}
+
+waybar::modules::Network::~Network()
+{
+  close(sock_fd_);
+  nl_socket_free(sk_);
+}
+
+void waybar::modules::Network::worker()
+{
   thread_ = [this] {
     char buf[4096];
     uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
@@ -74,12 +85,14 @@ waybar::modules::Network::Network(const Json::Value& config)
       dp.emit();
     }
   };
-}
-
-waybar::modules::Network::~Network()
-{
-  close(sock_fd_);
-  nl_socket_free(sk_);
+  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 60;
+  thread_timer_ = [this, interval] {
+    thread_.sleep_for(std::chrono::seconds(interval));
+    if (ifid_ > 0) {
+      getInfo();
+      dp.emit();
+    }
+  };
 }
 
 auto waybar::modules::Network::update() -> void

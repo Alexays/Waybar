@@ -90,6 +90,10 @@ void waybar::Client::bindInterfaces()
   };
   wl_registry_add_listener(registry, &registry_listener, this);
   wl_display_roundtrip(wl_display);
+  if (!layer_shell || !seat || !xdg_output_manager) {
+    throw std::runtime_error("Failed to acquire required resources.");
+  }
+  wl_display_roundtrip(wl_display);
 }
 
 int waybar::Client::main(int /*argc*/, char* /*argv*/[])

@@ -47,7 +47,7 @@ void waybar::modules::Battery::worker()
   // Trigger first values
   update();
   uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 60;
-  threadTimer_ = [this, interval] {
+  thread_timer_ = [this, interval] {
     thread_.sleep_for(chrono::seconds(interval));
     dp.emit();
   };
@@ -58,7 +58,7 @@ void waybar::modules::Battery::worker()
       return;
     }
     // TODO: don't stop timer for now since there is some bugs :?
-    // threadTimer_.stop();
+    // thread_timer_.stop();
     dp.emit();
   };
 }
