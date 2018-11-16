@@ -24,6 +24,7 @@
 
 ```bash
 $ git clone https://github.com/Alexays/Waybar
+$ cd Waybar
 $ meson build
 $ ninja -C build
 $ ./build/waybar
