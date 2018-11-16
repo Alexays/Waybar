@@ -23,6 +23,7 @@ class Network : public ALabel {
     static int netlinkResponse(int, void*, uint32_t, uint32_t groups = 0);
     static int scanCb(struct nl_msg*, void*);
 
+    void worker();
     void disconnected();
     void initNL80211();
     int getExternalInterface();
@@ -33,10 +34,11 @@ class Network : public ALabel {
     auto getInfo() -> void;
 
     waybar::util::SleeperThread thread_;
+    waybar::util::SleeperThread thread_timer_;
     int ifid_;
     sa_family_t family_;
     int sock_fd_;
-    struct sockaddr_nl nladdr_ = {};
+    struct sockaddr_nl nladdr_ = {0};
     struct nl_sock* sk_ = nullptr;
     int nl80211_id_;
 

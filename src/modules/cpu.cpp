@@ -14,7 +14,7 @@ waybar::modules::Cpu::Cpu(const Json::Value& config)
 auto waybar::modules::Cpu::update() -> void
 {
   try {
-    // TODO: as creating dynamic fmt::arg arrays is buggy we have to do this
+    // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
     auto cpu_load = getCpuLoad();
     auto [cpu_usage, tooltip] = getCpuUsage();
     label_.set_tooltip_text(tooltip);
