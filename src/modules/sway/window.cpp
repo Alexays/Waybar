@@ -4,6 +4,10 @@ waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
   : ALabel(config, "{}"), bar_(bar), windowId_(-1)
 {
   label_.set_name("window");
+  if (label_.get_max_width_chars() == -1) {
+    label_.set_hexpand(true);
+    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+  }
   ipc_.connect();
   ipc_.subscribe("[\"window\",\"workspace\"]");
   getFocusedWindow();
