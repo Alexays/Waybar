@@ -136,7 +136,7 @@ auto waybar::modules::Battery::update() -> void
   } else {
     event_box_.show();
     label_.set_name("battery");
-    label_.set_text(fmt::format(format, fmt::arg("capacity", capacity),
+    label_.set_markup(fmt::format(format, fmt::arg("capacity", capacity),
       fmt::arg("icon", getIcon(capacity))));
   }
 }

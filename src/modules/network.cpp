@@ -112,7 +112,7 @@ auto waybar::modules::Network::update() -> void
     }
     label_.get_style_context()->remove_class("disconnected");
   }
-  label_.set_text(fmt::format(format,
+  label_.set_markup(fmt::format(format,
     fmt::arg("essid", essid_),
     fmt::arg("signaldBm", signal_strength_dbm_),
     fmt::arg("signalStrength", signal_strength_),

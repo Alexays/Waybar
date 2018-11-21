@@ -17,5 +17,5 @@ waybar::modules::Clock::Clock(const Json::Value& config)
 auto waybar::modules::Clock::update() -> void
 {
   auto localtime = fmt::localtime(std::time(nullptr));
-  label_.set_text(fmt::format(format_, localtime));
+  label_.set_markup(fmt::format(format_, localtime));
 }

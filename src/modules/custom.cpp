@@ -80,7 +80,7 @@ auto waybar::modules::Custom::update() -> void
     }
 
     auto str = fmt::format(format_, text_);
-    label_.set_text(str);
+    label_.set_markup(str);
     if (text_ == tooltip_) {
       label_.set_tooltip_text(str);
     } else {

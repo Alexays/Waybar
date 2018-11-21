@@ -36,7 +36,7 @@ auto waybar::modules::sway::Mode::update() -> void
     label_.hide();
   } else {
     label_.set_name("mode");
-    label_.set_text(fmt::format(format_, mode_));
+    label_.set_markup(fmt::format(format_, mode_));
     label_.set_tooltip_text(mode_);
     label_.show();
   }

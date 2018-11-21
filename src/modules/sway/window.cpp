@@ -43,7 +43,7 @@ void waybar::modules::sway::Window::worker()
 
 auto waybar::modules::sway::Window::update() -> void
 {
-  label_.set_text(fmt::format(format_, window_));
+  label_.set_markup(fmt::format(format_, window_));
   label_.set_tooltip_text(window_);
 }
 
