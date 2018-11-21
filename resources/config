@@ -24,7 +24,7 @@
     //     }
     // },
     "sway/mode": {
-        "format": "{}"
+        "format": "<span style=\"italic\">{}</span>"
     },
     "tray": {
         // "icon-size": 21,

@@ -18,7 +18,7 @@ auto waybar::modules::Cpu::update() -> void
     auto cpu_load = getCpuLoad();
     auto [cpu_usage, tooltip] = getCpuUsage();
     label_.set_tooltip_text(tooltip);
-    label_.set_text(fmt::format(format_,
+    label_.set_markup(fmt::format(format_,
       fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
