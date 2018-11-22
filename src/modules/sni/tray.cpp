@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-waybar::modules::SNI::Tray::Tray(const Json::Value &config)
-    : config_(config), watcher_(), host_(config,
+waybar::modules::SNI::Tray::Tray(Bar& bar, const Json::Value &config)
+    : config_(config), watcher_(), host_(bar.nb_tray_hosts, config,
     std::bind(&Tray::onAdd, this, std::placeholders::_1),
     std::bind(&Tray::onRemove, this, std::placeholders::_1))
 {
@@ -11,6 +11,7 @@ waybar::modules::SNI::Tray::Tray(const Json::Value &config)
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
   }
+  bar.nb_tray_hosts += 1;
 }
 
 void waybar::modules::SNI::Tray::onAdd(std::unique_ptr<Item>& item)

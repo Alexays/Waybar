@@ -228,7 +228,6 @@ void waybar::modules::SNI::Item::onMenuDestroyed(Item *self)
 
 bool waybar::modules::SNI::Item::makeMenu(GdkEventButton *const &ev)
 {
-  std::cout << bus_name << std::endl;
   if (gtk_menu == nullptr) {
     if (!menu.empty()) {
       dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());

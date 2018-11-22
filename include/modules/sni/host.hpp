@@ -10,7 +10,8 @@ namespace waybar::modules::SNI {
 
 class Host {
   public:
-    Host(const Json::Value&, const std::function<void(std::unique_ptr<Item>&)>&,
+    Host(const std::size_t id, const Json::Value&,
+      const std::function<void(std::unique_ptr<Item>&)>&,
       const std::function<void(std::unique_ptr<Item>&)>&);
     ~Host();
   private:

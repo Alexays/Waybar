@@ -4,10 +4,11 @@
 
 using namespace waybar::modules::SNI;
 
-Host::Host(const Json::Value &config, const std::function<void(std::unique_ptr<Item>&)>& on_add,
+Host::Host(const std::size_t id, const Json::Value &config,
+  const std::function<void(std::unique_ptr<Item>&)>& on_add,
   const std::function<void(std::unique_ptr<Item>&)>& on_remove)
-: bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-1"),
-  object_path_("/StatusNotifierHost"),
+: bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-" + std::to_string(id)),
+  object_path_("/StatusNotifierHost/" + std::to_string(id)),
   bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name_,
     sigc::mem_fun(*this, &Host::busAcquired))),
   config_(config), on_add_(on_add), on_remove_(on_remove)
