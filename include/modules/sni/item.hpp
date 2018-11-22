@@ -52,7 +52,6 @@ private:
   bool makeMenu(GdkEventButton *const &ev);
   bool handleClick(GdkEventButton *const & /*ev*/);
 
-  Glib::RefPtr<Gio::DBus::Connection> conn_;
   GCancellable *cancellable_ = nullptr;
   SnItem *proxy_ = nullptr;
 };
