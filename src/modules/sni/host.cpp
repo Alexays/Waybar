@@ -1,57 +1,52 @@
-#include "modules/sni/snh.hpp"
+#include "modules/sni/host.hpp"
 
 #include <iostream>
 
 using namespace waybar::modules::SNI;
 
-Host::Host(Glib::Dispatcher* dp, const Json::Value &config)
-: dp_(dp), config_(config)
+Host::Host(const Json::Value &config, const std::function<void(std::unique_ptr<Item>&)>& on_add,
+  const std::function<void(std::unique_ptr<Item>&)>& on_remove)
+: bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-1"),
+  object_path_("/StatusNotifierHost"),
+  bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name_,
+    sigc::mem_fun(*this, &Host::busAcquired))),
+  config_(config), on_add_(on_add), on_remove_(on_remove)
 {
-  GBusNameOwnerFlags flags = static_cast<GBusNameOwnerFlags>(
-    G_BUS_NAME_OWNER_FLAGS_NONE);
-  bus_name_ = "org.kde.StatusNotifierHost-" + std::to_string(getpid());
-  object_path_ = "/StatusNotifierHost";
-  bus_name_id_ = g_bus_own_name(G_BUS_TYPE_SESSION,
-    bus_name_.c_str(), flags,
-    &Host::busAcquired, nullptr, nullptr, this, nullptr);
 }
 
-void Host::busAcquired(GDBusConnection* connection,
-  const gchar* name, gpointer data)
+Host::~Host()
 {
-  auto host = static_cast<SNI::Host *>(data);
-  host->watcher_id_ = g_bus_watch_name(
-    G_BUS_TYPE_SESSION,
-    "org.kde.StatusNotifierWatcher",
-    G_BUS_NAME_WATCHER_FLAGS_NONE,
-    &Host::nameAppeared, &Host::nameVanished, data, nullptr);
+  Gio::DBus::unwatch_name(bus_name_id_);
 }
 
-void Host::nameAppeared(GDBusConnection* connection,
-  const gchar* name, const gchar* name_owner, gpointer data)
+void Host::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name)
 {
-  auto host = static_cast<SNI::Host *>(data);
-  if (host->cancellable_ != nullptr) {
+  watcher_id_ = Gio::DBus::watch_name(conn, "org.kde.StatusNotifierWatcher",
+    sigc::mem_fun(*this, &Host::nameAppeared), sigc::mem_fun(*this, &Host::nameVanished));
+}
+
+void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring name,
+  const Glib::ustring& name_owner)
+{
+  if (cancellable_ != nullptr) {
     // TODO
     return;
   }
-  host->cancellable_ = g_cancellable_new();
+  cancellable_ = g_cancellable_new();
   sn_watcher_proxy_new(
-    connection,
+    conn->gobj(),
     G_DBUS_PROXY_FLAGS_NONE,
     "org.kde.StatusNotifierWatcher",
     "/StatusNotifierWatcher",
-    host->cancellable_, &Host::proxyReady, data);
+    cancellable_, &Host::proxyReady, this);
 }
 
-void Host::nameVanished(GDBusConnection* connection,
-  const gchar* name, gpointer data)
+void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring name)
 {
-  auto host = static_cast<SNI::Host *>(data);
-  g_cancellable_cancel(host->cancellable_);
-  g_clear_object(&host->cancellable_);
-  g_clear_object(&host->watcher_);
-  host->items.clear();
+  g_cancellable_cancel(cancellable_);
+  g_clear_object(&cancellable_);
+  g_clear_object(&watcher_);
+  items_.clear();
 }
 
 void Host::proxyReady(GObject* src, GAsyncResult* res,
@@ -105,8 +100,7 @@ void Host::registerHost(GObject* src, GAsyncResult* res,
   g_strfreev(items);
 }
 
-void Host::itemRegistered(
-  SnWatcher* watcher, const gchar* service, gpointer data)
+void Host::itemRegistered(SnWatcher* watcher, const gchar* service, gpointer data)
 {
   auto host = static_cast<SNI::Host *>(data);
   host->addRegisteredItem(service);
@@ -117,35 +111,28 @@ void Host::itemUnregistered(
 {
   auto host = static_cast<SNI::Host *>(data);
   auto [bus_name, object_path] = host->getBusNameAndObjectPath(service);
-  for (auto it = host->items.begin(); it != host->items.end(); ++it) {
-    if (it->bus_name == bus_name && it->object_path == object_path) {
-      host->items.erase(it);
+  for (auto it = host->items_.begin(); it != host->items_.end(); ++it) {
+    if ((*it)->bus_name == bus_name && (*it)->object_path == object_path) {
+      host->on_remove_(*it);
+      host->items_.erase(it);
       break;
     }
   }
-  host->dp_->emit();
 }
 
 std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(
-  const gchar* service)
+  const std::string service)
 {
-  std::string bus_name;
-  std::string object_path;
-  gchar* tmp = g_strstr_len(service, -1, "/");
-  if (tmp != nullptr) {
-    gchar** str = g_strsplit(service, "/", 2);
-    bus_name = str[0];
-    object_path = tmp;
-    g_strfreev(str);
-  } else {
-    bus_name = service;
-    object_path = "/StatusNotifierItem";
+  auto it = service.find("/");
+  if (it != std::string::npos) {
+    return {service.substr(0, it), service.substr(it)};
   }
-  return { bus_name, object_path };
+  return {service, "/StatusNotifierItem"};
 }
 
-void Host::addRegisteredItem(const gchar* service)
+void Host::addRegisteredItem(std::string service)
 {
   auto [bus_name, object_path] = getBusNameAndObjectPath(service);
-  items.emplace_back(bus_name, object_path, dp_, config_);
+  items_.emplace_back(new Item(bus_name, object_path, config_));
+  on_add_(items_.back());
 }

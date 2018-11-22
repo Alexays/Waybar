@@ -83,9 +83,9 @@ if dbusmenu_gtk.found()
     add_project_arguments('-DHAVE_DBUSMENU', language: 'cpp')
     src_files += files(
         'src/modules/sni/tray.cpp',
-        'src/modules/sni/snw.cpp',
-        'src/modules/sni/snh.cpp',
-        'src/modules/sni/sni.cpp'
+        'src/modules/sni/watcher.cpp',
+        'src/modules/sni/host.cpp',
+        'src/modules/sni/item.cpp'
     )
 endif
 
