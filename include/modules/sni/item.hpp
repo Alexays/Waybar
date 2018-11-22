@@ -5,24 +5,25 @@
 #include <json/json.h>
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #ifdef FILESYSTEM_EXPERIMENTAL
-  #include <experimental/filesystem>
+#include <experimental/filesystem>
 #else
-  #include <filesystem>
+#include <filesystem>
 #endif
 
 namespace waybar::modules::SNI {
 
 class Item {
 public:
-  Item(std::string, std::string, Glib::Dispatcher*, Json::Value);
+  Item(std::string, std::string, const Json::Value&);
+  ~Item() = default;
 
   std::string bus_name;
   std::string object_path;
-  Gtk::EventBox *event_box;
 
   int icon_size;
   int effective_icon_size;
-  Gtk::Image *image;
+  Gtk::Image image;
+  Gtk::EventBox event_box;
   std::string category;
   std::string id;
   std::string status;
@@ -35,26 +36,25 @@ public:
   std::string attention_icon_name;
   std::string attention_movie_name;
   std::string icon_theme_path;
-  DbusmenuGtkMenu *menu = nullptr;
+  std::string menu;
+  DbusmenuGtkMenu *dbus_menu = nullptr;
   Gtk::Menu *gtk_menu = nullptr;
   bool item_is_menu;
 
 private:
   static void proxyReady(GObject *obj, GAsyncResult *res, gpointer data);
   static void getAll(GObject *obj, GAsyncResult *res, gpointer data);
-  static void handleActivate(GObject *, GAsyncResult *, gpointer);
-  static void handleSecondaryActivate(GObject *, GAsyncResult *, gpointer);
 
   void updateImage();
-  bool showMenu(GdkEventButton *const &ev);
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant *variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(std::string name, int size);
+  static void onMenuDestroyed(Item *self);
+  bool makeMenu(GdkEventButton *const &ev);
   bool handleClick(GdkEventButton *const & /*ev*/);
 
-  Glib::Dispatcher *dp_;
+  Glib::RefPtr<Gio::DBus::Connection> conn_;
   GCancellable *cancellable_ = nullptr;
   SnItem *proxy_ = nullptr;
-  Json::Value config_;
 };
 
 } // namespace waybar::modules::SNI

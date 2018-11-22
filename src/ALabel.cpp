@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-waybar::ALabel::ALabel(const Json::Value& config, const std::string format)
+waybar::ALabel::ALabel(const Json::Value& config, const std::string& format)
   : config_(config),
     format_(config_["format"].isString() ? config_["format"].asString() : format),
     default_format_(format_)

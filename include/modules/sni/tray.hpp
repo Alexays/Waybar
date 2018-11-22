@@ -4,8 +4,8 @@
 #include <thread>
 #include "util/json.hpp"
 #include "IModule.hpp"
-#include "modules/sni/snw.hpp"
-#include "modules/sni/snh.hpp"
+#include "modules/sni/watcher.hpp"
+#include "modules/sni/host.hpp"
 
 namespace waybar::modules::SNI {
 
@@ -15,6 +15,9 @@ class Tray : public IModule {
     auto update() -> void;
     operator Gtk::Widget &();
   private:
+    void onAdd(std::unique_ptr<Item>& item);
+    void onRemove(std::unique_ptr<Item>& item);
+
     std::thread thread_;
     const Json::Value& config_;
     Gtk::Box box_;
