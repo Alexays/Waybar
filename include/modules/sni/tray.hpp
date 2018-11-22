@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 #include <thread>
+#include "bar.hpp"
 #include "util/json.hpp"
 #include "IModule.hpp"
 #include "modules/sni/watcher.hpp"
@@ -11,7 +12,7 @@ namespace waybar::modules::SNI {
 
 class Tray : public IModule {
   public:
-    Tray(const Json::Value&);
+    Tray(Bar& bar, const Json::Value&);
     auto update() -> void;
     operator Gtk::Widget &();
   private:
