@@ -91,7 +91,9 @@ void waybar::modules::Network::worker()
       }
     }
     if (need_update) {
-      getInfo();
+      if (ifid_ > 0) {
+        getInfo();
+      }
       dp.emit();
     }
   };
