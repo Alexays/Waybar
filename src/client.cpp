@@ -41,6 +41,9 @@ waybar::Client::Client(int argc, char* argv[])
     "/etc/xdg/waybar/style.css",
     "./resources/style.css",
   });
+  if (css_file.empty() || config_file.empty()) {
+    throw std::runtime_error("Missing required resources files");
+  }
   std::cout << "Resources files: " + config_file + ", " + css_file << std::endl;
 }
 
