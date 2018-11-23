@@ -429,7 +429,7 @@ auto waybar::modules::Network::getInfo() -> void
 {
   struct nl_msg* nl_msg = nlmsg_alloc();
   if (nl_msg == nullptr) {
-    nl_socket_free(sk_);
+    nlmsg_free(nl_msg);
     return;
   }
   if (genlmsg_put(nl_msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, NLM_F_DUMP,
