@@ -1,7 +1,5 @@
 #include "modules/clock.hpp"
 
-#include <iostream>
-
 waybar::modules::Clock::Clock(const Json::Value& config)
   : ALabel(config, "{:%H:%M}", 60)
 {
