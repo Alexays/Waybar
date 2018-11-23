@@ -34,8 +34,8 @@ class Host {
     GCancellable* cancellable_ = nullptr;
     SnWatcher* watcher_ = nullptr;
     const Json::Value &config_;
-    std::function<void(std::unique_ptr<Item>&)> on_add_;
-    std::function<void(std::unique_ptr<Item>&)> on_remove_;
+    const std::function<void(std::unique_ptr<Item>&)> on_add_;
+    const std::function<void(std::unique_ptr<Item>&)> on_remove_;
 };
 
 }

@@ -1,7 +1,7 @@
 #include "modules/battery.hpp"
 
 waybar::modules::Battery::Battery(const Json::Value& config)
-  : ALabel(config, "{capacity}%")
+  : ALabel(config, "{capacity}%", 60)
 {
   try {
     if (config_["bat"].isString()) {
@@ -46,9 +46,8 @@ void waybar::modules::Battery::worker()
 {
   // Trigger first values
   update();
-  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 60;
-  thread_timer_ = [this, interval] {
-    thread_.sleep_for(chrono::seconds(interval));
+  thread_timer_ = [this] {
+    thread_.sleep_for(interval_);
     dp.emit();
   };
   thread_ = [this] {
@@ -63,7 +62,7 @@ void waybar::modules::Battery::worker()
   };
 }
 
-std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
+const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() const
 {
   try {
     uint16_t total = 0;
@@ -86,10 +85,10 @@ std::tuple<uint16_t, std::string> waybar::modules::Battery::getInfos()
   }
 }
 
-std::string waybar::modules::Battery::getState(uint16_t capacity)
+const std::string waybar::modules::Battery::getState(uint8_t capacity) const
 {
   // Get current state
-  std::vector<std::pair<std::string, uint16_t>> states;
+  std::vector<std::pair<std::string, uint8_t>> states;
   if (config_["states"].isObject()) {
     for (auto it = config_["states"].begin(); it != config_["states"].end(); ++it) {
       if (it->isUInt() && it.key().isString()) {
@@ -101,16 +100,16 @@ std::string waybar::modules::Battery::getState(uint16_t capacity)
   std::sort(states.begin(), states.end(), [](auto &a, auto &b) {
     return a.second < b.second;
   });
-  std::string validState = "";
+  std::string valid_state;
   for (auto state : states) {
-    if (capacity <= state.second && validState.empty()) {
+    if (capacity <= state.second && valid_state.empty()) {
       label_.get_style_context()->add_class(state.first);
-      validState = state.first;
+      valid_state = state.first;
     } else {
       label_.get_style_context()->remove_class(state.first);
     }
   }
-  return validState;
+  return valid_state;
 }
 
 auto waybar::modules::Battery::update() -> void
