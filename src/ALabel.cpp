@@ -3,10 +3,11 @@
 
 #include <iostream>
 
-waybar::ALabel::ALabel(const Json::Value& config, const std::string format)
+waybar::ALabel::ALabel(const Json::Value& config, const std::string format, uint16_t interval)
   : config_(config),
     format_(config_["format"].isString() ? config_["format"].asString() : format),
-    default_format_(format_)
+    interval_(std::chrono::seconds(config_["interval"].isUInt()
+      ? config_["interval"].asUInt() : interval)), default_format_(format_)
 {
   event_box_.add(label_);
 	if (config_["max-length"].isUInt()) {

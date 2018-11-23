@@ -1,7 +1,7 @@
 #include "modules/network.hpp"
 
 waybar::modules::Network::Network(const Json::Value& config)
-  : ALabel(config, "{ifname}"), family_(AF_INET),
+  : ALabel(config, "{ifname}", 60), family_(AF_INET),
     signal_strength_dbm_(0), signal_strength_(0)
 {
   sock_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
@@ -85,9 +85,8 @@ void waybar::modules::Network::worker()
       dp.emit();
     }
   };
-  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 60;
-  thread_timer_ = [this, interval] {
-    thread_.sleep_for(std::chrono::seconds(interval));
+  thread_timer_ = [this] {
+    thread_.sleep_for(interval_);
     if (ifid_ > 0) {
       getInfo();
       dp.emit();

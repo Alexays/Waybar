@@ -1,13 +1,12 @@
 #include "modules/cpu.hpp"
 
 waybar::modules::Cpu::Cpu(const Json::Value& config)
-  : ALabel(config, "{usage}%")
+  : ALabel(config, "{usage}%", 10)
 {
   label_.set_name("cpu");
-  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 10;
-  thread_ = [this, interval] {
+  thread_ = [this] {
     dp.emit();
-    thread_.sleep_for(chrono::seconds(interval));
+    thread_.sleep_for(interval_);
   };
 }
 

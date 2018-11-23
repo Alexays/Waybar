@@ -7,7 +7,7 @@ waybar::modules::Custom::Custom(const std::string name,
   if (!config_["exec"].isString()) {
     throw std::runtime_error(name_ + " has no exec path.");
   }
-  if (config_["interval"].isUInt()) {
+  if (interval_.count() > 0) {
     delayWorker();
   } else {
     continuousWorker();
@@ -16,8 +16,7 @@ waybar::modules::Custom::Custom(const std::string name,
 
 void waybar::modules::Custom::delayWorker()
 {
-  auto interval = config_["interval"].asUInt();
-  thread_ = [this, interval] {
+  thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
       auto res = waybar::util::command::exec(config_["exec-if"].asString());
@@ -31,7 +30,7 @@ void waybar::modules::Custom::delayWorker()
       output_ = waybar::util::command::exec(config_["exec"].asString());
       dp.emit();
     }
-    thread_.sleep_for(chrono::seconds(interval));
+    thread_.sleep_for(interval_);
   };
 }
 
