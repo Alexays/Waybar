@@ -50,6 +50,7 @@ void waybar::modules::Network::worker()
     uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
       RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
     bool need_update = false;
+    bool new_addr = false;
     for (auto nh = reinterpret_cast<struct nlmsghdr *>(buf); NLMSG_OK(nh, len);
       nh = NLMSG_NEXT(nh, len)) {
       if (nh->nlmsg_type == NLMSG_DONE) {
@@ -57,6 +58,9 @@ void waybar::modules::Network::worker()
       }
       if (nh->nlmsg_type == NLMSG_ERROR) {
         continue;
+      }
+      if (nh->nlmsg_type == RTM_NEWADDR) {
+        new_addr = true;
       }
       if (nh->nlmsg_type < RTM_NEWADDR) {
         auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
@@ -69,9 +73,15 @@ void waybar::modules::Network::worker()
       }
     }
     if (ifid_ <= 0 && !config_["interface"].isString()) {
-      // Need to wait before get external interface
-      thread_.sleep_for(std::chrono::seconds(1));
-      ifid_ = getExternalInterface();
+      if (new_addr) {
+        // Need to wait before get external interface
+        while (ifid_ <= 0) {
+          ifid_ = getExternalInterface();
+          thread_.sleep_for(std::chrono::seconds(1));
+        }
+      } else {
+        ifid_ = getExternalInterface();
+      }
       if (ifid_ > 0) {
         char ifname[IF_NAMESIZE];
         if_indextoname(ifid_, ifname);
@@ -319,13 +329,12 @@ int waybar::modules::Network::netlinkRequest(int fd, void *req,
 int waybar::modules::Network::netlinkResponse(int fd, void *resp,
   uint32_t resplen, uint32_t groups)
 {
-  int ret;
   struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec iov = { resp, resplen };
   struct msghdr msg = { &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
-  ret = recvmsg(fd, &msg, 0);
+  auto ret = recvmsg(fd, &msg, 0);
   if (msg.msg_flags & MSG_TRUNC) {
     return -1;
   }

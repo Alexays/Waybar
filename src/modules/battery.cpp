@@ -101,7 +101,7 @@ const std::string waybar::modules::Battery::getState(uint8_t capacity) const
     return a.second < b.second;
   });
   std::string valid_state;
-  for (auto state : states) {
+  for (auto const& state : states) {
     if (capacity <= state.second && valid_state.empty()) {
       label_.get_style_context()->add_class(state.first);
       valid_state = state.first;
