@@ -47,8 +47,10 @@ void waybar::modules::Network::worker()
 {
   thread_ = [this] {
     char buf[4096];
-    uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
-      RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
+    auto len = netlinkResponse(sock_fd_, buf, sizeof(buf), RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
+    if (len == 0) {
+      return;
+    }
     bool need_update = false;
     bool new_addr = false;
     for (auto nh = reinterpret_cast<struct nlmsghdr *>(buf); NLMSG_OK(nh, len);
