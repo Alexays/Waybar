@@ -52,7 +52,6 @@ void waybar::modules::Network::worker()
       return;
     }
     bool need_update = false;
-    bool new_addr = false;
     for (auto nh = reinterpret_cast<struct nlmsghdr *>(buf); NLMSG_OK(nh, len);
       nh = NLMSG_NEXT(nh, len)) {
       if (nh->nlmsg_type == NLMSG_DONE) {
@@ -60,9 +59,6 @@ void waybar::modules::Network::worker()
       }
       if (nh->nlmsg_type == NLMSG_ERROR) {
         continue;
-      }
-      if (nh->nlmsg_type == RTM_NEWADDR) {
-        new_addr = true;
       }
       if (nh->nlmsg_type < RTM_NEWADDR) {
         auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
@@ -75,15 +71,9 @@ void waybar::modules::Network::worker()
       }
     }
     if (ifid_ <= 0 && !config_["interface"].isString()) {
-      if (new_addr) {
-        // Need to wait before get external interface
-        while (ifid_ <= 0) {
-          ifid_ = getExternalInterface();
-          thread_.sleep_for(std::chrono::seconds(1));
-        }
-      } else {
-        ifid_ = getExternalInterface();
-      }
+      // Need to wait before get external interface
+      thread_.sleep_for(std::chrono::seconds(1));
+      ifid_ = getExternalInterface();
       if (ifid_ > 0) {
         char ifname[IF_NAMESIZE];
         if_indextoname(ifid_, ifname);
