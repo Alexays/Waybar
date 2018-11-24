@@ -5,37 +5,28 @@
 using namespace waybar::modules::SNI;
 
 Watcher::Watcher()
-{
-  GBusNameOwnerFlags flags = static_cast<GBusNameOwnerFlags>(
-    G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT
-    | G_BUS_NAME_OWNER_FLAGS_REPLACE);
-  bus_name_id_ = g_bus_own_name(G_BUS_TYPE_SESSION,
-    "org.kde.StatusNotifierWatcher", flags,
-    &Watcher::busAcquired, nullptr, nullptr, this, nullptr);
-  watcher_ = sn_watcher_skeleton_new();
-  sn_watcher_set_protocol_version(watcher_, 1);
-}
-
-Watcher::~Watcher()
+  : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
+    "org.kde.StatusNotifierWatcher", sigc::mem_fun(*this, &Watcher::busAcquired),
+    Gio::DBus::SlotNameAcquired(), Gio::DBus::SlotNameLost(),
+    Gio::DBus::BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT | Gio::DBus::BUS_NAME_OWNER_FLAGS_REPLACE)),
+    watcher_(sn_watcher_skeleton_new())
 {
 }
 
-void Watcher::busAcquired(GDBusConnection* connection, const gchar* name,
-  gpointer data)
+void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name)
 {
   GError* error = nullptr;
-  auto host = static_cast<SNI::Watcher*>(data);
-  g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(host->watcher_),
-    connection, "/StatusNotifierWatcher", &error);
+  g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(watcher_),
+    conn->gobj(), "/StatusNotifierWatcher", &error);
   if (error != nullptr) {
     std::cerr << error->message << std::endl;
     g_error_free(error);
     return;
   }
-  g_signal_connect_swapped(host->watcher_, "handle-register-item",
-    G_CALLBACK(&Watcher::handleRegisterItem), data);
-  g_signal_connect_swapped(host->watcher_, "handle-register-host",
-    G_CALLBACK(&Watcher::handleRegisterHost), data);
+  g_signal_connect_swapped(watcher_, "handle-register-item",
+    G_CALLBACK(&Watcher::handleRegisterItem), this);
+  g_signal_connect_swapped(watcher_, "handle-register-host",
+    G_CALLBACK(&Watcher::handleRegisterHost), this);
 }
 
 gboolean Watcher::handleRegisterHost(Watcher* obj,

@@ -3,10 +3,11 @@
 
 #include <iostream>
 
-waybar::ALabel::ALabel(const Json::Value& config, const std::string format)
+waybar::ALabel::ALabel(const Json::Value& config, const std::string format, uint16_t interval)
   : config_(config),
     format_(config_["format"].isString() ? config_["format"].asString() : format),
-    default_format_(format_)
+    interval_(std::chrono::seconds(config_["interval"].isUInt()
+      ? config_["interval"].asUInt() : interval)), default_format_(format_)
 {
   event_box_.add(label_);
 	if (config_["max-length"].isUInt()) {
@@ -20,17 +21,12 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string format)
   }
 
   // configure events' user commands
-  if (config_["on-click"].isString()) {
+  if (config_["on-click"].isString() || config_["on-click-right"].isString()) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &ALabel::handleToggle));
   }
-  if (config_["on-scroll-up"].isString()) {
-    event_box_.add_events(Gdk::SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(
-      sigc::mem_fun(*this, &ALabel::handleScroll));
-  }
-  if (config_["on-scroll-down"].isString()) {
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     event_box_.add_events(Gdk::SCROLL_MASK);
     event_box_.signal_scroll_event().connect(
       sigc::mem_fun(*this, &ALabel::handleScroll));
@@ -44,6 +40,8 @@ auto waybar::ALabel::update() -> void {
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["on-click"].isString() && e->button == 1) {
     waybar::util::command::forkExec(config_["on-click"].asString());
+  } else if (config_["on-click-right"].isString() && e->button == 3) {
+    waybar::util::command::forkExec(config_["on-click-right"].asString());
   } else {
     alt = !alt;
     if (alt) {

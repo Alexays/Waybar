@@ -4,20 +4,20 @@ waybar::modules::Custom::Custom(const std::string name,
   const Json::Value& config)
   : ALabel(config, "{}"), name_(name)
 {
-  if (!config_["exec"].isString()) {
-    throw std::runtime_error(name_ + " has no exec path.");
-  }
-  if (config_["interval"].isUInt()) {
-    delayWorker();
+  if (config_["exec"].isString()) {
+    if (interval_.count() > 0) {
+      delayWorker();
+    } else {
+      continuousWorker();
+    }
   } else {
-    continuousWorker();
+      update();
   }
 }
 
 void waybar::modules::Custom::delayWorker()
 {
-  auto interval = config_["interval"].asUInt();
-  thread_ = [this, interval] {
+  thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
       auto res = waybar::util::command::exec(config_["exec-if"].asString());
@@ -31,7 +31,7 @@ void waybar::modules::Custom::delayWorker()
       output_ = waybar::util::command::exec(config_["exec"].asString());
       dp.emit();
     }
-    thread_.sleep_for(chrono::seconds(interval));
+    thread_.sleep_for(interval_);
   };
 }
 
@@ -67,7 +67,7 @@ void waybar::modules::Custom::continuousWorker()
 auto waybar::modules::Custom::update() -> void
 {
   // Hide label if output is empty
-  if (output_.out.empty() || output_.exit_code != 0) {
+  if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
     label_.hide();
     label_.set_name("");
   } else {

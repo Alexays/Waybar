@@ -7,7 +7,7 @@ namespace waybar {
 
 class ALabel : public IModule {
  public:
-  ALabel(const Json::Value&, const std::string format);
+  ALabel(const Json::Value&, const std::string format, uint16_t interval = 0);
   virtual ~ALabel() = default;
   virtual auto update() -> void;
   virtual std::string getIcon(uint16_t, const std::string& alt = "");
@@ -19,6 +19,7 @@ class ALabel : public IModule {
   const Json::Value& config_;
   std::string format_;
   std::mutex mutex_;
+  const std::chrono::seconds interval_;
 
  private:
   bool handleToggle(GdkEventButton* const& ev);

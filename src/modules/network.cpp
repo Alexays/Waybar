@@ -1,7 +1,7 @@
 #include "modules/network.hpp"
 
 waybar::modules::Network::Network(const Json::Value& config)
-  : ALabel(config, "{ifname}"), family_(AF_INET),
+  : ALabel(config, "{ifname}", 60), family_(AF_INET),
     signal_strength_dbm_(0), signal_strength_(0)
 {
   sock_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
@@ -47,8 +47,10 @@ void waybar::modules::Network::worker()
 {
   thread_ = [this] {
     char buf[4096];
-    uint64_t len = netlinkResponse(sock_fd_, buf, sizeof(buf),
-      RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
+    auto len = netlinkResponse(sock_fd_, buf, sizeof(buf), RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
+    if (len == 0) {
+      return;
+    }
     bool need_update = false;
     for (auto nh = reinterpret_cast<struct nlmsghdr *>(buf); NLMSG_OK(nh, len);
       nh = NLMSG_NEXT(nh, len)) {
@@ -81,13 +83,14 @@ void waybar::modules::Network::worker()
       }
     }
     if (need_update) {
-      getInfo();
+      if (ifid_ > 0) {
+        getInfo();
+      }
       dp.emit();
     }
   };
-  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 60;
-  thread_timer_ = [this, interval] {
-    thread_.sleep_for(std::chrono::seconds(interval));
+  thread_timer_ = [this] {
+    thread_.sleep_for(interval_);
     if (ifid_ > 0) {
       getInfo();
       dp.emit();
@@ -320,13 +323,12 @@ int waybar::modules::Network::netlinkRequest(int fd, void *req,
 int waybar::modules::Network::netlinkResponse(int fd, void *resp,
   uint32_t resplen, uint32_t groups)
 {
-  int ret;
   struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec iov = { resp, resplen };
   struct msghdr msg = { &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
-  ret = recvmsg(fd, &msg, 0);
+  auto ret = recvmsg(fd, &msg, 0);
   if (msg.msg_flags & MSG_TRUNC) {
     return -1;
   }
@@ -421,7 +423,7 @@ auto waybar::modules::Network::getInfo() -> void
 {
   struct nl_msg* nl_msg = nlmsg_alloc();
   if (nl_msg == nullptr) {
-    nl_socket_free(sk_);
+    nlmsg_free(nl_msg);
     return;
   }
   if (genlmsg_put(nl_msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, NLM_F_DUMP,
