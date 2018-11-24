@@ -29,6 +29,7 @@ class Client {
   private:
     void bindInterfaces();
     auto setupCss();
+    const std::string getValidPath(std::vector<std::string> paths);
 
     static void handleGlobal(void *data, struct wl_registry *registry,
       uint32_t name, const char *interface, uint32_t version);

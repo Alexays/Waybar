@@ -8,7 +8,7 @@ namespace waybar::modules::SNI {
 class Watcher {
 public:
   Watcher();
-  ~Watcher();
+  ~Watcher() = default;
 
 private:
   typedef enum { GF_WATCH_TYPE_HOST, GF_WATCH_TYPE_ITEM } GfWatchType;
@@ -22,7 +22,7 @@ private:
     guint watch_id;
   } GfWatch;
 
-  static void busAcquired(GDBusConnection *, const gchar *, gpointer);
+  void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
   static gboolean handleRegisterHost(Watcher *, GDBusMethodInvocation *,
                                      const gchar *);
   static gboolean handleRegisterItem(Watcher *, GDBusMethodInvocation *,

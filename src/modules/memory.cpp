@@ -1,12 +1,11 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(const Json::Value& config)
-  : ALabel(config, "{}%")
+  : ALabel(config, "{}%", 30)
 {
-  uint32_t interval = config_["interval"].isUInt() ? config_["interval"].asUInt() : 30;
-  thread_ = [this, interval] {
+  thread_ = [this] {
     dp.emit();
-    thread_.sleep_for(chrono::seconds(interval));
+    thread_.sleep_for(interval_);
   };
 }
 

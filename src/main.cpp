@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     waybar::client = &c;
     std::signal(SIGUSR1, [] (int /*signal*/) {
       for (auto& bar : waybar::client->bars) {
-        (*bar).toggle();
+        bar->toggle();
       }
     });
 
