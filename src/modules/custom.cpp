@@ -4,13 +4,14 @@ waybar::modules::Custom::Custom(const std::string name,
   const Json::Value& config)
   : ALabel(config, "{}"), name_(name)
 {
-  if (!config_["exec"].isString()) {
-    throw std::runtime_error(name_ + " has no exec path.");
-  }
-  if (interval_.count() > 0) {
-    delayWorker();
+  if (config_["exec"].isString()) {
+    if (interval_.count() > 0) {
+      delayWorker();
+    } else {
+      continuousWorker();
+    }
   } else {
-    continuousWorker();
+      update();
   }
 }
 
@@ -66,7 +67,7 @@ void waybar::modules::Custom::continuousWorker()
 auto waybar::modules::Custom::update() -> void
 {
   // Hide label if output is empty
-  if (output_.out.empty() || output_.exit_code != 0) {
+  if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
     label_.hide();
     label_.set_name("");
   } else {
