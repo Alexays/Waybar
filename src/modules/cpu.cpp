@@ -12,16 +12,12 @@ waybar::modules::Cpu::Cpu(const Json::Value& config)
 
 auto waybar::modules::Cpu::update() -> void
 {
-  try {
-    // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
-    auto cpu_load = getCpuLoad();
-    auto [cpu_usage, tooltip] = getCpuUsage();
-    label_.set_tooltip_text(tooltip);
-    label_.set_markup(fmt::format(format_,
-      fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
-  } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
-  }
+  // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
+  auto cpu_load = getCpuLoad();
+  auto [cpu_usage, tooltip] = getCpuUsage();
+  label_.set_tooltip_text(tooltip);
+  label_.set_markup(fmt::format(format_,
+    fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad()
