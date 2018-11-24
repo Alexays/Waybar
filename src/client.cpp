@@ -12,30 +12,14 @@ waybar::Client::Client(int argc, char* argv[])
     throw std::runtime_error("Bar need to run under Wayland");
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
-  auto getFirstValidPath = [] (std::vector<std::string> possiblePaths) {
-    wordexp_t p;
 
-    for (const std::string &path: possiblePaths) {
-      if (wordexp(path.c_str(), &p, 0) == 0) {
-        if (access(*p.we_wordv, F_OK) == 0) {
-          std::string result = *p.we_wordv;
-          wordfree(&p);
-          return result;
-        }
-        wordfree(&p);
-      }
-    }
-
-    return std::string();
-  };
-
-  config_file = getFirstValidPath({
+  config_file = getValidPath({
     "$XDG_CONFIG_HOME/waybar/config",
     "$HOME/waybar/config",
     "/etc/xdg/waybar/config",
     "./resources/config",
   });
-  css_file = getFirstValidPath({
+  css_file = getValidPath({
     "$XDG_CONFIG_HOME/waybar/style.css",
     "$HOME/waybar/style.css",
     "/etc/xdg/waybar/style.css",
@@ -45,6 +29,24 @@ waybar::Client::Client(int argc, char* argv[])
     throw std::runtime_error("Missing required resources files");
   }
   std::cout << "Resources files: " + config_file + ", " + css_file << std::endl;
+}
+
+const std::string waybar::Client::getValidPath(std::vector<std::string> paths)
+{
+  wordexp_t p;
+
+  for (const std::string &path: paths) {
+    if (wordexp(path.c_str(), &p, 0) == 0) {
+      if (access(*p.we_wordv, F_OK) == 0) {
+        std::string result = *p.we_wordv;
+        wordfree(&p);
+        return result;
+      }
+      wordfree(&p);
+    }
+  }
+
+  return std::string();
 }
 
 void waybar::Client::handleGlobal(void *data, struct wl_registry *registry,
