@@ -184,11 +184,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos)
         if (pos == "modules-right") {
           modules_right_.emplace_back(module);
         }
-        module->dp.connect([module] {
+        module->dp.connect([module, &name] {
           try {
             module->update();
           } catch (const std::exception& e) {
-            std::cerr << e.what() << std::endl;
+            std::cerr << name.asString() + ": " + e.what() << std::endl;
           }
         });
       } catch (const std::exception& e) {
