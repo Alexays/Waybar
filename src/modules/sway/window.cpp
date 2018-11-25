@@ -23,7 +23,7 @@ void waybar::modules::sway::Window::worker()
       auto parsed = parser_.parse(res.payload);
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
         && parsed["container"]["focused"].asBool()) {
-        window_ = parsed["container"]["name"].asString();
+        window_ = Glib::Markup::escape_text(parsed["container"]["name"].asString());
         windowId_ = parsed["container"]["id"].asInt();
         dp.emit();
       } else if ((parsed["change"] == "close"
