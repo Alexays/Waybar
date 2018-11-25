@@ -2,7 +2,7 @@
 
 waybar::modules::Network::Network(const Json::Value& config)
   : ALabel(config, "{ifname}", 60), family_(AF_INET),
-    signal_strength_dbm_(0), signal_strength_(0)
+    cidr_(-1), signal_strength_dbm_(0), signal_strength_(0)
 {
   sock_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
   if (sock_fd_ < 0) {
@@ -26,7 +26,6 @@ waybar::modules::Network::Network(const Json::Value& config)
       char ifname[IF_NAMESIZE];
       if_indextoname(ifid_, ifname);
       ifname_ = ifname;
-      getInterfaceAddress();
     }
   }
   initNL80211();
@@ -60,6 +59,9 @@ void waybar::modules::Network::worker()
       if (nh->nlmsg_type == NLMSG_ERROR) {
         continue;
       }
+      if (nh->nlmsg_type == RTM_NEWADDR) {
+        need_update = true;
+      }
       if (nh->nlmsg_type < RTM_NEWADDR) {
         auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
         if (rtif->ifi_index == static_cast<int>(ifid_)) {
@@ -78,7 +80,6 @@ void waybar::modules::Network::worker()
         char ifname[IF_NAMESIZE];
         if_indextoname(ifid_, ifname);
         ifname_ = ifname;
-        getInterfaceAddress();
         need_update = true;
       }
     }
@@ -101,7 +102,7 @@ void waybar::modules::Network::worker()
 auto waybar::modules::Network::update() -> void
 {
   auto format = format_;
-  if (ifid_ <= 0) {
+  if (ifid_ <= 0 || ipaddr_.empty()) {
     format = config_["format-disconnected"].isString()
       ? config_["format-disconnected"].asString() : format;
     label_.get_style_context()->add_class("disconnected");
@@ -134,8 +135,12 @@ void waybar::modules::Network::disconnected()
   ipaddr_.clear();
   netmask_.clear();
   cidr_ = 0;
-  ifname_.clear();
-  ifid_ = -1;
+  if (!config_["interface"].isString()) {
+    ifname_.clear();
+    ifid_ = -1;
+  }
+  // Need to wait otherwise we'll have the same information
+  thread_.sleep_for(std::chrono::seconds(1));
 }
 
 void waybar::modules::Network::initNL80211()
@@ -421,6 +426,7 @@ bool waybar::modules::Network::associatedOrJoined(struct nlattr** bss)
 
 auto waybar::modules::Network::getInfo() -> void
 {
+  getInterfaceAddress();
   struct nl_msg* nl_msg = nlmsg_alloc();
   if (nl_msg == nullptr) {
     nlmsg_free(nl_msg);
