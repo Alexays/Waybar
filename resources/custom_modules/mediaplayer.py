@@ -16,7 +16,7 @@ def on_play(player, status, manager):
 def on_metadata(player, metadata, manager):
     track_info = ''
 
-    if player.props.player_name == 'spotify' \
+    if player.props.player_name == 'spotify' and \
             'mpris:trackid' in metadata.keys() and \
             ':ad:' in player.props.metadata['mpris:trackid']:
         track_info = 'AD PLAYING'
