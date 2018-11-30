@@ -27,10 +27,10 @@ class Bar;
 
 class Factory {
   public:
-    Factory(Bar& bar, const Json::Value& config);
+    Factory(const Bar& bar, const Json::Value& config);
     IModule* makeModule(const std::string &name) const;
   private:
-    Bar& bar_;
+    const Bar& bar_;
     const Json::Value& config_;
 };
 

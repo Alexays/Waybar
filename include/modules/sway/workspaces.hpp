@@ -12,7 +12,7 @@ namespace waybar::modules::sway {
 
 class Workspaces : public IModule {
   public:
-    Workspaces(waybar::Bar&, const Json::Value&);
+    Workspaces(const waybar::Bar&, const Json::Value&);
     auto update() -> void;
     operator Gtk::Widget &();
   private:
@@ -23,7 +23,7 @@ class Workspaces : public IModule {
     std::string getPrevWorkspace();
     std::string getNextWorkspace();
 
-    Bar& bar_;
+    const Bar& bar_;
     const Json::Value& config_;
     waybar::util::SleeperThread thread_;
     Gtk::Box box_;
