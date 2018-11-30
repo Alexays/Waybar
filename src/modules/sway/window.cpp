@@ -1,6 +1,6 @@
 #include "modules/sway/window.hpp"
 
-waybar::modules::sway::Window::Window(Bar &bar, const Json::Value& config)
+waybar::modules::sway::Window::Window(const Bar &bar, const Json::Value& config)
   : ALabel(config, "{}"), bar_(bar), windowId_(-1)
 {
   label_.set_name("window");

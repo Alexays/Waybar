@@ -13,14 +13,14 @@ namespace waybar::modules::sway {
 
 class Window : public ALabel {
   public:
-    Window(waybar::Bar&, const Json::Value&);
+    Window(const waybar::Bar&, const Json::Value&);
     auto update() -> void;
   private:
     void worker();
     std::tuple<int, std::string> getFocusedNode(Json::Value nodes);
     void getFocusedWindow();
 
-    Bar& bar_;
+    const Bar& bar_;
     waybar::util::SleeperThread thread_;
     util::JsonParser parser_;
     Ipc ipc_;

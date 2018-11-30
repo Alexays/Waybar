@@ -1,6 +1,6 @@
 #include "modules/sway/mode.hpp"
 
-waybar::modules::sway::Mode::Mode(Bar& bar, const Json::Value& config)
+waybar::modules::sway::Mode::Mode(const Bar& bar, const Json::Value& config)
   : ALabel(config, "{}"), bar_(bar)
 {
   ipc_.connect();

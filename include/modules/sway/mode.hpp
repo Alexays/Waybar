@@ -12,12 +12,12 @@ namespace waybar::modules::sway {
 
 class Mode : public ALabel {
   public:
-    Mode(waybar::Bar&, const Json::Value&);
+    Mode(const waybar::Bar&, const Json::Value&);
     auto update() -> void;
   private:
     void worker();
     
-    Bar& bar_;
+    const Bar& bar_;
     waybar::util::SleeperThread thread_;
     util::JsonParser parser_;
     Ipc ipc_;

@@ -12,13 +12,14 @@ namespace waybar::modules::SNI {
 
 class Tray : public IModule {
   public:
-    Tray(Bar& bar, const Json::Value&);
+    Tray(const Bar& bar, const Json::Value&);
     auto update() -> void;
     operator Gtk::Widget &();
   private:
     void onAdd(std::unique_ptr<Item>& item);
     void onRemove(std::unique_ptr<Item>& item);
 
+    static inline std::size_t nb_hosts_ = 0;
     std::thread thread_;
     const Json::Value& config_;
     Gtk::Box box_;

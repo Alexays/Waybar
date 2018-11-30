@@ -1,6 +1,6 @@
 #include "factory.hpp"
 
-waybar::Factory::Factory(Bar& bar, const Json::Value& config)
+waybar::Factory::Factory(const Bar& bar, const Json::Value& config)
   : bar_(bar), config_(config)
 {}
 
