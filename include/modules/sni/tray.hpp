@@ -12,7 +12,7 @@ namespace waybar::modules::SNI {
 
 class Tray : public IModule {
   public:
-    Tray(const Bar& bar, const Json::Value&);
+    Tray(const Json::Value&);
     auto update() -> void;
     operator Gtk::Widget &();
   private:
