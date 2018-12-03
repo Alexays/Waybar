@@ -49,6 +49,7 @@ void waybar::modules::Custom::continuousWorker()
       pclose(fp);
       thread_.stop();
       output_ = { 1, "" };
+      std::cerr << name_ " just stopped, is it endless?" << std::endl;
       dp.emit();
       return;
     }
