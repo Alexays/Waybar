@@ -15,12 +15,14 @@ waybar::Client::Client(int argc, char* argv[])
 
   config_file = getValidPath({
     "$XDG_CONFIG_HOME/waybar/config",
+    "$HOME/.config/waybar/config",
     "$HOME/waybar/config",
     "/etc/xdg/waybar/config",
     "./resources/config",
   });
   css_file = getValidPath({
     "$XDG_CONFIG_HOME/waybar/style.css",
+    "$HOME/.config/waybar/style.css",
     "$HOME/waybar/style.css",
     "/etc/xdg/waybar/style.css",
     "./resources/style.css",
