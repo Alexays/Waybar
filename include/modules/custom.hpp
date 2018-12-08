@@ -12,6 +12,7 @@ namespace waybar::modules {
 class Custom : public ALabel {
   public:
     Custom(const std::string, const Json::Value&);
+    ~Custom();
     auto update() -> void;
   private:
     void delayWorker();
@@ -27,6 +28,7 @@ class Custom : public ALabel {
     waybar::util::SleeperThread thread_;
     waybar::util::command::res output_;
     waybar::util::JsonParser parser_;
+    FILE* fp_;
 };
 
 }

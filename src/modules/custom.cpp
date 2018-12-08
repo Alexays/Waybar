@@ -2,7 +2,7 @@
 
 waybar::modules::Custom::Custom(const std::string name,
   const Json::Value& config)
-  : ALabel(config, "{}"), name_(name)
+  : ALabel(config, "{}"), name_(name), fp_(nullptr)
 {
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
@@ -12,6 +12,14 @@ waybar::modules::Custom::Custom(const std::string name,
     }
   } else {
       update();
+  }
+}
+
+waybar::modules::Custom::~Custom()
+{
+  if (fp_) {
+    pclose(fp_);
+    fp_ = nullptr;
   }
 }
 
@@ -38,15 +46,16 @@ void waybar::modules::Custom::delayWorker()
 void waybar::modules::Custom::continuousWorker()
 {
   auto cmd = config_["exec"].asString();
-  FILE* fp(popen(cmd.c_str(), "r"));
-  if (!fp) {
+  fp_ = popen(cmd.c_str(), "r");
+  if (!fp_) {
     throw std::runtime_error("Unable to open " + cmd);
   }
-  thread_ = [this, fp] {
+  thread_ = [this] {
     char* buff = nullptr;
     size_t len = 0;
-    if (getline(&buff, &len, fp) == -1) {
-      pclose(fp);
+    if (getline(&buff, &len, fp_) == -1) {
+      pclose(fp_);
+      fp_ = nullptr;
       thread_.stop();
       output_ = { 1, "" };
       std::cerr << name_ + " just stopped, is it endless?" << std::endl;
