@@ -54,8 +54,10 @@ void waybar::modules::Custom::continuousWorker()
     char* buff = nullptr;
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
-      pclose(fp_);
-      fp_ = nullptr;
+      if (fp_) {
+        pclose(fp_);
+        fp_ = nullptr;
+      }
       thread_.stop();
       output_ = { 1, "" };
       std::cerr << name_ + " just stopped, is it endless?" << std::endl;
