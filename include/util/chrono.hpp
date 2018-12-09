@@ -23,35 +23,24 @@ struct SleeperThread {
   SleeperThread() = default;
 
   SleeperThread(std::function<void()> func)
-    : thread_{[this, func] {
-        while(true) {
-          {
-            std::lock_guard<std::mutex> lock(mutex_);
-            if (!do_run_) {
-              break;
-            }
-          }
-          func();
-        }
+    : do_run_(true), thread_{[this, func] {
+        while (do_run_) func();
       }}
   {}
 
   SleeperThread& operator=(std::function<void()> func)
   {
+    do_run_ = true;
     thread_ = std::thread([this, func] {
-      while(true) {
-        {
-          std::lock_guard<std::mutex> lock(mutex_);
-          if (!do_run_) {
-            break;
-          }
-        }
-        func();
-      }
+      while (do_run_) func();
     });
     return *this;
   }
 
+  bool isRunnging() const
+  {
+    return do_run_;
+  }
 
   auto sleep_for(chrono::duration dur)
   {
@@ -85,10 +74,10 @@ struct SleeperThread {
   }
 
 private:
+  bool do_run_ = false;
   std::thread thread_;
   std::condition_variable condvar_;
   std::mutex mutex_;
-  bool do_run_ = true;
 };
 
 }

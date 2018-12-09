@@ -36,7 +36,7 @@ void waybar::modules::sway::Window::worker()
         dp.emit();
       }
     } catch (const std::exception& e) {
-      std::cerr << e.what() << std::endl;
+      std::cerr << "Window: " << e.what() << std::endl;
     }
   };
 }
