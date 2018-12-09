@@ -69,8 +69,7 @@ struct waybar::modules::sway::Ipc::ipc_response
   size_t total = 0;
 
   while (total < ipc_header_size_) {
-    ssize_t res =
-      ::recv(fd, header.data() + total, ipc_header_size_ - total, 0);
+    auto res = ::recv(fd, header.data() + total, ipc_header_size_ - total, 0);
     if (res <= 0) {
       throw std::runtime_error("Unable to receive IPC response");
     }
@@ -81,8 +80,7 @@ struct waybar::modules::sway::Ipc::ipc_response
   std::string payload;
   payload.reserve(data32[0] + 1);
   while (total < data32[0]) {
-    ssize_t res =
-      ::recv(fd, payload.data() + total, data32[0] - total, 0);
+    auto res = ::recv(fd, payload.data() + total, data32[0] - total, 0);
     if (res < 0) {
       throw std::runtime_error("Unable to receive IPC response");
     }

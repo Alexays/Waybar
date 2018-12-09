@@ -20,7 +20,7 @@ void waybar::modules::sway::Workspaces::worker()
         while (bar_.output_name.empty()) {
           thread_.sleep_for(chrono::milliseconds(150));
         }
-      } else if (!workspaces_.empty()) {
+      } else if (thread_.isRunnging() && !workspaces_.empty()) {
         ipc_.handleEvent();
       }
       {
@@ -30,7 +30,7 @@ void waybar::modules::sway::Workspaces::worker()
       }
       dp.emit();
     } catch (const std::exception& e) {
-      std::cerr << e.what() << std::endl;
+      std::cerr << "Workspaces: " << e.what() << std::endl;
     }
   };
 }

@@ -24,7 +24,7 @@ void waybar::modules::sway::Mode::worker()
         dp.emit();
       }
     } catch (const std::exception& e) {
-      std::cerr << e.what() << std::endl;
+      std::cerr << "Mode: " << e.what() << std::endl;
     }
   };
 }
