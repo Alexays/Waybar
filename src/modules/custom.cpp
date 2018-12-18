@@ -1,18 +1,18 @@
 #include "modules/custom.hpp"
 
-waybar::modules::Custom::Custom(const std::string name,
+waybar::modules::Custom::Custom(const std::string& name,
   const Json::Value& config)
   : ALabel(config, "{}"), name_(name), fp_(nullptr)
 {
+  label_.set_name("custom-" + name_);
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
       delayWorker();
     } else {
       continuousWorker();
     }
-  } else {
-      update();
   }
+  dp.emit();
 }
 
 waybar::modules::Custom::~Custom()
@@ -31,8 +31,7 @@ void waybar::modules::Custom::delayWorker()
       auto res = waybar::util::command::exec(config_["exec-if"].asString());
       if (res.exit_code != 0) {
         can_update = false;
-        label_.hide();
-        label_.set_name("");
+        event_box_.hide();
       }
     }
     if (can_update) {
@@ -80,11 +79,8 @@ auto waybar::modules::Custom::update() -> void
 {
   // Hide label if output is empty
   if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
-    label_.hide();
-    label_.set_name("");
+    event_box_.hide();
   } else {
-    label_.set_name("custom-" + name_);
-
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
     } else {
@@ -109,7 +105,7 @@ auto waybar::modules::Custom::update() -> void
       prevclass_ = "";
     }
 
-    label_.show();
+    event_box_.show();
   }
 }
 

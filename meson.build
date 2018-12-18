@@ -9,7 +9,7 @@ project(
     ],
 )
 
-cpp_args = []
+cpp_args = ['-DVERSION="@0@"'.format(meson.project_version())]
 cpp_link_args = []
 
 if false # libc++

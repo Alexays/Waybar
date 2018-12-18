@@ -1,8 +1,9 @@
 #include "client.hpp"
+#include "util/clara.hpp"
 #include <iostream>
 
 waybar::Client::Client(int argc, char* argv[])
-  : gtk_app(Gtk::Application::create(argc, argv, "fr.arouillard.waybar")),
+  : gtk_main(argc, argv),
     gdk_display(Gdk::Display::get_default())
 {
   if (!gdk_display) {
@@ -12,25 +13,6 @@ waybar::Client::Client(int argc, char* argv[])
     throw std::runtime_error("Bar need to run under Wayland");
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
-
-  config_file = getValidPath({
-    "$XDG_CONFIG_HOME/waybar/config",
-    "$HOME/.config/waybar/config",
-    "$HOME/waybar/config",
-    "/etc/xdg/waybar/config",
-    "./resources/config",
-  });
-  css_file = getValidPath({
-    "$XDG_CONFIG_HOME/waybar/style.css",
-    "$HOME/.config/waybar/style.css",
-    "$HOME/waybar/style.css",
-    "/etc/xdg/waybar/style.css",
-    "./resources/style.css",
-  });
-  if (css_file.empty() || config_file.empty()) {
-    throw std::runtime_error("Missing required resources files");
-  }
-  std::cout << "Resources files: " + config_file + ", " + css_file << std::endl;
 }
 
 const std::string waybar::Client::getValidPath(std::vector<std::string> paths)
@@ -88,6 +70,28 @@ void waybar::Client::handleGlobalRemove(void* data,
   }
 }
 
+void waybar::Client::setupConfigs(const std::string& config, const std::string& style)
+{
+  config_file = config.empty() ? getValidPath({
+    "$XDG_CONFIG_HOME/waybar/config",
+    "$HOME/.config/waybar/config",
+    "$HOME/waybar/config",
+    "/etc/xdg/waybar/config",
+    "./resources/config",
+  }) : config;
+  css_file = style.empty() ? getValidPath({
+    "$XDG_CONFIG_HOME/waybar/style.css",
+    "$HOME/.config/waybar/style.css",
+    "$HOME/waybar/style.css",
+    "/etc/xdg/waybar/style.css",
+    "./resources/style.css",
+  }) : style;
+  if (css_file.empty() || config_file.empty()) {
+    throw std::runtime_error("Missing required resources files");
+  }
+  std::cout << "Resources files: " + config_file + ", " + css_file << std::endl;
+}
+
 void waybar::Client::bindInterfaces()
 {
   registry = wl_display_get_registry(wl_display);
@@ -103,11 +107,32 @@ void waybar::Client::bindInterfaces()
   wl_display_roundtrip(wl_display);
 }
 
-int waybar::Client::main(int /*argc*/, char* /*argv*/[])
+int waybar::Client::main(int argc, char* argv[])
 {
+  bool show_help = false;
+  bool show_version = false;
+  std::string config;
+  std::string style;
+  auto cli = clara::detail::Help(show_help)
+    | clara::detail::Opt(show_version)["-v"]["--version"]("Show version")
+    | clara::detail::Opt(config, "config")["-c"]["--config"]("Config path")
+    | clara::detail::Opt(style, "style")["-s"]["--style"]("Style path");
+  auto res = cli.parse(clara::detail::Args(argc, argv));
+  if (!res) {
+    std::cerr << "Error in command line: " << res.errorMessage() << std::endl;
+    return 1;
+  }
+  if (show_help) {
+    std::cout << cli << std::endl;
+    return 0;
+  }
+  if (show_version) {
+    std::cout << "Waybar v" << VERSION << std::endl;
+    return 0;
+  }
+  setupConfigs(config, style);
   bindInterfaces();
-  gtk_app->hold();
-  gtk_app->run();
+  gtk_main.run();
   bars.clear();
   zxdg_output_manager_v1_destroy(xdg_output_manager);
   zwlr_layer_shell_v1_destroy(layer_shell);

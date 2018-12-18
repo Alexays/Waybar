@@ -1,9 +1,13 @@
 #include "modules/network.hpp"
 
-waybar::modules::Network::Network(const Json::Value& config)
+waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
   : ALabel(config, "{ifname}", 60), family_(AF_INET),
     cidr_(-1), signal_strength_dbm_(0), signal_strength_(0)
 {
+  label_.set_name("network");
+  if (!id.empty()) {
+    label_.get_style_context()->add_class(id);
+  }
   sock_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
   if (sock_fd_ < 0) {
     throw std::runtime_error("Can't open network socket");
@@ -29,10 +33,9 @@ waybar::modules::Network::Network(const Json::Value& config)
     }
   }
   initNL80211();
-  label_.set_name("network");
   // Trigger first values
   getInfo();
-  update();
+  dp.emit();
   worker();
 }
 

@@ -15,7 +15,7 @@ class Client {
     Client(int argc, char *argv[]);
     int main(int argc, char *argv[]);
 
-    Glib::RefPtr<Gtk::Application> gtk_app;
+    Gtk::Main gtk_main;
     std::string css_file;
     std::string config_file;
     Glib::RefPtr<Gdk::Display> gdk_display;
@@ -27,8 +27,8 @@ class Client {
     std::vector<std::unique_ptr<Bar>> bars;
 
   private:
+    void setupConfigs(const std::string& config, const std::string& style);
     void bindInterfaces();
-    auto setupCss();
     const std::string getValidPath(std::vector<std::string> paths);
 
     static void handleGlobal(void *data, struct wl_registry *registry,

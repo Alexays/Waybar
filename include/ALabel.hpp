@@ -6,26 +6,26 @@
 namespace waybar {
 
 class ALabel : public IModule {
- public:
-  ALabel(const Json::Value&, const std::string format, uint16_t interval = 0);
+public:
+  ALabel(const Json::Value &, const std::string format, uint16_t interval = 0);
   virtual ~ALabel() = default;
   virtual auto update() -> void;
-  virtual std::string getIcon(uint16_t, const std::string& alt = "");
-  virtual operator Gtk::Widget&();
+  virtual std::string getIcon(uint16_t, const std::string &alt = "");
+  virtual operator Gtk::Widget &();
 
- protected:
+protected:
   Gtk::EventBox event_box_;
   Gtk::Label label_;
-  const Json::Value& config_;
+  const Json::Value &config_;
   std::string format_;
   std::mutex mutex_;
   const std::chrono::seconds interval_;
 
- private:
-  bool handleToggle(GdkEventButton* const& ev);
-  bool handleScroll(GdkEventScroll*);
+private:
+  bool handleToggle(GdkEventButton *const &ev);
+  bool handleScroll(GdkEventScroll *);
   bool alt = false;
   const std::string default_format_;
 };
 
-}  // namespace waybar
+} // namespace waybar

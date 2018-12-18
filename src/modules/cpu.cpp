@@ -1,9 +1,12 @@
 #include "modules/cpu.hpp"
 
-waybar::modules::Cpu::Cpu(const Json::Value& config)
+waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
   : ALabel(config, "{usage}%", 10)
 {
   label_.set_name("cpu");
+  if (!id.empty()) {
+    label_.get_style_context()->add_class(id);
+  }
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);

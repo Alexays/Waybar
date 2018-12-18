@@ -13,7 +13,7 @@ namespace waybar::modules::sway {
 
 class Window : public ALabel {
   public:
-    Window(const waybar::Bar&, const Json::Value&);
+    Window(const std::string&, const waybar::Bar&, const Json::Value&);
     auto update() -> void;
   private:
     void worker();

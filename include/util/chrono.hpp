@@ -63,14 +63,14 @@ struct SleeperThread {
   {
     do_run_ = false;
     condvar_.notify_all();
-    if (thread_.joinable()) {
-      thread_.detach();
-    }
   }
 
   ~SleeperThread()
   {
     stop();
+    if (thread_.joinable()) {
+      thread_.detach();
+    }
   }
 
 private:

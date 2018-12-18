@@ -1,12 +1,17 @@
 #include "modules/sway/mode.hpp"
 
-waybar::modules::sway::Mode::Mode(const Bar& bar, const Json::Value& config)
+waybar::modules::sway::Mode::Mode(const std::string& id, const Bar& bar, const Json::Value& config)
   : ALabel(config, "{}"), bar_(bar)
 {
+  label_.set_name("mode");
+  if (!id.empty()) {
+    label_.get_style_context()->add_class(id);
+  }
   ipc_.connect();
   ipc_.subscribe("[ \"mode\" ]");
   // Launch worker
   worker();
+  dp.emit();
 }
 
 void waybar::modules::sway::Mode::worker()
@@ -32,12 +37,10 @@ void waybar::modules::sway::Mode::worker()
 auto waybar::modules::sway::Mode::update() -> void
 {
   if (mode_.empty()) {
-    label_.set_name("");
-    label_.hide();
+    event_box_.hide();
   } else {
-    label_.set_name("mode");
     label_.set_markup(fmt::format(format_, mode_));
     label_.set_tooltip_text(mode_);
-    label_.show();
+    event_box_.show();
   }
 }
