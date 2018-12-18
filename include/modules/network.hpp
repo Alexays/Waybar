@@ -15,7 +15,7 @@ namespace waybar::modules {
 
 class Network : public ALabel {
   public:
-    Network(const Json::Value&);
+    Network(const std::string&, const Json::Value&);
     ~Network();
     auto update() -> void;
   private:

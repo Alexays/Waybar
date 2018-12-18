@@ -1,10 +1,13 @@
 #include "modules/sway/workspaces.hpp"
 
-waybar::modules::sway::Workspaces::Workspaces(const Bar& bar,
+waybar::modules::sway::Workspaces::Workspaces(const std::string& id, const Bar& bar,
   const Json::Value& config)
   : bar_(bar), config_(config), scrolling_(false)
 {
   box_.set_name("workspaces");
+  if (!id.empty()) {
+    box_.get_style_context()->add_class(id);
+  }
   ipc_.connect();
   ipc_.subscribe("[ \"workspace\" ]");
   // Launch worker

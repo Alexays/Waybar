@@ -13,7 +13,7 @@ namespace waybar::modules {
 
 class Cpu : public ALabel {
   public:
-    Cpu(const Json::Value&);
+    Cpu(const std::string&, const Json::Value&);
     auto update() -> void;
   private:
     static inline const std::string data_dir_ = "/proc/stat";

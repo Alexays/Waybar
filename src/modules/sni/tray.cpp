@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-waybar::modules::SNI::Tray::Tray(const Json::Value &config)
+waybar::modules::SNI::Tray::Tray(const std::string& id, const Json::Value &config)
     : config_(config), watcher_(), host_(nb_hosts_, config,
     std::bind(&Tray::onAdd, this, std::placeholders::_1),
     std::bind(&Tray::onRemove, this, std::placeholders::_1))

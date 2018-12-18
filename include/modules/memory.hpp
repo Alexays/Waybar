@@ -9,7 +9,7 @@ namespace waybar::modules {
 
 class Memory : public ALabel {
   public:
-    Memory(const Json::Value&);
+    Memory(const std::string&, const Json::Value&);
     auto update() -> void;
   private:
     static inline const std::string data_dir_ = "/proc/meminfo";

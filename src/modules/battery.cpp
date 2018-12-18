@@ -1,8 +1,12 @@
 #include "modules/battery.hpp"
 
-waybar::modules::Battery::Battery(const Json::Value& config)
+waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
   : ALabel(config, "{capacity}%", 60)
 {
+  label_.set_name("battery");
+  if (!id.empty()) {
+    label_.get_style_context()->add_class(id);
+  }
   try {
     if (config_["bat"].isString()) {
       auto dir = data_dir_ / config_["bat"].asString();
@@ -131,10 +135,8 @@ auto waybar::modules::Battery::update() -> void
   }
   if (format.empty()) {
     event_box_.hide();
-    label_.set_name("");
   } else {
     event_box_.show();
-    label_.set_name("battery");
     label_.set_markup(fmt::format(format, fmt::arg("capacity", capacity),
       fmt::arg("icon", getIcon(capacity))));
   }

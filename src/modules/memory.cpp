@@ -1,8 +1,12 @@
 #include "modules/memory.hpp"
 
-waybar::modules::Memory::Memory(const Json::Value& config)
+waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
   : ALabel(config, "{}%", 30)
 {
+  label_.set_name("memory");
+  if (!id.empty()) {
+    label_.get_style_context()->add_class(id);
+  }
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -17,11 +21,9 @@ auto waybar::modules::Memory::update() -> void
     label_.set_markup(fmt::format(format_, used_ram_percentage));
     auto used_ram_gigabytes = (memtotal_ - memfree_) / std::pow(1024, 2);
     label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
-    label_.set_name("memory");
-    label_.show();
+    event_box_.show();
   } else {
-    label_.set_name("");
-    label_.hide();
+    event_box_.hide();
   }
 }
 
