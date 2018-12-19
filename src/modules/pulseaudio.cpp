@@ -1,3 +1,4 @@
+#include <iostream>
 #include "modules/pulseaudio.hpp"
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value &config)
@@ -174,27 +175,6 @@ void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context,
     sinkInfoCb, data);
 }
 
-const std::string waybar::modules::Pulseaudio::getPortIcon() const
-{
-  std::vector<std::string> ports = {
-    "headphones",
-    "speaker",
-    "hdmi",
-    "headset",
-    "handsfree",
-    "portable",
-    "car",
-    "hifi",
-    "phone",
-  };
-  for (auto const& port : ports) {
-    if (port_name_.find(port) != std::string::npos) {
-      return port;
-    }
-  }
-  return "";
-}
-
 auto waybar::modules::Pulseaudio::update() -> void
 {
   auto format = format_;
@@ -212,7 +192,7 @@ auto waybar::modules::Pulseaudio::update() -> void
   }
   label_.set_markup(
       fmt::format(format, fmt::arg("volume", volume_),
-                  fmt::arg("icon", getIcon(volume_, getPortIcon()))));
+                  fmt::arg("icon", getIcon(volume_, port_name_))));
   label_.set_tooltip_text(desc_);
   if (scrolling_) {
     scrolling_ = false;
