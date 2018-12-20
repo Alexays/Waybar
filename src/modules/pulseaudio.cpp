@@ -192,7 +192,7 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const
       return port;
     }
   }
-  return "";
+  return port_name_;
 }
 
 auto waybar::modules::Pulseaudio::update() -> void
