@@ -94,7 +94,7 @@ void waybar::modules::Network::worker()
     }
   };
   thread_timer_ = [this] {
-    thread_.sleep_for(interval_);
+    thread_timer_.sleep_for(interval_);
     if (ifid_ > 0) {
       getInfo();
       dp.emit();
