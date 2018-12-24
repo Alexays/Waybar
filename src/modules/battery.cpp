@@ -33,7 +33,7 @@ void waybar::modules::Battery::worker()
 {
   thread_timer_ = [this] {
     dp.emit();
-    thread_.sleep_for(interval_);
+    thread_timer_.sleep_for(interval_);
   };
   thread_ = [this] {
     struct inotify_event event = {0};
