@@ -10,7 +10,7 @@
 #include <fmt/format.h>
 #include <sys/inotify.h>
 #include <algorithm>
-#include "util/sleeper_thread.hpp"
+#include "util/chrono.hpp"
 #include "ALabel.hpp"
 
 namespace waybar::modules {
