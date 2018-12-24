@@ -7,19 +7,65 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
+  getBatteries();
+  fd_ = inotify_init1(IN_CLOEXEC);
+  if (fd_ == -1) {
+    throw std::runtime_error("Unable to listen batteries.");
+  }
+  for (auto const& bat : batteries_) {
+    auto wd = inotify_add_watch(fd_, (bat / "uevent").c_str(), IN_ACCESS);
+    if (wd != -1) {
+      wds_.push_back(wd);
+    }
+  }
+  worker();
+}
+
+waybar::modules::Battery::~Battery()
+{
+  for (auto wd : wds_) {
+    inotify_rm_watch(fd_, wd);
+  }
+  close(fd_);
+}
+
+void waybar::modules::Battery::worker()
+{
+  thread_timer_ = [this] {
+    dp.emit();
+    thread_.sleep_for(interval_);
+  };
+  thread_ = [this] {
+    struct inotify_event event = {0};
+    int nbytes = read(fd_, &event, sizeof(event));
+    if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
+      thread_.stop();
+      return;
+    }
+    // TODO: don't stop timer for now since there is some bugs :?
+    // thread_timer_.stop();
+    dp.emit();
+  };
+}
+
+void waybar::modules::Battery::getBatteries()
+{
   try {
-    if (config_["bat"].isString()) {
-      auto dir = data_dir_ / config_["bat"].asString();
-      if (fs::is_directory(dir) && fs::exists(dir / "capacity")
-        && fs::exists(dir / "status") && fs::exists(dir / "uevent")) {
-        batteries_.push_back(dir);
+    for (auto const& node : fs::directory_iterator(data_dir_)) {
+      if (!fs::is_directory(node)) {
+        continue;
       }
-    } else {
-      for (auto const& node : fs::directory_iterator(data_dir_)) {
-        if (fs::is_directory(node) && fs::exists(node / "capacity")
-          && fs::exists(node / "status") && fs::exists(node / "uevent")) {
+      auto dir_name = node.path().filename();
+      auto bat_defined = config_["bat"].isString();
+      if (((bat_defined && dir_name == config_["bat"].asString())
+        || !bat_defined) && fs::exists(node / "capacity")
+        && fs::exists(node / "uevent") && fs::exists(node / "status")) {
           batteries_.push_back(node);
-        }
+      }
+      auto adap_defined = config_["adapter"].isString();
+      if (((adap_defined && dir_name == config_["adapter"].asString())
+        || !adap_defined) && fs::exists(node / "online")) {
+          adapter_ = node;
       }
     }
   } catch (fs::filesystem_error &e) {
@@ -31,39 +77,6 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
     }
     throw std::runtime_error("No batteries.");
   }
-  fd_ = inotify_init1(IN_CLOEXEC);
-  if (fd_ == -1) {
-    throw std::runtime_error("Unable to listen batteries.");
-  }
-  for (auto const& bat : batteries_) {
-    inotify_add_watch(fd_, (bat / "uevent").c_str(), IN_ACCESS);
-  }
-  worker();
-}
-
-waybar::modules::Battery::~Battery()
-{
-  close(fd_);
-}
-
-void waybar::modules::Battery::worker()
-{
-  // Trigger first values
-  update();
-  thread_timer_ = [this] {
-    thread_.sleep_for(interval_);
-    dp.emit();
-  };
-  thread_ = [this] {
-    struct inotify_event event = {0};
-    int nbytes = read(fd_, &event, sizeof(event));
-    if (nbytes != sizeof(event)) {
-      return;
-    }
-    // TODO: don't stop timer for now since there is some bugs :?
-    // thread_timer_.stop();
-    dp.emit();
-  };
 }
 
 const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() const
@@ -87,6 +100,19 @@ const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() cons
     std::cerr << e.what() << std::endl;
     return {0, "Unknown"};
   }
+}
+
+const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const
+{
+  if (!adapter_.empty()) {
+    bool online;
+    std::ifstream(adapter_ / "online") >> online;
+    if (capacity == 100) {
+      return "Full";
+    }
+    return online ? "Charging" : "Discharging";
+  }
+  return "Unknown";
 }
 
 const std::string waybar::modules::Battery::getState(uint8_t capacity) const
@@ -125,6 +151,9 @@ auto waybar::modules::Battery::update() -> void
   auto state = getState(capacity);
   label_.get_style_context()->remove_class(old_status_);
   label_.get_style_context()->add_class(status);
+  if (status == "Unknown") {
+    status = getAdapterStatus(capacity);
+  }
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
