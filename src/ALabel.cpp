@@ -90,7 +90,7 @@ std::string waybar::ALabel::getIcon(uint16_t percentage,
                                     const std::string& alt) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
-    if (!alt.empty() && format_icons[alt].isString()) {
+    if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
       format_icons = format_icons[alt];
     } else {
       format_icons = format_icons["default"];
