@@ -105,17 +105,21 @@ void waybar::modules::Network::worker()
 auto waybar::modules::Network::update() -> void
 {
   auto format = format_;
+  std::string connectiontype;
   if (ifid_ <= 0 || ipaddr_.empty()) {
     format = config_["format-disconnected"].isString()
       ? config_["format-disconnected"].asString() : format;
     label_.get_style_context()->add_class("disconnected");
+    connectiontype = "disconnected";
   } else {
     if (essid_.empty()) {
       format = config_["format-ethernet"].isString()
         ? config_["format-ethernet"].asString() : format;
+      connectiontype = "ethernet";
     } else {
       format = config_["format-wifi"].isString()
         ? config_["format-wifi"].asString() : format;
+      connectiontype = "wifi";
     }
     label_.get_style_context()->remove_class("disconnected");
   }
@@ -126,7 +130,8 @@ auto waybar::modules::Network::update() -> void
     fmt::arg("ifname", ifname_),
     fmt::arg("netmask", netmask_),
     fmt::arg("ipaddr", ipaddr_),
-    fmt::arg("cidr", cidr_)
+    fmt::arg("cidr", cidr_),
+    fmt::arg("icon", getIcon(signal_strength_, connectiontype))
   ));
 }
 
