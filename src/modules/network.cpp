@@ -1,23 +1,16 @@
+#include <sys/eventfd.h>
 #include "modules/network.hpp"
 
 waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
-  : ALabel(config, "{ifname}", 60), family_(AF_INET),
+  : ALabel(config, "{ifname}", 60), family_(AF_INET), efd_(-1), ev_fd_(-1),
     cidr_(-1), signal_strength_dbm_(0), signal_strength_(0)
 {
   label_.set_name("network");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
-  sock_fd_ = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-  if (sock_fd_ < 0) {
-    throw std::runtime_error("Can't open network socket");
-  }
-  nladdr_.nl_family = AF_NETLINK;
-  nladdr_.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
-  if (bind(sock_fd_, reinterpret_cast<struct sockaddr *>(&nladdr_),
-    sizeof(nladdr_)) != 0) {
-    throw std::runtime_error("Can't bind network socket");
-  }
+  createInfoSocket();
+  createEventSocket();
   if (config_["interface"].isString()) {
     ifid_ = if_nametoindex(config_["interface"].asCString());
     ifname_ = config_["interface"].asString();
@@ -32,72 +25,111 @@ waybar::modules::Network::Network(const std::string& id, const Json::Value& conf
       ifname_ = ifname;
     }
   }
-  initNL80211();
-  // Trigger first values
-  getInfo();
   dp.emit();
   worker();
 }
 
 waybar::modules::Network::~Network()
 {
-  close(sock_fd_);
-  nl_socket_free(sk_);
+  if (ev_fd_ > -1) {
+    eventfd_write(ev_fd_, 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    close(ev_fd_);
+  }
+  if (efd_ > -1) {
+    close(efd_);
+  }
+  if (info_sock_ != nullptr) {
+    nl_socket_drop_membership(info_sock_, RTMGRP_LINK);
+    nl_socket_drop_membership(info_sock_, RTMGRP_IPV4_IFADDR);
+    nl_close(info_sock_);
+    nl_socket_free(info_sock_);
+  }
+  if (sk_ != nullptr) {
+    nl_close(sk_);
+    nl_socket_free(sk_);
+  }
+}
+
+void waybar::modules::Network::createInfoSocket()
+{
+  info_sock_ = nl_socket_alloc();
+  if (nl_connect(info_sock_, NETLINK_ROUTE) != 0) {
+		throw std::runtime_error("Can't connect network socket");
+	}
+  if (nl_socket_add_membership(info_sock_, RTMGRP_LINK) != 0) {
+    throw std::runtime_error("Can't add membership");
+  }
+  if (nl_socket_add_membership(info_sock_, RTMGRP_IPV4_IFADDR) != 0) {
+    throw std::runtime_error("Can't add membership");
+  }
+  nl_socket_disable_seq_check(info_sock_);
+  nl_socket_set_nonblocking(info_sock_);
+  nl_socket_modify_cb(info_sock_, NL_CB_MSG_IN, NL_CB_CUSTOM, handleEvents, this);
+  efd_ = epoll_create1(0);
+  if (efd_ < 0) {
+    throw std::runtime_error("Can't create epoll");
+  }
+  {
+    ev_fd_ = eventfd(0, EFD_NONBLOCK);
+    struct epoll_event event;
+    event.events = EPOLLIN | EPOLLET;
+    event.data.fd = ev_fd_;
+    if (epoll_ctl(efd_, EPOLL_CTL_ADD, ev_fd_, &event) == -1) {
+      throw std::runtime_error("Can't add epoll event");
+    }
+  }
+  {
+    auto fd = nl_socket_get_fd(info_sock_);
+    struct epoll_event event;
+    event.events = EPOLLIN;
+    event.data.fd = fd;
+    if (epoll_ctl(efd_, EPOLL_CTL_ADD, fd, &event) == -1) {
+      throw std::runtime_error("Can't add epoll event");
+    }
+  }
+}
+
+void waybar::modules::Network::createEventSocket()
+{
+  sk_ = nl_socket_alloc();
+	if (genl_connect(sk_) != 0) {
+    throw std::runtime_error("Can't connect to netlink socket");
+  }
+  nl_socket_disable_seq_check(sk_);
+  if (nl_socket_modify_cb(sk_, NL_CB_VALID, NL_CB_CUSTOM, handleScan, this) < 0) {
+    throw std::runtime_error("Can't set callback");
+  }
+  nl80211_id_ = genl_ctrl_resolve(sk_, "nl80211");
+  if (nl80211_id_ < 0) {
+    throw std::runtime_error("Can't resolve nl80211 interface");
+  }
 }
 
 void waybar::modules::Network::worker()
 {
-  thread_ = [this] {
-    char buf[4096];
-    auto len = netlinkResponse(sock_fd_, buf, sizeof(buf), RTMGRP_LINK | RTMGRP_IPV4_IFADDR);
-    if (len == 0) {
-      return;
-    }
-    bool need_update = false;
-    for (auto nh = reinterpret_cast<struct nlmsghdr *>(buf); NLMSG_OK(nh, len);
-      nh = NLMSG_NEXT(nh, len)) {
-      if (nh->nlmsg_type == NLMSG_DONE) {
-        break;
-      }
-      if (nh->nlmsg_type == NLMSG_ERROR) {
-        continue;
-      }
-      if (nh->nlmsg_type == RTM_NEWADDR) {
-        need_update = true;
-      }
-      if (nh->nlmsg_type < RTM_NEWADDR) {
-        auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-        if (rtif->ifi_index == static_cast<int>(ifid_)) {
-          need_update = true;
-          if (!(rtif->ifi_flags & IFF_RUNNING)) {
-            disconnected();
-          }
-        }
-      }
-    }
-    if (ifid_ <= 0 && !config_["interface"].isString()) {
-      // Need to wait before get external interface
-      thread_.sleep_for(std::chrono::seconds(1));
-      ifid_ = getExternalInterface();
-      if (ifid_ > 0) {
-        char ifname[IF_NAMESIZE];
-        if_indextoname(ifid_, ifname);
-        ifname_ = ifname;
-        need_update = true;
-      }
-    }
-    if (need_update) {
-      if (ifid_ > 0) {
-        getInfo();
-      }
-      dp.emit();
-    }
-  };
   thread_timer_ = [this] {
-    thread_timer_.sleep_for(interval_);
     if (ifid_ > 0) {
       getInfo();
       dp.emit();
+    }
+    thread_timer_.sleep_for(interval_);
+  };
+  thread_ = [this] {
+    struct epoll_event events[16];
+    int ec = epoll_wait(efd_, events, 16, -1);
+    if (ec > 0) {
+      for (auto i = 0; i < ec; i++) {
+        if (events[i].events & EPOLLIN
+          && events[i].data.fd == nl_socket_get_fd(info_sock_)) {
+          nl_recvmsgs_default(info_sock_);
+        } else {
+          thread_.stop();
+          break;
+        }
+      }
+    } else if (ec == -1) {
+      thread_.stop();
     }
   };
 }
@@ -151,24 +183,6 @@ void waybar::modules::Network::disconnected()
   thread_.sleep_for(std::chrono::seconds(1));
 }
 
-void waybar::modules::Network::initNL80211()
-{
-  sk_ = nl_socket_alloc();
-	if (genl_connect(sk_) != 0) {
-    nl_socket_free(sk_);
-    throw std::runtime_error("Can't connect to netlink socket");
-  }
-  if (nl_socket_modify_cb(sk_, NL_CB_VALID, NL_CB_CUSTOM, scanCb, this) < 0) {
-    nl_socket_free(sk_);
-    throw std::runtime_error("Can't connect to netlink socket");
-  }
-  nl80211_id_ = genl_ctrl_resolve(sk_, "nl80211");
-  if (nl80211_id_ < 0) {
-    nl_socket_free(sk_);
-    throw std::runtime_error("Can't resolve nl80211 interface");
-  }
-}
-
 // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
 int waybar::modules::Network::getExternalInterface()
 {
@@ -192,7 +206,7 @@ int waybar::modules::Network::getExternalInterface()
   rt->rtm_table = RT_TABLE_MAIN;
 
   /* Issue the query. */
-  if (netlinkRequest(sock_fd_, req, reqlen) < 0) {
+  if (netlinkRequest(req, reqlen) < 0) {
     goto out;
   }
 
@@ -202,7 +216,7 @@ int waybar::modules::Network::getExternalInterface()
    * consume responses till NLMSG_DONE/NLMSG_ERROR is encountered).
    */
   do {
-    auto len = netlinkResponse(sock_fd_, resp, route_buffer_size);
+    auto len = netlinkResponse(resp, route_buffer_size);
     if (len < 0) {
       goto out;
     }
@@ -322,7 +336,7 @@ void waybar::modules::Network::getInterfaceAddress() {
   }
 }
 
-int waybar::modules::Network::netlinkRequest(int fd, void *req,
+int waybar::modules::Network::netlinkRequest(void *req,
   uint32_t reqlen, uint32_t groups)
 {
   struct sockaddr_nl sa = {};
@@ -330,10 +344,10 @@ int waybar::modules::Network::netlinkRequest(int fd, void *req,
   sa.nl_groups = groups;
   struct iovec iov = { req, reqlen };
   struct msghdr msg = { &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
-  return sendmsg(fd, &msg, 0);
+  return sendmsg(nl_socket_get_fd(info_sock_), &msg, 0);
 }
 
-int waybar::modules::Network::netlinkResponse(int fd, void *resp,
+int waybar::modules::Network::netlinkResponse(void *resp,
   uint32_t resplen, uint32_t groups)
 {
   struct sockaddr_nl sa = {};
@@ -341,14 +355,50 @@ int waybar::modules::Network::netlinkResponse(int fd, void *resp,
   sa.nl_groups = groups;
   struct iovec iov = { resp, resplen };
   struct msghdr msg = { &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
-  auto ret = recvmsg(fd, &msg, 0);
+  auto ret = recvmsg(nl_socket_get_fd(info_sock_), &msg, 0);
   if (msg.msg_flags & MSG_TRUNC) {
     return -1;
   }
   return ret;
 }
 
-int waybar::modules::Network::scanCb(struct nl_msg *msg, void *data) {
+int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
+  auto net = static_cast<waybar::modules::Network *>(data);
+  bool need_update = false;
+  nlmsghdr *nh = nlmsg_hdr(msg);
+  if (nh->nlmsg_type == RTM_NEWADDR) {
+    need_update = true;
+  }
+  if (nh->nlmsg_type < RTM_NEWADDR) {
+    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+      need_update = true;
+      if (!(rtif->ifi_flags & IFF_RUNNING)) {
+        net->disconnected();
+      }
+    }
+  }
+  if (net->ifid_ <= 0 && !net->config_["interface"].isString()) {
+    // Need to wait before get external interface
+    net->thread_.sleep_for(std::chrono::seconds(1));
+    net->ifid_ = net->getExternalInterface();
+    if (net->ifid_ > 0) {
+      char ifname[IF_NAMESIZE];
+      if_indextoname(net->ifid_, ifname);
+      net->ifname_ = ifname;
+      need_update = true;
+    }
+  }
+  if (need_update) {
+    if (net->ifid_ > 0) {
+      net->getInfo();
+    }
+    net->dp.emit();
+  }
+  return NL_SKIP;
+}
+
+int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   auto net = static_cast<waybar::modules::Network *>(data);
   auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
   struct nlattr* tb[NL80211_ATTR_MAX + 1];
@@ -404,7 +454,7 @@ void waybar::modules::Network::parseEssid(struct nlattr **bss)
 
 void waybar::modules::Network::parseSignal(struct nlattr **bss) {
   if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
-    // signalstrength in dBm
+    // signalstrength in dBm from mBm
     signal_strength_dbm_ =
       static_cast<int>(nla_get_u32(bss[NL80211_BSS_SIGNAL_MBM])) / 100;
 
@@ -413,6 +463,9 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     const int hardwareMin = -90;
     signal_strength_ = ((signal_strength_dbm_ - hardwareMin)
       / double{hardwareMax - hardwareMin}) * 100;
+  }
+  if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
+    signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
   }
 }
 
@@ -446,5 +499,5 @@ auto waybar::modules::Network::getInfo() -> void
     nlmsg_free(nl_msg);
     return;
   }
-  nl_send_sync(sk_, nl_msg);
+  nl_send_auto(sk_, nl_msg);
 }

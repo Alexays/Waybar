@@ -2,6 +2,7 @@
 
 #include <sys/wait.h>
 #include <giomm.h>
+#include <unistd.h>
 
 namespace waybar::util::command {
 

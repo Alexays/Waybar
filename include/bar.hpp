@@ -18,6 +18,7 @@ class Bar {
   public:
     Bar(const Client&, std::unique_ptr<struct wl_output *>&&, uint32_t);
     Bar(const Bar&) = delete;
+    ~Bar() = default;
 
     auto toggle() -> void;
 
@@ -54,6 +55,10 @@ class Bar {
     Glib::RefPtr<Gtk::StyleContext> style_context_;
     Glib::RefPtr<Gtk::CssProvider> css_provider_;
     struct zxdg_output_v1 *xdg_output_;
+    Gtk::Box left_;
+    Gtk::Box center_;
+    Gtk::Box right_;
+    Gtk::Box box_;
     std::vector<std::unique_ptr<waybar::IModule>> modules_left_;
     std::vector<std::unique_ptr<waybar::IModule>> modules_center_;
     std::vector<std::unique_ptr<waybar::IModule>> modules_right_;

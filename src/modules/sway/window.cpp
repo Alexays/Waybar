@@ -11,7 +11,6 @@ waybar::modules::sway::Window::Window(const std::string& id, const Bar &bar, con
     label_.set_hexpand(true);
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
   }
-  ipc_.connect();
   ipc_.subscribe("[\"window\",\"workspace\"]");
   getFocusedWindow();
   // Launch worker

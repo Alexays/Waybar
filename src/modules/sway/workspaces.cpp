@@ -8,7 +8,6 @@ waybar::modules::sway::Workspaces::Workspaces(const std::string& id, const Bar& 
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
-  ipc_.connect();
   ipc_.subscribe("[ \"workspace\" ]");
   // Launch worker
   worker();
@@ -21,9 +20,9 @@ void waybar::modules::sway::Workspaces::worker()
       // Wait for the name of the output
       if (!config_["all-outputs"].asBool() && bar_.output_name.empty()) {
         while (bar_.output_name.empty()) {
-          thread_.sleep_for(chrono::milliseconds(150));
+          thread_.sleep_for(std::chrono::milliseconds(150));
         }
-      } else if (thread_.isRunning() && !workspaces_.empty()) {
+      } else if (!workspaces_.empty()) {
         ipc_.handleEvent();
       }
       {

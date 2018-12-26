@@ -10,7 +10,7 @@ struct JsonParser {
     : reader_(builder_.newCharReader())
   {}
 
-  const Json::Value parse(const std::string data) const
+  const Json::Value parse(const std::string& data) const
   {
     Json::Value root;
     std::string err;
