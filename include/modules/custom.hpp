@@ -19,12 +19,14 @@ class Custom : public ALabel {
     void continuousWorker();
     void parseOutputRaw();
     void parseOutputJson();
+    bool isInteger(const std::string&);
 
     const std::string name_;
     std::string text_;
     std::string tooltip_;
     std::string class_;
     std::string prevclass_;
+    int percentage_;
     waybar::util::SleeperThread thread_;
     waybar::util::command::res output_;
     waybar::util::JsonParser parser_;
