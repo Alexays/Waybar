@@ -7,7 +7,6 @@ waybar::modules::sway::Mode::Mode(const std::string& id, const Bar& bar, const J
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
-  ipc_.connect();
   ipc_.subscribe("[ \"mode\" ]");
   // Launch worker
   worker();
@@ -20,14 +19,12 @@ void waybar::modules::sway::Mode::worker()
     try {
       auto res = ipc_.handleEvent();
       auto parsed = parser_.parse(res.payload);
-      if ((parsed["change"]) != "default" ) {
+      if (parsed["change"] != "default") {
         mode_ = parsed["change"].asString();
-        dp.emit();
-      }
-      else if ((parsed["change"]) == "default" ) {
+      } else {
         mode_.clear();
-        dp.emit();
       }
+      dp.emit();
     } catch (const std::exception& e) {
       std::cerr << "Mode: " << e.what() << std::endl;
     }

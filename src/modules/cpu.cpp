@@ -38,7 +38,7 @@ std::tuple<uint16_t, std::string> waybar::modules::Cpu::getCpuUsage()
 {
   if (prev_times_.empty()) {
     prev_times_ = parseCpuinfo();
-    std::this_thread::sleep_for(chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   std::vector<std::tuple<size_t, size_t>> curr_times = parseCpuinfo();
   std::string tooltip;

@@ -1,11 +1,18 @@
 #include "modules/sway/ipc/client.hpp"
 
 waybar::modules::sway::Ipc::Ipc()
-  : fd_(-1), fd_event_(-1)
-{}
+{
+  const std::string& socketPath = getSocketPath();
+  fd_ = open(socketPath);
+  fd_event_ = open(socketPath);
+}
 
 waybar::modules::sway::Ipc::~Ipc()
 {
+  // To fail the IPC header
+  write(fd_, "close-sway-ipc", 14);
+  write(fd_event_, "close-sway-ipc", 14);
+
   close(fd_);
   close(fd_event_);
 }
@@ -53,13 +60,6 @@ int waybar::modules::sway::Ipc::open(const std::string& socketPath) const
   return fd;
 }
 
-void waybar::modules::sway::Ipc::connect()
-{
-  const std::string& socketPath = getSocketPath();
-  fd_ = open(socketPath);
-  fd_event_ = open(socketPath);
-}
-
 struct waybar::modules::sway::Ipc::ipc_response
   waybar::modules::sway::Ipc::recv(int fd) const
 {
@@ -71,9 +71,14 @@ struct waybar::modules::sway::Ipc::ipc_response
   while (total < ipc_header_size_) {
     auto res = ::recv(fd, header.data() + total, ipc_header_size_ - total, 0);
     if (res <= 0) {
-      throw std::runtime_error("Unable to receive IPC response");
+      throw std::runtime_error("Unable to receive IPC header");
     }
     total += res;
+  }
+
+  auto magic = std::string(header.data(), header.data() + ipc_magic_.size());
+  if (magic != ipc_magic_) {
+    throw std::runtime_error("Invalid IPC magic");
   }
 
   total = 0;
@@ -82,7 +87,7 @@ struct waybar::modules::sway::Ipc::ipc_response
   while (total < data32[0]) {
     auto res = ::recv(fd, payload.data() + total, data32[0] - total, 0);
     if (res < 0) {
-      throw std::runtime_error("Unable to receive IPC response");
+      throw std::runtime_error("Unable to receive IPC payload");
     }
     total += res;
   }

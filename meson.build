@@ -9,7 +9,7 @@ project(
     ],
 )
 
-cpp_args = ['-DVERSION="@0@"'.format(meson.project_version())]
+cpp_args = []
 cpp_link_args = []
 
 if false # libc++
@@ -22,6 +22,16 @@ else
 endif
 
 compiler = meson.get_compiler('cpp')
+git = find_program('git', required: false)
+
+if not git.found()
+    add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
+else
+    git_commit_hash = run_command([git.path(), 'describe', '--always', '--tags']).stdout().strip()
+    git_branch = run_command([git.path(), 'rev-parse', '--abbrev-ref', 'HEAD']).stdout().strip()
+    version = '"@0@ (" __DATE__ ", branch \'@1@\')"'.format(git_commit_hash, git_branch)
+    add_project_arguments('-DVERSION=@0@'.format(version), language: 'cpp')
+endif
 
 if not compiler.has_header('filesystem')
     add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')

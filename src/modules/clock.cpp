@@ -8,7 +8,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     label_.get_style_context()->add_class(id);
   }
   thread_ = [this] {
-    auto now = waybar::chrono::clock::now();
+    auto now = std::chrono::system_clock::now();
     dp.emit();
     auto timeout = std::chrono::floor<std::chrono::seconds>(now + interval_);
     auto time_s = std::chrono::time_point_cast<std::chrono::seconds>(timeout);
