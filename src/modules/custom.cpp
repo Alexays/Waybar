@@ -87,7 +87,9 @@ auto waybar::modules::Custom::update() -> void
       parseOutputRaw();
     }
 
-    auto str = fmt::format(format_, text_);
+    auto str = fmt::format(format_, text_,
+      fmt::arg("icon", getIcon(percentage_)),
+      fmt::arg("percentage", percentage_));
     label_.set_markup(str);
     if (text_ == tooltip_) {
       label_.set_tooltip_text(str);
@@ -130,6 +132,19 @@ void waybar::modules::Custom::parseOutputRaw()
   }
 }
 
+bool waybar::modules::Custom::isInteger(const std::string& n)
+{
+  if (std::isdigit(n[0]) || (n.size() > 1 && (n[0] == '-' || n[0] == '+'))) {
+    for (std::string::size_type i{ 1 }; i < n.size(); ++i) {
+      if (!std::isdigit(n[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 void waybar::modules::Custom::parseOutputJson()
 {
   std::istringstream output(output_.out);
@@ -139,6 +154,11 @@ void waybar::modules::Custom::parseOutputJson()
     text_ = parsed["text"].asString();
     tooltip_ = parsed["tooltip"].asString();
     class_ = parsed["class"].asString();
+    if (!parsed["percentage"].asString().empty() && isInteger(parsed["percentage"].asString())) {
+      percentage_ = std::stoi(parsed["percentage"].asString(), nullptr);
+    } else {
+      percentage_ = 0;
+    }
     break;
   }
 }
