@@ -19,7 +19,6 @@ class Custom : public ALabel {
     void continuousWorker();
     void parseOutputRaw();
     void parseOutputJson();
-    bool isInteger(const std::string&);
 
     const std::string name_;
     std::string text_;
