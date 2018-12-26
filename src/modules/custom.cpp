@@ -87,7 +87,9 @@ auto waybar::modules::Custom::update() -> void
       parseOutputRaw();
     }
 
-    auto str = fmt::format(format_, text_);
+    auto str = fmt::format(format_, text_,
+      fmt::arg("icon", getIcon(percentage_)),
+      fmt::arg("percentage", percentage_));
     label_.set_markup(str);
     if (text_ == tooltip_) {
       label_.set_tooltip_text(str);
@@ -139,6 +141,11 @@ void waybar::modules::Custom::parseOutputJson()
     text_ = parsed["text"].asString();
     tooltip_ = parsed["tooltip"].asString();
     class_ = parsed["class"].asString();
+    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
+      percentage_ = parsed["percentage"].asUInt();
+    } else {
+      percentage_ = 0;
+    }
     break;
   }
 }
