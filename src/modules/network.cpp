@@ -490,14 +490,14 @@ auto waybar::modules::Network::getInfo() -> void
   getInterfaceAddress();
   struct nl_msg* nl_msg = nlmsg_alloc();
   if (nl_msg == nullptr) {
-    nlmsg_free(nl_msg);
     return;
   }
   if (genlmsg_put(nl_msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, NLM_F_DUMP,
     NL80211_CMD_GET_SCAN, 0) == nullptr
     || nla_put_u32(nl_msg, NL80211_ATTR_IFINDEX, ifid_) < 0) {
-    nlmsg_free(nl_msg);
-    return;
+    goto msg_free;
   }
   nl_send_auto(sk_, nl_msg);
+msg_free:
+  nlmsg_free(nl_msg);
 }
