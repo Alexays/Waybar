@@ -6,6 +6,10 @@ build:
 	meson build
 	ninja -C build
 
+build-debug:
+	meson build --buildtype=debug
+	ninja -C build
+
 run: build
 	./build/waybar
 
