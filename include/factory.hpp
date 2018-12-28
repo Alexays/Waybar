@@ -10,6 +10,7 @@
 #include "modules/battery.hpp"
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
+#include "modules/text.hpp"
 #ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"
 #endif

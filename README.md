@@ -14,6 +14,7 @@
 - Memory
 - Cpu load average
 - Custom scripts
+- Custom text
 - And much more customizations
 
 **Configuration and Customization**

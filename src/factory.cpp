@@ -33,6 +33,9 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
+    if (ref.compare(0, 5, "text/") == 0 && ref.size() > 5) {
+      return new waybar::modules::Text(ref.substr(5), config_[name]);
+    }
     #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, config_[name]);
