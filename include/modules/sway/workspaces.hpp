@@ -22,6 +22,7 @@ class Workspaces : public IModule {
     bool handleScroll(GdkEventScroll*);
     std::string getPrevWorkspace();
     std::string getNextWorkspace();
+    std::string trimWorkspaceName(std::string);
 
     const Bar& bar_;
     const Json::Value& config_;

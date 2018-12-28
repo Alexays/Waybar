@@ -87,7 +87,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
       if (config_["format"].isString()) {
         auto format = config_["format"].asString();
         button.set_label(fmt::format(format, fmt::arg("icon", icon),
-          fmt::arg("name", node["name"].asString()),
+          fmt::arg("name", trimWorkspaceName(node["name"].asString())),
           fmt::arg("index", node["num"].asString())));
       } else {
         button.set_label(icon);
@@ -105,7 +105,7 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
   auto icon = getIcon(node["name"].asString(), node);
   auto format = config_["format"].isString()
     ? fmt::format(config_["format"].asString(), fmt::arg("icon", icon),
-      fmt::arg("name", node["name"].asString()),
+      fmt::arg("name", trimWorkspaceName(node["name"].asString())),
       fmt::arg("index", node["num"].asString()))
     : icon;
   auto pair = buttons_.emplace(node["name"].asString(), format);
@@ -234,4 +234,13 @@ std::string waybar::modules::sway::Workspaces::getNextWorkspace()
 
 waybar::modules::sway::Workspaces::operator Gtk::Widget &() {
   return box_;
+}
+
+std::string waybar::modules::sway::Workspaces::trimWorkspaceName(std::string name)
+{
+  std::size_t found = name.find(":");
+  if (found!=std::string::npos) {
+    return name.substr(found+1);
+  }
+  return name;
 }
