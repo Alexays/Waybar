@@ -96,7 +96,6 @@ void waybar::modules::Network::createEventSocket()
 	if (genl_connect(sk_) != 0) {
     throw std::runtime_error("Can't connect to netlink socket");
   }
-  nl_socket_disable_seq_check(sk_);
   if (nl_socket_modify_cb(sk_, NL_CB_VALID, NL_CB_CUSTOM, handleScan, this) < 0) {
     throw std::runtime_error("Can't set callback");
   }
