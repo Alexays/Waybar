@@ -494,9 +494,8 @@ auto waybar::modules::Network::getInfo() -> void
   if (genlmsg_put(nl_msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, NLM_F_DUMP,
     NL80211_CMD_GET_SCAN, 0) == nullptr
     || nla_put_u32(nl_msg, NL80211_ATTR_IFINDEX, ifid_) < 0) {
-    goto msg_free;
+    nlmsg_free(nl_msg);
+    return;
   }
-  nl_send_auto(sk_, nl_msg);
-msg_free:
-  nlmsg_free(nl_msg);
+  nl_send_sync(sk_, nl_msg);
 }
