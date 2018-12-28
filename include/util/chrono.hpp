@@ -37,7 +37,7 @@ struct SleeperThread {
     return *this;
   }
 
-  bool isRunnging() const
+  bool isRunning() const
   {
     return do_run_;
   }
