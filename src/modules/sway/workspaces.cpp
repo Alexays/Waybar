@@ -23,7 +23,7 @@ void waybar::modules::sway::Workspaces::worker()
         while (bar_.output_name.empty()) {
           thread_.sleep_for(chrono::milliseconds(150));
         }
-      } else if (thread_.isRunnging() && !workspaces_.empty()) {
+      } else if (thread_.isRunning() && !workspaces_.empty()) {
         ipc_.handleEvent();
       }
       {
