@@ -16,7 +16,7 @@
 - Custom scripts
 - And much more customizations
 
-**Configuration and Customization**
+**Configuration and Styling**
 
 [See the wiki for more details](https://github.com/Alexays/Waybar/wiki).
 
@@ -28,6 +28,24 @@ $ cd Waybar
 $ meson build
 $ ninja -C build
 $ ./build/waybar
+# If you want to install it
+$ ninja -C build install
+$ waybar
+```
+
+**Dependencies**
+
+```
+gtkmm3
+jsoncpp
+libinput
+libsigc++
+wayland
+wlroots
+libpulse [Pulseaudio module]
+libnl [Network module]
+sway [Sway modules]
+libdbusmenu-gtk3 [Tray module]
 ```
 
 Contributions welcome! - have fun :)<br>
