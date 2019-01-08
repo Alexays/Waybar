@@ -7,6 +7,7 @@
 #include "util/json.hpp"
 #include "IModule.hpp"
 #include "modules/sway/ipc/client.hpp"
+#include <gtkmm/button.h>
 
 namespace waybar::modules::sway {
 

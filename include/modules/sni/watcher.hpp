@@ -1,6 +1,7 @@
 #pragma once
 
-#include <gtkmm.h>
+#include <giomm.h>
+#include <glibmm/refptr.h>
 #include <dbus-status-notifier-watcher.h>
 
 namespace waybar::modules::SNI {
