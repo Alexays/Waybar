@@ -1,7 +1,10 @@
 #pragma once
 
 #include <json/json.h>
-#include <gtkmm.h>
+#include <glibmm/refptr.h>
+#include <gtkmm/main.h>
+#include <gtkmm/cssprovider.h>
+#include <gtkmm/window.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 #include "IModule.hpp"

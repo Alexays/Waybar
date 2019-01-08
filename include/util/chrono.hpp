@@ -5,7 +5,6 @@
 #include <functional>
 #include <condition_variable>
 #include <thread>
-#include <gtkmm.h>
 
 namespace waybar::chrono {
 

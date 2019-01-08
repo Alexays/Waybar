@@ -1,6 +1,7 @@
 #pragma once
 
-#include <gtkmm.h>
+#include <glibmm/refptr.h>
+#include <giomm.h>
 #include <json/json.h>
 #include <tuple>
 #include <dbus-status-notifier-watcher.h>
