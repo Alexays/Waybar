@@ -2,6 +2,9 @@
 
 #include <json/json.h>
 #include "IModule.hpp"
+#include <glibmm/markup.h>
+#include <gtkmm/eventbox.h>
+#include <gtkmm/label.h>
 
 namespace waybar {
 
