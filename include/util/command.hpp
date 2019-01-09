@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sys/wait.h>
+#include <giomm.h>
 
 namespace waybar::util::command {
 

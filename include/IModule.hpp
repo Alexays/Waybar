@@ -1,6 +1,8 @@
 #pragma once
 
-#include <gtkmm.h>
+#include <glibmm/dispatcher.h>
+#include <gtkmm/box.h>
+#include <gtkmm/widget.h>
 
 namespace waybar {
 

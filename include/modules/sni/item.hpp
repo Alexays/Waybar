@@ -1,7 +1,11 @@
 #pragma once
 
 #include <dbus-status-notifier-item.h>
-#include <gtkmm.h>
+#include <glibmm/refptr.h>
+#include <gtkmm/eventbox.h>
+#include <gtkmm/image.h>
+#include <gtkmm/icontheme.h>
+#include <gtkmm/menu.h>
 #include <json/json.h>
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #ifdef FILESYSTEM_EXPERIMENTAL
