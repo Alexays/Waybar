@@ -135,26 +135,31 @@ void waybar::modules::Network::worker()
 
 auto waybar::modules::Network::update() -> void
 {
-  auto format = format_;
   std::string connectiontype;
   if (ifid_ <= 0 || ipaddr_.empty()) {
-    format = config_["format-disconnected"].isString()
-      ? config_["format-disconnected"].asString() : format;
+    if (config_["format-disconnected"].isString()) {
+      default_format_ = config_["format-disconnected"].asString();
+    }
     label_.get_style_context()->add_class("disconnected");
     connectiontype = "disconnected";
   } else {
     if (essid_.empty()) {
-      format = config_["format-ethernet"].isString()
-        ? config_["format-ethernet"].asString() : format;
+      if (config_["format-ethernet"].isString()) {
+        default_format_ = config_["format-ethernet"].asString();
+      }
       connectiontype = "ethernet";
     } else {
-      format = config_["format-wifi"].isString()
-        ? config_["format-wifi"].asString() : format;
+      if (config_["format-wifi"].isString()) {
+        default_format_ = config_["format-wifi"].asString();
+      }
       connectiontype = "wifi";
     }
     label_.get_style_context()->remove_class("disconnected");
   }
-  label_.set_markup(fmt::format(format,
+  if (!alt_) {
+    format_ = default_format_;
+  }
+  label_.set_markup(fmt::format(format_,
     fmt::arg("essid", essid_),
     fmt::arg("signaldBm", signal_strength_dbm_),
     fmt::arg("signalStrength", signal_strength_),
