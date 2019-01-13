@@ -4,7 +4,7 @@
 #include <tuple>
 #include "bar.hpp"
 #include "client.hpp"
-#include "util/chrono.hpp"
+#include "util/sleeper_thread.hpp"
 #include "util/json.hpp"
 #include "ALabel.hpp"
 #include "modules/sway/ipc/client.hpp"
@@ -14,6 +14,7 @@ namespace waybar::modules::sway {
 class Window : public ALabel {
   public:
     Window(const std::string&, const waybar::Bar&, const Json::Value&);
+    ~Window() = default;
     auto update() -> void;
   private:
     void worker();

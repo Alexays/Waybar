@@ -7,7 +7,9 @@ waybar::Bar::Bar(const Client& client,
   std::unique_ptr<struct wl_output *> &&p_output, uint32_t p_wl_name)
   : client(client), window{Gtk::WindowType::WINDOW_TOPLEVEL},
     surface(nullptr), layer_surface(nullptr),
-    output(std::move(p_output)), wl_name(p_wl_name)
+    output(std::move(p_output)), wl_name(p_wl_name),
+    left_(Gtk::ORIENTATION_HORIZONTAL, 0), center_(Gtk::ORIENTATION_HORIZONTAL, 0),
+    right_(Gtk::ORIENTATION_HORIZONTAL, 0), box_(Gtk::ORIENTATION_HORIZONTAL, 0)
 {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
     .logical_position = handleLogicalPosition,
@@ -200,28 +202,23 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos)
 
 auto waybar::Bar::setupWidgets() -> void
 {
-  auto &left = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
-  auto &center = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
-  auto &right = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
-
-  auto &box = *Gtk::manage(new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 0));
-  window.add(box);
-  box.pack_start(left, true, true);
-  box.set_center_widget(center);
-  box.pack_end(right, true, true);
+  window.add(box_);
+  box_.pack_start(left_, true, true);
+  box_.set_center_widget(center_);
+  box_.pack_end(right_, true, true);
 
   Factory factory(*this, config_);
   getModules(factory, "modules-left");
   getModules(factory, "modules-center");
   getModules(factory, "modules-right");
   for (auto const& module : modules_left_) {
-    left.pack_start(*module, false, true, 0);
+    left_.pack_start(*module, false, true, 0);
   }
   for (auto const& module : modules_center_) {
-    center.pack_start(*module, true, true, 0);
+    center_.pack_start(*module, true, true, 0);
   }
   std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
-    right.pack_end(*module, false, false, 0);
+    right_.pack_end(*module, false, false, 0);
   }
 }
