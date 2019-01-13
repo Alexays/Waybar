@@ -6,7 +6,7 @@
 #include <vector>
 #include <numeric>
 #include <iostream>
-#include "util/chrono.hpp"
+#include "util/sleeper_thread.hpp"
 #include "ALabel.hpp"
 
 namespace waybar::modules {
@@ -14,6 +14,7 @@ namespace waybar::modules {
 class Cpu : public ALabel {
   public:
     Cpu(const std::string&, const Json::Value&);
+    ~Cpu() = default;
     auto update() -> void;
   private:
     static inline const std::string data_dir_ = "/proc/stat";

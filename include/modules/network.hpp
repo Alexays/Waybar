@@ -7,8 +7,9 @@
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
 #include <linux/nl80211.h>
+#include <sys/epoll.h>
 #include <fmt/format.h>
-#include "util/chrono.hpp"
+#include "util/sleeper_thread.hpp"
 #include "ALabel.hpp"
 
 namespace waybar::modules {
@@ -19,15 +20,17 @@ class Network : public ALabel {
     ~Network();
     auto update() -> void;
   private:
-    static int netlinkRequest(int, void*, uint32_t, uint32_t groups = 0);
-    static int netlinkResponse(int, void*, uint32_t, uint32_t groups = 0);
-    static int scanCb(struct nl_msg*, void*);
+    static int handleEvents(struct nl_msg*, void*);
+    static int handleScan(struct nl_msg*, void*);
 
     void worker();
     void disconnected();
-    void initNL80211();
+    void createInfoSocket();
+    void createEventSocket();
     int getExternalInterface();
     void getInterfaceAddress();
+    int netlinkRequest(void*, uint32_t, uint32_t groups = 0);
+    int netlinkResponse(void*, uint32_t, uint32_t groups = 0);
     void parseEssid(struct nlattr**);
     void parseSignal(struct nlattr**);
     bool associatedOrJoined(struct nlattr**);
@@ -37,9 +40,11 @@ class Network : public ALabel {
     waybar::util::SleeperThread thread_timer_;
     int ifid_;
     sa_family_t family_;
-    int sock_fd_;
     struct sockaddr_nl nladdr_ = {0};
     struct nl_sock* sk_ = nullptr;
+    struct nl_sock* info_sock_ = nullptr;
+    int efd_;
+    int ev_fd_;
     int nl80211_id_;
 
     std::string essid_;
@@ -47,8 +52,8 @@ class Network : public ALabel {
     std::string ipaddr_;
     std::string netmask_;
     int cidr_;
-    int signal_strength_dbm_;
-    uint16_t signal_strength_;
+    int32_t signal_strength_dbm_;
+    uint8_t signal_strength_;
 };
 
 }
