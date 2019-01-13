@@ -28,7 +28,9 @@ void waybar::modules::sway::Workspaces::worker()
       {
         std::lock_guard<std::mutex> lock(mutex_);
         auto res = ipc_.sendCmd(IPC_GET_WORKSPACES);
-        workspaces_ = parser_.parse(res.payload);
+        if (thread_.isRunning()) {
+          workspaces_ = parser_.parse(res.payload);
+        }
       }
       dp.emit();
     } catch (const std::exception& e) {
