@@ -23,12 +23,12 @@ protected:
   std::string format_;
   std::mutex mutex_;
   const std::chrono::seconds interval_;
+  bool alt_ = false;
+  std::string default_format_;
 
 private:
   bool handleToggle(GdkEventButton *const &ev);
   bool handleScroll(GdkEventScroll *);
-  bool alt = false;
-  const std::string default_format_;
 };
 
 } // namespace waybar

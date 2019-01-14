@@ -43,8 +43,8 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   } else if (config_["on-click-right"].isString() && e->button == 3) {
     waybar::util::command::forkExec(config_["on-click-right"].asString());
   } else {
-    alt = !alt;
-    if (alt) {
+    alt_ = !alt_;
+    if (alt_) {
       format_ = config_["format-alt"].asString();
     } else {
       format_ = default_format_;
