@@ -40,6 +40,7 @@ gtkmm3
 jsoncpp
 libinput
 libsigc++
+fmt
 wayland
 wlroots
 libpulse [Pulseaudio module]
