@@ -25,9 +25,9 @@ void waybar::modules::sway::Window::worker()
       auto parsed = parser_.parse(res.payload);
       // Check for waybar prevents flicker when hovering window module
       if ((parsed["change"] == "focus" || parsed["change"] == "title")
-        && parsed["container"]["focused"].asBool()) {
-        window_ = Glib::Markup::escape_text(parsed["container"]["name"].asString()
-        && parsed["container"]["name"].asString() != "waybar");
+        && parsed["container"]["focused"].asBool()
+        && parsed["container"]["name"].asString() != "waybar") {
+        window_ = Glib::Markup::escape_text(parsed["container"]["name"].asString());
         windowId_ = parsed["container"]["id"].asInt();
         dp.emit();
       } else if ((parsed["change"] == "close"
