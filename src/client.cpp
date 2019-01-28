@@ -113,10 +113,12 @@ int waybar::Client::main(int argc, char* argv[])
   bool show_version = false;
   std::string config;
   std::string style;
+  std::string bar_id;
   auto cli = clara::detail::Help(show_help)
     | clara::detail::Opt(show_version)["-v"]["--version"]("Show version")
     | clara::detail::Opt(config, "config")["-c"]["--config"]("Config path")
-    | clara::detail::Opt(style, "style")["-s"]["--style"]("Style path");
+    | clara::detail::Opt(style, "style")["-s"]["--style"]("Style path")
+    | clara::detail::Opt(bar_id, "id")["-b"]["--bar"]("Bar id");
   auto res = cli.parse(clara::detail::Args(argc, argv));
   if (!res) {
     std::cerr << "Error in command line: " << res.errorMessage() << std::endl;
