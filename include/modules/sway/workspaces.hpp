@@ -19,11 +19,12 @@ class Workspaces : public IModule {
     operator Gtk::Widget &();
   private:
     void worker();
-    void addWorkspace(Json::Value);
-    std::string getIcon(std::string, Json::Value);
+    void addWorkspace(const Json::Value&);
+    std::string getIcon(const std::string&, const Json::Value&);
     bool handleScroll(GdkEventScroll*);
     std::string getPrevWorkspace();
     std::string getNextWorkspace();
+    uint16_t getWorkspaceIndex(const std::string &name);
     std::string trimWorkspaceName(std::string);
 
     const Bar& bar_;
