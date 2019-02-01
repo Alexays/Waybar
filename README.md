@@ -14,6 +14,7 @@
 - Memory
 - Cpu load average
 - Custom scripts
+- Multiple output configuration
 - And much more customizations
 
 **Configuration and Styling**
