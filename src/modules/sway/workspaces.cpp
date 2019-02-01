@@ -17,12 +17,7 @@ void waybar::modules::sway::Workspaces::worker()
 {
   thread_ = [this] {
     try {
-      // Wait for the name of the output
-      if (!config_["all-outputs"].asBool() && bar_.output_name.empty()) {
-        while (bar_.output_name.empty()) {
-          thread_.sleep_for(std::chrono::milliseconds(150));
-        }
-      } else if (!workspaces_.empty()) {
+      if (!workspaces_.empty()) {
         ipc_.handleEvent();
       }
       {
@@ -47,8 +42,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
       [it](auto node) -> bool { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end() ||
-            (!config_["all-outputs"].asBool() &&
-             (*ws)["output"].asString() != bar_.output_name)) {
+            (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output_name)) {
       it = buttons_.erase(it);
       needReorder = true;
     } else {
@@ -82,7 +76,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
         button.get_style_context()->remove_class("urgent");
       }
       if (needReorder) {
-        box_.reorder_child(button, node["num"].asInt());
+        box_.reorder_child(button, getWorkspaceIndex(node["name"].asString()));
       }
       auto icon = getIcon(node["name"].asString(), node);
       if (config_["format"].isString()) {
@@ -101,7 +95,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
   }
 }
 
-void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
+void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node)
 {
   auto icon = getIcon(node["name"].asString(), node);
   auto format = config_["format"].isString()
@@ -127,7 +121,7 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
     button.signal_scroll_event()
       .connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
-  box_.reorder_child(button, node["num"].asInt());
+  box_.reorder_child(button, getWorkspaceIndex(node["name"].asString()));
   if (node["focused"].asBool()) {
     button.get_style_context()->add_class("focused");
   }
@@ -140,11 +134,10 @@ void waybar::modules::sway::Workspaces::addWorkspace(Json::Value node)
   button.show();
 }
 
-std::string waybar::modules::sway::Workspaces::getIcon(std::string name,
-  Json::Value node)
+std::string waybar::modules::sway::Workspaces::getIcon(const std::string &name,
+  const Json::Value &node)
 {
-  std::vector<std::string> keys = {
-    name, "urgent", "focused", "visible", "default"};
+  std::vector<std::string> keys = { name, "urgent", "focused", "visible", "default" };
   for (auto const& key : keys) {
     if (key == "focused" || key == "visible" || key == "urgent") {
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
@@ -209,7 +202,7 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
 
 std::string waybar::modules::sway::Workspaces::getPrevWorkspace()
 {
-  for (uint16_t i = 0; i != workspaces_.size(); i += 1) {
+  for (uint16_t i = 0; i < workspaces_.size(); i += 1) {
     if (workspaces_[i]["focused"].asBool()) {
       if (i > 0) {
         return workspaces_[i - 1]["name"].asString();
@@ -222,7 +215,7 @@ std::string waybar::modules::sway::Workspaces::getPrevWorkspace()
 
 std::string waybar::modules::sway::Workspaces::getNextWorkspace()
 {
-  for (uint16_t i = 0; i != workspaces_.size(); i += 1) {
+  for (uint16_t i = 0; i < workspaces_.size(); i += 1) {
     if (workspaces_[i]["focused"].asBool()) {
       if (i + 1U < workspaces_.size()) {
         return workspaces_[i + 1]["name"].asString();
@@ -233,8 +226,14 @@ std::string waybar::modules::sway::Workspaces::getNextWorkspace()
   return "";
 }
 
-waybar::modules::sway::Workspaces::operator Gtk::Widget &() {
-  return box_;
+uint16_t waybar::modules::sway::Workspaces::getWorkspaceIndex(const std::string &name)
+{
+  for (uint16_t i = 0; i < workspaces_.size(); i += 1) {
+    if (workspaces_[i]["name"].asString() == name) {
+      return i;
+    }
+  }
+  return workspaces_.size();
 }
 
 std::string waybar::modules::sway::Workspaces::trimWorkspaceName(std::string name)
@@ -244,4 +243,8 @@ std::string waybar::modules::sway::Workspaces::trimWorkspaceName(std::string nam
     return name.substr(found+1);
   }
   return name;
+}
+
+waybar::modules::sway::Workspaces::operator Gtk::Widget &() {
+  return box_;
 }
