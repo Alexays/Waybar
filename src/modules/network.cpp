@@ -65,7 +65,7 @@ void waybar::modules::Network::createInfoSocket()
   }
   nl_socket_disable_seq_check(info_sock_);
   nl_socket_set_nonblocking(info_sock_);
-  nl_socket_modify_cb(info_sock_, NL_CB_MSG_IN, NL_CB_CUSTOM, handleEvents, this);
+  nl_socket_modify_cb(info_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
   efd_ = epoll_create1(0);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");

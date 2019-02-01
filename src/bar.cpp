@@ -33,8 +33,16 @@ waybar::Bar::Bar(const Client& client,
   GdkWindow *gdk_window = gtk_widget_get_window(wrap);
   gdk_wayland_window_set_use_custom_surface(gdk_window);
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
+}
 
-  std::size_t layer_top = config_["layer"] == "top"
+waybar::Bar::~Bar()
+{
+  destroyOutput();
+}
+
+void waybar::Bar::initBar()
+{
+    std::size_t layer_top = config_["layer"] == "top"
     ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(
     client.layer_shell, surface, *output, layer_top, "waybar");
@@ -43,8 +51,7 @@ waybar::Bar::Bar(const Client& client,
     .configure = layerSurfaceHandleConfigure,
     .closed = layerSurfaceHandleClosed,
   };
-  zwlr_layer_surface_v1_add_listener(layer_surface,
-    &layer_surface_listener, this);
+  zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, this);
 
   std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
     | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
@@ -63,6 +70,17 @@ waybar::Bar::Bar(const Client& client,
   wl_surface_commit(surface);
 
   setupWidgets();
+}
+
+void waybar::Bar::destroyOutput()
+{
+  if (layer_surface != nullptr) {
+    zwlr_layer_surface_v1_destroy(layer_surface);
+  }
+  if (surface != nullptr) {
+    wl_surface_destroy(surface);
+  }
+  wl_output_destroy(*output);
 }
 
 void waybar::Bar::handleLogicalPosition(void* /*data*/,
@@ -84,11 +102,49 @@ void waybar::Bar::handleDone(void* /*data*/,
   // Nothing here
 }
 
+bool waybar::Bar::isValidOutput(const Json::Value &config)
+{
+  bool found = true;
+  if (config["output"].isArray()) {
+    bool in_array = false;
+    for (auto const &output : config["output"]) {
+      if (output.isString() && output.asString() == output_name) {
+        in_array = true;
+        break;
+      }
+    }
+    found = in_array;
+  }
+  if (config["output"].isString() && config["output"].asString() != output_name) {
+    found = false;
+  }
+  return found;
+}
+
 void waybar::Bar::handleName(void* data, struct zxdg_output_v1* /*xdg_output*/,
   const char* name)
 {
 	auto o = static_cast<waybar::Bar *>(data);
   o->output_name = name;
+  bool found = true;
+  if (o->config_.isArray()) {
+    bool in_array = false;
+    for (auto const &config : o->config_) {
+      if (config.isObject() && o->isValidOutput(config)) {
+        in_array = true;
+        o->config_ = config;
+        break;
+      }
+    }
+    found = in_array;
+  } else {
+    found = o->isValidOutput(o->config_);
+  }
+  if (!found) {
+    o->destroyOutput();
+  } else {
+    o->initBar();
+  }
 }
 
 void waybar::Bar::handleDescription(void* /*data*/,
@@ -102,7 +158,6 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data,
   uint32_t height)
 {
   auto o = static_cast<waybar::Bar *>(data);
-  o->window.show_all();
   zwlr_layer_surface_v1_ack_configure(surface, serial);
   if (width != o->width_ || height != o->height_) {
     o->width_ = width;
@@ -221,4 +276,5 @@ auto waybar::Bar::setupWidgets() -> void
   for (auto const& module : modules_right_) {
     right_.pack_end(*module, false, false, 0);
   }
+  window.show_all();
 }
