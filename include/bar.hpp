@@ -18,7 +18,7 @@ class Bar {
   public:
     Bar(const Client&, std::unique_ptr<struct wl_output *>&&, uint32_t);
     Bar(const Bar&) = delete;
-    ~Bar() = default;
+    ~Bar();
 
     auto toggle() -> void;
 
@@ -44,6 +44,9 @@ class Bar {
     static void layerSurfaceHandleClosed(void *,
       struct zwlr_layer_surface_v1 *);
 
+    void initBar();
+    bool isValidOutput(const Json::Value &config);
+    void destroyOutput();
     auto setupConfig() -> void;
     auto setupWidgets() -> void;
     auto setupCss() -> void;
