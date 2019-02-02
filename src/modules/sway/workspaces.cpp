@@ -228,9 +228,15 @@ std::string waybar::modules::sway::Workspaces::getNextWorkspace()
 
 uint16_t waybar::modules::sway::Workspaces::getWorkspaceIndex(const std::string &name)
 {
-  for (uint16_t i = 0; i < workspaces_.size(); i += 1) {
-    if (workspaces_[i]["name"].asString() == name) {
-      return i;
+  uint16_t idx = 0;
+  for (const auto &workspace : workspaces_) {
+    if (workspace["name"].asString() == name) {
+      return idx;
+    }
+    if (!config_["all-outputs"].asBool() && workspace["output"].asString() != bar_.output_name) {
+      // Nothing here
+    } else {
+      idx += 1;
     }
   }
   return workspaces_.size();
