@@ -35,11 +35,6 @@ waybar::Bar::Bar(const Client& client,
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 }
 
-waybar::Bar::~Bar()
-{
-  destroyOutput();
-}
-
 void waybar::Bar::initBar()
 {
     std::size_t layer_top = config_["layer"] == "top"
@@ -70,17 +65,6 @@ void waybar::Bar::initBar()
   wl_surface_commit(surface);
 
   setupWidgets();
-}
-
-void waybar::Bar::destroyOutput()
-{
-  if (layer_surface != nullptr) {
-    zwlr_layer_surface_v1_destroy(layer_surface);
-  }
-  if (surface != nullptr) {
-    wl_surface_destroy(surface);
-  }
-  wl_output_destroy(*output);
 }
 
 void waybar::Bar::handleLogicalPosition(void* /*data*/,
@@ -141,7 +125,8 @@ void waybar::Bar::handleName(void* data, struct zxdg_output_v1* /*xdg_output*/,
     found = o->isValidOutput(o->config_);
   }
   if (!found) {
-    o->destroyOutput();
+    wl_output_destroy(*o->output);
+    zxdg_output_v1_destroy(o->xdg_output_);
   } else {
     o->initBar();
   }
