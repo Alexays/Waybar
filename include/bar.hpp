@@ -18,7 +18,7 @@ class Bar {
   public:
     Bar(const Client&, std::unique_ptr<struct wl_output *>&&, uint32_t);
     Bar(const Bar&) = delete;
-    ~Bar();
+    ~Bar() = default;
 
     auto toggle() -> void;
 
