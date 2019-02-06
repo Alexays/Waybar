@@ -383,9 +383,14 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     }
   }
   if (net->ifid_ <= 0 && !net->config_["interface"].isString()) {
-    // Need to wait before get external interface
-    net->thread_.sleep_for(std::chrono::seconds(1));
-    net->ifid_ = net->getExternalInterface();
+    for (uint8_t i = 0; i < MAX_RETRY; i += 1) {
+      net->ifid_ = net->getExternalInterface();
+      if (net->ifid_ > 0) {
+        break;
+      }
+      // Need to wait before get external interface
+      net->thread_.sleep_for(std::chrono::seconds(1));
+    }
     if (net->ifid_ > 0) {
       char ifname[IF_NAMESIZE];
       if_indextoname(net->ifid_, ifname);
