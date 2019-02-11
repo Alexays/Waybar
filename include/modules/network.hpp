@@ -20,7 +20,7 @@ class Network : public ALabel {
     ~Network();
     auto update() -> void;
   private:
-    static const uint8_t MAX_RETRY = 10;
+    static const uint8_t MAX_RETRY = 5;
 
     static int handleEvents(struct nl_msg*, void*);
     static int handleScan(struct nl_msg*, void*);
