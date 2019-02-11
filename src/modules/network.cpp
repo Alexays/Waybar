@@ -82,7 +82,7 @@ void waybar::modules::Network::createInfoSocket()
   {
     auto fd = nl_socket_get_fd(info_sock_);
     struct epoll_event event;
-    event.events = EPOLLIN;
+    event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
     event.data.fd = fd;
     if (epoll_ctl(efd_, EPOLL_CTL_ADD, fd, &event) == -1) {
       throw std::runtime_error("Can't add epoll event");
@@ -119,8 +119,7 @@ void waybar::modules::Network::worker()
     int ec = epoll_wait(efd_, events, 16, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
-        if (events[i].events & EPOLLIN
-          && events[i].data.fd == nl_socket_get_fd(info_sock_)) {
+        if (events[i].data.fd == nl_socket_get_fd(info_sock_)) {
           nl_recvmsgs_default(info_sock_);
         } else {
           thread_.stop();
@@ -313,6 +312,9 @@ out:
 void waybar::modules::Network::getInterfaceAddress() {
   unsigned int cidrRaw;
   struct ifaddrs *ifaddr, *ifa;
+  ipaddr_.clear();
+  netmask_.clear();
+  cidr_ = 0;
   int success = getifaddrs(&ifaddr);
   if (success == 0) {
     ifa = ifaddr;
@@ -333,10 +335,6 @@ void waybar::modules::Network::getInterfaceAddress() {
       ifa = ifa->ifa_next;
     }
     freeifaddrs(ifaddr);
-  } else {
-    ipaddr_.clear();
-    netmask_.clear();
-    cidr_ = 0;
   }
 }
 
@@ -379,6 +377,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       need_update = true;
       if (!(rtif->ifi_flags & IFF_RUNNING)) {
         net->disconnected();
+        net->dp.emit();
       }
     }
   }
