@@ -208,7 +208,7 @@ auto waybar::modules::Pulseaudio::update() -> void
     label_.get_style_context()->add_class("bluetooth");
   } else {
     label_.get_style_context()->remove_class("muted");
-    label_.get_style_context()->add_class("bluetooth");
+    label_.get_style_context()->remove_class("bluetooth");
   }
   label_.set_markup(
       fmt::format(format, fmt::arg("volume", volume_),
