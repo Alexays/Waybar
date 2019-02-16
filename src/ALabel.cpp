@@ -27,7 +27,7 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string format, uint
       sigc::mem_fun(*this, &ALabel::handleToggle));
   }
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    event_box_.add_events(Gdk::SCROLL_MASK);
+    event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(
       sigc::mem_fun(*this, &ALabel::handleScroll));
   }
