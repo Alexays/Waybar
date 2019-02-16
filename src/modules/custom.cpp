@@ -53,14 +53,17 @@ void waybar::modules::Custom::continuousWorker()
     char* buff = nullptr;
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
+      int exit_code = 1;
       if (fp_) {
-        pclose(fp_);
+        exit_code = WEXITSTATUS(pclose(fp_));
         fp_ = nullptr;
       }
       thread_.stop();
-      output_ = { 1, "" };
-      std::cerr << name_ + " just stopped, is it endless?" << std::endl;
-      dp.emit();
+      if (exit_code != 0) {
+        output_ = { exit_code, "" };
+        dp.emit();
+        std::cerr << name_ + " just stopped unexpectedly, is it endless?" << std::endl;
+      }
       return;
     }
 
