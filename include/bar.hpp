@@ -7,6 +7,7 @@
 #include <gtkmm/window.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
+#include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "IModule.hpp"
 
 namespace waybar {
