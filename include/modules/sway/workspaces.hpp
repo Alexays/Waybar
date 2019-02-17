@@ -25,7 +25,8 @@ class Workspaces : public IModule {
     std::string getPrevWorkspace();
     std::string getNextWorkspace();
     uint16_t getWorkspaceIndex(const std::string &name);
-    std::string trimWorkspaceName(std::string);
+    std::string getWorkspaceName(const Json::Value&);
+    std::string trimWorkspaceName(const Json::Value&);
 
     const Bar& bar_;
     const Json::Value& config_;

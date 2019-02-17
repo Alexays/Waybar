@@ -78,15 +78,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
       if (needReorder) {
         box_.reorder_child(button, getWorkspaceIndex(node["name"].asString()));
       }
-      auto icon = getIcon(node["name"].asString(), node);
-      if (config_["format"].isString()) {
-        auto format = config_["format"].asString();
-        button.set_label(fmt::format(format, fmt::arg("icon", icon),
-          fmt::arg("name", trimWorkspaceName(node["name"].asString())),
-          fmt::arg("index", node["num"].asString())));
-      } else {
-        button.set_label(icon);
-      }
+      button.set_label(getWorkspaceName(node));
       button.show();
     }
   }
@@ -97,12 +89,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
 
 void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node)
 {
-  auto icon = getIcon(node["name"].asString(), node);
-  auto format = config_["format"].isString()
-    ? fmt::format(config_["format"].asString(), fmt::arg("icon", icon),
-      fmt::arg("name", trimWorkspaceName(node["name"].asString())),
-      fmt::arg("index", node["num"].asString()))
-    : icon;
+  auto format = getWorkspaceName(node);
   auto pair = buttons_.emplace(node["name"].asString(), format);
   auto &button = pair.first->second;
   box_.pack_start(button, false, false, 0);
@@ -242,13 +229,26 @@ uint16_t waybar::modules::sway::Workspaces::getWorkspaceIndex(const std::string 
   return workspaces_.size();
 }
 
-std::string waybar::modules::sway::Workspaces::trimWorkspaceName(std::string name)
+std::string waybar::modules::sway::Workspaces::getWorkspaceName(const Json::Value &node)
 {
+  auto icon = getIcon(node["name"].asString(), node);
+  return config_["format"].isString()
+    ? fmt::format(config_["format"].asString(),
+      fmt::arg("icon", icon),
+      fmt::arg("name", trimWorkspaceName(node)),
+      fmt::arg("index", node["num"].asString()))
+    : icon;
+}
+
+std::string waybar::modules::sway::Workspaces::trimWorkspaceName(const Json::Value &node)
+{
+  auto name = node["name"].asString();
+  std::size_t len_offset = snprintf(NULL, 0, "%d", node["num"].asInt());
   std::size_t found = name.find(":");
-  if (found!=std::string::npos) {
-    return name.substr(found+1);
+  if (found != std::string::npos) {
+    len_offset += found;
   }
-  return name;
+  return name.substr(len_offset + 1);
 }
 
 waybar::modules::sway::Workspaces::operator Gtk::Widget &() {
