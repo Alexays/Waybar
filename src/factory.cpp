@@ -48,6 +48,11 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
       return new waybar::modules::Pulseaudio(id, config_[name]);
     }
     #endif
+    #ifdef HAVE_LIGHT
+    if (ref == "light") {
+      return new waybar::modules::Light(id, config_[name]);
+    }
+    #endif
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), config_[name]);
     }

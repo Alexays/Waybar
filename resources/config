@@ -6,7 +6,7 @@
     // Choose the order of the modules
     "modules-left": ["sway/workspaces", "sway/mode", "custom/spotify"],
     "modules-center": ["sway/window"],
-    "modules-right": ["pulseaudio", "network", "cpu", "memory", "battery", "battery#bat2", "clock", "tray"],
+    "modules-right": ["pulseaudio", "light", "network", "cpu", "memory", "battery", "battery#bat2", "clock", "tray"],
     // Modules configuration
     // "sway/workspaces": {
     //     "disable-scroll": true,
@@ -26,19 +26,6 @@
     "sway/mode": {
         "format": "<span style=\"italic\">{}</span>"
     },
-    "tray": {
-        // "icon-size": 21,
-        "spacing": 10
-    },
-    "clock": {
-        "format-alt": "{:%Y-%m-%d}"
-    },
-    "cpu": {
-        "format": "{usage}% "
-    },
-    "memory": {
-        "format": "{}% "
-    },
     "battery": {
         "states": {
             // "good": 95,
@@ -52,6 +39,19 @@
     },
     "battery#bat2": {
         "bat": "BAT2"
+    },
+    "clock": {
+        "format-alt": "{:%Y-%m-%d}"
+    },
+    "cpu": {
+        "format": "{usage}% "
+    },
+    "light": {
+        //"scroll-step": 5,
+        "format": "{}% "
+    },
+    "memory": {
+        "format": "{}% "
     },
     "network": {
         // "interface": "wlp2s0", // (Optional) To force the use of this interface
@@ -74,6 +74,10 @@
             "default": ["", ""]
         },
         "on-click": "pavucontrol"
+    },
+    "tray": {
+        // "icon-size": 21,
+        "spacing": 10
     },
     "custom/spotify": {
         "format": " {}",

@@ -89,6 +89,11 @@ if libpulse.found()
     src_files += 'src/modules/pulseaudio.cpp'
 endif
 
+if find_program('light', required: get_option('light')).found()
+    add_project_arguments('-DHAVE_LIGHT', language: 'cpp')
+    src_files += 'src/modules/light.cpp'
+endif
+
 if dbusmenu_gtk.found()
     add_project_arguments('-DHAVE_DBUSMENU', language: 'cpp')
     src_files += files(

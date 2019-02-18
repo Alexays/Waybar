@@ -1,4 +1,5 @@
 option('libnl', type: 'feature', value: 'auto', description: 'Enable libnl support for network related features')
 option('pulseaudio', type: 'feature', value: 'auto', description: 'Enable support for pulseaudio')
+option('light', type: 'feature', value: 'auto', description: 'Enable support for light')
 option('dbusmenu-gtk', type: 'feature', value: 'auto', description: 'Enable support for tray')
 option('out', type: 'string', value : '/', description: 'output prefix directory')

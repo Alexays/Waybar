@@ -19,6 +19,9 @@
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
+#ifdef HAVE_LIGHT
+#include "modules/light.hpp"
+#endif
 #include "modules/custom.hpp"
 
 namespace waybar {
