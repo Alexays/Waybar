@@ -16,10 +16,12 @@
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
 #endif
+#ifdef HAVE_LIBUDEV
+#include "modules/backlight.hpp"
+#endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
-#include "modules/backlight.hpp"
 #include "modules/custom.hpp"
 
 namespace waybar {
