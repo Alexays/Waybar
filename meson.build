@@ -55,7 +55,7 @@ sigcpp = dependency('sigc++-2.0')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
-libudev = dependency('libudev')
+libudev = dependency('libudev', required: get_option('libudev'))
 
 src_files = files(
     'src/factory.cpp',
@@ -65,7 +65,6 @@ src_files = files(
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
-    'src/modules/backlight.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp'
@@ -99,6 +98,11 @@ if dbusmenu_gtk.found()
         'src/modules/sni/host.cpp',
         'src/modules/sni/item.cpp'
     )
+endif
+
+if libudev.found()
+    add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
+    src_files += 'src/modules/backlight.cpp'
 endif
 
 subdir('protocol')
