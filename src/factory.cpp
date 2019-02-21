@@ -43,6 +43,11 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
       return new waybar::modules::Network(id, config_[name]);
     }
     #endif
+    #ifdef HAVE_LIBUDEV
+    if (ref == "backlight") {
+      return new waybar::modules::Backlight(id, config_[name]);
+    }
+    #endif
     #ifdef HAVE_LIBPULSE
     if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(id, config_[name]);

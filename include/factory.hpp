@@ -16,6 +16,9 @@
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
 #endif
+#ifdef HAVE_LIBUDEV
+#include "modules/backlight.hpp"
+#endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
