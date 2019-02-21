@@ -55,6 +55,7 @@ sigcpp = dependency('sigc++-2.0')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
+libudev = dependency('libudev', required: get_option('libudev'))
 
 src_files = files(
     'src/factory.cpp',
@@ -99,6 +100,11 @@ if dbusmenu_gtk.found()
     )
 endif
 
+if libudev.found()
+    add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
+    src_files += 'src/modules/backlight.cpp'
+endif
+
 subdir('protocol')
 
 executable(
@@ -119,7 +125,8 @@ executable(
         giounix,
         libnl,
         libnlgen,
-        libpulse
+        libpulse,
+        libudev
     ],
     include_directories: [include_directories('include')],
     install: true,
