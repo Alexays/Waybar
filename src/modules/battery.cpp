@@ -148,7 +148,9 @@ auto waybar::modules::Battery::update() -> void
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
-  label_.set_tooltip_text(status);
+  if (tooltipEnabled()) {
+    label_.set_tooltip_text(status);
+  }
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
   auto state = getState(capacity);

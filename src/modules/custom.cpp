@@ -94,10 +94,12 @@ auto waybar::modules::Custom::update() -> void
       fmt::arg("icon", getIcon(percentage_)),
       fmt::arg("percentage", percentage_));
     label_.set_markup(str);
-    if (text_ == tooltip_) {
-      label_.set_tooltip_text(str);
-    } else {
-      label_.set_tooltip_text(tooltip_);
+    if (tooltipEnabled()) {
+      if (text_ == tooltip_) {
+        label_.set_tooltip_text(str);
+      } else {
+        label_.set_tooltip_text(tooltip_);
+      }
     }
     if (class_ != "") {
       if (prevclass_ != "") {

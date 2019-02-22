@@ -86,8 +86,8 @@ bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-std::string waybar::ALabel::getIcon(uint16_t percentage,
-                                    const std::string& alt) {
+std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt)
+{
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
     if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
@@ -105,6 +105,12 @@ std::string waybar::ALabel::getIcon(uint16_t percentage,
     return format_icons.asString();
   }
   return "";
+}
+
+bool waybar::ALabel::tooltipEnabled()
+{
+  return !config_["tooltip"].isBool() ||
+    (config_["tooltip"].isBool() && config_["tooltip"].asBool());
 }
 
 waybar::ALabel::operator Gtk::Widget&() { return event_box_; }

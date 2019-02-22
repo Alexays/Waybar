@@ -20,7 +20,9 @@ auto waybar::modules::Memory::update() -> void
     int used_ram_percentage = 100 * (memtotal_ - memfree_) / memtotal_;
     label_.set_markup(fmt::format(format_, used_ram_percentage));
     auto used_ram_gigabytes = (memtotal_ - memfree_) / std::pow(1024, 2);
-    label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
+    if (tooltipEnabled()) {
+      label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
+    }
     event_box_.show();
   } else {
     event_box_.hide();
