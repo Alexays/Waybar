@@ -7,6 +7,7 @@
 #include "modules/sway/workspaces.hpp"
 #include "modules/sway/window.hpp"
 #endif
+#include "modules/idle_inhibitor.hpp"
 #include "modules/battery.hpp"
 #include "modules/memory.hpp"
 #include "modules/cpu.hpp"
