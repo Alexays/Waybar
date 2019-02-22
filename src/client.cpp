@@ -55,6 +55,10 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry,
       o->xdg_output_manager = static_cast<struct zxdg_output_manager_v1 *>(
         wl_registry_bind(registry, name,
         &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
+  } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
+    o->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1 *>(
+        wl_registry_bind(registry, name,
+        &zwp_idle_inhibit_manager_v1_interface, 1));
   }
 }
 
@@ -138,6 +142,7 @@ int waybar::Client::main(int argc, char* argv[])
   bars.clear();
   zxdg_output_manager_v1_destroy(xdg_output_manager);
   zwlr_layer_shell_v1_destroy(layer_shell);
+  zwp_idle_inhibit_manager_v1_destroy(idle_inhibit_manager);
   wl_registry_destroy(registry);
   wl_seat_destroy(seat);
   wl_display_disconnect(wl_display);

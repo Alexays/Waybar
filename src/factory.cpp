@@ -24,6 +24,9 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
       return new waybar::modules::sway::Window(id, bar_, config_[name]);
     }
     #endif
+    if (ref == "idle_inhibitor") {
+      return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
+    }
     if (ref == "memory") {
       return new waybar::modules::Memory(id, config_[name]);
     }
