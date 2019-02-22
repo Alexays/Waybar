@@ -17,6 +17,8 @@ public:
   virtual operator Gtk::Widget &();
 
 protected:
+  bool tooltipEnabled();
+
   Gtk::EventBox event_box_;
   Gtk::Label label_;
   const Json::Value &config_;
