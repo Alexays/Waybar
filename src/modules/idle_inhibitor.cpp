@@ -27,7 +27,9 @@ auto waybar::modules::IdleInhibitor::update() -> void
   label_.set_markup(
       fmt::format(format_, fmt::arg("status", status_),
                   fmt::arg("icon", getIcon(0, status_))));
-  label_.set_tooltip_text(status_);
+  if(tooltipEnabled()) {
+    label_.set_tooltip_text(status_);
+  }
 }
 
 bool waybar::modules::IdleInhibitor::onClick(GdkEventButton* const& e)
