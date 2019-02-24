@@ -109,8 +109,7 @@ std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt)
 
 bool waybar::ALabel::tooltipEnabled()
 {
-  return !config_["tooltip"].isBool() ||
-    (config_["tooltip"].isBool() && config_["tooltip"].asBool());
+  return config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true;
 }
 
 waybar::ALabel::operator Gtk::Widget&() { return event_box_; }
