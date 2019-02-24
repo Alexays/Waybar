@@ -99,7 +99,7 @@ void waybar::modules::Backlight::BacklightDev::set_max(int max) { max_ = max; }
 
 waybar::modules::Backlight::Backlight(const std::string &name,
                                       const Json::Value &config)
-    : ALabel(config, "{}", 2), name_(name),
+    : ALabel(config, "{percent}%", 2), name_(name),
       preferred_device_(
           config["device"].isString() ? config["device"].asString() : "") {
   label_.set_name("backlight");
@@ -187,24 +187,17 @@ auto waybar::modules::Backlight::update() -> void {
     devices = devices_;
   }
 
-  std::string markup_fmt;
-  if (config_["format"].isString()) {
-    markup_fmt = config_["format"].asString();
-  }
-
-  if (markup_fmt.empty()) {
-    markup_fmt = "{percent}%";
-  }
-
   const auto best =
       best_device(devices.cbegin(), devices.cend(), preferred_device_);
   if (best != nullptr) {
-    if (previous_best_.has_value() && previous_best_.value() == *best) {
+    if (previous_best_.has_value() && previous_best_.value() == *best &&
+        !previous_format_.empty() && previous_format_ == format_) {
       return;
     }
+
     const auto percent =
         best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
-    label_.set_markup(fmt::format(markup_fmt,
+    label_.set_markup(fmt::format(format_,
                                   fmt::arg("percent", std::to_string(percent)),
                                   fmt::arg("icon", getIcon(percent))));
   } else {
@@ -214,6 +207,7 @@ auto waybar::modules::Backlight::update() -> void {
     label_.set_markup("");
   }
   previous_best_ = best == nullptr ? std::nullopt : std::optional{*best};
+  previous_format_ = format_;
 }
 
 template <class ForwardIt>
