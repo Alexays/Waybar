@@ -20,7 +20,7 @@ void waybar::modules::sway::Mode::worker()
       auto res = ipc_.handleEvent();
       auto parsed = parser_.parse(res.payload);
       if (parsed["change"] != "default") {
-        mode_ = parsed["change"].asString();
+        mode_ = Glib::Markup::escape_text(parsed["change"].asString());
       } else {
         mode_.clear();
       }
