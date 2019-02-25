@@ -91,6 +91,7 @@ auto waybar::modules::Custom::update() -> void
     }
 
     auto str = fmt::format(format_, text_,
+      fmt::arg("alt", alt_),
       fmt::arg("icon", getIcon(percentage_)),
       fmt::arg("percentage", percentage_));
     label_.set_markup(str);
@@ -144,6 +145,7 @@ void waybar::modules::Custom::parseOutputJson()
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
     text_ = Glib::Markup::escape_text(parsed["text"].asString());
+    alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
     tooltip_ = parsed["tooltip"].asString();
     class_ = parsed["class"].asString();
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
