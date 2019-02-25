@@ -61,5 +61,6 @@ private:
   std::vector<BacklightDev> devices_;
 
   std::optional<BacklightDev> previous_best_;
+  std::string previous_format_;
 };
 } // namespace waybar::modules
