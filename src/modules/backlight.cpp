@@ -149,6 +149,9 @@ waybar::modules::Backlight::Backlight(const std::string &name,
       const int event_count =
           epoll_wait(epoll_fd.get(), events, EPOLL_MAX_EVENTS,
                      std::chrono::milliseconds{interval_}.count());
+      if (!udev_thread_.isRunning()) {
+        break;
+      }
       decltype(devices_) devices;
       {
         std::scoped_lock<std::mutex> lock(udev_thread_mutex_);

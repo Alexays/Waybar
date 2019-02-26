@@ -56,11 +56,12 @@ private:
   const std::string preferred_device_;
   static constexpr int EPOLL_MAX_EVENTS = 16;
 
-  waybar::util::SleeperThread udev_thread_;
-  std::mutex udev_thread_mutex_;
-  std::vector<BacklightDev> devices_;
-
   std::optional<BacklightDev> previous_best_;
   std::string previous_format_;
+
+  std::mutex udev_thread_mutex_;
+  std::vector<BacklightDev> devices_;
+  // thread must destruct before shared data
+  waybar::util::SleeperThread udev_thread_;
 };
 } // namespace waybar::modules
