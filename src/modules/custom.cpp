@@ -124,7 +124,7 @@ void waybar::modules::Custom::parseOutputRaw()
   int i = 0;
   while (getline(output, line)) {
     if (i == 0) {
-      text_ = Glib::Markup::escape_text(line);
+      text_ = line;
       tooltip_ = line;
       class_ = "";
     } else if (i == 1) {
@@ -144,8 +144,8 @@ void waybar::modules::Custom::parseOutputJson()
   std::string line;
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
-    text_ = Glib::Markup::escape_text(parsed["text"].asString());
-    alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
+    text_ = parsed["text"].asString();
+    alt_ = parsed["alt"].asString();
     tooltip_ = parsed["tooltip"].asString();
     class_ = parsed["class"].asString();
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
