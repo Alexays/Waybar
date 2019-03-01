@@ -104,6 +104,18 @@ waybar::modules::Backlight::Backlight(const std::string &name,
           config["device"].isString() ? config["device"].asString() : "") {
   label_.set_name("backlight");
 
+  // Get initial state
+  {
+    std::unique_ptr<udev, UdevDeleter> udev_check{udev_new()};
+    check_nn(udev_check.get(), "Udev check new failed");
+    enumerate_devices(devices_.begin(), devices_.end(),
+                      std::back_inserter(devices_), udev_check.get());
+    if (devices_.empty()) {
+      throw std::runtime_error("No backlight found");
+    }
+    dp.emit();
+  }
+
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
     check_nn(udev.get(), "Udev new failed");
@@ -128,22 +140,6 @@ waybar::modules::Backlight::Backlight(const std::string &name,
         epoll_ctl(epoll_fd.get(), EPOLL_CTL_ADD, ctl_event.data.fd, &ctl_event),
         "epoll_ctl failed: {}");
     epoll_event events[EPOLL_MAX_EVENTS];
-
-    // Get initial state
-    {
-      decltype(devices_) devices;
-      {
-        std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
-        devices = devices_;
-      }
-      enumerate_devices(devices.begin(), devices.end(),
-                        std::back_inserter(devices), udev.get());
-      {
-        std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
-        devices_ = devices;
-      }
-      dp.emit();
-    }
 
     while (udev_thread_.isRunning()) {
       const int event_count =

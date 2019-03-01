@@ -5,7 +5,7 @@ vgcore.*
 *.swp
 packagecache
 /subprojects/**/
-/build
+/build*
 /dist
 /meson.egg-info
 
