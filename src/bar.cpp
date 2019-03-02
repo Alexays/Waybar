@@ -196,6 +196,54 @@ auto waybar::Bar::setupConfig() -> void
     std::istreambuf_iterator<char>());
   util::JsonParser parser;
   config_ = parser.parse(str);
+
+  // Converting string to button code rn as to avoid doing it later
+  auto setupAltFormatKeyForModule = [this](const std::string& module_name){
+  	if (config_.isMember(module_name)) {
+      Json::Value& module = config_[module_name];
+      if (module.isMember("format-alt")) {
+        if (module.isMember("format-alt-click")) {
+          Json::Value& click = module["format-alt-click"];
+          if (click.isString()) {
+	        std::string str_click = click.asString();
+
+	        if (str_click == "click-right") {
+		      module["format-alt-click"] = 3u;
+	        } else if (str_click == "click-middle") {
+		      module["format-alt-click"] = 2u;
+	        } else if (str_click == "click-backward") {
+		      module["format-alt-click"] = 8u;
+	        } else if (str_click == "click-forward") {
+		      module["format-alt-click"] = 9u;
+	        } else {
+		      module["format-alt-click"] = 1u; // default click-left
+	        }
+          } else {
+            module["format-alt-click"] = 1u;
+          }
+        } else {
+	      module["format-alt-click"] = 1u;
+        }
+
+      }
+    }
+  };
+
+  auto setupAltFormatKeyForModuleList = [this, &setupAltFormatKeyForModule](const char* module_list_name) {
+  	if (config_.isMember(module_list_name)) {
+  		Json::Value& modules = config_[module_list_name];
+	    for (const Json::Value& module_name : modules) {
+		    if (module_name.isString()) {
+			    setupAltFormatKeyForModule(module_name.asString());
+		    }
+	    }
+  	}
+  };
+
+  // Convert to button code for every module that is used.
+  setupAltFormatKeyForModuleList("modules-left");
+  setupAltFormatKeyForModuleList("modules-right");
+  setupAltFormatKeyForModuleList("modules-center");
 }
 
 auto waybar::Bar::setupCss() -> void
