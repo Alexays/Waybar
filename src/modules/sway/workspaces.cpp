@@ -87,7 +87,8 @@ auto waybar::modules::sway::Workspaces::update() -> void
       } else {
         button.set_label(icon);
       }
-      button.show();
+
+			onButtonReady(node, button);
     }
   }
   if (scrolling_) {
@@ -131,7 +132,8 @@ void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node)
   if (node["urgent"].asBool()) {
     button.get_style_context()->add_class("urgent");
   }
-  button.show();
+
+	onButtonReady(node, button);
 }
 
 std::string waybar::modules::sway::Workspaces::getIcon(const std::string &name,
@@ -249,6 +251,19 @@ std::string waybar::modules::sway::Workspaces::trimWorkspaceName(std::string nam
     return name.substr(found+1);
   }
   return name;
+}
+
+void waybar::modules::sway::Workspaces::onButtonReady(const Json::Value& node, Gtk::Button& button)
+{
+	if (config_["current-only"].asBool()) {
+		if (node["focused"].asBool()) {
+			button.show();
+		} else {
+			button.hide();
+		}
+	} else {
+		button.show();
+	}
 }
 
 waybar::modules::sway::Workspaces::operator Gtk::Widget &() {
