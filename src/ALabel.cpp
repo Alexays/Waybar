@@ -50,7 +50,8 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     waybar::util::command::forkExec(config_["on-click-forward"].asString());
 
 
-  } else if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
+  }
+  if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
       format_ = config_["format-alt"].asString();
