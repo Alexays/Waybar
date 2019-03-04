@@ -55,8 +55,8 @@ void waybar::modules::Network::createInfoSocket()
 {
   info_sock_ = nl_socket_alloc();
   if (nl_connect(info_sock_, NETLINK_ROUTE) != 0) {
-		throw std::runtime_error("Can't connect network socket");
-	}
+    throw std::runtime_error("Can't connect network socket");
+  }
   if (nl_socket_add_membership(info_sock_, RTMGRP_LINK) != 0) {
     throw std::runtime_error("Can't add membership");
   }
@@ -93,7 +93,7 @@ void waybar::modules::Network::createInfoSocket()
 void waybar::modules::Network::createEventSocket()
 {
   sk_ = nl_socket_alloc();
-	if (genl_connect(sk_) != 0) {
+  if (genl_connect(sk_) != 0) {
     throw std::runtime_error("Can't connect to netlink socket");
   }
   if (nl_socket_modify_cb(sk_, NL_CB_VALID, NL_CB_CUSTOM, handleScan, this) < 0) {
@@ -135,9 +135,16 @@ void waybar::modules::Network::worker()
 auto waybar::modules::Network::update() -> void
 {
   std::string connectiontype;
+  std::string tooltip_format = "";
+  if (config_["tooltip-format"].isString()) {
+    tooltip_format = config_["tooltip-format"].asString();
+  }
   if (ifid_ <= 0 || ipaddr_.empty()) {
     if (config_["format-disconnected"].isString()) {
       default_format_ = config_["format-disconnected"].asString();
+    }
+    if (config_["tooltip-format-disconnected"].isString()) {
+      tooltip_format = config_["tooltip-format-disconnected"].asString();
     }
     label_.get_style_context()->add_class("disconnected");
     connectiontype = "disconnected";
@@ -146,10 +153,16 @@ auto waybar::modules::Network::update() -> void
       if (config_["format-ethernet"].isString()) {
         default_format_ = config_["format-ethernet"].asString();
       }
+      if (config_["tooltip-format-ethernet"].isString()) {
+        tooltip_format = config_["tooltip-format-ethernet"].asString();
+      }
       connectiontype = "ethernet";
     } else {
       if (config_["format-wifi"].isString()) {
         default_format_ = config_["format-wifi"].asString();
+      }
+      if (config_["tooltip-format-wifi"].isString()) {
+        tooltip_format = config_["tooltip-format-wifi"].asString();
       }
       connectiontype = "wifi";
     }
@@ -158,7 +171,7 @@ auto waybar::modules::Network::update() -> void
   if (!alt_) {
     format_ = default_format_;
   }
-  label_.set_markup(fmt::format(format_,
+  auto text = fmt::format(format_,
     fmt::arg("essid", essid_),
     fmt::arg("signaldBm", signal_strength_dbm_),
     fmt::arg("signalStrength", signal_strength_),
@@ -167,7 +180,25 @@ auto waybar::modules::Network::update() -> void
     fmt::arg("ipaddr", ipaddr_),
     fmt::arg("cidr", cidr_),
     fmt::arg("icon", getIcon(signal_strength_, connectiontype))
-  ));
+  );
+  label_.set_markup(text);
+  if (tooltipEnabled()) {
+    if (!tooltip_format.empty()) {
+      auto tooltip_text = fmt::format(tooltip_format,
+        fmt::arg("essid", essid_),
+        fmt::arg("signaldBm", signal_strength_dbm_),
+        fmt::arg("signalStrength", signal_strength_),
+        fmt::arg("ifname", ifname_),
+        fmt::arg("netmask", netmask_),
+        fmt::arg("ipaddr", ipaddr_),
+        fmt::arg("cidr", cidr_),
+        fmt::arg("icon", getIcon(signal_strength_, connectiontype))
+      );
+      label_.set_tooltip_text(tooltip_text);
+    } else {
+      label_.set_tooltip_text(text);
+    }
+  }
 }
 
 void waybar::modules::Network::disconnected()
