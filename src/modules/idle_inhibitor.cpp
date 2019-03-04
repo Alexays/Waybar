@@ -1,5 +1,5 @@
 #include "modules/idle_inhibitor.hpp"
-
+#include "util/command.hpp"
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
   : ALabel(config, "{status}"), bar_(bar), status_("deactivated"), idle_inhibitor_(nullptr)
@@ -10,7 +10,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   }
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
-      sigc::mem_fun(*this, &IdleInhibitor::onClick));
+      sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
   dp.emit();
 }
 
@@ -32,9 +32,8 @@ auto waybar::modules::IdleInhibitor::update() -> void
   }
 }
 
-bool waybar::modules::IdleInhibitor::onClick(GdkEventButton* const& e)
-{
-  if(e->button == 1) {
+bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
+  if (e->button == 1) {
     if (idle_inhibitor_) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
@@ -44,7 +43,13 @@ bool waybar::modules::IdleInhibitor::onClick(GdkEventButton* const& e)
           bar_.client.idle_inhibit_manager, bar_.surface);
       status_ = "activated";
     }
+    if (config_["on-click"].isString() && e->button == 1) {
+      waybar::util::command::forkExec(config_["on-click"].asString());
+    }
+  } else {
+    ALabel::handleToggle(e);
   }
+
   dp.emit();
   return true;
 }
