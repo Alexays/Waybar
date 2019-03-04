@@ -13,7 +13,7 @@ class IdleInhibitor: public ALabel {
     ~IdleInhibitor();
     auto update() -> void;
   private:
-    bool onClick(GdkEventButton* const& ev);
+    bool handleToggle(GdkEventButton* const& e);
 
     const Bar& bar_;
     std::string status_;
