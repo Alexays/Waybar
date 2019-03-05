@@ -40,11 +40,20 @@ auto waybar::ALabel::update() -> void {
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["on-click"].isString() && e->button == 1) {
     waybar::util::command::forkExec(config_["on-click"].asString());
+  } else if (config_["on-click-middle"].isString() && e->button == 2) {
+    waybar::util::command::forkExec(config_["on-click-middle"].asString());
   } else if (config_["on-click-right"].isString() && e->button == 3) {
     waybar::util::command::forkExec(config_["on-click-right"].asString());
-  } else {
+  } else if (config_["on-click-forward"].isString() && e->button == 8) {
+    waybar::util::command::forkExec(config_["on-click-backward"].asString());
+  } else if (config_["on-click-backward"].isString() && e->button == 9) {
+    waybar::util::command::forkExec(config_["on-click-forward"].asString());
+
+
+  }
+  if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
-    if (alt_) {
+    if (alt_ && config_["format-alt"].isString()) {
       format_ = config_["format-alt"].asString();
     } else {
       format_ = default_format_;
