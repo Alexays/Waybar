@@ -28,9 +28,8 @@ protected:
   bool alt_ = false;
   std::string default_format_;
 
-private:
-  bool handleToggle(GdkEventButton *const &ev);
-  bool handleScroll(GdkEventScroll *);
+  virtual bool handleToggle(GdkEventButton *const &ev);
+  virtual bool handleScroll(GdkEventScroll *);
 };
 
 } // namespace waybar
