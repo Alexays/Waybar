@@ -63,13 +63,13 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data)
       pa_context_set_subscribe_callback(c, subscribeCb, data);
       pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK, nullptr, nullptr);
       break;
+    case PA_CONTEXT_FAILED:
+      pa->mainloop_api_->quit(pa->mainloop_api_, 1);
+      break;
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
     case PA_CONTEXT_SETTING_NAME:
-      break;
-    case PA_CONTEXT_FAILED:
     default:
-      pa->mainloop_api_->quit(pa->mainloop_api_, 1);
       break;
   }
 }
