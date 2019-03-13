@@ -9,25 +9,25 @@
 window#waybar {
     background: rgba(43, 48, 59, 0.5);
     border-bottom: 3px solid rgba(100, 114, 125, 0.5);
-    color: white;
+    color: #ffffff;
 }
 
 /* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
 #workspaces button {
     padding: 0 5px;
     background: transparent;
-    color: white;
+    color: #ffffff;
     border-bottom: 3px solid transparent;
 }
 
 #workspaces button.focused {
     background: #64727D;
-    border-bottom: 3px solid white;
+    border-bottom: 3px solid #ffffff;
 }
 
 #mode {
     background: #64727D;
-    border-bottom: 3px solid white;
+    border-bottom: 3px solid #ffffff;
 }
 
 #clock, #battery, #cpu, #memory, #temperature, #backlight, #network, #pulseaudio, #custom-spotify, #tray, #mode, #idle_inhibitor {
@@ -41,24 +41,24 @@ window#waybar {
 
 #battery {
     background-color: #ffffff;
-    color: black;
+    color: #000000;
 }
 
 #battery.charging {
-    color: white;
+    color: #ffffff;
     background-color: #26A65B;
 }
 
 @keyframes blink {
     to {
         background-color: #ffffff;
-        color: black;
+        color: #000000;
     }
 }
 
 #battery.critical:not(.charging) {
     background: #f53c3c;
-    color: white;
+    color: #ffffff;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -89,7 +89,7 @@ window#waybar {
 
 #pulseaudio {
     background: #f1c40f;
-    color: black;
+    color: #000000;
 }
 
 #pulseaudio.muted {
@@ -100,6 +100,14 @@ window#waybar {
 #custom-spotify {
     background: #66cc99;
     color: #2a5c45;
+}
+
+#temperature {
+    background: #f0932b;
+}
+
+#temperature.critical {
+    background: #eb4d4b;
 }
 
 #tray {
