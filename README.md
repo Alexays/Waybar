@@ -13,6 +13,7 @@
 - Pulseaudio
 - Memory
 - Cpu load average
+- Temperature
 - Custom scripts
 - Multiple output configuration
 - And much more customizations

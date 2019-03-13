@@ -66,6 +66,7 @@ src_files = files(
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
 	'src/modules/idle_inhibitor.cpp',
+    'src/modules/temperature.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp'

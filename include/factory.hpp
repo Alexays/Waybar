@@ -23,6 +23,7 @@
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
+#include "modules/temperature.hpp"
 #include "modules/custom.hpp"
 
 namespace waybar {
