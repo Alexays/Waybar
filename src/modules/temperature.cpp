@@ -7,7 +7,7 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
     file_path_ = config_["hwmon-path"].asString();
   } else {
     auto zone =
-      config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 1;
+      config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }
 
