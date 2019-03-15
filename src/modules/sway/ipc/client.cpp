@@ -64,7 +64,7 @@ struct waybar::modules::sway::Ipc::ipc_response
   waybar::modules::sway::Ipc::recv(int fd) const
 {
   std::string header;
-  header.reserve(ipc_header_size_);
+  header.resize(ipc_header_size_);
   auto data32 = reinterpret_cast<uint32_t *>(header.data() + ipc_magic_.size());
   size_t total = 0;
 
@@ -83,7 +83,7 @@ struct waybar::modules::sway::Ipc::ipc_response
 
   total = 0;
   std::string payload;
-  payload.reserve(data32[0] + 1);
+  payload.resize(data32[0]);
   while (total < data32[0]) {
     auto res = ::recv(fd, payload.data() + total, data32[0] - total, 0);
     if (res < 0) {
@@ -91,7 +91,6 @@ struct waybar::modules::sway::Ipc::ipc_response
     }
     total += res;
   }
-  payload[data32[0]] = 0;
   return { data32[0], data32[1], &payload.front() };
 }
 
@@ -100,7 +99,7 @@ struct waybar::modules::sway::Ipc::ipc_response
   const std::string& payload) const
 {
   std::string header;
-  header.reserve(ipc_header_size_);
+  header.resize(ipc_header_size_);
   auto data32 = reinterpret_cast<uint32_t *>(header.data() + ipc_magic_.size());
   memcpy(header.data(), ipc_magic_.c_str(), ipc_magic_.size());
   data32[0] = payload.size();
