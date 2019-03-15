@@ -187,8 +187,10 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const
     "hifi",
     "phone",
   };
+  std::string nameLC = port_name_;
+  std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const& port : ports) {
-    if (port_name_.find(port) != std::string::npos) {
+    if (nameLC.find(port) != std::string::npos) {
       return port;
     }
   }
