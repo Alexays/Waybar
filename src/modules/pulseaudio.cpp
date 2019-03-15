@@ -1,4 +1,5 @@
 #include "modules/pulseaudio.hpp"
+#include <array>
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value &config)
     : ALabel(config, "{volume}%"),
@@ -174,21 +175,24 @@ void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context,
     sinkInfoCb, data);
 }
 
+static const std::array<std::string, 9> ports = {
+  "headphones",
+  "speaker",
+  "hdmi",
+  "headset",
+  "handsfree",
+  "portable",
+  "car",
+  "hifi",
+  "phone",
+};
+
 const std::string waybar::modules::Pulseaudio::getPortIcon() const
 {
-  std::vector<std::string> ports = {
-    "headphones",
-    "speaker",
-    "hdmi",
-    "headset",
-    "handsfree",
-    "portable",
-    "car",
-    "hifi",
-    "phone",
-  };
+  std::string nameLC = port_name_;
+  std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const& port : ports) {
-    if (port_name_.find(port) != std::string::npos) {
+    if (nameLC.find(port) != std::string::npos) {
       return port;
     }
   }
