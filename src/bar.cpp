@@ -185,6 +185,22 @@ void waybar::Bar::handleDescription(void* /*data*/,
   // Nothing here
 }
 
+void waybar::Bar::handleSignal(int signal)
+{
+  for (auto& module : modules_left_) {
+    auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
+    if(custom) custom->refresh(signal);
+  }
+  for (auto& module : modules_center_) {
+    auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
+    if(custom) custom->refresh(signal);
+  }
+  for (auto& module : modules_right_) {
+    auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
+    if(custom) custom->refresh(signal);
+  }
+}
+
 void waybar::Bar::layerSurfaceHandleConfigure(void* data,
   struct zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t width,
   uint32_t height)
