@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 #include <iostream>
+#include <csignal>
 #include "util/sleeper_thread.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
@@ -14,6 +15,7 @@ class Custom : public ALabel {
     Custom(const std::string&, const Json::Value&);
     ~Custom();
     auto update() -> void;
+    void refresh(int /*signal*/);
   private:
     void delayWorker();
     void continuousWorker();
