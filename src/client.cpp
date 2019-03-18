@@ -67,8 +67,10 @@ void waybar::Client::handleGlobalRemove(void* data,
 {
   auto o = static_cast<waybar::Client *>(data);
   for (auto it = o->bars.begin(); it != o->bars.end(); ++it) {
-    if ((**it).wl_name == name) {
+    if ((*it)->wl_name == name) {
+      auto output_name = (*it)->output_name;
       o->bars.erase(it);
+      std::cout << "Bar removed from output: " + output_name << std::endl;
       break;
     }
   }

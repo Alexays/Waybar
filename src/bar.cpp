@@ -216,7 +216,6 @@ void waybar::Bar::layerSurfaceHandleClosed(void* data,
   struct zwlr_layer_surface_v1* /*surface*/)
 {
   auto o = static_cast<waybar::Bar *>(data);
-  std::cout << "Bar removed from output: " + o->output_name << std::endl;
   zwlr_layer_surface_v1_destroy(o->layer_surface);
   wl_output_destroy(*o->output);
   zxdg_output_v1_destroy(o->xdg_output_);
