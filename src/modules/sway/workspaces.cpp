@@ -87,8 +87,7 @@ auto waybar::modules::sway::Workspaces::update() -> void
       } else {
         button.set_label(icon);
       }
-
-			onButtonReady(node, button);
+      onButtonReady(node, button);
     }
   }
   if (scrolling_) {
@@ -117,8 +116,8 @@ void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node)
       std::cerr << e.what() << std::endl;
     }
   });
-  button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   if (!config_["disable-scroll"].asBool()) {
+    button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     button.signal_scroll_event()
       .connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
@@ -158,86 +157,78 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
   if (scrolling_) {
     return false;
   }
+  std::lock_guard<std::mutex> lock(mutex_);
+  uint8_t idx;
   scrolling_ = true;
-  std::string name;
-  uint16_t idx = 0;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    for (; idx < workspaces_.size(); idx += 1) {
-      if (workspaces_[idx]["focused"].asBool()) {
-        name = workspaces_[idx]["name"].asString();
-        break;
-      }
+  for (idx = 0; idx < workspaces_.size(); idx += 1) {
+    if (workspaces_[idx]["focused"].asBool()) {
+      break;
     }
   }
-  if (name.empty()) {
+  if (idx == workspaces_.size()) {
     scrolling_ = false;
     return false;
   }
+  std::string name;
   if (e->direction == GDK_SCROLL_UP) {
-      name = getNextWorkspace();
+      name = getCycleWorkspace(idx, false);
   }
   if (e->direction == GDK_SCROLL_DOWN) {
-      name = getPrevWorkspace();
+      name = getCycleWorkspace(idx, true);
   }
   if (e->direction == GDK_SCROLL_SMOOTH) {
     gdouble delta_x, delta_y;
     gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e),
       &delta_x, &delta_y);
     if (delta_y < 0) {
-      name = getNextWorkspace();
+      name = getCycleWorkspace(idx, false);
     } else if (delta_y > 0) {
-      name = getPrevWorkspace();
+      name = getCycleWorkspace(idx, true);
     }
   }
-  if (!name.empty()) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (name == workspaces_[idx]["name"].asString()) {
-      scrolling_ = false;
-      return false;
-    }
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+  if (name.empty() || name == workspaces_[idx]["name"].asString()) {
+    scrolling_ = false;
+    return false;
   }
+  ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   return true;
 }
 
-std::string waybar::modules::sway::Workspaces::getPrevWorkspace()
+const std::string waybar::modules::sway::Workspaces::getCycleWorkspace(
+  uint8_t focused_workspace, bool prev) const
 {
-  for (uint16_t i = 0; i < workspaces_.size(); i += 1) {
-    if (workspaces_[i]["focused"].asBool()) {
-      if (i > 0) {
-        return workspaces_[i - 1]["name"].asString();
-      }
-      return workspaces_[workspaces_.size() - 1]["name"].asString();
+  auto inc = prev ? -1 : 1;
+  int size = workspaces_.size();
+  uint8_t idx = 0;
+  for (int i = focused_workspace; i < size && i >= 0; i += inc) {
+    bool same_output = (workspaces_[i]["output"].asString() == bar_.output_name
+      && !config_["all-outputs"].asBool()) || config_["all-outputs"].asBool();
+    bool same_name =
+      workspaces_[i]["name"].asString() == workspaces_[focused_workspace]["name"].asString();
+    if (same_output && !same_name) {
+      return workspaces_[i]["name"].asString();
     }
+    if (prev && i - 1 < 0) {
+      i = size;
+    } else if (!prev && i + 1 >= size) {
+      i = -1;
+    } else if (idx >= workspaces_.size()) {
+      return "";
+    }
+    idx += 1;
   }
   return "";
 }
 
-std::string waybar::modules::sway::Workspaces::getNextWorkspace()
-{
-  for (uint16_t i = 0; i < workspaces_.size(); i += 1) {
-    if (workspaces_[i]["focused"].asBool()) {
-      if (i + 1U < workspaces_.size()) {
-        return workspaces_[i + 1]["name"].asString();
-      }
-      return workspaces_[0]["String"].asString();
-    }
-  }
-  return "";
-}
-
-uint16_t waybar::modules::sway::Workspaces::getWorkspaceIndex(const std::string &name)
+uint16_t waybar::modules::sway::Workspaces::getWorkspaceIndex(const std::string &name) const
 {
   uint16_t idx = 0;
   for (const auto &workspace : workspaces_) {
     if (workspace["name"].asString() == name) {
       return idx;
     }
-    if (!config_["all-outputs"].asBool() && workspace["output"].asString() != bar_.output_name) {
-      // Nothing here
-    } else {
+    if (!(!config_["all-outputs"].asBool() && workspace["output"].asString() != bar_.output_name)) {
       idx += 1;
     }
   }

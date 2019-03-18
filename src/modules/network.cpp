@@ -1,5 +1,4 @@
 #include <sys/eventfd.h>
-#include <iostream>
 #include "modules/network.hpp"
 
 waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
@@ -117,9 +116,7 @@ void waybar::modules::Network::worker()
       for (auto i = 0; i < ec; i++) {
         if (events[i].data.fd == ev_fd_) {
           thread_.stop();
-          return;
-        }
-        if (events[i].events & EPOLLIN) {
+        } else if (events[i].events & EPOLLIN) {
           handleEvents();
         }
       }

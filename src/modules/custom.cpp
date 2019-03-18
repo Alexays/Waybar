@@ -66,7 +66,6 @@ void waybar::modules::Custom::continuousWorker()
       }
       return;
     }
-
     std::string output = buff;
 
     // Remove last newline
