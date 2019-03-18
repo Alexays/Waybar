@@ -19,6 +19,14 @@ int main(int argc, char* argv[])
       }
     });
 
+    for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
+      std::signal(sig, [] (int sig/*signal*/) {
+        for (auto& bar : waybar::client->bars) {
+          bar->handleSignal(sig);
+        }
+      });
+    }
+
     return c.main(argc, argv);
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;

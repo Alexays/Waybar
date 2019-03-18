@@ -6,8 +6,9 @@
 waybar::ALabel::ALabel(const Json::Value& config, const std::string format, uint16_t interval)
   : config_(config),
     format_(config_["format"].isString() ? config_["format"].asString() : format),
-    interval_(std::chrono::seconds(config_["interval"].isUInt()
-      ? config_["interval"].asUInt() : interval)), default_format_(format_)
+    interval_(config_["interval"] == "once" ? std::chrono::seconds(100000000) :
+      std::chrono::seconds(config_["interval"].isUInt() ?
+      config_["interval"].asUInt() : interval)), default_format_(format_)
 {
   event_box_.add(label_);
 	if (config_["max-length"].isUInt()) {
