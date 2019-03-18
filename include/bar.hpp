@@ -22,6 +22,7 @@ class Bar {
     ~Bar() = default;
 
     auto toggle() -> void;
+    void handleSignal(int);
 
     const Client& client;
     Gtk::Window window;
