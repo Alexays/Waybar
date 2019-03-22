@@ -32,6 +32,7 @@ class Bar {
     std::string output_name;
     uint32_t wl_name;
     bool visible = true;
+    bool vertical = false;
   private:
     static void handleLogicalPosition(void *, struct zxdg_output_v1 *, int32_t,
       int32_t);

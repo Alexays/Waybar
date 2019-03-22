@@ -11,7 +11,7 @@ namespace waybar::modules::SNI {
 
 class Tray : public IModule {
   public:
-    Tray(const std::string&, const Json::Value&);
+    Tray(const std::string&, const Bar&, const Json::Value&);
     ~Tray() = default;
     auto update() -> void;
     operator Gtk::Widget &();

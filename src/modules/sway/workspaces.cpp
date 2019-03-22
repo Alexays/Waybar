@@ -2,7 +2,9 @@
 
 waybar::modules::sway::Workspaces::Workspaces(const std::string& id, const Bar& bar,
   const Json::Value& config)
-  : bar_(bar), config_(config), scrolling_(false)
+  : bar_(bar), config_(config),
+    box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
+    scrolling_(false)
 {
   box_.set_name("workspaces");
   if (!id.empty()) {

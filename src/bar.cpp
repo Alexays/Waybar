@@ -28,6 +28,12 @@ waybar::Bar::Bar(const Client& client,
   setupConfig();
   setupCss();
 
+  if (config_["position"] == "right" || config_["position"] == "left") {
+    vertical = true;
+    height_ = 0;
+    width_ = 30;
+  }
+
   auto wrap = reinterpret_cast<GtkWidget*>(window.gobj());
   gtk_widget_realize(wrap);
   GdkWindow *gdk_window = gtk_widget_get_window(wrap);
@@ -84,10 +90,10 @@ void waybar::Bar::initBar()
   setupAltFormatKeyForModuleList("modules-left");
   setupAltFormatKeyForModuleList("modules-right");
   setupAltFormatKeyForModuleList("modules-center");
-  std::size_t layer_top = config_["layer"] == "top"
+  std::size_t layer = config_["layer"] == "top"
     ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-    client.layer_shell, surface, *output, layer_top, "waybar");
+    client.layer_shell, surface, *output, layer, "waybar");
 
   static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .configure = layerSurfaceHandleConfigure,
@@ -95,18 +101,30 @@ void waybar::Bar::initBar()
   };
   zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, this);
 
-  std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
-    | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-  if (config_["position"] == "bottom") {
-    anchor |= ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-  } else {
-    anchor |= ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-  }
-
   auto height = config_["height"].isUInt() ? config_["height"].asUInt() : height_;
   auto width = config_["width"].isUInt() ? config_["width"].asUInt() : width_;
+
+  std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
+  if (config_["position"] == "bottom") {
+    anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+  } else if (config_["position"] == "left") {
+    anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
+  } else if (config_["position"] == "right") {
+    anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+  }
+  if (anchor == ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM || anchor == ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) {
+    anchor |= ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
+  } else if (anchor == ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT || anchor == ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT) {
+    anchor |= ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+    left_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
+    center_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
+    right_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
+    box_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
+    vertical = true;
+  }
+
   zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
-  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, height);
+  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, vertical ? width : height);
   zwlr_layer_surface_v1_set_size(layer_surface, width, height);
 
   wl_surface_commit(surface);
@@ -213,12 +231,17 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data,
     o->window.set_size_request(o->width_, o->height_);
     o->window.resize(o->width_, o->height_);
 
-    int dummy_width, min_height;
-    o->window.get_size(dummy_width, min_height);
+    int min_width, min_height;
+    o->window.get_size(min_width, min_height);
     if (o->height_ < static_cast<uint32_t>(min_height)) {
       std::cout << fmt::format("Requested height: {} exceeds the minimum \
 height: {} required by the modules", o->height_, min_height) << std::endl;
       o->height_ = min_height;
+    }
+    if (o->width_ < static_cast<uint32_t>(min_width)) {
+      std::cout << fmt::format("Requested width: {} exceeds the minimum \
+width: {} required by the modules", o->height_, min_width) << std::endl;
+      o->width_ = min_width;
     }
     std::cout << fmt::format(
       "Bar configured (width: {}, height: {}) for output: {}",

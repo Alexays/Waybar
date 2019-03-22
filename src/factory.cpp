@@ -38,7 +38,7 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     }
     #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
-      return new waybar::modules::SNI::Tray(id, config_[name]);
+      return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
     }
     #endif
     #ifdef HAVE_LIBNL
