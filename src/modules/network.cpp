@@ -491,7 +491,9 @@ void waybar::modules::Network::parseEssid(struct nlattr **bss)
     if (ies_len > hdr_len && ies_len > ies[1] + hdr_len) {
       auto essid_begin = ies + hdr_len;
       auto essid_end = essid_begin + ies[1];
-      std::copy(essid_begin, essid_end, std::back_inserter(essid_));
+      std::string essid_raw;
+      std::copy(essid_begin, essid_end, std::back_inserter(essid_raw));
+      essid_ = Glib::Markup::escape_text(essid_raw);
     }
   }
 }
