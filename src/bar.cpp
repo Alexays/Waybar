@@ -28,12 +28,6 @@ waybar::Bar::Bar(const Client& client,
   setupConfig();
   setupCss();
 
-  if (config_["position"] == "right" || config_["position"] == "left") {
-    vertical = true;
-    height_ = 0;
-    width_ = 30;
-  }
-
   auto wrap = reinterpret_cast<GtkWidget*>(window.gobj());
   gtk_widget_realize(wrap);
   GdkWindow *gdk_window = gtk_widget_get_window(wrap);
@@ -100,6 +94,11 @@ void waybar::Bar::initBar()
     .closed = layerSurfaceHandleClosed,
   };
   zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, this);
+
+  if (config_["position"] == "right" || config_["position"] == "left") {
+    height_ = 0;
+    width_ = 30;
+  }
 
   auto height = config_["height"].isUInt() ? config_["height"].asUInt() : height_;
   auto width = config_["width"].isUInt() ? config_["width"].asUInt() : width_;
