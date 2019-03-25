@@ -98,6 +98,7 @@
     "custom/spotify": {
         "format": " {}",
         "max-length": 40,
+        "escape": true,
         "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
     }
 }
