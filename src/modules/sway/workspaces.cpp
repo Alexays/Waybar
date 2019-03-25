@@ -173,19 +173,19 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e)
   }
   std::string name;
   if (e->direction == GDK_SCROLL_UP) {
-      name = getCycleWorkspace(idx, false);
+      name = getCycleWorkspace(idx, true);
   }
   if (e->direction == GDK_SCROLL_DOWN) {
-      name = getCycleWorkspace(idx, true);
+      name = getCycleWorkspace(idx, false);
   }
   if (e->direction == GDK_SCROLL_SMOOTH) {
     gdouble delta_x, delta_y;
     gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e),
       &delta_x, &delta_y);
     if (delta_y < 0) {
-      name = getCycleWorkspace(idx, false);
-    } else if (delta_y > 0) {
       name = getCycleWorkspace(idx, true);
+    } else if (delta_y > 0) {
+      name = getCycleWorkspace(idx, false);
     }
   }
   if (name.empty() || name == workspaces_[idx]["name"].asString()) {
