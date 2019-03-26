@@ -98,7 +98,7 @@ auto waybar::modules::Custom::update() -> void
 
     auto str = fmt::format(format_, text_,
       fmt::arg("alt", alt_),
-      fmt::arg("icon", getIcon(percentage_)),
+      fmt::arg("icon", getIcon(percentage_, alt_)),
       fmt::arg("percentage", percentage_));
     label_.set_markup(str);
     if (tooltipEnabled()) {
