@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import argparse
+import logging
 import sys
 import signal
 import gi
 gi.require_version('Playerctl', '2.0')
 from gi.repository import Playerctl, GLib
+
+logger = logging.getLogger(__name__)
 
 
 def on_play(player, status, manager):
@@ -56,11 +59,26 @@ def signal_handler(sig, frame):
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
+    # Increase verbosity with every occurance of -v
+    parser.add_argument('-v', '--verbose', action="count", default=0)
+
     return parser.parse_args()
 
 
 def main():
     arguments = parse_arguments()
+
+    # Initialize logging
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG,
+                        format='%(name)s %(levelname)s %(message)s')
+
+    # Logging is set by default to WARN and higher.
+    # With every occurance of -v it's lowered by one
+    logger.setLevel(max((3 - arguments.verbose) * 10, 0))
+
+    # Log the sent command line arguments
+    logger.debug('Arguments received {}'.format(vars(arguments)))
+
     manager = Playerctl.PlayerManager()
     loop = GLib.MainLoop()
 
