@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import sys
 import signal
 import gi
@@ -52,7 +53,14 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+
+    return parser.parse_args()
+
+
 def main():
+    arguments = parse_arguments()
     manager = Playerctl.PlayerManager()
     loop = GLib.MainLoop()
 
