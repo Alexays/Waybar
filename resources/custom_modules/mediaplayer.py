@@ -11,10 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 def on_play(player, status, manager):
+    logger.info('Received new playback status')
     on_metadata(player, player.props.metadata, manager)
 
 
 def on_metadata(player, metadata, manager):
+    logger.info("Received new metadata")
     track_info = ''
 
     if player.props.player_name == 'spotify' and \
@@ -37,11 +39,13 @@ def on_metadata(player, metadata, manager):
 
 
 def on_player_vanished(manager, player):
+    logger.info("Player has vanished")
     sys.stdout.write("\n")
     sys.stdout.flush()
 
 
 def init_player(manager, name):
+    logger.debug("Initialize player: {player}".format(player=name.name))
     player = Playerctl.Player.new_from_name(name)
     player.connect('playback-status', on_play, manager)
     player.connect('metadata', on_metadata, manager)
@@ -50,6 +54,7 @@ def init_player(manager, name):
 
 
 def signal_handler(sig, frame):
+    logger.debug('Received signal to stop, exiting')
     sys.stdout.write("\n")
     sys.stdout.flush()
     # loop.quit()
