@@ -2,7 +2,8 @@
 **Proof of concept**
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
-> Available on [AUR](https://aur.archlinux.org/packages/waybar-git/) and [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar)
+> Available in Arch [community](https://www.archlinux.org/packages/community/x86_64/waybar/) or
+[AUR](https://aur.archlinux.org/packages/waybar-git/) and [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar)
 
 **Current features**
 - Sway (Workspaces, Binding mode, Focused window name)
