@@ -5,9 +5,6 @@ import gi
 gi.require_version('Playerctl', '2.0')
 from gi.repository import Playerctl, GLib
 
-manager = Playerctl.PlayerManager()
-loop = GLib.MainLoop()
-
 
 def on_play(player, status, manager):
     on_metadata(player, player.props.metadata, manager)
@@ -35,16 +32,12 @@ def on_metadata(player, metadata, manager):
     sys.stdout.flush()
 
 
-def on_name_appeared(manager, name):
-    init_player(name)
-
-
 def on_player_vanished(manager, player):
     sys.stdout.write("\n")
     sys.stdout.flush()
 
 
-def init_player(name):
+def init_player(manager, name):
     player = Playerctl.Player.new_from_name(name)
     player.connect('playback-status', on_play, manager)
     player.connect('metadata', on_metadata, manager)
@@ -55,17 +48,26 @@ def init_player(name):
 def signal_handler(sig, frame):
     sys.stdout.write("\n")
     sys.stdout.flush()
-    loop.quit()
+    # loop.quit()
     sys.exit(0)
 
 
-manager.connect('name-appeared', on_name_appeared)
-manager.connect('player-vanished', on_player_vanished)
+def main():
+    manager = Playerctl.PlayerManager()
+    loop = GLib.MainLoop()
 
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+    manager.connect('name-appeared', init_player)
+    manager.connect('player-vanished', on_player_vanished)
 
-for player in manager.props.player_names:
-    init_player(player)
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
-loop.run()
+    for player in manager.props.player_names:
+        init_player(manager, player)
+
+    loop.run()
+
+
+if __name__ == "__main__":
+    main()
+
