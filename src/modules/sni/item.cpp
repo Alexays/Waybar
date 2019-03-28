@@ -2,6 +2,10 @@
 
 #include <iostream>
 
+using namespace Glib;
+
+static const ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
+
 waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Value& config)
     : bus_name(bn), object_path(op), icon_size(16), effective_icon_size(0)
 {
@@ -12,107 +16,88 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Val
   event_box.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box.signal_button_press_event().connect(
       sigc::mem_fun(*this, &Item::handleClick));
-  cancellable_ = g_cancellable_new();
-  sn_item_proxy_new_for_bus(
-      G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, bus_name.c_str(),
-      object_path.c_str(), cancellable_, &Item::proxyReady, this);
+
+  cancellable_ = Gio::Cancellable::create();
+
+  auto interface = Glib::wrap(sn_item_interface_info(), true);
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name,
+      object_path, SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
+      cancellable_, interface);
 }
 
-void waybar::modules::SNI::Item::proxyReady(GObject *obj, GAsyncResult *res,
-                                            gpointer data) {
-  GError *error = nullptr;
-  SnItem *proxy = sn_item_proxy_new_for_bus_finish(res, &error);
-  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-    g_error_free(error);
-    return;
-  }
-  auto item = static_cast<SNI::Item *>(data);
-  item->proxy_ = proxy;
-  if (error) {
-    std::cerr << error->message << std::endl;
-    g_error_free(error);
-    return;
-  }
-  auto conn = g_dbus_proxy_get_connection(G_DBUS_PROXY(proxy));
-
-  g_dbus_connection_call(conn, item->bus_name.c_str(),
-    item->object_path.c_str(), "org.freedesktop.DBus.Properties", "GetAll",
-    g_variant_new("(s)", "org.kde.StatusNotifierItem"),
-    G_VARIANT_TYPE("(a{sv})"), G_DBUS_CALL_FLAGS_NONE, -1, item->cancellable_,
-    &Item::getAll, data);
-}
-
-void waybar::modules::SNI::Item::getAll(GObject *obj, GAsyncResult *res,
-                                        gpointer data) {
-  GError *error = nullptr;
-  auto conn = G_DBUS_CONNECTION(obj);
-  GVariant *properties = g_dbus_connection_call_finish(conn, res, &error);
-  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-    g_error_free(error);
-    return;
-  }
-  auto item = static_cast<SNI::Item *>(data);
-  if (error) {
-    std::cerr << error->message << std::endl;
-    g_error_free(error);
-    return;
-  }
-  GVariantIter *it = nullptr;
-  g_variant_get(properties, "(a{sv})", &it);
-  gchar *key;
-  GVariant *value;
-  while (g_variant_iter_next(it, "{sv}", &key, &value)) {
-    if (g_strcmp0(key, "Category") == 0) {
-      item->category = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "Id") == 0) {
-      item->id = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "Title") == 0) {
-      item->title = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "Status") == 0) {
-      item->status = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "WindowId") == 0) {
-      item->window_id = g_variant_get_int32(value);
-    } else if (g_strcmp0(key, "IconName") == 0) {
-      item->icon_name = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "IconPixmap") == 0) {
-      item->icon_pixmap = item->extractPixBuf(value);
-    } else if (g_strcmp0(key, "OverlayIconName") == 0) {
-      item->overlay_icon_name = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "OverlayIconPixmap") == 0) {
-      // TODO: overlay_icon_pixmap
-    } else if (g_strcmp0(key, "AttentionIconName") == 0) {
-      item->attention_icon_name = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "AttentionIconPixmap") == 0) {
-      // TODO: attention_icon_pixmap
-    } else if (g_strcmp0(key, "AttentionMovieName") == 0) {
-      item->attention_movie_name = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "ToolTip") == 0) {
-      // TODO: tooltip
-    } else if (g_strcmp0(key, "IconThemePath") == 0) {
-      item->icon_theme_path = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "Menu") == 0) {
-      item->menu = g_variant_dup_string(value, nullptr);
-    } else if (g_strcmp0(key, "ItemIsMenu") == 0) {
-      item->item_is_menu = g_variant_get_boolean(value);
+void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
+  try {
+    this->proxy_ = Gio::DBus::Proxy::create_for_bus_finish(result);
+    /* Properties are already cached during object creation */
+    auto cached_properties = this->proxy_->get_cached_property_names();
+    for (const auto& name: cached_properties) {
+      Glib::VariantBase value;
+      this->proxy_->get_cached_property(value, name);
+      setProperty(name, value);
     }
-    g_variant_unref(value);
-    g_free(key);
+
+    if (this->id.empty() || this->category.empty() || this->status.empty()) {
+      std::cerr << "Invalid Status Notifier Item: " + this->bus_name + "," +
+        this->object_path << std::endl;
+      return;
+    }
+    if (!this->icon_theme_path.empty()) {
+      Glib::RefPtr<Gtk::IconTheme> icon_theme = Gtk::IconTheme::get_default();
+      icon_theme->append_search_path(this->icon_theme_path);
+    }
+    this->updateImage();
+    // this->event_box.set_tooltip_text(this->title);
+
+  } catch (const Glib::Error& err) {
+    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(),
+        object_path.c_str(), err.what().c_str());
+  } catch (const std::exception& err) {
+    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(),
+        object_path.c_str(), err.what());
   }
-  g_variant_iter_free(it);
-  g_variant_unref(properties);
-  if (item->id.empty() || item->category.empty() || item->status.empty()) {
-    std::cerr << "Invalid Status Notifier Item: " + item->bus_name + "," +
-      item->object_path << std::endl;
-    return;
+}
+
+template<typename T>
+T get_variant(VariantBase& value) {
+    return VariantBase::cast_dynamic<Variant<T>>(value).get();
+}
+
+void
+waybar::modules::SNI::Item::setProperty(const ustring& name,
+    VariantBase& value) {
+  if (name == "Category") {
+    category = get_variant<std::string>(value);
+  } else if (name == "Id") {
+    id = get_variant<std::string>(value);
+  } else if (name == "Title") {
+    title = get_variant<std::string>(value);
+  } else if (name == "Status") {
+    status = get_variant<std::string>(value);
+  } else if (name == "WindowId") {
+    window_id = get_variant<int32_t>(value);
+  } else if (name == "IconName") {
+    icon_name = get_variant<std::string>(value);
+  } else if (name == "IconPixmap") {
+    icon_pixmap = this->extractPixBuf(value.gobj());
+  } else if (name == "OverlayIconName") {
+    overlay_icon_name = get_variant<std::string>(value);
+  } else if (name == "OverlayIconPixmap") {
+    // TODO: overlay_icon_pixmap
+  } else if (name == "AttentionIconName") {
+    attention_icon_name = get_variant<std::string>(value);
+  } else if (name == "AttentionIconPixmap") {
+    // TODO: attention_icon_pixmap
+  } else if (name == "AttentionMovieName") {
+    attention_movie_name = get_variant<std::string>(value);
+  } else if (name == "ToolTip") {
+    // TODO: tooltip
+  } else if (name == "IconThemePath") {
+    icon_theme_path = get_variant<std::string>(value);
+  } else if (name == "Menu") {
+    menu = get_variant<std::string>(value);
+  } else if (name == "ItemIsMenu") {
+    item_is_menu = get_variant<bool>(value);
   }
-  if (!item->icon_theme_path.empty()) {
-    GtkIconTheme *icon_theme = gtk_icon_theme_get_default();
-    gtk_icon_theme_append_search_path(icon_theme,
-      item->icon_theme_path.c_str());
-  }
-  item->updateImage();
-  // item->event_box.set_tooltip_text(item->title);
-  // TODO: handle change
 }
 
 static void
@@ -257,15 +242,21 @@ bool waybar::modules::SNI::Item::makeMenu(GdkEventButton *const &ev)
 }
 
 bool waybar::modules::SNI::Item::handleClick(GdkEventButton *const &ev) {
+  auto parameters = VariantContainerBase::create_tuple({
+    Variant<int>::create(ev->x),
+    Variant<int>::create(ev->y)
+  });
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     if (!makeMenu(ev)) {
-      return sn_item_call_context_menu_sync(proxy_, ev->x, ev->y, nullptr, nullptr);
+      proxy_->call("ContextMenu", parameters);
+      return true;
     }
   } else if (ev->button == 1) {
-    return sn_item_call_activate_sync(proxy_, ev->x, ev->y, nullptr, nullptr);
+    proxy_->call("Activate", parameters);
+    return true;
   } else if (ev->button == 2) {
-    return sn_item_call_secondary_activate_sync(proxy_, ev->x, ev->y,
-      nullptr, nullptr);
+    proxy_->call("SecondaryActivate", parameters);
+    return true;
   }
   return false;
 }
