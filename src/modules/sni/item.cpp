@@ -115,6 +115,11 @@ void waybar::modules::SNI::Item::getAll(GObject *obj, GAsyncResult *res,
   // TODO: handle change
 }
 
+static void
+pixbuf_data_deleter(const guint8* data) {
+  g_free((void*) data);
+}
+
 Glib::RefPtr<Gdk::Pixbuf>
 waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
   GVariantIter *it;
@@ -158,7 +163,8 @@ waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
       array[i + 3] = alpha;
     }
     return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB,
-                                         true, 8, lwidth, lheight, 4 * lwidth);
+                                         true, 8, lwidth, lheight, 4 * lwidth,
+                                         &pixbuf_data_deleter);
   }
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
