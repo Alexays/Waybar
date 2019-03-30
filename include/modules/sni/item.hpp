@@ -50,6 +50,10 @@ public:
 private:
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
+  void getUpdatedProperties();
+  void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
+  void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
+      const Glib::VariantContainerBase& arguments);
 
   void updateImage();
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant *variant);
@@ -60,6 +64,7 @@ private:
 
   Glib::RefPtr<Gio::Cancellable> cancellable_;
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
+  bool update_pending_;
 };
 
 } // namespace waybar::modules::SNI
