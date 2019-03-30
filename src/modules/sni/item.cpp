@@ -1,14 +1,16 @@
 #include "modules/sni/item.hpp"
 
 #include <iostream>
+#include <glibmm/main.h>
 
 using namespace Glib;
 
 static const ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
+static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
 waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Value& config)
-    : bus_name(bn), object_path(op), icon_size(16), effective_icon_size(0)
-{
+    : bus_name(bn), object_path(op), icon_size(16), effective_icon_size(0),
+    update_pending_(false) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -35,6 +37,8 @@ void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& resu
       this->proxy_->get_cached_property(value, name);
       setProperty(name, value);
     }
+
+    this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
 
     if (this->id.empty() || this->category.empty() || this->status.empty()) {
       std::cerr << "Invalid Status Notifier Item: " + this->bus_name + "," +
@@ -99,6 +103,59 @@ waybar::modules::SNI::Item::setProperty(const ustring& name,
     item_is_menu = get_variant<bool>(value);
   }
 }
+
+void
+waybar::modules::SNI::Item::getUpdatedProperties() {
+  update_pending_ = false;
+
+  auto params = VariantContainerBase::create_tuple({
+    Variant<ustring>::create(SNI_INTERFACE_NAME)
+  });
+  proxy_->call("org.freedesktop.DBus.Properties.GetAll",
+      sigc::mem_fun(*this, &Item::processUpdatedProperties), params);
+};
+
+void
+waybar::modules::SNI::Item::processUpdatedProperties(
+    Glib::RefPtr<Gio::AsyncResult>& _result) {
+  try {
+    auto result = proxy_->call_finish(_result);
+    // extract "a{sv}" from VariantContainerBase
+    Variant<std::map<ustring, VariantBase>> properties_variant;
+    result.get_child(properties_variant);
+    auto properties = properties_variant.get();
+
+    for (const auto& [name, value]: properties) {
+      VariantBase old_value;
+      proxy_->get_cached_property(old_value, name);
+      if (!value.equal(old_value)) {
+        proxy_->set_cached_property(name, value);
+        setProperty(name, const_cast<VariantBase&>(value));
+      }
+    }
+
+    this->updateImage();
+    // this->event_box.set_tooltip_text(this->title);
+  } catch (const Glib::Error& err) {
+    g_warning("Failed to update properties: %s", err.what().c_str());
+  } catch (const std::exception& err) {
+    g_warning("Failed to update properties: %s", err.what());
+  }
+}
+
+void
+waybar::modules::SNI::Item::onSignal(const ustring& sender_name,
+    const ustring& signal_name, const VariantContainerBase& arguments) {
+  if (!update_pending_ && signal_name.compare(0, 3, "New") == 0) {
+    /* Debounce signals and schedule update of all properties.
+     * Based on behavior of Plasma dataengine for StatusNotifierItem.
+     */
+    update_pending_ = true;
+    Glib::signal_timeout().connect_once(
+        sigc::mem_fun(*this, &Item::getUpdatedProperties), UPDATE_DEBOUNCE_TIME);
+  }
+}
+
 
 static void
 pixbuf_data_deleter(const guint8* data) {
