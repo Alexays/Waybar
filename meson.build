@@ -72,7 +72,7 @@ src_files = files(
     'src/client.cpp'
 )
 
-if find_program('sway', required : false).found()
+if true # find_program('sway', required : false).found()
     add_project_arguments('-DHAVE_SWAY', language: 'cpp')
     src_files += [
         'src/modules/sway/ipc/client.cpp',
