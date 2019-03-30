@@ -2,12 +2,14 @@
 
 #include <dbus-status-notifier-item.h>
 #include <glibmm/refptr.h>
+#include <giomm/dbusproxy.h>
 #include <gtkmm/eventbox.h>
 #include <gtkmm/image.h>
 #include <gtkmm/icontheme.h>
 #include <gtkmm/menu.h>
 #include <json/json.h>
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
+#include <sigc++/trackable.h>
 #ifdef FILESYSTEM_EXPERIMENTAL
 #include <experimental/filesystem>
 #else
@@ -16,7 +18,7 @@
 
 namespace waybar::modules::SNI {
 
-class Item {
+class Item : public sigc::trackable {
 public:
   Item(std::string, std::string, const Json::Value&);
   ~Item() = default;
@@ -46,8 +48,12 @@ public:
   bool item_is_menu;
 
 private:
-  static void proxyReady(GObject *obj, GAsyncResult *res, gpointer data);
-  static void getAll(GObject *obj, GAsyncResult *res, gpointer data);
+  void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
+  void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
+  void getUpdatedProperties();
+  void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
+  void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
+      const Glib::VariantContainerBase& arguments);
 
   void updateImage();
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant *variant);
@@ -56,8 +62,9 @@ private:
   bool makeMenu(GdkEventButton *const &ev);
   bool handleClick(GdkEventButton *const & /*ev*/);
 
-  GCancellable *cancellable_ = nullptr;
-  SnItem *proxy_ = nullptr;
+  Glib::RefPtr<Gio::Cancellable> cancellable_;
+  Glib::RefPtr<Gio::DBus::Proxy> proxy_;
+  bool update_pending_;
 };
 
 } // namespace waybar::modules::SNI
