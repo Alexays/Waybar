@@ -23,6 +23,7 @@ class Network : public ALabel {
     static const uint8_t MAX_RETRY = 5;
     static const uint8_t EPOLL_MAX = 255;
 
+    static int handleEvents(struct nl_msg*, void*);
     static int handleScan(struct nl_msg*, void*);
 
     void worker();
@@ -31,7 +32,6 @@ class Network : public ALabel {
     void createEventSocket();
     int getExternalInterface();
     void getInterfaceAddress();
-    void handleEvents();
     int netlinkRequest(void*, uint32_t, uint32_t groups = 0);
     int netlinkResponse(void*, uint32_t, uint32_t groups = 0);
     void parseEssid(struct nlattr**);
@@ -45,7 +45,7 @@ class Network : public ALabel {
     sa_family_t family_;
     struct sockaddr_nl nladdr_ = {0};
     struct nl_sock* sk_ = nullptr;
-    int info_sock_;
+    struct nl_sock* info_sock_ = nullptr;
     int efd_;
     int ev_fd_;
     int nl80211_id_;
