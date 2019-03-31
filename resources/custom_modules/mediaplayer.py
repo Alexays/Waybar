@@ -16,7 +16,7 @@ def on_play(player, status, manager):
 
 
 def on_metadata(player, metadata, manager):
-    logger.info("Received new metadata")
+    logger.info('Received new metadata')
     track_info = ''
 
     if player.props.player_name == 'spotify' and \
@@ -42,17 +42,17 @@ def on_player_appeared(manager, player, selected_player=None):
     if player is not None and player.name == selected_player:
         init_player(manager, player)
     else:
-        logger.debug('New player appeared, but it\'s not the selected player, skipping')
+        logger.debug("New player appeared, but it's not the selected player, skipping")
 
 
 def on_player_vanished(manager, player):
-    logger.info("Player has vanished")
-    sys.stdout.write("\n")
+    logger.info('Player has vanished')
+    sys.stdout.write('\n')
     sys.stdout.flush()
 
 
 def init_player(manager, name):
-    logger.debug("Initialize player: {player}".format(player=name.name))
+    logger.debug('Initialize player: {player}'.format(player=name.name))
     player = Playerctl.Player.new_from_name(name)
     player.connect('playback-status', on_play, manager)
     player.connect('metadata', on_metadata, manager)
@@ -62,7 +62,7 @@ def init_player(manager, name):
 
 def signal_handler(sig, frame):
     logger.debug('Received signal to stop, exiting')
-    sys.stdout.write("\n")
+    sys.stdout.write('\n')
     sys.stdout.flush()
     # loop.quit()
     sys.exit(0)
@@ -72,7 +72,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
 
     # Increase verbosity with every occurance of -v
-    parser.add_argument('-v', '--verbose', action="count", default=0)
+    parser.add_argument('-v', '--verbose', action='count', default=0)
 
     # Define for which player we're listening
     parser.add_argument('--player')
@@ -88,7 +88,7 @@ def main():
                         format='%(name)s %(levelname)s %(message)s')
 
     # Logging is set by default to WARN and higher.
-    # With every occurance of -v it's lowered by one
+    # With every occurrence of -v it's lowered by one
     logger.setLevel(max((3 - arguments.verbose) * 10, 0))
 
     # Log the sent command line arguments
@@ -115,6 +115,6 @@ def main():
     loop.run()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 
