@@ -56,8 +56,7 @@ void waybar::modules::Network::createInfoSocket()
     throw std::runtime_error("Can't connect network socket");
   }
   sa.nl_family = AF_NETLINK;
-  sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE
-    | RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
+  sa.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR;
   auto ret = bind(info_sock_, (struct sockaddr *)&sa, sizeof(sa));
   if (ret < 0) {
     throw std::runtime_error("Can't add membership");
