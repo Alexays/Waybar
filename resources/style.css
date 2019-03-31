@@ -30,7 +30,7 @@ window#waybar {
     border-bottom: 3px solid #ffffff;
 }
 
-#clock, #battery, #cpu, #memory, #temperature, #backlight, #network, #pulseaudio, #custom-spotify, #tray, #mode, #idle_inhibitor {
+#clock, #battery, #cpu, #memory, #temperature, #backlight, #network, #pulseaudio, #custom-media, #tray, #mode, #idle_inhibitor {
     padding: 0 10px;
     margin: 0 5px;
 }
@@ -97,9 +97,17 @@ window#waybar {
     color: #2a5c45;
 }
 
-#custom-spotify {
+#custom-media {
     background: #66cc99;
     color: #2a5c45;
+}
+
+.custom-spotify {
+    background: #66cc99;
+}
+
+.custom-vlc {
+    background: #ffa000;
 }
 
 #temperature {
