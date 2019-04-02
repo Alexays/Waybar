@@ -25,6 +25,10 @@ window#waybar {
     border-bottom: 3px solid #ffffff;
 }
 
+#workspaces button.urgent {
+    background-color: #eb4d4b;
+}
+
 #mode {
     background: #64727D;
     border-bottom: 3px solid #ffffff;
