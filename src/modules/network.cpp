@@ -396,21 +396,26 @@ int waybar::modules::Network::netlinkResponse(void *resp,
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
+  int ret = 0;
   auto net = static_cast<waybar::modules::Network *>(data);
   bool need_update = false;
-  nlmsghdr *nh = nlmsg_hdr(msg);
-  if (nh->nlmsg_type == RTM_NEWADDR) {
-    need_update = true;
-  }
-  if (nh->nlmsg_type < RTM_NEWADDR) {
-    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+  for (nlmsghdr *nh = nlmsg_hdr(msg); NLMSG_OK(nh, ret);
+    nh = NLMSG_NEXT(nh, ret)) {
+    if (nh->nlmsg_type == RTM_NEWADDR) {
       need_update = true;
-      if (!(rtif->ifi_flags & IFF_RUNNING)) {
-        net->disconnected();
-        net->dp.emit();
+    }
+    if (nh->nlmsg_type < RTM_NEWADDR) {
+      auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+      if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+        need_update = true;
+        if (!(rtif->ifi_flags & IFF_RUNNING)) {
+          net->disconnected();
+          net->dp.emit();
+          return NL_SKIP;
+        }
       }
     }
+    if (need_update) break;
   }
   if (net->ifid_ <= 0 && !net->config_["interface"].isString()) {
     for (uint8_t i = 0; i < MAX_RETRY; i += 1) {
