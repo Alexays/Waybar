@@ -14,6 +14,7 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Val
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
+  default_icon_path_ = Gtk::IconTheme::get_default()->get_search_path();
   event_box.add(image);
   event_box.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box.signal_button_press_event().connect(
@@ -94,7 +95,9 @@ waybar::modules::SNI::Item::setProperty(const ustring& name,
   } else if (name == "IconThemePath") {
     icon_theme_path = get_variant<std::string>(value);
     if (!icon_theme_path.empty()) {
-      icon_theme->set_search_path({icon_theme_path});
+      std::vector<Glib::ustring> paths(default_icon_path_);
+      paths.push_back(icon_theme_path);
+      icon_theme->set_search_path(paths);
     }
   } else if (name == "Menu") {
     menu = get_variant<std::string>(value);
