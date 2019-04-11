@@ -10,7 +10,13 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
       config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }
-
+#ifdef FILESYSTEM_EXPERIMENTAL
+  if (!std::experimental::filesystem::exists(file_path_)) {
+#else
+  if (!std::filesystem::exists(file_path_)) {
+#endif
+    throw std::runtime_error("Can't open " + file_path_);
+  }
   label_.set_name("temperature");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
