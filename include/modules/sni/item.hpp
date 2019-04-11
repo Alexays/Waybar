@@ -65,6 +65,7 @@ private:
 
   Glib::RefPtr<Gio::Cancellable> cancellable_;
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
+  std::vector<Glib::ustring> default_icon_path_;
   bool update_pending_;
 };
 
