@@ -38,6 +38,7 @@ public:
   int32_t window_id;
   std::string icon_name;
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
+  Glib::RefPtr<Gtk::IconTheme> icon_theme;
   std::string overlay_icon_name;
   std::string attention_icon_name;
   std::string attention_movie_name;
