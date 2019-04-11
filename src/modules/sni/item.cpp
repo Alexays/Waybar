@@ -10,7 +10,7 @@ static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
 waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Value& config)
     : bus_name(bn), object_path(op), icon_size(16), effective_icon_size(0),
-    update_pending_(false) {
+      icon_theme(Gtk::IconTheme::create()), update_pending_(false) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -44,10 +44,6 @@ void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& resu
       std::cerr << "Invalid Status Notifier Item: " + this->bus_name + "," +
         this->object_path << std::endl;
       return;
-    }
-    if (!this->icon_theme_path.empty()) {
-      Glib::RefPtr<Gtk::IconTheme> icon_theme = Gtk::IconTheme::get_default();
-      icon_theme->append_search_path(this->icon_theme_path);
     }
     this->updateImage();
     // this->event_box.set_tooltip_text(this->title);
@@ -97,6 +93,9 @@ waybar::modules::SNI::Item::setProperty(const ustring& name,
     // TODO: tooltip
   } else if (name == "IconThemePath") {
     icon_theme_path = get_variant<std::string>(value);
+    if (!icon_theme_path.empty()) {
+      icon_theme->set_search_path({icon_theme_path});
+    }
   } else if (name == "Menu") {
     menu = get_variant<std::string>(value);
   } else if (name == "ItemIsMenu") {
@@ -248,7 +247,6 @@ void waybar::modules::SNI::Item::updateImage()
 Glib::RefPtr<Gdk::Pixbuf>
 waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
   int tmp_size = 0;
-  Glib::RefPtr<Gtk::IconTheme> icon_theme = Gtk::IconTheme::get_default();
   icon_theme->rescan_if_needed();
   auto sizes = icon_theme->get_icon_sizes(name.c_str());
 
