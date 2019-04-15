@@ -81,13 +81,17 @@ auto waybar::modules::sway::Workspaces::update() -> void
         box_.reorder_child(button, getWorkspaceIndex(node["name"].asString()));
       }
       auto icon = getIcon(node["name"].asString(), node);
+      std::string output = icon;
       if (config_["format"].isString()) {
         auto format = config_["format"].asString();
-        button.set_label(fmt::format(format, fmt::arg("icon", icon),
+        output = fmt::format(format, fmt::arg("icon", icon),
           fmt::arg("name", trimWorkspaceName(node["name"].asString())),
-          fmt::arg("index", node["num"].asString())));
+          fmt::arg("index", node["num"].asString()));
+      }
+      if (!config_["disable-markup"].asBool()) {
+        static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(output);
       } else {
-        button.set_label(icon);
+        button.set_label(output);
       }
       onButtonReady(node, button);
     }
@@ -107,6 +111,9 @@ void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node)
     : icon;
   auto pair = buttons_.emplace(node["name"].asString(), format);
   auto &button = pair.first->second;
+  if (!config_["disable-markup"].asBool()) {
+    static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(format);
+  }
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {

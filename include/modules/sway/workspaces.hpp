@@ -8,6 +8,7 @@
 #include "IModule.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include <gtkmm/button.h>
+#include <gtkmm/label.h>
 
 namespace waybar::modules::sway {
 
