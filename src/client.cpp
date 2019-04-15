@@ -3,7 +3,7 @@
 #include <iostream>
 
 waybar::Client::Client(int argc, char* argv[])
-  : gtk_main(argc, argv),
+  : gtk_app(Gtk::Application::create(argc, argv, "fr.arouillard.waybar")),
     gdk_display(Gdk::Display::get_default())
 {
   if (!gdk_display) {
@@ -140,7 +140,8 @@ int waybar::Client::main(int argc, char* argv[])
   }
   setupConfigs(config, style);
   bindInterfaces();
-  gtk_main.run();
+  gtk_app->hold();
+  gtk_app->run();
   bars.clear();
   zxdg_output_manager_v1_destroy(xdg_output_manager);
   zwlr_layer_shell_v1_destroy(layer_shell);
