@@ -108,15 +108,12 @@ auto waybar::modules::Custom::update() -> void
         label_.set_tooltip_text(tooltip_);
       }
     }
-    if (class_ != "") {
-      if (prevclass_ != "") {
-        label_.get_style_context()->remove_class(prevclass_);
-      }
-      label_.get_style_context()->add_class(class_);
-      prevclass_ = class_;
-    } else {
-      label_.get_style_context()->remove_class(prevclass_);
-      prevclass_ = "";
+    auto classes = label_.get_style_context()->list_classes();
+    for (auto const &c : classes) {
+      label_.get_style_context()->remove_class(c);
+    }
+    for (auto const &c : class_) {
+      label_.get_style_context()->add_class(c);
     }
 
     event_box_.show();
@@ -136,11 +133,11 @@ void waybar::modules::Custom::parseOutputRaw()
         text_ = line;
       }
       tooltip_ = line;
-      class_ = "";
+      class_.clear();
     } else if (i == 1) {
       tooltip_ = line;
     } else if (i == 2) {
-      class_ = line;
+      class_.push_back(line);
     } else {
       break;
     }
@@ -152,6 +149,7 @@ void waybar::modules::Custom::parseOutputJson()
 {
   std::istringstream output(output_.out);
   std::string line;
+  class_.clear();
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
     if (config_["escape"].isBool() && config_["escape"].asBool()) {
@@ -165,7 +163,13 @@ void waybar::modules::Custom::parseOutputJson()
       alt_ = parsed["alt"].asString();
     }
     tooltip_ = parsed["tooltip"].asString();
-    class_ = parsed["class"].asString();
+    if (parsed["class"].isString()) {
+      class_.push_back(parsed["class"].asString());
+    } else if (parsed["class"].isArray()) {
+      for (auto const &c : parsed["class"]) {
+        class_.push_back(c.asString());
+      }
+    }
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
       percentage_ = parsed["percentage"].asUInt();
     } else {
