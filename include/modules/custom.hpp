@@ -26,8 +26,7 @@ class Custom : public ALabel {
     std::string text_;
     std::string alt_;
     std::string tooltip_;
-    std::string class_;
-    std::string prevclass_;
+    std::vector<std::string> class_;
     int percentage_;
     waybar::util::SleeperThread thread_;
     waybar::util::command::res output_;
