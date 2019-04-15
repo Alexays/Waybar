@@ -258,8 +258,11 @@ waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
     if (size == request_size || size == -1) {
       tmp_size = request_size;
       break;
-    } else if (size < request_size || (size > tmp_size && tmp_size > 0)) {
+    } else if (size < request_size) {
       tmp_size = size;
+    } else if (size > tmp_size && tmp_size > 0) {
+      tmp_size = request_size;
+      break;
     }
   }
   if (tmp_size == 0) {
