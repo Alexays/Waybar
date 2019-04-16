@@ -1,5 +1,4 @@
 # Waybar [![Travis](https://travis-ci.org/Alexays/Waybar.svg?branch=master)](https://travis-ci.org/Alexays/Waybar) [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
-**Proof of concept**
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
 > Available in Arch [community](https://www.archlinux.org/packages/community/x86_64/waybar/) or
@@ -7,7 +6,7 @@
 
 **Current features**
 - Sway (Workspaces, Binding mode, Focused window name)
-- Tray (Beta) [#21](https://github.com/Alexays/Waybar/issues/21)
+- Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
 - Battery
 - Network
