@@ -23,6 +23,9 @@
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
+#ifdef HAVE_LIBMPDCLIENT
+#include "modules/mpd.hpp"
+#endif
 #include "modules/temperature.hpp"
 #include "modules/custom.hpp"
 

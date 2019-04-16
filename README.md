@@ -14,6 +14,7 @@
 - Memory
 - Cpu load average
 - Temperature
+- MPD
 - Custom scripts
 - Multiple output configuration
 - And much more customizations
@@ -49,6 +50,7 @@ libpulse [Pulseaudio module]
 libnl [Network module]
 sway [Sway modules]
 libdbusmenu-gtk3 [Tray module]
+libmpdclient [MPD module]
 ```
 
 Contributions welcome! - have fun :)<br>
