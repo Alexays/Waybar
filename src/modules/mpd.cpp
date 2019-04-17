@@ -59,6 +59,14 @@ void waybar::modules::MPD::setLabel() {
     auto format = config_["format-disconnected"].isString() ?
       config_["format-disconnected"].asString() : "disconnected";
     label_.set_markup(format);
+
+    if (tooltipEnabled()) {
+      std::string tooltip_format;
+      tooltip_format = config_["tooltip-format-disconnected"].isString() ?
+        config_["tooltip-format-disconnected"].asString() : "MPD (disconnected)";
+      // Nothing to format
+      label_.set_tooltip_text(tooltip_format);
+    }
     return;
   } else {
     label_.get_style_context()->remove_class("disconnected");
@@ -92,7 +100,7 @@ void waybar::modules::MPD::setLabel() {
   if (tooltipEnabled()) {
     std::string tooltip_format;
     tooltip_format = config_["tooltip-format"].isString() ?
-      config_["tooltip-format"].asString() : "MPD";
+      config_["tooltip-format"].asString() : "MPD (connected)";
     auto tooltip_text = fmt::format(tooltip_format,
         fmt::arg("artist", artist),
         fmt::arg("album-artist", album_artist),
