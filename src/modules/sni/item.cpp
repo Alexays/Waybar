@@ -1,7 +1,7 @@
 #include "modules/sni/item.hpp"
 
-#include <iostream>
 #include <glibmm/main.h>
+#include <iostream>
 
 using namespace Glib;
 
@@ -9,23 +9,26 @@ static const ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
 waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Value& config)
-    : bus_name(bn), object_path(op), icon_size(16), effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()), update_pending_(false) {
+    : bus_name(bn),
+      object_path(op),
+      icon_size(16),
+      effective_icon_size(0),
+      icon_theme(Gtk::IconTheme::create()),
+      update_pending_(false) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
   default_icon_path_ = Gtk::IconTheme::get_default()->get_search_path();
   event_box.add(image);
   event_box.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box.signal_button_press_event().connect(
-      sigc::mem_fun(*this, &Item::handleClick));
+  event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
 
   cancellable_ = Gio::Cancellable::create();
 
   auto interface = Glib::wrap(sn_item_interface_info(), true);
-  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name,
-      object_path, SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
-      cancellable_, interface);
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
+                                   SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
+                                   cancellable_, interface);
 }
 
 void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
@@ -33,7 +36,7 @@ void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& resu
     this->proxy_ = Gio::DBus::Proxy::create_for_bus_finish(result);
     /* Properties are already cached during object creation */
     auto cached_properties = this->proxy_->get_cached_property_names();
-    for (const auto& name: cached_properties) {
+    for (const auto& name : cached_properties) {
       Glib::VariantBase value;
       this->proxy_->get_cached_property(value, name);
       setProperty(name, value);
@@ -42,30 +45,28 @@ void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& resu
     this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
 
     if (this->id.empty() || this->category.empty() || this->status.empty()) {
-      std::cerr << "Invalid Status Notifier Item: " + this->bus_name + "," +
-        this->object_path << std::endl;
+      std::cerr << "Invalid Status Notifier Item: " + this->bus_name + "," + this->object_path
+                << std::endl;
       return;
     }
     this->updateImage();
     // this->event_box.set_tooltip_text(this->title);
 
   } catch (const Glib::Error& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(),
-        object_path.c_str(), err.what().c_str());
+    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(), object_path.c_str(),
+            err.what().c_str());
   } catch (const std::exception& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(),
-        object_path.c_str(), err.what());
+    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(), object_path.c_str(),
+            err.what());
   }
 }
 
-template<typename T>
+template <typename T>
 T get_variant(VariantBase& value) {
-    return VariantBase::cast_dynamic<Variant<T>>(value).get();
+  return VariantBase::cast_dynamic<Variant<T>>(value).get();
 }
 
-void
-waybar::modules::SNI::Item::setProperty(const ustring& name,
-    VariantBase& value) {
+void waybar::modules::SNI::Item::setProperty(const ustring& name, VariantBase& value) {
   if (name == "Category") {
     category = get_variant<std::string>(value);
   } else if (name == "Id") {
@@ -106,20 +107,15 @@ waybar::modules::SNI::Item::setProperty(const ustring& name,
   }
 }
 
-void
-waybar::modules::SNI::Item::getUpdatedProperties() {
+void waybar::modules::SNI::Item::getUpdatedProperties() {
   update_pending_ = false;
 
-  auto params = VariantContainerBase::create_tuple({
-    Variant<ustring>::create(SNI_INTERFACE_NAME)
-  });
+  auto params = VariantContainerBase::create_tuple({Variant<ustring>::create(SNI_INTERFACE_NAME)});
   proxy_->call("org.freedesktop.DBus.Properties.GetAll",
-      sigc::mem_fun(*this, &Item::processUpdatedProperties), params);
+               sigc::mem_fun(*this, &Item::processUpdatedProperties), params);
 };
 
-void
-waybar::modules::SNI::Item::processUpdatedProperties(
-    Glib::RefPtr<Gio::AsyncResult>& _result) {
+void waybar::modules::SNI::Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
   try {
     auto result = proxy_->call_finish(_result);
     // extract "a{sv}" from VariantContainerBase
@@ -127,7 +123,7 @@ waybar::modules::SNI::Item::processUpdatedProperties(
     result.get_child(properties_variant);
     auto properties = properties_variant.get();
 
-    for (const auto& [name, value]: properties) {
+    for (const auto& [name, value] : properties) {
       VariantBase old_value;
       proxy_->get_cached_property(old_value, name);
       if (!value.equal(old_value)) {
@@ -145,41 +141,34 @@ waybar::modules::SNI::Item::processUpdatedProperties(
   }
 }
 
-void
-waybar::modules::SNI::Item::onSignal(const ustring& sender_name,
-    const ustring& signal_name, const VariantContainerBase& arguments) {
+void waybar::modules::SNI::Item::onSignal(const ustring& sender_name, const ustring& signal_name,
+                                          const VariantContainerBase& arguments) {
   if (!update_pending_ && signal_name.compare(0, 3, "New") == 0) {
     /* Debounce signals and schedule update of all properties.
      * Based on behavior of Plasma dataengine for StatusNotifierItem.
      */
     update_pending_ = true;
-    Glib::signal_timeout().connect_once(
-        sigc::mem_fun(*this, &Item::getUpdatedProperties), UPDATE_DEBOUNCE_TIME);
+    Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &Item::getUpdatedProperties),
+                                        UPDATE_DEBOUNCE_TIME);
   }
 }
 
+static void pixbuf_data_deleter(const guint8* data) { g_free((void*)data); }
 
-static void
-pixbuf_data_deleter(const guint8* data) {
-  g_free((void*) data);
-}
-
-Glib::RefPtr<Gdk::Pixbuf>
-waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
-  GVariantIter *it;
+Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::extractPixBuf(GVariant* variant) {
+  GVariantIter* it;
   g_variant_get(variant, "a(iiay)", &it);
   if (it == nullptr) {
     return Glib::RefPtr<Gdk::Pixbuf>{};
   }
-  GVariant *val;
+  GVariant* val;
   gint lwidth = 0;
   gint lheight = 0;
   gint width;
   gint height;
-  guchar *array = nullptr;
+  guchar* array = nullptr;
   while (g_variant_iter_loop(it, "(ii@ay)", &width, &height, &val)) {
-    if (width > 0 && height > 0 && val != nullptr &&
-        width * height > lwidth * lheight) {
+    if (width > 0 && height > 0 && val != nullptr && width * height > lwidth * lheight) {
       auto size = g_variant_get_size(val);
       /* Sanity check */
       if (size == 4U * width * height) {
@@ -189,7 +178,7 @@ waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
           if (array != nullptr) {
             g_free(array);
           }
-          array = static_cast<guchar *>(g_memdup(data, size));
+          array = static_cast<guchar*>(g_memdup(data, size));
           lwidth = width;
           lheight = height;
         }
@@ -206,15 +195,13 @@ waybar::modules::SNI::Item::extractPixBuf(GVariant *variant) {
       array[i + 2] = array[i + 3];
       array[i + 3] = alpha;
     }
-    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB,
-                                         true, 8, lwidth, lheight, 4 * lwidth,
-                                         &pixbuf_data_deleter);
+    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
+                                         lheight, 4 * lwidth, &pixbuf_data_deleter);
   }
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
 
-void waybar::modules::SNI::Item::updateImage()
-{
+void waybar::modules::SNI::Item::updateImage() {
   image.set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
   image.set_pixel_size(icon_size);
   if (!icon_name.empty()) {
@@ -229,31 +216,29 @@ void waybar::modules::SNI::Item::updateImage()
         if (pixbuf->gobj() != nullptr) {
           // An icon specified by path and filename may be the wrong size for
           // the tray
-          pixbuf = pixbuf->scale_simple(icon_size, icon_size,
-            Gdk::InterpType::INTERP_BILINEAR);
+          pixbuf = pixbuf->scale_simple(icon_size, icon_size, Gdk::InterpType::INTERP_BILINEAR);
           image.set(pixbuf);
         }
       } else {
         image.set(getIconByName(icon_name, icon_size));
       }
-    } catch (Glib::Error &e) {
+    } catch (Glib::Error& e) {
       std::cerr << "Exception: " << e.what() << std::endl;
     }
   } else if (icon_pixmap) {
     // An icon extracted may be the wrong size for the tray
-    icon_pixmap = icon_pixmap->scale_simple(icon_size, icon_size,
-      Gdk::InterpType::INTERP_BILINEAR);
+    icon_pixmap = icon_pixmap->scale_simple(icon_size, icon_size, Gdk::InterpType::INTERP_BILINEAR);
     image.set(icon_pixmap);
   }
 }
 
-Glib::RefPtr<Gdk::Pixbuf>
-waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
+Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(std::string name,
+                                                                    int request_size) {
   int tmp_size = 0;
   icon_theme->rescan_if_needed();
   auto sizes = icon_theme->get_icon_sizes(name.c_str());
 
-  for (auto const &size : sizes) {
+  for (auto const& size : sizes) {
     // -1 == scalable
     if (size == request_size || size == -1) {
       tmp_size = request_size;
@@ -269,17 +254,15 @@ waybar::modules::SNI::Item::getIconByName(std::string name, int request_size) {
     tmp_size = request_size;
   }
   return icon_theme->load_icon(name.c_str(), tmp_size,
-    Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
-void waybar::modules::SNI::Item::onMenuDestroyed(Item *self)
-{
+void waybar::modules::SNI::Item::onMenuDestroyed(Item* self) {
   self->gtk_menu = nullptr;
   self->dbus_menu = nullptr;
 }
 
-bool waybar::modules::SNI::Item::makeMenu(GdkEventButton *const &ev)
-{
+bool waybar::modules::SNI::Item::makeMenu(GdkEventButton* const& ev) {
   if (gtk_menu == nullptr) {
     if (!menu.empty()) {
       dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
@@ -302,11 +285,9 @@ bool waybar::modules::SNI::Item::makeMenu(GdkEventButton *const &ev)
   return false;
 }
 
-bool waybar::modules::SNI::Item::handleClick(GdkEventButton *const &ev) {
-  auto parameters = VariantContainerBase::create_tuple({
-    Variant<int>::create(ev->x),
-    Variant<int>::create(ev->y)
-  });
+bool waybar::modules::SNI::Item::handleClick(GdkEventButton* const& ev) {
+  auto parameters = VariantContainerBase::create_tuple(
+      {Variant<int>::create(ev->x), Variant<int>::create(ev->y)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     if (!makeMenu(ev)) {
       proxy_->call("ContextMenu", parameters);
