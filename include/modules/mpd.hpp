@@ -14,8 +14,11 @@ class MPD : public ALabel {
   private:
     std::thread worker();
     void setLabel();
+    std::string getStateIcon();
+
     void tryConnect();
     void checkErrors();
+
     void fetchState();
     void waitForEvent();
 
@@ -28,10 +31,11 @@ class MPD : public ALabel {
     // Not using unique_ptr since we don't manage the pointer
     // (It's either nullptr, or from the config)
     const char* server_;
-    unsigned port_;
+    const unsigned port_;
 
     unique_connection connection_;
     unique_status     status_;
+    mpd_state         state_;
     unique_song       song_;
 
     bool stopped_;

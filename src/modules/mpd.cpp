@@ -77,12 +77,15 @@ void waybar::modules::MPD::setLabel() {
 
   std::string artist, album_artist, album, title, date;
 
+  std::string stateIcon = "";
   if (stopped_) {
     format = config_["format-stopped"].isString() ?
       config_["format-stopped"].asString() : "stopped";
     label_.get_style_context()->add_class("stopped");
   } else {
     label_.get_style_context()->remove_class("stopped");
+
+    stateIcon = getStateIcon();
 
     artist       = mpd_song_get_tag(song_.get(), MPD_TAG_ARTIST, 0);
     album_artist = mpd_song_get_tag(song_.get(), MPD_TAG_ALBUM_ARTIST, 0);
@@ -91,12 +94,14 @@ void waybar::modules::MPD::setLabel() {
     date         = mpd_song_get_tag(song_.get(), MPD_TAG_DATE, 0);
   }
 
+  // TODO: format can fail
   label_.set_markup(fmt::format(format,
         fmt::arg("artist", artist),
-        fmt::arg("album-artist", album_artist),
+        fmt::arg("albumArtist", album_artist),
         fmt::arg("album", album),
         fmt::arg("title", title),
-        fmt::arg("date", date)));
+        fmt::arg("date", date),
+        fmt::arg("stateIcon", stateIcon)));
 
   if (tooltipEnabled()) {
     std::string tooltip_format;
@@ -104,11 +109,36 @@ void waybar::modules::MPD::setLabel() {
       config_["tooltip-format"].asString() : "MPD (connected)";
     auto tooltip_text = fmt::format(tooltip_format,
         fmt::arg("artist", artist),
-        fmt::arg("album-artist", album_artist),
+        fmt::arg("albumArtist", album_artist),
         fmt::arg("album", album),
         fmt::arg("title", title),
-        fmt::arg("date", date));
+        fmt::arg("date", date),
+        fmt::arg("stateIcon", stateIcon));
     label_.set_tooltip_text(tooltip_text);
+  }
+}
+
+std::string waybar::modules::MPD::getStateIcon() {
+  if (!config_["state-icons"].isObject()) {
+    std::cerr << "No state icons defined" << std::endl;
+    return "";
+  }
+
+  if (connection_ == nullptr) {
+    std::cerr << "MPD: Trying to fetch state icon while disconnected" << std::endl;
+    return "";
+  }
+
+  if (stopped_) {
+    std::cerr << "MPD: Trying to fetch state icon while stopped" << std::endl;
+    return "";
+  }
+
+  if (state_ == MPD_STATE_PLAY) {
+    return config_["state-icons"]["playing"].asString();
+  } else {
+    // MPD_STATE_PAUSE
+    return config_["state-icons"]["paused"].asString();
   }
 }
 
@@ -156,9 +186,9 @@ void waybar::modules::MPD::checkErrors() {
 void waybar::modules::MPD::fetchState() {
     status_ = unique_status(mpd_run_status(connection_.get()), &mpd_status_free);
     checkErrors();
-    mpd_state state = mpd_status_get_state(status_.get());
+    state_ = mpd_status_get_state(status_.get());
     checkErrors();
-    stopped_ = state == MPD_STATE_UNKNOWN || state == MPD_STATE_STOP;
+    stopped_ = state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP;
 
     mpd_send_current_song(connection_.get());
     song_ = unique_song(mpd_recv_song(connection_.get()), &mpd_song_free);
