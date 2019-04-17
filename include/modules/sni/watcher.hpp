@@ -1,17 +1,17 @@
 #pragma once
 
+#include <dbus-status-notifier-watcher.h>
 #include <giomm.h>
 #include <glibmm/refptr.h>
-#include <dbus-status-notifier-watcher.h>
 
 namespace waybar::modules::SNI {
 
 class Watcher {
-public:
+ public:
   Watcher();
-  ~Watcher() = default;
+  ~Watcher();
 
-private:
+ private:
   typedef enum { GF_WATCH_TYPE_HOST, GF_WATCH_TYPE_ITEM } GfWatchType;
 
   typedef struct {
@@ -23,17 +23,13 @@ private:
     guint watch_id;
   } GfWatch;
 
-  void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
-  static gboolean handleRegisterHost(Watcher *, GDBusMethodInvocation *,
-                                     const gchar *);
-  static gboolean handleRegisterItem(Watcher *, GDBusMethodInvocation *,
-                                     const gchar *);
-  static GfWatch *gfWatchFind(GSList *list, const gchar *bus_name,
-                              const gchar *object_path);
-  static GfWatch *gfWatchNew(GfWatchType, const gchar *, const gchar *,
-                             const gchar *, Watcher *);
-  static void nameVanished(GDBusConnection *connection, const char *name,
-                           gpointer data);
+  void busAcquired(const Glib::RefPtr<Gio::DBus::Connection> &, Glib::ustring);
+  static gboolean handleRegisterHost(Watcher *, GDBusMethodInvocation *, const gchar *);
+  static gboolean handleRegisterItem(Watcher *, GDBusMethodInvocation *, const gchar *);
+  static GfWatch *gfWatchFind(GSList *list, const gchar *bus_name, const gchar *object_path);
+  static GfWatch *gfWatchNew(GfWatchType, const gchar *, const gchar *, const gchar *, Watcher *);
+  static void nameVanished(GDBusConnection *connection, const char *name, gpointer data);
+  static void gfWatchFree(gpointer data);
 
   void updateRegisteredItems(SnWatcher *obj);
 
@@ -42,7 +38,8 @@ private:
   GSList *hosts_ = nullptr;
   GSList *items_ = nullptr;
   SnWatcher *watcher_ = nullptr;
+  gulong handler_item_id_;
+  gulong handler_host_id_;
 };
 
-} // namespace waybar::modules::SNI
-
+}  // namespace waybar::modules::SNI
