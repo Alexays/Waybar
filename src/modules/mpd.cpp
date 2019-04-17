@@ -7,6 +7,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
       server_(nullptr),
       port_(config["port"].asUInt()),
       connection_(nullptr, &mpd_connection_free),
+      alternate_connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
       song_(nullptr, &mpd_song_free) {
   label_.set_name("mpd");
@@ -19,6 +20,10 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
   }
 
   worker_ = worker();
+
+  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
+  event_box_.signal_button_press_event().connect(
+      sigc::mem_fun(*this, &MPD::handlePlayPause));
 }
 
 auto waybar::modules::MPD::update() -> void {
@@ -184,8 +189,14 @@ void waybar::modules::MPD::tryConnect() {
       mpd_connection_new(server_, port_, 5'000),
       &mpd_connection_free);
 
-  if (connection_ == nullptr) {
+  alternate_connection_ = unique_connection(
+      mpd_connection_new(server_, port_, 5'000),
+      &mpd_connection_free);
+
+  if (connection_ == nullptr || alternate_connection_ == nullptr) {
     std::cerr << "Failed to connect to MPD" << std::endl;
+    connection_.reset();
+    alternate_connection_.reset();
     return;
   }
 
@@ -194,6 +205,7 @@ void waybar::modules::MPD::tryConnect() {
   } catch (std::runtime_error e) {
     std::cerr << "Failed to connect to MPD: " << e.what() << std::endl;
     connection_.reset();
+    alternate_connection_.reset();
   }
 
 }
@@ -208,6 +220,7 @@ void waybar::modules::MPD::checkErrors() {
       std::cerr << "Connection to MPD closed" << std::endl;
       mpd_connection_clear_error(conn);
       connection_.reset();
+      alternate_connection_.reset();
       return;
     default:
       auto error_message = mpd_connection_get_error_message(conn);
@@ -232,4 +245,22 @@ void waybar::modules::MPD::waitForEvent() {
   // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist change
   mpd_run_idle_mask(conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST));
   checkErrors();
+}
+
+bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
+  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || alternate_connection_ == nullptr) {
+    return false;
+  }
+
+  if (e->button == 1) {
+    if (stopped_) {
+      mpd_run_play(alternate_connection_.get());
+    } else {
+      mpd_run_toggle_pause(alternate_connection_.get());
+    }
+  } else if (e->button == 3) {
+    mpd_run_stop(alternate_connection_.get());
+  }
+
+  return true;
 }

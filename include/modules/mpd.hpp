@@ -23,6 +23,8 @@ class MPD : public ALabel {
     void fetchState();
     void waitForEvent();
 
+    bool handlePlayPause(GdkEventButton* const&);
+
     std::thread worker_;
 
     using unique_connection = std::unique_ptr<mpd_connection, decltype(&mpd_connection_free)>;
@@ -35,6 +37,9 @@ class MPD : public ALabel {
     const unsigned port_;
 
     unique_connection connection_;
+    // Use two connections because the main one will be blocking most of the time.
+    // Used to send play/pause events and poll elapsed time.
+    unique_connection alternate_connection_;
     unique_status     status_;
     mpd_state         state_;
     unique_song       song_;
