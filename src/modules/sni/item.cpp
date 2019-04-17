@@ -19,6 +19,7 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Val
     icon_size = config["icon-size"].asUInt();
   }
   default_icon_path_ = Gtk::IconTheme::get_default()->get_search_path();
+  icon_theme->set_search_path(default_icon_path_);
   event_box.add(image);
   event_box.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
