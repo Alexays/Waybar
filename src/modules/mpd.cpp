@@ -3,8 +3,9 @@
 #include <iostream>
 
 waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
-    : ALabel(config, "{album} - {artist} - {title}", 2),
-      server(nullptr),
+    : ALabel(config, "{album} - {artist} - {title}", 5),
+      server_(nullptr),
+      port_(config["port"].asUInt()),
       connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
       song_(nullptr, &mpd_song_free) {
@@ -14,7 +15,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
   }
 
   if (!config["server"].isNull()) {
-    server = config["server"].asCString();
+    server_ = config["server"].asCString();
   }
 
   worker_ = worker();
@@ -40,7 +41,7 @@ std::thread waybar::modules::MPD::worker() {
         if (connection_ == nullptr) {
           // Retry periodically if no connection
           update();
-          std::this_thread::sleep_for(std::chrono::seconds(2));
+          std::this_thread::sleep_for(interval_);
         } else {
           // Else, update on any event
           waitForEvent();
@@ -117,7 +118,7 @@ void waybar::modules::MPD::tryConnect() {
   }
 
   connection_ = unique_connection(
-      mpd_connection_new(server, config_["port"].asUInt(), 5'000),
+      mpd_connection_new(server_, port_, 5'000),
       &mpd_connection_free);
 
   if (connection_ == nullptr) {

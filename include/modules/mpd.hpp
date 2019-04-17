@@ -27,7 +27,8 @@ class MPD : public ALabel {
 
     // Not using unique_ptr since we don't manage the pointer
     // (It's either nullptr, or from the config)
-    const char* server;
+    const char* server_;
+    unsigned port_;
 
     unique_connection connection_;
     unique_status     status_;
