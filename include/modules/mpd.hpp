@@ -15,6 +15,7 @@ class MPD : public ALabel {
     std::thread worker();
     void setLabel();
     std::string getStateIcon();
+    std::string getOptionIcon(std::string optionName, bool activated);
 
     void tryConnect();
     void checkErrors();
@@ -26,7 +27,7 @@ class MPD : public ALabel {
 
     using unique_connection = std::unique_ptr<mpd_connection, decltype(&mpd_connection_free)>;
     using unique_status     = std::unique_ptr<mpd_status, decltype(&mpd_status_free)>;
-    using unique_song      = std::unique_ptr<mpd_song, decltype(&mpd_song_free)>;
+    using unique_song       = std::unique_ptr<mpd_song, decltype(&mpd_song_free)>;
 
     // Not using unique_ptr since we don't manage the pointer
     // (It's either nullptr, or from the config)

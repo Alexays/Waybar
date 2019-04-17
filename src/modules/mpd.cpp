@@ -94,6 +94,15 @@ void waybar::modules::MPD::setLabel() {
     date         = mpd_song_get_tag(song_.get(), MPD_TAG_DATE, 0);
   }
 
+  bool consumeActivated = mpd_status_get_consume(status_.get());
+  std::string consumeIcon = getOptionIcon("consume", consumeActivated);
+  bool randomActivated = mpd_status_get_random(status_.get());
+  std::string randomIcon = getOptionIcon("random", randomActivated);
+  bool repeatActivated = mpd_status_get_repeat(status_.get());
+  std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
+  bool singleActivated = mpd_status_get_single(status_.get());
+  std::string singleIcon = getOptionIcon("single", singleActivated);
+
   // TODO: format can fail
   label_.set_markup(fmt::format(format,
         fmt::arg("artist", artist),
@@ -101,7 +110,11 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("album", album),
         fmt::arg("title", title),
         fmt::arg("date", date),
-        fmt::arg("stateIcon", stateIcon)));
+        fmt::arg("stateIcon", stateIcon),
+        fmt::arg("consumeIcon", consumeIcon),
+        fmt::arg("randomIcon", randomIcon),
+        fmt::arg("repeatIcon", repeatIcon),
+        fmt::arg("singleIcon", singleIcon)));
 
   if (tooltipEnabled()) {
     std::string tooltip_format;
@@ -113,14 +126,17 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("album", album),
         fmt::arg("title", title),
         fmt::arg("date", date),
-        fmt::arg("stateIcon", stateIcon));
+        fmt::arg("stateIcon", stateIcon),
+        fmt::arg("consumeIcon", consumeIcon),
+        fmt::arg("randomIcon", randomIcon),
+        fmt::arg("repeatIcon", repeatIcon),
+        fmt::arg("singleIcon", singleIcon));
     label_.set_tooltip_text(tooltip_text);
   }
 }
 
 std::string waybar::modules::MPD::getStateIcon() {
   if (!config_["state-icons"].isObject()) {
-    std::cerr << "No state icons defined" << std::endl;
     return "";
   }
 
@@ -139,6 +155,23 @@ std::string waybar::modules::MPD::getStateIcon() {
   } else {
     // MPD_STATE_PAUSE
     return config_["state-icons"]["paused"].asString();
+  }
+}
+
+std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool activated) {
+  if (!config_[optionName + "-icons"].isObject()) {
+    return "";
+  }
+
+  if (connection_ == nullptr) {
+    std::cerr << "MPD: Trying to fetch option icon while disconnected" << std::endl;
+    return "";
+  }
+
+  if (activated) {
+    return config_[optionName + "-icons"]["on"].asString();
+  } else {
+    return config_[optionName + "-icons"]["off"].asString();
   }
 }
 
@@ -190,14 +223,13 @@ void waybar::modules::MPD::fetchState() {
     checkErrors();
     stopped_ = state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP;
 
-    mpd_send_current_song(connection_.get());
-    song_ = unique_song(mpd_recv_song(connection_.get()), &mpd_song_free);
-    mpd_response_finish(connection_.get());
+    song_ = unique_song(mpd_run_current_song(connection_.get()), &mpd_song_free);
     checkErrors();
 }
 
 void waybar::modules::MPD::waitForEvent() {
   auto conn = connection_.get();
-  mpd_run_idle_mask(conn, MPD_IDLE_PLAYER /* | MPD_IDLE_OPTIONS */);
+  // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist change
+  mpd_run_idle_mask(conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST));
   checkErrors();
 }
