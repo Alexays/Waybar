@@ -28,9 +28,10 @@ waybar::Bar::Bar(const Client& client,
   setupConfig();
   setupCss();
 
-  auto wrap = reinterpret_cast<GtkWidget*>(window.gobj());
-  gtk_widget_realize(wrap);
-  GdkWindow *gdk_window = gtk_widget_get_window(wrap);
+  auto gtk_window = window.gobj();
+  auto gtk_widget = GTK_WIDGET(gtk_window);
+  gtk_widget_realize(gtk_widget);
+  auto gdk_window = window.get_window()->gobj();
   gdk_wayland_window_set_use_custom_surface(gdk_window);
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 }
