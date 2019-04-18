@@ -1,5 +1,6 @@
 #pragma once
 
+#include <condition_variable>
 #include <thread>
 #include <fmt/format.h>
 #include <mpd/client.h>
@@ -12,20 +13,27 @@ class MPD : public ALabel {
     MPD(const std::string&, const Json::Value&);
     auto update() -> void;
   private:
-    std::thread worker();
+    std::thread periodic_updater();
     void setLabel();
     std::string getStateIcon();
     std::string getOptionIcon(std::string optionName, bool activated);
 
-    void tryConnect();
-    void checkErrors();
+    std::thread event_listener();
 
+    // Assumes `connection_lock_` is locked
+    void tryConnect();
+    // If checking errors on the main connection, make sure to lock it using
+    // `connection_lock_` before calling checkErrors
+    void checkErrors(mpd_connection* conn);
+
+    // Assumes `connection_lock_` is locked
     void fetchState();
     void waitForEvent();
 
     bool handlePlayPause(GdkEventButton* const&);
 
-    std::thread worker_;
+    bool stopped();
+    bool playing();
 
     using unique_connection = std::unique_ptr<mpd_connection, decltype(&mpd_connection_free)>;
     using unique_status     = std::unique_ptr<mpd_status, decltype(&mpd_status_free)>;
@@ -36,15 +44,21 @@ class MPD : public ALabel {
     const char* server_;
     const unsigned port_;
 
+    // We need a mutex here because we can trigger updates from multiple thread:
+    // the event based updates, the periodic updates needed for the elapsed time,
+    // and the click play/pause feature
+    std::mutex connection_lock_;
     unique_connection connection_;
-    // Use two connections because the main one will be blocking most of the time.
-    // Used to send play/pause events and poll elapsed time.
+    // The alternate connection will be used to wait for events: since it will
+    // be blocking (idle) we can't send commands via this connection
+    //
+    // No lock since only used in the event listener thread
     unique_connection alternate_connection_;
+
+    // Protect them using the `connection_lock_`
     unique_status     status_;
     mpd_state         state_;
     unique_song       song_;
-
-    bool stopped_;
 };
 
 }  // namespace waybar::modules

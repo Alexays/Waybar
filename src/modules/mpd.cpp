@@ -1,5 +1,7 @@
 #include "modules/mpd.hpp"
 
+#include <fmt/chrono.h>
+
 #include <iostream>
 
 waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
@@ -19,7 +21,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
     server_ = config["server"].asCString();
   }
 
-  worker_ = worker();
+  event_listener().detach();
 
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
@@ -27,32 +29,45 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
 }
 
 auto waybar::modules::MPD::update() -> void {
+  std::lock_guard guard(connection_lock_);
   tryConnect();
 
   if (connection_ != nullptr) {
     try {
+      bool wasPlaying = playing();
       fetchState();
+      if (!wasPlaying && playing()) {
+        periodic_updater().detach();
+      }
     } catch (std::exception e) {
-      stopped_ = true;
+      state_ = MPD_STATE_UNKNOWN;
     }
   }
 
   setLabel();
 }
 
-std::thread waybar::modules::MPD::worker() {
-  return std::thread([this] () {
-      while (true) {
-        if (connection_ == nullptr) {
-          // Retry periodically if no connection
-          update();
-          std::this_thread::sleep_for(interval_);
-        } else {
-          // Else, update on any event
-          waitForEvent();
-          update();
-        }
+std::thread waybar::modules::MPD::event_listener() {
+  return std::thread([this] {
+    while (true) {
+      if (connection_ == nullptr) {
+        // Retry periodically if no connection
+        update();
+        std::this_thread::sleep_for(interval_);
+      } else {
+        waitForEvent();
+        dp.emit();
       }
+    }
+  });
+}
+
+std::thread waybar::modules::MPD::periodic_updater() {
+  return std::thread([this] {
+    while (connection_ != nullptr && playing()) {
+      dp.emit();
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
   });
 }
 
@@ -81,9 +96,10 @@ void waybar::modules::MPD::setLabel() {
   auto format = format_;
 
   std::string artist, album_artist, album, title, date;
+  std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
-  if (stopped_) {
+  if (stopped()) {
     format = config_["format-stopped"].isString() ?
       config_["format-stopped"].asString() : "stopped";
     label_.get_style_context()->add_class("stopped");
@@ -97,6 +113,8 @@ void waybar::modules::MPD::setLabel() {
     album        = mpd_song_get_tag(song_.get(), MPD_TAG_ALBUM, 0);
     title        = mpd_song_get_tag(song_.get(), MPD_TAG_TITLE, 0);
     date         = mpd_song_get_tag(song_.get(), MPD_TAG_DATE, 0);
+    elapsedTime  = std::chrono::seconds(mpd_status_get_elapsed_time(status_.get()));
+    totalTime    = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
   }
 
   bool consumeActivated = mpd_status_get_consume(status_.get());
@@ -115,6 +133,8 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("album", album),
         fmt::arg("title", title),
         fmt::arg("date", date),
+        fmt::arg("elapsedTime", elapsedTime),
+        fmt::arg("totalTime", totalTime),
         fmt::arg("stateIcon", stateIcon),
         fmt::arg("consumeIcon", consumeIcon),
         fmt::arg("randomIcon", randomIcon),
@@ -150,15 +170,14 @@ std::string waybar::modules::MPD::getStateIcon() {
     return "";
   }
 
-  if (stopped_) {
+  if (stopped()) {
     std::cerr << "MPD: Trying to fetch state icon while stopped" << std::endl;
     return "";
   }
 
-  if (state_ == MPD_STATE_PLAY) {
+  if (playing()) {
     return config_["state-icons"]["playing"].asString();
   } else {
-    // MPD_STATE_PAUSE
     return config_["state-icons"]["paused"].asString();
   }
 }
@@ -201,18 +220,15 @@ void waybar::modules::MPD::tryConnect() {
   }
 
   try {
-    checkErrors();
+    checkErrors(connection_.get());
   } catch (std::runtime_error e) {
     std::cerr << "Failed to connect to MPD: " << e.what() << std::endl;
     connection_.reset();
     alternate_connection_.reset();
   }
-
 }
 
-void waybar::modules::MPD::checkErrors() {
-  auto conn = connection_.get();
-
+void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
   switch (mpd_connection_get_error(conn)) {
     case MPD_ERROR_SUCCESS:
       return;
@@ -230,37 +246,47 @@ void waybar::modules::MPD::checkErrors() {
 }
 
 void waybar::modules::MPD::fetchState() {
-    status_ = unique_status(mpd_run_status(connection_.get()), &mpd_status_free);
-    checkErrors();
-    state_ = mpd_status_get_state(status_.get());
-    checkErrors();
-    stopped_ = state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP;
+  auto conn = connection_.get();
+  status_ = unique_status(mpd_run_status(conn), &mpd_status_free);
+  checkErrors(conn);
+  state_ = mpd_status_get_state(status_.get());
+  checkErrors(conn);
 
-    song_ = unique_song(mpd_run_current_song(connection_.get()), &mpd_song_free);
-    checkErrors();
+  song_ = unique_song(mpd_run_current_song(conn), &mpd_song_free);
+  checkErrors(conn);
 }
 
 void waybar::modules::MPD::waitForEvent() {
-  auto conn = connection_.get();
+  auto conn = alternate_connection_.get();
   // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist change
   mpd_run_idle_mask(conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST));
-  checkErrors();
+  checkErrors(conn);
 }
 
 bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
-  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || alternate_connection_ == nullptr) {
+  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || connection_ == nullptr) {
     return false;
   }
 
   if (e->button == 1) {
-    if (stopped_) {
-      mpd_run_play(alternate_connection_.get());
+    std::lock_guard guard(connection_lock_);
+    if (stopped()) {
+      mpd_run_play(connection_.get());
     } else {
-      mpd_run_toggle_pause(alternate_connection_.get());
+      mpd_run_toggle_pause(connection_.get());
     }
   } else if (e->button == 3) {
-    mpd_run_stop(alternate_connection_.get());
+    std::lock_guard guard(connection_lock_);
+    mpd_run_stop(connection_.get());
   }
 
   return true;
+}
+
+bool waybar::modules::MPD::stopped() {
+  return connection_ == nullptr || state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP;
+}
+
+bool waybar::modules::MPD::playing() {
+  return connection_ != nullptr && state_ == MPD_STATE_PLAY;
 }
