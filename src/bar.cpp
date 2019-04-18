@@ -35,8 +35,8 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   setupAltFormatKeyForModuleList("modules-center");
   std::size_t layer = output->config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP
                                                        : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-  layer_surface = zwlr_layer_shell_v1_get_layer_surface(waybar::Client::inst()->layer_shell,
-                                                        surface, output->output, layer, "waybar");
+  layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+      waybar::Client::inst()->layer_shell, surface, output->output, layer, "waybar");
 
   static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
       .configure = layerSurfaceHandleConfigure,
@@ -149,7 +149,8 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
       std::cout << fmt::format(
                        "Requested height: {} exceeds the minimum \
 height: {} required by the modules",
-                       o->height_, min_height)
+                       o->height_,
+                       min_height)
                 << std::endl;
       o->height_ = min_height;
     }
@@ -157,12 +158,15 @@ height: {} required by the modules",
       std::cout << fmt::format(
                        "Requested width: {} exceeds the minimum \
 width: {} required by the modules",
-                       o->height_, min_width)
+                       o->height_,
+                       min_width)
                 << std::endl;
       o->width_ = min_width;
     }
-    std::cout << fmt::format("Bar configured (width: {}, height: {}) for output: {}", o->width_,
-                             o->height_, o->output->name)
+    std::cout << fmt::format("Bar configured (width: {}, height: {}) for output: {}",
+                             o->width_,
+                             o->height_,
+                             o->output->name)
               << std::endl;
 
     wl_surface_commit(o->surface);

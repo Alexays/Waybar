@@ -53,7 +53,7 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
   }
 }
 
-void waybar::Client::handleGlobalRemove(void *data, struct wl_registry * /*registry*/,
+void waybar::Client::handleGlobalRemove(void *   data, struct wl_registry * /*registry*/,
                                         uint32_t name) {
   auto client = static_cast<Client *>(data);
   for (auto it = client->bars.begin(); it != client->bars.end();) {
@@ -66,7 +66,8 @@ void waybar::Client::handleGlobalRemove(void *data, struct wl_registry * /*regis
       ++it;
     }
   }
-  auto it = std::find_if(client->outputs_.begin(), client->outputs_.end(),
+  auto it = std::find_if(client->outputs_.begin(),
+                         client->outputs_.end(),
                          [&name](const auto &output) { return output->wl_name == name; });
   if (it != client->outputs_.end()) {
     zxdg_output_v1_destroy((*it)->xdg_output);
@@ -102,7 +103,7 @@ void waybar::Client::handleDone(void * /*data*/, struct zxdg_output_v1 * /*zxdg_
   // Nothing here
 }
 
-bool waybar::Client::isValidOutput(const Json::Value &config,
+bool waybar::Client::isValidOutput(const Json::Value &                    config,
                                    std::unique_ptr<struct waybar_output> &output) {
   bool found = true;
   if (config["output"].isArray()) {
@@ -121,11 +122,12 @@ bool waybar::Client::isValidOutput(const Json::Value &config,
   return found;
 }
 
-void waybar::Client::handleName(void *data, struct zxdg_output_v1 * /*xdg_output*/,
+void waybar::Client::handleName(void *      data, struct zxdg_output_v1 * /*xdg_output*/,
                                 const char *name) {
   auto wl_name = *static_cast<uint32_t *>(data);
   auto client = waybar::Client::inst();
-  auto it = std::find_if(client->outputs_.begin(), client->outputs_.end(),
+  auto it = std::find_if(client->outputs_.begin(),
+                         client->outputs_.end(),
                          [&wl_name](const auto &output) { return output->wl_name == wl_name; });
   if (it == client->outputs_.end()) {
     std::cerr << "Unable to find valid output" << std::endl;
@@ -153,8 +155,8 @@ void waybar::Client::handleName(void *data, struct zxdg_output_v1 * /*xdg_output
   } else {
     client->bars.emplace_back(std::make_unique<Bar>(it->get()));
     Glib::RefPtr<Gdk::Screen> screen = client->bars.back()->window.get_screen();
-    client->style_context_->add_provider_for_screen(screen, client->css_provider_,
-                                                    GTK_STYLE_PROVIDER_PRIORITY_USER);
+    client->style_context_->add_provider_for_screen(
+        screen, client->css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
   }
 }
 
@@ -191,7 +193,7 @@ auto waybar::Client::setupConfig() -> void {
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
   }
-  std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  std::string      str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   util::JsonParser parser;
   config_ = parser.parse(str);
 }
@@ -230,12 +232,12 @@ int waybar::Client::main(int argc, char *argv[]) {
     throw std::runtime_error("Bar need to run under Wayland");
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
-  bool show_help = false;
-  bool show_version = false;
+  bool        show_help = false;
+  bool        show_version = false;
   std::string config;
   std::string style;
   std::string bar_id;
-  auto cli = clara::detail::Help(show_help) |
+  auto        cli = clara::detail::Help(show_help) |
              clara::detail::Opt(show_version)["-v"]["--version"]("Show version") |
              clara::detail::Opt(config, "config")["-c"]["--config"]("Config path") |
              clara::detail::Opt(style, "style")["-s"]["--style"]("Style path") |

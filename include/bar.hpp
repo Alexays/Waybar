@@ -14,28 +14,28 @@ namespace waybar {
 
 class Factory;
 struct waybar_output {
-  struct wl_output *output;
-  std::string name;
-  uint32_t wl_name;
+  struct wl_output *     output;
+  std::string            name;
+  uint32_t               wl_name;
   struct zxdg_output_v1 *xdg_output;
-  Json::Value config;
+  Json::Value            config;
 };
 
 class Bar {
  public:
-  Bar(struct waybar_output* w_output);
+  Bar(struct waybar_output *w_output);
   Bar(const Bar &) = delete;
   ~Bar() = default;
 
   auto toggle() -> void;
   void handleSignal(int);
 
-  struct waybar_output* output;
-  Gtk::Window window;
-  struct wl_surface *surface;
+  struct waybar_output *        output;
+  Gtk::Window                   window;
+  struct wl_surface *           surface;
   struct zwlr_layer_surface_v1 *layer_surface;
-  bool visible = true;
-  bool vertical = false;
+  bool                          visible = true;
+  bool                          vertical = false;
 
  private:
   static void layerSurfaceHandleConfigure(void *, struct zwlr_layer_surface_v1 *, uint32_t,
@@ -49,12 +49,12 @@ class Bar {
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
 
-  uint32_t width_ = 0;
-  uint32_t height_ = 30;
-  Gtk::Box left_;
-  Gtk::Box center_;
-  Gtk::Box right_;
-  Gtk::Box box_;
+  uint32_t                                      width_ = 0;
+  uint32_t                                      height_ = 30;
+  Gtk::Box                                      left_;
+  Gtk::Box                                      center_;
+  Gtk::Box                                      right_;
+  Gtk::Box                                      box_;
   std::vector<std::unique_ptr<waybar::IModule>> modules_left_;
   std::vector<std::unique_ptr<waybar::IModule>> modules_center_;
   std::vector<std::unique_ptr<waybar::IModule>> modules_right_;

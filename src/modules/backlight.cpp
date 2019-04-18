@@ -13,7 +13,7 @@
 
 namespace {
 class FileDescriptor {
-public:
+ public:
   explicit FileDescriptor(int fd) : fd_(fd) {}
   FileDescriptor(const FileDescriptor &other) = delete;
   FileDescriptor(FileDescriptor &&other) noexcept = delete;
@@ -28,7 +28,7 @@ public:
   }
   int get() const { return fd_; }
 
-private:
+ private:
   int fd_;
 };
 
@@ -60,9 +60,7 @@ void check_neq(int rc, int bad_rc, const char *message = "neq, rc was: ") {
   }
 }
 
-void check0(int rc, const char *message = "rc wasn't 0") {
-  check_eq(rc, 0, message);
-}
+void check0(int rc, const char *message = "rc wasn't 0") { check_eq(rc, 0, message); }
 
 void check_gte(int rc, int gte, const char *message = "rc was: ") {
   if (rc < gte) {
@@ -75,41 +73,33 @@ void check_nn(const void *ptr, const char *message = "ptr was null") {
     throw std::runtime_error(message);
   }
 }
-} // namespace
+}  // namespace
 
-waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name,
-                                                       int actual, int max)
+waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max)
     : name_(std::move(name)), actual_(actual), max_(max) {}
 
-std::string_view waybar::modules::Backlight::BacklightDev::name() const {
-  return name_;
-}
+std::string_view waybar::modules::Backlight::BacklightDev::name() const { return name_; }
 
-int waybar::modules::Backlight::BacklightDev::get_actual() const {
-  return actual_;
-}
+int waybar::modules::Backlight::BacklightDev::get_actual() const { return actual_; }
 
-void waybar::modules::Backlight::BacklightDev::set_actual(int actual) {
-  actual_ = actual;
-}
+void waybar::modules::Backlight::BacklightDev::set_actual(int actual) { actual_ = actual; }
 
 int waybar::modules::Backlight::BacklightDev::get_max() const { return max_; }
 
 void waybar::modules::Backlight::BacklightDev::set_max(int max) { max_ = max; }
 
-waybar::modules::Backlight::Backlight(const std::string &name,
-                                      const Json::Value &config)
-    : ALabel(config, "{percent}%", 2), name_(name),
-      preferred_device_(
-          config["device"].isString() ? config["device"].asString() : "") {
+waybar::modules::Backlight::Backlight(const std::string &name, const Json::Value &config)
+    : ALabel(config, "{percent}%", 2),
+      name_(name),
+      preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
   label_.set_name("backlight");
 
   // Get initial state
   {
     std::unique_ptr<udev, UdevDeleter> udev_check{udev_new()};
     check_nn(udev_check.get(), "Udev check new failed");
-    enumerate_devices(devices_.begin(), devices_.end(),
-                      std::back_inserter(devices_), udev_check.get());
+    enumerate_devices(
+        devices_.begin(), devices_.end(), std::back_inserter(devices_), udev_check.get());
     if (devices_.empty()) {
       throw std::runtime_error("No backlight found");
     }
@@ -123,9 +113,9 @@ waybar::modules::Backlight::Backlight(const std::string &name,
     std::unique_ptr<udev_monitor, UdevMonitorDeleter> mon{
         udev_monitor_new_from_netlink(udev.get(), "udev")};
     check_nn(mon.get(), "udev monitor new failed");
-    check_gte(udev_monitor_filter_add_match_subsystem_devtype(
-                  mon.get(), "backlight", nullptr),
-              0, "udev failed to add monitor filter: ");
+    check_gte(udev_monitor_filter_add_match_subsystem_devtype(mon.get(), "backlight", nullptr),
+              0,
+              "udev failed to add monitor filter: ");
     udev_monitor_enable_receiving(mon.get());
 
     auto udev_fd = udev_monitor_get_fd(mon.get());
@@ -136,15 +126,13 @@ waybar::modules::Backlight::Backlight(const std::string &name,
     ctl_event.events = EPOLLIN;
     ctl_event.data.fd = udev_fd;
 
-    check0(
-        epoll_ctl(epoll_fd.get(), EPOLL_CTL_ADD, ctl_event.data.fd, &ctl_event),
-        "epoll_ctl failed: {}");
+    check0(epoll_ctl(epoll_fd.get(), EPOLL_CTL_ADD, ctl_event.data.fd, &ctl_event),
+           "epoll_ctl failed: {}");
     epoll_event events[EPOLL_MAX_EVENTS];
 
     while (udev_thread_.isRunning()) {
-      const int event_count =
-          epoll_wait(epoll_fd.get(), events, EPOLL_MAX_EVENTS,
-                     std::chrono::milliseconds{interval_}.count());
+      const int event_count = epoll_wait(
+          epoll_fd.get(), events, EPOLL_MAX_EVENTS, std::chrono::milliseconds{interval_}.count());
       if (!udev_thread_.isRunning()) {
         break;
       }
@@ -156,17 +144,14 @@ waybar::modules::Backlight::Backlight(const std::string &name,
       for (int i = 0; i < event_count; ++i) {
         const auto &event = events[i];
         check_eq(event.data.fd, udev_fd, "unexpected udev fd");
-        std::unique_ptr<udev_device, UdevDeviceDeleter> dev{
-            udev_monitor_receive_device(mon.get())};
+        std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_monitor_receive_device(mon.get())};
         check_nn(dev.get(), "epoll dev was null");
-        upsert_device(devices.begin(), devices.end(),
-                      std::back_inserter(devices), dev.get());
+        upsert_device(devices.begin(), devices.end(), std::back_inserter(devices), dev.get());
       }
 
       // Refresh state if timed out
       if (event_count == 0) {
-        enumerate_devices(devices.begin(), devices.end(),
-                          std::back_inserter(devices), udev.get());
+        enumerate_devices(devices.begin(), devices.end(), std::back_inserter(devices), udev.get());
       }
       {
         std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
@@ -186,19 +171,16 @@ auto waybar::modules::Backlight::update() -> void {
     devices = devices_;
   }
 
-  const auto best =
-      best_device(devices.cbegin(), devices.cend(), preferred_device_);
+  const auto best = best_device(devices.cbegin(), devices.cend(), preferred_device_);
   if (best != nullptr) {
     if (previous_best_.has_value() && previous_best_.value() == *best &&
         !previous_format_.empty() && previous_format_ == format_) {
       return;
     }
 
-    const auto percent =
-        best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
-    label_.set_markup(fmt::format(format_,
-                                  fmt::arg("percent", std::to_string(percent)),
-                                  fmt::arg("icon", getIcon(percent))));
+    const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
+    label_.set_markup(fmt::format(
+        format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
   } else {
     if (!previous_best_.has_value()) {
       return;
@@ -210,28 +192,22 @@ auto waybar::modules::Backlight::update() -> void {
 }
 
 template <class ForwardIt>
-const waybar::modules::Backlight::BacklightDev *
-waybar::modules::Backlight::best_device(ForwardIt first, ForwardIt last,
-                                        std::string_view preferred_device) {
-  const auto found =
-      std::find_if(first, last, [preferred_device](const auto &dev) {
-        return dev.name() == preferred_device;
-      });
+const waybar::modules::Backlight::BacklightDev *waybar::modules::Backlight::best_device(
+    ForwardIt first, ForwardIt last, std::string_view preferred_device) {
+  const auto found = std::find_if(
+      first, last, [preferred_device](const auto &dev) { return dev.name() == preferred_device; });
   if (found != last) {
     return &(*found);
   }
 
-  const auto max =
-      std::max_element(first, last, [](const auto &l, const auto &r) {
-        return l.get_max() < r.get_max();
-      });
+  const auto max = std::max_element(
+      first, last, [](const auto &l, const auto &r) { return l.get_max() < r.get_max(); });
 
   return max == last ? nullptr : &(*max);
 }
 
 template <class ForwardIt, class Inserter>
-void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last,
-                                               Inserter inserter,
+void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, Inserter inserter,
                                                udev_device *dev) {
   const char *name = udev_device_get_sysname(dev);
   check_nn(name);
@@ -244,9 +220,8 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last,
   check_nn(max);
   const int max_int = std::stoi(max);
 
-  auto found = std::find_if(first, last, [name](const auto &device) {
-    return device.name() == name;
-  });
+  auto found =
+      std::find_if(first, last, [name](const auto &device) { return device.name() == name; });
   if (found != last) {
     found->set_actual(actual_int);
     found->set_max(max_int);
@@ -257,21 +232,16 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last,
 }
 
 template <class ForwardIt, class Inserter>
-void waybar::modules::Backlight::enumerate_devices(ForwardIt first,
-                                                   ForwardIt last,
-                                                   Inserter inserter,
-                                                   udev *udev) {
-  std::unique_ptr<udev_enumerate, UdevEnumerateDeleter> enumerate{
-      udev_enumerate_new(udev)};
+void waybar::modules::Backlight::enumerate_devices(ForwardIt first, ForwardIt last,
+                                                   Inserter inserter, udev *udev) {
+  std::unique_ptr<udev_enumerate, UdevEnumerateDeleter> enumerate{udev_enumerate_new(udev)};
   udev_enumerate_add_match_subsystem(enumerate.get(), "backlight");
   udev_enumerate_scan_devices(enumerate.get());
-  udev_list_entry *enum_devices =
-      udev_enumerate_get_list_entry(enumerate.get());
+  udev_list_entry *enum_devices = udev_enumerate_get_list_entry(enumerate.get());
   udev_list_entry *dev_list_entry;
   udev_list_entry_foreach(dev_list_entry, enum_devices) {
-    const char *path = udev_list_entry_get_name(dev_list_entry);
-    std::unique_ptr<udev_device, UdevDeviceDeleter> dev{
-        udev_device_new_from_syspath(udev, path)};
+    const char *                                    path = udev_list_entry_get_name(dev_list_entry);
+    std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_device_new_from_syspath(udev, path)};
     check_nn(dev.get(), "dev new failed");
     upsert_device(first, last, inserter, dev.get());
   }

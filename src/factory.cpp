@@ -1,11 +1,8 @@
 #include "factory.hpp"
 
-waybar::Factory::Factory(const Bar& bar, const Json::Value& config)
-  : bar_(bar), config_(config)
-{}
+waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
-waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
-{
+waybar::IModule* waybar::Factory::makeModule(const std::string& name) const {
   try {
     auto hash_pos = name.find("#");
     auto ref = name.substr(0, hash_pos);
@@ -13,7 +10,7 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (ref == "battery") {
       return new waybar::modules::Battery(id, config_[name]);
     }
-    #ifdef HAVE_SWAY
+#ifdef HAVE_SWAY
     if (ref == "sway/mode") {
       return new waybar::modules::sway::Mode(id, bar_, config_[name]);
     }
@@ -23,7 +20,7 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (ref == "sway/window") {
       return new waybar::modules::sway::Window(id, bar_, config_[name]);
     }
-    #endif
+#endif
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
     }
@@ -36,31 +33,31 @@ waybar::IModule* waybar::Factory::makeModule(const std::string &name) const
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
-    #ifdef HAVE_DBUSMENU
+#ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
     }
-    #endif
-    #ifdef HAVE_LIBNL
+#endif
+#ifdef HAVE_LIBNL
     if (ref == "network") {
       return new waybar::modules::Network(id, config_[name]);
     }
-    #endif
-    #ifdef HAVE_LIBUDEV
+#endif
+#ifdef HAVE_LIBUDEV
     if (ref == "backlight") {
       return new waybar::modules::Backlight(id, config_[name]);
     }
-    #endif
-    #ifdef HAVE_LIBPULSE
+#endif
+#ifdef HAVE_LIBPULSE
     if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(id, config_[name]);
     }
-    #endif
-    #ifdef HAVE_LIBMPDCLIENT
+#endif
+#ifdef HAVE_LIBMPDCLIENT
     if (ref == "mpd") {
       return new waybar::modules::MPD(id, config_[name]);
     }
-    #endif
+#endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }
