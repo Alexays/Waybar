@@ -14,6 +14,9 @@ struct JsonParser {
   {
     Json::Value root;
     std::string err;
+    if (data.empty()) {
+      return root;
+    }
     bool res =
       reader_->parse(data.c_str(), data.c_str() + data.size(), &root, &err);
     if (!res)

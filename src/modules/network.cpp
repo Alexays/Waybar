@@ -72,7 +72,7 @@ void waybar::modules::Network::createInfoSocket()
   }
   {
     ev_fd_ = eventfd(0, EFD_NONBLOCK);
-    struct epoll_event event;
+    struct epoll_event event = {0};
     event.events = EPOLLIN | EPOLLET;
     event.data.fd = ev_fd_;
     if (epoll_ctl(efd_, EPOLL_CTL_ADD, ev_fd_, &event) == -1) {
@@ -81,7 +81,7 @@ void waybar::modules::Network::createInfoSocket()
   }
   {
     auto fd = nl_socket_get_fd(info_sock_);
-    struct epoll_event event;
+    struct epoll_event event = {0};
     event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
     event.data.fd = fd;
     if (epoll_ctl(efd_, EPOLL_CTL_ADD, fd, &event) == -1) {
@@ -114,7 +114,7 @@ void waybar::modules::Network::worker()
     }
     thread_timer_.sleep_for(interval_);
   };
-  struct epoll_event events[EPOLL_MAX];
+  struct epoll_event events[EPOLL_MAX] = {{0}};
   thread_ = [this, &events] {
     int ec = epoll_wait(efd_, events, EPOLL_MAX, -1);
     if (ec > 0) {

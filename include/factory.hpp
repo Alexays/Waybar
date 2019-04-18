@@ -28,10 +28,9 @@
 #endif
 #include "modules/temperature.hpp"
 #include "modules/custom.hpp"
+#include "bar.hpp"
 
 namespace waybar {
-
-class Bar;
 
 class Factory {
   public:
