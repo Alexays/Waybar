@@ -1,10 +1,9 @@
 #include "modules/mpd.hpp"
 
 #include <fmt/chrono.h>
-
 #include <iostream>
 
-waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
+waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     : ALabel(config, "{album} - {artist} - {title}", 5),
       server_(nullptr),
       port_(config["port"].asUInt()),
@@ -24,8 +23,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value &config)
   event_listener().detach();
 
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(
-      sigc::mem_fun(*this, &MPD::handlePlayPause));
+  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
 }
 
 auto waybar::modules::MPD::update() -> void {
@@ -77,14 +75,16 @@ void waybar::modules::MPD::setLabel() {
     // In the case connection closed while MPD is stopped
     label_.get_style_context()->remove_class("stopped");
 
-    auto format = config_["format-disconnected"].isString() ?
-      config_["format-disconnected"].asString() : "disconnected";
+    auto format = config_["format-disconnected"].isString()
+                      ? config_["format-disconnected"].asString()
+                      : "disconnected";
     label_.set_markup(format);
 
     if (tooltipEnabled()) {
       std::string tooltip_format;
-      tooltip_format = config_["tooltip-format-disconnected"].isString() ?
-        config_["tooltip-format-disconnected"].asString() : "MPD (disconnected)";
+      tooltip_format = config_["tooltip-format-disconnected"].isString()
+                           ? config_["tooltip-format-disconnected"].asString()
+                           : "MPD (disconnected)";
       // Nothing to format
       label_.set_tooltip_text(tooltip_format);
     }
@@ -95,67 +95,67 @@ void waybar::modules::MPD::setLabel() {
 
   auto format = format_;
 
-  std::string artist, album_artist, album, title, date;
+  std::string          artist, album_artist, album, title, date;
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
   if (stopped()) {
-    format = config_["format-stopped"].isString() ?
-      config_["format-stopped"].asString() : "stopped";
+    format =
+        config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
     label_.get_style_context()->add_class("stopped");
   } else {
     label_.get_style_context()->remove_class("stopped");
 
     stateIcon = getStateIcon();
 
-    artist       = mpd_song_get_tag(song_.get(), MPD_TAG_ARTIST, 0);
+    artist = mpd_song_get_tag(song_.get(), MPD_TAG_ARTIST, 0);
     album_artist = mpd_song_get_tag(song_.get(), MPD_TAG_ALBUM_ARTIST, 0);
-    album        = mpd_song_get_tag(song_.get(), MPD_TAG_ALBUM, 0);
-    title        = mpd_song_get_tag(song_.get(), MPD_TAG_TITLE, 0);
-    date         = mpd_song_get_tag(song_.get(), MPD_TAG_DATE, 0);
-    elapsedTime  = std::chrono::seconds(mpd_status_get_elapsed_time(status_.get()));
-    totalTime    = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
+    album = mpd_song_get_tag(song_.get(), MPD_TAG_ALBUM, 0);
+    title = mpd_song_get_tag(song_.get(), MPD_TAG_TITLE, 0);
+    date = mpd_song_get_tag(song_.get(), MPD_TAG_DATE, 0);
+    elapsedTime = std::chrono::seconds(mpd_status_get_elapsed_time(status_.get()));
+    totalTime = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
   }
 
-  bool consumeActivated = mpd_status_get_consume(status_.get());
+  bool        consumeActivated = mpd_status_get_consume(status_.get());
   std::string consumeIcon = getOptionIcon("consume", consumeActivated);
-  bool randomActivated = mpd_status_get_random(status_.get());
+  bool        randomActivated = mpd_status_get_random(status_.get());
   std::string randomIcon = getOptionIcon("random", randomActivated);
-  bool repeatActivated = mpd_status_get_repeat(status_.get());
+  bool        repeatActivated = mpd_status_get_repeat(status_.get());
   std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
-  bool singleActivated = mpd_status_get_single(status_.get());
+  bool        singleActivated = mpd_status_get_single(status_.get());
   std::string singleIcon = getOptionIcon("single", singleActivated);
 
   // TODO: format can fail
   label_.set_markup(fmt::format(format,
-        fmt::arg("artist", artist),
-        fmt::arg("albumArtist", album_artist),
-        fmt::arg("album", album),
-        fmt::arg("title", title),
-        fmt::arg("date", date),
-        fmt::arg("elapsedTime", elapsedTime),
-        fmt::arg("totalTime", totalTime),
-        fmt::arg("stateIcon", stateIcon),
-        fmt::arg("consumeIcon", consumeIcon),
-        fmt::arg("randomIcon", randomIcon),
-        fmt::arg("repeatIcon", repeatIcon),
-        fmt::arg("singleIcon", singleIcon)));
+                                fmt::arg("artist", artist),
+                                fmt::arg("albumArtist", album_artist),
+                                fmt::arg("album", album),
+                                fmt::arg("title", title),
+                                fmt::arg("date", date),
+                                fmt::arg("elapsedTime", elapsedTime),
+                                fmt::arg("totalTime", totalTime),
+                                fmt::arg("stateIcon", stateIcon),
+                                fmt::arg("consumeIcon", consumeIcon),
+                                fmt::arg("randomIcon", randomIcon),
+                                fmt::arg("repeatIcon", repeatIcon),
+                                fmt::arg("singleIcon", singleIcon)));
 
   if (tooltipEnabled()) {
     std::string tooltip_format;
-    tooltip_format = config_["tooltip-format"].isString() ?
-      config_["tooltip-format"].asString() : "MPD (connected)";
+    tooltip_format = config_["tooltip-format"].isString() ? config_["tooltip-format"].asString()
+                                                          : "MPD (connected)";
     auto tooltip_text = fmt::format(tooltip_format,
-        fmt::arg("artist", artist),
-        fmt::arg("albumArtist", album_artist),
-        fmt::arg("album", album),
-        fmt::arg("title", title),
-        fmt::arg("date", date),
-        fmt::arg("stateIcon", stateIcon),
-        fmt::arg("consumeIcon", consumeIcon),
-        fmt::arg("randomIcon", randomIcon),
-        fmt::arg("repeatIcon", repeatIcon),
-        fmt::arg("singleIcon", singleIcon));
+                                    fmt::arg("artist", artist),
+                                    fmt::arg("albumArtist", album_artist),
+                                    fmt::arg("album", album),
+                                    fmt::arg("title", title),
+                                    fmt::arg("date", date),
+                                    fmt::arg("stateIcon", stateIcon),
+                                    fmt::arg("consumeIcon", consumeIcon),
+                                    fmt::arg("randomIcon", randomIcon),
+                                    fmt::arg("repeatIcon", repeatIcon),
+                                    fmt::arg("singleIcon", singleIcon));
     label_.set_tooltip_text(tooltip_text);
   }
 }
@@ -204,13 +204,10 @@ void waybar::modules::MPD::tryConnect() {
     return;
   }
 
-  connection_ = unique_connection(
-      mpd_connection_new(server_, port_, 5'000),
-      &mpd_connection_free);
+  connection_ = unique_connection(mpd_connection_new(server_, port_, 5'000), &mpd_connection_free);
 
-  alternate_connection_ = unique_connection(
-      mpd_connection_new(server_, port_, 5'000),
-      &mpd_connection_free);
+  alternate_connection_ =
+      unique_connection(mpd_connection_new(server_, port_, 5'000), &mpd_connection_free);
 
   if (connection_ == nullptr || alternate_connection_ == nullptr) {
     std::cerr << "Failed to connect to MPD" << std::endl;
@@ -258,8 +255,10 @@ void waybar::modules::MPD::fetchState() {
 
 void waybar::modules::MPD::waitForEvent() {
   auto conn = alternate_connection_.get();
-  // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist change
-  mpd_run_idle_mask(conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST));
+  // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist
+  // change
+  mpd_run_idle_mask(conn,
+                    static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST));
   checkErrors(conn);
 }
 
@@ -287,6 +286,4 @@ bool waybar::modules::MPD::stopped() {
   return connection_ == nullptr || state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP;
 }
 
-bool waybar::modules::MPD::playing() {
-  return connection_ != nullptr && state_ == MPD_STATE_PLAY;
-}
+bool waybar::modules::MPD::playing() { return connection_ != nullptr && state_ == MPD_STATE_PLAY; }
