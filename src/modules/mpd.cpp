@@ -5,6 +5,7 @@
 
 waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     : ALabel(config, "{album} - {artist} - {title}", 5),
+      module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
       port_(config["port"].asUInt()),
       connection_(nullptr, &mpd_connection_free),
@@ -166,12 +167,12 @@ std::string waybar::modules::MPD::getStateIcon() {
   }
 
   if (connection_ == nullptr) {
-    std::cerr << "MPD: Trying to fetch state icon while disconnected" << std::endl;
+    std::cerr << module_name_ << ": Trying to fetch state icon while disconnected" << std::endl;
     return "";
   }
 
   if (stopped()) {
-    std::cerr << "MPD: Trying to fetch state icon while stopped" << std::endl;
+    std::cerr << module_name_ << ": Trying to fetch state icon while stopped" << std::endl;
     return "";
   }
 
@@ -188,7 +189,7 @@ std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool act
   }
 
   if (connection_ == nullptr) {
-    std::cerr << "MPD: Trying to fetch option icon while disconnected" << std::endl;
+    std::cerr << module_name_ << ": Trying to fetch option icon while disconnected" << std::endl;
     return "";
   }
 
@@ -210,7 +211,7 @@ void waybar::modules::MPD::tryConnect() {
       unique_connection(mpd_connection_new(server_, port_, 5'000), &mpd_connection_free);
 
   if (connection_ == nullptr || alternate_connection_ == nullptr) {
-    std::cerr << "Failed to connect to MPD" << std::endl;
+    std::cerr << module_name_ << ": Failed to connect to MPD" << std::endl;
     connection_.reset();
     alternate_connection_.reset();
     return;
@@ -219,7 +220,7 @@ void waybar::modules::MPD::tryConnect() {
   try {
     checkErrors(connection_.get());
   } catch (std::runtime_error e) {
-    std::cerr << "Failed to connect to MPD: " << e.what() << std::endl;
+    std::cerr << module_name_ << ": Failed to connect to MPD: " << e.what() << std::endl;
     connection_.reset();
     alternate_connection_.reset();
   }
@@ -230,7 +231,7 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
     case MPD_ERROR_SUCCESS:
       return;
     case MPD_ERROR_CLOSED:
-      std::cerr << "Connection to MPD closed" << std::endl;
+      std::cerr << module_name_ << ": Connection to MPD closed" << std::endl;
       mpd_connection_clear_error(conn);
       connection_.reset();
       alternate_connection_.reset();
