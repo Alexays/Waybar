@@ -38,7 +38,8 @@ auto waybar::modules::MPD::update() -> void {
       if (!wasPlaying && playing()) {
         periodic_updater().detach();
       }
-    } catch (std::exception e) {
+    } catch (const std::exception& e) {
+      std::cerr << module_name_ + ": " + e.what() << std::endl;
       state_ = MPD_STATE_UNKNOWN;
     }
   }
@@ -51,7 +52,11 @@ std::thread waybar::modules::MPD::event_listener() {
     while (true) {
       if (connection_ == nullptr) {
         // Retry periodically if no connection
-        update();
+        try {
+          update();
+        } catch (const std::exception& e) {
+          std::cerr << module_name_ + ": " + e.what() << std::endl;
+        }
         std::this_thread::sleep_for(interval_);
       } else {
         waitForEvent();
