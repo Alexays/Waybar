@@ -1,8 +1,7 @@
 #include "modules/sway/mode.hpp"
 
 waybar::modules::sway::Mode::Mode(const std::string& id, const Bar& bar, const Json::Value& config)
-  : ALabel(config, "{}"), bar_(bar)
-{
+    : ALabel(config, "{}"), bar_(bar) {
   label_.set_name("mode");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -13,8 +12,7 @@ waybar::modules::sway::Mode::Mode(const std::string& id, const Bar& bar, const J
   dp.emit();
 }
 
-void waybar::modules::sway::Mode::worker()
-{
+void waybar::modules::sway::Mode::worker() {
   thread_ = [this] {
     try {
       auto res = ipc_.handleEvent();
@@ -31,8 +29,7 @@ void waybar::modules::sway::Mode::worker()
   };
 }
 
-auto waybar::modules::sway::Mode::update() -> void
-{
+auto waybar::modules::sway::Mode::update() -> void {
   if (mode_.empty()) {
     event_box_.hide();
   } else {

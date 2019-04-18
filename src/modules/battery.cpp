@@ -1,8 +1,7 @@
 #include "modules/battery.hpp"
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
-  : ALabel(config, "{capacity}%", 60)
-{
+    : ALabel(config, "{capacity}%", 60) {
   label_.set_name("battery");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -21,23 +20,21 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
   worker();
 }
 
-waybar::modules::Battery::~Battery()
-{
+waybar::modules::Battery::~Battery() {
   for (auto wd : wds_) {
     inotify_rm_watch(fd_, wd);
   }
   close(fd_);
 }
 
-void waybar::modules::Battery::worker()
-{
+void waybar::modules::Battery::worker() {
   thread_timer_ = [this] {
     dp.emit();
     thread_timer_.sleep_for(interval_);
   };
   thread_ = [this] {
     struct inotify_event event = {0};
-    int nbytes = read(fd_, &event, sizeof(event));
+    int                  nbytes = read(fd_, &event, sizeof(event));
     if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
       thread_.stop();
       return;
@@ -48,8 +45,7 @@ void waybar::modules::Battery::worker()
   };
 }
 
-void waybar::modules::Battery::getBatteries()
-{
+void waybar::modules::Battery::getBatteries() {
   try {
     for (auto const& node : fs::directory_iterator(data_dir_)) {
       if (!fs::is_directory(node)) {
@@ -57,18 +53,18 @@ void waybar::modules::Battery::getBatteries()
       }
       auto dir_name = node.path().filename();
       auto bat_defined = config_["bat"].isString();
-      if (((bat_defined && dir_name == config_["bat"].asString())
-        || !bat_defined) && fs::exists(node / "capacity")
-        && fs::exists(node / "uevent") && fs::exists(node / "status")) {
-          batteries_.push_back(node);
+      if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
+          fs::exists(node / "capacity") && fs::exists(node / "uevent") &&
+          fs::exists(node / "status")) {
+        batteries_.push_back(node);
       }
       auto adap_defined = config_["adapter"].isString();
-      if (((adap_defined && dir_name == config_["adapter"].asString())
-        || !adap_defined) && fs::exists(node / "online")) {
-          adapter_ = node;
+      if (((adap_defined && dir_name == config_["adapter"].asString()) || !adap_defined) &&
+          fs::exists(node / "online")) {
+        adapter_ = node;
       }
     }
-  } catch (fs::filesystem_error &e) {
+  } catch (fs::filesystem_error& e) {
     throw std::runtime_error(e.what());
   }
   if (batteries_.empty()) {
@@ -79,13 +75,12 @@ void waybar::modules::Battery::getBatteries()
   }
 }
 
-const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() const
-{
+const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() const {
   try {
-    uint16_t total = 0;
+    uint16_t    total = 0;
     std::string status = "Unknown";
     for (auto const& bat : batteries_) {
-      uint16_t capacity;
+      uint16_t    capacity;
       std::string _status;
       std::ifstream(bat / "capacity") >> capacity;
       std::ifstream(bat / "status") >> _status;
@@ -102,8 +97,7 @@ const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() cons
   }
 }
 
-const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const
-{
+const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
@@ -115,8 +109,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
   return "Unknown";
 }
 
-const std::string waybar::modules::Battery::getState(uint8_t capacity) const
-{
+const std::string waybar::modules::Battery::getState(uint8_t capacity) const {
   // Get current state
   std::vector<std::pair<std::string, uint8_t>> states;
   if (config_["states"].isObject()) {
@@ -127,9 +120,7 @@ const std::string waybar::modules::Battery::getState(uint8_t capacity) const
     }
   }
   // Sort states
-  std::sort(states.begin(), states.end(), [](auto &a, auto &b) {
-    return a.second < b.second;
-  });
+  std::sort(states.begin(), states.end(), [](auto& a, auto& b) { return a.second < b.second; });
   std::string valid_state;
   for (auto const& state : states) {
     if (capacity <= state.second && valid_state.empty()) {
@@ -142,8 +133,7 @@ const std::string waybar::modules::Battery::getState(uint8_t capacity) const
   return valid_state;
 }
 
-auto waybar::modules::Battery::update() -> void
-{
+auto waybar::modules::Battery::update() -> void {
   auto [capacity, status] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
@@ -168,7 +158,7 @@ auto waybar::modules::Battery::update() -> void
     event_box_.hide();
   } else {
     event_box_.show();
-    label_.set_markup(fmt::format(format, fmt::arg("capacity", capacity),
-      fmt::arg("icon", getIcon(capacity))));
+    label_.set_markup(
+        fmt::format(format, fmt::arg("capacity", capacity), fmt::arg("icon", getIcon(capacity))));
   }
 }

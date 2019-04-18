@@ -36,7 +36,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
     if (idle_inhibitor_) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
-      status_         = "deactivated";
+      status_ = "deactivated";
     } else {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
           waybar::Client::inst()->idle_inhibit_manager, bar_.surface);

@@ -1,8 +1,8 @@
 #include "modules/sway/window.hpp"
 
-waybar::modules::sway::Window::Window(const std::string& id, const Bar &bar, const Json::Value& config)
-  : ALabel(config, "{}"), bar_(bar), windowId_(-1)
-{
+waybar::modules::sway::Window::Window(const std::string& id, const Bar& bar,
+                                      const Json::Value& config)
+    : ALabel(config, "{}"), bar_(bar), windowId_(-1) {
   label_.set_name("window");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -17,24 +17,22 @@ waybar::modules::sway::Window::Window(const std::string& id, const Bar &bar, con
   worker();
 }
 
-void waybar::modules::sway::Window::worker()
-{
+void waybar::modules::sway::Window::worker() {
   thread_ = [this] {
     try {
       auto res = ipc_.handleEvent();
       auto parsed = parser_.parse(res.payload);
       // Check for waybar prevents flicker when hovering window module
-      if ((parsed["change"] == "focus" || parsed["change"] == "title")
-        && parsed["container"]["focused"].asBool()
-        && parsed["container"]["name"].asString() != "waybar") {
+      if ((parsed["change"] == "focus" || parsed["change"] == "title") &&
+          parsed["container"]["focused"].asBool() &&
+          parsed["container"]["name"].asString() != "waybar") {
         window_ = Glib::Markup::escape_text(parsed["container"]["name"].asString());
         windowId_ = parsed["container"]["id"].asInt();
         dp.emit();
-      } else if ((parsed["change"] == "close"
-        && parsed["container"]["focused"].asBool()
-        && windowId_ == parsed["container"]["id"].asInt())
-        || (parsed["change"] == "focus" && parsed["current"]["focus"].isArray()
-        && parsed["current"]["focus"].empty())) {
+      } else if ((parsed["change"] == "close" && parsed["container"]["focused"].asBool() &&
+                  windowId_ == parsed["container"]["id"].asInt()) ||
+                 (parsed["change"] == "focus" && parsed["current"]["focus"].isArray() &&
+                  parsed["current"]["focus"].empty())) {
         window_.clear();
         windowId_ = -1;
         dp.emit();
@@ -45,31 +43,27 @@ void waybar::modules::sway::Window::worker()
   };
 }
 
-auto waybar::modules::sway::Window::update() -> void
-{
+auto waybar::modules::sway::Window::update() -> void {
   label_.set_markup(fmt::format(format_, window_));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
 }
 
-std::tuple<int, std::string> waybar::modules::sway::Window::getFocusedNode(
-  Json::Value nodes)
-{
+std::tuple<int, std::string> waybar::modules::sway::Window::getFocusedNode(Json::Value nodes) {
   for (auto const& node : nodes) {
     if (node["focused"].asBool() && node["type"] == "con") {
-      return { node["id"].asInt(), node["name"].asString() };
+      return {node["id"].asInt(), node["name"].asString()};
     }
     auto [id, name] = getFocusedNode(node["nodes"]);
     if (id > -1 && !name.empty()) {
-      return { id, name };
+      return {id, name};
     }
   }
-  return { -1, std::string() };
+  return {-1, std::string()};
 }
 
-void waybar::modules::sway::Window::getFocusedWindow()
-{
+void waybar::modules::sway::Window::getFocusedWindow() {
   try {
     auto res = ipc_.sendCmd(IPC_GET_TREE);
     auto parsed = parser_.parse(res.payload);
@@ -77,7 +71,7 @@ void waybar::modules::sway::Window::getFocusedWindow()
     windowId_ = id;
     window_ = name;
     Glib::signal_idle().connect_once(sigc::mem_fun(*this, &Window::update));
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
   }
 }

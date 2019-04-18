@@ -31,7 +31,8 @@ Host::~Host() {
 }
 
 void Host::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
-  watcher_id_ = Gio::DBus::watch_name(conn, "org.kde.StatusNotifierWatcher",
+  watcher_id_ = Gio::DBus::watch_name(conn,
+                                      "org.kde.StatusNotifierWatcher",
                                       sigc::mem_fun(*this, &Host::nameAppeared),
                                       sigc::mem_fun(*this, &Host::nameVanished));
 }
@@ -43,8 +44,13 @@ void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
     return;
   }
   cancellable_ = g_cancellable_new();
-  sn_watcher_proxy_new(conn->gobj(), G_DBUS_PROXY_FLAGS_NONE, "org.kde.StatusNotifierWatcher",
-                       "/StatusNotifierWatcher", cancellable_, &Host::proxyReady, this);
+  sn_watcher_proxy_new(conn->gobj(),
+                       G_DBUS_PROXY_FLAGS_NONE,
+                       "org.kde.StatusNotifierWatcher",
+                       "/StatusNotifierWatcher",
+                       cancellable_,
+                       &Host::proxyReady,
+                       this);
 }
 
 void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring name) {
@@ -55,7 +61,7 @@ void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
 }
 
 void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
-  GError* error = nullptr;
+  GError*    error = nullptr;
   SnWatcher* watcher = sn_watcher_proxy_new_finish(res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
     std::cerr << error->message << std::endl;
@@ -69,8 +75,8 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
     g_error_free(error);
     return;
   }
-  sn_watcher_call_register_host(host->watcher_, host->object_path_.c_str(), host->cancellable_,
-                                &Host::registerHost, data);
+  sn_watcher_call_register_host(
+      host->watcher_, host->object_path_.c_str(), host->cancellable_, &Host::registerHost, data);
 }
 
 void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
