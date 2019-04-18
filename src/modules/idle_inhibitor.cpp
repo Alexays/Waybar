@@ -1,9 +1,9 @@
 #include "modules/idle_inhibitor.hpp"
 #include "util/command.hpp"
 
-waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
-  : ALabel(config, "{status}"), bar_(bar), status_("deactivated"), idle_inhibitor_(nullptr)
-{
+waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
+                                              const Json::Value& config)
+    : ALabel(config, "{status}"), bar_(bar), status_("deactivated"), idle_inhibitor_(nullptr) {
   label_.set_name("idle_inhibitor");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -14,21 +14,18 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   dp.emit();
 }
 
-waybar::modules::IdleInhibitor::~IdleInhibitor()
-{
-  if(idle_inhibitor_) {
+waybar::modules::IdleInhibitor::~IdleInhibitor() {
+  if (idle_inhibitor_) {
     zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
     idle_inhibitor_ = nullptr;
   }
 }
 
-auto waybar::modules::IdleInhibitor::update() -> void
-{
+auto waybar::modules::IdleInhibitor::update() -> void {
   label_.set_markup(
-      fmt::format(format_, fmt::arg("status", status_),
-                  fmt::arg("icon", getIcon(0, status_))));
+      fmt::format(format_, fmt::arg("status", status_), fmt::arg("icon", getIcon(0, status_))));
   label_.get_style_context()->add_class(status_);
-  if(tooltipEnabled()) {
+  if (tooltipEnabled()) {
     label_.set_tooltip_text(status_);
   }
 }
@@ -39,10 +36,10 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
     if (idle_inhibitor_) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
-      status_ = "deactivated";
+      status_         = "deactivated";
     } else {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
-          bar_.client.idle_inhibit_manager, bar_.surface);
+          waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
       status_ = "activated";
     }
     if (config_["on-click"].isString() && e->button == 1) {
