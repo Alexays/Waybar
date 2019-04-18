@@ -138,3 +138,20 @@ window#waybar.hidded {
     background-color: #ecf0f1;
     color: #2d3436;
 }
+
+#mpd {
+    background: #66cc99;
+    color: #2a5c45;
+}
+
+#mpd.disconnected {
+    background: #f53c3c;
+}
+
+#mpd.stopped {
+    background: #90b1b1;
+}
+
+#mpd.paused {
+    background: #51a37a;
+}

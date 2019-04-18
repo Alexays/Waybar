@@ -56,6 +56,7 @@ libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
+libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 
 src_files = files(
     'src/factory.cpp',
@@ -107,6 +108,11 @@ if libudev.found()
     src_files += 'src/modules/backlight.cpp'
 endif
 
+if libmpdclient.found()
+    add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
+    src_files += 'src/modules/mpd.cpp'
+endif
+
 subdir('protocol')
 
 executable(
@@ -128,7 +134,8 @@ executable(
         libnl,
         libnlgen,
         libpulse,
-        libudev
+        libudev,
+        libmpdclient
     ],
     include_directories: [include_directories('include')],
     install: true,
