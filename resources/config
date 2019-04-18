@@ -50,7 +50,7 @@
         },
         "tooltip-format": "MPD (connected)",
         "tooltip-format-disconnected": "MPD (disconnected)"
-    }
+    },
     "idle_inhibitor": {
         "format": "{icon}",
         "format-icons": {
