@@ -140,7 +140,7 @@ window#waybar.hidded {
 }
 
 #mpd {
-    background-color: #ba2880;
+    background: #ba2880;
 }
 
 #mpd.disconnected {
@@ -150,4 +150,8 @@ window#waybar.hidded {
 #mpd.stopped {
     background: #90b1b1;
     color: #2a5c45;
+}
+
+#mpd.paused {
+    background: #ce68a6;
 }

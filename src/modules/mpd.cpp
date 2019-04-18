@@ -104,8 +104,17 @@ void waybar::modules::MPD::setLabel() {
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
     label_.get_style_context()->add_class("stopped");
+    label_.get_style_context()->remove_class("playing");
+    label_.get_style_context()->remove_class("paused");
   } else {
     label_.get_style_context()->remove_class("stopped");
+    if (playing()) {
+      label_.get_style_context()->add_class("playing");
+      label_.get_style_context()->remove_class("paused");
+    } else {
+      label_.get_style_context()->add_class("paused");
+      label_.get_style_context()->remove_class("playing");
+    }
 
     stateIcon = getStateIcon();
 
