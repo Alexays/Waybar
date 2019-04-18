@@ -36,6 +36,8 @@ class MPD : public ALabel {
   bool stopped();
   bool playing();
 
+  const std::string module_name_;
+
   using unique_connection = std::unique_ptr<mpd_connection, decltype(&mpd_connection_free)>;
   using unique_status = std::unique_ptr<mpd_status, decltype(&mpd_status_free)>;
   using unique_song = std::unique_ptr<mpd_song, decltype(&mpd_song_free)>;
