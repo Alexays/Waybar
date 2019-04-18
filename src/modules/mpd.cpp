@@ -234,6 +234,7 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
       mpd_connection_clear_error(conn);
       connection_.reset();
       alternate_connection_.reset();
+      state_ = MPD_STATE_UNKNOWN;
       return;
     default:
       auto error_message = mpd_connection_get_error_message(conn);
