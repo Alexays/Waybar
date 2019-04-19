@@ -1,9 +1,7 @@
 #include "modules/custom.hpp"
 
-waybar::modules::Custom::Custom(const std::string& name,
-  const Json::Value& config)
-  : ALabel(config, "{}"), name_(name), fp_(nullptr)
-{
+waybar::modules::Custom::Custom(const std::string& name, const Json::Value& config)
+    : ALabel(config, "{}"), name_(name), fp_(nullptr) {
   label_.set_name("custom-" + name_);
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
@@ -15,16 +13,14 @@ waybar::modules::Custom::Custom(const std::string& name,
   dp.emit();
 }
 
-waybar::modules::Custom::~Custom()
-{
+waybar::modules::Custom::~Custom() {
   if (fp_) {
     pclose(fp_);
     fp_ = nullptr;
   }
 }
 
-void waybar::modules::Custom::delayWorker()
-{
+void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
@@ -42,15 +38,14 @@ void waybar::modules::Custom::delayWorker()
   };
 }
 
-void waybar::modules::Custom::continuousWorker()
-{
+void waybar::modules::Custom::continuousWorker() {
   auto cmd = config_["exec"].asString();
   fp_ = popen(cmd.c_str(), "r");
   if (!fp_) {
     throw std::runtime_error("Unable to open " + cmd);
   }
   thread_ = [this] {
-    char* buff = nullptr;
+    char*  buff = nullptr;
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
@@ -60,7 +55,7 @@ void waybar::modules::Custom::continuousWorker()
       }
       thread_.stop();
       if (exit_code != 0) {
-        output_ = { exit_code, "" };
+        output_ = {exit_code, ""};
         dp.emit();
         std::cerr << name_ + " just stopped unexpectedly, is it endless?" << std::endl;
       }
@@ -69,23 +64,21 @@ void waybar::modules::Custom::continuousWorker()
     std::string output = buff;
 
     // Remove last newline
-    if (!output.empty() && output[output.length()-1] == '\n') {
-      output.erase(output.length()-1);
+    if (!output.empty() && output[output.length() - 1] == '\n') {
+      output.erase(output.length() - 1);
     }
-    output_ = { 0, output };
+    output_ = {0, output};
     dp.emit();
   };
 }
 
-void waybar::modules::Custom::refresh(int sig /*signal*/)
-{
-  if(sig == SIGRTMIN + config_["signal"].asInt()) {
+void waybar::modules::Custom::refresh(int sig /*signal*/) {
+  if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }
 
-auto waybar::modules::Custom::update() -> void
-{
+auto waybar::modules::Custom::update() -> void {
   // Hide label if output is empty
   if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
     event_box_.hide();
@@ -96,10 +89,11 @@ auto waybar::modules::Custom::update() -> void
       parseOutputRaw();
     }
 
-    auto str = fmt::format(format_, text_,
-      fmt::arg("alt", alt_),
-      fmt::arg("icon", getIcon(percentage_, alt_)),
-      fmt::arg("percentage", percentage_));
+    auto str = fmt::format(format_,
+                           text_,
+                           fmt::arg("alt", alt_),
+                           fmt::arg("icon", getIcon(percentage_, alt_)),
+                           fmt::arg("percentage", percentage_));
     label_.set_markup(str);
     if (tooltipEnabled()) {
       if (text_ == tooltip_) {
@@ -109,10 +103,10 @@ auto waybar::modules::Custom::update() -> void
       }
     }
     auto classes = label_.get_style_context()->list_classes();
-    for (auto const &c : classes) {
+    for (auto const& c : classes) {
       label_.get_style_context()->remove_class(c);
     }
-    for (auto const &c : class_) {
+    for (auto const& c : class_) {
       label_.get_style_context()->add_class(c);
     }
 
@@ -120,11 +114,10 @@ auto waybar::modules::Custom::update() -> void
   }
 }
 
-void waybar::modules::Custom::parseOutputRaw()
-{
+void waybar::modules::Custom::parseOutputRaw() {
   std::istringstream output(output_.out);
-  std::string line;
-  int i = 0;
+  std::string        line;
+  int                i = 0;
   while (getline(output, line)) {
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
@@ -145,10 +138,9 @@ void waybar::modules::Custom::parseOutputRaw()
   }
 }
 
-void waybar::modules::Custom::parseOutputJson()
-{
+void waybar::modules::Custom::parseOutputJson() {
   std::istringstream output(output_.out);
-  std::string line;
+  std::string        line;
   class_.clear();
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
@@ -166,7 +158,7 @@ void waybar::modules::Custom::parseOutputJson()
     if (parsed["class"].isString()) {
       class_.push_back(parsed["class"].asString());
     } else if (parsed["class"].isArray()) {
-      for (auto const &c : parsed["class"]) {
+      for (auto const& c : parsed["class"]) {
         class_.push_back(c.asString());
       }
     }

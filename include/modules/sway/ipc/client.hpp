@@ -1,40 +1,47 @@
 #pragma once
 
-#include <iostream>
-#include <cstring>
-#include <unistd.h>
+#include <sigc++/sigc++.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
+#include <cstring>
+#include <iostream>
+#include <mutex>
 #include "ipc.hpp"
 
 namespace waybar::modules::sway {
 
 class Ipc {
-public:
+ public:
   Ipc();
   ~Ipc();
 
   struct ipc_response {
-    uint32_t size;
-    uint32_t type;
+    uint32_t    size;
+    uint32_t    type;
     std::string payload;
   };
 
-  struct ipc_response sendCmd(uint32_t type, const std::string &payload = "") const;
-  void subscribe(const std::string &payload) const;
-  struct ipc_response handleEvent() const;
+  sigc::signal<void, const struct ipc_response> signal_event;
+  sigc::signal<void, const struct ipc_response> signal_cmd;
 
-protected:
+  void sendCmd(uint32_t type, const std::string &payload = "");
+  void subscribe(const std::string &payload);
+  void handleEvent();
+
+ protected:
   static inline const std::string ipc_magic_ = "i3-ipc";
-  static inline const size_t ipc_header_size_ = ipc_magic_.size() + 8;
+  static inline const size_t      ipc_header_size_ = ipc_magic_.size() + 8;
 
-  const std::string getSocketPath() const;
-  int open(const std::string &) const;
-  struct ipc_response send(int fd, uint32_t type, const std::string &payload = "") const;
-  struct ipc_response recv(int fd) const;
+  const std::string   getSocketPath() const;
+  int                 open(const std::string &) const;
+  struct ipc_response send(int fd, uint32_t type, const std::string &payload = "");
+  struct ipc_response recv(int fd);
 
-  int fd_;
-  int fd_event_;
+  int        fd_;
+  int        fd_event_;
+  std::mutex mutex_;
+  std::mutex mutex_event_;
 };
 
-} // namespace waybar::modules::sway
+}  // namespace waybar::modules::sway

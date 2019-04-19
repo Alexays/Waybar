@@ -1,19 +1,20 @@
 #pragma once
 
 #include <fmt/format.h>
+#include "ALabel.hpp"
 #include "fmt/time.h"
 #include "util/sleeper_thread.hpp"
-#include "ALabel.hpp"
 
 namespace waybar::modules {
 
 class Clock : public ALabel {
-  public:
-    Clock(const std::string&, const Json::Value&);
-    ~Clock() = default;
-    auto update() -> void;
-  private:
-    waybar::util::SleeperThread thread_;
+ public:
+  Clock(const std::string&, const Json::Value&);
+  ~Clock() = default;
+  auto update() -> void;
+
+ private:
+  waybar::util::SleeperThread thread_;
 };
 
-}
+}  // namespace waybar::modules

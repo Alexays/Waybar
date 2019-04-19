@@ -2,8 +2,8 @@
 
 #include <fmt/format.h>
 #include <fstream>
-#include "util/sleeper_thread.hpp"
 #include "ALabel.hpp"
+#include "util/sleeper_thread.hpp"
 #ifdef FILESYSTEM_EXPERIMENTAL
 #include <experimental/filesystem>
 #else
@@ -13,16 +13,17 @@
 namespace waybar::modules {
 
 class Temperature : public ALabel {
-  public:
-    Temperature(const std::string&, const Json::Value&);
-    ~Temperature() = default;
-    auto update() -> void;
-  private:
-    std::tuple<uint16_t, uint16_t> getTemperature();
-    bool isCritical(uint16_t);
+ public:
+  Temperature(const std::string&, const Json::Value&);
+  ~Temperature() = default;
+  auto update() -> void;
 
-    std::string file_path_;
-    waybar::util::SleeperThread thread_;
+ private:
+  std::tuple<uint16_t, uint16_t> getTemperature();
+  bool                           isCritical(uint16_t);
+
+  std::string                 file_path_;
+  waybar::util::SleeperThread thread_;
 };
 
-}
+}  // namespace waybar::modules
