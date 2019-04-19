@@ -14,7 +14,6 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   window.set_title("waybar");
   window.set_name("waybar");
   window.set_decorated(false);
-  window.set_resizable(false);
 
   if (output->config["position"] == "right" || output->config["position"] == "left") {
     height_ = 0;
@@ -29,15 +28,11 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   gdk_wayland_window_set_use_custom_surface(gdk_window);
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 
-  // Convert to button code for every module that is used.
-  setupAltFormatKeyForModuleList("modules-left");
-  setupAltFormatKeyForModuleList("modules-right");
-  setupAltFormatKeyForModuleList("modules-center");
   std::size_t layer = output->config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP
                                                        : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
+  auto client = waybar::Client::inst();
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-      waybar::Client::inst()->layer_shell, surface, output->output, layer, "waybar");
-
+      client->layer_shell, surface, output->output, layer, "waybar");
   static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
       .configure = layerSurfaceHandleConfigure,
       .closed = layerSurfaceHandleClosed,
@@ -72,6 +67,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   zwlr_layer_surface_v1_set_size(layer_surface, width, height);
 
   wl_surface_commit(surface);
+  wl_display_roundtrip(client->wl_display);
 
   setupWidgets();
 }
@@ -136,7 +132,6 @@ void waybar::Bar::handleSignal(int signal) {
 void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surface_v1* surface,
                                               uint32_t serial, uint32_t width, uint32_t height) {
   auto o = static_cast<waybar::Bar*>(data);
-  zwlr_layer_surface_v1_ack_configure(surface, serial);
   if (width != o->width_ || height != o->height_) {
     o->width_ = width;
     o->height_ = height;
@@ -146,31 +141,18 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     int min_width, min_height;
     o->window.get_size(min_width, min_height);
     if (o->height_ < static_cast<uint32_t>(min_height)) {
-      std::cout << fmt::format(
-                       "Requested height: {} exceeds the minimum \
-height: {} required by the modules",
-                       o->height_,
-                       min_height)
-                << std::endl;
+      std::cout << fmt::format(MIN_HEIGHT_MSG, o->height_, min_height) << std::endl;
       o->height_ = min_height;
     }
     if (o->width_ < static_cast<uint32_t>(min_width)) {
-      std::cout << fmt::format(
-                       "Requested width: {} exceeds the minimum \
-width: {} required by the modules",
-                       o->height_,
-                       min_width)
-                << std::endl;
+      std::cout << fmt::format(MIN_WIDTH_MSG, o->height_, min_width) << std::endl;
       o->width_ = min_width;
     }
-    std::cout << fmt::format("Bar configured (width: {}, height: {}) for output: {}",
-                             o->width_,
-                             o->height_,
-                             o->output->name)
-              << std::endl;
+    std::cout << fmt::format(BAR_SIZE_MSG, o->width_, o->height_, o->output->name) << std::endl;
 
     wl_surface_commit(o->surface);
   }
+  zwlr_layer_surface_v1_ack_configure(surface, serial);
 }
 
 void waybar::Bar::layerSurfaceHandleClosed(void* data, struct zwlr_layer_surface_v1* /*surface*/) {
@@ -226,6 +208,11 @@ auto waybar::Bar::setupWidgets() -> void {
   box_.pack_start(left_, true, true);
   box_.set_center_widget(center_);
   box_.pack_end(right_, true, true);
+
+  // Convert to button code for every module that is used.
+  setupAltFormatKeyForModuleList("modules-left");
+  setupAltFormatKeyForModuleList("modules-right");
+  setupAltFormatKeyForModuleList("modules-center");
 
   Factory factory(*this, output->config);
   getModules(factory, "modules-left");
