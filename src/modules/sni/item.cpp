@@ -265,15 +265,16 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(std::string 
   if (tmp_size == 0) {
     tmp_size = request_size;
   }
-  auto icon =
-      icon_theme->load_icon(name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-  if (!icon) {
-    Glib::RefPtr<Gtk::IconTheme> default_theme = Gtk::IconTheme::get_default();
-    default_theme->rescan_if_needed();
-    return default_theme->load_icon(
+  if (!icon_theme_path.empty() &&
+      icon_theme->lookup_icon(
+          name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
+    return icon_theme->load_icon(
         name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
   }
-  return icon;
+  Glib::RefPtr<Gtk::IconTheme> default_theme = Gtk::IconTheme::get_default();
+  default_theme->rescan_if_needed();
+  return default_theme->load_icon(
+      name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
 void waybar::modules::SNI::Item::onMenuDestroyed(Item* self) {
