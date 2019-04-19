@@ -8,7 +8,6 @@ waybar::modules::SNI::Tray::Tray(const std::string& id, const Bar& bar, const Js
       watcher_(),
       host_(nb_hosts_, config, std::bind(&Tray::onAdd, this, std::placeholders::_1),
             std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
-  std::cout << "Tray is in beta, so there may be bugs or even be unusable." << std::endl;
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
   }

@@ -1,8 +1,7 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
-  : ALabel(config, "{}%", 30)
-{
+    : ALabel(config, "{}%", 30) {
   label_.set_name("memory");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -13,8 +12,7 @@ waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config
   };
 }
 
-auto waybar::modules::Memory::update() -> void
-{
+auto waybar::modules::Memory::update() -> void {
   parseMeminfo();
   if (memtotal_ > 0 && memfree_ >= 0) {
     int used_ram_percentage = 100 * (memtotal_ - memfree_) / memtotal_;
@@ -29,9 +27,8 @@ auto waybar::modules::Memory::update() -> void
   }
 }
 
-void waybar::modules::Memory::parseMeminfo()
-{
-  long memfree = -1, membuffer = -1, memcache = -1, memavail = -1;
+void waybar::modules::Memory::parseMeminfo() {
+  long          memfree = -1, membuffer = -1, memcache = -1, memavail = -1;
   std::ifstream info(data_dir_);
   if (!info.is_open()) {
     throw std::runtime_error("Can't open " + data_dir_);
@@ -43,7 +40,7 @@ void waybar::modules::Memory::parseMeminfo()
       continue;
     }
     std::string name = line.substr(0, posDelim);
-    long value = std::stol(line.substr(posDelim + 1));
+    long        value = std::stol(line.substr(posDelim + 1));
 
     if (name.compare("MemTotal") == 0) {
       memtotal_ = value;
@@ -56,8 +53,7 @@ void waybar::modules::Memory::parseMeminfo()
     } else if (name.compare("Cached") == 0) {
       memcache = value;
     }
-    if (memtotal_ > 0 &&
-      (memavail >= 0 || (memfree > -1  && membuffer > -1 && memcache > -1))) {
+    if (memtotal_ > 0 && (memavail >= 0 || (memfree > -1 && membuffer > -1 && memcache > -1))) {
       break;
     }
   }

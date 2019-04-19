@@ -5,7 +5,7 @@
 
 using namespace Glib;
 
-static const ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
+static const ustring  SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
 waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Value& config)
@@ -25,9 +25,13 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Val
   cancellable_ = Gio::Cancellable::create();
 
   auto interface = Glib::wrap(sn_item_interface_info(), true);
-  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
-                                   SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
-                                   cancellable_, interface);
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION,
+                                   bus_name,
+                                   object_path,
+                                   SNI_INTERFACE_NAME,
+                                   sigc::mem_fun(*this, &Item::proxyReady),
+                                   cancellable_,
+                                   interface);
 }
 
 void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
@@ -52,10 +56,14 @@ void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& resu
     // this->event_box.set_tooltip_text(this->title);
 
   } catch (const Glib::Error& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(), object_path.c_str(),
+    g_error("Failed to create DBus Proxy for %s %s: %s",
+            bus_name.c_str(),
+            object_path.c_str(),
             err.what().c_str());
   } catch (const std::exception& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s", bus_name.c_str(), object_path.c_str(),
+    g_error("Failed to create DBus Proxy for %s %s: %s",
+            bus_name.c_str(),
+            object_path.c_str(),
             err.what());
   }
 }
@@ -109,7 +117,8 @@ void waybar::modules::SNI::Item::getUpdatedProperties() {
 
   auto params = VariantContainerBase::create_tuple({Variant<ustring>::create(SNI_INTERFACE_NAME)});
   proxy_->call("org.freedesktop.DBus.Properties.GetAll",
-               sigc::mem_fun(*this, &Item::processUpdatedProperties), params);
+               sigc::mem_fun(*this, &Item::processUpdatedProperties),
+               params);
 };
 
 void waybar::modules::SNI::Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
@@ -159,11 +168,11 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::extractPixBuf(GVariant* va
     return Glib::RefPtr<Gdk::Pixbuf>{};
   }
   GVariant* val;
-  gint lwidth = 0;
-  gint lheight = 0;
-  gint width;
-  gint height;
-  guchar* array = nullptr;
+  gint      lwidth = 0;
+  gint      lheight = 0;
+  gint      width;
+  gint      height;
+  guchar*   array = nullptr;
   while (g_variant_iter_loop(it, "(ii@ay)", &width, &height, &val)) {
     if (width > 0 && height > 0 && val != nullptr && width * height > lwidth * lheight) {
       auto size = g_variant_get_size(val);
@@ -192,8 +201,14 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::extractPixBuf(GVariant* va
       array[i + 2] = array[i + 3];
       array[i + 3] = alpha;
     }
-    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
-                                         lheight, 4 * lwidth, &pixbuf_data_deleter);
+    return Gdk::Pixbuf::create_from_data(array,
+                                         Gdk::Colorspace::COLORSPACE_RGB,
+                                         true,
+                                         8,
+                                         lwidth,
+                                         lheight,
+                                         4 * lwidth,
+                                         &pixbuf_data_deleter);
   }
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
@@ -230,7 +245,7 @@ void waybar::modules::SNI::Item::updateImage() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(std::string name,
-                                                                    int request_size) {
+                                                                    int         request_size) {
   int tmp_size = 0;
   icon_theme->rescan_if_needed();
   auto sizes = icon_theme->get_icon_sizes(name.c_str());
@@ -250,15 +265,16 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(std::string 
   if (tmp_size == 0) {
     tmp_size = request_size;
   }
-  auto icon =
-      icon_theme->load_icon(name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-  if (!icon) {
-    Glib::RefPtr<Gtk::IconTheme> default_theme = Gtk::IconTheme::get_default();
-    default_theme->rescan_if_needed();
-    return default_theme->load_icon(name.c_str(), tmp_size,
-                                    Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+  if (!icon_theme_path.empty() &&
+      icon_theme->lookup_icon(
+          name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
+    return icon_theme->load_icon(
+        name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
   }
-  return icon;
+  Glib::RefPtr<Gtk::IconTheme> default_theme = Gtk::IconTheme::get_default();
+  default_theme->rescan_if_needed();
+  return default_theme->load_icon(
+      name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
 void waybar::modules::SNI::Item::onMenuDestroyed(Item* self) {

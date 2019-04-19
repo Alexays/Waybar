@@ -28,23 +28,22 @@ Watcher::~Watcher() {
     g_slist_free_full(items_, gfWatchFree);
     items_ = NULL;
   }
-  g_signal_handler_disconnect(watcher_, handler_host_id_);
-  g_signal_handler_disconnect(watcher_, handler_item_id_);
+  g_dbus_interface_skeleton_unexport(G_DBUS_INTERFACE_SKELETON(watcher_));
 }
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
   GError* error = nullptr;
-  g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(watcher_), conn->gobj(),
-                                   "/StatusNotifierWatcher", &error);
+  g_dbus_interface_skeleton_export(
+      G_DBUS_INTERFACE_SKELETON(watcher_), conn->gobj(), "/StatusNotifierWatcher", &error);
   if (error != nullptr) {
     std::cerr << error->message << std::endl;
     g_error_free(error);
     return;
   }
-  handler_item_id_ = g_signal_connect_swapped(watcher_, "handle-register-item",
-                           G_CALLBACK(&Watcher::handleRegisterItem), this);
-  handler_host_id_ = g_signal_connect_swapped(watcher_, "handle-register-host",
-                           G_CALLBACK(&Watcher::handleRegisterHost), this);
+  g_signal_connect_swapped(
+      watcher_, "handle-register-item", G_CALLBACK(&Watcher::handleRegisterItem), this);
+  g_signal_connect_swapped(
+      watcher_, "handle-register-host", G_CALLBACK(&Watcher::handleRegisterHost), this);
 }
 
 gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invocation,
@@ -57,16 +56,22 @@ gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invoca
     object_path = service;
   }
   if (g_dbus_is_name(bus_name) == FALSE) {
-    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                                          "D-Bus bus name '%s' is not valid", bus_name);
+    g_dbus_method_invocation_return_error(invocation,
+                                          G_DBUS_ERROR,
+                                          G_DBUS_ERROR_INVALID_ARGS,
+                                          "D-Bus bus name '%s' is not valid",
+                                          bus_name);
     return TRUE;
   }
   auto watch = gfWatchFind(obj->hosts_, bus_name, object_path);
   if (watch != nullptr) {
     g_dbus_method_invocation_return_error(
-        invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+        invocation,
+        G_DBUS_ERROR,
+        G_DBUS_ERROR_INVALID_ARGS,
         "Status Notifier Host with bus name '%s' and object path '%s' is already registered",
-        bus_name, object_path);
+        bus_name,
+        object_path);
     return TRUE;
   }
   watch = gfWatchNew(GF_WATCH_TYPE_HOST, service, bus_name, object_path, obj);
@@ -89,14 +94,18 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
     object_path = service;
   }
   if (g_dbus_is_name(bus_name) == FALSE) {
-    g_dbus_method_invocation_return_error(invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                                          "D-Bus bus name '%s' is not valid", bus_name);
+    g_dbus_method_invocation_return_error(invocation,
+                                          G_DBUS_ERROR,
+                                          G_DBUS_ERROR_INVALID_ARGS,
+                                          "D-Bus bus name '%s' is not valid",
+                                          bus_name);
     return TRUE;
   }
   auto watch = gfWatchFind(obj->items_, bus_name, object_path);
   if (watch != nullptr) {
     g_warning("Status Notifier Item with bus name '%s' and object path '%s' is already registered",
-              bus_name, object_path);
+              bus_name,
+              object_path);
     sn_watcher_complete_register_item(obj->watcher_, invocation);
     return TRUE;
   }
@@ -144,8 +153,13 @@ Watcher::GfWatch* Watcher::gfWatchNew(GfWatchType type, const gchar* service, co
   watch->service = g_strdup(service);
   watch->bus_name = g_strdup(bus_name);
   watch->object_path = g_strdup(object_path);
-  watch->watch_id = g_bus_watch_name(G_BUS_TYPE_SESSION, bus_name, G_BUS_NAME_WATCHER_FLAGS_NONE,
-                                     nullptr, &Watcher::nameVanished, watch, nullptr);
+  watch->watch_id = g_bus_watch_name(G_BUS_TYPE_SESSION,
+                                     bus_name,
+                                     G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                     nullptr,
+                                     &Watcher::nameVanished,
+                                     watch,
+                                     nullptr);
   return watch;
 }
 
@@ -171,11 +185,11 @@ void Watcher::updateRegisteredItems(SnWatcher* obj) {
   g_variant_builder_init(&builder, G_VARIANT_TYPE("as"));
   for (GSList* l = items_; l != nullptr; l = g_slist_next(l)) {
     GfWatch* watch = static_cast<GfWatch*>(l->data);
-    gchar* item = g_strdup_printf("%s%s", watch->bus_name, watch->object_path);
+    gchar*   item = g_strdup_printf("%s%s", watch->bus_name, watch->object_path);
     g_variant_builder_add(&builder, "s", item);
     g_free(item);
   }
-  GVariant* variant = g_variant_builder_end(&builder);
+  GVariant*     variant = g_variant_builder_end(&builder);
   const gchar** items = g_variant_get_strv(variant, nullptr);
   sn_watcher_set_registered_items(obj, items);
   g_variant_unref(variant);
