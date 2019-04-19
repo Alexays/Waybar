@@ -79,7 +79,7 @@ struct Ipc::ipc_response Ipc::recv(int fd) const {
     auto res = ::recv(fd, header.data() + total, ipc_header_size_ - total, 0);
     if (res <= 0) {
       if (res <= 0 && (fd_event_ == -1 || fd_ == -1)) {
-        // IPC is closed so just return empty response
+        // IPC is closed so just return an empty response
         return {0, 0, ""};
       }
       throw std::runtime_error("Unable to receive IPC header");
