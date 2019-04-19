@@ -69,7 +69,7 @@ int Ipc::open(const std::string& socketPath) const {
   return fd;
 }
 
-struct Ipc::ipc_response Ipc::recv(int fd) const {
+struct Ipc::ipc_response Ipc::recv(int fd) {
   std::string header;
   header.resize(ipc_header_size_);
   auto   data32 = reinterpret_cast<uint32_t*>(header.data() + ipc_magic_.size());
@@ -86,7 +86,6 @@ struct Ipc::ipc_response Ipc::recv(int fd) const {
     }
     total += res;
   }
-
   auto magic = std::string(header.data(), header.data() + ipc_magic_.size());
   if (magic != ipc_magic_) {
     throw std::runtime_error("Invalid IPC magic");
@@ -105,7 +104,7 @@ struct Ipc::ipc_response Ipc::recv(int fd) const {
   return {data32[0], data32[1], &payload.front()};
 }
 
-struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& payload) const {
+struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& payload) {
   std::string header;
   header.resize(ipc_header_size_);
   auto data32 = reinterpret_cast<uint32_t*>(header.data() + ipc_magic_.size());
@@ -122,19 +121,22 @@ struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& pay
   return Ipc::recv(fd);
 }
 
-void Ipc::sendCmd(uint32_t type, const std::string& payload) const {
+void Ipc::sendCmd(uint32_t type, const std::string& payload) {
+  std::lock_guard<std::mutex> lock(mutex_);
   const auto res = Ipc::send(fd_, type, payload);
   signal_cmd.emit(res);
 }
 
-void Ipc::subscribe(const std::string& payload) const {
+void Ipc::subscribe(const std::string& payload) {
+  std::lock_guard<std::mutex> lock(mutex_event_);
   auto res = Ipc::send(fd_event_, IPC_SUBSCRIBE, payload);
   if (res.payload != "{\"success\": true}") {
     throw std::runtime_error("Unable to subscribe ipc event");
   }
 }
 
-void Ipc::handleEvent() const {
+void Ipc::handleEvent() {
+  std::lock_guard<std::mutex> lock(mutex_event_);
   const auto res = Ipc::recv(fd_event_);
   signal_event.emit(res);
 }

@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
+#include <mutex>
 #include "ipc.hpp"
 
 namespace waybar::modules::sway {
@@ -24,9 +25,9 @@ class Ipc {
   sigc::signal<void, const struct ipc_response> signal_event;
   sigc::signal<void, const struct ipc_response> signal_cmd;
 
-  void sendCmd(uint32_t type, const std::string &payload = "") const;
-  void subscribe(const std::string &payload) const;
-  void handleEvent() const;
+  void sendCmd(uint32_t type, const std::string &payload = "");
+  void subscribe(const std::string &payload);
+  void handleEvent();
 
  protected:
   static inline const std::string ipc_magic_ = "i3-ipc";
@@ -34,11 +35,13 @@ class Ipc {
 
   const std::string   getSocketPath() const;
   int                 open(const std::string &) const;
-  struct ipc_response send(int fd, uint32_t type, const std::string &payload = "") const;
-  struct ipc_response recv(int fd) const;
+  struct ipc_response send(int fd, uint32_t type, const std::string &payload = "");
+  struct ipc_response recv(int fd);
 
-  int fd_;
-  int fd_event_;
+  int        fd_;
+  int        fd_event_;
+  std::mutex mutex_;
+  std::mutex mutex_event_;
 };
 
 }  // namespace waybar::modules::sway
