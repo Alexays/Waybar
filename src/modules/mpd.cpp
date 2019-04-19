@@ -142,19 +142,20 @@ void waybar::modules::MPD::setLabel() {
   std::string singleIcon = getOptionIcon("single", singleActivated);
 
   // TODO: format can fail
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("artist", artist),
-                                fmt::arg("albumArtist", album_artist),
-                                fmt::arg("album", album),
-                                fmt::arg("title", title),
-                                fmt::arg("date", date),
-                                fmt::arg("elapsedTime", elapsedTime),
-                                fmt::arg("totalTime", totalTime),
-                                fmt::arg("stateIcon", stateIcon),
-                                fmt::arg("consumeIcon", consumeIcon),
-                                fmt::arg("randomIcon", randomIcon),
-                                fmt::arg("repeatIcon", repeatIcon),
-                                fmt::arg("singleIcon", singleIcon)));
+  label_.set_markup(
+      fmt::format(format,
+                  fmt::arg("artist", Glib::Markup::escape_text(artist).raw()),
+                  fmt::arg("albumArtist", Glib::Markup::escape_text(album_artist).raw()),
+                  fmt::arg("album", Glib::Markup::escape_text(album).raw()),
+                  fmt::arg("title", Glib::Markup::escape_text(title).raw()),
+                  fmt::arg("date", Glib::Markup::escape_text(date).raw()),
+                  fmt::arg("elapsedTime", elapsedTime),
+                  fmt::arg("totalTime", totalTime),
+                  fmt::arg("stateIcon", stateIcon),
+                  fmt::arg("consumeIcon", consumeIcon),
+                  fmt::arg("randomIcon", randomIcon),
+                  fmt::arg("repeatIcon", repeatIcon),
+                  fmt::arg("singleIcon", singleIcon)));
 
   if (tooltipEnabled()) {
     std::string tooltip_format;
