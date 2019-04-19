@@ -20,6 +20,7 @@ class Workspaces : public IModule {
        operator Gtk::Widget&();
 
  private:
+  void              onCmd(const struct Ipc::ipc_response);
   void              worker();
   void              addWorkspace(const Json::Value&);
   void              onButtonReady(const Json::Value&, Gtk::Button&);

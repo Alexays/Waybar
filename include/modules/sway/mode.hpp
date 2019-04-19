@@ -17,6 +17,7 @@ class Mode : public ALabel {
   auto update() -> void;
 
  private:
+  void onEvent(const struct Ipc::ipc_response);
   void worker();
 
   const Bar&                  bar_;

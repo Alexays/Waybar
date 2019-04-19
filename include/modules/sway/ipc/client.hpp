@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sigc++/sigc++.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -20,9 +21,12 @@ class Ipc {
     std::string payload;
   };
 
-  struct ipc_response sendCmd(uint32_t type, const std::string &payload = "") const;
-  void                subscribe(const std::string &payload) const;
-  struct ipc_response handleEvent() const;
+  sigc::signal<void, const struct ipc_response> signal_event;
+  sigc::signal<void, const struct ipc_response> signal_cmd;
+
+  void sendCmd(uint32_t type, const std::string &payload = "") const;
+  void subscribe(const std::string &payload) const;
+  void handleEvent() const;
 
  protected:
   static inline const std::string ipc_magic_ = "i3-ipc";
