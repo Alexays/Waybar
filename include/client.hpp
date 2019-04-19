@@ -21,7 +21,6 @@ class Client {
   struct wl_registry *                registry = nullptr;
   struct zwlr_layer_shell_v1 *        layer_shell = nullptr;
   struct zxdg_output_manager_v1 *     xdg_output_manager = nullptr;
-  struct wl_seat *                    seat = nullptr;
   struct zwp_idle_inhibit_manager_v1 *idle_inhibit_manager = nullptr;
   std::vector<std::unique_ptr<Bar>>   bars;
 

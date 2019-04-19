@@ -39,17 +39,13 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
         wl_registry_bind(registry, name, &wl_output_interface, version));
     client->outputs_.emplace_back(new struct waybar_output({wl_output, "", name, nullptr}));
     client->handleOutput(client->outputs_.back());
-  } else if (strcmp(interface, wl_seat_interface.name) == 0) {
-    client->seat = static_cast<struct wl_seat *>(
-        wl_registry_bind(registry, name, &wl_seat_interface, version));
   } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
              version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
     client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1 *>(wl_registry_bind(
         registry, name, &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
   } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
-    waybar::Client::inst()->idle_inhibit_manager =
-        static_cast<struct zwp_idle_inhibit_manager_v1 *>(
-            wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
+    client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1 *>(
+        wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
   }
 }
 
@@ -216,10 +212,9 @@ void waybar::Client::bindInterfaces() {
   };
   wl_registry_add_listener(registry, &registry_listener, this);
   wl_display_roundtrip(wl_display);
-  if (!layer_shell || !seat || !xdg_output_manager) {
+  if (!layer_shell || !xdg_output_manager) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
-  wl_display_roundtrip(wl_display);
 }
 
 int waybar::Client::main(int argc, char *argv[]) {
@@ -266,7 +261,6 @@ int waybar::Client::main(int argc, char *argv[]) {
   zwlr_layer_shell_v1_destroy(layer_shell);
   zwp_idle_inhibit_manager_v1_destroy(idle_inhibit_manager);
   wl_registry_destroy(registry);
-  wl_seat_destroy(seat);
   wl_display_disconnect(wl_display);
   return 0;
 }
