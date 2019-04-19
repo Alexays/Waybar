@@ -1,7 +1,8 @@
 #include "modules/sway/workspaces.hpp"
 
-waybar::modules::sway::Workspaces::Workspaces(const std::string &id, const Bar &bar,
-                                              const Json::Value &config)
+namespace waybar::modules::sway {
+
+Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
     : bar_(bar),
       config_(config),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -11,31 +12,35 @@ waybar::modules::sway::Workspaces::Workspaces(const std::string &id, const Bar &
     box_.get_style_context()->add_class(id);
   }
   ipc_.subscribe("[ \"workspace\" ]");
+  ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
   // Launch worker
   worker();
 }
 
-void waybar::modules::sway::Workspaces::worker() {
+void Workspaces::onCmd(const struct Ipc::ipc_response res) {
+  if (thread_.isRunning()) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    workspaces_ = parser_.parse(res.payload);
+    dp.emit();
+  }
+}
+
+void Workspaces::worker() {
   thread_ = [this] {
     try {
       if (!workspaces_.empty()) {
         ipc_.handleEvent();
       }
-      {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto                        res = ipc_.sendCmd(IPC_GET_WORKSPACES);
-        if (thread_.isRunning()) {
-          workspaces_ = parser_.parse(res.payload);
-        }
+      if (thread_.isRunning()) {
+        ipc_.sendCmd(IPC_GET_WORKSPACES);
       }
-      dp.emit();
     } catch (const std::exception &e) {
       std::cerr << "Workspaces: " << e.what() << std::endl;
     }
   };
 }
 
-auto waybar::modules::sway::Workspaces::update() -> void {
+auto Workspaces::update() -> void {
   bool                        needReorder = false;
   std::lock_guard<std::mutex> lock(mutex_);
   for (auto it = buttons_.begin(); it != buttons_.end();) {
@@ -100,7 +105,7 @@ auto waybar::modules::sway::Workspaces::update() -> void {
   }
 }
 
-void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node) {
+void Workspaces::addWorkspace(const Json::Value &node) {
   auto icon = getIcon(node["name"].asString(), node);
   auto format = config_["format"].isString()
                     ? fmt::format(config_["format"].asString(),
@@ -117,8 +122,7 @@ void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node) {
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
     try {
-      std::lock_guard<std::mutex> lock(mutex_);
-      auto                        cmd = fmt::format("workspace \"{}\"", pair.first->first);
+      auto cmd = fmt::format("workspace \"{}\"", pair.first->first);
       ipc_.sendCmd(IPC_COMMAND, cmd);
     } catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;
@@ -142,8 +146,7 @@ void waybar::modules::sway::Workspaces::addWorkspace(const Json::Value &node) {
   onButtonReady(node, button);
 }
 
-std::string waybar::modules::sway::Workspaces::getIcon(const std::string &name,
-                                                       const Json::Value &node) {
+std::string Workspaces::getIcon(const std::string &name, const Json::Value &node) {
   std::vector<std::string> keys = {name, "urgent", "focused", "visible", "default"};
   for (auto const &key : keys) {
     if (key == "focused" || key == "visible" || key == "urgent") {
@@ -157,7 +160,7 @@ std::string waybar::modules::sway::Workspaces::getIcon(const std::string &name,
   return name;
 }
 
-bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e) {
+bool Workspaces::handleScroll(GdkEventScroll *e) {
   // Avoid concurrent scroll event
   if (scrolling_) {
     return false;
@@ -199,8 +202,7 @@ bool waybar::modules::sway::Workspaces::handleScroll(GdkEventScroll *e) {
   return true;
 }
 
-const std::string waybar::modules::sway::Workspaces::getCycleWorkspace(uint8_t focused_workspace,
-                                                                       bool    prev) const {
+const std::string Workspaces::getCycleWorkspace(uint8_t focused_workspace, bool prev) const {
   auto    inc = prev ? -1 : 1;
   int     size = workspaces_.size();
   uint8_t idx = 0;
@@ -225,7 +227,7 @@ const std::string waybar::modules::sway::Workspaces::getCycleWorkspace(uint8_t f
   return "";
 }
 
-uint16_t waybar::modules::sway::Workspaces::getWorkspaceIndex(const std::string &name) const {
+uint16_t Workspaces::getWorkspaceIndex(const std::string &name) const {
   uint16_t idx = 0;
   for (const auto &workspace : workspaces_) {
     if (workspace["name"].asString() == name) {
@@ -239,7 +241,7 @@ uint16_t waybar::modules::sway::Workspaces::getWorkspaceIndex(const std::string 
   return workspaces_.size();
 }
 
-std::string waybar::modules::sway::Workspaces::trimWorkspaceName(std::string name) {
+std::string Workspaces::trimWorkspaceName(std::string name) {
   std::size_t found = name.find(":");
   if (found != std::string::npos) {
     return name.substr(found + 1);
@@ -247,8 +249,7 @@ std::string waybar::modules::sway::Workspaces::trimWorkspaceName(std::string nam
   return name;
 }
 
-void waybar::modules::sway::Workspaces::onButtonReady(const Json::Value &node,
-                                                      Gtk::Button &      button) {
+void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
   if (config_["current-only"].asBool()) {
     if (node["focused"].asBool()) {
       button.show();
@@ -260,4 +261,6 @@ void waybar::modules::sway::Workspaces::onButtonReady(const Json::Value &node,
   }
 }
 
-waybar::modules::sway::Workspaces::operator Gtk::Widget &() { return box_; }
+Workspaces::operator Gtk::Widget &() { return box_; }
+
+}  // namespace waybar::modules::sway

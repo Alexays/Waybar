@@ -114,9 +114,9 @@ void waybar::modules::Network::worker() {
     }
     thread_timer_.sleep_for(interval_);
   };
-  struct epoll_event events[EPOLL_MAX] = {{0}};
+  std::array<struct epoll_event, EPOLL_MAX> events;
   thread_ = [this, &events] {
-    int ec = epoll_wait(efd_, events, EPOLL_MAX, -1);
+    int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
         if (events[i].data.fd == nl_socket_get_fd(info_sock_)) {
