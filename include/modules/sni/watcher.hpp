@@ -38,8 +38,6 @@ class Watcher {
   GSList *   hosts_ = nullptr;
   GSList *   items_ = nullptr;
   SnWatcher *watcher_ = nullptr;
-  gulong     handler_item_id_;
-  gulong     handler_host_id_;
 };
 
 }  // namespace waybar::modules::SNI

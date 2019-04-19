@@ -28,8 +28,7 @@ Watcher::~Watcher() {
     g_slist_free_full(items_, gfWatchFree);
     items_ = NULL;
   }
-  g_signal_handler_disconnect(watcher_, handler_host_id_);
-  g_signal_handler_disconnect(watcher_, handler_item_id_);
+  g_dbus_interface_skeleton_unexport(G_DBUS_INTERFACE_SKELETON(watcher_));
 }
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
@@ -41,9 +40,9 @@ void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib:
     g_error_free(error);
     return;
   }
-  handler_item_id_ = g_signal_connect_swapped(
+  g_signal_connect_swapped(
       watcher_, "handle-register-item", G_CALLBACK(&Watcher::handleRegisterItem), this);
-  handler_host_id_ = g_signal_connect_swapped(
+  g_signal_connect_swapped(
       watcher_, "handle-register-host", G_CALLBACK(&Watcher::handleRegisterHost), this);
 }
 
