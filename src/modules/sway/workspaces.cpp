@@ -12,47 +12,52 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     box_.get_style_context()->add_class(id);
   }
   ipc_.subscribe("[ \"workspace\" ]");
+  ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
+  ipc_.sendCmd(IPC_GET_WORKSPACES);
   // Launch worker
   worker();
 }
 
-void Workspaces::onCmd(const struct Ipc::ipc_response res) {
-  if (thread_.isRunning()) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    workspaces_ = parser_.parse(res.payload);
-    dp.emit();
-  }
-}
+void Workspaces::onEvent(const struct Ipc::ipc_response res) { ipc_.sendCmd(IPC_GET_WORKSPACES); }
 
-const Json::Value Workspaces::getWorkspaces() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return workspaces_;
+void Workspaces::onCmd(const struct Ipc::ipc_response res) {
+  if (res.type == IPC_GET_WORKSPACES) {
+    auto workspaces = parser_.parse(res.payload);
+    workspaces_.clear();
+    std::copy_if(workspaces.begin(),
+                 workspaces.end(),
+                 std::back_inserter(workspaces_),
+                 [&](const auto &workspace) {
+                   return !config_["all-outputs"].asBool()
+                              ? workspace["output"].asString() == bar_.output->name
+                              : true;
+                 });
+    dp.emit();
+  } else {
+    if (scrolling_) {
+      scrolling_ = false;
+    }
+  }
 }
 
 void Workspaces::worker() {
   thread_ = [this] {
     try {
-      if (!getWorkspaces().empty()) {
-        ipc_.handleEvent();
-      }
-      if (thread_.isRunning()) {
-        ipc_.sendCmd(IPC_GET_WORKSPACES);
-      }
+      ipc_.handleEvent();
     } catch (const std::exception &e) {
       std::cerr << "Workspaces: " << e.what() << std::endl;
     }
   };
 }
 
-auto Workspaces::update() -> void {
+bool Workspaces::filterButtons() {
   bool needReorder = false;
-  auto workspaces = getWorkspaces();
   for (auto it = buttons_.begin(); it != buttons_.end();) {
-    auto ws = std::find_if(workspaces.begin(), workspaces.end(), [it](auto node) -> bool {
+    auto ws = std::find_if(workspaces_.begin(), workspaces_.end(), [it](const auto &node) {
       return node["name"].asString() == it->first;
     });
-    if (ws == workspaces.end() ||
+    if (ws == workspaces_.end() ||
         (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
       needReorder = true;
@@ -60,75 +65,60 @@ auto Workspaces::update() -> void {
       ++it;
     }
   }
-  for (auto const &node : workspaces) {
-    if (!config_["all-outputs"].asBool() && bar_.output->name != node["output"].asString()) {
-      continue;
-    }
-    auto it = buttons_.find(node["name"].asString());
-    if (it == buttons_.end()) {
-      addWorkspace(node);
+  return needReorder;
+}
+
+auto Workspaces::update() -> void {
+  bool needReorder = filterButtons();
+  for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
+    auto bit = buttons_.find((*it)["name"].asString());
+    if (bit == buttons_.end()) {
       needReorder = true;
-    } else {
-      auto &button = it->second;
-      if (node["focused"].asBool()) {
-        button.get_style_context()->add_class("focused");
-      } else {
-        button.get_style_context()->remove_class("focused");
-      }
-      if (node["visible"].asBool()) {
-        button.get_style_context()->add_class("visible");
-      } else {
-        button.get_style_context()->remove_class("visible");
-      }
-      if (node["urgent"].asBool()) {
-        button.get_style_context()->add_class("urgent");
-      } else {
-        button.get_style_context()->remove_class("urgent");
-      }
-      if (needReorder) {
-        box_.reorder_child(button, getWorkspaceIndex(workspaces, node["name"].asString()));
-      }
-      auto        icon = getIcon(node["name"].asString(), node);
-      std::string output = icon;
-      if (config_["format"].isString()) {
-        auto format = config_["format"].asString();
-        output = fmt::format(format,
-                             fmt::arg("icon", icon),
-                             fmt::arg("name", trimWorkspaceName(node["name"].asString())),
-                             fmt::arg("index", node["num"].asString()));
-      }
-      if (!config_["disable-markup"].asBool()) {
-        static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
-      } else {
-        button.set_label(output);
-      }
-      onButtonReady(node, button);
     }
-  }
-  if (scrolling_) {
-    scrolling_ = false;
+    auto &button = bit == buttons_.end() ? addButton(*it) : bit->second;
+    if ((*it)["focused"].asBool()) {
+      button.get_style_context()->add_class("focused");
+    } else {
+      button.get_style_context()->remove_class("focused");
+    }
+    if ((*it)["visible"].asBool()) {
+      button.get_style_context()->add_class("visible");
+    } else {
+      button.get_style_context()->remove_class("visible");
+    }
+    if ((*it)["urgent"].asBool()) {
+      button.get_style_context()->add_class("urgent");
+    } else {
+      button.get_style_context()->remove_class("urgent");
+    }
+    if (needReorder) {
+      box_.reorder_child(button, it - workspaces_.begin());
+    }
+    std::string output = getIcon((*it)["name"].asString(), *it);
+    if (config_["format"].isString()) {
+      auto format = config_["format"].asString();
+      output = fmt::format(format,
+                           fmt::arg("icon", output),
+                           fmt::arg("name", trimWorkspaceName((*it)["name"].asString())),
+                           fmt::arg("index", (*it)["num"].asString()));
+    }
+    if (!config_["disable-markup"].asBool()) {
+      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
+    } else {
+      button.set_label(output);
+    }
+    onButtonReady(*it, button);
   }
 }
 
-void Workspaces::addWorkspace(const Json::Value &node) {
-  auto icon = getIcon(node["name"].asString(), node);
-  auto format = config_["format"].isString()
-                    ? fmt::format(config_["format"].asString(),
-                                  fmt::arg("icon", icon),
-                                  fmt::arg("name", trimWorkspaceName(node["name"].asString())),
-                                  fmt::arg("index", node["num"].asString()))
-                    : icon;
-  auto  pair = buttons_.emplace(node["name"].asString(), format);
+Gtk::Button &Workspaces::addButton(const Json::Value &node) {
+  auto  pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto &button = pair.first->second;
-  if (!config_["disable-markup"].asBool()) {
-    static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(format);
-  }
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
     try {
-      auto cmd = fmt::format("workspace \"{}\"", pair.first->first);
-      ipc_.sendCmd(IPC_COMMAND, cmd);
+      ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", pair.first->first));
     } catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;
     }
@@ -137,19 +127,7 @@ void Workspaces::addWorkspace(const Json::Value &node) {
     button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     button.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
-  auto workspaces = getWorkspaces();
-  box_.reorder_child(button, getWorkspaceIndex(workspaces, node["name"].asString()));
-  if (node["focused"].asBool()) {
-    button.get_style_context()->add_class("focused");
-  }
-  if (node["visible"].asBool()) {
-    button.get_style_context()->add_class("visible");
-  }
-  if (node["urgent"].asBool()) {
-    button.get_style_context()->add_class("urgent");
-  }
-
-  onButtonReady(node, button);
+  return button;
 }
 
 std::string Workspaces::getIcon(const std::string &name, const Json::Value &node) {
@@ -171,82 +149,57 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   if (scrolling_) {
     return false;
   }
-  auto    workspaces = getWorkspaces();
-  uint8_t idx;
   scrolling_ = true;
-  for (idx = 0; idx < workspaces.size(); idx += 1) {
-    if (workspaces[idx]["focused"].asBool()) {
-      break;
-    }
-  }
-  if (idx == workspaces.size()) {
+  std::string name;
+  auto        it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
+    return workspace["focused"].asBool();
+  });
+  if (it == workspaces_.end()) {
     scrolling_ = false;
     return false;
   }
-  std::string name;
-  if (e->direction == GDK_SCROLL_UP) {
-    name = getCycleWorkspace(workspaces, idx, true);
+  switch (e->direction) {
+    case GDK_SCROLL_DOWN:
+    case GDK_SCROLL_RIGHT:
+      name = getCycleWorkspace(it, false);
+      break;
+    case GDK_SCROLL_UP:
+    case GDK_SCROLL_LEFT:
+      name = getCycleWorkspace(it, true);
+      break;
+    case GDK_SCROLL_SMOOTH:
+      gdouble delta_x, delta_y;
+      gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
+      if (delta_y < 0) {
+        name = getCycleWorkspace(it, true);
+      } else if (delta_y > 0) {
+        name = getCycleWorkspace(it, false);
+      }
+      break;
+    default:
+      break;
   }
-  if (e->direction == GDK_SCROLL_DOWN) {
-    name = getCycleWorkspace(workspaces, idx, false);
-  }
-  if (e->direction == GDK_SCROLL_SMOOTH) {
-    gdouble delta_x, delta_y;
-    gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
-    if (delta_y < 0) {
-      name = getCycleWorkspace(workspaces, idx, true);
-    } else if (delta_y > 0) {
-      name = getCycleWorkspace(workspaces, idx, false);
-    }
-  }
-  if (name.empty() || name == workspaces[idx]["name"].asString()) {
+  if (name.empty() || name == (*it)["name"].asString()) {
     scrolling_ = false;
     return false;
   }
   ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
-  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   return true;
 }
 
-const std::string Workspaces::getCycleWorkspace(const Json::Value &workspaces,
-                                                uint8_t focused_workspace, bool prev) const {
-  auto    inc = prev ? -1 : 1;
-  int     size = workspaces.size();
-  uint8_t idx = 0;
-  for (int i = focused_workspace; i < size && i >= 0; i += inc) {
-    bool same_output = (workspaces[i]["output"].asString() == bar_.output->name &&
-                        !config_["all-outputs"].asBool()) ||
-                       config_["all-outputs"].asBool();
-    bool same_name =
-        workspaces[i]["name"].asString() == workspaces[focused_workspace]["name"].asString();
-    if (same_output && !same_name) {
-      return workspaces[i]["name"].asString();
-    }
-    if (prev && i - 1 < 0) {
-      i = size;
-    } else if (!prev && i + 1 >= size) {
-      i = -1;
-    } else if (idx >= workspaces.size()) {
-      return "";
-    }
-    idx += 1;
+const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
+                                                bool                               prev) const {
+  if (prev && it == workspaces_.begin()) {
+    return (*(--workspaces_.end()))["name"].asString();
   }
-  return "";
-}
-
-uint16_t Workspaces::getWorkspaceIndex(const Json::Value &workspaces,
-                                       const std::string &name) const {
-  uint16_t idx = 0;
-  for (const auto &workspace : workspaces) {
-    if (workspace["name"].asString() == name) {
-      return idx;
-    }
-    if (!(!config_["all-outputs"].asBool() &&
-          workspace["output"].asString() != bar_.output->name)) {
-      idx += 1;
-    }
+  if (prev && it != workspaces_.begin())
+    --it;
+  else if (!prev && it != workspaces_.end())
+    ++it;
+  if (!prev && it == workspaces_.end()) {
+    return (*(++workspaces_.begin()))["name"].asString();
   }
-  return workspaces.size();
+  return (*it)["name"].asString();
 }
 
 std::string Workspaces::trimWorkspaceName(std::string name) {
