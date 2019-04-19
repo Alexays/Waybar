@@ -26,9 +26,11 @@ class Workspaces : public IModule {
   void              onButtonReady(const Json::Value&, Gtk::Button&);
   std::string       getIcon(const std::string&, const Json::Value&);
   bool              handleScroll(GdkEventScroll*);
-  const std::string getCycleWorkspace(uint8_t current, bool prev) const;
-  uint16_t          getWorkspaceIndex(const std::string& name) const;
+  const std::string getCycleWorkspace(const Json::Value& workspaces, uint8_t current,
+                                      bool prev) const;
+  uint16_t          getWorkspaceIndex(const Json::Value& workspaces, const std::string& name) const;
   std::string       trimWorkspaceName(std::string);
+  const Json::Value getWorkspaces();
 
   const Bar&                                   bar_;
   const Json::Value&                           config_;
