@@ -245,7 +245,7 @@ void waybar::modules::MPD::tryConnect() {
 
   try {
     checkErrors(connection_.get());
-  } catch (std::runtime_error e) {
+  } catch (std::runtime_error &e) {
     std::cerr << module_name_ << ": Failed to connect to MPD: " << e.what() << std::endl;
     connection_.reset();
     alternate_connection_.reset();
