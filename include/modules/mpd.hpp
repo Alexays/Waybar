@@ -15,6 +15,7 @@ class MPD : public ALabel {
 
  private:
   std::thread periodic_updater();
+  std::string getTag(mpd_tag_type type, unsigned idx = 0);
   void        setLabel();
   std::string getStateIcon();
   std::string getOptionIcon(std::string optionName, bool activated);
