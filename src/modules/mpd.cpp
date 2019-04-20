@@ -75,6 +75,17 @@ std::thread waybar::modules::MPD::periodic_updater() {
   });
 }
 
+std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) {
+  std::string result = config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
+  const char* tag = mpd_song_get_tag(song_.get(), type, idx);
+
+  // mpd_song_get_tag can return NULL, so make sure it's valid before setting
+  if (tag)
+    result = tag;
+
+  return result;
+}
+
 void waybar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
     label_.get_style_context()->add_class("disconnected");
@@ -123,11 +134,11 @@ void waybar::modules::MPD::setLabel() {
 
     stateIcon = getStateIcon();
 
-    artist = mpd_song_get_tag(song_.get(), MPD_TAG_ARTIST, 0);
-    album_artist = mpd_song_get_tag(song_.get(), MPD_TAG_ALBUM_ARTIST, 0);
-    album = mpd_song_get_tag(song_.get(), MPD_TAG_ALBUM, 0);
-    title = mpd_song_get_tag(song_.get(), MPD_TAG_TITLE, 0);
-    date = mpd_song_get_tag(song_.get(), MPD_TAG_DATE, 0);
+    artist = getTag(MPD_TAG_ARTIST);
+    album_artist = getTag(MPD_TAG_ALBUM_ARTIST);
+    album = getTag(MPD_TAG_ALBUM);
+    title = getTag(MPD_TAG_TITLE);
+    date = getTag(MPD_TAG_DATE);
     elapsedTime = std::chrono::seconds(mpd_status_get_elapsed_time(status_.get()));
     totalTime = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
   }
