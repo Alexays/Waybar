@@ -7,17 +7,29 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     : ALabel(config, "{album} - {artist} - {title}", 5),
       module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
-      port_(config["port"].asUInt()),
+      port_(config_["port"].isUInt() ? config["port"].asUInt() : 0),
+      timeout_(config_["timeout"].isUInt() ? config_["timeout"].asUInt() * 1'000 : 30'000),
       connection_(nullptr, &mpd_connection_free),
       alternate_connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
       song_(nullptr, &mpd_song_free) {
+  if (!config_["port"].isNull() && !config_["port"].isUInt()) {
+    std::cerr << module_name_ << ": `port` configuration should be an unsigned int" << std::endl;
+  }
+
+  if (!config_["timeout"].isNull() && !config_["timeout"].isUInt()) {
+    std::cerr << module_name_ << ": `timeout` configuration should be an unsigned int" << std::endl;
+  }
+
   label_.set_name("mpd");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
 
   if (!config["server"].isNull()) {
+    if (!config_["server"].isString()) {
+      std::cerr << module_name_ << "`server` configuration should be a string" << std::endl;
+    }
     server_ = config["server"].asCString();
   }
 
@@ -50,17 +62,17 @@ auto waybar::modules::MPD::update() -> void {
 std::thread waybar::modules::MPD::event_listener() {
   return std::thread([this] {
     while (true) {
-      if (connection_ == nullptr) {
-        // Retry periodically if no connection
-        try {
+      try {
+        if (connection_ == nullptr) {
+          // Retry periodically if no connection
           update();
-        } catch (const std::exception& e) {
-          std::cerr << module_name_ + ": " + e.what() << std::endl;
+          std::this_thread::sleep_for(interval_);
+        } else {
+          waitForEvent();
+          dp.emit();
         }
-        std::this_thread::sleep_for(interval_);
-      } else {
-        waitForEvent();
-        dp.emit();
+      } catch (const std::exception& e) {
+        std::cerr << module_name_ + ": " + e.what() << std::endl;
       }
     }
   });
@@ -76,12 +88,12 @@ std::thread waybar::modules::MPD::periodic_updater() {
 }
 
 std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) {
-  std::string result = config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
+  std::string result =
+      config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
   const char* tag = mpd_song_get_tag(song_.get(), type, idx);
 
   // mpd_song_get_tag can return NULL, so make sure it's valid before setting
-  if (tag)
-    result = tag;
+  if (tag) result = tag;
 
   return result;
 }
@@ -89,8 +101,9 @@ std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) {
 void waybar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
     label_.get_style_context()->add_class("disconnected");
-    // In the case connection closed while MPD is stopped
     label_.get_style_context()->remove_class("stopped");
+    label_.get_style_context()->remove_class("playing");
+    label_.get_style_context()->remove_class("paused");
 
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
@@ -231,10 +244,11 @@ void waybar::modules::MPD::tryConnect() {
     return;
   }
 
-  connection_ = unique_connection(mpd_connection_new(server_, port_, 5'000), &mpd_connection_free);
+  connection_ =
+      unique_connection(mpd_connection_new(server_, port_, timeout_), &mpd_connection_free);
 
   alternate_connection_ =
-      unique_connection(mpd_connection_new(server_, port_, 5'000), &mpd_connection_free);
+      unique_connection(mpd_connection_new(server_, port_, timeout_), &mpd_connection_free);
 
   if (connection_ == nullptr || alternate_connection_ == nullptr) {
     std::cerr << module_name_ << ": Failed to connect to MPD" << std::endl;
@@ -245,24 +259,27 @@ void waybar::modules::MPD::tryConnect() {
 
   try {
     checkErrors(connection_.get());
-  } catch (std::runtime_error &e) {
+  } catch (std::runtime_error& e) {
     std::cerr << module_name_ << ": Failed to connect to MPD: " << e.what() << std::endl;
     connection_.reset();
     alternate_connection_.reset();
   }
+
+  std::cerr << module_name_ << ": Connected to MPD" << std::endl;
 }
 
 void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
   switch (mpd_connection_get_error(conn)) {
     case MPD_ERROR_SUCCESS:
+      mpd_connection_clear_error(conn);
       return;
+    case MPD_ERROR_TIMEOUT:
     case MPD_ERROR_CLOSED:
-      std::cerr << module_name_ << ": Connection to MPD closed" << std::endl;
       mpd_connection_clear_error(conn);
       connection_.reset();
       alternate_connection_.reset();
       state_ = MPD_STATE_UNKNOWN;
-      return;
+      throw std::runtime_error("Connection to MPD closed");
     default:
       auto error_message = mpd_connection_get_error_message(conn);
       mpd_connection_clear_error(conn);
@@ -285,8 +302,19 @@ void waybar::modules::MPD::waitForEvent() {
   auto conn = alternate_connection_.get();
   // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist
   // change
-  mpd_run_idle_mask(conn,
-                    static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST));
+  if (!mpd_send_idle_mask(
+          conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST))) {
+    checkErrors(conn);
+    return;
+  }
+  // alternate_idle_ = true;
+
+  // See issue #277:
+  // https://github.com/Alexays/Waybar/issues/277
+  mpd_recv_idle(conn, /* disable_timeout = */ false);
+  checkErrors(conn);
+  mpd_response_finish(conn);
+
   checkErrors(conn);
 }
 
