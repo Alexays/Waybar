@@ -48,6 +48,8 @@ class MPD : public ALabel {
   const char*    server_;
   const unsigned port_;
 
+  unsigned timeout_;
+
   // We need a mutex here because we can trigger updates from multiple thread:
   // the event based updates, the periodic updates needed for the elapsed time,
   // and the click play/pause feature
