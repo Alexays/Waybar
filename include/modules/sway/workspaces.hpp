@@ -7,7 +7,6 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
-#include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
@@ -36,8 +35,8 @@ class Workspaces : public IModule {
   const Json::Value&                           config_;
   std::vector<Json::Value>                     workspaces_;
   waybar::util::SleeperThread                  thread_;
+  std::mutex                                   mutex_;
   Gtk::Box                                     box_;
-  util::JsonParser                             parser_;
   Ipc                                          ipc_;
   bool                                         scrolling_;
   std::unordered_map<std::string, Gtk::Button> buttons_;

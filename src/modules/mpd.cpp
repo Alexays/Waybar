@@ -259,13 +259,12 @@ void waybar::modules::MPD::tryConnect() {
 
   try {
     checkErrors(connection_.get());
+    std::cerr << module_name_ << ": Connected to MPD" << std::endl;
   } catch (std::runtime_error& e) {
     std::cerr << module_name_ << ": Failed to connect to MPD: " << e.what() << std::endl;
     connection_.reset();
     alternate_connection_.reset();
   }
-
-  std::cerr << module_name_ << ": Connected to MPD" << std::endl;
 }
 
 void waybar::modules::MPD::checkErrors(mpd_connection* conn) {

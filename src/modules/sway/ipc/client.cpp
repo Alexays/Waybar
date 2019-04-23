@@ -97,11 +97,15 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
   while (total < data32[0]) {
     auto res = ::recv(fd, payload.data() + total, data32[0] - total, 0);
     if (res < 0) {
+      if (errno == EINTR || errno == EAGAIN) {
+        continue;
+      }
       throw std::runtime_error("Unable to receive IPC payload");
     }
     total += res;
   }
-  return {data32[0], data32[1], &payload.front()};
+  auto parsed = parser_.parse(&payload.front(), data32[0]);
+  return {data32[0], data32[1], parsed};
 }
 
 struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& payload) {
@@ -130,7 +134,7 @@ void Ipc::sendCmd(uint32_t type, const std::string& payload) {
 void Ipc::subscribe(const std::string& payload) {
   std::lock_guard<std::mutex> lock(mutex_event_);
   auto res = Ipc::send(fd_event_, IPC_SUBSCRIBE, payload);
-  if (res.payload != "{\"success\": true}") {
+  if (!res.payload["success"].asBool()) {
     throw std::runtime_error("Unable to subscribe ipc event");
   }
 }

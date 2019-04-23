@@ -6,8 +6,10 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include "ipc.hpp"
+#include "util/json.hpp"
 
 namespace waybar::modules::sway {
 
@@ -19,7 +21,7 @@ class Ipc {
   struct ipc_response {
     uint32_t    size;
     uint32_t    type;
-    std::string payload;
+    Json::Value payload;
   };
 
   sigc::signal<void, const struct ipc_response> signal_event;
@@ -38,10 +40,11 @@ class Ipc {
   struct ipc_response send(int fd, uint32_t type, const std::string &payload = "");
   struct ipc_response recv(int fd);
 
-  int        fd_;
-  int        fd_event_;
-  std::mutex mutex_;
-  std::mutex mutex_event_;
+  int              fd_;
+  int              fd_event_;
+  std::mutex       mutex_;
+  std::mutex       mutex_event_;
+  util::JsonParser parser_;
 };
 
 }  // namespace waybar::modules::sway

@@ -21,18 +21,17 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 }
 
 void Window::onEvent(const struct Ipc::ipc_response res) {
-  auto parsed = parser_.parse(res.payload);
+  auto data = res.payload;
   // Check for waybar prevents flicker when hovering window module
-  if ((parsed["change"] == "focus" || parsed["change"] == "title") &&
-      parsed["container"]["focused"].asBool() &&
-      parsed["container"]["name"].asString() != "waybar") {
-    window_ = Glib::Markup::escape_text(parsed["container"]["name"].asString());
-    windowId_ = parsed["container"]["id"].asInt();
+  if ((data["change"] == "focus" || data["change"] == "title") &&
+      data["container"]["focused"].asBool() && data["container"]["name"].asString() != "waybar") {
+    window_ = Glib::Markup::escape_text(data["container"]["name"].asString());
+    windowId_ = data["container"]["id"].asInt();
     dp.emit();
-  } else if ((parsed["change"] == "close" && parsed["container"]["focused"].asBool() &&
-              windowId_ == parsed["container"]["id"].asInt()) ||
-             (parsed["change"] == "focus" && parsed["current"]["focus"].isArray() &&
-              parsed["current"]["focus"].empty())) {
+  } else if ((data["change"] == "close" && data["container"]["focused"].asBool() &&
+              windowId_ == data["container"]["id"].asInt()) ||
+             (data["change"] == "focus" && data["current"]["focus"].isArray() &&
+              data["current"]["focus"].empty())) {
     window_.clear();
     windowId_ = -1;
     dp.emit();
@@ -40,8 +39,7 @@ void Window::onEvent(const struct Ipc::ipc_response res) {
 }
 
 void Window::onCmd(const struct Ipc::ipc_response res) {
-  auto parsed = parser_.parse(res.payload);
-  auto [id, name] = getFocusedNode(parsed["nodes"]);
+  auto [id, name] = getFocusedNode(res.payload["nodes"]);
   windowId_ = id;
   window_ = name;
   dp.emit();
