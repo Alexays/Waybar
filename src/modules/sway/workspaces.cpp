@@ -23,17 +23,19 @@ void Workspaces::onEvent(const struct Ipc::ipc_response res) { ipc_.sendCmd(IPC_
 
 void Workspaces::onCmd(const struct Ipc::ipc_response res) {
   if (res.type == IPC_GET_WORKSPACES) {
-    auto workspaces = parser_.parse(res.payload);
-    workspaces_.clear();
-    std::copy_if(workspaces.begin(),
-                 workspaces.end(),
-                 std::back_inserter(workspaces_),
-                 [&](const auto &workspace) {
-                   return !config_["all-outputs"].asBool()
-                              ? workspace["output"].asString() == bar_.output->name
-                              : true;
-                 });
-    dp.emit();
+    if (res.payload.isArray()) {
+      std::lock_guard<std::mutex> lock(mutex_);
+      workspaces_.clear();
+      std::copy_if(res.payload.begin(),
+                   res.payload.end(),
+                   std::back_inserter(workspaces_),
+                   [&](const auto &workspace) {
+                     return !config_["all-outputs"].asBool()
+                                ? workspace["output"].asString() == bar_.output->name
+                                : true;
+                   });
+      dp.emit();
+    }
   } else {
     if (scrolling_) {
       scrolling_ = false;
@@ -69,7 +71,8 @@ bool Workspaces::filterButtons() {
 }
 
 auto Workspaces::update() -> void {
-  bool needReorder = filterButtons();
+  std::lock_guard<std::mutex> lock(mutex_);
+  bool                        needReorder = filterButtons();
   for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
     auto bit = buttons_.find((*it)["name"].asString());
     if (bit == buttons_.end()) {
@@ -149,39 +152,42 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   if (scrolling_) {
     return false;
   }
-  scrolling_ = true;
   std::string name;
-  auto        it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
-    return workspace["focused"].asBool();
-  });
-  if (it == workspaces_.end()) {
-    scrolling_ = false;
-    return false;
-  }
-  switch (e->direction) {
-    case GDK_SCROLL_DOWN:
-    case GDK_SCROLL_RIGHT:
-      name = getCycleWorkspace(it, false);
-      break;
-    case GDK_SCROLL_UP:
-    case GDK_SCROLL_LEFT:
-      name = getCycleWorkspace(it, true);
-      break;
-    case GDK_SCROLL_SMOOTH:
-      gdouble delta_x, delta_y;
-      gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
-      if (delta_y < 0) {
-        name = getCycleWorkspace(it, true);
-      } else if (delta_y > 0) {
+  scrolling_ = true;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
+      return workspace["focused"].asBool();
+    });
+    if (it == workspaces_.end()) {
+      scrolling_ = false;
+      return false;
+    }
+    switch (e->direction) {
+      case GDK_SCROLL_DOWN:
+      case GDK_SCROLL_RIGHT:
         name = getCycleWorkspace(it, false);
-      }
-      break;
-    default:
-      break;
-  }
-  if (name.empty() || name == (*it)["name"].asString()) {
-    scrolling_ = false;
-    return false;
+        break;
+      case GDK_SCROLL_UP:
+      case GDK_SCROLL_LEFT:
+        name = getCycleWorkspace(it, true);
+        break;
+      case GDK_SCROLL_SMOOTH:
+        gdouble delta_x, delta_y;
+        gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
+        if (delta_y < 0) {
+          name = getCycleWorkspace(it, true);
+        } else if (delta_y > 0) {
+          name = getCycleWorkspace(it, false);
+        }
+        break;
+      default:
+        break;
+    }
+    if (name.empty() || name == (*it)["name"].asString()) {
+      scrolling_ = false;
+      return false;
+    }
   }
   ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
   return true;

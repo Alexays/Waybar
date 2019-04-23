@@ -16,9 +16,8 @@ Mode::Mode(const std::string& id, const Bar& bar, const Json::Value& config)
 }
 
 void Mode::onEvent(const struct Ipc::ipc_response res) {
-  auto parsed = parser_.parse(res.payload);
-  if (parsed["change"] != "default") {
-    mode_ = parsed["change"].asString();
+  if (res.payload["change"] != "default") {
+    mode_ = res.payload["change"].asString();
   } else {
     mode_.clear();
   }
