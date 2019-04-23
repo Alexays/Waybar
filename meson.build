@@ -42,7 +42,7 @@ add_global_link_arguments(cpp_link_args, language : 'cpp')
 
 thread_dep = dependency('threads')
 libinput = dependency('libinput')
-fmt = dependency('fmt', version : ['>=5.2.1'], fallback : ['fmt', 'fmt_dep'])
+fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
