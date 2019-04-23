@@ -33,6 +33,7 @@ class Custom : public ALabel {
   waybar::util::command::res  output_;
   waybar::util::JsonParser    parser_;
   FILE*                       fp_;
+  int                         pid_;
 };
 
 }  // namespace waybar::modules

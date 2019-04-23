@@ -3,7 +3,11 @@
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
-    : ALabel(config, "{status}"), bar_(bar), status_("deactivated"), idle_inhibitor_(nullptr) {
+    : ALabel(config, "{status}"),
+      bar_(bar),
+      status_("deactivated"),
+      idle_inhibitor_(nullptr),
+      pid_(-1) {
   label_.set_name("idle_inhibitor");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -18,6 +22,10 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
   if (idle_inhibitor_) {
     zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
     idle_inhibitor_ = nullptr;
+  }
+  if (pid_ != -1) {
+    kill(-pid_, 9);
+    pid_ = -1;
   }
 }
 
@@ -43,7 +51,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
       status_ = "activated";
     }
     if (config_["on-click"].isString() && e->button == 1) {
-      waybar::util::command::forkExec(config_["on-click"].asString());
+      pid_ = waybar::util::command::forkExec(config_["on-click"].asString());
     }
   } else {
     ALabel::handleToggle(e);

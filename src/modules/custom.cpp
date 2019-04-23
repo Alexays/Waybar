@@ -1,7 +1,7 @@
 #include "modules/custom.hpp"
 
 waybar::modules::Custom::Custom(const std::string& name, const Json::Value& config)
-    : ALabel(config, "{}"), name_(name), fp_(nullptr) {
+    : ALabel(config, "{}"), name_(name), fp_(nullptr), pid_(-1) {
   label_.set_name("custom-" + name_);
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
@@ -14,9 +14,9 @@ waybar::modules::Custom::Custom(const std::string& name, const Json::Value& conf
 }
 
 waybar::modules::Custom::~Custom() {
-  if (fp_) {
-    pclose(fp_);
-    fp_ = nullptr;
+  if (pid_ != -1) {
+    kill(-pid_, 9);
+    pid_ = -1;
   }
 }
 
@@ -40,17 +40,18 @@ void waybar::modules::Custom::delayWorker() {
 
 void waybar::modules::Custom::continuousWorker() {
   auto cmd = config_["exec"].asString();
-  fp_ = popen(cmd.c_str(), "r");
+  pid_ = -1;
+  fp_ = util::command::open(cmd, pid_);
   if (!fp_) {
     throw std::runtime_error("Unable to open " + cmd);
   }
-  thread_ = [this] {
+  thread_ = [&] {
     char*  buff = nullptr;
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
       if (fp_) {
-        exit_code = WEXITSTATUS(pclose(fp_));
+        exit_code = WEXITSTATUS(util::command::close(fp_, pid_));
         fp_ = nullptr;
       }
       thread_.stop();

@@ -74,6 +74,10 @@ window#waybar.hidded {
     animation-direction: alternate;
 }
 
+label:focus {
+    background-color: #000000;
+}
+
 #cpu {
     background: #2ecc71;
     color: #000000;
