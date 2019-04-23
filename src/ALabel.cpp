@@ -32,21 +32,29 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string format, uint
   }
 }
 
+waybar::ALabel::~ALabel() {
+  for (const auto &pid : pid_) {
+    if (pid != -1) {
+      kill(-pid, 9);
+    }
+  }
+}
+
 auto waybar::ALabel::update() -> void {
   // Nothing here
 }
 
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["on-click"].isString() && e->button == 1) {
-    waybar::util::command::forkExec(config_["on-click"].asString());
+    pid_.push_back(waybar::util::command::forkExec(config_["on-click"].asString()));
   } else if (config_["on-click-middle"].isString() && e->button == 2) {
-    waybar::util::command::forkExec(config_["on-click-middle"].asString());
+    pid_.push_back(waybar::util::command::forkExec(config_["on-click-middle"].asString()));
   } else if (config_["on-click-right"].isString() && e->button == 3) {
-    waybar::util::command::forkExec(config_["on-click-right"].asString());
+    pid_.push_back(waybar::util::command::forkExec(config_["on-click-right"].asString()));
   } else if (config_["on-click-forward"].isString() && e->button == 8) {
-    waybar::util::command::forkExec(config_["on-click-backward"].asString());
+    pid_.push_back(waybar::util::command::forkExec(config_["on-click-backward"].asString()));
   } else if (config_["on-click-backward"].isString() && e->button == 9) {
-    waybar::util::command::forkExec(config_["on-click-forward"].asString());
+    pid_.push_back(waybar::util::command::forkExec(config_["on-click-forward"].asString()));
   }
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
@@ -82,9 +90,9 @@ bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
     }
   }
   if (direction_up && config_["on-scroll-up"].isString()) {
-    waybar::util::command::forkExec(config_["on-scroll-up"].asString());
+    pid_.push_back(waybar::util::command::forkExec(config_["on-scroll-up"].asString()));
   } else if (config_["on-scroll-down"].isString()) {
-    waybar::util::command::forkExec(config_["on-scroll-down"].asString());
+    pid_.push_back(waybar::util::command::forkExec(config_["on-scroll-down"].asString()));
   }
   dp.emit();
   return true;

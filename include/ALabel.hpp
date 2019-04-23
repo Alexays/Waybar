@@ -11,7 +11,7 @@ namespace waybar {
 class ALabel : public IModule {
  public:
   ALabel(const Json::Value &, const std::string format, uint16_t interval = 0);
-  virtual ~ALabel() = default;
+  virtual ~ALabel();
   virtual auto        update() -> void;
   virtual std::string getIcon(uint16_t, const std::string &alt = "");
   virtual             operator Gtk::Widget &();
@@ -30,6 +30,9 @@ class ALabel : public IModule {
 
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
+
+ private:
+  std::vector<int> pid_;
 };
 
 }  // namespace waybar

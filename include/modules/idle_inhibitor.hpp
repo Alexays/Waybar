@@ -19,6 +19,7 @@ class IdleInhibitor : public ALabel {
   const Bar&                    bar_;
   std::string                   status_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
+  int                           pid_;
 };
 
 }  // namespace waybar::modules

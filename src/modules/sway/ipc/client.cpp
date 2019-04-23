@@ -104,7 +104,7 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
     }
     total += res;
   }
-  auto parsed = parser_.parse(&payload.front(), data32[0]);
+  auto parsed = parser_.parse(&payload.front());
   return {data32[0], data32[1], parsed};
 }
 
