@@ -23,6 +23,12 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Clock::update() -> void {
+  if (config_["timezone"].isString()) {
+    std::string tz("TZ=");
+    tz.append(config_["timezone"].asString());
+    putenv((char*)tz.c_str());
+    tzset();
+  }
   auto localtime = fmt::localtime(std::time(nullptr));
   auto text = fmt::format(format_, localtime);
   label_.set_markup(text);
