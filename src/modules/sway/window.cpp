@@ -12,7 +12,7 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     label_.set_hexpand(true);
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
   }
-  ipc_.subscribe("[\"window\",\"workspace\"]");
+  ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
   getFocusedWindow();
@@ -20,7 +20,7 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   worker();
 }
 
-void Window::onEvent(const struct Ipc::ipc_response res) {
+void Window::onEvent(const struct Ipc::ipc_response& res) {
   auto data = res.payload;
   // Check for waybar prevents flicker when hovering window module
   if ((data["change"] == "focus" || data["change"] == "title") &&
@@ -38,7 +38,7 @@ void Window::onEvent(const struct Ipc::ipc_response res) {
   }
 }
 
-void Window::onCmd(const struct Ipc::ipc_response res) {
+void Window::onCmd(const struct Ipc::ipc_response& res) {
   auto [id, name] = getFocusedNode(res.payload["nodes"]);
   windowId_ = id;
   window_ = name;
@@ -62,7 +62,7 @@ auto Window::update() -> void {
   }
 }
 
-std::tuple<int, std::string> Window::getFocusedNode(Json::Value nodes) {
+std::tuple<int, std::string> Window::getFocusedNode(const Json::Value& nodes) {
   for (auto const& node : nodes) {
     if (node["focused"].asBool() && node["type"] == "con") {
       return {node["id"].asInt(), node["name"].asString()};

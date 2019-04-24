@@ -56,7 +56,7 @@ class Bar {
   void setupAltFormatKeyForModuleList(const char *module_list_name);
 
   uint32_t                                      width_ = 0;
-  uint32_t                                      height_ = 30;
+  uint32_t                                      height_ = 1;
   Gtk::Box                                      left_;
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;

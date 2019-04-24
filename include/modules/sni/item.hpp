@@ -20,7 +20,7 @@ namespace waybar::modules::SNI {
 
 class Item : public sigc::trackable {
  public:
-  Item(std::string, std::string, const Json::Value&);
+  Item(const std::string&, const std::string&, const Json::Value&);
   ~Item() = default;
 
   std::string bus_name;
@@ -58,7 +58,7 @@ class Item : public sigc::trackable {
 
   void                      updateImage();
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
-  Glib::RefPtr<Gdk::Pixbuf> getIconByName(std::string name, int size);
+  Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   static void               onMenuDestroyed(Item* self);
   bool                      makeMenu(GdkEventButton* const& ev);
   bool                      handleClick(GdkEventButton* const& /*ev*/);

@@ -4,7 +4,7 @@ waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar),
 
 waybar::IModule* waybar::Factory::makeModule(const std::string& name) const {
   try {
-    auto hash_pos = name.find("#");
+    auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
     if (ref == "battery") {

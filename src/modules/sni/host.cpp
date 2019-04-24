@@ -1,8 +1,7 @@
 #include "modules/sni/host.hpp"
-
 #include <iostream>
 
-using namespace waybar::modules::SNI;
+namespace waybar::modules::SNI {
 
 Host::Host(const std::size_t id, const Json::Value& config,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
@@ -96,7 +95,7 @@ void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
   g_signal_connect(host->watcher_, "item-registered", G_CALLBACK(&Host::itemRegistered), data);
   g_signal_connect(host->watcher_, "item-unregistered", G_CALLBACK(&Host::itemUnregistered), data);
   auto items = sn_watcher_dup_registered_items(host->watcher_);
-  if (items) {
+  if (items != nullptr) {
     for (uint32_t i = 0; items[i] != nullptr; i += 1) {
       host->addRegisteredItem(items[i]);
     }
@@ -122,7 +121,7 @@ void Host::itemUnregistered(SnWatcher* watcher, const gchar* service, gpointer d
 }
 
 std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::string service) {
-  auto it = service.find("/");
+  auto it = service.find('/');
   if (it != std::string::npos) {
     return {service.substr(0, it), service.substr(it)};
   }
@@ -133,4 +132,6 @@ void Host::addRegisteredItem(std::string service) {
   auto [bus_name, object_path] = getBusNameAndObjectPath(service);
   items_.emplace_back(new Item(bus_name, object_path, config_));
   on_add_(items_.back());
+}
+
 }

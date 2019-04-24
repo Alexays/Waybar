@@ -1,14 +1,13 @@
 #include "modules/sni/item.hpp"
-
 #include <glibmm/main.h>
 #include <iostream>
 
-using namespace Glib;
+namespace waybar::modules::SNI {
 
-static const ustring  SNI_INTERFACE_NAME = sn_item_interface_info()->name;
-static const unsigned UPDATE_DEBOUNCE_TIME = 10;
+static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
+static const unsigned      UPDATE_DEBOUNCE_TIME = 10;
 
-waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Value& config)
+Item::Item(const std::string& bn, const std::string& op, const Json::Value& config)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
@@ -34,7 +33,7 @@ waybar::modules::SNI::Item::Item(std::string bn, std::string op, const Json::Val
                                    interface);
 }
 
-void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
+void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
   try {
     this->proxy_ = Gio::DBus::Proxy::create_for_bus_finish(result);
     /* Properties are already cached during object creation */
@@ -69,11 +68,11 @@ void waybar::modules::SNI::Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& resu
 }
 
 template <typename T>
-T get_variant(VariantBase& value) {
-  return VariantBase::cast_dynamic<Variant<T>>(value).get();
+T get_variant(Glib::VariantBase& value) {
+  return Glib::VariantBase::cast_dynamic<Glib::Variant<T>>(value).get();
 }
 
-void waybar::modules::SNI::Item::setProperty(const ustring& name, VariantBase& value) {
+void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
   if (name == "Category") {
     category = get_variant<std::string>(value);
   } else if (name == "Id") {
@@ -112,29 +111,30 @@ void waybar::modules::SNI::Item::setProperty(const ustring& name, VariantBase& v
   }
 }
 
-void waybar::modules::SNI::Item::getUpdatedProperties() {
+void Item::getUpdatedProperties() {
   update_pending_ = false;
 
-  auto params = VariantContainerBase::create_tuple({Variant<ustring>::create(SNI_INTERFACE_NAME)});
+  auto params = Glib::VariantContainerBase::create_tuple(
+      {Glib::Variant<Glib::ustring>::create(SNI_INTERFACE_NAME)});
   proxy_->call("org.freedesktop.DBus.Properties.GetAll",
                sigc::mem_fun(*this, &Item::processUpdatedProperties),
                params);
 };
 
-void waybar::modules::SNI::Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
+void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
   try {
     auto result = proxy_->call_finish(_result);
     // extract "a{sv}" from VariantContainerBase
-    Variant<std::map<ustring, VariantBase>> properties_variant;
+    Glib::Variant<std::map<Glib::ustring, Glib::VariantBase>> properties_variant;
     result.get_child(properties_variant);
     auto properties = properties_variant.get();
 
     for (const auto& [name, value] : properties) {
-      VariantBase old_value;
+      Glib::VariantBase old_value;
       proxy_->get_cached_property(old_value, name);
       if (!value.equal(old_value)) {
         proxy_->set_cached_property(name, value);
-        setProperty(name, const_cast<VariantBase&>(value));
+        setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
     }
 
@@ -147,8 +147,8 @@ void waybar::modules::SNI::Item::processUpdatedProperties(Glib::RefPtr<Gio::Asyn
   }
 }
 
-void waybar::modules::SNI::Item::onSignal(const ustring& sender_name, const ustring& signal_name,
-                                          const VariantContainerBase& arguments) {
+void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
+                    const Glib::VariantContainerBase& arguments) {
   if (!update_pending_ && signal_name.compare(0, 3, "New") == 0) {
     /* Debounce signals and schedule update of all properties.
      * Based on behavior of Plasma dataengine for StatusNotifierItem.
@@ -161,7 +161,7 @@ void waybar::modules::SNI::Item::onSignal(const ustring& sender_name, const ustr
 
 static void pixbuf_data_deleter(const guint8* data) { g_free((void*)data); }
 
-Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::extractPixBuf(GVariant* variant) {
+Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
   GVariantIter* it;
   g_variant_get(variant, "a(iiay)", &it);
   if (it == nullptr) {
@@ -213,7 +213,7 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::extractPixBuf(GVariant* va
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
 
-void waybar::modules::SNI::Item::updateImage() {
+void Item::updateImage() {
   image.set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
   image.set_pixel_size(icon_size);
   if (!icon_name.empty()) {
@@ -244,8 +244,7 @@ void waybar::modules::SNI::Item::updateImage() {
   }
 }
 
-Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(std::string name,
-                                                                    int         request_size) {
+Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
   int tmp_size = 0;
   icon_theme->rescan_if_needed();
   auto sizes = icon_theme->get_icon_sizes(name.c_str());
@@ -277,12 +276,12 @@ Glib::RefPtr<Gdk::Pixbuf> waybar::modules::SNI::Item::getIconByName(std::string 
       name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
-void waybar::modules::SNI::Item::onMenuDestroyed(Item* self) {
+void Item::onMenuDestroyed(Item* self) {
   self->gtk_menu = nullptr;
   self->dbus_menu = nullptr;
 }
 
-bool waybar::modules::SNI::Item::makeMenu(GdkEventButton* const& ev) {
+bool Item::makeMenu(GdkEventButton* const& ev) {
   if (gtk_menu == nullptr) {
     if (!menu.empty()) {
       dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
@@ -305,9 +304,9 @@ bool waybar::modules::SNI::Item::makeMenu(GdkEventButton* const& ev) {
   return false;
 }
 
-bool waybar::modules::SNI::Item::handleClick(GdkEventButton* const& ev) {
-  auto parameters = VariantContainerBase::create_tuple(
-      {Variant<int>::create(ev->x), Variant<int>::create(ev->y)});
+bool Item::handleClick(GdkEventButton* const& ev) {
+  auto parameters = Glib::VariantContainerBase::create_tuple(
+      {Glib::Variant<int>::create(ev->x), Glib::Variant<int>::create(ev->y)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     if (!makeMenu(ev)) {
       proxy_->call("ContextMenu", parameters);
@@ -322,3 +321,5 @@ bool waybar::modules::SNI::Item::handleClick(GdkEventButton* const& ev) {
   }
   return false;
 }
+
+}  // namespace waybar::modules::SNI

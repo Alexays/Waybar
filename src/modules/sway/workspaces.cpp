@@ -11,7 +11,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
-  ipc_.subscribe("[ \"workspace\" ]");
+  ipc_.subscribe(R"(["workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
   ipc_.sendCmd(IPC_GET_WORKSPACES);
@@ -19,9 +19,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   worker();
 }
 
-void Workspaces::onEvent(const struct Ipc::ipc_response res) { ipc_.sendCmd(IPC_GET_WORKSPACES); }
+void Workspaces::onEvent(const struct Ipc::ipc_response &res) { ipc_.sendCmd(IPC_GET_WORKSPACES); }
 
-void Workspaces::onCmd(const struct Ipc::ipc_response res) {
+void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   if (res.type == IPC_GET_WORKSPACES) {
     if (res.payload.isArray()) {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -209,7 +209,7 @@ const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterat
 }
 
 std::string Workspaces::trimWorkspaceName(std::string name) {
-  std::size_t found = name.find(":");
+  std::size_t found = name.find(':');
   if (found != std::string::npos) {
     return name.substr(found + 1);
   }

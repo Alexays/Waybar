@@ -99,9 +99,13 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   }
 
   if (direction_up) {
-    if (volume_ + 1 < 100) pa_cvolume_inc(&pa_volume, change);
+    if (volume_ + 1 < 100) {
+      pa_cvolume_inc(&pa_volume, change);
+    }
   } else {
-    if (volume_ - 1 > 0) pa_cvolume_dec(&pa_volume, change);
+    if (volume_ - 1 > 0) {
+      pa_cvolume_dec(&pa_volume, change);
+    }
   }
 
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
@@ -116,13 +120,8 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
                                               pa_subscription_event_type_t type, uint32_t idx,
                                               void *data) {
   unsigned facility = type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
-
-  switch (facility) {
-    case PA_SUBSCRIPTION_EVENT_SINK:
-      pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
-      break;
-    default:
-      break;
+  if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
+    pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
   }
 }
 
@@ -131,7 +130,7 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
  */
 void waybar::modules::Pulseaudio::volumeModifyCb(pa_context *c, int success, void *data) {
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
-  if (success) {
+  if (success != 0) {
     pa_context_get_sink_info_by_index(pa->context_, pa->sink_idx_, sinkInfoCb, data);
   }
 }
@@ -146,10 +145,10 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
     pa->pa_volume_ = i->volume;
     float volume = static_cast<float>(pa_cvolume_avg(&(pa->pa_volume_))) / float{PA_VOLUME_NORM};
     pa->sink_idx_ = i->index;
-    pa->volume_ = std::round(volume * 100.0f);
+    pa->volume_ = std::round(volume * 100.0F);
     pa->muted_ = i->mute != 0;
     pa->desc_ = i->description;
-    pa->port_name_ = i->active_port ? i->active_port->name : "Unknown";
+    pa->port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
     pa->dp.emit();
   }
 }

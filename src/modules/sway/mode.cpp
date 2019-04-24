@@ -8,14 +8,14 @@ Mode::Mode(const std::string& id, const Bar& bar, const Json::Value& config)
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
-  ipc_.subscribe("[ \"mode\" ]");
+  ipc_.subscribe(R"(["mode"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Mode::onEvent));
   // Launch worker
   worker();
   dp.emit();
 }
 
-void Mode::onEvent(const struct Ipc::ipc_response res) {
+void Mode::onEvent(const struct Ipc::ipc_response &res) {
   if (res.payload["change"] != "default") {
     mode_ = res.payload["change"].asString();
   } else {

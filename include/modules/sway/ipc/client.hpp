@@ -24,8 +24,8 @@ class Ipc {
     Json::Value payload;
   };
 
-  sigc::signal<void, const struct ipc_response> signal_event;
-  sigc::signal<void, const struct ipc_response> signal_cmd;
+  sigc::signal<void, const struct ipc_response&> signal_event;
+  sigc::signal<void, const struct ipc_response&> signal_cmd;
 
   void sendCmd(uint32_t type, const std::string &payload = "");
   void subscribe(const std::string &payload);

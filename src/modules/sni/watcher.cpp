@@ -19,14 +19,14 @@ Watcher::~Watcher() {
     bus_name_id_ = 0;
   }
 
-  if (hosts_ != NULL) {
+  if (hosts_ != nullptr) {
     g_slist_free_full(hosts_, gfWatchFree);
-    hosts_ = NULL;
+    hosts_ = nullptr;
   }
 
-  if (items_ != NULL) {
+  if (items_ != nullptr) {
     g_slist_free_full(items_, gfWatchFree);
-    items_ = NULL;
+    items_ = nullptr;
   }
   g_dbus_interface_skeleton_unexport(G_DBUS_INTERFACE_SKELETON(watcher_));
 }
@@ -122,7 +122,7 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
 Watcher::GfWatch* Watcher::gfWatchFind(GSList* list, const gchar* bus_name,
                                        const gchar* object_path) {
   for (GSList* l = list; l != nullptr; l = g_slist_next(l)) {
-    GfWatch* watch = static_cast<GfWatch*>(l->data);
+    auto watch = static_cast<GfWatch*>(l->data);
     if (g_strcmp0(watch->bus_name, bus_name) == 0 &&
         g_strcmp0(watch->object_path, object_path) == 0) {
       return watch;
@@ -132,11 +132,11 @@ Watcher::GfWatch* Watcher::gfWatchFind(GSList* list, const gchar* bus_name,
 }
 
 void Watcher::gfWatchFree(gpointer data) {
-  GfWatch* watch;
+  auto watch = static_cast<GfWatch*>(data);
 
-  watch = (GfWatch*)data;
-
-  if (watch->watch_id > 0) g_bus_unwatch_name(watch->watch_id);
+  if (watch->watch_id > 0) {
+    g_bus_unwatch_name(watch->watch_id);
+  }
 
   g_free(watch->service);
   g_free(watch->bus_name);
@@ -184,8 +184,8 @@ void Watcher::updateRegisteredItems(SnWatcher* obj) {
   GVariantBuilder builder;
   g_variant_builder_init(&builder, G_VARIANT_TYPE("as"));
   for (GSList* l = items_; l != nullptr; l = g_slist_next(l)) {
-    GfWatch* watch = static_cast<GfWatch*>(l->data);
-    gchar*   item = g_strdup_printf("%s%s", watch->bus_name, watch->object_path);
+    auto   watch = static_cast<GfWatch*>(l->data);
+    gchar* item = g_strdup_printf("%s%s", watch->bus_name, watch->object_path);
     g_variant_builder_add(&builder, "s", item);
     g_free(item);
   }

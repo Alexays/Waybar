@@ -4,14 +4,12 @@
 #include "util/clara.hpp"
 #include "util/json.hpp"
 
-waybar::Client::Client() {}
-
 waybar::Client *waybar::Client::inst() {
-  static Client *c = new Client();
+  static auto c = new Client();
   return c;
 }
 
-const std::string waybar::Client::getValidPath(std::vector<std::string> paths) {
+const std::string waybar::Client::getValidPath(const std::vector<std::string> &paths) {
   wordexp_t p;
 
   for (const std::string &path : paths) {
@@ -212,7 +210,7 @@ void waybar::Client::bindInterfaces() {
   };
   wl_registry_add_listener(registry, &registry_listener, this);
   wl_display_roundtrip(wl_display);
-  if (!layer_shell || !xdg_output_manager) {
+  if (layer_shell == nullptr || xdg_output_manager == nullptr) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
 }

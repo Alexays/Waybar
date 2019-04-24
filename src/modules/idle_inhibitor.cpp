@@ -19,7 +19,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
 }
 
 waybar::modules::IdleInhibitor::~IdleInhibitor() {
-  if (idle_inhibitor_) {
+  if (idle_inhibitor_ != nullptr) {
     zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
     idle_inhibitor_ = nullptr;
   }
@@ -41,7 +41,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
     label_.get_style_context()->remove_class(status_);
-    if (idle_inhibitor_) {
+    if (idle_inhibitor_ != nullptr) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
       status_ = "deactivated";
