@@ -51,8 +51,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
         std::cout << fmt::format(MIN_HEIGHT_MSG, height_, ev->height) << std::endl;
       }
       if (output->config["height"].isUInt()) {
-        std::cout << "Height size is defined in the config file so it will stay like that"
-                  << std::endl;
+        std::cout << fmt::format(SIZE_DEFINED, "Height") << std::endl;
       } else {
         tmp_height = ev->height;
       }
@@ -63,8 +62,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
         std::cout << fmt::format(MIN_WIDTH_MSG, width_, ev->width) << std::endl;
       }
       if (output->config["width"].isUInt()) {
-        std::cout << "Height size is defined in the config file so it will stay like that"
-                  << std::endl;
+        std::cout << fmt::format(SIZE_DEFINED, "Width") << std::endl;
       } else {
         tmp_width = ev->width;
       }
