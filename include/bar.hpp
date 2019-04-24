@@ -44,6 +44,8 @@ class Bar {
       "Requested width: {} exceeds the minimum width: {} required by the modules";
   static inline const std::string BAR_SIZE_MSG =
       "Bar configured (width: {}, height: {}) for output: {}";
+  static inline const std::string SIZE_DEFINED =
+      "{} size is defined in the config file so it will stay like that";
   static void layerSurfaceHandleConfigure(void *, struct zwlr_layer_surface_v1 *, uint32_t,
                                           uint32_t, uint32_t);
   static void layerSurfaceHandleClosed(void *, struct zwlr_layer_surface_v1 *);
