@@ -19,8 +19,8 @@ class Workspaces : public IModule {
        operator Gtk::Widget&();
 
  private:
-  void              onCmd(const struct Ipc::ipc_response);
-  void              onEvent(const struct Ipc::ipc_response);
+  void              onCmd(const struct Ipc::ipc_response&);
+  void              onEvent(const struct Ipc::ipc_response&);
   void              worker();
   bool              filterButtons();
   Gtk::Button&      addButton(const Json::Value&);

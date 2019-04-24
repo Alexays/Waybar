@@ -25,10 +25,10 @@ class Client {
   std::vector<std::unique_ptr<Bar>>   bars;
 
  private:
-  Client();
+  Client() = default;
   void              setupConfigs(const std::string &config, const std::string &style);
   void              bindInterfaces();
-  const std::string getValidPath(std::vector<std::string> paths);
+  const std::string getValidPath(const std::vector<std::string> &paths);
   void              handleOutput(std::unique_ptr<struct waybar_output> &output);
   bool isValidOutput(const Json::Value &config, std::unique_ptr<struct waybar_output> &output);
   auto setupConfig() -> void;

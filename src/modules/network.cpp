@@ -68,7 +68,7 @@ void waybar::modules::Network::createInfoSocket() {
   nl_socket_disable_seq_check(info_sock_);
   nl_socket_set_nonblocking(info_sock_);
   nl_socket_modify_cb(info_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
-  efd_ = epoll_create1(0);
+  efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
   }
@@ -114,7 +114,7 @@ void waybar::modules::Network::worker() {
     }
     thread_timer_.sleep_for(interval_);
   };
-  std::array<struct epoll_event, EPOLL_MAX> events;
+  std::array<struct epoll_event, EPOLL_MAX> events{};
   thread_ = [this, &events] {
     int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {

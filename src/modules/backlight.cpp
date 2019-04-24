@@ -120,9 +120,9 @@ waybar::modules::Backlight::Backlight(const std::string &name, const Json::Value
 
     auto udev_fd = udev_monitor_get_fd(mon.get());
 
-    auto epoll_fd = FileDescriptor{epoll_create1(0)};
+    auto epoll_fd = FileDescriptor{epoll_create1(EPOLL_CLOEXEC)};
     check_neq(epoll_fd.get(), -1, "epoll init failed: ");
-    epoll_event ctl_event;
+    epoll_event ctl_event{};
     ctl_event.events = EPOLLIN;
     ctl_event.data.fd = udev_fd;
 

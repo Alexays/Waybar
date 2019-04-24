@@ -3,11 +3,11 @@
 
 #include <iostream>
 
-waybar::ALabel::ALabel(const Json::Value& config, const std::string format, uint16_t interval)
+waybar::ALabel::ALabel(const Json::Value& config, const std::string& format, uint16_t interval)
     : config_(config),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds(100000000)
+                    ? std::chrono::seconds(std::numeric_limits<int>::infinity())
                     : std::chrono::seconds(
                           config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
       default_format_(format_) {
@@ -33,7 +33,7 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string format, uint
 }
 
 waybar::ALabel::~ALabel() {
-  for (const auto &pid : pid_) {
+  for (const auto& pid : pid_) {
     if (pid != -1) {
       kill(-pid, 9);
     }

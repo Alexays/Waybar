@@ -17,7 +17,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
 
   if (output->config["position"] == "right" || output->config["position"] == "left") {
     height_ = 0;
-    width_ = 30;
+    width_ = 1;
   }
   window.set_size_request(width_, height_);
 
@@ -41,6 +41,38 @@ waybar::Bar::Bar(struct waybar_output* w_output)
 
   auto height = output->config["height"].isUInt() ? output->config["height"].asUInt() : height_;
   auto width = output->config["width"].isUInt() ? output->config["width"].asUInt() : width_;
+
+  window.signal_configure_event().connect_notify([&](GdkEventConfigure* ev) {
+    auto tmp_height = height_;
+    auto tmp_width = width_;
+    if (ev->height > static_cast<int>(height_)) {
+      // Default minimal value
+      if (height_ != 1) {
+        std::cout << fmt::format(MIN_HEIGHT_MSG, height_, ev->height) << std::endl;
+      }
+      if (output->config["height"].isUInt()) {
+        std::cout << "Height size is defined in the config file so it will stay like that"
+                  << std::endl;
+      } else {
+        tmp_height = ev->height;
+      }
+    }
+    if (ev->width > static_cast<int>(width_)) {
+      // Default minimal value
+      if (width_ != 1) {
+        std::cout << fmt::format(MIN_WIDTH_MSG, width_, ev->width) << std::endl;
+      }
+      if (output->config["width"].isUInt()) {
+        std::cout << "Height size is defined in the config file so it will stay like that"
+                  << std::endl;
+      } else {
+        tmp_width = ev->width;
+      }
+    }
+    if (tmp_width != width_ || tmp_height != height_) {
+      zwlr_layer_surface_v1_set_size(layer_surface, tmp_width, tmp_height);
+    }
+  });
 
   std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
   if (output->config["position"] == "bottom") {
@@ -83,21 +115,21 @@ void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
           std::string str_click = click.asString();
 
           if (str_click == "click-right") {
-            module["format-alt-click"] = 3u;
+            module["format-alt-click"] = 3U;
           } else if (str_click == "click-middle") {
-            module["format-alt-click"] = 2u;
+            module["format-alt-click"] = 2U;
           } else if (str_click == "click-backward") {
-            module["format-alt-click"] = 8u;
+            module["format-alt-click"] = 8U;
           } else if (str_click == "click-forward") {
-            module["format-alt-click"] = 9u;
+            module["format-alt-click"] = 9U;
           } else {
-            module["format-alt-click"] = 1u;  // default click-left
+            module["format-alt-click"] = 1U;  // default click-left
           }
         } else {
-          module["format-alt-click"] = 1u;
+          module["format-alt-click"] = 1U;
         }
       } else {
-        module["format-alt-click"] = 1u;
+        module["format-alt-click"] = 1U;
       }
     }
   }
@@ -117,15 +149,21 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
 void waybar::Bar::handleSignal(int signal) {
   for (auto& module : modules_left_) {
     auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
-    if (custom) custom->refresh(signal);
+    if (custom != nullptr) {
+      custom->refresh(signal);
+    }
   }
   for (auto& module : modules_center_) {
     auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
-    if (custom) custom->refresh(signal);
+    if (custom != nullptr) {
+      custom->refresh(signal);
+    }
   }
   for (auto& module : modules_right_) {
     auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
-    if (custom) custom->refresh(signal);
+    if (custom != nullptr) {
+      custom->refresh(signal);
+    }
   }
 }
 
@@ -137,19 +175,13 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     o->height_ = height;
     o->window.set_size_request(o->width_, o->height_);
     o->window.resize(o->width_, o->height_);
-
-    int min_width, min_height;
-    o->window.get_size(min_width, min_height);
-    if (o->height_ < static_cast<uint32_t>(min_height)) {
-      std::cout << fmt::format(MIN_HEIGHT_MSG, o->height_, min_height) << std::endl;
-      o->height_ = min_height;
-    }
-    if (o->width_ < static_cast<uint32_t>(min_width)) {
-      std::cout << fmt::format(MIN_WIDTH_MSG, o->height_, min_width) << std::endl;
-      o->width_ = min_width;
-    }
-    std::cout << fmt::format(BAR_SIZE_MSG, o->width_, o->height_, o->output->name) << std::endl;
-
+    zwlr_layer_surface_v1_set_exclusive_zone(o->layer_surface,
+                                             o->vertical ? o->width_ : o->height_);
+    std::cout << fmt::format(BAR_SIZE_MSG,
+                             o->width_ == 1 ? "auto" : std::to_string(o->width_),
+                             o->height_ == 1 ? "auto" : std::to_string(o->height_),
+                             o->output->name)
+              << std::endl;
     wl_surface_commit(o->surface);
   }
   zwlr_layer_surface_v1_ack_configure(surface, serial);

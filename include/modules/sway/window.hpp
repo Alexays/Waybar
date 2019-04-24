@@ -17,10 +17,10 @@ class Window : public ALabel {
   auto update() -> void;
 
  private:
-  void                         onEvent(const struct Ipc::ipc_response);
-  void                         onCmd(const struct Ipc::ipc_response);
+  void                         onEvent(const struct Ipc::ipc_response&);
+  void                         onCmd(const struct Ipc::ipc_response&);
   void                         worker();
-  std::tuple<int, std::string> getFocusedNode(Json::Value nodes);
+  std::tuple<int, std::string> getFocusedNode(const Json::Value& nodes);
   void                         getFocusedWindow();
 
   const Bar&                  bar_;

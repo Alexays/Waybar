@@ -115,7 +115,7 @@ const std::string waybar::modules::Battery::getState(uint8_t capacity) const {
   if (config_["states"].isObject()) {
     for (auto it = config_["states"].begin(); it != config_["states"].end(); ++it) {
       if (it->isUInt() && it.key().isString()) {
-        states.push_back({it.key().asString(), it->asUInt()});
+        states.emplace_back(it.key().asString(), it->asUInt());
       }
     }
   }
