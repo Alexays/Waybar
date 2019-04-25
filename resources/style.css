@@ -16,6 +16,24 @@ window#waybar.hidded {
     opacity: 0.2;
 }
 
+/*
+window#waybar.empty {
+    background: transparent;
+}
+window#waybar.solo {
+    background: #FFFFFF;
+}
+*/
+
+window#waybar.termite {
+    background-color: #3F3F3F;
+}
+
+window#waybar.chromium {
+    background-color: #DEE1E6;
+    color: #000000;
+}
+
 /* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
 #workspaces button {
     padding: 0 5px;
@@ -41,6 +59,7 @@ window#waybar.hidded {
 #clock, #battery, #cpu, #memory, #temperature, #backlight, #network, #pulseaudio, #custom-media, #tray, #mode, #idle_inhibitor {
     padding: 0 10px;
     margin: 0 5px;
+    color: #ffffff;
 }
 
 #clock {
