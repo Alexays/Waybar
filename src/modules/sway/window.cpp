@@ -15,7 +15,8 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
-  getFocusedWindow();
+  // Get Initial focused window
+  getTree();
   // Launch worker
   worker();
 }
@@ -28,6 +29,7 @@ void Window::onEvent(const struct Ipc::ipc_response& res) {
     window_ = Glib::Markup::escape_text(data["container"]["name"].asString());
     windowId_ = data["container"]["id"].asInt();
     dp.emit();
+    getTree();
   } else if ((data["change"] == "close" && data["container"]["focused"].asBool() &&
               windowId_ == data["container"]["id"].asInt()) ||
              (data["change"] == "focus" && data["current"]["focus"].isArray() &&
@@ -35,14 +37,34 @@ void Window::onEvent(const struct Ipc::ipc_response& res) {
     window_.clear();
     windowId_ = -1;
     dp.emit();
+    getTree();
   }
 }
 
 void Window::onCmd(const struct Ipc::ipc_response& res) {
-  auto [id, name] = getFocusedNode(res.payload["nodes"]);
-  windowId_ = id;
-  window_ = name;
-  dp.emit();
+  auto [nb, id, name, app_id] = getFocusedNode(res.payload);
+  if (nb == 0) {
+    bar_.window.get_style_context()->add_class("empty");
+  } else {
+    bar_.window.get_style_context()->remove_class("empty");
+  }
+  if (!app_id_.empty()) {
+    bar_.window.get_style_context()->remove_class(app_id_);
+  }
+  if (nb == 1) {
+    bar_.window.get_style_context()->add_class("solo");
+    if (!app_id.empty()) {
+      bar_.window.get_style_context()->add_class(app_id);
+    }
+  } else {
+    bar_.window.get_style_context()->remove_class("solo");
+  }
+  app_id_ = app_id;
+  if (windowId_ != id || window_ != name) {
+    windowId_ = id;
+    window_ = name;
+    dp.emit();
+  }
 }
 
 void Window::worker() {
@@ -62,20 +84,29 @@ auto Window::update() -> void {
   }
 }
 
-std::tuple<int, std::string> Window::getFocusedNode(const Json::Value& nodes) {
-  for (auto const& node : nodes) {
+std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
+    const Json::Value& nodes) {
+  for (auto const& node : nodes["nodes"]) {
     if (node["focused"].asBool() && node["type"] == "con") {
-      return {node["id"].asInt(), node["name"].asString()};
+      if ((!config_["all-outputs"].asBool() && nodes["output"] == bar_.output->name) ||
+          config_["all-outputs"].asBool()) {
+        auto app_id = node["app_id"].isString() ? node["app_id"].asString()
+                                                : node["window_properties"]["instance"].asString();
+        return {nodes["nodes"].size(),
+                node["id"].asInt(),
+                Glib::Markup::escape_text(node["name"].asString()),
+                app_id};
+      }
     }
-    auto [id, name] = getFocusedNode(node["nodes"]);
+    auto [nb, id, name, app_id] = getFocusedNode(node);
     if (id > -1 && !name.empty()) {
-      return {id, name};
+      return {nb, id, name, app_id};
     }
   }
-  return {-1, std::string()};
+  return {0, -1, "", ""};
 }
 
-void Window::getFocusedWindow() {
+void Window::getTree() {
   try {
     ipc_.sendCmd(IPC_GET_TREE);
   } catch (const std::exception& e) {
