@@ -18,7 +18,7 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string& format, uin
   }
 
   if (config_["rotate"].isUInt()) {
-	label_.set_angle(config["rotate"].asUInt());
+    label_.set_angle(config["rotate"].asUInt());
   }
 
   if (config_["format-alt"].isString()) {
