@@ -116,41 +116,52 @@ bool waybar::Client::isValidOutput(const Json::Value &                    config
   return found;
 }
 
+std::unique_ptr<struct waybar::waybar_output> &waybar::Client::getOutput(uint32_t wl_name) {
+  auto it = std::find_if(outputs_.begin(), outputs_.end(), [&wl_name](const auto &output) {
+    return output->wl_name == wl_name;
+  });
+  if (it == outputs_.end()) {
+    throw std::runtime_error("Unable to find valid output");
+  }
+  return *it;
+}
+
+std::vector<Json::Value> waybar::Client::getOutputConfigs(
+    std::unique_ptr<struct waybar_output> &output) {
+  std::vector<Json::Value> configs;
+  if (config_.isArray()) {
+    for (auto const &config : config_) {
+      if (config.isObject() && isValidOutput(config, output)) {
+        configs.push_back(config);
+      }
+    }
+  } else if (isValidOutput(config_, output)) {
+    configs.push_back(config_);
+  }
+  return configs;
+}
+
 void waybar::Client::handleName(void *      data, struct zxdg_output_v1 * /*xdg_output*/,
                                 const char *name) {
   auto wl_name = *static_cast<uint32_t *>(data);
   auto client = waybar::Client::inst();
-  auto it = std::find_if(client->outputs_.begin(),
-                         client->outputs_.end(),
-                         [&wl_name](const auto &output) { return output->wl_name == wl_name; });
-  if (it == client->outputs_.end()) {
-    std::cerr << "Unable to find valid output" << std::endl;
-    return;
-  }
-  (*it)->name = name;
-  bool found = true;
-  if (client->config_.isArray()) {
-    bool in_array = false;
-    for (auto const &config : client->config_) {
-      if (config.isObject() && client->isValidOutput(config, *it)) {
-        in_array = true;
-        (*it)->config = config;
-        break;
+  try {
+    auto &output = client->getOutput(wl_name);
+    output->name = name;
+    auto configs = client->getOutputConfigs(output);
+    if (configs.empty()) {
+      wl_output_destroy(output->output);
+      zxdg_output_v1_destroy(output->xdg_output);
+    } else {
+      for (const auto &config : configs) {
+        client->bars.emplace_back(std::make_unique<Bar>(output.get(), config));
+        Glib::RefPtr<Gdk::Screen> screen = client->bars.back()->window.get_screen();
+        client->style_context_->add_provider_for_screen(
+            screen, client->css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
       }
     }
-    found = in_array;
-  } else {
-    (*it)->config = client->config_;
-    found = client->isValidOutput((*it)->config, *it);
-  }
-  if (!found) {
-    wl_output_destroy((*it)->output);
-    zxdg_output_v1_destroy((*it)->xdg_output);
-  } else {
-    client->bars.emplace_back(std::make_unique<Bar>(it->get()));
-    Glib::RefPtr<Gdk::Screen> screen = client->bars.back()->window.get_screen();
-    client->style_context_->add_provider_for_screen(
-        screen, client->css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
+  } catch (const std::exception &e) {
+    std::cerr << e.what() << std::endl;
   }
 }
 

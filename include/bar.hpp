@@ -18,12 +18,11 @@ struct waybar_output {
   std::string            name;
   uint32_t               wl_name;
   struct zxdg_output_v1 *xdg_output;
-  Json::Value            config;
 };
 
 class Bar {
  public:
-  Bar(struct waybar_output *w_output);
+  Bar(struct waybar_output *w_output, const Json::Value&);
   Bar(const Bar &) = delete;
   ~Bar() = default;
 
@@ -31,6 +30,7 @@ class Bar {
   void handleSignal(int);
 
   struct waybar_output *        output;
+  Json::Value                   config;
   Gtk::Window                   window;
   struct wl_surface *           surface;
   struct zwlr_layer_surface_v1 *layer_surface;

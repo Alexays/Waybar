@@ -2,8 +2,9 @@
 #include "client.hpp"
 #include "factory.hpp"
 
-waybar::Bar::Bar(struct waybar_output* w_output)
+waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
+      config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
       surface(nullptr),
       layer_surface(nullptr),
@@ -15,7 +16,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   window.set_name("waybar");
   window.set_decorated(false);
 
-  if (output->config["position"] == "right" || output->config["position"] == "left") {
+  if (config["position"] == "right" || config["position"] == "left") {
     height_ = 0;
     width_ = 1;
   }
@@ -28,7 +29,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   gdk_wayland_window_set_use_custom_surface(gdk_window);
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 
-  std::size_t layer = output->config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP
+  std::size_t layer = config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP
                                                        : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
   auto client = waybar::Client::inst();
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(
@@ -39,8 +40,8 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   };
   zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, this);
 
-  auto height = output->config["height"].isUInt() ? output->config["height"].asUInt() : height_;
-  auto width = output->config["width"].isUInt() ? output->config["width"].asUInt() : width_;
+  auto height = config["height"].isUInt() ? config["height"].asUInt() : height_;
+  auto width = config["width"].isUInt() ? config["width"].asUInt() : width_;
 
   window.signal_configure_event().connect_notify([&](GdkEventConfigure* ev) {
     auto tmp_height = height_;
@@ -50,7 +51,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
       if (height_ != 1) {
         std::cout << fmt::format(MIN_HEIGHT_MSG, height_, ev->height) << std::endl;
       }
-      if (output->config["height"].isUInt()) {
+      if (config["height"].isUInt()) {
         std::cout << fmt::format(SIZE_DEFINED, "Height") << std::endl;
       } else {
         tmp_height = ev->height;
@@ -61,7 +62,7 @@ waybar::Bar::Bar(struct waybar_output* w_output)
       if (width_ != 1) {
         std::cout << fmt::format(MIN_WIDTH_MSG, width_, ev->width) << std::endl;
       }
-      if (output->config["width"].isUInt()) {
+      if (config["width"].isUInt()) {
         std::cout << fmt::format(SIZE_DEFINED, "Width") << std::endl;
       } else {
         tmp_width = ev->width;
@@ -73,11 +74,11 @@ waybar::Bar::Bar(struct waybar_output* w_output)
   });
 
   std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-  if (output->config["position"] == "bottom") {
+  if (config["position"] == "bottom") {
     anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-  } else if (output->config["position"] == "left") {
+  } else if (config["position"] == "left") {
     anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
-  } else if (output->config["position"] == "right") {
+  } else if (config["position"] == "right") {
     anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
   }
   if (anchor == ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM || anchor == ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) {
@@ -104,8 +105,8 @@ waybar::Bar::Bar(struct waybar_output* w_output)
 
 // Converting string to button code rn as to avoid doing it later
 void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
-  if (output->config.isMember(module_name)) {
-    Json::Value& module = output->config[module_name];
+  if (config.isMember(module_name)) {
+    Json::Value& module = config[module_name];
     if (module.isMember("format-alt")) {
       if (module.isMember("format-alt-click")) {
         Json::Value& click = module["format-alt-click"];
@@ -134,8 +135,8 @@ void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
 }
 
 void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
-  if (output->config.isMember(module_list_name)) {
-    Json::Value& modules = output->config[module_list_name];
+  if (config.isMember(module_list_name)) {
+    Json::Value& modules = config[module_list_name];
     for (const Json::Value& module_name : modules) {
       if (module_name.isString()) {
         setupAltFormatKeyForModule(module_name.asString());
@@ -206,8 +207,8 @@ auto waybar::Bar::toggle() -> void {
 }
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
-  if (output->config[pos].isArray()) {
-    for (const auto& name : output->config[pos]) {
+  if (config[pos].isArray()) {
+    for (const auto& name : config[pos]) {
       try {
         auto module = factory.makeModule(name.asString());
         if (pos == "modules-left") {
@@ -244,7 +245,7 @@ auto waybar::Bar::setupWidgets() -> void {
   setupAltFormatKeyForModuleList("modules-right");
   setupAltFormatKeyForModuleList("modules-center");
 
-  Factory factory(*this, output->config);
+  Factory factory(*this, config);
   getModules(factory, "modules-left");
   getModules(factory, "modules-center");
   getModules(factory, "modules-right");
