@@ -33,6 +33,8 @@ class Client {
   bool isValidOutput(const Json::Value &config, std::unique_ptr<struct waybar_output> &output);
   auto setupConfig() -> void;
   auto setupCss() -> void;
+  std::unique_ptr<struct waybar_output>& getOutput(uint32_t wl_name);
+  std::vector<Json::Value> getOutputConfigs(std::unique_ptr<struct waybar_output> &output);
 
   static void handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                            const char *interface, uint32_t version);
