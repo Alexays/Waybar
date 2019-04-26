@@ -13,20 +13,13 @@ waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Cpu::update() -> void {
-  std::vector<fmt::basic_format_arg<fmt::format_context>> args;
-  if (format_.find("{load}") != std::string::npos) {
-    auto cpu_load = getCpuLoad();
-    args.emplace_back(fmt::internal::make_arg<fmt::format_context>(fmt::arg("load", cpu_load)));
+  // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
+  auto cpu_load = getCpuLoad();
+  auto [cpu_usage, tooltip] = getCpuUsage();
+  if (tooltipEnabled()) {
+    label_.set_tooltip_text(tooltip);
   }
-  if (format_.find("{usage}") != std::string::npos) {
-    auto [cpu_usage, tooltip] = getCpuUsage();
-    args.emplace_back(fmt::internal::make_arg<fmt::format_context>(fmt::arg("usage", cpu_usage)));
-    if (tooltipEnabled()) {
-      label_.set_tooltip_text(tooltip);
-    }
-  }
-  label_.set_markup(
-      fmt::vformat(format_, fmt::basic_format_args<fmt::format_context>(args.data(), args.size())));
+  label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad() {
