@@ -43,21 +43,19 @@ void Window::onEvent(const struct Ipc::ipc_response& res) {
 
 void Window::onCmd(const struct Ipc::ipc_response& res) {
   auto [nb, id, name, app_id] = getFocusedNode(res.payload);
-  if (nb == 0) {
-    bar_.window.get_style_context()->add_class("empty");
-  } else {
-    bar_.window.get_style_context()->remove_class("empty");
-  }
   if (!app_id_.empty()) {
     bar_.window.get_style_context()->remove_class(app_id_);
   }
-  if (nb == 1) {
+  if (nb == 0) {
+    bar_.window.get_style_context()->add_class("empty");
+  } else if (nb == 1) {
     bar_.window.get_style_context()->add_class("solo");
     if (!app_id.empty()) {
       bar_.window.get_style_context()->add_class(app_id);
     }
   } else {
     bar_.window.get_style_context()->remove_class("solo");
+    bar_.window.get_style_context()->remove_class("empty");
   }
   app_id_ = app_id;
   if (windowId_ != id || window_ != name) {
