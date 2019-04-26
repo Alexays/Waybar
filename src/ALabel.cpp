@@ -16,6 +16,11 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string& format, uin
     label_.set_max_width_chars(config_["max-length"].asUInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
   }
+
+  if (config_["rotate"].isUInt()) {
+    label_.set_angle(config["rotate"].asUInt());
+  }
+
   if (config_["format-alt"].isString()) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &ALabel::handleToggle));
