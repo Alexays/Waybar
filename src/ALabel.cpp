@@ -7,7 +7,7 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string& format, uin
     : config_(config),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds(std::numeric_limits<int>::infinity())
+                    ? std::chrono::seconds(100000000)
                     : std::chrono::seconds(
                           config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
       default_format_(format_) {
