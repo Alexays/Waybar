@@ -198,9 +198,9 @@ auto waybar::Bar::toggle() -> void {
   visible = !visible;
   auto zone = visible ? height_ : 0;
   if (!visible) {
-    window.get_style_context()->add_class("hidded");
+    window.get_style_context()->add_class("hidden");
   } else {
-    window.get_style_context()->remove_class("hidded");
+    window.get_style_context()->remove_class("hidden");
   }
   zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
   wl_surface_commit(surface);
