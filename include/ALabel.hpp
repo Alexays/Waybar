@@ -23,6 +23,7 @@ class ALabel : public IModule {
   Gtk::Label                 label_;
   const Json::Value &        config_;
   std::string                format_;
+  std::string                click_param;
   std::mutex                 mutex_;
   const std::chrono::seconds interval_;
   bool                       alt_ = false;

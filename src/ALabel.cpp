@@ -1,7 +1,6 @@
 #include "ALabel.hpp"
 #include <util/command.hpp>
-
-#include <iostream>
+#include <fmt/format.h>
 
 waybar::ALabel::ALabel(const Json::Value& config, const std::string& format, uint16_t interval)
     : config_(config),
@@ -50,16 +49,21 @@ auto waybar::ALabel::update() -> void {
 }
 
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
+  std::string format;
   if (config_["on-click"].isString() && e->button == 1) {
-    pid_.push_back(waybar::util::command::forkExec(config_["on-click"].asString()));
+    format = config_["on-click"].asString();
   } else if (config_["on-click-middle"].isString() && e->button == 2) {
-    pid_.push_back(waybar::util::command::forkExec(config_["on-click-middle"].asString()));
+    format = config_["on-click-middle"].asString();
   } else if (config_["on-click-right"].isString() && e->button == 3) {
-    pid_.push_back(waybar::util::command::forkExec(config_["on-click-right"].asString()));
+    format = config_["on-click-right"].asString();
   } else if (config_["on-click-forward"].isString() && e->button == 8) {
-    pid_.push_back(waybar::util::command::forkExec(config_["on-click-backward"].asString()));
+    format = config_["on-click-backward"].asString();
   } else if (config_["on-click-backward"].isString() && e->button == 9) {
-    pid_.push_back(waybar::util::command::forkExec(config_["on-click-forward"].asString()));
+    format = config_["on-click-forward"].asString();
+  }
+  if (!format.empty()) {
+    pid_.push_back(
+        waybar::util::command::forkExec(fmt::format(format, fmt::arg("arg", click_param))));
   }
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
