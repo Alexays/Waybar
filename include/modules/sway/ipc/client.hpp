@@ -44,6 +44,7 @@ class Ipc {
   int              fd_event_;
   std::mutex       mutex_;
   std::mutex       mutex_event_;
+  std::mutex       mutex_parser_;
   util::JsonParser parser_;
 };
 
