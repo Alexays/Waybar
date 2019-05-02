@@ -1,6 +1,6 @@
 #include "ALabel.hpp"
-#include <util/command.hpp>
 #include <fmt/format.h>
+#include <util/command.hpp>
 
 waybar::ALabel::ALabel(const Json::Value& config, const std::string& format, uint16_t interval)
     : config_(config),
@@ -26,7 +26,9 @@ waybar::ALabel::ALabel(const Json::Value& config, const std::string& format, uin
   }
 
   // configure events' user commands
-  if (config_["on-click"].isString() || config_["on-click-right"].isString()) {
+  if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
+      config_["on-click-backward"].isString() || config_["on-click-forward"].isString() ||
+      config_["on-click-right"].isString()) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &ALabel::handleToggle));
   }
@@ -75,7 +77,7 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   }
 
   dp.emit();
-  return false;
+  return true;
 }
 
 bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
