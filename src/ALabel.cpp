@@ -71,7 +71,7 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   }
 
   dp.emit();
-  return true;
+  return false;
 }
 
 bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
