@@ -50,6 +50,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
           waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
       status_ = "activated";
     }
+    click_param = status_;
   } else {
     ALabel::handleToggle(e);
   }
