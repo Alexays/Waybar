@@ -51,6 +51,8 @@ class Backlight : public ALabel {
   const std::string    preferred_device_;
   static constexpr int EPOLL_MAX_EVENTS = 16;
 
+  std::string          old_percent_;
+
   std::optional<BacklightDev> previous_best_;
   std::string                 previous_format_;
 

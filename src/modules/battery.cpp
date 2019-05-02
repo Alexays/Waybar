@@ -144,8 +144,13 @@ auto waybar::modules::Battery::update() -> void {
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
   auto state = getState(capacity);
+  auto capacity_class = "percent" + std::to_string(int(std::ceil(capacity/5)*5));
   label_.get_style_context()->remove_class(old_status_);
+  label_.get_style_context()->remove_class(old_capacity_);
   label_.get_style_context()->add_class(status);
+  label_.get_style_context()->add_class(capacity_class);
+  old_capacity_ = capacity_class;
+  std::cout << fmt::format(capacity_class);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
