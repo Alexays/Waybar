@@ -104,6 +104,7 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
     }
     total += res;
   }
+  std::lock_guard<std::mutex> lock(mutex_parser_);
   auto parsed = parser_.parse(&payload.front());
   return {data32[0], data32[1], parsed};
 }
