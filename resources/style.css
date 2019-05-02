@@ -14,7 +14,7 @@ window#waybar {
     transition-duration: .5s;
 }
 
-window#waybar.hidded {
+window#waybar.hidden {
     opacity: 0.2;
 }
 
