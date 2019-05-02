@@ -23,6 +23,8 @@ class Cpu : public ALabel {
   std::tuple<uint16_t, std::string>       getCpuUsage();
   std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
 
+  std::string                             old_usage_;
+
   std::vector<std::tuple<size_t, size_t>> prev_times_;
   waybar::util::SleeperThread             thread_;
 };

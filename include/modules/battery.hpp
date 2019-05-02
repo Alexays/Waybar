@@ -43,6 +43,7 @@ class Battery : public ALabel {
   int                   fd_;
   std::vector<int>      wds_;
   std::string           old_status_;
+  std::string           old_capacity_;
 };
 
 }  // namespace waybar::modules
