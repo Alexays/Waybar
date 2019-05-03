@@ -19,11 +19,7 @@ auto waybar::modules::Cpu::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }
-  auto percent_class = "percent" + std::to_string(int(std::ceil(cpu_usage/5)*5));
   label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
-  label_.get_style_context()->remove_class(old_usage_);
-  label_.get_style_context()->add_class(percent_class);
-  old_usage_ = percent_class;
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad() {
