@@ -16,6 +16,7 @@ auto waybar::modules::Memory::update() -> void {
   parseMeminfo();
   if (memtotal_ > 0 && memfree_ >= 0) {
     int used_ram_percentage = 100 * (memtotal_ - memfree_) / memtotal_;
+    getState(used_ram_percentage);
     label_.set_markup(fmt::format(format_, used_ram_percentage));
     auto used_ram_gigabytes = (memtotal_ - memfree_) / std::pow(1024, 2);
     if (tooltipEnabled()) {
