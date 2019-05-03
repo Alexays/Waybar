@@ -179,13 +179,8 @@ auto waybar::modules::Backlight::update() -> void {
     }
 
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
-    const auto percentClass = "percent" + std::to_string(int(std::ceil(percent/5)*5));
-
     label_.set_markup(fmt::format(
         format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
-    label_.get_style_context()->remove_class(old_percent_);
-    label_.get_style_context()->add_class(percentClass);
-    old_percent_ = percentClass;
   } else {
     if (!previous_best_.has_value()) {
       return;
