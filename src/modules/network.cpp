@@ -170,6 +170,7 @@ auto waybar::modules::Network::update() -> void {
   if (!alt_) {
     format_ = default_format_;
   }
+  getState(signal_strength_);
   auto text = fmt::format(format_,
                           fmt::arg("essid", essid_),
                           fmt::arg("signaldBm", signal_strength_dbm_),

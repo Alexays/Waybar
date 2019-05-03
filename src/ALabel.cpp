@@ -129,6 +129,30 @@ std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt)
   return "";
 }
 
+std::string waybar::ALabel::getState(uint8_t value) {
+  // Get current state
+  std::vector<std::pair<std::string, uint8_t>> states;
+  if (config_["states"].isObject()) {
+    for (auto it = config_["states"].begin(); it != config_["states"].end(); ++it) {
+      if (it->isUInt() && it.key().isString()) {
+        states.emplace_back(it.key().asString(), it->asUInt());
+      }
+    }
+  }
+  // Sort states
+  std::sort(states.begin(), states.end(), [](auto& a, auto& b) { return a.second < b.second; });
+  std::string valid_state;
+  for (auto const& state : states) {
+    if (value <= state.second && valid_state.empty()) {
+      label_.get_style_context()->add_class(state.first);
+      valid_state = state.first;
+    } else {
+      label_.get_style_context()->remove_class(state.first);
+    }
+  }
+  return valid_state;
+}
+
 bool waybar::ALabel::tooltipEnabled() {
   return config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true;
 }
