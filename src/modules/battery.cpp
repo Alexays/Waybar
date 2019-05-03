@@ -109,8 +109,6 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
   return "Unknown";
 }
 
-
-
 auto waybar::modules::Battery::update() -> void {
   auto [capacity, status] = getInfos();
   if (status == "Unknown") {
