@@ -181,6 +181,7 @@ auto waybar::modules::Backlight::update() -> void {
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
     label_.set_markup(fmt::format(
         format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
+   getState(percent);
   } else {
     if (!previous_best_.has_value()) {
       return;

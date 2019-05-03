@@ -202,6 +202,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
   }
   label_.set_markup(fmt::format(
       format, fmt::arg("volume", volume_), fmt::arg("icon", getIcon(volume_, getPortIcon()))));
+  getState(volume_);
   if (tooltipEnabled()) {
     label_.set_tooltip_text(desc_);
   }
