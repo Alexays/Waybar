@@ -11,7 +11,7 @@ namespace waybar::modules::sway {
 
 class Mode : public ALabel {
  public:
-  Mode(const std::string&, const waybar::Bar&, const Json::Value&);
+  Mode(const std::string&, const Json::Value&);
   ~Mode() = default;
   auto update() -> void;
 
@@ -19,7 +19,6 @@ class Mode : public ALabel {
   void onEvent(const struct Ipc::ipc_response&);
   void worker();
 
-  const Bar&                  bar_;
   waybar::util::SleeperThread thread_;
   Ipc                         ipc_;
   std::string                 mode_;
