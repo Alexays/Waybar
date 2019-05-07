@@ -21,18 +21,11 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   worker();
 }
 
-void Window::onEvent(const struct Ipc::ipc_response& res) {
-  auto data = res.payload;
-  // Check for waybar prevents flicker when hovering window module
-  if (((data["change"] == "focus" || data["change"] == "title") &&
-       data["container"]["focused"].asBool() && data["container"]["name"].asString() != "waybar") ||
-      data["change"] == "close") {
-    getTree();
-  }
-}
+void Window::onEvent(const struct Ipc::ipc_response& res) { getTree(); }
 
 void Window::onCmd(const struct Ipc::ipc_response& res) {
-  auto [nb, id, name, app_id] = getFocusedNode(res.payload);
+  auto payload = parser_.parse(res.payload);
+  auto [nb, id, name, app_id] = getFocusedNode(payload);
   if (!app_id_.empty()) {
     bar_.window.get_style_context()->remove_class(app_id_);
   }

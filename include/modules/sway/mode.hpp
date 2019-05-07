@@ -6,6 +6,7 @@
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/sleeper_thread.hpp"
+#include "util/json.hpp"
 
 namespace waybar::modules::sway {
 
@@ -22,6 +23,7 @@ class Mode : public ALabel {
   waybar::util::SleeperThread thread_;
   Ipc                         ipc_;
   std::string                 mode_;
+  util::JsonParser parser_;
 };
 
 }  // namespace waybar::modules::sway
