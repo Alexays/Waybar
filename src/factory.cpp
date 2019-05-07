@@ -12,7 +12,7 @@ waybar::IModule* waybar::Factory::makeModule(const std::string& name) const {
     }
 #ifdef HAVE_SWAY
     if (ref == "sway/mode") {
-      return new waybar::modules::sway::Mode(id, bar_, config_[name]);
+      return new waybar::modules::sway::Mode(id, config_[name]);
     }
     if (ref == "sway/workspaces") {
       return new waybar::modules::sway::Workspaces(id, bar_, config_[name]);

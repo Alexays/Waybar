@@ -2,8 +2,8 @@
 
 namespace waybar::modules::sway {
 
-Mode::Mode(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "{}"), bar_(bar) {
+Mode::Mode(const std::string& id, const Json::Value& config)
+    : ALabel(config, "{}") {
   label_.set_name("mode");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
