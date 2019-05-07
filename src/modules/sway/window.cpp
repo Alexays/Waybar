@@ -24,19 +24,9 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 void Window::onEvent(const struct Ipc::ipc_response& res) {
   auto data = res.payload;
   // Check for waybar prevents flicker when hovering window module
-  if ((data["change"] == "focus" || data["change"] == "title") &&
-      data["container"]["focused"].asBool() && data["container"]["name"].asString() != "waybar") {
-    window_ = Glib::Markup::escape_text(data["container"]["name"].asString());
-    windowId_ = data["container"]["id"].asInt();
-    dp.emit();
-    getTree();
-  } else if ((data["change"] == "close" && data["container"]["focused"].asBool() &&
-              windowId_ == data["container"]["id"].asInt()) ||
-             (data["change"] == "focus" && data["current"]["focus"].isArray() &&
-              data["current"]["focus"].empty())) {
-    window_.clear();
-    windowId_ = -1;
-    dp.emit();
+  if (((data["change"] == "focus" || data["change"] == "title") &&
+       data["container"]["focused"].asBool() && data["container"]["name"].asString() != "waybar") ||
+      data["change"] == "close") {
     getTree();
   }
 }
