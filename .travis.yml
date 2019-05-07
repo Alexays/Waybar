@@ -6,7 +6,7 @@ services:
 env:
     - distro: debian
     - distro: archlinux
-    # - distro: opensuse
+    - distro: opensuse
 
 before_install:
     - docker pull alexays/waybar:${distro}
@@ -15,4 +15,4 @@ script:
     - echo FROM alexays/waybar:${distro} > Dockerfile
     - echo ADD . /root >> Dockerfile
     - docker build -t waybar .
-    - docker run waybar /bin/sh -c "cd /root && git clone https://github.com/swaywm/wlroots subprojects/wlroots && meson build && ninja -C build"
+    - docker run waybar /bin/sh -c "cd /root && git clone --depth=1 https://github.com/swaywm/wlroots subprojects/wlroots && meson build && ninja -C build"
