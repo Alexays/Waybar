@@ -2,8 +2,7 @@
 
 namespace waybar::modules::sway {
 
-Mode::Mode(const std::string& id, const Json::Value& config)
-    : ALabel(config, "{}") {
+Mode::Mode(const std::string& id, const Json::Value& config) : ALabel(config, "{}") {
   label_.set_name("mode");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -15,9 +14,10 @@ Mode::Mode(const std::string& id, const Json::Value& config)
   dp.emit();
 }
 
-void Mode::onEvent(const struct Ipc::ipc_response &res) {
-  if (res.payload["change"] != "default") {
-    mode_ = res.payload["change"].asString();
+void Mode::onEvent(const struct Ipc::ipc_response& res) {
+  auto payload = parser_.parse(res.payload);
+  if (payload["change"] != "default") {
+    mode_ = payload["change"].asString();
   } else {
     mode_.clear();
   }

@@ -104,9 +104,7 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
     }
     total += res;
   }
-  std::lock_guard<std::mutex> lock(mutex_parser_);
-  auto parsed = parser_.parse(&payload.front());
-  return {data32[0], data32[1], parsed};
+  return {data32[0], data32[1], &payload.front()};
 }
 
 struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& payload) {
@@ -135,7 +133,7 @@ void Ipc::sendCmd(uint32_t type, const std::string& payload) {
 void Ipc::subscribe(const std::string& payload) {
   std::lock_guard<std::mutex> lock(mutex_event_);
   auto res = Ipc::send(fd_event_, IPC_SUBSCRIBE, payload);
-  if (!res.payload["success"].asBool()) {
+  if (res.payload != "{\"success\": true}") {
     throw std::runtime_error("Unable to subscribe ipc event");
   }
 }

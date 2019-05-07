@@ -23,11 +23,12 @@ void Workspaces::onEvent(const struct Ipc::ipc_response &res) { ipc_.sendCmd(IPC
 
 void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   if (res.type == IPC_GET_WORKSPACES) {
-    if (res.payload.isArray()) {
+    auto payload = parser_.parse(res.payload);
+    if (payload.isArray()) {
       std::lock_guard<std::mutex> lock(mutex_);
       workspaces_.clear();
-      std::copy_if(res.payload.begin(),
-                   res.payload.end(),
+      std::copy_if(payload.begin(),
+                   payload.end(),
                    std::back_inserter(workspaces_),
                    [&](const auto &workspace) {
                      return !config_["all-outputs"].asBool()
