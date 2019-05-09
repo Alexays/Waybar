@@ -24,27 +24,31 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 void Window::onEvent(const struct Ipc::ipc_response& res) { getTree(); }
 
 void Window::onCmd(const struct Ipc::ipc_response& res) {
-  auto payload = parser_.parse(res.payload);
-  auto [nb, id, name, app_id] = getFocusedNode(payload);
-  if (!app_id_.empty()) {
-    bar_.window.get_style_context()->remove_class(app_id_);
-  }
-  if (nb == 0) {
-    bar_.window.get_style_context()->add_class("empty");
-  } else if (nb == 1) {
-    bar_.window.get_style_context()->add_class("solo");
-    if (!app_id.empty()) {
-      bar_.window.get_style_context()->add_class(app_id);
+  try {
+    auto payload = parser_.parse(res.payload);
+    auto [nb, id, name, app_id] = getFocusedNode(payload);
+    if (!app_id_.empty()) {
+      bar_.window.get_style_context()->remove_class(app_id_);
     }
-  } else {
-    bar_.window.get_style_context()->remove_class("solo");
-    bar_.window.get_style_context()->remove_class("empty");
-  }
-  app_id_ = app_id;
-  if (windowId_ != id || window_ != name) {
-    windowId_ = id;
-    window_ = name;
-    dp.emit();
+    if (nb == 0) {
+      bar_.window.get_style_context()->add_class("empty");
+    } else if (nb == 1) {
+      bar_.window.get_style_context()->add_class("solo");
+      if (!app_id.empty()) {
+        bar_.window.get_style_context()->add_class(app_id);
+      }
+    } else {
+      bar_.window.get_style_context()->remove_class("solo");
+      bar_.window.get_style_context()->remove_class("empty");
+    }
+    app_id_ = app_id;
+    if (windowId_ != id || window_ != name) {
+      windowId_ = id;
+      window_ = name;
+      dp.emit();
+    }
+  } catch (const std::exception& e) {
+    std::cerr << "Window: " << e.what() << std::endl;
   }
 }
 

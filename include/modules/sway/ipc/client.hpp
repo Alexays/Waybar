@@ -42,7 +42,6 @@ class Ipc {
   int        fd_;
   int        fd_event_;
   std::mutex mutex_;
-  std::mutex mutex_event_;
 };
 
 }  // namespace waybar::modules::sway

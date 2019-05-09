@@ -131,7 +131,6 @@ void Ipc::sendCmd(uint32_t type, const std::string& payload) {
 }
 
 void Ipc::subscribe(const std::string& payload) {
-  std::lock_guard<std::mutex> lock(mutex_event_);
   auto res = Ipc::send(fd_event_, IPC_SUBSCRIBE, payload);
   if (res.payload != "{\"success\": true}") {
     throw std::runtime_error("Unable to subscribe ipc event");
@@ -139,7 +138,6 @@ void Ipc::subscribe(const std::string& payload) {
 }
 
 void Ipc::handleEvent() {
-  std::lock_guard<std::mutex> lock(mutex_event_);
   const auto res = Ipc::recv(fd_event_);
   signal_event.emit(res);
 }
