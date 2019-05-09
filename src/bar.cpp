@@ -29,8 +29,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   gdk_wayland_window_set_use_custom_surface(gdk_window);
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 
-  std::size_t layer = config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP
-                                                       : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
+  std::size_t layer =
+      config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
   auto client = waybar::Client::inst();
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(
       client->layer_shell, surface, output->output, layer, "waybar");
@@ -43,35 +43,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   auto height = config["height"].isUInt() ? config["height"].asUInt() : height_;
   auto width = config["width"].isUInt() ? config["width"].asUInt() : width_;
 
-  window.signal_configure_event().connect_notify([&](GdkEventConfigure* ev) {
-    auto tmp_height = height_;
-    auto tmp_width = width_;
-    if (ev->height > static_cast<int>(height_)) {
-      // Default minimal value
-      if (height_ != 1) {
-        std::cout << fmt::format(MIN_HEIGHT_MSG, height_, ev->height) << std::endl;
-      }
-      if (config["height"].isUInt()) {
-        std::cout << fmt::format(SIZE_DEFINED, "Height") << std::endl;
-      } else {
-        tmp_height = ev->height;
-      }
-    }
-    if (ev->width > static_cast<int>(width_)) {
-      // Default minimal value
-      if (width_ != 1) {
-        std::cout << fmt::format(MIN_WIDTH_MSG, width_, ev->width) << std::endl;
-      }
-      if (config["width"].isUInt()) {
-        std::cout << fmt::format(SIZE_DEFINED, "Width") << std::endl;
-      } else {
-        tmp_width = ev->width;
-      }
-    }
-    if (tmp_width != width_ || tmp_height != height_) {
-      zwlr_layer_surface_v1_set_size(layer_surface, tmp_width, tmp_height);
-    }
-  });
+  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
 
   std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
   if (config["position"] == "bottom") {
@@ -94,13 +66,94 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   zwlr_layer_surface_v1_set_anchor(layer_surface, anchor);
-  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, vertical ? width : height);
   zwlr_layer_surface_v1_set_size(layer_surface, width, height);
+  setMarginsAndZone(height, width);
 
   wl_surface_commit(surface);
   wl_display_roundtrip(client->wl_display);
 
   setupWidgets();
+}
+
+void waybar::Bar::setMarginsAndZone(uint32_t height, uint32_t width) {
+  if (config["margin-top"].isInt() || config["margin-right"].isInt() ||
+      config["margin-bottom"].isInt() || config["margin-left"].isInt()) {
+    margins_ = {
+        config["margin-top"].isInt() ? config["margin-top"].asInt() : 0,
+        config["margin-right"].isInt() ? config["margin-right"].asInt() : 0,
+        config["margin-bottom"].isInt() ? config["margin-bottom"].asInt() : 0,
+        config["margin-left"].isInt() ? config["margin-left"].asInt() : 0,
+    };
+  } else if (config["margin"].isString()) {
+    std::istringstream       iss(config["margin"].asString());
+    std::vector<std::string> margins{std::istream_iterator<std::string>(iss), {}};
+    try {
+      if (margins.size() == 1) {
+        auto gaps = std::stoi(margins[0], nullptr, 10);
+        margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
+      }
+      if (margins.size() == 2) {
+        auto vertical_margins = std::stoi(margins[0], nullptr, 10);
+        auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
+        margins_ = {.top = vertical_margins,
+                    .right = horizontal_margins,
+                    .bottom = vertical_margins,
+                    .left = horizontal_margins};
+      }
+      if (margins.size() == 3) {
+        auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
+        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
+                    .right = horizontal_margins,
+                    .bottom = std::stoi(margins[2], nullptr, 10),
+                    .left = horizontal_margins};
+      }
+      if (margins.size() == 4) {
+        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
+                    .right = std::stoi(margins[1], nullptr, 10),
+                    .bottom = std::stoi(margins[2], nullptr, 10),
+                    .left = std::stoi(margins[3], nullptr, 10)};
+      }
+    } catch (...) {
+      std::cerr << "Invalid margins: " + config["margin"].asString() << std::endl;
+    }
+  } else if (config["margin"].isInt()) {
+    auto gaps = config["margin"].asInt();
+    margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
+  }
+  zwlr_layer_surface_v1_set_margin(
+      layer_surface, margins_.top, margins_.right, margins_.bottom, margins_.left);
+  auto zone = vertical ? width + margins_.right : height + margins_.bottom;
+  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
+}
+
+void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
+  auto tmp_height = height_;
+  auto tmp_width = width_;
+  if (ev->height > static_cast<int>(height_)) {
+    // Default minimal value
+    if (height_ != 1) {
+      std::cout << fmt::format(MIN_HEIGHT_MSG, height_, ev->height) << std::endl;
+    }
+    if (config["height"].isUInt()) {
+      std::cout << fmt::format(SIZE_DEFINED, "Height") << std::endl;
+    } else {
+      tmp_height = ev->height;
+    }
+  }
+  if (ev->width > static_cast<int>(width_)) {
+    // Default minimal value
+    if (width_ != 1) {
+      std::cout << fmt::format(MIN_WIDTH_MSG, width_, ev->width) << std::endl;
+    }
+    if (config["width"].isUInt()) {
+      std::cout << fmt::format(SIZE_DEFINED, "Width") << std::endl;
+    } else {
+      tmp_width = ev->width;
+    }
+  }
+  if (tmp_width != width_ || tmp_height != height_) {
+    zwlr_layer_surface_v1_set_size(layer_surface, tmp_width, tmp_height);
+  }
 }
 
 // Converting string to button code rn as to avoid doing it later
@@ -172,8 +225,8 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     o->height_ = height;
     o->window.set_size_request(o->width_, o->height_);
     o->window.resize(o->width_, o->height_);
-    zwlr_layer_surface_v1_set_exclusive_zone(o->layer_surface,
-                                             o->vertical ? o->width_ : o->height_);
+    auto zone = o->vertical ? width + o->margins_.right : height + o->margins_.bottom;
+    zwlr_layer_surface_v1_set_exclusive_zone(o->layer_surface, zone);
     std::cout << fmt::format(BAR_SIZE_MSG,
                              o->width_ == 1 ? "auto" : std::to_string(o->width_),
                              o->height_ == 1 ? "auto" : std::to_string(o->height_),

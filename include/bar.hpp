@@ -22,7 +22,7 @@ struct waybar_output {
 
 class Bar {
  public:
-  Bar(struct waybar_output *w_output, const Json::Value&);
+  Bar(struct waybar_output *w_output, const Json::Value &);
   Bar(const Bar &) = delete;
   ~Bar() = default;
 
@@ -51,12 +51,19 @@ class Bar {
   static void layerSurfaceHandleClosed(void *, struct zwlr_layer_surface_v1 *);
 
   void destroyOutput();
-  void onWindowRealize();
+  void onConfigure(GdkEventConfigure *ev);
+  void setMarginsAndZone(uint32_t height, uint32_t width);
   auto setupWidgets() -> void;
   void getModules(const Factory &, const std::string &);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
 
+  struct margins {
+    int top = 0;
+    int right = 0;
+    int bottom = 0;
+    int left = 0;
+  } margins_;
   uint32_t                                      width_ = 0;
   uint32_t                                      height_ = 1;
   Gtk::Box                                      left_;
