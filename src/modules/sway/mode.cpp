@@ -15,13 +15,17 @@ Mode::Mode(const std::string& id, const Json::Value& config) : ALabel(config, "{
 }
 
 void Mode::onEvent(const struct Ipc::ipc_response& res) {
-  auto payload = parser_.parse(res.payload);
-  if (payload["change"] != "default") {
-    mode_ = payload["change"].asString();
-  } else {
-    mode_.clear();
+  try {
+    auto payload = parser_.parse(res.payload);
+    if (payload["change"] != "default") {
+      mode_ = payload["change"].asString();
+    } else {
+      mode_.clear();
+    }
+    dp.emit();
+  } catch (const std::exception& e) {
+    std::cerr << "Mode: " << e.what() << std::endl;
   }
-  dp.emit();
 }
 
 void Mode::worker() {

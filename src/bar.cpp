@@ -111,15 +111,13 @@ void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
       if (module.isMember("format-alt-click")) {
         Json::Value& click = module["format-alt-click"];
         if (click.isString()) {
-          std::string str_click = click.asString();
-
-          if (str_click == "click-right") {
+          if (click == "click-right") {
             module["format-alt-click"] = 3U;
-          } else if (str_click == "click-middle") {
+          } else if (click == "click-middle") {
             module["format-alt-click"] = 2U;
-          } else if (str_click == "click-backward") {
+          } else if (click == "click-backward") {
             module["format-alt-click"] = 8U;
-          } else if (str_click == "click-forward") {
+          } else if (click == "click-forward") {
             module["format-alt-click"] = 9U;
           } else {
             module["format-alt-click"] = 1U;  // default click-left
