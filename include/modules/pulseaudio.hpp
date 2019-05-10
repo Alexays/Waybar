@@ -33,6 +33,7 @@ class Pulseaudio : public ALabel {
   bool                  muted_;
   std::string           port_name_;
   std::string           desc_;
+  std::string           monitor_;
   bool                  scrolling_;
 };
 
