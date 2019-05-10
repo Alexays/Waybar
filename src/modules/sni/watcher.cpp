@@ -14,8 +14,8 @@ Watcher::Watcher()
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {
-  if (bus_name_id_ > 0) {
-    g_bus_unown_name(bus_name_id_);
+  if (bus_name_id_ != 0) {
+    Gio::DBus::unown_name(bus_name_id_);
     bus_name_id_ = 0;
   }
 
@@ -36,7 +36,10 @@ void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib:
   g_dbus_interface_skeleton_export(
       G_DBUS_INTERFACE_SKELETON(watcher_), conn->gobj(), "/StatusNotifierWatcher", &error);
   if (error != nullptr) {
-    std::cerr << error->message << std::endl;
+    // Don't print an error when a watcher is already present
+    if (error->code != 2) {
+      std::cerr << error->message << std::endl;
+    }
     g_error_free(error);
     return;
   }
