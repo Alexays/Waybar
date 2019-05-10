@@ -148,6 +148,7 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
     pa->volume_ = std::round(volume * 100.0F);
     pa->muted_ = i->mute != 0;
     pa->desc_ = i->description;
+    pa->monitor_ = i->monitor_source_name;
     pa->port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
     pa->dp.emit();
   }
@@ -192,7 +193,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     label_.get_style_context()->add_class("muted");
   } else {
     label_.get_style_context()->remove_class("muted");
-    if (port_name_.find("a2dp_sink") != std::string::npos) {
+    if (monitor_.find("a2dp_sink") != std::string::npos) {
       format =
           config_["format-bluetooth"].isString() ? config_["format-bluetooth"].asString() : format;
       label_.get_style_context()->add_class("bluetooth");
