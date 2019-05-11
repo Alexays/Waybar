@@ -31,8 +31,10 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
       bar_.window.get_style_context()->remove_class(app_id_);
     }
     if (nb == 0) {
+      bar_.window.get_style_context()->remove_class("solo");
       bar_.window.get_style_context()->add_class("empty");
     } else if (nb == 1) {
+      bar_.window.get_style_context()->remove_class("empty");
       bar_.window.get_style_context()->add_class("solo");
       if (!app_id.empty()) {
         bar_.window.get_style_context()->add_class(app_id);
