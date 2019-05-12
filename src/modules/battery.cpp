@@ -47,21 +47,21 @@ void waybar::modules::Battery::worker() {
 
 void waybar::modules::Battery::getBatteries() {
   try {
-    for (auto const& node : fs::directory_iterator(data_dir_)) {
+    for (auto& node : fs::directory_iterator(data_dir_)) {
       if (!fs::is_directory(node)) {
         continue;
       }
       auto dir_name = node.path().filename();
       auto bat_defined = config_["bat"].isString();
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
-          fs::exists(node / "capacity") && fs::exists(node / "uevent") &&
-          fs::exists(node / "status")) {
-        batteries_.push_back(node);
+          fs::exists(node.path() / "capacity") && fs::exists(node.path() / "uevent") &&
+          fs::exists(node.path() / "status")) {
+        batteries_.push_back(node.path());
       }
       auto adap_defined = config_["adapter"].isString();
       if (((adap_defined && dir_name == config_["adapter"].asString()) || !adap_defined) &&
-          fs::exists(node / "online")) {
-        adapter_ = node;
+          fs::exists(node.path() / "online")) {
+        adapter_ = node.path();
       }
     }
   } catch (fs::filesystem_error& e) {
