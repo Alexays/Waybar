@@ -4,11 +4,6 @@
 #include <fstream>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
-#ifdef FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-#else
-#include <filesystem>
-#endif
 
 namespace waybar::modules {
 
