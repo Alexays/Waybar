@@ -39,7 +39,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
   // events are configured
   if (!config["on-scroll-up"].isString() && !config["on-scroll-down"].isString()) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
+    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleVolume));
   }
 }
 
@@ -71,7 +71,7 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
   }
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
   // Avoid concurrent scroll event
   bool       direction_up = false;
   uint16_t   change = config_["scroll-step"].isUInt() ? config_["scroll-step"].asUInt() * 100 : 100;
