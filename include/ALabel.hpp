@@ -13,7 +13,7 @@ class ALabel : public IModule {
   ALabel(const Json::Value &, const std::string &format, uint16_t interval = 0);
   virtual ~ALabel();
   virtual auto        update() -> void;
-  virtual std::string getIcon(uint16_t, const std::string &alt = "");
+  virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
   virtual             operator Gtk::Widget &();
 
  protected:

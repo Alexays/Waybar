@@ -32,8 +32,11 @@ auto waybar::modules::Temperature::update() -> void {
   } else {
     label_.get_style_context()->remove_class("critical");
   }
-  label_.set_markup(fmt::format(
-      format, fmt::arg("temperatureC", temperature_c), fmt::arg("temperatureF", temperature_f)));
+  auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
+  label_.set_markup(fmt::format(format,
+                                fmt::arg("temperatureC", temperature_c),
+                                fmt::arg("temperatureF", temperature_f),
+                                fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
 }
 
 std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {
