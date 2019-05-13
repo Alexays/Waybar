@@ -119,7 +119,7 @@ auto waybar::modules::Battery::update() -> void {
   }
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
-  auto state = getState(capacity);
+  auto state = getState(capacity, true);
   label_.get_style_context()->remove_class(old_status_);
   label_.get_style_context()->add_class(status);
   old_status_ = status;
