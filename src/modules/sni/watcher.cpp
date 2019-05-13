@@ -14,11 +14,6 @@ Watcher::Watcher()
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {
-  if (bus_name_id_ != 0) {
-    Gio::DBus::unown_name(bus_name_id_);
-    bus_name_id_ = 0;
-  }
-
   if (hosts_ != nullptr) {
     g_slist_free_full(hosts_, gfWatchFree);
     hosts_ = nullptr;

@@ -19,7 +19,13 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   worker();
 }
 
-void Workspaces::onEvent(const struct Ipc::ipc_response &res) { ipc_.sendCmd(IPC_GET_WORKSPACES); }
+void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
+  try {
+    ipc_.sendCmd(IPC_GET_WORKSPACES);
+  } catch (const std::exception &e) {
+    std::cerr << "Workspaces: " << e.what() << std::endl;
+  }
+}
 
 void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   if (res.type == IPC_GET_WORKSPACES) {
@@ -194,7 +200,11 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
       return false;
     }
   }
-  ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
+  try {
+    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
+  } catch (const std::exception &e) {
+    std::cerr << "Workspaces: " << e.what() << std::endl;
+  }
   return true;
 }
 

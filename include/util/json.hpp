@@ -5,15 +5,16 @@
 namespace waybar::util {
 
 struct JsonParser {
-  JsonParser() : reader_(builder_.newCharReader()) {}
+  JsonParser() {}
 
   const Json::Value parse(const std::string& data) const {
     Json::Value root(Json::objectValue);
     if (data.empty()) {
       return root;
     }
-    std::string err;
-    bool res = reader_->parse(data.c_str(), data.c_str() + data.size(), &root, &err);
+    std::unique_ptr<Json::CharReader> const reader(builder_.newCharReader());
+    std::string                             err;
+    bool res = reader->parse(data.c_str(), data.c_str() + data.size(), &root, &err);
     if (!res) throw std::runtime_error(err);
     return root;
   }
@@ -21,8 +22,7 @@ struct JsonParser {
   ~JsonParser() = default;
 
  private:
-  Json::CharReaderBuilder                 builder_;
-  std::unique_ptr<Json::CharReader> const reader_;
+  Json::CharReaderBuilder builder_;
 };
 
 }  // namespace waybar::util

@@ -11,7 +11,7 @@
 
 namespace waybar::modules::sway {
 
-class Window : public ALabel {
+class Window : public ALabel, public sigc::trackable {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;

@@ -63,8 +63,8 @@ class Item : public sigc::trackable {
   bool                      makeMenu(GdkEventButton* const& ev);
   bool                      handleClick(GdkEventButton* const& /*ev*/);
 
-  Glib::RefPtr<Gio::Cancellable> cancellable_;
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
+  Glib::RefPtr<Gio::Cancellable> cancellable_;
   bool                           update_pending_;
 };
 
