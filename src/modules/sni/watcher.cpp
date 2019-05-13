@@ -28,7 +28,9 @@ Watcher::~Watcher() {
     g_slist_free_full(items_, gfWatchFree);
     items_ = nullptr;
   }
-  g_dbus_interface_skeleton_unexport(G_DBUS_INTERFACE_SKELETON(watcher_));
+  auto iface = G_DBUS_INTERFACE_SKELETON(watcher_);
+  auto conn = g_dbus_interface_skeleton_get_connection(iface);
+  g_dbus_interface_skeleton_unexport_from_connection(iface, conn);
 }
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
