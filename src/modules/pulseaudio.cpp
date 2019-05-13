@@ -73,13 +73,12 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
 
 bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
   // Avoid concurrent scroll event
-  bool       direction_up = false;
-  uint16_t   change = config_["scroll-step"].isUInt() ? config_["scroll-step"].asUInt() * 100 : 100;
-  pa_cvolume pa_volume = pa_volume_;
-
   if (scrolling_) {
     return false;
   }
+  bool       direction_up = false;
+  uint16_t   change = config_["scroll-step"].isUInt() ? config_["scroll-step"].asUInt() * 100 : 100;
+  pa_cvolume pa_volume = pa_volume_;
   scrolling_ = true;
   if (e->direction == GDK_SCROLL_UP) {
     direction_up = true;

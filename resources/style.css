@@ -133,6 +133,7 @@ label:focus {
 #custom-media {
     background: #66cc99;
     color: #2a5c45;
+    min-width: 150px;
 }
 
 .custom-spotify {
