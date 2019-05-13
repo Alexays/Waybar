@@ -32,11 +32,15 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     }
     if (nb == 0) {
       bar_.window.get_style_context()->remove_class("solo");
-      bar_.window.get_style_context()->add_class("empty");
+      if (!bar_.window.get_style_context()->has_class("empty")) {
+        bar_.window.get_style_context()->add_class("empty");
+      }
     } else if (nb == 1) {
       bar_.window.get_style_context()->remove_class("empty");
-      bar_.window.get_style_context()->add_class("solo");
-      if (!app_id.empty()) {
+      if (!bar_.window.get_style_context()->has_class("solo")) {
+        bar_.window.get_style_context()->add_class("solo");
+      }
+      if (!app_id.empty() && !bar_.window.get_style_context()->has_class(app_id)) {
         bar_.window.get_style_context()->add_class(app_id);
       }
     } else {

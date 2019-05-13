@@ -32,8 +32,7 @@ window#waybar.termite {
 }
 
 window#waybar.chromium {
-    background-color: #DEE1E6;
-    color: #000000;
+    background-color: #000000;
     border: none;
 }
 
