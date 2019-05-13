@@ -12,7 +12,7 @@
 
 namespace waybar::modules::sway {
 
-class Workspaces : public IModule {
+class Workspaces : public IModule, public sigc::trackable {
  public:
   Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Workspaces() = default;
