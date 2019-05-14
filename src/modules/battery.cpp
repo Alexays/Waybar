@@ -75,44 +75,55 @@ void waybar::modules::Battery::getBatteries() {
   }
 }
 
-const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() const {
+const std::tuple<uint8_t, uint32_t, std::string> waybar::modules::Battery::getInfos() const {
   try {
     uint16_t    total = 0;
+    uint32_t    total_current = 0;
     std::string status = "Unknown";
     for (auto const& bat : batteries_) {
       uint16_t    capacity;
+      uint32_t    current_now;
       std::string _status;
       std::ifstream(bat / "capacity") >> capacity;
       std::ifstream(bat / "status") >> _status;
+      std::ifstream(bat / "current_now") >> current_now;
       if (_status != "Unknown") {
         status = _status;
       }
       total += capacity;
+      total_current += current_now;
     }
     uint16_t capacity = total / batteries_.size();
-    return {capacity, status};
+    if (status == "Charging" && total_current != 0) {
+      status == "Plugged";
+    }
+    return {capacity, total_current, status};
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
-    return {0, "Unknown"};
+    return {0, 0, "Unknown"};
   }
 }
 
-const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
+const std::string waybar::modules::Battery::getAdapterStatus(uint8_t  capacity,
+                                                             uint32_t current_now) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
     if (capacity == 100) {
       return "Full";
     }
-    return online ? "Charging" : "Discharging";
+    if (online) {
+      return current_now == 0 ? "Charging" : "Plugged";
+    }
+    return "Discharging";
   }
   return "Unknown";
 }
 
 auto waybar::modules::Battery::update() -> void {
-  auto [capacity, status] = getInfos();
+  auto [capacity, current_now, status] = getInfos();
   if (status == "Unknown") {
-    status = getAdapterStatus(capacity);
+    status = getAdapterStatus(capacity, current_now);
   }
   if (tooltipEnabled()) {
     label_.set_tooltip_text(status);
@@ -120,7 +131,9 @@ auto waybar::modules::Battery::update() -> void {
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
   auto state = getState(capacity, true);
-  label_.get_style_context()->remove_class(old_status_);
+  if (!old_status_.empty()) {
+    label_.get_style_context()->remove_class(old_status_);
+  }
   label_.get_style_context()->add_class(status);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {

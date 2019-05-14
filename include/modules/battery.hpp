@@ -30,10 +30,10 @@ class Battery : public ALabel {
  private:
   static inline const fs::path data_dir_ = "/sys/class/power_supply/";
 
-  void                                   getBatteries();
-  void                                   worker();
-  const std::string                      getAdapterStatus(uint8_t capacity) const;
-  const std::tuple<uint8_t, std::string> getInfos() const;
+  void              getBatteries();
+  void              worker();
+  const std::string getAdapterStatus(uint8_t capacity, uint32_t current_now) const;
+  const std::tuple<uint8_t, uint32_t, std::string> getInfos() const;
 
   util::SleeperThread   thread_;
   util::SleeperThread   thread_timer_;
