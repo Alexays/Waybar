@@ -95,7 +95,7 @@ const std::tuple<uint8_t, uint32_t, std::string> waybar::modules::Battery::getIn
     }
     uint16_t capacity = total / batteries_.size();
     if (status == "Charging" && total_current != 0) {
-      status == "Plugged";
+      status = "Plugged";
     }
     return {capacity, total_current, status};
   } catch (const std::exception& e) {
