@@ -66,7 +66,6 @@ void waybar::modules::Network::createInfoSocket() {
     throw std::runtime_error("Can't add membership");
   }
   nl_socket_disable_seq_check(info_sock_);
-  nl_socket_set_nonblocking(info_sock_);
   nl_socket_modify_cb(info_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
@@ -126,8 +125,6 @@ void waybar::modules::Network::worker() {
           break;
         }
       }
-    } else if (ec == -1) {
-      thread_.stop();
     }
   };
 }
@@ -388,25 +385,23 @@ int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
-  int  ret = 0;
   auto net = static_cast<waybar::modules::Network *>(data);
   bool need_update = false;
-  for (nlmsghdr *nh = nlmsg_hdr(msg); NLMSG_OK(nh, ret); nh = NLMSG_NEXT(nh, ret)) {
-    if (nh->nlmsg_type == RTM_NEWADDR) {
+  struct nlmsghdr *nh = nlmsg_hdr(msg);
+
+  if (nh->nlmsg_type == RTM_NEWADDR) {
+    need_update = true;
+  }
+  if (nh->nlmsg_type < RTM_NEWADDR) {
+    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
       need_update = true;
-    }
-    if (nh->nlmsg_type < RTM_NEWADDR) {
-      auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-      if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
-        need_update = true;
-        if (!(rtif->ifi_flags & IFF_RUNNING)) {
-          net->disconnected();
-          net->dp.emit();
-          return NL_SKIP;
-        }
+      if (!(rtif->ifi_flags & IFF_RUNNING)) {
+        net->disconnected();
+        net->dp.emit();
+        return NL_SKIP;
       }
     }
-    if (need_update) break;
   }
   if (net->ifid_ <= 0 && !net->config_["interface"].isString()) {
     for (uint8_t i = 0; i < MAX_RETRY; i += 1) {
