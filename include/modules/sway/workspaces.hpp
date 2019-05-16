@@ -19,6 +19,8 @@ class Workspaces : public IModule, public sigc::trackable {
   auto update() -> void;
        operator Gtk::Widget&();
 
+  bool handleScroll(GdkEventScroll*);
+
  private:
   void              onCmd(const struct Ipc::ipc_response&);
   void              onEvent(const struct Ipc::ipc_response&);
@@ -27,7 +29,6 @@ class Workspaces : public IModule, public sigc::trackable {
   Gtk::Button&      addButton(const Json::Value&);
   void              onButtonReady(const Json::Value&, Gtk::Button&);
   std::string       getIcon(const std::string&, const Json::Value&);
-  bool              handleScroll(GdkEventScroll*);
   const std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t          getWorkspaceIndex(const std::string& name) const;
   std::string       trimWorkspaceName(std::string);

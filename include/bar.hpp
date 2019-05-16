@@ -55,6 +55,7 @@ class Bar {
   void setMarginsAndZone(uint32_t height, uint32_t width);
   auto setupWidgets() -> void;
   void getModules(const Factory &, const std::string &);
+  bool handleScroll(GdkEventScroll*);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
 
