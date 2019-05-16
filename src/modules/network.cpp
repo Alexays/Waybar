@@ -329,27 +329,33 @@ void waybar::modules::Network::getInterfaceAddress() {
   netmask_.clear();
   cidr_ = 0;
   int success = getifaddrs(&ifaddr);
-  if (success == 0) {
-    ifa = ifaddr;
-    while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
-      if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_) {
-        if (strcmp(ifa->ifa_name, ifname_.c_str()) == 0) {
-          ipaddr_ = inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr);
-          netmask_ = inet_ntoa(((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr);
-          cidrRaw = ((struct sockaddr_in *)(ifa->ifa_netmask))->sin_addr.s_addr;
-          linked_ = ifa->ifa_flags & IFF_RUNNING;
-          unsigned int cidr = 0;
-          while (cidrRaw) {
-            cidr += cidrRaw & 1;
-            cidrRaw >>= 1;
-          }
-          cidr_ = cidr;
-        }
-      }
-      ifa = ifa->ifa_next;
-    }
-    freeifaddrs(ifaddr);
+  if (success != 0) {
+    return;
   }
+  ifa = ifaddr;
+  while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
+    if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
+        ifa->ifa_name == ifname_) {
+      char ipaddr[INET6_ADDRSTRLEN];
+      ipaddr_ = inet_ntop(family_,
+                          &reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr)->sin_addr,
+                          ipaddr,
+                          INET6_ADDRSTRLEN);
+      char netmask[INET6_ADDRSTRLEN];
+      auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
+      netmask_ = inet_ntop(family_, &net_addr->sin_addr, netmask, INET6_ADDRSTRLEN);
+      cidrRaw = net_addr->sin_addr.s_addr;
+      linked_ = ifa->ifa_flags & IFF_RUNNING;
+      unsigned int cidr = 0;
+      while (cidrRaw) {
+        cidr += cidrRaw & 1;
+        cidrRaw >>= 1;
+      }
+      cidr_ = cidr;
+    }
+    ifa = ifa->ifa_next;
+  }
+  freeifaddrs(ifaddr);
 }
 
 int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) {
@@ -394,7 +400,7 @@ int waybar::modules::Network::getPreferredIface() {
       ifname_ = config_["interface"].asString();
       return ifid_;
     } else {
-      // Try with regex
+      // Try with wildcard
       struct ifaddrs *ifaddr, *ifa;
       int             success = getifaddrs(&ifaddr);
       if (success != 0) {
@@ -402,7 +408,7 @@ int waybar::modules::Network::getPreferredIface() {
       }
       ifa = ifaddr;
       ifid_ = -1;
-      while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
+      while (ifa != nullptr) {
         if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
           ifid_ = if_nametoindex(ifa->ifa_name);
           break;
