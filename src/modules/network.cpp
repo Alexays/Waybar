@@ -368,7 +368,12 @@ int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec  iov = {req, reqlen};
-  struct msghdr msg = {&sa, sizeof(sa), &iov, 1, nullptr, 0, 0};
+  struct msghdr msg = {
+      .msg_name = &sa,
+      .msg_namelen = sizeof(sa),
+      .msg_iov = &iov,
+      .msg_iovlen = 1,
+  };
   return sendmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
 }
 
@@ -377,8 +382,13 @@ int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec  iov = {resp, resplen};
-  struct msghdr msg = {&sa, sizeof(sa), &iov, 1, nullptr, 0, 0};
-  auto          ret = recvmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
+  struct msghdr msg = {
+      .msg_name = &sa,
+      .msg_namelen = sizeof(sa),
+      .msg_iov = &iov,
+      .msg_iovlen = 1,
+  };
+  auto ret = recvmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
   if (msg.msg_flags & MSG_TRUNC) {
     return -1;
   }
