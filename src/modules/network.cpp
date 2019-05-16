@@ -120,6 +120,9 @@ void waybar::modules::Network::worker() {
       for (auto i = 0; i < ec; i++) {
         if (events[i].data.fd == nl_socket_get_fd(ev_sock_)) {
           nl_recvmsgs_default(ev_sock_);
+        } else {
+          thread_.stop();
+          break;
         }
       }
     }
