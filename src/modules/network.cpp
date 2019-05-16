@@ -39,8 +39,10 @@ waybar::modules::Network::~Network() {
   }
   if (ev_sock_ != nullptr) {
     nl_socket_drop_membership(ev_sock_, RTNLGRP_LINK);
-    nl_socket_drop_membership(ev_sock_, RTMGRP_IPV4_IFADDR);
-    nl_socket_drop_membership(ev_sock_, RTMGRP_IPV6_IFADDR);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
     nl_close(ev_sock_);
     nl_socket_free(ev_sock_);
   }
