@@ -104,9 +104,10 @@
         "bat": "BAT2"
     },
     "network": {
-        // "interface": "wlp2s0", // (Optional) To force the use of this interface
+        // "interface": "wlp2*", // (Optional) To force the use of this interface
         "format-wifi": "{essid} ({signalStrength}%) ",
         "format-ethernet": "{ifname}: {ipaddr}/{cidr} ",
+        "format-linked": "{ifname} (No IP) ",
         "format-disconnected": "Disconnected ⚠"
     },
     "pulseaudio": {
