@@ -147,7 +147,7 @@ auto waybar::modules::Battery::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    label_.set_markup(
-        fmt::format(format, fmt::arg("capacity", capacity), fmt::arg("icon", getIcon(capacity))));
+    label_.set_markup(fmt::format(
+        format, fmt::arg("capacity", capacity), fmt::arg("icon", getIcon(capacity, state))));
   }
 }
