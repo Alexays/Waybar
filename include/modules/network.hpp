@@ -28,7 +28,6 @@ class Network : public ALabel {
   static int handleScan(struct nl_msg*, void*);
 
   void worker();
-  void disconnected();
   void createInfoSocket();
   void createEventSocket();
   int  getExternalInterface();
@@ -38,24 +37,30 @@ class Network : public ALabel {
   void parseEssid(struct nlattr**);
   void parseSignal(struct nlattr**);
   bool associatedOrJoined(struct nlattr**);
+  bool checkInterface(int if_index, std::string name);
+  int  getPreferredIface();
   auto getInfo() -> void;
+  bool wildcardMatch(const std::string& pattern, const std::string& text);
 
   waybar::util::SleeperThread thread_;
   waybar::util::SleeperThread thread_timer_;
   int                         ifid_;
+  int                         last_ext_iface_;
   sa_family_t                 family_;
   struct sockaddr_nl          nladdr_ = {0};
-  struct nl_sock*             sk_ = nullptr;
-  struct nl_sock*             info_sock_ = nullptr;
+  struct nl_sock*             sock_ = nullptr;
+  struct nl_sock*             ev_sock_ = nullptr;
   int                         efd_;
   int                         ev_fd_;
   int                         nl80211_id_;
+  std::mutex                  mutex_;
 
   std::string essid_;
   std::string ifname_;
   std::string ipaddr_;
   std::string netmask_;
   int         cidr_;
+  bool        linked_;
   int32_t     signal_strength_dbm_;
   uint8_t     signal_strength_;
 };
