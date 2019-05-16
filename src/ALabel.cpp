@@ -129,7 +129,7 @@ std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt,
   return "";
 }
 
-std::string waybar::ALabel::getState(uint8_t value, bool reverse) {
+std::string waybar::ALabel::getState(uint8_t value, bool lesser, bool reverse) {
   if (!config_["states"].isObject()) {
     return "";
   }
@@ -148,7 +148,7 @@ std::string waybar::ALabel::getState(uint8_t value, bool reverse) {
   });
   std::string valid_state;
   for (auto const& state : states) {
-    if (value <= state.second && valid_state.empty()) {
+    if ((lesser ? value <= state.second : value >= state.second) && valid_state.empty()) {
       label_.get_style_context()->add_class(state.first);
       valid_state = state.first;
     } else {
