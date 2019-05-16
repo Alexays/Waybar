@@ -31,7 +31,7 @@ class ALabel : public IModule {
 
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
-  virtual std::string getState(uint8_t value, bool reverse = false);
+  virtual std::string getState(uint8_t value, bool lesser = false);
 
  private:
   std::vector<int> pid_;
