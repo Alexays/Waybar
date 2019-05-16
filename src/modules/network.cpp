@@ -435,7 +435,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
-    // Auto detected network must be assigned here
+    // Auto detected network can also be assigned here
     if (net->checkInterface(rtif->ifi_index, ifname) && net->ifid_ == -1) {
       net->linked_ = true;
       net->ifname_ = ifname;
