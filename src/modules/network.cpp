@@ -1,8 +1,5 @@
 #include "modules/network.hpp"
 #include <sys/eventfd.h>
-#include <regex>
-
-#include <iostream>
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "{ifname}", 60),
