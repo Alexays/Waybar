@@ -20,7 +20,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     height_ = 0;
     width_ = 1;
   }
-  window.set_size_request(width_, height_);
 
   auto gtk_window = window.gobj();
   auto gtk_widget = GTK_WIDGET(gtk_window);
@@ -42,8 +41,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   auto height = config["height"].isUInt() ? config["height"].asUInt() : height_;
   auto width = config["width"].isUInt() ? config["width"].asUInt() : width_;
-
-  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
 
   std::size_t anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
   if (config["position"] == "bottom") {
@@ -70,9 +67,11 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   setMarginsAndZone(height, width);
 
   wl_surface_commit(surface);
-  wl_display_roundtrip(client->wl_display);
 
   setupWidgets();
+
+  window.set_size_request(width_, height_);
+  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
 }
 
 void waybar::Bar::setMarginsAndZone(uint32_t height, uint32_t width) {
