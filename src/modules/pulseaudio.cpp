@@ -77,7 +77,8 @@ bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
     return false;
   }
   bool       direction_up = false;
-  uint16_t   change = config_["scroll-step"].isUInt() ? config_["scroll-step"].asUInt() * 100 : 100;
+  double volume_tick = (double)PA_VOLUME_NORM / 100;
+  pa_volume_t change = volume_tick;
   pa_cvolume pa_volume = pa_volume_;
   scrolling_ = true;
   if (e->direction == GDK_SCROLL_UP) {
@@ -95,6 +96,11 @@ bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
     } else if (delta_y > 0) {
       direction_up = false;
     }
+  }
+
+  // isDouble returns true for integers as well, just in case
+  if (config_["scroll-step"].isDouble()) {
+    change = round(config_["scroll-step"].asDouble() * volume_tick);
   }
 
   if (direction_up) {
