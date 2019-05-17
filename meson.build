@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.6.2',
+    version: '0.6.4',
     license: 'MIT',
     default_options : [
         'cpp_std=c++17',
@@ -12,7 +12,7 @@ project(
 cpp_args = []
 cpp_link_args = []
 
-if false # libc++
+if get_option('libcxx')
     cpp_args += ['-stdlib=libc++']
     cpp_link_args += ['-stdlib=libc++', '-lc++abi']
 
@@ -34,7 +34,12 @@ else
 endif
 
 if not compiler.has_header('filesystem')
-    add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
+    if compiler.has_header('experimental/filesystem')
+        add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
+    else
+        add_project_arguments('-DNO_FILESYSTEM', language: 'cpp')
+        warning('No filesystem header found, some modules may not work')
+    endif
 endif
 
 add_global_arguments(cpp_args, language : 'cpp')

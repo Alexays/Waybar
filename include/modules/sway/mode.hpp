@@ -10,7 +10,7 @@
 
 namespace waybar::modules::sway {
 
-class Mode : public ALabel {
+class Mode : public ALabel, public sigc::trackable {
  public:
   Mode(const std::string&, const Json::Value&);
   ~Mode() = default;

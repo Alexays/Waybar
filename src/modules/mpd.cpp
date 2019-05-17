@@ -65,7 +65,7 @@ std::thread waybar::modules::MPD::event_listener() {
       try {
         if (connection_ == nullptr) {
           // Retry periodically if no connection
-          update();
+          dp.emit();
           std::this_thread::sleep_for(interval_);
         } else {
           waitForEvent();

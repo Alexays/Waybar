@@ -39,7 +39,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
   // events are configured
   if (!config["on-scroll-up"].isString() && !config["on-scroll-down"].isString()) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
+    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleVolume));
   }
 }
 
@@ -71,15 +71,15 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
   }
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
   // Avoid concurrent scroll event
-  bool       direction_up = false;
-  uint16_t   change = config_["scroll-step"].isUInt() ? config_["scroll-step"].asUInt() * 100 : 100;
-  pa_cvolume pa_volume = pa_volume_;
-
   if (scrolling_) {
     return false;
   }
+  bool       direction_up = false;
+  double volume_tick = (double)PA_VOLUME_NORM / 100;
+  pa_volume_t change = volume_tick;
+  pa_cvolume pa_volume = pa_volume_;
   scrolling_ = true;
   if (e->direction == GDK_SCROLL_UP) {
     direction_up = true;
@@ -96,6 +96,11 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
     } else if (delta_y > 0) {
       direction_up = false;
     }
+  }
+
+  // isDouble returns true for integers as well, just in case
+  if (config_["scroll-step"].isDouble()) {
+    change = round(config_["scroll-step"].asDouble() * volume_tick);
   }
 
   if (direction_up) {
@@ -148,6 +153,7 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
     pa->volume_ = std::round(volume * 100.0F);
     pa->muted_ = i->mute != 0;
     pa->desc_ = i->description;
+    pa->monitor_ = i->monitor_source_name;
     pa->port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
     pa->dp.emit();
   }
@@ -192,7 +198,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     label_.get_style_context()->add_class("muted");
   } else {
     label_.get_style_context()->remove_class("muted");
-    if (port_name_.find("a2dp_sink") != std::string::npos) {
+    if (monitor_.find("a2dp_sink") != std::string::npos) {
       format =
           config_["format-bluetooth"].isString() ? config_["format-bluetooth"].asString() : format;
       label_.get_style_context()->add_class("bluetooth");

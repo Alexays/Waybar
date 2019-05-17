@@ -6,12 +6,12 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
-#include "util/sleeper_thread.hpp"
 #include "util/json.hpp"
+#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
-class Window : public ALabel {
+class Window : public ALabel, public sigc::trackable {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;
@@ -27,10 +27,11 @@ class Window : public ALabel {
   const Bar&                  bar_;
   waybar::util::SleeperThread thread_;
   Ipc                         ipc_;
+  std::mutex                  mutex_;
   std::string                 window_;
   int                         windowId_;
   std::string                 app_id_;
-  util::JsonParser parser_;
+  util::JsonParser            parser_;
 };
 
 }  // namespace waybar::modules::sway

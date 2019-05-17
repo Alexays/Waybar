@@ -8,11 +8,8 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
     auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }
-#ifdef FILESYSTEM_EXPERIMENTAL
-  if (!std::experimental::filesystem::exists(file_path_)) {
-#else
-  if (!std::filesystem::exists(file_path_)) {
-#endif
+  std::ifstream temp(file_path_);
+  if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
   }
   label_.set_name("temperature");
@@ -35,8 +32,11 @@ auto waybar::modules::Temperature::update() -> void {
   } else {
     label_.get_style_context()->remove_class("critical");
   }
-  label_.set_markup(fmt::format(
-      format, fmt::arg("temperatureC", temperature_c), fmt::arg("temperatureF", temperature_f)));
+  auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
+  label_.set_markup(fmt::format(format,
+                                fmt::arg("temperatureC", temperature_c),
+                                fmt::arg("temperatureF", temperature_f),
+                                fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
 }
 
 std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {

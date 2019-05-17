@@ -109,7 +109,7 @@ bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt) {
+std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
     if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
@@ -120,7 +120,7 @@ std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt)
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    auto idx = std::clamp(percentage / (100 / size), 0U, size - 1);
+    auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
     format_icons = format_icons[idx];
   }
   if (format_icons.isString()) {
@@ -129,7 +129,10 @@ std::string waybar::ALabel::getIcon(uint16_t percentage, const std::string& alt)
   return "";
 }
 
-std::string waybar::ALabel::getState(uint8_t value) {
+std::string waybar::ALabel::getState(uint8_t value, bool lesser) {
+  if (!config_["states"].isObject()) {
+    return "";
+  }
   // Get current state
   std::vector<std::pair<std::string, uint8_t>> states;
   if (config_["states"].isObject()) {
@@ -140,10 +143,12 @@ std::string waybar::ALabel::getState(uint8_t value) {
     }
   }
   // Sort states
-  std::sort(states.begin(), states.end(), [](auto& a, auto& b) { return a.second < b.second; });
+  std::sort(states.begin(), states.end(), [&lesser](auto& a, auto& b) {
+    return lesser ? a.second < b.second : a.second > b.second;
+  });
   std::string valid_state;
   for (auto const& state : states) {
-    if (value <= state.second && valid_state.empty()) {
+    if ((lesser ? value <= state.second : value >= state.second) && valid_state.empty()) {
       label_.get_style_context()->add_class(state.first);
       valid_state = state.first;
     } else {

@@ -7,11 +7,13 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
+#ifndef NO_FILESYSTEM
 #include "modules/battery.hpp"
+#endif
 #include "modules/cpu.hpp"
 #include "modules/idle_inhibitor.hpp"
 #include "modules/memory.hpp"
-#ifdef HAVE_DBUSMENU
+#if defined(HAVE_DBUSMENU) && !defined(NO_FILESYSTEM)
 #include "modules/sni/tray.hpp"
 #endif
 #ifdef HAVE_LIBNL

@@ -153,6 +153,7 @@ void waybar::Client::handleName(void *      data, struct zxdg_output_v1 * /*xdg_
       wl_output_destroy(output->output);
       zxdg_output_v1_destroy(output->xdg_output);
     } else {
+      wl_display_roundtrip(client->wl_display);
       for (const auto &config : configs) {
         client->bars.emplace_back(std::make_unique<Bar>(output.get(), config));
         Glib::RefPtr<Gdk::Screen> screen = client->bars.back()->window.get_screen();

@@ -276,39 +276,38 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int reque
       name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
-void Item::onMenuDestroyed(Item* self) {
-  self->gtk_menu = nullptr;
-  self->dbus_menu = nullptr;
+void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
+  if (old_menu_pointer == reinterpret_cast<GObject*>(self->dbus_menu)) {
+    self->gtk_menu = nullptr;
+    self->dbus_menu = nullptr;
+  }
 }
 
-bool Item::makeMenu(GdkEventButton* const& ev) {
-  if (gtk_menu == nullptr) {
-    if (!menu.empty()) {
-      dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
-      if (dbus_menu != nullptr) {
-        g_object_ref_sink(G_OBJECT(dbus_menu));
-        g_object_weak_ref(G_OBJECT(dbus_menu), (GWeakNotify)onMenuDestroyed, this);
-        gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
-        gtk_menu->attach_to_widget(event_box);
-      }
+void Item::makeMenu(GdkEventButton* const& ev) {
+  if (gtk_menu == nullptr && !menu.empty()) {
+    dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
+    if (dbus_menu != nullptr) {
+      g_object_ref_sink(G_OBJECT(dbus_menu));
+      g_object_weak_ref(G_OBJECT(dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+      gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
+      gtk_menu->attach_to_widget(event_box);
     }
   }
-  if (gtk_menu != nullptr) {
-#if GTK_CHECK_VERSION(3, 22, 0)
-    gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
-#else
-    gtk_menu->popup(ev->button, ev->time);
-#endif
-    return true;
-  }
-  return false;
 }
 
 bool Item::handleClick(GdkEventButton* const& ev) {
   auto parameters = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<int>::create(ev->x), Glib::Variant<int>::create(ev->y)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
-    if (!makeMenu(ev)) {
+    makeMenu(ev);
+    if (gtk_menu != nullptr) {
+#if GTK_CHECK_VERSION(3, 22, 0)
+      gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
+#else
+      gtk_menu->popup(ev->button, ev->time);
+#endif
+      return true;
+    } else {
       proxy_->call("ContextMenu", parameters);
       return true;
     }

@@ -20,7 +20,7 @@ class Pulseaudio : public ALabel {
   static void sinkInfoCb(pa_context*, const pa_sink_info*, int, void*);
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
   static void volumeModifyCb(pa_context*, int, void*);
-  bool        handleScroll(GdkEventScroll* e);
+  bool        handleVolume(GdkEventScroll* e);
 
   const std::string getPortIcon() const;
 
@@ -33,6 +33,7 @@ class Pulseaudio : public ALabel {
   bool                  muted_;
   std::string           port_name_;
   std::string           desc_;
+  std::string           monitor_;
   bool                  scrolling_;
 };
 
