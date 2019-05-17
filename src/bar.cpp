@@ -67,6 +67,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   setMarginsAndZone(height, width);
 
   wl_surface_commit(surface);
+  wl_display_roundtrip(client->wl_display);
 
   setupWidgets();
 
