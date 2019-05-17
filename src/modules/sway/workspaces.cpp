@@ -223,7 +223,7 @@ const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterat
   else if (!prev && it != workspaces_.end())
     ++it;
   if (!prev && it == workspaces_.end()) {
-    return (*(++workspaces_.begin()))["name"].asString();
+    return (*(workspaces_.begin()))["name"].asString();
   }
   return (*it)["name"].asString();
 }
