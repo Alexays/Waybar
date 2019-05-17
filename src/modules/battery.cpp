@@ -93,10 +93,14 @@ const std::tuple<uint8_t, uint32_t, std::string> waybar::modules::Battery::getIn
       total += capacity;
       total_current += current_now;
     }
-    uint16_t capacity = total / batteries_.size();
-    if (status == "Charging" && total_current != 0) {
-      status = "Plugged";
+    if (!adapter_.empty() && status == "Discharging") {
+      bool online;
+      std::ifstream(adapter_ / "online") >> online;
+      if (online) {
+        status = "Plugged";
+      }
     }
+    uint16_t capacity = total / batteries_.size();
     return {capacity, total_current, status};
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
@@ -113,7 +117,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t  capacity,
       return "Full";
     }
     if (online) {
-      return current_now == 0 ? "Charging" : "Plugged";
+      return "Charging";
     }
     return "Discharging";
   }
