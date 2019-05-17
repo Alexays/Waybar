@@ -36,6 +36,7 @@ class Network : public ALabel {
   int  netlinkResponse(void*, uint32_t, uint32_t groups = 0);
   void parseEssid(struct nlattr**);
   void parseSignal(struct nlattr**);
+  void parseFreq(struct nlattr**);
   bool associatedOrJoined(struct nlattr**);
   bool checkInterface(int if_index, std::string name);
   int  getPreferredIface();
@@ -63,6 +64,7 @@ class Network : public ALabel {
   bool        linked_;
   int32_t     signal_strength_dbm_;
   uint8_t     signal_strength_;
+  uint32_t    frequency_;
 };
 
 }  // namespace waybar::modules
