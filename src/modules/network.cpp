@@ -10,7 +10,8 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       ev_fd_(-1),
       cidr_(-1),
       signal_strength_dbm_(0),
-      signal_strength_(0) {
+      signal_strength_(0),
+      frequency_(0) {
   label_.set_name("network");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -184,6 +185,7 @@ auto waybar::modules::Network::update() -> void {
                           fmt::arg("netmask", netmask_),
                           fmt::arg("ipaddr", ipaddr_),
                           fmt::arg("cidr", cidr_),
+                          fmt::arg("frequency", frequency_),
                           fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
   label_.set_markup(text);
   if (tooltipEnabled()) {
@@ -196,6 +198,7 @@ auto waybar::modules::Network::update() -> void {
                                       fmt::arg("netmask", netmask_),
                                       fmt::arg("ipaddr", ipaddr_),
                                       fmt::arg("cidr", cidr_),
+                                      fmt::arg("frequency", frequency_),
                                       fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
       label_.set_tooltip_text(tooltip_text);
     } else {
@@ -536,7 +539,7 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   }
   net->parseEssid(bss);
   net->parseSignal(bss);
-  // TODO(someone): parse quality
+  net->parseFreq(bss);
   return NL_SKIP;
 }
 
@@ -573,6 +576,13 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
     signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
+  }
+}
+
+void waybar::modules::Network::parseFreq(struct nlattr **bss) {
+  if (bss[NL80211_BSS_FREQUENCY] != nullptr) {
+    // in MHz
+    frequency_ = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
   }
 }
 
