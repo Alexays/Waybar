@@ -3,31 +3,27 @@
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "{ifname}", 60),
-      family_(AF_INET),
+      ifid_(-1),
+      last_ext_iface_(-1),
+      family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
       cidr_(-1),
       signal_strength_dbm_(0),
-      signal_strength_(0) {
+      signal_strength_(0),
+      frequency_(0) {
   label_.set_name("network");
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
   createInfoSocket();
   createEventSocket();
-  if (config_["interface"].isString()) {
-    ifid_ = if_nametoindex(config_["interface"].asCString());
-    ifname_ = config_["interface"].asString();
-    if (ifid_ <= 0) {
-      throw std::runtime_error("Can't found network interface");
-    }
-  } else {
-    ifid_ = getExternalInterface();
-    if (ifid_ > 0) {
-      char ifname[IF_NAMESIZE];
-      if_indextoname(ifid_, ifname);
-      ifname_ = ifname;
-    }
+  auto default_iface = getPreferredIface();
+  if (default_iface != -1) {
+    char ifname[IF_NAMESIZE];
+    if_indextoname(default_iface, ifname);
+    ifname_ = ifname;
+    getInterfaceAddress();
   }
   dp.emit();
   worker();
@@ -42,39 +38,42 @@ waybar::modules::Network::~Network() {
   if (efd_ > -1) {
     close(efd_);
   }
-  if (info_sock_ != nullptr) {
-    nl_socket_drop_membership(info_sock_, RTMGRP_LINK);
-    nl_socket_drop_membership(info_sock_, RTMGRP_IPV4_IFADDR);
-    nl_close(info_sock_);
-    nl_socket_free(info_sock_);
+  if (ev_sock_ != nullptr) {
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_LINK);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
+    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
+    nl_close(ev_sock_);
+    nl_socket_free(ev_sock_);
   }
-  if (sk_ != nullptr) {
-    nl_close(sk_);
-    nl_socket_free(sk_);
+  if (sock_ != nullptr) {
+    nl_close(sock_);
+    nl_socket_free(sock_);
   }
 }
 
 void waybar::modules::Network::createInfoSocket() {
-  info_sock_ = nl_socket_alloc();
-  if (nl_connect(info_sock_, NETLINK_ROUTE) != 0) {
+  ev_sock_ = nl_socket_alloc();
+  nl_socket_disable_seq_check(ev_sock_);
+  nl_socket_modify_cb(ev_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
+  nl_join_groups(ev_sock_, RTMGRP_LINK);
+  if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
     throw std::runtime_error("Can't connect network socket");
   }
-  if (nl_socket_add_membership(info_sock_, RTMGRP_LINK) != 0) {
-    throw std::runtime_error("Can't add membership");
-  }
-  if (nl_socket_add_membership(info_sock_, RTMGRP_IPV4_IFADDR) != 0) {
-    throw std::runtime_error("Can't add membership");
-  }
-  nl_socket_disable_seq_check(info_sock_);
-  nl_socket_set_nonblocking(info_sock_);
-  nl_socket_modify_cb(info_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
+  nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
+  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
+  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
+  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
   }
   {
     ev_fd_ = eventfd(0, EFD_NONBLOCK);
-    struct epoll_event event = {0};
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
     event.events = EPOLLIN | EPOLLET;
     event.data.fd = ev_fd_;
     if (epoll_ctl(efd_, EPOLL_CTL_ADD, ev_fd_, &event) == -1) {
@@ -82,8 +81,9 @@ void waybar::modules::Network::createInfoSocket() {
     }
   }
   {
-    auto               fd = nl_socket_get_fd(info_sock_);
-    struct epoll_event event = {0};
+    auto               fd = nl_socket_get_fd(ev_sock_);
+    struct epoll_event event;
+    memset(&event, 0, sizeof(event));
     event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
     event.data.fd = fd;
     if (epoll_ctl(efd_, EPOLL_CTL_ADD, fd, &event) == -1) {
@@ -93,14 +93,14 @@ void waybar::modules::Network::createInfoSocket() {
 }
 
 void waybar::modules::Network::createEventSocket() {
-  sk_ = nl_socket_alloc();
-  if (genl_connect(sk_) != 0) {
+  sock_ = nl_socket_alloc();
+  if (genl_connect(sock_) != 0) {
     throw std::runtime_error("Can't connect to netlink socket");
   }
-  if (nl_socket_modify_cb(sk_, NL_CB_VALID, NL_CB_CUSTOM, handleScan, this) < 0) {
+  if (nl_socket_modify_cb(sock_, NL_CB_VALID, NL_CB_CUSTOM, handleScan, this) < 0) {
     throw std::runtime_error("Can't set callback");
   }
-  nl80211_id_ = genl_ctrl_resolve(sk_, "nl80211");
+  nl80211_id_ = genl_ctrl_resolve(sock_, "nl80211");
   if (nl80211_id_ < 0) {
     throw std::runtime_error("Can't resolve nl80211 interface");
   }
@@ -119,15 +119,13 @@ void waybar::modules::Network::worker() {
     int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
-        if (events[i].data.fd == nl_socket_get_fd(info_sock_)) {
-          nl_recvmsgs_default(info_sock_);
+        if (events[i].data.fd == nl_socket_get_fd(ev_sock_)) {
+          nl_recvmsgs_default(ev_sock_);
         } else {
           thread_.stop();
           break;
         }
       }
-    } else if (ec == -1) {
-      thread_.stop();
     }
   };
 }
@@ -138,7 +136,7 @@ auto waybar::modules::Network::update() -> void {
   if (config_["tooltip-format"].isString()) {
     tooltip_format = config_["tooltip-format"].asString();
   }
-  if (ifid_ <= 0 || ipaddr_.empty()) {
+  if (ifid_ <= 0 || !linked_) {
     if (config_["format-disconnected"].isString()) {
       default_format_ = config_["format-disconnected"].asString();
     }
@@ -156,6 +154,14 @@ auto waybar::modules::Network::update() -> void {
         tooltip_format = config_["tooltip-format-ethernet"].asString();
       }
       connectiontype = "ethernet";
+    } else if (ipaddr_.empty()) {
+      if (config_["format-linked"].isString()) {
+        default_format_ = config_["format-linked"].asString();
+      }
+      if (config_["tooltip-format-linked"].isString()) {
+        tooltip_format = config_["tooltip-format-linked"].asString();
+      }
+      connectiontype = "linked";
     } else {
       if (config_["format-wifi"].isString()) {
         default_format_ = config_["format-wifi"].asString();
@@ -179,6 +185,7 @@ auto waybar::modules::Network::update() -> void {
                           fmt::arg("netmask", netmask_),
                           fmt::arg("ipaddr", ipaddr_),
                           fmt::arg("cidr", cidr_),
+                          fmt::arg("frequency", frequency_),
                           fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
   label_.set_markup(text);
   if (tooltipEnabled()) {
@@ -191,27 +198,13 @@ auto waybar::modules::Network::update() -> void {
                                       fmt::arg("netmask", netmask_),
                                       fmt::arg("ipaddr", ipaddr_),
                                       fmt::arg("cidr", cidr_),
+                                      fmt::arg("frequency", frequency_),
                                       fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
       label_.set_tooltip_text(tooltip_text);
     } else {
       label_.set_tooltip_text(text);
     }
   }
-}
-
-void waybar::modules::Network::disconnected() {
-  essid_.clear();
-  signal_strength_dbm_ = 0;
-  signal_strength_ = 0;
-  ipaddr_.clear();
-  netmask_.clear();
-  cidr_ = 0;
-  if (!config_["interface"].isString()) {
-    ifname_.clear();
-    ifid_ = -1;
-  }
-  // Need to wait otherwise we'll have the same information
-  thread_.sleep_for(std::chrono::seconds(1));
 }
 
 // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
@@ -333,6 +326,7 @@ int waybar::modules::Network::getExternalInterface() {
   } while (true);
 
 out:
+  last_ext_iface_ = ifidx;
   return ifidx;
 }
 
@@ -343,26 +337,33 @@ void waybar::modules::Network::getInterfaceAddress() {
   netmask_.clear();
   cidr_ = 0;
   int success = getifaddrs(&ifaddr);
-  if (success == 0) {
-    ifa = ifaddr;
-    while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
-      if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_) {
-        if (strcmp(ifa->ifa_name, ifname_.c_str()) == 0) {
-          ipaddr_ = inet_ntoa(((struct sockaddr_in *)ifa->ifa_addr)->sin_addr);
-          netmask_ = inet_ntoa(((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr);
-          cidrRaw = ((struct sockaddr_in *)(ifa->ifa_netmask))->sin_addr.s_addr;
-          unsigned int cidr = 0;
-          while (cidrRaw) {
-            cidr += cidrRaw & 1;
-            cidrRaw >>= 1;
-          }
-          cidr_ = cidr;
-        }
-      }
-      ifa = ifa->ifa_next;
-    }
-    freeifaddrs(ifaddr);
+  if (success != 0) {
+    return;
   }
+  ifa = ifaddr;
+  while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
+    if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
+        ifa->ifa_name == ifname_) {
+      char ipaddr[INET6_ADDRSTRLEN];
+      ipaddr_ = inet_ntop(family_,
+                          &reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr)->sin_addr,
+                          ipaddr,
+                          INET6_ADDRSTRLEN);
+      char netmask[INET6_ADDRSTRLEN];
+      auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
+      netmask_ = inet_ntop(family_, &net_addr->sin_addr, netmask, INET6_ADDRSTRLEN);
+      cidrRaw = net_addr->sin_addr.s_addr;
+      linked_ = ifa->ifa_flags & IFF_RUNNING;
+      unsigned int cidr = 0;
+      while (cidrRaw) {
+        cidr += cidrRaw & 1;
+        cidrRaw >>= 1;
+      }
+      cidr_ = cidr;
+    }
+    ifa = ifa->ifa_next;
+  }
+  freeifaddrs(ifaddr);
 }
 
 int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) {
@@ -370,8 +371,13 @@ int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec  iov = {req, reqlen};
-  struct msghdr msg = {&sa, sizeof(sa), &iov, 1, nullptr, 0, 0};
-  return sendmsg(nl_socket_get_fd(info_sock_), &msg, 0);
+  struct msghdr msg = {
+      .msg_name = &sa,
+      .msg_namelen = sizeof(sa),
+      .msg_iov = &iov,
+      .msg_iovlen = 1,
+  };
+  return sendmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
 }
 
 int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint32_t groups) {
@@ -379,56 +385,125 @@ int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
   struct iovec  iov = {resp, resplen};
-  struct msghdr msg = {&sa, sizeof(sa), &iov, 1, nullptr, 0, 0};
-  auto          ret = recvmsg(nl_socket_get_fd(info_sock_), &msg, 0);
+  struct msghdr msg = {
+      .msg_name = &sa,
+      .msg_namelen = sizeof(sa),
+      .msg_iov = &iov,
+      .msg_iovlen = 1,
+  };
+  auto ret = recvmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
   if (msg.msg_flags & MSG_TRUNC) {
     return -1;
   }
   return ret;
 }
 
-int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
-  int  ret = 0;
-  auto net = static_cast<waybar::modules::Network *>(data);
-  bool need_update = false;
-  for (nlmsghdr *nh = nlmsg_hdr(msg); NLMSG_OK(nh, ret); nh = NLMSG_NEXT(nh, ret)) {
-    if (nh->nlmsg_type == RTM_NEWADDR) {
-      need_update = true;
-    }
-    if (nh->nlmsg_type < RTM_NEWADDR) {
-      auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-      if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
-        need_update = true;
-        if (!(rtif->ifi_flags & IFF_RUNNING)) {
-          net->disconnected();
-          net->dp.emit();
-          return NL_SKIP;
+bool waybar::modules::Network::checkInterface(int if_index, std::string name) {
+  if (config_["interface"].isString()) {
+    return config_["interface"].asString() == name ||
+           wildcardMatch(config_["interface"].asString(), name);
+  }
+  auto external_iface = getExternalInterface();
+  if (external_iface == -1) {
+    // Try with lastest working external iface
+    return last_ext_iface_ == if_index;
+  }
+  return external_iface == if_index;
+}
+
+int waybar::modules::Network::getPreferredIface() {
+  if (config_["interface"].isString()) {
+    ifid_ = if_nametoindex(config_["interface"].asCString());
+    if (ifid_ > 0) {
+      ifname_ = config_["interface"].asString();
+      return ifid_;
+    } else {
+      // Try with wildcard
+      struct ifaddrs *ifaddr, *ifa;
+      int             success = getifaddrs(&ifaddr);
+      if (success != 0) {
+        return -1;
+      }
+      ifa = ifaddr;
+      ifid_ = -1;
+      while (ifa != nullptr) {
+        if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
+          ifid_ = if_nametoindex(ifa->ifa_name);
+          break;
         }
+        ifa = ifa->ifa_next;
       }
+      freeifaddrs(ifaddr);
+      return ifid_;
     }
-    if (need_update) break;
   }
-  if (net->ifid_ <= 0 && !net->config_["interface"].isString()) {
-    for (uint8_t i = 0; i < MAX_RETRY; i += 1) {
-      net->ifid_ = net->getExternalInterface();
-      if (net->ifid_ > 0) {
-        break;
-      }
-      // Need to wait before get external interface
-      net->thread_.sleep_for(std::chrono::seconds(1));
-    }
-    if (net->ifid_ > 0) {
-      char ifname[IF_NAMESIZE];
-      if_indextoname(net->ifid_, ifname);
+  ifid_ = getExternalInterface();
+  if (ifid_ > 0) {
+    char ifname[IF_NAMESIZE];
+    if_indextoname(ifid_, ifname);
+    ifname_ = ifname;
+    return ifid_;
+  }
+  return -1;
+}
+
+int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
+  auto                        net = static_cast<waybar::modules::Network *>(data);
+  auto                        nh = nlmsg_hdr(msg);
+  std::lock_guard<std::mutex> lock(net->mutex_);
+
+  if (nh->nlmsg_type == RTM_NEWADDR) {
+    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+    char ifname[IF_NAMESIZE];
+    if_indextoname(rtif->ifi_index, ifname);
+    // Auto detected network can also be assigned here
+    if (net->checkInterface(rtif->ifi_index, ifname) && net->ifid_ == -1) {
+      net->linked_ = true;
       net->ifname_ = ifname;
-      need_update = true;
+      net->ifid_ = rtif->ifi_index;
+      net->dp.emit();
     }
-  }
-  if (need_update) {
-    if (net->ifid_ > 0) {
-      net->getInfo();
+    // Check for valid interface
+    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+      // Get Iface and WIFI info
+      net->thread_timer_.wake_up();
+      net->getInterfaceAddress();
+      net->dp.emit();
     }
-    net->dp.emit();
+  } else if (nh->nlmsg_type == RTM_DELADDR) {
+    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+    // Check for valid interface
+    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+      net->ipaddr_.clear();
+      net->netmask_.clear();
+      net->cidr_ = 0;
+      net->dp.emit();
+    }
+  } else if (nh->nlmsg_type < RTM_NEWADDR) {
+    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+    char ifname[IF_NAMESIZE];
+    if_indextoname(rtif->ifi_index, ifname);
+    // Check for valid interface
+    if (net->checkInterface(rtif->ifi_index, ifname) && rtif->ifi_flags & IFF_RUNNING) {
+      net->linked_ = true;
+      net->ifname_ = ifname;
+      net->ifid_ = rtif->ifi_index;
+      net->dp.emit();
+    } else if (rtif->ifi_index == net->ifid_) {
+      net->linked_ = false;
+      net->ifname_.clear();
+      net->ifid_ = -1;
+      net->essid_.clear();
+      net->signal_strength_dbm_ = 0;
+      net->signal_strength_ = 0;
+      // Check for a new interface and get info
+      auto new_iface = net->getPreferredIface();
+      if (new_iface != -1) {
+        net->thread_timer_.wake_up();
+        net->getInterfaceAddress();
+      }
+      net->dp.emit();
+    }
   }
   return NL_SKIP;
 }
@@ -464,7 +539,7 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   }
   net->parseEssid(bss);
   net->parseSignal(bss);
-  // TODO(someone): parse quality
+  net->parseFreq(bss);
   return NL_SKIP;
 }
 
@@ -504,6 +579,13 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
   }
 }
 
+void waybar::modules::Network::parseFreq(struct nlattr **bss) {
+  if (bss[NL80211_BSS_FREQUENCY] != nullptr) {
+    // in MHz
+    frequency_ = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+  }
+}
+
 bool waybar::modules::Network::associatedOrJoined(struct nlattr **bss) {
   if (bss[NL80211_BSS_STATUS] == nullptr) {
     return false;
@@ -520,7 +602,6 @@ bool waybar::modules::Network::associatedOrJoined(struct nlattr **bss) {
 }
 
 auto waybar::modules::Network::getInfo() -> void {
-  getInterfaceAddress();
   struct nl_msg *nl_msg = nlmsg_alloc();
   if (nl_msg == nullptr) {
     return;
@@ -532,5 +613,44 @@ auto waybar::modules::Network::getInfo() -> void {
     nlmsg_free(nl_msg);
     return;
   }
-  nl_send_sync(sk_, nl_msg);
+  nl_send_sync(sock_, nl_msg);
+}
+
+// https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
+bool waybar::modules::Network::wildcardMatch(const std::string &pattern, const std::string &text) {
+  auto P = int(pattern.size());
+  auto T = int(text.size());
+
+  auto p = 0, fallback_p = -1;
+  auto t = 0, fallback_t = -1;
+
+  while (t < T) {
+    // Wildcard match:
+    if (p < P && pattern[p] == '*') {
+      fallback_p = p++;  // starting point after failures
+      fallback_t = t;    // starting point after failures
+    }
+
+    // Simple match:
+    else if (p < P && (pattern[p] == '?' || pattern[p] == text[t])) {
+      p++;
+      t++;
+    }
+
+    // Failure, fall back just after last matched '*':
+    else if (fallback_p >= 0) {
+      p = fallback_p + 1;  // position just after last matched '*"
+      t = ++fallback_t;    // re-try to match text from here
+    }
+
+    // There were no '*' before, so we fail here:
+    else {
+      return false;
+    }
+  }
+
+  // Consume all '*' at the end of pattern:
+  while (p < P && pattern[p] == '*') p++;
+
+  return p == P;
 }

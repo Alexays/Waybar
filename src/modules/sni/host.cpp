@@ -130,8 +130,13 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::st
 
 void Host::addRegisteredItem(std::string service) {
   auto [bus_name, object_path] = getBusNameAndObjectPath(service);
-  items_.emplace_back(new Item(bus_name, object_path, config_));
-  on_add_(items_.back());
+  auto it = std::find_if(items_.begin(), items_.end(), [&bus_name, &object_path](const auto& item) {
+    return bus_name == item->bus_name && object_path == item->object_path;
+  });
+  if (it == items_.end()) {
+    items_.emplace_back(new Item(bus_name, object_path, config_));
+    on_add_(items_.back());
+  }
 }
 
-}
+}  // namespace waybar::modules::SNI

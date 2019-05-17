@@ -13,7 +13,7 @@ class ALabel : public IModule {
   ALabel(const Json::Value &, const std::string &format, uint16_t interval = 0);
   virtual ~ALabel();
   virtual auto        update() -> void;
-  virtual std::string getIcon(uint16_t, const std::string &alt = "");
+  virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
   virtual             operator Gtk::Widget &();
 
  protected:
@@ -31,7 +31,7 @@ class ALabel : public IModule {
 
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
-  virtual std::string getState(uint8_t value);
+  virtual std::string getState(uint8_t value, bool lesser = false);
 
  private:
   std::vector<int> pid_;

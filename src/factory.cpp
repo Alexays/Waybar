@@ -7,9 +7,11 @@ waybar::IModule* waybar::Factory::makeModule(const std::string& name) const {
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
+#ifndef NO_FILESYSTEM
     if (ref == "battery") {
       return new waybar::modules::Battery(id, config_[name]);
     }
+#endif
 #ifdef HAVE_SWAY
     if (ref == "sway/mode") {
       return new waybar::modules::sway::Mode(id, config_[name]);
@@ -33,7 +35,7 @@ waybar::IModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
-#ifdef HAVE_DBUSMENU
+#if defined(HAVE_DBUSMENU) && !defined(NO_FILESYSTEM)
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
     }

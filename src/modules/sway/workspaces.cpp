@@ -15,11 +15,22 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
   ipc_.sendCmd(IPC_GET_WORKSPACES);
+  if (!config["disable-bar-scroll"].asBool()) {
+    auto &window = const_cast<Bar&>(bar_).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
   // Launch worker
   worker();
 }
 
-void Workspaces::onEvent(const struct Ipc::ipc_response &res) { ipc_.sendCmd(IPC_GET_WORKSPACES); }
+void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
+  try {
+    ipc_.sendCmd(IPC_GET_WORKSPACES);
+  } catch (const std::exception &e) {
+    std::cerr << "Workspaces: " << e.what() << std::endl;
+  }
+}
 
 void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   if (res.type == IPC_GET_WORKSPACES) {
@@ -194,7 +205,11 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
       return false;
     }
   }
-  ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
+  try {
+    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
+  } catch (const std::exception &e) {
+    std::cerr << "Workspaces: " << e.what() << std::endl;
+  }
   return true;
 }
 
@@ -208,7 +223,7 @@ const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterat
   else if (!prev && it != workspaces_.end())
     ++it;
   if (!prev && it == workspaces_.end()) {
-    return (*(++workspaces_.begin()))["name"].asString();
+    return (*(workspaces_.begin()))["name"].asString();
   }
   return (*it)["name"].asString();
 }

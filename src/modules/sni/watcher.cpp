@@ -14,11 +14,6 @@ Watcher::Watcher()
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {
-  if (bus_name_id_ != 0) {
-    Gio::DBus::unown_name(bus_name_id_);
-    bus_name_id_ = 0;
-  }
-
   if (hosts_ != nullptr) {
     g_slist_free_full(hosts_, gfWatchFree);
     hosts_ = nullptr;
@@ -28,7 +23,8 @@ Watcher::~Watcher() {
     g_slist_free_full(items_, gfWatchFree);
     items_ = nullptr;
   }
-  g_dbus_interface_skeleton_unexport(G_DBUS_INTERFACE_SKELETON(watcher_));
+  auto iface = G_DBUS_INTERFACE_SKELETON(watcher_);
+  g_dbus_interface_skeleton_unexport(iface);
 }
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
