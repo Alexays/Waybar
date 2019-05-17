@@ -46,7 +46,7 @@ class Item : public sigc::trackable {
   std::string                  menu;
   DbusmenuGtkMenu*             dbus_menu = nullptr;
   Gtk::Menu*                   gtk_menu = nullptr;
-  bool                         item_is_menu;
+  bool                         item_is_menu = false;
 
  private:
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
@@ -59,8 +59,8 @@ class Item : public sigc::trackable {
   void                      updateImage();
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
-  static void               onMenuDestroyed(Item* self);
-  bool                      makeMenu(GdkEventButton* const& ev);
+  static void               onMenuDestroyed(Item* self, GObject* old_menu_pointer);
+  void                      makeMenu(GdkEventButton* const& ev);
   bool                      handleClick(GdkEventButton* const& /*ev*/);
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
