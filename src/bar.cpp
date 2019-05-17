@@ -72,12 +72,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   wl_surface_commit(surface);
   wl_display_roundtrip(client->wl_display);
 
-
-  if (!config["disable-workspace-scroll"].asBool()) {
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Bar::handleScroll));
-  }
-
   setupWidgets();
 }
 
@@ -221,31 +215,6 @@ void waybar::Bar::handleSignal(int signal) {
       custom->refresh(signal);
     }
   }
-}
-
-bool waybar::Bar::handleScroll(GdkEventScroll *e) {
-  std::cerr << "handleScroll" << std::endl;
-
-  for (auto& module : modules_left_) {
-    if (auto workspaces = dynamic_cast<waybar::modules::sway::Workspaces*>(module.get())) {
-      workspaces->handleScroll(e);
-      return true;
-    }
-  }
-  for (auto& module : modules_center_) {
-    if (auto workspaces = dynamic_cast<waybar::modules::sway::Workspaces*>(module.get())) {
-      workspaces->handleScroll(e);
-      return true;
-    }
-  }
-  for (auto& module : modules_right_) {
-    if (auto workspaces = dynamic_cast<waybar::modules::sway::Workspaces*>(module.get())) {
-      workspaces->handleScroll(e);
-      return true;
-    }
-  }
-
-  return false;
 }
 
 void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surface_v1* surface,
