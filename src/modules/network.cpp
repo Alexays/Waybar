@@ -25,6 +25,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     ifname_ = ifname;
     getInterfaceAddress();
   }
+  dp.emit();
   worker();
 }
 
@@ -131,7 +132,7 @@ void waybar::modules::Network::worker() {
 
 auto waybar::modules::Network::update() -> void {
   std::string connectiontype;
-  std::string tooltip_format = "";
+  std::string tooltip_format;
   if (config_["tooltip-format"].isString()) {
     tooltip_format = config_["tooltip-format"].asString();
   }
@@ -198,7 +199,8 @@ auto waybar::modules::Network::update() -> void {
                                       fmt::arg("ipaddr", ipaddr_),
                                       fmt::arg("cidr", cidr_),
                                       fmt::arg("frequency", frequency_),
-                                      fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
+                                      fmt::arg("icon", getIcon(signal_strength_,
+                                      connectiontype)));
       label_.set_tooltip_text(tooltip_text);
     } else {
       label_.set_tooltip_text(text);
@@ -397,7 +399,7 @@ int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint
   return ret;
 }
 
-bool waybar::modules::Network::checkInterface(int if_index, std::string name) {
+bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::string name) {
   if (config_["interface"].isString()) {
     return config_["interface"].asString() == name ||
            wildcardMatch(config_["interface"].asString(), name);
@@ -405,9 +407,9 @@ bool waybar::modules::Network::checkInterface(int if_index, std::string name) {
   auto external_iface = getExternalInterface();
   if (external_iface == -1) {
     // Try with lastest working external iface
-    return last_ext_iface_ == if_index;
+    return last_ext_iface_ == rtif->ifi_index;
   }
-  return external_iface == if_index;
+  return external_iface == rtif->ifi_index;
 }
 
 int waybar::modules::Network::getPreferredIface() {
@@ -456,7 +458,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Auto detected network can also be assigned here
-    if (net->checkInterface(rtif->ifi_index, ifname) && net->ifid_ == -1) {
+    if (net->ifid_ == -1 && net->checkInterface(rtif, ifname)) {
       net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
@@ -481,7 +483,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Check for valid interface
-    if (net->checkInterface(rtif->ifi_index, ifname) && rtif->ifi_flags & IFF_RUNNING) {
+    if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
       net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
@@ -493,6 +495,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->essid_.clear();
       net->signal_strength_dbm_ = 0;
       net->signal_strength_ = 0;
+      net->frequency_ = 0;
       // Check for a new interface and get info
       auto new_iface = net->getPreferredIface();
       if (new_iface != -1) {
