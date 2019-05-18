@@ -1,6 +1,6 @@
 #include "modules/sni/item.hpp"
 #include <glibmm/main.h>
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules::SNI {
 
@@ -47,8 +47,7 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
     this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
 
     if (this->id.empty() || this->category.empty() || this->status.empty()) {
-      std::cerr << "Invalid Status Notifier Item: " + this->bus_name + "," + this->object_path
-                << std::endl;
+      spdlog::error("Invalid Status Notifier Item: {}, {}", bus_name, object_path);
       return;
     }
     this->updateImage();
@@ -235,7 +234,7 @@ void Item::updateImage() {
         image.set(getIconByName(icon_name, icon_size));
       }
     } catch (Glib::Error& e) {
-      std::cerr << "Exception: " << e.what() << std::endl;
+      spdlog::error("Item '{}': {}", id, static_cast<std::string>(e.what()));
     }
   } else if (icon_pixmap) {
     // An icon extracted may be the wrong size for the tray

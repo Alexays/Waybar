@@ -1,4 +1,5 @@
 #include "modules/sway/window.hpp"
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
 
@@ -55,7 +56,7 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
       dp.emit();
     }
   } catch (const std::exception& e) {
-    std::cerr << "Window: " << e.what() << std::endl;
+    spdlog::error("Window: {}", e.what());
   }
 }
 
@@ -64,7 +65,7 @@ void Window::worker() {
     try {
       ipc_.handleEvent();
     } catch (const std::exception& e) {
-      std::cerr << "Window: " << e.what() << std::endl;
+      spdlog::error("Window: {}", e.what());
     }
   };
 }
@@ -102,7 +103,7 @@ void Window::getTree() {
   try {
     ipc_.sendCmd(IPC_GET_TREE);
   } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
+    spdlog::error("Window: {}", e.what());
   }
 }
 
