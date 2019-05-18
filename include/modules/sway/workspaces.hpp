@@ -35,6 +35,7 @@ class Workspaces : public IModule, public sigc::trackable {
   const Bar&                                   bar_;
   const Json::Value&                           config_;
   std::vector<Json::Value>                     workspaces_;
+  std::vector<std::string>                     workspaces_order_;
   waybar::util::SleeperThread                  thread_;
   std::mutex                                   mutex_;
   Gtk::Box                                     box_;

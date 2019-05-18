@@ -75,9 +75,33 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
             workspaces_.emplace_back(std::move(v));
           }
         }
-        std::sort(workspaces_.begin(), workspaces_.end(), [](const Json::Value& lhs, const Json::Value& rhs) {
-        	return lhs["name"].asString() < rhs["name"].asString();
-        });
+
+        if (workspaces_order_.empty()) {
+        	workspaces_order_.reserve(workspaces_.size());
+	        for (const Json::Value& workspace : workspaces_) {
+		        workspaces_order_.emplace_back(workspace["name"].asString());
+	        }
+        } else {
+        	std::vector<Json::Value> sorted_workspaces;
+        	sorted_workspaces.reserve(workspaces_.size());
+	        auto ws_end = workspaces_.end();
+        	for (const std::string& name_by_order : workspaces_order_) {
+        		auto it = std::find_if(workspaces_.begin(), ws_end, [&name_by_order](const Json::Value& ws) {
+        			return ws["name"].asString() == name_by_order;
+        		});
+        		if (it != ws_end) {
+			        sorted_workspaces.emplace_back(*it);
+			        --ws_end;
+			        ws_end->swap(*it);
+		        }
+        	}
+
+        	for (int i = 0 ; workspaces_.size() > sorted_workspaces.size() ; ++i) {
+        		workspaces_order_.emplace_back(workspaces_[i]["name"].asString());
+		        sorted_workspaces.emplace_back(workspaces_[i]);
+        	}
+        	workspaces_.swap(sorted_workspaces);
+        }
 
         dp.emit();
       }
