@@ -1,5 +1,70 @@
 #include "modules/network.hpp"
 #include <sys/eventfd.h>
+#include <fstream>
+
+namespace {
+
+  constexpr const char * NETSTAT_FILE = "/proc/net/netstat"; // std::ifstream does not take std::string_view as param
+  constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
+  constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
+  constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
+
+  std::ifstream netstat(NETSTAT_FILE);
+  std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
+    if (!netstat) {
+      return {};
+    }
+    netstat.seekg(std::ios_base::beg);
+
+
+    // finding corresponding line (category)
+    // looks into the file for the first line starting by the 'category' string
+    auto starts_with = [](const std::string& str, std::string_view start) {
+      return start == std::string_view{str.data(), std::min(str.size(), start.size())};
+    };
+
+    std::string read;
+    while (std::getline(netstat, read) && !starts_with(read, category));
+    if (!starts_with(read, category)) {
+      return {};
+    }
+
+    // finding corresponding column (key)
+    // looks into the fetched line for the first word (space separated) equal to 'key'
+    int index = 0;
+    auto r_it = read.begin();
+    auto k_it = key.begin();
+    while (k_it != key.end() && r_it != read.end()) {
+      if (*r_it != *k_it) {
+        r_it = std::find(r_it, read.end(), ' ');
+        if (r_it != read.end()) {
+          ++r_it;
+        }
+        k_it = key.begin();
+        ++index;
+      } else {
+        ++r_it;
+        ++k_it;
+      }
+    }
+
+    if (r_it == read.end() && k_it != key.end()) {
+      return {};
+    }
+
+    // finally accessing value
+    // accesses the line right under the fetched one
+    std::getline(netstat, read);
+    assert(starts_with(read, category));
+    std::istringstream iss(read);
+    while (index--) {
+      std::getline(iss, read, ' ');
+    }
+    unsigned long long value;
+    iss >> value;
+    return value;
+  }
+}
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "{ifname}", 60),
@@ -16,6 +81,21 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
+
+  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
+  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
+  if (down_octets) {
+    bandwidth_down_total_ = *down_octets;
+  } else {
+    bandwidth_down_total_ = 0;
+  }
+
+  if (up_octets) {
+    bandwidth_up_total_ = *up_octets;
+  } else {
+    bandwidth_up_total_ = 0;
+  }
+
   createInfoSocket();
   createEventSocket();
   auto default_iface = getPreferredIface();
@@ -131,6 +211,22 @@ void waybar::modules::Network::worker() {
 }
 
 auto waybar::modules::Network::update() -> void {
+  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
+  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
+
+  unsigned long long bandwidth_down = 0;
+  if (down_octets) {
+    bandwidth_down = *down_octets - bandwidth_down_total_;
+    bandwidth_down_total_ = *down_octets;
+  }
+
+  unsigned long long bandwidth_up = 0;
+  if (up_octets) {
+    bandwidth_up = *up_octets - bandwidth_up_total_;
+    bandwidth_up_total_ = *up_octets;
+  }
+
+
   std::string connectiontype;
   std::string tooltip_format = "";
   if (config_["tooltip-format"].isString()) {
@@ -177,6 +273,25 @@ auto waybar::modules::Network::update() -> void {
     format_ = default_format_;
   }
   getState(signal_strength_);
+  
+  auto pow_format = [](unsigned long long value, const std::string& unit) {
+    if (value > 2000ull * 1000ull * 1000ull) { // > 2G
+      auto go = value / (1000 * 1000 * 1000);
+      return std::to_string(go) + "." + std::to_string((value - go * 1000 * 1000 * 1000) / (100 * 1000 * 1000)) + "G" + unit;
+
+    } else if (value > 2000ull * 1000ull) { // > 2M
+      auto mo = value / (1000 * 1000);
+      return std::to_string(mo) + "." + std::to_string((value - mo * 1000 * 1000) / (100 * 1000)) + "M" + unit;
+
+    } else if (value > 2000ull) { // > 2k
+      auto ko = value / 1000;
+      return std::to_string(ko) + "." + std::to_string((value - ko * 1000) / 100) + "k" + unit;
+      
+    } else {
+      return std::to_string(value) + unit;
+    }
+  };
+
   auto text = fmt::format(format_,
                           fmt::arg("essid", essid_),
                           fmt::arg("signaldBm", signal_strength_dbm_),
@@ -186,7 +301,11 @@ auto waybar::modules::Network::update() -> void {
                           fmt::arg("ipaddr", ipaddr_),
                           fmt::arg("cidr", cidr_),
                           fmt::arg("frequency", frequency_),
-                          fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
+                          fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
+                          fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull, "b")),
+                          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull, "b")),
+                          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down, "o")),
+                          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up, "o")));
   label_.set_markup(text);
   if (tooltipEnabled()) {
     if (!tooltip_format.empty()) {
@@ -199,7 +318,11 @@ auto waybar::modules::Network::update() -> void {
                                       fmt::arg("ipaddr", ipaddr_),
                                       fmt::arg("cidr", cidr_),
                                       fmt::arg("frequency", frequency_),
-                                      fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
+                                      fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
+                                      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull, "b")),
+                                      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull, "b")),
+                                      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down, "o")),
+                                      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up, "o")));
       label_.set_tooltip_text(tooltip_text);
     } else {
       label_.set_tooltip_text(text);
