@@ -22,6 +22,8 @@ class Custom : public ALabel {
   void continuousWorker();
   void parseOutputRaw();
   void parseOutputJson();
+  bool handleScroll(GdkEventScroll* e);
+  bool handleToggle(GdkEventButton* const& e);
 
   const std::string           name_;
   std::string                 text_;
