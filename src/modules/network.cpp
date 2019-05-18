@@ -330,7 +330,7 @@ auto waybar::modules::Network::update() -> void {
       if (label_.get_tooltip_text() != text) {
         label_.set_tooltip_text(tooltip_text);
       }
-    } else {
+    } else if (label_.get_tooltip_text() != text) {
       label_.set_tooltip_text(text);
     }
   }
