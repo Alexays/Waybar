@@ -106,7 +106,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
             }
           }
 
-          // Adding new workspaces to the output (those where never showed in this output before)
+          // Adding new workspaces to the output (those were never showed in this output before)
           for (int i = 0; workspaces_.size() > sorted_workspaces.size(); ++i) {
             workspaces_order_.emplace_back(workspaces_[i]["name"].asString());
             sorted_workspaces.emplace_back(workspaces_[i]);
