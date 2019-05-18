@@ -56,6 +56,9 @@ class Network : public ALabel {
   int                         nl80211_id_;
   std::mutex                  mutex_;
 
+  unsigned long long bandwidth_down_total_;
+  unsigned long long bandwidth_up_total_;
+
   std::string essid_;
   std::string ifname_;
   std::string ipaddr_;
