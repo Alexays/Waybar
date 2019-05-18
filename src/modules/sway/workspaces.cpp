@@ -99,6 +99,9 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
             if (it != ws_end) {
               sorted_workspaces.emplace_back(*it);
               --ws_end;
+              if (ws_end == workspaces_.begin()) { // we've extracted everything
+                break;
+              }
               ws_end->swap(*it);
             }
           }
