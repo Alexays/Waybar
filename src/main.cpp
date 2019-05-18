@@ -1,5 +1,5 @@
 #include <csignal>
-#include <iostream>
+#include <spdlog/spdlog.h>
 #include "client.hpp"
 
 int main(int argc, char* argv[]) {
@@ -23,10 +23,10 @@ int main(int argc, char* argv[]) {
     delete client;
     return ret;
   } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
+    spdlog::error("{}", e.what());
     return 1;
   } catch (const Glib::Exception& e) {
-    std::cerr << e.what().c_str() << std::endl;
+    spdlog::error("{}", static_cast<std::string>(e.what()));
     return 1;
   }
 }

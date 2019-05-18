@@ -1,6 +1,5 @@
 #include "modules/sni/watcher.hpp"
-
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 using namespace waybar::modules::SNI;
 
@@ -34,7 +33,7 @@ void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib:
   if (error != nullptr) {
     // Don't print an error when a watcher is already present
     if (error->code != 2) {
-      std::cerr << error->message << std::endl;
+      spdlog::error("Watcher {}: {}", watcher_id_, error->message); // FIXME: watcher_id_ is neither actually used nor initialized AFAICT
     }
     g_error_free(error);
     return;
