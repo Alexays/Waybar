@@ -25,7 +25,6 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     ifname_ = ifname;
     getInterfaceAddress();
   }
-  dp.emit();
   worker();
 }
 
@@ -461,14 +460,12 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
-      net->dp.emit();
     }
     // Check for valid interface
     if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
       // Get Iface and WIFI info
-      net->thread_timer_.wake_up();
       net->getInterfaceAddress();
-      net->dp.emit();
+      net->thread_timer_.wake_up();
     }
   } else if (nh->nlmsg_type == RTM_DELADDR) {
     auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
@@ -499,10 +496,11 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       // Check for a new interface and get info
       auto new_iface = net->getPreferredIface();
       if (new_iface != -1) {
-        net->thread_timer_.wake_up();
         net->getInterfaceAddress();
+        net->thread_timer_.wake_up();
+      } else {
+        net->dp.emit();
       }
-      net->dp.emit();
     }
   }
   return NL_SKIP;
