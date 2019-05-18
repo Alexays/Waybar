@@ -1,6 +1,7 @@
 #include "modules/network.hpp"
 #include <sys/eventfd.h>
 #include <fstream>
+#include <iostream>
 
 namespace {
 
@@ -12,6 +13,7 @@ namespace {
   std::ifstream netstat(NETSTAT_FILE);
   std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
     if (!netstat) {
+      std::cerr << "Failed to open netstat file " << NETSTAT_FILE << '\n' << std::flush;
       return {};
     }
     netstat.seekg(std::ios_base::beg);
@@ -26,6 +28,7 @@ namespace {
     std::string read;
     while (std::getline(netstat, read) && !starts_with(read, category));
     if (!starts_with(read, category)) {
+      std::cerr << "Category '" << category << "' not found in netstat file " << NETSTAT_FILE << '\n' << std::flush;
       return {};
     }
 
@@ -49,6 +52,7 @@ namespace {
     }
 
     if (r_it == read.end() && k_it != key.end()) {
+      std::cerr << "Key '" << key << "' not found in category '" << category << "' of netstat file " << NETSTAT_FILE << '\n' << std::flush;
       return {};
     }
 
