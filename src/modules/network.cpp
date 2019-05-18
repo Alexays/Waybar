@@ -42,8 +42,6 @@ waybar::modules::Network::~Network() {
     nl_socket_drop_membership(ev_sock_, RTNLGRP_LINK);
     nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
     nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
     nl_close(ev_sock_);
     nl_socket_free(ev_sock_);
   }
@@ -64,8 +62,6 @@ void waybar::modules::Network::createInfoSocket() {
   nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
   nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
   nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
@@ -108,9 +104,12 @@ void waybar::modules::Network::createEventSocket() {
 
 void waybar::modules::Network::worker() {
   thread_timer_ = [this] {
-    if (ifid_ > 0) {
-      getInfo();
-      dp.emit();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (ifid_ > 0) {
+        getInfo();
+        dp.emit();
+      }
     }
     thread_timer_.sleep_for(interval_);
   };
@@ -131,11 +130,9 @@ void waybar::modules::Network::worker() {
 }
 
 auto waybar::modules::Network::update() -> void {
-  std::string connectiontype;
-  std::string tooltip_format;
-  if (config_["tooltip-format"].isString()) {
-    tooltip_format = config_["tooltip-format"].asString();
-  }
+  std::string                 connectiontype;
+  std::string                 tooltip_format;
+  std::lock_guard<std::mutex> lock(mutex_);
   if (ifid_ <= 0 || !linked_) {
     if (config_["format-disconnected"].isString()) {
       default_format_ = config_["format-disconnected"].asString();
@@ -187,8 +184,13 @@ auto waybar::modules::Network::update() -> void {
                           fmt::arg("cidr", cidr_),
                           fmt::arg("frequency", frequency_),
                           fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
-  label_.set_markup(text);
+  if (text != label_.get_label()) {
+    label_.set_markup(text);
+  }
   if (tooltipEnabled()) {
+    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
     if (!tooltip_format.empty()) {
       auto tooltip_text = fmt::format(tooltip_format,
                                       fmt::arg("essid", essid_),
@@ -199,10 +201,11 @@ auto waybar::modules::Network::update() -> void {
                                       fmt::arg("ipaddr", ipaddr_),
                                       fmt::arg("cidr", cidr_),
                                       fmt::arg("frequency", frequency_),
-                                      fmt::arg("icon", getIcon(signal_strength_,
-                                      connectiontype)));
-      label_.set_tooltip_text(tooltip_text);
-    } else {
+                                      fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
+      if (label_.get_tooltip_text() != text) {
+        label_.set_tooltip_text(tooltip_text);
+      }
+    } else if (label_.get_tooltip_text() != text) {
       label_.set_tooltip_text(text);
     }
   }
@@ -464,7 +467,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->ifid_ = rtif->ifi_index;
     }
     // Check for valid interface
-    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+    if (rtif->ifi_index == net->ifid_) {
       // Get Iface and WIFI info
       net->getInterfaceAddress();
       net->thread_timer_.wake_up();
@@ -472,7 +475,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   } else if (nh->nlmsg_type == RTM_DELADDR) {
     auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     // Check for valid interface
-    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+    if (rtif->ifi_index == net->ifid_) {
       net->ipaddr_.clear();
       net->netmask_.clear();
       net->cidr_ = 0;
