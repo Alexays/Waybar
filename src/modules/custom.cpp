@@ -79,6 +79,18 @@ void waybar::modules::Custom::refresh(int sig /*signal*/) {
   }
 }
 
+bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
+  auto ret = ALabel::handleScroll(e);
+  thread_.wake_up();
+  return ret;
+}
+
+bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
+  auto ret = ALabel::handleToggle(e);
+  thread_.wake_up();
+  return ret;
+}
+
 auto waybar::modules::Custom::update() -> void {
   // Hide label if output is empty
   if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
