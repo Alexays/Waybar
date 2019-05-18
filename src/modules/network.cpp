@@ -126,8 +126,6 @@ waybar::modules::Network::~Network() {
     nl_socket_drop_membership(ev_sock_, RTNLGRP_LINK);
     nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
     nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
     nl_close(ev_sock_);
     nl_socket_free(ev_sock_);
   }
@@ -148,8 +146,6 @@ void waybar::modules::Network::createInfoSocket() {
   nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
   nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
   nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
@@ -192,9 +188,12 @@ void waybar::modules::Network::createEventSocket() {
 
 void waybar::modules::Network::worker() {
   thread_timer_ = [this] {
-    if (ifid_ > 0) {
-      getInfo();
-      dp.emit();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (ifid_ > 0) {
+        getInfo();
+        dp.emit();
+      }
     }
     thread_timer_.sleep_for(interval_);
   };
@@ -215,6 +214,9 @@ void waybar::modules::Network::worker() {
 }
 
 auto waybar::modules::Network::update() -> void {
+  std::string                 connectiontype;
+  std::string                 tooltip_format;
+  std::lock_guard<std::mutex> lock(mutex_);
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
 
@@ -228,13 +230,6 @@ auto waybar::modules::Network::update() -> void {
   if (up_octets) {
     bandwidth_up = *up_octets - bandwidth_up_total_;
     bandwidth_up_total_ = *up_octets;
-  }
-
-
-  std::string connectiontype;
-  std::string tooltip_format = "";
-  if (config_["tooltip-format"].isString()) {
-    tooltip_format = config_["tooltip-format"].asString();
   }
   if (ifid_ <= 0 || !linked_) {
     if (config_["format-disconnected"].isString()) {
@@ -310,8 +305,13 @@ auto waybar::modules::Network::update() -> void {
                           fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
                           fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
                           fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
-  label_.set_markup(text);
+  if (text != label_.get_label()) {
+    label_.set_markup(text);
+  }
   if (tooltipEnabled()) {
+    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
     if (!tooltip_format.empty()) {
       auto tooltip_text = fmt::format(tooltip_format,
                                       fmt::arg("essid", essid_),
@@ -327,7 +327,9 @@ auto waybar::modules::Network::update() -> void {
                                       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
                                       fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
                                       fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
-      label_.set_tooltip_text(tooltip_text);
+      if (label_.get_tooltip_text() != text) {
+        label_.set_tooltip_text(tooltip_text);
+      }
     } else {
       label_.set_tooltip_text(text);
     }
@@ -525,7 +527,7 @@ int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint
   return ret;
 }
 
-bool waybar::modules::Network::checkInterface(int if_index, std::string name) {
+bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::string name) {
   if (config_["interface"].isString()) {
     return config_["interface"].asString() == name ||
            wildcardMatch(config_["interface"].asString(), name);
@@ -533,9 +535,9 @@ bool waybar::modules::Network::checkInterface(int if_index, std::string name) {
   auto external_iface = getExternalInterface();
   if (external_iface == -1) {
     // Try with lastest working external iface
-    return last_ext_iface_ == if_index;
+    return last_ext_iface_ == rtif->ifi_index;
   }
-  return external_iface == if_index;
+  return external_iface == rtif->ifi_index;
 }
 
 int waybar::modules::Network::getPreferredIface() {
@@ -584,23 +586,21 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Auto detected network can also be assigned here
-    if (net->checkInterface(rtif->ifi_index, ifname) && net->ifid_ == -1) {
+    if (net->ifid_ == -1 && net->checkInterface(rtif, ifname)) {
       net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
-      net->dp.emit();
     }
     // Check for valid interface
-    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+    if (rtif->ifi_index == net->ifid_) {
       // Get Iface and WIFI info
-      net->thread_timer_.wake_up();
       net->getInterfaceAddress();
-      net->dp.emit();
+      net->thread_timer_.wake_up();
     }
   } else if (nh->nlmsg_type == RTM_DELADDR) {
     auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     // Check for valid interface
-    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+    if (rtif->ifi_index == net->ifid_) {
       net->ipaddr_.clear();
       net->netmask_.clear();
       net->cidr_ = 0;
@@ -611,7 +611,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Check for valid interface
-    if (net->checkInterface(rtif->ifi_index, ifname) && rtif->ifi_flags & IFF_RUNNING) {
+    if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
       net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
@@ -623,13 +623,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->essid_.clear();
       net->signal_strength_dbm_ = 0;
       net->signal_strength_ = 0;
+      net->frequency_ = 0;
       // Check for a new interface and get info
       auto new_iface = net->getPreferredIface();
       if (new_iface != -1) {
-        net->thread_timer_.wake_up();
         net->getInterfaceAddress();
+        net->thread_timer_.wake_up();
+      } else {
+        net->dp.emit();
       }
-      net->dp.emit();
     }
   }
   return NL_SKIP;

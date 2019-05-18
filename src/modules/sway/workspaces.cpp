@@ -215,7 +215,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
 
 const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
                                                 bool                               prev) const {
-  if (prev && it == workspaces_.begin()) {
+  if (prev && it == workspaces_.begin() && !config_["disable-scroll-wraparound"].asBool()) {
     return (*(--workspaces_.end()))["name"].asString();
   }
   if (prev && it != workspaces_.begin())
@@ -223,7 +223,11 @@ const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterat
   else if (!prev && it != workspaces_.end())
     ++it;
   if (!prev && it == workspaces_.end()) {
-    return (*(workspaces_.begin()))["name"].asString();
+    if (config_["disable-scroll-wraparound"].asBool()) {
+      --it;
+    } else {
+      return (*(workspaces_.begin()))["name"].asString();
+    }
   }
   return (*it)["name"].asString();
 }
