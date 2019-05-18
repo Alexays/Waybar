@@ -47,6 +47,38 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                                   ? workspace["output"].asString() == bar_.output->name
                                   : true;
                      });
+
+        // adding persistant workspaces (as per the config file)
+        const Json::Value& p_workspaces = config_["persistant_workspaces"];
+        const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
+        for (const std::string& p_w_name : p_workspaces_names) {
+          const Json::Value& p_w = p_workspaces[p_w_name];
+          auto it = std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value& node) {
+            return node["name"].asString() == p_w_name;
+          });
+          if (it != payload.end()) {
+            continue; // already displayed by some bar
+          }
+
+          if (p_w.isArray() && !p_w.empty()) {
+            for (const Json::Value& output : p_w) {
+              if (output.asString() == bar_.output->name) {
+                Json::Value v;
+                v["name"] = p_w_name;
+                workspaces_.emplace_back(std::move(v));
+                break;
+              }
+            }
+          } else {
+            Json::Value v;
+            v["name"] = p_w_name;
+            workspaces_.emplace_back(std::move(v));
+          }
+        }
+        std::sort(workspaces_.begin(), workspaces_.end(), [](const Json::Value& lhs, const Json::Value& rhs) {
+        	return lhs["name"].asString() < rhs["name"].asString();
+        });
+
         dp.emit();
       }
     } catch (const std::exception &e) {
