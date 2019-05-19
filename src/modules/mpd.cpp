@@ -206,7 +206,7 @@ std::string waybar::modules::MPD::getStateIcon() {
   }
 
   if (connection_ == nullptr) {
-    spdlog::warn("{}: Trying to fetch state icon while disconnected", module_name_ )
+    spdlog::warn("{}: Trying to fetch state icon while disconnected", module_name_);
     return "";
   }
 
@@ -228,7 +228,7 @@ std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool act
   }
 
   if (connection_ == nullptr) {
-    spdlog::warn("{}: Trying to fetch option icon while disconnected", module_name);
+    spdlog::warn("{}: Trying to fetch option icon while disconnected", module_name_);
     return "";
   }
 
