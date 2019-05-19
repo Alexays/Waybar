@@ -38,7 +38,7 @@ class Network : public ALabel {
   void parseSignal(struct nlattr**);
   void parseFreq(struct nlattr**);
   bool associatedOrJoined(struct nlattr**);
-  bool checkInterface(int if_index, std::string name);
+  bool checkInterface(struct ifinfomsg *rtif, std::string name);
   int  getPreferredIface();
   auto getInfo() -> void;
   bool wildcardMatch(const std::string& pattern, const std::string& text);
@@ -55,6 +55,9 @@ class Network : public ALabel {
   int                         ev_fd_;
   int                         nl80211_id_;
   std::mutex                  mutex_;
+
+  unsigned long long bandwidth_down_total_;
+  unsigned long long bandwidth_up_total_;
 
   std::string essid_;
   std::string ifname_;
