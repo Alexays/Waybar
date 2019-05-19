@@ -23,7 +23,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Clock::update() -> void {
-  auto localtime = fmt::localtime(std::time(nullptr));
+  auto now = std::chrono::system_clock::now();
+  auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
   auto text = fmt::format(format_, localtime);
   label_.set_markup(text);
 
