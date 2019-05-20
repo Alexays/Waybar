@@ -54,15 +54,10 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
     // this->event_box.set_tooltip_text(this->title);
 
   } catch (const Glib::Error& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s",
-            bus_name.c_str(),
-            object_path.c_str(),
-            err.what().c_str());
+    spdlog::error(
+        "Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what().raw());
   } catch (const std::exception& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s",
-            bus_name.c_str(),
-            object_path.c_str(),
-            err.what());
+    spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
   }
 }
 
@@ -140,9 +135,9 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     this->updateImage();
     // this->event_box.set_tooltip_text(this->title);
   } catch (const Glib::Error& err) {
-    g_warning("Failed to update properties: %s", err.what().c_str());
+    spdlog::warn("Failed to update properties: {}", err.what().raw());
   } catch (const std::exception& err) {
-    g_warning("Failed to update properties: %s", err.what());
+    spdlog::warn("Failed to update properties: {}", err.what());
   }
 }
 
