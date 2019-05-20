@@ -83,8 +83,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
         if (workspaces_order_.empty()) {
           // Saving starting order
-          workspaces_order_.reserve(workspaces_.size());
-          for (const Json::Value &workspace : workspaces_) {
+          workspaces_order_.reserve(payload.size());
+          for (const Json::Value &workspace : payload) {
             workspaces_order_.emplace_back(workspace["name"].asString());
           }
         } else {
