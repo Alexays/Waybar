@@ -593,6 +593,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     }
     // Check for valid interface
     if (rtif->ifi_index == net->ifid_) {
+      net->linked_ = true;
       // Get Iface and WIFI info
       net->getInterfaceAddress();
       net->thread_timer_.wake_up();

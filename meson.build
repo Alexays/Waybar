@@ -51,7 +51,6 @@ fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
@@ -125,7 +124,6 @@ executable(
     src_files,
     dependencies: [
         thread_dep,
-        wlroots,
         client_protos,
         wayland_client,
         fmt,
