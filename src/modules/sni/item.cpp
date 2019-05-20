@@ -126,7 +126,7 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     for (const auto& [name, value] : properties) {
       Glib::VariantBase old_value;
       proxy_->get_cached_property(old_value, name);
-      if (!value.equal(old_value)) {
+      if (!old_value || !value.equal(old_value)) {
         proxy_->set_cached_property(name, value);
         setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
