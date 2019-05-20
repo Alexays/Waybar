@@ -14,16 +14,13 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     auto sub_m =
         std::chrono::duration_cast<std::chrono::seconds>(time_s.time_since_epoch()).count() %
         interval_.count();
-    if (sub_m > 0) {
-      thread_.sleep_until(timeout - std::chrono::seconds(sub_m - 1));
-    } else {
-      thread_.sleep_until(timeout - std::chrono::seconds(sub_m));
-    }
+    thread_.sleep_until(timeout - std::chrono::seconds(sub_m));
   };
 }
 
 auto waybar::modules::Clock::update() -> void {
-  auto localtime = fmt::localtime(std::time(nullptr));
+  auto now = std::chrono::system_clock::now();
+  auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
   auto text = fmt::format(format_, localtime);
   label_.set_markup(text);
 
