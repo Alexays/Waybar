@@ -51,6 +51,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         // adding persistant workspaces (as per the config file)
         const Json::Value &            p_workspaces = config_["persistant_workspaces"];
         const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
+
+        auto first_persistant_ws_idx = workspaces_.size();
         for (const std::string &p_w_name : p_workspaces_names) {
           const Json::Value &p_w = p_workspaces[p_w_name];
           auto               it =
@@ -83,9 +85,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
         if (workspaces_order_.empty()) {
           // Saving starting order
-          workspaces_order_.reserve(payload.size());
+          workspaces_order_.reserve(payload.size() + workspaces_.size() - first_persistant_ws_idx);
           for (const Json::Value &workspace : payload) {
             workspaces_order_.emplace_back(workspace["name"].asString());
+          }
+          for (auto i = first_persistant_ws_idx; i < workspaces_.size() ; ++i) {
+            workspaces_order_.emplace_back(workspaces_[i]["name"].asString());
           }
         } else {
           // Ordering workspaces as it was before for current output
@@ -213,7 +218,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
                         node["target_output"].asString(),
                         node["name"].asString()));
       } else {
-        ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\""));
+        ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", node["name"].asString()));
       }
     } catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;
