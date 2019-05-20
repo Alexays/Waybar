@@ -50,75 +50,45 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                      });
 
         // adding persistant workspaces (as per the config file)
-        const Json::Value &            p_workspaces = config_["persistant_workspaces"];
-        const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
+        if (config_["persistant_workspaces"].isObject()) {
+          const Json::Value &            p_workspaces = config_["persistant_workspaces"];
+          const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
-        auto first_persistant_ws_idx = workspaces_.size();
-        for (const std::string &p_w_name : p_workspaces_names) {
-          const Json::Value &p_w = p_workspaces[p_w_name];
-          auto               it =
-              std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
-                return node["name"].asString() == p_w_name;
-              });
-
-          if (it != payload.end()) {
-            continue;  // already displayed by some bar
-          }
-
-          if (p_w.isArray() && !p_w.empty()) {
-            // Adding to target outputs
-            for (const Json::Value &output : p_w) {
-              if (output.asString() == bar_.output->name) {
-                Json::Value v;
-                v["name"] = p_w_name;
-                v["target_output"] = bar_.output->name;
-                workspaces_.emplace_back(std::move(v));
-                break;
-              }
-            }
-          } else {
-            // Adding to all outputs
-            Json::Value v;
-            v["name"] = p_w_name;
-            workspaces_.emplace_back(std::move(v));
-          }
-        }
-
-        if (workspaces_order_.empty()) {
-          // Saving starting order
-          workspaces_order_.reserve(payload.size() + workspaces_.size() - first_persistant_ws_idx);
-          for (const Json::Value &workspace : payload) {
-            workspaces_order_.emplace_back(workspace["name"].asString());
-          }
-          for (auto i = first_persistant_ws_idx; i < workspaces_.size() ; ++i) {
-            workspaces_order_.emplace_back(workspaces_[i]["name"].asString());
-          }
-        } else {
-          // Ordering workspaces as it was before for current output
-          std::vector<Json::Value> sorted_workspaces;
-          sorted_workspaces.reserve(workspaces_.size());
-          auto ws_end = workspaces_.end();
-          for (const std::string &name_by_order : workspaces_order_) {
-            auto it =
-                std::find_if(workspaces_.begin(), ws_end, [&name_by_order](const Json::Value &ws) {
-                  return ws["name"].asString() == name_by_order;
+          for (const std::string &p_w_name : p_workspaces_names) {
+            const Json::Value &p_w = p_workspaces[p_w_name];
+            auto               it =
+                std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
+                  return node["name"].asString() == p_w_name;
                 });
-            if (it != ws_end) {
-              sorted_workspaces.emplace_back(*it);
-              --ws_end;
-              if (ws_end == workspaces_.begin()) {  // we've extracted everything
-                break;
+
+            if (it != payload.end()) {
+              continue;  // already displayed by some bar
+            }
+
+            if (p_w.isArray() && !p_w.empty()) {
+              // Adding to target outputs
+              for (const Json::Value &output : p_w) {
+                if (output.asString() == bar_.output->name) {
+                  Json::Value v;
+                  v["name"] = p_w_name;
+                  v["target_output"] = bar_.output->name;
+                  workspaces_.emplace_back(std::move(v));
+                  break;
+                }
               }
-              ws_end->swap(*it);
+            } else {
+              // Adding to all outputs
+              Json::Value v;
+              v["name"] = p_w_name;
+              workspaces_.emplace_back(std::move(v));
             }
           }
 
-          // Adding new workspaces to the output (those were never showed in this output before)
-          for (int i = 0; workspaces_.size() > sorted_workspaces.size(); ++i) {
-            workspaces_order_.emplace_back(workspaces_[i]["name"].asString());
-            sorted_workspaces.emplace_back(workspaces_[i]);
-          }
-          workspaces_.swap(sorted_workspaces);
+          std::sort(workspaces_.begin(),
+                    workspaces_.end(),
+                    [](const Json::Value &lhs, const Json::Value &rhs) {
+                      return lhs["name"].asString() < rhs["name"].asString();
+                    });
         }
 
         dp.emit();
