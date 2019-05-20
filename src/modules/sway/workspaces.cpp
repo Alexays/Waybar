@@ -16,7 +16,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
   ipc_.sendCmd(IPC_GET_WORKSPACES);
   if (!config["disable-bar-scroll"].asBool()) {
-    auto &window = const_cast<Bar&>(bar_).window;
+    auto &window = const_cast<Bar &>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
@@ -49,11 +49,11 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                      });
 
         // adding persistant workspaces (as per the config file)
-        const Json::Value &p_workspaces = config_["persistant_workspaces"];
+        const Json::Value &            p_workspaces = config_["persistant_workspaces"];
         const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
         for (const std::string &p_w_name : p_workspaces_names) {
           const Json::Value &p_w = p_workspaces[p_w_name];
-          auto it =
+          auto               it =
               std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
                 return node["name"].asString() == p_w_name;
               });
@@ -68,6 +68,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
               if (output.asString() == bar_.output->name) {
                 Json::Value v;
                 v["name"] = p_w_name;
+                v["target_output"] = bar_.output->name;
                 workspaces_.emplace_back(std::move(v));
                 break;
               }
@@ -99,7 +100,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
             if (it != ws_end) {
               sorted_workspaces.emplace_back(*it);
               --ws_end;
-              if (ws_end == workspaces_.begin()) { // we've extracted everything
+              if (ws_end == workspaces_.begin()) {  // we've extracted everything
                 break;
               }
               ws_end->swap(*it);
@@ -202,9 +203,18 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   auto &button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
-  button.signal_clicked().connect([this, pair] {
+  button.signal_clicked().connect([this, node] {
     try {
-      ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", pair.first->first));
+      if (node["target_output"].isString()) {
+        ipc_.sendCmd(
+            IPC_COMMAND,
+            fmt::format("workspace \"{}\"; move workspace to output \"{}\"; workspace \"{}\"",
+                        node["name"].asString(),
+                        node["target_output"].asString(),
+                        node["name"].asString()));
+      } else {
+        ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\""));
+      }
     } catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;
     }
