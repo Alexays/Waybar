@@ -1,6 +1,32 @@
-#include "modules/sni/item.hpp"
 #include <glibmm/main.h>
 #include <spdlog/spdlog.h>
+#include "modules/sni/item.hpp"
+
+template <>
+struct fmt::formatter<Glib::ustring> : formatter<std::string> {
+  template <typename FormatContext>
+  auto format(const Glib::ustring& value, FormatContext& ctx) {
+    return formatter<std::string>::format(value, ctx);
+  }
+};
+
+template <>
+struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
+  bool is_printable(const Glib::VariantBase& value) {
+    auto type = value.get_type_string();
+    /* Print only primitive (single character excluding 'v') and short complex types */
+    return (type.length() == 1 && islower(type[0]) && type[0] != 'v') || value.get_size() <= 32;
+  }
+
+  template <typename FormatContext>
+  auto format(const Glib::VariantBase& value, FormatContext& ctx) {
+    if (is_printable(value)) {
+      return formatter<std::string>::format(value.print(), ctx);
+    } else {
+      return formatter<std::string>::format(value.get_type_string(), ctx);
+    }
+  }
+};
 
 namespace waybar::modules::SNI {
 
@@ -54,15 +80,9 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
     // this->event_box.set_tooltip_text(this->title);
 
   } catch (const Glib::Error& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s",
-            bus_name.c_str(),
-            object_path.c_str(),
-            err.what().c_str());
+    spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
   } catch (const std::exception& err) {
-    g_error("Failed to create DBus Proxy for %s %s: %s",
-            bus_name.c_str(),
-            object_path.c_str(),
-            err.what());
+    spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
   }
 }
 
@@ -72,41 +92,57 @@ T get_variant(Glib::VariantBase& value) {
 }
 
 void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
-  if (name == "Category") {
-    category = get_variant<std::string>(value);
-  } else if (name == "Id") {
-    id = get_variant<std::string>(value);
-  } else if (name == "Title") {
-    title = get_variant<std::string>(value);
-  } else if (name == "Status") {
-    status = get_variant<std::string>(value);
-  } else if (name == "WindowId") {
-    window_id = get_variant<int32_t>(value);
-  } else if (name == "IconName") {
-    icon_name = get_variant<std::string>(value);
-  } else if (name == "IconPixmap") {
-    icon_pixmap = this->extractPixBuf(value.gobj());
-  } else if (name == "OverlayIconName") {
-    overlay_icon_name = get_variant<std::string>(value);
-  } else if (name == "OverlayIconPixmap") {
-    // TODO: overlay_icon_pixmap
-  } else if (name == "AttentionIconName") {
-    attention_icon_name = get_variant<std::string>(value);
-  } else if (name == "AttentionIconPixmap") {
-    // TODO: attention_icon_pixmap
-  } else if (name == "AttentionMovieName") {
-    attention_movie_name = get_variant<std::string>(value);
-  } else if (name == "ToolTip") {
-    // TODO: tooltip
-  } else if (name == "IconThemePath") {
-    icon_theme_path = get_variant<std::string>(value);
-    if (!icon_theme_path.empty()) {
-      icon_theme->set_search_path({icon_theme_path});
+  try {
+    spdlog::trace("Set tray item property: {}.{} = {}", id.empty() ? bus_name : id, name, value);
+
+    if (name == "Category") {
+      category = get_variant<std::string>(value);
+    } else if (name == "Id") {
+      id = get_variant<std::string>(value);
+    } else if (name == "Title") {
+      title = get_variant<std::string>(value);
+    } else if (name == "Status") {
+      status = get_variant<std::string>(value);
+    } else if (name == "WindowId") {
+      window_id = get_variant<int32_t>(value);
+    } else if (name == "IconName") {
+      icon_name = get_variant<std::string>(value);
+    } else if (name == "IconPixmap") {
+      icon_pixmap = this->extractPixBuf(value.gobj());
+    } else if (name == "OverlayIconName") {
+      overlay_icon_name = get_variant<std::string>(value);
+    } else if (name == "OverlayIconPixmap") {
+      // TODO: overlay_icon_pixmap
+    } else if (name == "AttentionIconName") {
+      attention_icon_name = get_variant<std::string>(value);
+    } else if (name == "AttentionIconPixmap") {
+      // TODO: attention_icon_pixmap
+    } else if (name == "AttentionMovieName") {
+      attention_movie_name = get_variant<std::string>(value);
+    } else if (name == "ToolTip") {
+      // TODO: tooltip
+    } else if (name == "IconThemePath") {
+      icon_theme_path = get_variant<std::string>(value);
+      if (!icon_theme_path.empty()) {
+        icon_theme->set_search_path({icon_theme_path});
+      }
+    } else if (name == "Menu") {
+      menu = get_variant<std::string>(value);
+    } else if (name == "ItemIsMenu") {
+      item_is_menu = get_variant<bool>(value);
     }
-  } else if (name == "Menu") {
-    menu = get_variant<std::string>(value);
-  } else if (name == "ItemIsMenu") {
-    item_is_menu = get_variant<bool>(value);
+  } catch (const Glib::Error& err) {
+    spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
+                 id.empty() ? bus_name : id,
+                 name,
+                 value,
+                 err.what());
+  } catch (const std::exception& err) {
+    spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
+                 id.empty() ? bus_name : id,
+                 name,
+                 value,
+                 err.what());
   }
 }
 
@@ -131,7 +167,7 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     for (const auto& [name, value] : properties) {
       Glib::VariantBase old_value;
       proxy_->get_cached_property(old_value, name);
-      if (!value.equal(old_value)) {
+      if (!old_value || !value.equal(old_value)) {
         proxy_->set_cached_property(name, value);
         setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
@@ -140,14 +176,15 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     this->updateImage();
     // this->event_box.set_tooltip_text(this->title);
   } catch (const Glib::Error& err) {
-    g_warning("Failed to update properties: %s", err.what().c_str());
+    spdlog::warn("Failed to update properties: {}", err.what());
   } catch (const std::exception& err) {
-    g_warning("Failed to update properties: %s", err.what());
+    spdlog::warn("Failed to update properties: {}", err.what());
   }
 }
 
 void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                     const Glib::VariantContainerBase& arguments) {
+  spdlog::trace("Tray item '{}' got signal {}", id, signal_name);
   if (!update_pending_ && signal_name.compare(0, 3, "New") == 0) {
     /* Debounce signals and schedule update of all properties.
      * Based on behavior of Plasma dataengine for StatusNotifierItem.
