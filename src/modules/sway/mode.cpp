@@ -19,7 +19,7 @@ void Mode::onEvent(const struct Ipc::ipc_response& res) {
   try {
     auto payload = parser_.parse(res.payload);
     if (payload["change"] != "default") {
-      mode_ = payload["change"].asString();
+      mode_ = Glib::Markup::escape_text(payload["change"].asString());
     } else {
       mode_.clear();
     }
