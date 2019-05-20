@@ -4,13 +4,14 @@
 
 using namespace waybar::modules::SNI;
 
-Watcher::Watcher()
+Watcher::Watcher(std::size_t id)
     : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
                                        "org.kde.StatusNotifierWatcher",
                                        sigc::mem_fun(*this, &Watcher::busAcquired),
                                        Gio::DBus::SlotNameAcquired(), Gio::DBus::SlotNameLost(),
                                        Gio::DBus::BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT |
                                            Gio::DBus::BUS_NAME_OWNER_FLAGS_REPLACE)),
+      watcher_id_(id),
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {
