@@ -1,5 +1,4 @@
 #include "modules/sni/tray.hpp"
-#include <iostream>
 
 namespace waybar::modules::SNI {
 

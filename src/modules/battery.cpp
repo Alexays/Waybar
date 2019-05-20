@@ -1,4 +1,5 @@
 #include "modules/battery.hpp"
+#include <spdlog/spdlog.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "{capacity}%", 60) {
@@ -103,7 +104,7 @@ const std::tuple<uint8_t, uint32_t, std::string> waybar::modules::Battery::getIn
     uint16_t capacity = total / batteries_.size();
     return {capacity, total_current, status};
   } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
+  	spdlog::error("Battery: {}", e.what());
     return {0, 0, "Unknown"};
   }
 }

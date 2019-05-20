@@ -9,7 +9,8 @@
 #include <sys/inotify.h>
 #include <algorithm>
 #include <fstream>
-#include <iostream>
+#include <string>
+#include <vector>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 

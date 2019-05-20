@@ -1,4 +1,5 @@
 #include "modules/cpu.hpp"
+#include <numeric>
 
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
     : ALabel(config, "{usage}%", 10) {

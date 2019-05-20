@@ -1,7 +1,7 @@
 #include "modules/mpd.hpp"
 
 #include <fmt/chrono.h>
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     : ALabel(config, "{album} - {artist} - {title}", 5),
@@ -14,11 +14,11 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
       status_(nullptr, &mpd_status_free),
       song_(nullptr, &mpd_song_free) {
   if (!config_["port"].isNull() && !config_["port"].isUInt()) {
-    std::cerr << module_name_ << ": `port` configuration should be an unsigned int" << std::endl;
+    spdlog::warn("{}: `port` configuration should be an unsigned int", module_name_);
   }
 
   if (!config_["timeout"].isNull() && !config_["timeout"].isUInt()) {
-    std::cerr << module_name_ << ": `timeout` configuration should be an unsigned int" << std::endl;
+    spdlog::warn("{}: `timeout` configuration should be an unsigned int", module_name_);
   }
 
   label_.set_name("mpd");
@@ -28,7 +28,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
 
   if (!config["server"].isNull()) {
     if (!config_["server"].isString()) {
-      std::cerr << module_name_ << "`server` configuration should be a string" << std::endl;
+      spdlog::warn("{}:`server` configuration should be a string", module_name_);
     }
     server_ = config["server"].asCString();
   }
@@ -51,7 +51,7 @@ auto waybar::modules::MPD::update() -> void {
         periodic_updater().detach();
       }
     } catch (const std::exception& e) {
-      std::cerr << module_name_ + ": " + e.what() << std::endl;
+      spdlog::error("{}: {}", module_name_, e.what());
       state_ = MPD_STATE_UNKNOWN;
     }
   }
@@ -72,7 +72,7 @@ std::thread waybar::modules::MPD::event_listener() {
           dp.emit();
         }
       } catch (const std::exception& e) {
-        std::cerr << module_name_ + ": " + e.what() << std::endl;
+        spdlog::warn("{}: {}", module_name_, e.what());
       }
     }
   });
@@ -206,12 +206,12 @@ std::string waybar::modules::MPD::getStateIcon() {
   }
 
   if (connection_ == nullptr) {
-    std::cerr << module_name_ << ": Trying to fetch state icon while disconnected" << std::endl;
+    spdlog::warn("{}: Trying to fetch state icon while disconnected", module_name_);
     return "";
   }
 
   if (stopped()) {
-    std::cerr << module_name_ << ": Trying to fetch state icon while stopped" << std::endl;
+    spdlog::warn("{}: Trying to fetch state icon while stopped", module_name_);
     return "";
   }
 
@@ -228,7 +228,7 @@ std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool act
   }
 
   if (connection_ == nullptr) {
-    std::cerr << module_name_ << ": Trying to fetch option icon while disconnected" << std::endl;
+    spdlog::warn("{}: Trying to fetch option icon while disconnected", module_name_);
     return "";
   }
 
@@ -251,7 +251,7 @@ void waybar::modules::MPD::tryConnect() {
       unique_connection(mpd_connection_new(server_, port_, timeout_), &mpd_connection_free);
 
   if (connection_ == nullptr || alternate_connection_ == nullptr) {
-    std::cerr << module_name_ << ": Failed to connect to MPD" << std::endl;
+    spdlog::error("{}: Failed to connect to MPD", module_name_);
     connection_.reset();
     alternate_connection_.reset();
     return;
@@ -259,9 +259,9 @@ void waybar::modules::MPD::tryConnect() {
 
   try {
     checkErrors(connection_.get());
-    std::cerr << module_name_ << ": Connected to MPD" << std::endl;
+    spdlog::info("{}: Connected to MPD", module_name_);
   } catch (std::runtime_error& e) {
-    std::cerr << module_name_ << ": Failed to connect to MPD: " << e.what() << std::endl;
+  spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
     connection_.reset();
     alternate_connection_.reset();
   }
