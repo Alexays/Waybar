@@ -8,7 +8,7 @@ namespace waybar::modules::SNI {
 
 class Watcher {
  public:
-  Watcher();
+  Watcher(std::size_t id);
   ~Watcher();
 
  private:
