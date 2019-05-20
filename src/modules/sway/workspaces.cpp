@@ -1,4 +1,5 @@
 #include "modules/sway/workspaces.hpp"
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
 
@@ -28,7 +29,7 @@ void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
   try {
     ipc_.sendCmd(IPC_GET_WORKSPACES);
   } catch (const std::exception &e) {
-    std::cerr << "Workspaces: " << e.what() << std::endl;
+    spdlog::error("Workspaces: {}", e.what());
   }
 }
 
@@ -50,7 +51,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         dp.emit();
       }
     } catch (const std::exception &e) {
-      std::cerr << "Workspaces: " << e.what() << std::endl;
+      spdlog::error("Workspaces: {}", e.what());
     }
   } else {
     if (scrolling_) {
@@ -64,7 +65,7 @@ void Workspaces::worker() {
     try {
       ipc_.handleEvent();
     } catch (const std::exception &e) {
-      std::cerr << "Workspaces: " << e.what() << std::endl;
+      spdlog::error("Workspaces: {}", e.what());
     }
   };
 }
@@ -139,7 +140,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
     try {
       ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", pair.first->first));
     } catch (const std::exception &e) {
-      std::cerr << e.what() << std::endl;
+      spdlog::error("Workspaces: {}", e.what());
     }
   });
   if (!config_["disable-scroll"].asBool()) {
@@ -208,7 +209,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   try {
     ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
   } catch (const std::exception &e) {
-    std::cerr << "Workspaces: " << e.what() << std::endl;
+    spdlog::error("Workspaces: {}", e.what());
   }
   return true;
 }

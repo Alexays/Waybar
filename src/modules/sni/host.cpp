@@ -1,5 +1,6 @@
 #include "modules/sni/host.hpp"
-#include <iostream>
+#include <spdlog/spdlog.h>
+#include <fmt/ostream.h>
 
 namespace waybar::modules::SNI {
 
@@ -63,14 +64,14 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
   GError*    error = nullptr;
   SnWatcher* watcher = sn_watcher_proxy_new_finish(res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-    std::cerr << error->message << std::endl;
+    spdlog::error("Host: {}", error->message);
     g_error_free(error);
     return;
   }
   auto host = static_cast<SNI::Host*>(data);
   host->watcher_ = watcher;
   if (error != nullptr) {
-    std::cerr << error->message << std::endl;
+    spdlog::error("Host: {}", error->message);
     g_error_free(error);
     return;
   }
@@ -82,13 +83,13 @@ void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
   sn_watcher_call_register_host_finish(SN_WATCHER(src), res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
-    std::cerr << error->message << std::endl;
+    spdlog::error("Host: {}", error->message);
     g_error_free(error);
     return;
   }
   auto host = static_cast<SNI::Host*>(data);
   if (error != nullptr) {
-    std::cerr << error->message << std::endl;
+    spdlog::error("Host: {}", error->message);
     g_error_free(error);
     return;
   }

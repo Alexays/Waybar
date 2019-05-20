@@ -1,4 +1,5 @@
 #include "modules/custom.hpp"
+#include <spdlog/spdlog.h>
 
 waybar::modules::Custom::Custom(const std::string& name, const Json::Value& config)
     : ALabel(config, "{}"), name_(name), fp_(nullptr), pid_(-1) {
@@ -58,7 +59,7 @@ void waybar::modules::Custom::continuousWorker() {
       if (exit_code != 0) {
         output_ = {exit_code, ""};
         dp.emit();
-        std::cerr << name_ + " just stopped unexpectedly, is it endless?" << std::endl;
+        spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
       return;
     }
