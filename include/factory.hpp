@@ -4,6 +4,7 @@
 #include "modules/clock.hpp"
 #ifdef HAVE_SWAY
 #include "modules/sway/mode.hpp"
+#include "modules/sway/taskbar.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
