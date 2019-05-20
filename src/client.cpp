@@ -243,10 +243,14 @@ int waybar::Client::main(int argc, char *argv[]) {
   std::string config;
   std::string style;
   std::string bar_id;
+  std::string log_level;
   auto        cli = clara::detail::Help(show_help) |
              clara::detail::Opt(show_version)["-v"]["--version"]("Show version") |
              clara::detail::Opt(config, "config")["-c"]["--config"]("Config path") |
              clara::detail::Opt(style, "style")["-s"]["--style"]("Style path") |
+             clara::detail::Opt(
+                 log_level,
+                 "trace|debug|info|warning|error|critical|off")["-l"]["--log-level"]("Log level") |
              clara::detail::Opt(bar_id, "id")["-b"]["--bar"]("Bar id");
   auto res = cli.parse(clara::detail::Args(argc, argv));
   if (!res) {
@@ -260,6 +264,9 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (show_version) {
     std::cout << "Waybar v" << VERSION << std::endl;
     return 0;
+  }
+  if (!log_level.empty()) {
+    spdlog::set_level(spdlog::level::from_str(log_level));
   }
   setupConfigs(config, style);
   setupConfig();
