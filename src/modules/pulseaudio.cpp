@@ -108,7 +108,7 @@ bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
       pa_cvolume_inc(&pa_volume, change);
     }
   } else {
-    if (volume_ - 1 > 0) {
+    if (volume_ - 1 >= 0) {
       pa_cvolume_dec(&pa_volume, change);
     }
   }
