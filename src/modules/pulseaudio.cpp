@@ -235,7 +235,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
   }
   // TODO: find a better way to split source/sink
-  std::string format_source = "{source_volume}%";
+  std::string format_source = "{volume}%";
   if (source_muted_ && config_["format-source-muted"].isString()) {
     format_source = config_["format-source-muted"].asString();
   } else if (!source_muted_ && config_["format-source"].isString()) {
