@@ -76,23 +76,19 @@ void waybar::modules::Battery::getBatteries() {
   }
 }
 
-const std::tuple<uint8_t, uint32_t, std::string> waybar::modules::Battery::getInfos() const {
+const std::tuple<uint8_t, std::string> waybar::modules::Battery::getInfos() const {
   try {
     uint16_t    total = 0;
-    uint32_t    total_current = 0;
     std::string status = "Unknown";
     for (auto const& bat : batteries_) {
       uint16_t    capacity;
-      uint32_t    current_now;
       std::string _status;
       std::ifstream(bat / "capacity") >> capacity;
       std::ifstream(bat / "status") >> _status;
-      std::ifstream(bat / "current_now") >> current_now;
       if (_status != "Unknown") {
         status = _status;
       }
       total += capacity;
-      total_current += current_now;
     }
     if (!adapter_.empty() && status == "Discharging") {
       bool online;
@@ -102,15 +98,14 @@ const std::tuple<uint8_t, uint32_t, std::string> waybar::modules::Battery::getIn
       }
     }
     uint16_t capacity = total / batteries_.size();
-    return {capacity, total_current, status};
+    return {capacity, status};
   } catch (const std::exception& e) {
   	spdlog::error("Battery: {}", e.what());
-    return {0, 0, "Unknown"};
+    return {0, "Unknown"};
   }
 }
 
-const std::string waybar::modules::Battery::getAdapterStatus(uint8_t  capacity,
-                                                             uint32_t current_now) const {
+const std::string waybar::modules::Battery::getAdapterStatus(uint8_t  capacity) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
@@ -126,9 +121,9 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t  capacity,
 }
 
 auto waybar::modules::Battery::update() -> void {
-  auto [capacity, current_now, status] = getInfos();
+  auto [capacity, status] = getInfos();
   if (status == "Unknown") {
-    status = getAdapterStatus(capacity, current_now);
+    status = getAdapterStatus(capacity);
   }
   if (tooltipEnabled()) {
     label_.set_tooltip_text(status);
