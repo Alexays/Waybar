@@ -1,5 +1,4 @@
 #include "modules/pulseaudio.hpp"
-#include <iostream>
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
     : ALabel(config, "{volume}%"),

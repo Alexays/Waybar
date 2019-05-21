@@ -30,7 +30,7 @@ class Network : public ALabel {
   void worker();
   void createInfoSocket();
   void createEventSocket();
-  int  getExternalInterface();
+  int  getExternalInterface(int skip_idx = -1);
   void getInterfaceAddress();
   int  netlinkRequest(void*, uint32_t, uint32_t groups = 0);
   int  netlinkResponse(void*, uint32_t, uint32_t groups = 0);
@@ -39,8 +39,9 @@ class Network : public ALabel {
   void parseFreq(struct nlattr**);
   bool associatedOrJoined(struct nlattr**);
   bool checkInterface(struct ifinfomsg *rtif, std::string name);
-  int  getPreferredIface();
+  int  getPreferredIface(int skip_idx = -1);
   auto getInfo() -> void;
+  void clearIface();
   bool wildcardMatch(const std::string& pattern, const std::string& text);
 
   waybar::util::SleeperThread thread_;
