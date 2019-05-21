@@ -181,6 +181,6 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     label_.set_markup(fmt::format(
-        format, fmt::arg("capacity", capacity), fmt::arg("icon", getIcon(capacity, state))));
+        format, fmt::arg("capacity", capacity), fmt::arg("icon", getIcon(capacity, state)), fmt::arg("time", formatTimeRemaining(time_remaining))));
   }
 }
