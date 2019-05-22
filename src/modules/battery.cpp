@@ -91,9 +91,12 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       std::string _status;
       std::ifstream(bat / "capacity") >> capacity;
       std::ifstream(bat / "status") >> _status;
-      std::ifstream(bat / "power_now") >> power_now;
-      std::ifstream(bat / "energy_now") >> energy_now;
-      std::ifstream(bat / "energy_full") >> energy_full;
+      auto rate_path = fs::exists(bat / "current_now") ? "current_now" : "power_now";
+      std::ifstream(bat / rate_path) >> power_now;
+      auto now_path = fs::exists(bat / "charge_now") ? "charge_now" : "energy_now";
+      std::ifstream(bat / now_path) >> energy_now;
+      auto full_path = fs::exists(bat / "charge_full") ? "charge_full" : "energy_full";
+      std::ifstream(bat / full_path) >> energy_full;
       if (_status != "Unknown") {
         status = _status;
       }
