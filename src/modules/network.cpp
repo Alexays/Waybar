@@ -101,6 +101,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   createEventSocket();
   auto default_iface = getPreferredIface();
   if (default_iface != -1) {
+    ifid_ = default_iface;
     char ifname[IF_NAMESIZE];
     if_indextoname(default_iface, ifname);
     ifname_ = ifname;
@@ -339,7 +340,7 @@ auto waybar::modules::Network::update() -> void {
 }
 
 // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
-int waybar::modules::Network::getExternalInterface(int skip_idx) {
+int waybar::modules::Network::getExternalInterface(int skip_idx) const {
   static const uint32_t route_buffer_size = 8192;
   struct nlmsghdr *     hdr = nullptr;
   struct rtmsg *        rt = nullptr;
@@ -497,7 +498,7 @@ void waybar::modules::Network::getInterfaceAddress() {
   freeifaddrs(ifaddr);
 }
 
-int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) {
+int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) const {
   struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
@@ -511,7 +512,7 @@ int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_
   return sendmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
 }
 
-int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint32_t groups) {
+int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint32_t groups) const {
   struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
@@ -542,12 +543,12 @@ bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::strin
   return external_iface == rtif->ifi_index;
 }
 
-int waybar::modules::Network::getPreferredIface(int skip_idx) {
+int waybar::modules::Network::getPreferredIface(int skip_idx) const {
+  int ifid = -1;
   if (config_["interface"].isString()) {
-    ifid_ = if_nametoindex(config_["interface"].asCString());
-    if (ifid_ > 0) {
-      ifname_ = config_["interface"].asString();
-      return ifid_;
+    ifid = if_nametoindex(config_["interface"].asCString());
+    if (ifid > 0) {
+      return ifid;
     } else {
       // Try with wildcard
       struct ifaddrs *ifaddr, *ifa;
@@ -556,24 +557,21 @@ int waybar::modules::Network::getPreferredIface(int skip_idx) {
         return -1;
       }
       ifa = ifaddr;
-      ifid_ = -1;
+      ifid = -1;
       while (ifa != nullptr) {
         if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
-          ifid_ = if_nametoindex(ifa->ifa_name);
+          ifid = if_nametoindex(ifa->ifa_name);
           break;
         }
         ifa = ifa->ifa_next;
       }
       freeifaddrs(ifaddr);
-      return ifid_;
+      return ifid;
     }
   }
-  ifid_ = getExternalInterface(skip_idx);
-  if (ifid_ > 0) {
-    char ifname[IF_NAMESIZE];
-    if_indextoname(ifid_, ifname);
-    ifname_ = ifname;
-    return ifid_;
+  ifid = getExternalInterface(skip_idx);
+  if (ifid > 0) {
+    return ifid;
   }
   return -1;
 }
@@ -636,9 +634,14 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->dp.emit();
     } else if (rtif->ifi_index == net->ifid_) {
       net->clearIface();
+      net->ifid_ = -1;
       // Check for a new interface and get info
       auto new_iface = net->getPreferredIface(rtif->ifi_index);
       if (new_iface != -1) {
+        net->ifid_ = new_iface;
+        char ifname[IF_NAMESIZE];
+        if_indextoname(new_iface, ifname);
+        net->ifname_ = ifname;
         net->getInterfaceAddress();
         net->thread_timer_.wake_up();
       } else {
@@ -758,7 +761,8 @@ auto waybar::modules::Network::getInfo() -> void {
 }
 
 // https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
-bool waybar::modules::Network::wildcardMatch(const std::string &pattern, const std::string &text) {
+bool waybar::modules::Network::wildcardMatch(const std::string &pattern,
+                                             const std::string &text) const {
   auto P = int(pattern.size());
   auto T = int(text.size());
 
