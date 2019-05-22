@@ -12,7 +12,7 @@ namespace waybar::modules {
 
 class Custom : public ALabel {
  public:
-  Custom(const std::string&, const Json::Value&);
+  Custom(const std::string&, const std::string&, const Json::Value&);
   ~Custom();
   auto update() -> void;
   void refresh(int /*signal*/);

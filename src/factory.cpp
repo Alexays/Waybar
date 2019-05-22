@@ -64,7 +64,7 @@ waybar::IModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Temperature(id, config_[name]);
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
-      return new waybar::modules::Custom(ref.substr(7), config_[name]);
+      return new waybar::modules::Custom(ref.substr(7), id, config_[name]);
     }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
