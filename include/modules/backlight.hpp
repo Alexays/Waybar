@@ -47,7 +47,6 @@ class Backlight : public ALabel {
   template <class ForwardIt, class Inserter>
   static void enumerate_devices(ForwardIt first, ForwardIt last, Inserter inserter, udev *udev);
 
-  const std::string    name_;
   const std::string    preferred_device_;
   static constexpr int EPOLL_MAX_EVENTS = 16;
 

@@ -1,7 +1,7 @@
 #include "modules/temperature.hpp"
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
-    : ALabel(config, "{temperatureC}°C", 10) {
+    : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
   } else {
@@ -11,10 +11,6 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
-  }
-  label_.set_name("temperature");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
   }
   thread_ = [this] {
     dp.emit();

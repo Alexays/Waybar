@@ -1,11 +1,7 @@
 #include "modules/clock.hpp"
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "{:%H:%M}", 60) {
-  label_.set_name("clock");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
+    : ALabel(config, "clock", id, "{:%H:%M}", 60) {
   thread_ = [this] {
     dp.emit();
     auto now = std::chrono::system_clock::now();

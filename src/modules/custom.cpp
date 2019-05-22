@@ -2,8 +2,7 @@
 #include <spdlog/spdlog.h>
 
 waybar::modules::Custom::Custom(const std::string& name, const Json::Value& config)
-    : ALabel(config, "{}"), name_(name), fp_(nullptr), pid_(-1) {
-  label_.set_name("custom-" + name_);
+    : ALabel(config, "custom-" + name_, name, "{}"), name_(name), fp_(nullptr), pid_(-1) {
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
       delayWorker();

@@ -4,11 +4,7 @@
 namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "{}"), bar_(bar), windowId_(-1) {
-  label_.set_name("window");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
+    : ALabel(config, "window", id, "{}"), bar_(bar), windowId_(-1) {
   if (label_.get_max_width_chars() == -1) {
     label_.set_hexpand(true);
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
