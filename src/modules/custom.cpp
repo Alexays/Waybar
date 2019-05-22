@@ -74,7 +74,7 @@ void waybar::modules::Custom::continuousWorker() {
   };
 }
 
-void waybar::modules::Custom::refresh(int sig /*signal*/) {
+void waybar::modules::Custom::refresh(int sig) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
