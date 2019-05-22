@@ -79,8 +79,8 @@ void waybar::modules::Battery::getBatteries() {
 const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() const {
   try {
     uint16_t    total = 0;
-    uint32_t    total_power = 0; // μW
-    uint32_t    total_energy = 0; // μWh
+    uint32_t    total_power = 0;   // μW
+    uint32_t    total_energy = 0;  // μWh
     uint32_t    total_energy_full = 0;
     std::string status = "Unknown";
     for (auto const& bat : batteries_) {
@@ -114,19 +114,19 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     }
     float time_remaining = 0;
     if (status == "Discharging" && total_power != 0) {
-        time_remaining = (float)total_energy / total_power;
+      time_remaining = (float)total_energy / total_power;
     } else if (status == "Charging" && total_power != 0) {
-        time_remaining = -(float)(total_energy_full - total_energy) / total_power;
+      time_remaining = -(float)(total_energy_full - total_energy) / total_power;
     }
     uint16_t capacity = total / batteries_.size();
     return {capacity, time_remaining, status};
   } catch (const std::exception& e) {
-  	spdlog::error("Battery: {}", e.what());
+    spdlog::error("Battery: {}", e.what());
     return {0, 0, "Unknown"};
   }
 }
 
-const std::string waybar::modules::Battery::getAdapterStatus(uint8_t  capacity) const {
+const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
@@ -142,10 +142,10 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t  capacity) 
 }
 
 const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemaining) {
-    hoursRemaining = std::fabs(hoursRemaining);
-    uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
-    uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
-    return std::to_string(full_hours) + " h " + std::to_string(minutes) + " min";
+  hoursRemaining = std::fabs(hoursRemaining);
+  uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
+  uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
+  return std::to_string(full_hours) + " h " + std::to_string(minutes) + " min";
 }
 
 auto waybar::modules::Battery::update() -> void {
@@ -156,11 +156,10 @@ auto waybar::modules::Battery::update() -> void {
   if (tooltipEnabled()) {
     std::string tooltip_text;
     if (time_remaining != 0) {
-        std::string time_to = std::string("Time to ") +
-            ((time_remaining > 0) ? "empty" : "full");
-        tooltip_text = time_to + ": " + formatTimeRemaining(time_remaining);
+      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
+      tooltip_text = time_to + ": " + formatTimeRemaining(time_remaining);
     } else {
-        tooltip_text = status;
+      tooltip_text = status;
     }
     label_.set_tooltip_text(tooltip_text);
   }
@@ -183,7 +182,9 @@ auto waybar::modules::Battery::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    label_.set_markup(fmt::format(
-        format, fmt::arg("capacity", capacity), fmt::arg("icon", getIcon(capacity, state)), fmt::arg("time", formatTimeRemaining(time_remaining))));
+    label_.set_markup(fmt::format(format,
+                                  fmt::arg("capacity", capacity),
+                                  fmt::arg("icon", getIcon(capacity, state)),
+                                  fmt::arg("time", formatTimeRemaining(time_remaining))));
   }
 }
