@@ -3,15 +3,11 @@
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
-    : ALabel(config, "{status}"),
+    : ALabel(config, "idle_inhibitor", id, "{status}"),
       bar_(bar),
       status_("deactivated"),
       idle_inhibitor_(nullptr),
       pid_(-1) {
-  label_.set_name("idle_inhibitor");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));

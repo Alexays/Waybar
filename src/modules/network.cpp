@@ -73,7 +73,7 @@ std::optional<unsigned long long> read_netstat(std::string_view category, std::s
 }  // namespace
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "{ifname}", 60),
+    : ALabel(config, "network", id, "{ifname}", 60),
       ifid_(-1),
       last_ext_iface_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
@@ -83,11 +83,6 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       signal_strength_dbm_(0),
       signal_strength_(0),
       frequency_(0) {
-  label_.set_name("network");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
-
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
   if (down_octets) {

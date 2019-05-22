@@ -2,11 +2,7 @@
 #include <spdlog/spdlog.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
-    : ALabel(config, "{capacity}%", 60) {
-  label_.set_name("battery");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
+    : ALabel(config, "battery", id, "{capacity}%", 60) {
   getBatteries();
   fd_ = inotify_init1(IN_CLOEXEC);
   if (fd_ == -1) {

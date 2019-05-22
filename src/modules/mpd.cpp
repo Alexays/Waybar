@@ -4,7 +4,7 @@
 #include <spdlog/spdlog.h>
 
 waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
-    : ALabel(config, "{album} - {artist} - {title}", 5),
+    : ALabel(config, "mpd", id, "{album} - {artist} - {title}", 5),
       module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
       port_(config_["port"].isUInt() ? config["port"].asUInt() : 0),
@@ -19,11 +19,6 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
 
   if (!config_["timeout"].isNull() && !config_["timeout"].isUInt()) {
     spdlog::warn("{}: `timeout` configuration should be an unsigned int", module_name_);
-  }
-
-  label_.set_name("mpd");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
   }
 
   if (!config["server"].isNull()) {
@@ -261,7 +256,7 @@ void waybar::modules::MPD::tryConnect() {
     checkErrors(connection_.get());
     spdlog::info("{}: Connected to MPD", module_name_);
   } catch (std::runtime_error& e) {
-  spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
+    spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
     connection_.reset();
     alternate_connection_.reset();
   }

@@ -1,7 +1,7 @@
 #include "modules/pulseaudio.hpp"
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "{volume}%"),
+    : ALabel(config, "pulseaudio", id, "{volume}%"),
       mainloop_(nullptr),
       mainloop_api_(nullptr),
       context_(nullptr),
@@ -12,10 +12,6 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
       source_idx_(0),
       source_volume_(0),
       source_muted_(false) {
-  label_.set_name("pulseaudio");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
   mainloop_ = pa_threaded_mainloop_new();
   if (mainloop_ == nullptr) {
     throw std::runtime_error("pa_mainloop_new() failed.");
