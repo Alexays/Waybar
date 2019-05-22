@@ -10,11 +10,10 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     dp.emit();
     auto now = std::chrono::system_clock::now();
     auto timeout = std::chrono::floor<std::chrono::seconds>(now + interval_);
-    auto time_s = std::chrono::time_point_cast<std::chrono::seconds>(timeout);
-    auto sub_m =
-        std::chrono::duration_cast<std::chrono::seconds>(time_s.time_since_epoch()).count() %
+    auto time_point =
+        std::chrono::time_point_cast<std::chrono::seconds>(timeout).time_since_epoch().count() %
         interval_.count();
-    thread_.sleep_until(timeout - std::chrono::seconds(sub_m));
+    thread_.sleep_until(timeout - std::chrono::seconds(time_point));
   };
 }
 
