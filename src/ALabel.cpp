@@ -69,8 +69,7 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     format = config_["on-click-forward"].asString();
   }
   if (!format.empty()) {
-    pid_.push_back(
-        waybar::util::command::forkExec(fmt::format(format, fmt::arg("arg", click_param))));
+    pid_.push_back(util::command::forkExec(fmt::format(format, fmt::arg("arg", click_param))));
   }
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
@@ -106,9 +105,9 @@ bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
     }
   }
   if (direction_up && config_["on-scroll-up"].isString()) {
-    pid_.push_back(waybar::util::command::forkExec(config_["on-scroll-up"].asString()));
+    pid_.push_back(util::command::forkExec(config_["on-scroll-up"].asString()));
   } else if (config_["on-scroll-down"].isString()) {
-    pid_.push_back(waybar::util::command::forkExec(config_["on-scroll-down"].asString()));
+    pid_.push_back(util::command::forkExec(config_["on-scroll-down"].asString()));
   }
   dp.emit();
   return true;
