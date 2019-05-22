@@ -3,7 +3,7 @@
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config)
-    : ALabel(config, "custom-" + name_, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
+    : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
       delayWorker();
