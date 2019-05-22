@@ -33,8 +33,9 @@ class Battery : public ALabel {
 
   void              getBatteries();
   void              worker();
-  const std::string getAdapterStatus(uint8_t capacity, uint32_t current_now) const;
-  const std::tuple<uint8_t, uint32_t, std::string> getInfos() const;
+  const std::string getAdapterStatus(uint8_t capacity) const;
+  const std::tuple<uint8_t, float, std::string> getInfos() const;
+  const std::string formatTimeRemaining(float hoursRemaining);
 
   util::SleeperThread   thread_;
   util::SleeperThread   thread_timer_;
