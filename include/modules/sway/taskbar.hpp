@@ -20,11 +20,16 @@ class TaskBar : public IModule, public sigc::trackable {
        operator Gtk::Widget&();
 
  private:
-  void         onCmd(const struct Ipc::ipc_response&);
-  void         onEvent(const struct Ipc::ipc_response&);
-  void         worker();
-  bool         filterButtons();
-  Gtk::Button& addButton(const std::string&);
+  void onCmd(const struct Ipc::ipc_response&);
+  void onEvent(const struct Ipc::ipc_response&);
+  void worker();
+  bool filterButtons();
+  void updateButtons();
+  struct Application {
+    int         id;
+    std::string name;
+  };
+  Gtk::Button& addButton(const Application&);
 
   void        onButtonReady(Gtk::Button&);
   std::string getIcon(const std::string&);
@@ -36,20 +41,20 @@ class TaskBar : public IModule, public sigc::trackable {
 
   struct WorkspaceMap {
     int                      focused_num = 0;
-    std::vector<std::string> applications;
+    std::vector<Application> applications;
   };
 
-  const Bar&                                   bar_;
-  const Json::Value&                           config_;
-  waybar::util::SleeperThread                  thread_;
-  std::mutex                                   mutex_;
-  Gtk::Box                                     box_;
-  Ipc                                          ipc_;
-  util::JsonParser                             parser_;
-  bool                                         scrolling_;
-  std::unordered_map<std::string, Gtk::Button> buttons_;
-  std::string                                  current_workspace;
-  std::map<std::string, WorkspaceMap>          taskMap_;
+  const Bar&                           bar_;
+  const Json::Value&                   config_;
+  waybar::util::SleeperThread          thread_;
+  std::mutex                           mutex_;
+  Gtk::Box                             box_;
+  Ipc                                  ipc_;
+  util::JsonParser                     parser_;
+  bool                                 scrolling_;
+  std::unordered_map<int, Gtk::Button> buttons_;
+  std::string                          current_workspace;
+  std::map<std::string, WorkspaceMap>  taskMap_;
 };
 
 }  // namespace waybar::modules::sway

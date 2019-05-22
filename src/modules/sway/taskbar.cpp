@@ -15,13 +15,13 @@ TaskBar::TaskBar(const std::string &id, const Bar &bar, const Json::Value &confi
   ipc_.signal_event.connect(sigc::mem_fun(*this, &TaskBar::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &TaskBar::onCmd));
   ipc_.sendCmd(IPC_GET_TREE);
-  ipc_.sendCmd(IPC_GET_WORKSPACES);
   if (!config["disable-bar-scroll"].asBool()) {
     auto &window = const_cast<Bar &>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     window.signal_scroll_event().connect(sigc::mem_fun(*this, &TaskBar::handleScroll));
   }
   // Launch worker
+  dp.emit();
   worker();
 }
 
@@ -29,17 +29,20 @@ void TaskBar::onEvent(const struct Ipc::ipc_response &res) {
   // Add logic here
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto                        payload = parser_.parse(res.payload);
+
     if (static_cast<int>(res.type) == IPC_EVENT_WORKSPACE) {
+      auto payload = parser_.parse(res.payload);
       if (taskMap_.empty()) {
         ipc_.sendCmd(IPC_GET_TREE);
       }
       ipc_.sendCmd(IPC_GET_WORKSPACES);
     } else if (static_cast<int>(res.type) == IPC_EVENT_WINDOW) {
+      auto payload = parser_.parse(res.payload);
       if (payload["change"] == "new") {
       } else if (payload["change"] == "close") {
       } else if (payload["change"] == "focus") {
       }
+      ipc_.sendCmd(IPC_GET_TREE);
     }
     dp.emit();
   } catch (const std::exception &e) {
@@ -49,8 +52,9 @@ void TaskBar::onEvent(const struct Ipc::ipc_response &res) {
 
 void TaskBar::onCmd(const struct Ipc::ipc_response &res) {
   try {
+    auto payload = parser_.parse(res.payload);
+    if (payload["success"] != "true") std::cout << payload << std::endl;
     if (res.type == IPC_GET_TREE) {
-      auto payload = parser_.parse(res.payload);
       taskMap_.clear();
       parseTree(payload);
       /*
@@ -64,9 +68,9 @@ void TaskBar::onCmd(const struct Ipc::ipc_response &res) {
       */
     }
     if (res.type == IPC_GET_WORKSPACES) {
-      auto payload = parser_.parse(res.payload);
       parseCurrentWorkspace(payload);
     }
+
   } catch (const std::exception &e) {
     std::cerr << "TaskBar: " << e.what() << std::endl;
   }
@@ -86,7 +90,7 @@ bool TaskBar::filterButtons() {
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(taskMap_[current_workspace].applications.begin(),
                            taskMap_[current_workspace].applications.end(),
-                           [it](const auto &value) { return value == it->first; });
+                           [it](const auto &value) { return value.id == it->first; });
     if (ws == taskMap_[current_workspace].applications.end()) {
       it = buttons_.erase(it);
       needReorder = true;
@@ -97,6 +101,18 @@ bool TaskBar::filterButtons() {
   return needReorder;
 }
 
+void TaskBar::updateButtons() {
+  for (auto itb = buttons_.begin(); itb != buttons_.end(); ++itb) {
+    for (auto ita = taskMap_[current_workspace].applications.begin();
+         ita != taskMap_[current_workspace].applications.end();
+         ++ita) {
+      if (itb->second.get_label() != ita->name) {
+        itb->second.set_label(ita->name);
+      }
+    }
+  }
+}
+
 auto TaskBar::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   bool                        needReorder = filterButtons();
@@ -104,7 +120,7 @@ auto TaskBar::update() -> void {
   for (auto it = taskMap_[current_workspace].applications.begin();
        it != taskMap_[current_workspace].applications.end();
        ++it) {
-    auto bit = buttons_.find(*it);
+    auto bit = buttons_.find(it->id);
     if (bit == buttons_.end()) {
       needReorder = true;
     }
@@ -125,7 +141,7 @@ auto TaskBar::update() -> void {
       output =
           fmt::format(format,
                       fmt::arg("icon", output),
-                      fmt::arg("name", *it),
+                      fmt::arg("name", it->name),
                       fmt::arg("index", it - taskMap_[current_workspace].applications.begin()));
     }
     if (!config_["disable-markup"].asBool()) {
@@ -137,20 +153,18 @@ auto TaskBar::update() -> void {
   }
 }
 
-Gtk::Button &TaskBar::addButton(const std::string &name) {
-  std::cout << "New Button: " << name << std::endl;
-  auto  pair = buttons_.emplace(name, name);
+Gtk::Button &TaskBar::addButton(const Application &application) {
+  auto  pair = buttons_.emplace(application.id, application.name);
   auto &button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, pair] {
-    /*
     try {
-      ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", pair.first->first));
+      ipc_.sendCmd(IPC_COMMAND,
+                   fmt::format("[con_id={}] focus", std::to_string(pair.first->first)));
     } catch (const std::exception &e) {
       std::cerr << e.what() << std::endl;
     }
-    */
   });
   if (!config_["disable-scroll"].asBool()) {
     button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -256,7 +270,8 @@ void TaskBar::parseTree(const Json::Value &nodes) {
             WorkspaceMap wp;
             taskMap_.emplace(workspace_name, wp);
           }
-          taskMap_[workspace_name].applications.push_back(window["name"].asString());
+          taskMap_[workspace_name].applications.push_back(
+              {window["id"].asInt(), window["name"].asString()});
           if (window["focused"].asBool())
             taskMap_[workspace_name].focused_num =
                 taskMap_.at(workspace_name).applications.size() - 1;
