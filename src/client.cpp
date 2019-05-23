@@ -1,7 +1,7 @@
 #include "client.hpp"
+#include <spdlog/spdlog.h>
 #include <fstream>
 #include <iostream>
-#include <spdlog/spdlog.h>
 #include "util/clara.hpp"
 #include "util/json.hpp"
 
@@ -229,15 +229,6 @@ void waybar::Client::bindInterfaces() {
 }
 
 int waybar::Client::main(int argc, char *argv[]) {
-  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar");
-  gdk_display = Gdk::Display::get_default();
-  if (!gdk_display) {
-    throw std::runtime_error("Can't find display");
-  }
-  if (!GDK_IS_WAYLAND_DISPLAY(gdk_display->gobj())) {
-    throw std::runtime_error("Bar need to run under Wayland");
-  }
-  wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   bool        show_help = false;
   bool        show_version = false;
   std::string config;
@@ -268,6 +259,15 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
+  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar");
+  gdk_display = Gdk::Display::get_default();
+  if (!gdk_display) {
+    throw std::runtime_error("Can't find display");
+  }
+  if (!GDK_IS_WAYLAND_DISPLAY(gdk_display->gobj())) {
+    throw std::runtime_error("Bar need to run under Wayland");
+  }
+  wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   setupConfigs(config, style);
   setupConfig();
   setupCss();
