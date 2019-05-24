@@ -211,10 +211,16 @@ void waybar::modules::Network::worker() {
   };
 }
 
+const std::string waybar::modules::Network::getNetworkState() const {
+  if (ifid_ == -1 || !linked_) return "disconnected";
+  if (ipaddr_.empty()) return "linked";
+  if (essid_.empty()) return "ethernet";
+  return "wifi";
+}
+
 auto waybar::modules::Network::update() -> void {
-  std::string                 connectiontype;
-  std::string                 tooltip_format;
   std::lock_guard<std::mutex> lock(mutex_);
+  std::string                 tooltip_format;
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
 
@@ -229,45 +235,22 @@ auto waybar::modules::Network::update() -> void {
     bandwidth_up = *up_octets - bandwidth_up_total_;
     bandwidth_up_total_ = *up_octets;
   }
-  if (ifid_ <= 0 || !linked_) {
-    if (config_["format-disconnected"].isString()) {
-      default_format_ = config_["format-disconnected"].asString();
-    }
-    if (config_["tooltip-format-disconnected"].isString()) {
-      tooltip_format = config_["tooltip-format-disconnected"].asString();
-    }
-    label_.get_style_context()->add_class("disconnected");
-    connectiontype = "disconnected";
-  } else {
-    if (essid_.empty()) {
-      if (config_["format-ethernet"].isString()) {
-        default_format_ = config_["format-ethernet"].asString();
-      }
-      if (config_["tooltip-format-ethernet"].isString()) {
-        tooltip_format = config_["tooltip-format-ethernet"].asString();
-      }
-      connectiontype = "ethernet";
-    } else if (ipaddr_.empty()) {
-      if (config_["format-linked"].isString()) {
-        default_format_ = config_["format-linked"].asString();
-      }
-      if (config_["tooltip-format-linked"].isString()) {
-        tooltip_format = config_["tooltip-format-linked"].asString();
-      }
-      connectiontype = "linked";
-    } else {
-      if (config_["format-wifi"].isString()) {
-        default_format_ = config_["format-wifi"].asString();
-      }
-      if (config_["tooltip-format-wifi"].isString()) {
-        tooltip_format = config_["tooltip-format-wifi"].asString();
-      }
-      connectiontype = "wifi";
-    }
-    label_.get_style_context()->remove_class("disconnected");
-  }
   if (!alt_) {
+    auto state = getNetworkState();
+    if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
+      label_.get_style_context()->remove_class(state_);
+    }
+    if (config_["format-" + state].isString()) {
+      default_format_ = config_["format-" + state].asString();
+    }
+    if (config_["tooltip-format-" + state].isString()) {
+      tooltip_format = config_["tooltip-format-" + state].asString();
+    }
+    if (!label_.get_style_context()->has_class(state)) {
+      label_.get_style_context()->add_class(state);
+    }
     format_ = default_format_;
+    state_ = state;
   }
   getState(signal_strength_);
 
@@ -301,7 +284,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("ipaddr", ipaddr_),
       fmt::arg("cidr", cidr_),
       fmt::arg("frequency", frequency_),
-      fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
+      fmt::arg("icon", getIcon(signal_strength_, state_)),
       fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
@@ -324,7 +307,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("ipaddr", ipaddr_),
           fmt::arg("cidr", cidr_),
           fmt::arg("frequency", frequency_),
-          fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
+          fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
                    pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
           fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
@@ -617,6 +600,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     // Check for valid interface
     if (rtif->ifi_index == net->ifid_) {
+      // Down state can be detected here
+      if (!(rtif->ifi_flags & IFF_UP)) {
+        net->ifid_ = -1;
+      }
       net->ipaddr_.clear();
       net->netmask_.clear();
       net->cidr_ = 0;
@@ -634,7 +621,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->dp.emit();
     } else if (rtif->ifi_index == net->ifid_) {
       net->clearIface();
-      net->ifid_ = -1;
       // Check for a new interface and get info
       auto new_iface = net->getPreferredIface(rtif->ifi_index);
       if (new_iface != -1) {
@@ -645,6 +631,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         net->getInterfaceAddress();
         net->thread_timer_.wake_up();
       } else {
+        // Down state can be detected here
+        if (!(rtif->ifi_flags & IFF_UP)) {
+          net->ifid_ = -1;
+        }
         net->dp.emit();
       }
     }
@@ -688,7 +678,6 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
 }
 
 void waybar::modules::Network::parseEssid(struct nlattr **bss) {
-  essid_.clear();
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
     auto       ies = static_cast<char *>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
     auto       ies_len = nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS]);

@@ -27,22 +27,23 @@ class Network : public ALabel {
   static int handleEvents(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);
 
-  void worker();
-  void createInfoSocket();
-  void createEventSocket();
-  int  getExternalInterface(int skip_idx = -1) const;
-  void getInterfaceAddress();
-  int  netlinkRequest(void*, uint32_t, uint32_t groups = 0) const;
-  int  netlinkResponse(void*, uint32_t, uint32_t groups = 0) const;
-  void parseEssid(struct nlattr**);
-  void parseSignal(struct nlattr**);
-  void parseFreq(struct nlattr**);
-  bool associatedOrJoined(struct nlattr**);
-  bool checkInterface(struct ifinfomsg* rtif, std::string name);
-  int  getPreferredIface(int skip_idx = -1) const;
-  auto getInfo() -> void;
-  void clearIface();
-  bool wildcardMatch(const std::string& pattern, const std::string& text) const;
+  void              worker();
+  void              createInfoSocket();
+  void              createEventSocket();
+  int               getExternalInterface(int skip_idx = -1) const;
+  void              getInterfaceAddress();
+  int               netlinkRequest(void*, uint32_t, uint32_t groups = 0) const;
+  int               netlinkResponse(void*, uint32_t, uint32_t groups = 0) const;
+  void              parseEssid(struct nlattr**);
+  void              parseSignal(struct nlattr**);
+  void              parseFreq(struct nlattr**);
+  bool              associatedOrJoined(struct nlattr**);
+  bool              checkInterface(struct ifinfomsg* rtif, std::string name);
+  int               getPreferredIface(int skip_idx = -1) const;
+  auto              getInfo() -> void;
+  const std::string getNetworkState() const;
+  void              clearIface();
+  bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
 
   waybar::util::SleeperThread thread_;
   waybar::util::SleeperThread thread_timer_;
@@ -60,6 +61,7 @@ class Network : public ALabel {
   unsigned long long bandwidth_down_total_;
   unsigned long long bandwidth_up_total_;
 
+  std::string state_;
   std::string essid_;
   std::string ifname_;
   std::string ipaddr_;
