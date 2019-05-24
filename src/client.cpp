@@ -10,7 +10,7 @@ waybar::Client *waybar::Client::inst() {
   return c;
 }
 
-const std::string waybar::Client::getValidPath(const std::vector<std::string> &paths) {
+const std::string waybar::Client::getValidPath(const std::vector<std::string> &paths) const {
   wordexp_t p;
 
   for (const std::string &path : paths) {
@@ -172,31 +172,33 @@ void waybar::Client::handleDescription(void * /*data*/, struct zxdg_output_v1 * 
   // Nothing here
 }
 
-void waybar::Client::setupConfigs(const std::string &config, const std::string &style) {
-  config_file_ = config.empty() ? getValidPath({
-                                      "$XDG_CONFIG_HOME/waybar/config",
-                                      "$HOME/.config/waybar/config",
-                                      "$HOME/waybar/config",
-                                      "/etc/xdg/waybar/config",
-                                      "./resources/config",
+std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
+    const std::string &config, const std::string &style) const {
+  auto config_file = config.empty() ? getValidPath({
+                                          "$XDG_CONFIG_HOME/waybar/config",
+                                          "$HOME/.config/waybar/config",
+                                          "$HOME/waybar/config",
+                                          "/etc/xdg/waybar/config",
+                                          "./resources/config",
+                                      })
+                                    : config;
+  auto css_file = style.empty() ? getValidPath({
+                                      "$XDG_CONFIG_HOME/waybar/style.css",
+                                      "$HOME/.config/waybar/style.css",
+                                      "$HOME/waybar/style.css",
+                                      "/etc/xdg/waybar/style.css",
+                                      "./resources/style.css",
                                   })
-                                : config;
-  css_file_ = style.empty() ? getValidPath({
-                                  "$XDG_CONFIG_HOME/waybar/style.css",
-                                  "$HOME/.config/waybar/style.css",
-                                  "$HOME/waybar/style.css",
-                                  "/etc/xdg/waybar/style.css",
-                                  "./resources/style.css",
-                              })
-                            : style;
-  if (css_file_.empty() || config_file_.empty()) {
+                                : style;
+  if (css_file.empty() || config_file.empty()) {
     throw std::runtime_error("Missing required resources files");
   }
-  spdlog::info("Resources files: {}, {}", config_file_, css_file_);
+  spdlog::info("Resources files: {}, {}", config_file, css_file);
+  return {config_file, css_file};
 }
 
-auto waybar::Client::setupConfig() -> void {
-  std::ifstream file(config_file_);
+auto waybar::Client::setupConfig(const std::string &config_file) -> void {
+  std::ifstream file(config_file);
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
   }
@@ -205,12 +207,12 @@ auto waybar::Client::setupConfig() -> void {
   config_ = parser.parse(str);
 }
 
-auto waybar::Client::setupCss() -> void {
+auto waybar::Client::setupCss(const std::string &css_file) -> void {
   css_provider_ = Gtk::CssProvider::create();
   style_context_ = Gtk::StyleContext::create();
 
   // Load our css file, wherever that may be hiding
-  if (!css_provider_->load_from_path(css_file_)) {
+  if (!css_provider_->load_from_path(css_file)) {
     throw std::runtime_error("Can't open style file");
   }
 }
@@ -268,9 +270,9 @@ int waybar::Client::main(int argc, char *argv[]) {
     throw std::runtime_error("Bar need to run under Wayland");
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
-  setupConfigs(config, style);
-  setupConfig();
-  setupCss();
+  auto [config_file, css_file] = getConfigs(config, style);
+  setupConfig(config_file);
+  setupCss(css_file);
   bindInterfaces();
   gtk_app->hold();
   gtk_app->run();
