@@ -37,9 +37,9 @@ class Workspaces : public IModule, public sigc::trackable {
   std::vector<Json::Value>                     workspaces_;
   std::vector<std::string>                     workspaces_order_;
   waybar::util::SleeperThread                  thread_;
+  Ipc                                          ipc_;
   std::mutex                                   mutex_;
   Gtk::Box                                     box_;
-  Ipc                                          ipc_;
   util::JsonParser                             parser_;
   bool                                         scrolling_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
