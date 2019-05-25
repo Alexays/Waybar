@@ -448,15 +448,13 @@ out:
 void waybar::modules::Network::getInterfaceAddress() {
   unsigned int    cidrRaw;
   struct ifaddrs *ifaddr, *ifa;
-  ipaddr_.clear();
-  netmask_.clear();
   cidr_ = 0;
   int success = getifaddrs(&ifaddr);
   if (success != 0) {
     return;
   }
   ifa = ifaddr;
-  while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
+  while (ifa != nullptr) {
     if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
         ifa->ifa_name == ifname_) {
       char ipaddr[INET6_ADDRSTRLEN];
@@ -475,6 +473,7 @@ void waybar::modules::Network::getInterfaceAddress() {
         cidrRaw >>= 1;
       }
       cidr_ = cidr;
+      break;
     }
     ifa = ifa->ifa_next;
   }
