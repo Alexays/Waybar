@@ -38,13 +38,13 @@ class Bar {
   bool                          vertical = false;
 
  private:
-  static constexpr const char* MIN_HEIGHT_MSG =
+  static constexpr const char *MIN_HEIGHT_MSG =
       "Requested height: {} exceeds the minimum height: {} required by the modules";
-  static constexpr const char* MIN_WIDTH_MSG =
+  static constexpr const char *MIN_WIDTH_MSG =
       "Requested width: {} exceeds the minimum width: {} required by the modules";
-  static constexpr const char* BAR_SIZE_MSG =
+  static constexpr const char *BAR_SIZE_MSG =
       "Bar configured (width: {}, height: {}) for output: {}";
-  static constexpr const char* SIZE_DEFINED =
+  static constexpr const char *SIZE_DEFINED =
       "{} size is defined in the config file so it will stay like that";
   static void layerSurfaceHandleConfigure(void *, struct zwlr_layer_surface_v1 *, uint32_t,
                                           uint32_t, uint32_t);
@@ -52,6 +52,8 @@ class Bar {
 
   void destroyOutput();
   void onConfigure(GdkEventConfigure *ev);
+  void onRealize();
+  void onMap(GdkEventAny *ev);
   void setMarginsAndZone(uint32_t height, uint32_t width);
   auto setupWidgets() -> void;
   void getModules(const Factory &, const std::string &);
@@ -66,6 +68,7 @@ class Bar {
   } margins_;
   uint32_t                                      width_ = 0;
   uint32_t                                      height_ = 1;
+  uint8_t                                       anchor_;
   Gtk::Box                                      left_;
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;
