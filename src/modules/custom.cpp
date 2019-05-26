@@ -102,30 +102,29 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
-
-    auto str = fmt::format(format_,
-                           text_,
-                           fmt::arg("alt", alt_),
-                           fmt::arg("icon", getIcon(percentage_, alt_)),
-                           fmt::arg("percentage", percentage_));
-    label_.set_markup(str);
-    if (tooltipEnabled()) {
-      if (text_ == tooltip_) {
-        label_.set_tooltip_text(str);
-      } else {
-        label_.set_tooltip_text(tooltip_);
-      }
-    }
-    auto classes = label_.get_style_context()->list_classes();
-    for (auto const& c : classes) {
-      label_.get_style_context()->remove_class(c);
-    }
-    for (auto const& c : class_) {
-      label_.get_style_context()->add_class(c);
-    }
     if (text_.empty()) {
       event_box_.hide();
     } else {
+      auto str = fmt::format(format_,
+                             text_,
+                             fmt::arg("alt", alt_),
+                             fmt::arg("icon", getIcon(percentage_, alt_)),
+                             fmt::arg("percentage", percentage_));
+      label_.set_markup(str);
+      if (tooltipEnabled()) {
+        if (text_ == tooltip_) {
+          label_.set_tooltip_text(str);
+        } else {
+          label_.set_tooltip_text(tooltip_);
+        }
+      }
+      auto classes = label_.get_style_context()->list_classes();
+      for (auto const& c : classes) {
+        label_.get_style_context()->remove_class(c);
+      }
+      for (auto const& c : class_) {
+        label_.get_style_context()->add_class(c);
+      }
       event_box_.show();
     }
   }
