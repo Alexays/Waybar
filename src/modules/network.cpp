@@ -122,8 +122,11 @@ waybar::modules::Network::~Network() {
   }
   if (ev_sock_ != nullptr) {
     nl_socket_drop_membership(ev_sock_, RTNLGRP_LINK);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+    if (family_ == AF_INET) {
+      nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
+    } else {
+      nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+    }
     nl_close(ev_sock_);
     nl_socket_free(ev_sock_);
   }
@@ -142,8 +145,11 @@ void waybar::modules::Network::createInfoSocket() {
     throw std::runtime_error("Can't connect network socket");
   }
   nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+  if (family_ == AF_INET) {
+    nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
+  } else {
+    nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+  }
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
@@ -541,7 +547,8 @@ int waybar::modules::Network::getPreferredIface(int skip_idx) const {
       ifa = ifaddr;
       ifid = -1;
       while (ifa != nullptr) {
-        if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
+        if (ifa->ifa_addr->sa_family == family_ &&
+            wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
           ifid = if_nametoindex(ifa->ifa_name);
           break;
         }
@@ -571,11 +578,10 @@ void waybar::modules::Network::clearIface() {
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   auto                        net = static_cast<waybar::modules::Network *>(data);
-  auto                        nh = nlmsg_hdr(msg);
   std::lock_guard<std::mutex> lock(net->mutex_);
-
+  auto                        nh = nlmsg_hdr(msg);
+  auto                        rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
   if (nh->nlmsg_type == RTM_NEWADDR) {
-    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Auto detected network can also be assigned here
@@ -596,7 +602,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->thread_timer_.wake_up();
     }
   } else if (nh->nlmsg_type == RTM_DELADDR) {
-    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     // Check for valid interface
     if (rtif->ifi_index == net->ifid_) {
       net->ipaddr_.clear();
@@ -605,7 +610,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->dp.emit();
     }
   } else if (nh->nlmsg_type < RTM_NEWADDR) {
-    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Check for valid interface
