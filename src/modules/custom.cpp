@@ -123,8 +123,11 @@ auto waybar::modules::Custom::update() -> void {
     for (auto const& c : class_) {
       label_.get_style_context()->add_class(c);
     }
-
-    event_box_.show();
+    if (text_.empty()) {
+      event_box_.hide();
+    } else {
+      event_box_.show();
+    }
   }
 }
 
