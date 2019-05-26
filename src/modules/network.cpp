@@ -75,7 +75,6 @@ std::optional<unsigned long long> read_netstat(std::string_view category, std::s
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "network", id, "{ifname}", 60),
       ifid_(-1),
-      last_ext_iface_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
@@ -447,7 +446,6 @@ int waybar::modules::Network::getExternalInterface(int skip_idx) const {
   } while (true);
 
 out:
-  last_ext_iface_ = ifidx;
   return ifidx;
 }
 
@@ -524,10 +522,6 @@ bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::strin
            wildcardMatch(config_["interface"].asString(), name);
   }
   auto external_iface = getExternalInterface();
-  if (external_iface == -1) {
-    // Try with lastest working external iface
-    return last_ext_iface_ == rtif->ifi_index;
-  }
   return external_iface == rtif->ifi_index;
 }
 
@@ -614,9 +608,12 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     if_indextoname(rtif->ifi_index, ifname);
     // Check for valid interface
     if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
-      net->linked_ = true;
+      net->linked_ = rtif->ifi_flags & IFF_RUNNING;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
+      // Get Iface and WIFI info
+      net->getInterfaceAddress();
+      net->thread_timer_.wake_up();
     } else if (rtif->ifi_index == net->ifid_ && !(rtif->ifi_flags & IFF_RUNNING)) {
       net->clearIface();
       // Check for a new interface and get info

@@ -49,7 +49,6 @@ class Network : public ALabel {
   waybar::util::SleeperThread thread_;
   waybar::util::SleeperThread thread_timer_;
   int                         ifid_;
-  mutable int                 last_ext_iface_;
   sa_family_t                 family_;
   struct sockaddr_nl          nladdr_ = {0};
   struct nl_sock*             sock_ = nullptr;
