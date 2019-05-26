@@ -41,6 +41,7 @@ class Network : public ALabel {
   bool              checkInterface(struct ifinfomsg* rtif, std::string name);
   int               getPreferredIface(int skip_idx = -1) const;
   auto              getInfo() -> void;
+  void              checkNewInterface(struct ifinfomsg* rtif);
   const std::string getNetworkState() const;
   void              clearIface();
   bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
