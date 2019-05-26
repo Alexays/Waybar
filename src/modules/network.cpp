@@ -631,7 +631,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       if (rtif->ifi_index != net->ifid_) {
         net->clearIface();
       }
-      net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
     }
