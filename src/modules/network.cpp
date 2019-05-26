@@ -599,10 +599,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     // Check for valid interface
     if (rtif->ifi_index == net->ifid_) {
-      // Down state can be detected here
-      if (!(rtif->ifi_flags & IFF_UP)) {
-        net->ifid_ = -1;
-      }
       net->ipaddr_.clear();
       net->netmask_.clear();
       net->cidr_ = 0;
@@ -630,10 +626,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         net->getInterfaceAddress();
         net->thread_timer_.wake_up();
       } else {
-        // Down state can be detected here
-        if (!(rtif->ifi_flags & IFF_UP)) {
-          net->ifid_ = -1;
-        }
+        net->ifid_ = -1;
         net->dp.emit();
       }
     }
