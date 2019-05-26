@@ -576,12 +576,53 @@ void waybar::modules::Network::clearIface() {
   linked_ = false;
 }
 
+void waybar::modules::Network::checkNewInterface(struct ifinfomsg *rtif) {
+  auto new_iface = getPreferredIface(rtif->ifi_index);
+  if (new_iface != -1) {
+    ifid_ = new_iface;
+    char ifname[IF_NAMESIZE];
+    if_indextoname(new_iface, ifname);
+    ifname_ = ifname;
+    getInterfaceAddress();
+    thread_timer_.wake_up();
+  } else {
+    ifid_ = -1;
+    dp.emit();
+  }
+}
+
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   auto                        net = static_cast<waybar::modules::Network *>(data);
   std::lock_guard<std::mutex> lock(net->mutex_);
   auto                        nh = nlmsg_hdr(msg);
   auto                        rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-  if (nh->nlmsg_type == RTM_NEWADDR) {
+  if (nh->nlmsg_type == RTM_DELADDR) {
+    // Check for valid interface
+    if (rtif->ifi_index == net->ifid_) {
+      net->ipaddr_.clear();
+      net->netmask_.clear();
+      net->cidr_ = 0;
+      if (!(rtif->ifi_flags & IFF_RUNNING)) {
+        net->clearIface();
+        // Check for a new interface and get info
+        net->checkNewInterface(rtif);
+      }
+      net->dp.emit();
+    }
+  } else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK) {
+    char ifname[IF_NAMESIZE];
+    if_indextoname(rtif->ifi_index, ifname);
+    // Check for valid interface
+    if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
+      net->linked_ = true;
+      net->ifname_ = ifname;
+      net->ifid_ = rtif->ifi_index;
+    } else if (rtif->ifi_index == net->ifid_ && !(rtif->ifi_flags & IFF_RUNNING)) {
+      net->clearIface();
+      // Check for a new interface and get info
+      net->checkNewInterface(rtif);
+    }
+  } else {
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Auto detected network can also be assigned here
@@ -600,39 +641,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       // Get Iface and WIFI info
       net->getInterfaceAddress();
       net->thread_timer_.wake_up();
-    }
-  } else if (nh->nlmsg_type == RTM_DELADDR) {
-    // Check for valid interface
-    if (rtif->ifi_index == net->ifid_) {
-      net->ipaddr_.clear();
-      net->netmask_.clear();
-      net->cidr_ = 0;
-      net->dp.emit();
-    }
-  } else if (nh->nlmsg_type < RTM_NEWADDR) {
-    char ifname[IF_NAMESIZE];
-    if_indextoname(rtif->ifi_index, ifname);
-    // Check for valid interface
-    if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
-      net->linked_ = true;
-      net->ifname_ = ifname;
-      net->ifid_ = rtif->ifi_index;
-      net->dp.emit();
-    } else if (rtif->ifi_index == net->ifid_) {
-      net->clearIface();
-      // Check for a new interface and get info
-      auto new_iface = net->getPreferredIface(rtif->ifi_index);
-      if (new_iface != -1) {
-        net->ifid_ = new_iface;
-        char ifname[IF_NAMESIZE];
-        if_indextoname(new_iface, ifname);
-        net->ifname_ = ifname;
-        net->getInterfaceAddress();
-        net->thread_timer_.wake_up();
-      } else {
-        net->ifid_ = -1;
-        net->dp.emit();
-      }
     }
   }
   return NL_SKIP;
