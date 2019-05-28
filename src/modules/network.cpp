@@ -605,14 +605,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     char ifname[IF_NAMESIZE];
     if_indextoname(ifi->ifi_index, ifname);
     // Check for valid interface
-    if (net->checkInterface(ifi, ifname)) {
+    if ((net->ifid_ == -1 || ifi->ifi_index != net->ifid_) && net->checkInterface(ifi, ifname)) {
       net->ifname_ = ifname;
       net->ifid_ = ifi->ifi_index;
       // Get Iface and WIFI info
       net->getInterfaceAddress();
       net->thread_timer_.wake_up();
       return NL_OK;
-    } else if (ifi->ifi_index == net->ifid_ && !(ifi->ifi_flags & IFF_RUNNING)) {
+    } else if (ifi->ifi_index == net->ifid_ && (!(ifi->ifi_flags & IFF_RUNNING) ||
+               !(ifi->ifi_flags & IFF_UP) || !net->checkInterface(ifi, ifname))) {
       net->clearIface();
       // Check for a new interface and get info
       net->checkNewInterface(ifi);
