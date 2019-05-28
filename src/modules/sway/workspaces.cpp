@@ -16,7 +16,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
   ipc_.sendCmd(IPC_GET_WORKSPACES);
-  if (!config["disable-bar-scroll"].asBool()) {
+  if (config["enable-bar-scroll"].asBool()) {
     auto &window = const_cast<Bar &>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
