@@ -577,6 +577,7 @@ void waybar::modules::Network::checkNewInterface(struct ifinfomsg *rtif) {
     char ifname[IF_NAMESIZE];
     if_indextoname(new_iface, ifname);
     ifname_ = ifname;
+    linked_ = true;
     getInterfaceAddress();
     thread_timer_.wake_up();
   } else {
@@ -608,7 +609,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     if_indextoname(rtif->ifi_index, ifname);
     // Check for valid interface
     if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
-      net->linked_ = rtif->ifi_flags & IFF_RUNNING;
+      net->linked_ = !!(rtif->ifi_flags & IFF_RUNNING);
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
       // Get Iface and WIFI info
@@ -628,6 +629,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       if (rtif->ifi_index != net->ifid_) {
         net->clearIface();
       }
+      net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
     }
