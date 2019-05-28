@@ -96,8 +96,8 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     bandwidth_up_total_ = 0;
   }
 
-  createInfoSocket();
   createEventSocket();
+  createInfoSocket();
   auto default_iface = getPreferredIface();
   if (default_iface != -1) {
     ifid_ = default_iface;
@@ -135,11 +135,12 @@ waybar::modules::Network::~Network() {
   }
 }
 
-void waybar::modules::Network::createInfoSocket() {
+void waybar::modules::Network::createEventSocket() {
   ev_sock_ = nl_socket_alloc();
   nl_socket_disable_seq_check(ev_sock_);
   nl_socket_modify_cb(ev_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
-  nl_join_groups(ev_sock_, RTMGRP_LINK);
+  auto groups = RTMGRP_LINK | (family_ == AF_INET ? RTMGRP_IPV4_IFADDR : RTMGRP_IPV6_IFADDR);
+  nl_join_groups(ev_sock_, groups);  // Deprecated
   if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
     throw std::runtime_error("Can't connect network socket");
   }
@@ -175,7 +176,7 @@ void waybar::modules::Network::createInfoSocket() {
   }
 }
 
-void waybar::modules::Network::createEventSocket() {
+void waybar::modules::Network::createInfoSocket() {
   sock_ = nl_socket_alloc();
   if (genl_connect(sock_) != 0) {
     throw std::runtime_error("Can't connect to netlink socket");
@@ -205,9 +206,7 @@ void waybar::modules::Network::worker() {
     int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
-        if (events[i].data.fd == nl_socket_get_fd(ev_sock_)) {
-          nl_recvmsgs_default(ev_sock_);
-        } else {
+        if (events[i].data.fd != nl_socket_get_fd(ev_sock_) || nl_recvmsgs_default(ev_sock_) < 0) {
           thread_.stop();
           break;
         }
@@ -217,7 +216,7 @@ void waybar::modules::Network::worker() {
 }
 
 const std::string waybar::modules::Network::getNetworkState() const {
-  if (ifid_ == -1 || !linked_) return "disconnected";
+  if (ifid_ == -1) return "disconnected";
   if (ipaddr_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";
@@ -470,7 +469,6 @@ void waybar::modules::Network::getInterfaceAddress() {
       auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
       netmask_ = inet_ntop(family_, &net_addr->sin_addr, netmask, INET6_ADDRSTRLEN);
       cidrRaw = net_addr->sin_addr.s_addr;
-      linked_ = ifa->ifa_flags & IFF_RUNNING;
       unsigned int cidr = 0;
       while (cidrRaw) {
         cidr += cidrRaw & 1;
@@ -567,7 +565,6 @@ void waybar::modules::Network::clearIface() {
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
   frequency_ = 0;
-  linked_ = false;
 }
 
 void waybar::modules::Network::checkNewInterface(struct ifinfomsg *rtif) {
@@ -577,7 +574,6 @@ void waybar::modules::Network::checkNewInterface(struct ifinfomsg *rtif) {
     char ifname[IF_NAMESIZE];
     if_indextoname(new_iface, ifname);
     ifname_ = ifname;
-    linked_ = true;
     getInterfaceAddress();
     thread_timer_.wake_up();
   } else {
@@ -590,55 +586,63 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   auto                        net = static_cast<waybar::modules::Network *>(data);
   std::lock_guard<std::mutex> lock(net->mutex_);
   auto                        nh = nlmsg_hdr(msg);
-  auto                        rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+  auto                        ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
   if (nh->nlmsg_type == RTM_DELADDR) {
     // Check for valid interface
-    if (rtif->ifi_index == net->ifid_) {
+    if (ifi->ifi_index == net->ifid_) {
       net->ipaddr_.clear();
       net->netmask_.clear();
       net->cidr_ = 0;
-      if (!(rtif->ifi_flags & IFF_RUNNING)) {
+      if (!(ifi->ifi_flags & IFF_RUNNING)) {
         net->clearIface();
         // Check for a new interface and get info
-        net->checkNewInterface(rtif);
+        net->checkNewInterface(ifi);
       }
       net->dp.emit();
+      return NL_OK;
     }
   } else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK) {
     char ifname[IF_NAMESIZE];
-    if_indextoname(rtif->ifi_index, ifname);
+    if_indextoname(ifi->ifi_index, ifname);
     // Check for valid interface
-    if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
-      net->linked_ = !!(rtif->ifi_flags & IFF_RUNNING);
+    if (net->checkInterface(ifi, ifname)) {
       net->ifname_ = ifname;
-      net->ifid_ = rtif->ifi_index;
+      net->ifid_ = ifi->ifi_index;
       // Get Iface and WIFI info
       net->getInterfaceAddress();
       net->thread_timer_.wake_up();
-    } else if (rtif->ifi_index == net->ifid_ && !(rtif->ifi_flags & IFF_RUNNING)) {
+      return NL_OK;
+    } else if (ifi->ifi_index == net->ifid_ && !(ifi->ifi_flags & IFF_RUNNING)) {
       net->clearIface();
       // Check for a new interface and get info
-      net->checkNewInterface(rtif);
+      net->checkNewInterface(ifi);
+      return NL_OK;
     }
   } else {
     char ifname[IF_NAMESIZE];
-    if_indextoname(rtif->ifi_index, ifname);
+    if_indextoname(ifi->ifi_index, ifname);
     // Auto detected network can also be assigned here
-    if ((net->ifid_ == -1 || rtif->ifi_index != net->ifid_) && net->checkInterface(rtif, ifname)) {
-      // If iface is different, clear data
-      if (rtif->ifi_index != net->ifid_) {
-        net->clearIface();
+    if (net->ifid_ == -1 || ifi->ifi_index != net->ifid_) {
+      // checkInterface may need some delay to detect external interface
+      for (uint8_t tries = 0; tries < MAX_RETRY; tries += 1) {
+        if (net->checkInterface(ifi, ifname)) {
+          // If iface is different, clear data
+          if (ifi->ifi_index != net->ifid_) {
+            net->clearIface();
+          }
+          net->ifname_ = ifname;
+          net->ifid_ = ifi->ifi_index;
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
       }
-      net->linked_ = true;
-      net->ifname_ = ifname;
-      net->ifid_ = rtif->ifi_index;
     }
     // Check for valid interface
-    if (rtif->ifi_index == net->ifid_) {
-      net->linked_ = true;
+    if (ifi->ifi_index == net->ifid_) {
       // Get Iface and WIFI info
       net->getInterfaceAddress();
       net->thread_timer_.wake_up();
+      return NL_OK;
     }
   }
   return NL_SKIP;
@@ -676,7 +680,7 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   net->parseEssid(bss);
   net->parseSignal(bss);
   net->parseFreq(bss);
-  return NL_SKIP;
+  return NL_OK;
 }
 
 void waybar::modules::Network::parseEssid(struct nlattr **bss) {
