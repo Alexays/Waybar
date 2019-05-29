@@ -46,17 +46,15 @@ class Network : public ALabel {
   void              clearIface();
   bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
 
-  waybar::util::SleeperThread thread_;
-  waybar::util::SleeperThread thread_timer_;
-  int                         ifid_;
-  sa_family_t                 family_;
-  struct sockaddr_nl          nladdr_ = {0};
-  struct nl_sock*             sock_ = nullptr;
-  struct nl_sock*             ev_sock_ = nullptr;
-  int                         efd_;
-  int                         ev_fd_;
-  int                         nl80211_id_;
-  std::mutex                  mutex_;
+  int                ifid_;
+  sa_family_t        family_;
+  struct sockaddr_nl nladdr_ = {0};
+  struct nl_sock*    sock_ = nullptr;
+  struct nl_sock*    ev_sock_ = nullptr;
+  int                efd_;
+  int                ev_fd_;
+  int                nl80211_id_;
+  std::mutex         mutex_;
 
   unsigned long long bandwidth_down_total_;
   unsigned long long bandwidth_up_total_;
@@ -70,6 +68,9 @@ class Network : public ALabel {
   int32_t     signal_strength_dbm_;
   uint8_t     signal_strength_;
   uint32_t    frequency_;
+
+  util::SleeperThread thread_;
+  util::SleeperThread thread_timer_;
 };
 
 }  // namespace waybar::modules

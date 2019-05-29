@@ -25,17 +25,18 @@ class Custom : public ALabel {
   bool handleScroll(GdkEventScroll* e);
   bool handleToggle(GdkEventButton* const& e);
 
-  const std::string           name_;
-  std::string                 text_;
-  std::string                 alt_;
-  std::string                 tooltip_;
-  std::vector<std::string>    class_;
-  int                         percentage_;
-  waybar::util::SleeperThread thread_;
-  waybar::util::command::res  output_;
-  waybar::util::JsonParser    parser_;
-  FILE*                       fp_;
-  int                         pid_;
+  const std::string        name_;
+  std::string              text_;
+  std::string              alt_;
+  std::string              tooltip_;
+  std::vector<std::string> class_;
+  int                      percentage_;
+  FILE*                    fp_;
+  int                      pid_;
+  util::command::res       output_;
+  util::JsonParser         parser_;
+
+  util::SleeperThread thread_;
 };
 
 }  // namespace waybar::modules

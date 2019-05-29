@@ -25,14 +25,14 @@ void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      auto res = waybar::util::command::exec(config_["exec-if"].asString());
+      auto res = util::command::exec(config_["exec-if"].asString());
       if (res.exit_code != 0) {
         can_update = false;
         event_box_.hide();
       }
     }
     if (can_update) {
-      output_ = waybar::util::command::exec(config_["exec"].asString());
+      output_ = util::command::exec(config_["exec"].asString());
       dp.emit();
     }
     thread_.sleep_for(interval_);

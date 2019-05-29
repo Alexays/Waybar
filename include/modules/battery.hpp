@@ -31,19 +31,20 @@ class Battery : public ALabel {
  private:
   static inline const fs::path data_dir_ = "/sys/class/power_supply/";
 
-  void              getBatteries();
-  void              worker();
-  const std::string getAdapterStatus(uint8_t capacity) const;
+  void                                          getBatteries();
+  void                                          worker();
+  const std::string                             getAdapterStatus(uint8_t capacity) const;
   const std::tuple<uint8_t, float, std::string> getInfos() const;
-  const std::string formatTimeRemaining(float hoursRemaining);
+  const std::string                             formatTimeRemaining(float hoursRemaining);
 
-  util::SleeperThread   thread_;
-  util::SleeperThread   thread_timer_;
   std::vector<fs::path> batteries_;
   fs::path              adapter_;
   int                   fd_;
   std::vector<int>      wds_;
   std::string           old_status_;
+
+  util::SleeperThread   thread_;
+  util::SleeperThread   thread_timer_;
 };
 
 }  // namespace waybar::modules

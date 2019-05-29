@@ -36,13 +36,14 @@ class Workspaces : public IModule, public sigc::trackable {
   const Json::Value&                           config_;
   std::vector<Json::Value>                     workspaces_;
   std::vector<std::string>                     workspaces_order_;
-  waybar::util::SleeperThread                  thread_;
-  Ipc                                          ipc_;
   std::mutex                                   mutex_;
   Gtk::Box                                     box_;
   util::JsonParser                             parser_;
   bool                                         scrolling_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
+
+  util::SleeperThread thread_;
+  Ipc                 ipc_;
 };
 
 }  // namespace waybar::modules::sway
