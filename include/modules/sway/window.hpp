@@ -24,14 +24,15 @@ class Window : public ALabel, public sigc::trackable {
   std::tuple<std::size_t, int, std::string, std::string> getFocusedNode(const Json::Value& nodes);
   void                                                   getTree();
 
-  const Bar&                  bar_;
-  waybar::util::SleeperThread thread_;
-  Ipc                         ipc_;
-  std::mutex                  mutex_;
-  std::string                 window_;
-  int                         windowId_;
-  std::string                 app_id_;
-  util::JsonParser            parser_;
+  const Bar&       bar_;
+  std::mutex       mutex_;
+  std::string      window_;
+  int              windowId_;
+  std::string      app_id_;
+  util::JsonParser parser_;
+
+  util::SleeperThread thread_;
+  Ipc                 ipc_;
 };
 
 }  // namespace waybar::modules::sway

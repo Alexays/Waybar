@@ -56,6 +56,6 @@ class Backlight : public ALabel {
   std::mutex                udev_thread_mutex_;
   std::vector<BacklightDev> devices_;
   // thread must destruct before shared data
-  waybar::util::SleeperThread udev_thread_;
+  util::SleeperThread udev_thread_;
 };
 }  // namespace waybar::modules
