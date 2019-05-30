@@ -1,14 +1,18 @@
 #include "modules/sni/tray.hpp"
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules::SNI {
 
 Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     : config_(config),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
+      watcher_(nb_hosts_),
       host_(nb_hosts_, config, std::bind(&Tray::onAdd, this, std::placeholders::_1),
             std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
   box_.set_name("tray");
+  spdlog::warn(
+      "For a functionnal tray you must have libappindicator-* installed and export "
+      "XDG_CURRENT_DESKTOP=Unity");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
@@ -39,4 +43,4 @@ auto Tray::update() -> void {
 
 Tray::operator Gtk::Widget&() { return box_; }
 
-}
+}  // namespace waybar::modules::SNI

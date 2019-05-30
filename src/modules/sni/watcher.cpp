@@ -1,16 +1,16 @@
 #include "modules/sni/watcher.hpp"
-
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 using namespace waybar::modules::SNI;
 
-Watcher::Watcher()
+Watcher::Watcher(std::size_t id)
     : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
                                        "org.kde.StatusNotifierWatcher",
                                        sigc::mem_fun(*this, &Watcher::busAcquired),
                                        Gio::DBus::SlotNameAcquired(), Gio::DBus::SlotNameLost(),
                                        Gio::DBus::BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT |
                                            Gio::DBus::BUS_NAME_OWNER_FLAGS_REPLACE)),
+      watcher_id_(id),
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {
@@ -34,7 +34,7 @@ void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib:
   if (error != nullptr) {
     // Don't print an error when a watcher is already present
     if (error->code != 2) {
-      std::cerr << error->message << std::endl;
+      spdlog::error("Watcher {}: {}", watcher_id_, error->message);
     }
     g_error_free(error);
     return;

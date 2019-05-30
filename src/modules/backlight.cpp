@@ -213,7 +213,9 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
   const char *name = udev_device_get_sysname(dev);
   check_nn(name);
 
-  const char *actual = udev_device_get_sysattr_value(dev, "actual_brightness");
+  const char *actual_brightness_attr = strcmp(name, "amdgpu_bl0") == 0 ? "brightness" : "actual_brightness";
+
+  const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
   check_nn(actual);
   const int actual_int = std::stoi(actual);
 

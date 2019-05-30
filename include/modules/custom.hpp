@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 #include <csignal>
-#include <iostream>
+#include <string>
 #include "ALabel.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
@@ -22,6 +22,8 @@ class Custom : public ALabel {
   void continuousWorker();
   void parseOutputRaw();
   void parseOutputJson();
+  bool handleScroll(GdkEventScroll* e);
+  bool handleToggle(GdkEventButton* const& e);
 
   const std::string           name_;
   std::string                 text_;

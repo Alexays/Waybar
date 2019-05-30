@@ -1,5 +1,74 @@
 #include "modules/network.hpp"
+#include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
+#include <fstream>
+
+namespace {
+
+  constexpr const char * NETSTAT_FILE = "/proc/net/netstat"; // std::ifstream does not take std::string_view as param
+  constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
+  constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
+  constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
+
+  std::ifstream netstat(NETSTAT_FILE);
+  std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
+    if (!netstat) {
+      spdlog::warn("Failed to open netstat file {}", NETSTAT_FILE);
+      return {};
+    }
+    netstat.seekg(std::ios_base::beg);
+
+
+    // finding corresponding line (category)
+    // looks into the file for the first line starting by the 'category' string
+    auto starts_with = [](const std::string& str, std::string_view start) {
+      return start == std::string_view{str.data(), std::min(str.size(), start.size())};
+    };
+
+    std::string read;
+    while (std::getline(netstat, read) && !starts_with(read, category));
+    if (!starts_with(read, category)) {
+      spdlog::warn("Category '{}' not found in netstat file {}", category, NETSTAT_FILE);
+      return {};
+    }
+
+    // finding corresponding column (key)
+    // looks into the fetched line for the first word (space separated) equal to 'key'
+    int index = 0;
+    auto r_it = read.begin();
+    auto k_it = key.begin();
+    while (k_it != key.end() && r_it != read.end()) {
+      if (*r_it != *k_it) {
+        r_it = std::find(r_it, read.end(), ' ');
+        if (r_it != read.end()) {
+          ++r_it;
+        }
+        k_it = key.begin();
+        ++index;
+      } else {
+        ++r_it;
+        ++k_it;
+      }
+    }
+
+    if (r_it == read.end() && k_it != key.end()) {
+      spdlog::warn("Key '{}' not found in category '{}' of netstat file {}", key, category, NETSTAT_FILE);
+      return {};
+    }
+
+    // finally accessing value
+    // accesses the line right under the fetched one
+    std::getline(netstat, read);
+    assert(starts_with(read, category));
+    std::istringstream iss(read);
+    while (index--) {
+      std::getline(iss, read, ' ');
+    }
+    unsigned long long value;
+    iss >> value;
+    return value;
+  }
+}
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "{ifname}", 60),
@@ -16,6 +85,21 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
+
+  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
+  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
+  if (down_octets) {
+    bandwidth_down_total_ = *down_octets;
+  } else {
+    bandwidth_down_total_ = 0;
+  }
+
+  if (up_octets) {
+    bandwidth_up_total_ = *up_octets;
+  } else {
+    bandwidth_up_total_ = 0;
+  }
+
   createInfoSocket();
   createEventSocket();
   auto default_iface = getPreferredIface();
@@ -42,8 +126,6 @@ waybar::modules::Network::~Network() {
     nl_socket_drop_membership(ev_sock_, RTNLGRP_LINK);
     nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
     nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
     nl_close(ev_sock_);
     nl_socket_free(ev_sock_);
   }
@@ -64,8 +146,6 @@ void waybar::modules::Network::createInfoSocket() {
   nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
   nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
   nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
@@ -108,9 +188,12 @@ void waybar::modules::Network::createEventSocket() {
 
 void waybar::modules::Network::worker() {
   thread_timer_ = [this] {
-    if (ifid_ > 0) {
-      getInfo();
-      dp.emit();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (ifid_ > 0) {
+        getInfo();
+        dp.emit();
+      }
     }
     thread_timer_.sleep_for(interval_);
   };
@@ -131,10 +214,22 @@ void waybar::modules::Network::worker() {
 }
 
 auto waybar::modules::Network::update() -> void {
-  std::string connectiontype;
-  std::string tooltip_format = "";
-  if (config_["tooltip-format"].isString()) {
-    tooltip_format = config_["tooltip-format"].asString();
+  std::string                 connectiontype;
+  std::string                 tooltip_format;
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
+  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
+
+  unsigned long long bandwidth_down = 0;
+  if (down_octets) {
+    bandwidth_down = *down_octets - bandwidth_down_total_;
+    bandwidth_down_total_ = *down_octets;
+  }
+
+  unsigned long long bandwidth_up = 0;
+  if (up_octets) {
+    bandwidth_up = *up_octets - bandwidth_up_total_;
+    bandwidth_up_total_ = *up_octets;
   }
   if (ifid_ <= 0 || !linked_) {
     if (config_["format-disconnected"].isString()) {
@@ -177,6 +272,25 @@ auto waybar::modules::Network::update() -> void {
     format_ = default_format_;
   }
   getState(signal_strength_);
+  
+  auto pow_format = [](unsigned long long value, const std::string& unit) {
+    if (value > 2000ull * 1000ull * 1000ull) { // > 2G
+      auto go = value / (1000 * 1000 * 1000);
+      return std::to_string(go) + "." + std::to_string((value - go * 1000 * 1000 * 1000) / (100 * 1000 * 1000)) + "G" + unit;
+
+    } else if (value > 2000ull * 1000ull) { // > 2M
+      auto mo = value / (1000 * 1000);
+      return std::to_string(mo) + "." + std::to_string((value - mo * 1000 * 1000) / (100 * 1000)) + "M" + unit;
+
+    } else if (value > 2000ull) { // > 2k
+      auto ko = value / 1000;
+      return std::to_string(ko) + "." + std::to_string((value - ko * 1000) / 100) + "k" + unit;
+      
+    } else {
+      return std::to_string(value) + unit;
+    }
+  };
+
   auto text = fmt::format(format_,
                           fmt::arg("essid", essid_),
                           fmt::arg("signaldBm", signal_strength_dbm_),
@@ -186,9 +300,18 @@ auto waybar::modules::Network::update() -> void {
                           fmt::arg("ipaddr", ipaddr_),
                           fmt::arg("cidr", cidr_),
                           fmt::arg("frequency", frequency_),
-                          fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
-  label_.set_markup(text);
+                          fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
+                          fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
+                          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+                          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
+                          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
+  if (text != label_.get_label()) {
+    label_.set_markup(text);
+  }
   if (tooltipEnabled()) {
+    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
     if (!tooltip_format.empty()) {
       auto tooltip_text = fmt::format(tooltip_format,
                                       fmt::arg("essid", essid_),
@@ -199,9 +322,15 @@ auto waybar::modules::Network::update() -> void {
                                       fmt::arg("ipaddr", ipaddr_),
                                       fmt::arg("cidr", cidr_),
                                       fmt::arg("frequency", frequency_),
-                                      fmt::arg("icon", getIcon(signal_strength_, connectiontype)));
-      label_.set_tooltip_text(tooltip_text);
-    } else {
+                                      fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
+                                      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
+                                      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+                                      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
+                                      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
+      if (label_.get_tooltip_text() != text) {
+        label_.set_tooltip_text(tooltip_text);
+      }
+    } else if (label_.get_tooltip_text() != text) {
       label_.set_tooltip_text(text);
     }
   }
@@ -398,7 +527,7 @@ int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint
   return ret;
 }
 
-bool waybar::modules::Network::checkInterface(int if_index, std::string name) {
+bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::string name) {
   if (config_["interface"].isString()) {
     return config_["interface"].asString() == name ||
            wildcardMatch(config_["interface"].asString(), name);
@@ -406,9 +535,9 @@ bool waybar::modules::Network::checkInterface(int if_index, std::string name) {
   auto external_iface = getExternalInterface();
   if (external_iface == -1) {
     // Try with lastest working external iface
-    return last_ext_iface_ == if_index;
+    return last_ext_iface_ == rtif->ifi_index;
   }
-  return external_iface == if_index;
+  return external_iface == rtif->ifi_index;
 }
 
 int waybar::modules::Network::getPreferredIface() {
@@ -457,23 +586,22 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Auto detected network can also be assigned here
-    if (net->checkInterface(rtif->ifi_index, ifname) && net->ifid_ == -1) {
+    if (net->ifid_ == -1 && net->checkInterface(rtif, ifname)) {
       net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
-      net->dp.emit();
     }
     // Check for valid interface
-    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+    if (rtif->ifi_index == net->ifid_) {
+      net->linked_ = true;
       // Get Iface and WIFI info
-      net->thread_timer_.wake_up();
       net->getInterfaceAddress();
-      net->dp.emit();
+      net->thread_timer_.wake_up();
     }
   } else if (nh->nlmsg_type == RTM_DELADDR) {
     auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
     // Check for valid interface
-    if (rtif->ifi_index == static_cast<int>(net->ifid_)) {
+    if (rtif->ifi_index == net->ifid_) {
       net->ipaddr_.clear();
       net->netmask_.clear();
       net->cidr_ = 0;
@@ -484,7 +612,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     char ifname[IF_NAMESIZE];
     if_indextoname(rtif->ifi_index, ifname);
     // Check for valid interface
-    if (net->checkInterface(rtif->ifi_index, ifname) && rtif->ifi_flags & IFF_RUNNING) {
+    if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
       net->linked_ = true;
       net->ifname_ = ifname;
       net->ifid_ = rtif->ifi_index;
@@ -496,13 +624,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->essid_.clear();
       net->signal_strength_dbm_ = 0;
       net->signal_strength_ = 0;
+      net->frequency_ = 0;
       // Check for a new interface and get info
       auto new_iface = net->getPreferredIface();
       if (new_iface != -1) {
-        net->thread_timer_.wake_up();
         net->getInterfaceAddress();
+        net->thread_timer_.wake_up();
+      } else {
+        net->dp.emit();
       }
-      net->dp.emit();
     }
   }
   return NL_SKIP;

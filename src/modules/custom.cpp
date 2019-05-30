@@ -1,4 +1,5 @@
 #include "modules/custom.hpp"
+#include <spdlog/spdlog.h>
 
 waybar::modules::Custom::Custom(const std::string& name, const Json::Value& config)
     : ALabel(config, "{}"), name_(name), fp_(nullptr), pid_(-1) {
@@ -58,7 +59,7 @@ void waybar::modules::Custom::continuousWorker() {
       if (exit_code != 0) {
         output_ = {exit_code, ""};
         dp.emit();
-        std::cerr << name_ + " just stopped unexpectedly, is it endless?" << std::endl;
+        spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
       return;
     }
@@ -77,6 +78,18 @@ void waybar::modules::Custom::refresh(int sig /*signal*/) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+}
+
+bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
+  auto ret = ALabel::handleScroll(e);
+  thread_.wake_up();
+  return ret;
+}
+
+bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
+  auto ret = ALabel::handleToggle(e);
+  thread_.wake_up();
+  return ret;
 }
 
 auto waybar::modules::Custom::update() -> void {

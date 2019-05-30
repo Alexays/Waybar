@@ -1,4 +1,5 @@
 #include "bar.hpp"
+#include <spdlog/spdlog.h>
 #include "client.hpp"
 #include "factory.hpp"
 
@@ -114,7 +115,7 @@ void waybar::Bar::setMarginsAndZone(uint32_t height, uint32_t width) {
                     .left = std::stoi(margins[3], nullptr, 10)};
       }
     } catch (...) {
-      std::cerr << "Invalid margins: " + config["margin"].asString() << std::endl;
+      spdlog::warn("Invalid margins: {}", config["margin"].asString());
     }
   } else if (config["margin"].isInt()) {
     auto gaps = config["margin"].asInt();
@@ -132,10 +133,10 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
   if (ev->height > static_cast<int>(height_)) {
     // Default minimal value
     if (height_ != 1) {
-      std::cout << fmt::format(MIN_HEIGHT_MSG, height_, ev->height) << std::endl;
+      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
     }
     if (config["height"].isUInt()) {
-      std::cout << fmt::format(SIZE_DEFINED, "Height") << std::endl;
+      spdlog::info(SIZE_DEFINED, "Height");
     } else {
       tmp_height = ev->height;
     }
@@ -143,10 +144,10 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
   if (ev->width > static_cast<int>(width_)) {
     // Default minimal value
     if (width_ != 1) {
-      std::cout << fmt::format(MIN_WIDTH_MSG, width_, ev->width) << std::endl;
+      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
     }
     if (config["width"].isUInt()) {
-      std::cout << fmt::format(SIZE_DEFINED, "Width") << std::endl;
+      spdlog::info(SIZE_DEFINED, "Width");
     } else {
       tmp_width = ev->width;
     }
@@ -227,11 +228,10 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     o->window.resize(o->width_, o->height_);
     auto zone = o->vertical ? width + o->margins_.right : height + o->margins_.bottom;
     zwlr_layer_surface_v1_set_exclusive_zone(o->layer_surface, zone);
-    std::cout << fmt::format(BAR_SIZE_MSG,
+    spdlog::info(BAR_SIZE_MSG,
                              o->width_ == 1 ? "auto" : std::to_string(o->width_),
                              o->height_ == 1 ? "auto" : std::to_string(o->height_),
-                             o->output->name)
-              << std::endl;
+                             o->output->name);
     wl_surface_commit(o->surface);
   }
   zwlr_layer_surface_v1_ack_configure(surface, serial);
@@ -272,14 +272,17 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
           modules_right_.emplace_back(module);
         }
         module->dp.connect([module, &name] {
-          try {
-            module->update();
-          } catch (const std::exception& e) {
-            std::cerr << name.asString() + ": " + e.what() << std::endl;
-          }
+          // Fix https://github.com/Alexays/Waybar/issues/320, proper way?
+          Glib::signal_idle().connect_once([module, &name] {
+            try {
+              module->update();
+            } catch (const std::exception& e) {
+              spdlog::error("{}: {}", name.asString(), e.what());
+            }
+          });
         });
       } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        spdlog::warn("module {}: {}", name.asString(), e.what());
       }
     }
   }

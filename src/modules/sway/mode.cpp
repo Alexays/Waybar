@@ -1,4 +1,5 @@
 #include "modules/sway/mode.hpp"
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
 
@@ -18,13 +19,13 @@ void Mode::onEvent(const struct Ipc::ipc_response& res) {
   try {
     auto payload = parser_.parse(res.payload);
     if (payload["change"] != "default") {
-      mode_ = payload["change"].asString();
+      mode_ = Glib::Markup::escape_text(payload["change"].asString());
     } else {
       mode_.clear();
     }
     dp.emit();
   } catch (const std::exception& e) {
-    std::cerr << "Mode: " << e.what() << std::endl;
+    spdlog::error("Mode: {}", e.what());
   }
 }
 
@@ -33,7 +34,7 @@ void Mode::worker() {
     try {
       ipc_.handleEvent();
     } catch (const std::exception& e) {
-      std::cerr << "Mode: " << e.what() << std::endl;
+      spdlog::error("Mode: {}", e.what());
     }
   };
 }

@@ -1,6 +1,7 @@
 #include "client.hpp"
 #include <fstream>
 #include <iostream>
+#include <spdlog/spdlog.h>
 #include "util/clara.hpp"
 #include "util/json.hpp"
 
@@ -55,7 +56,7 @@ void waybar::Client::handleGlobalRemove(void *   data, struct wl_registry * /*re
       auto output_name = (*it)->output->name;
       (*it)->window.close();
       it = client->bars.erase(it);
-      std::cout << "Bar removed from output: " + output_name << std::endl;
+      spdlog::info("Bar removed from output: {}", output_name);
     } else {
       ++it;
     }
@@ -191,7 +192,7 @@ void waybar::Client::setupConfigs(const std::string &config, const std::string &
   if (css_file_.empty() || config_file_.empty()) {
     throw std::runtime_error("Missing required resources files");
   }
-  std::cout << "Resources files: " + config_file_ + ", " + css_file_ << std::endl;
+  spdlog::info("Resources files: {}, {}", config_file_, css_file_);
 }
 
 auto waybar::Client::setupConfig() -> void {
@@ -242,14 +243,18 @@ int waybar::Client::main(int argc, char *argv[]) {
   std::string config;
   std::string style;
   std::string bar_id;
+  std::string log_level;
   auto        cli = clara::detail::Help(show_help) |
              clara::detail::Opt(show_version)["-v"]["--version"]("Show version") |
              clara::detail::Opt(config, "config")["-c"]["--config"]("Config path") |
              clara::detail::Opt(style, "style")["-s"]["--style"]("Style path") |
+             clara::detail::Opt(
+                 log_level,
+                 "trace|debug|info|warning|error|critical|off")["-l"]["--log-level"]("Log level") |
              clara::detail::Opt(bar_id, "id")["-b"]["--bar"]("Bar id");
   auto res = cli.parse(clara::detail::Args(argc, argv));
   if (!res) {
-    std::cerr << "Error in command line: " << res.errorMessage() << std::endl;
+    spdlog::error("Error in command line: {}", res.errorMessage());
     return 1;
   }
   if (show_help) {
@@ -259,6 +264,9 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (show_version) {
     std::cout << "Waybar v" << VERSION << std::endl;
     return 0;
+  }
+  if (!log_level.empty()) {
+    spdlog::set_level(spdlog::level::from_str(log_level));
   }
   setupConfigs(config, style);
   setupConfig();

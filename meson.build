@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.6.4',
+    version: '0.6.5',
     license: 'MIT',
     default_options : [
         'cpp_std=c++17',
@@ -48,10 +48,10 @@ add_global_link_arguments(cpp_link_args, language : 'cpp')
 thread_dep = dependency('threads')
 libinput = dependency('libinput')
 fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
+spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdlog_dep'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-wlroots = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 gtkmm = dependency('gtkmm-3.0')
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
@@ -126,10 +126,10 @@ executable(
     src_files,
     dependencies: [
         thread_dep,
-        wlroots,
         client_protos,
         wayland_client,
         fmt,
+        spdlog,
         sigcpp,
         jsoncpp,
         libinput,
