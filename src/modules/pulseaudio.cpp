@@ -128,6 +128,10 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
                                               pa_subscription_event_type_t type, uint32_t idx,
                                               void *data) {
   unsigned facility = type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
+  unsigned operation = type & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
+  if (operation != PA_SUBSCRIPTION_EVENT_CHANGE) {
+    return;
+  }
   if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
     pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE) {
