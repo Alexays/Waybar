@@ -102,14 +102,14 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
-    if (text_.empty()) {
+    auto str = fmt::format(format_,
+                           text_,
+                           fmt::arg("alt", alt_),
+                           fmt::arg("icon", getIcon(percentage_, alt_)),
+                           fmt::arg("percentage", percentage_));
+    if (str.empty()) {
       event_box_.hide();
     } else {
-      auto str = fmt::format(format_,
-                             text_,
-                             fmt::arg("alt", alt_),
-                             fmt::arg("icon", getIcon(percentage_, alt_)),
-                             fmt::arg("percentage", percentage_));
       label_.set_markup(str);
       if (tooltipEnabled()) {
         if (text_ == tooltip_) {
