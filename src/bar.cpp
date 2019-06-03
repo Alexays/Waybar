@@ -229,9 +229,9 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     auto zone = o->vertical ? width + o->margins_.right : height + o->margins_.bottom;
     zwlr_layer_surface_v1_set_exclusive_zone(o->layer_surface, zone);
     spdlog::info(BAR_SIZE_MSG,
-                             o->width_ == 1 ? "auto" : std::to_string(o->width_),
-                             o->height_ == 1 ? "auto" : std::to_string(o->height_),
-                             o->output->name);
+                 o->width_ == 1 ? "auto" : std::to_string(o->width_),
+                 o->height_ == 1 ? "auto" : std::to_string(o->height_),
+                 o->output->name);
     wl_surface_commit(o->surface);
   }
   zwlr_layer_surface_v1_ack_configure(surface, serial);

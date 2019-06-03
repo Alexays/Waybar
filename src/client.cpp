@@ -1,7 +1,7 @@
 #include "client.hpp"
+#include <spdlog/spdlog.h>
 #include <fstream>
 #include <iostream>
-#include <spdlog/spdlog.h>
 #include "util/clara.hpp"
 #include "util/json.hpp"
 
