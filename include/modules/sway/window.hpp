@@ -29,6 +29,8 @@ class Window : public ALabel, public sigc::trackable {
   std::string      window_;
   int              windowId_;
   std::string      app_id_;
+  std::string      old_app_id_;
+  std::size_t      app_nb_;
   util::JsonParser parser_;
 
   util::SleeperThread thread_;
