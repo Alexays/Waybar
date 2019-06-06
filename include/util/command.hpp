@@ -90,6 +90,8 @@ inline int32_t forkExec(std::string cmd) {
     setpgid(pid, pid);
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
+  } else {
+    signal(SIGCHLD,SIG_IGN);
   }
 
   return pid;
