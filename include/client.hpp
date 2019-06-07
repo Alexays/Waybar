@@ -26,14 +26,15 @@ class Client {
 
  private:
   Client() = default;
-  void              setupConfigs(const std::string &config, const std::string &style);
-  void              bindInterfaces();
-  const std::string getValidPath(const std::vector<std::string> &paths);
+  std::tuple<const std::string, const std::string> getConfigs(const std::string &config,
+                                                              const std::string &style) const;
+  void                                             bindInterfaces();
+  const std::string getValidPath(const std::vector<std::string> &paths) const;
   void              handleOutput(std::unique_ptr<struct waybar_output> &output);
   bool isValidOutput(const Json::Value &config, std::unique_ptr<struct waybar_output> &output);
-  auto setupConfig() -> void;
-  auto setupCss() -> void;
-  std::unique_ptr<struct waybar_output>& getOutput(uint32_t wl_name);
+  auto setupConfig(const std::string &config_file) -> void;
+  auto setupCss(const std::string &css_file) -> void;
+  std::unique_ptr<struct waybar_output> &getOutput(uint32_t wl_name);
   std::vector<Json::Value> getOutputConfigs(std::unique_ptr<struct waybar_output> &output);
 
   static void handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
@@ -46,8 +47,6 @@ class Client {
   static void handleDescription(void *, struct zxdg_output_v1 *, const char *);
 
   Json::Value                                        config_;
-  std::string                                        css_file_;
-  std::string                                        config_file_;
   Glib::RefPtr<Gtk::StyleContext>                    style_context_;
   Glib::RefPtr<Gtk::CssProvider>                     css_provider_;
   std::vector<std::unique_ptr<struct waybar_output>> outputs_;

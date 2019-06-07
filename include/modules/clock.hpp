@@ -14,7 +14,7 @@ class Clock : public ALabel {
   auto update() -> void;
 
  private:
-  waybar::util::SleeperThread thread_;
+  util::SleeperThread thread_;
 };
 
 }  // namespace waybar::modules

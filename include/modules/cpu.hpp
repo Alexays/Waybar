@@ -2,12 +2,12 @@
 
 #include <fmt/format.h>
 #include <sys/sysinfo.h>
-#include <fstream>
 #include <cstdint>
+#include <fstream>
 #include <numeric>
-#include <vector>
 #include <string>
 #include <utility>
+#include <vector>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -26,7 +26,8 @@ class Cpu : public ALabel {
   std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
 
   std::vector<std::tuple<size_t, size_t>> prev_times_;
-  waybar::util::SleeperThread             thread_;
+
+  util::SleeperThread thread_;
 };
 
 }  // namespace waybar::modules

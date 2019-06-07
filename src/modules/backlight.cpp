@@ -88,12 +88,9 @@ int waybar::modules::Backlight::BacklightDev::get_max() const { return max_; }
 
 void waybar::modules::Backlight::BacklightDev::set_max(int max) { max_ = max; }
 
-waybar::modules::Backlight::Backlight(const std::string &name, const Json::Value &config)
-    : ALabel(config, "{percent}%", 2),
-      name_(name),
+waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
+    : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
-  label_.set_name("backlight");
-
   // Get initial state
   {
     std::unique_ptr<udev, UdevDeleter> udev_check{udev_new()};
@@ -181,7 +178,7 @@ auto waybar::modules::Backlight::update() -> void {
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
     label_.set_markup(fmt::format(
         format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
-   getState(percent);
+    getState(percent);
   } else {
     if (!previous_best_.has_value()) {
       return;
@@ -213,7 +210,8 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
   const char *name = udev_device_get_sysname(dev);
   check_nn(name);
 
-  const char *actual_brightness_attr = strcmp(name, "amdgpu_bl0") == 0 ? "brightness" : "actual_brightness";
+  const char *actual_brightness_attr =
+      strcmp(name, "amdgpu_bl0") == 0 ? "brightness" : "actual_brightness";
 
   const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
   check_nn(actual);

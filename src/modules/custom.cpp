@@ -1,9 +1,9 @@
 #include "modules/custom.hpp"
 #include <spdlog/spdlog.h>
 
-waybar::modules::Custom::Custom(const std::string& name, const Json::Value& config)
-    : ALabel(config, "{}"), name_(name), fp_(nullptr), pid_(-1) {
-  label_.set_name("custom-" + name_);
+waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
+                                const Json::Value& config)
+    : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
       delayWorker();
@@ -25,14 +25,14 @@ void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      auto res = waybar::util::command::exec(config_["exec-if"].asString());
+      auto res = util::command::exec(config_["exec-if"].asString());
       if (res.exit_code != 0) {
         can_update = false;
         event_box_.hide();
       }
     }
     if (can_update) {
-      output_ = waybar::util::command::exec(config_["exec"].asString());
+      output_ = util::command::exec(config_["exec"].asString());
       dp.emit();
     }
     thread_.sleep_for(interval_);
@@ -74,7 +74,7 @@ void waybar::modules::Custom::continuousWorker() {
   };
 }
 
-void waybar::modules::Custom::refresh(int sig /*signal*/) {
+void waybar::modules::Custom::refresh(int sig) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
@@ -102,29 +102,31 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
-
     auto str = fmt::format(format_,
                            text_,
                            fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
-    label_.set_markup(str);
-    if (tooltipEnabled()) {
-      if (text_ == tooltip_) {
-        label_.set_tooltip_text(str);
-      } else {
-        label_.set_tooltip_text(tooltip_);
+    if (str.empty()) {
+      event_box_.hide();
+    } else {
+      label_.set_markup(str);
+      if (tooltipEnabled()) {
+        if (text_ == tooltip_) {
+          label_.set_tooltip_text(str);
+        } else {
+          label_.set_tooltip_text(tooltip_);
+        }
       }
+      auto classes = label_.get_style_context()->list_classes();
+      for (auto const& c : classes) {
+        label_.get_style_context()->remove_class(c);
+      }
+      for (auto const& c : class_) {
+        label_.get_style_context()->add_class(c);
+      }
+      event_box_.show();
     }
-    auto classes = label_.get_style_context()->list_classes();
-    for (auto const& c : classes) {
-      label_.get_style_context()->remove_class(c);
-    }
-    for (auto const& c : class_) {
-      label_.get_style_context()->add_class(c);
-    }
-
-    event_box_.show();
   }
 }
 

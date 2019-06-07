@@ -52,6 +52,8 @@ class Bar {
 
   void destroyOutput();
   void onConfigure(GdkEventConfigure *ev);
+  void onRealize();
+  void onMap(GdkEventAny *ev);
   void setMarginsAndZone(uint32_t height, uint32_t width);
   auto setupWidgets() -> void;
   void getModules(const Factory &, const std::string &);
@@ -66,6 +68,7 @@ class Bar {
   } margins_;
   uint32_t                                      width_ = 0;
   uint32_t                                      height_ = 1;
+  uint8_t                                       anchor_;
   Gtk::Box                                      left_;
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;

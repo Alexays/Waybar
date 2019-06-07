@@ -5,8 +5,8 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
-#include "util/sleeper_thread.hpp"
 #include "util/json.hpp"
+#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
@@ -20,10 +20,11 @@ class Mode : public ALabel, public sigc::trackable {
   void onEvent(const struct Ipc::ipc_response&);
   void worker();
 
-  waybar::util::SleeperThread thread_;
-  Ipc                         ipc_;
-  std::string                 mode_;
+  std::string      mode_;
   util::JsonParser parser_;
+
+  util::SleeperThread thread_;
+  Ipc                 ipc_;
 };
 
 }  // namespace waybar::modules::sway
