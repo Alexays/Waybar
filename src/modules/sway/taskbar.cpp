@@ -39,11 +39,10 @@ void TaskBar::onEvent(const struct Ipc::ipc_response& res) {
     }
 
     dp.emit();
-  }  // namespace waybar::modules::sway
-  catch (const std::exception& e) {
+  } catch (const std::exception& e) {
     std::cerr << "TaskBar: " << e.what() << std::endl;
   }
-}  // namespace waybar::modules::sway
+}
 
 void TaskBar::onCmd(const struct Ipc::ipc_response& res) {
   try {
@@ -107,7 +106,6 @@ auto TaskBar::update() -> void {
     if (needReorder) {
       box_.reorder_child(button, it - taskMap_[current_workspace].applications.begin());
     }
-    // std::string output = getIcon((*it), *it);
     std::string output = "";
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
@@ -144,90 +142,65 @@ Gtk::Button& TaskBar::addButton(const Application& application) {
   return button;
 }
 
-std::string TaskBar::getIcon(const std::string& name) {
-  /*
-std::vector<std::string> keys = {"focused", "default"};
-for (auto const &key : keys) {
-  if (key == "focused" || key == "visible" || key == "urgent") {
-    if (config_["format-icons"][key].isString() && node[key].asBool()) {
-      return config_["format-icons"][key].asString();
-    }
-  } else if (config_["format-icons"][key].isString()) {
-    return config_["format-icons"][key].asString();
-  }
-}
-
-return name;
-*/
-  return "";
-}
 bool TaskBar::handleScroll(GdkEventScroll* e) {
   // Avoid concurrent scroll event
   if (scrolling_) {
     return false;
   }
-  /*
-std::string name;
-scrolling_ = true;
-{
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
-    return workspace["focused"].asBool();
-  });
-  if (it == workspaces_.end()) {
+  int new_focus = 0;
+  scrolling_ = true;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    int                         current_focus = taskMap_[current_workspace].focused_num;
+
+    switch (e->direction) {
+      case GDK_SCROLL_DOWN:
+      case GDK_SCROLL_RIGHT:
+        new_focus = getCycleTasks(current_focus, false);
+        break;
+      case GDK_SCROLL_UP:
+      case GDK_SCROLL_LEFT:
+        new_focus = getCycleTasks(current_focus, true);
+        break;
+      case GDK_SCROLL_SMOOTH:
+        gdouble delta_x, delta_y;
+        gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent*>(e), &delta_x, &delta_y);
+        if (delta_y < 0) {
+          new_focus = getCycleTasks(current_focus, true);
+        } else if (delta_y > 0) {
+          new_focus = getCycleTasks(current_focus, false);
+        }
+        break;
+      default:
+        break;
+    }
+    if (new_focus == current_focus) {
+      scrolling_ = false;
+      return false;
+    }
+    taskMap_[current_workspace].focused_num = new_focus;
+  }
+  try {
+    ipc_.sendCmd(
+        IPC_COMMAND,
+        fmt::format("[con_id={}] focus", taskMap_[current_workspace].applications[new_focus].id));
     scrolling_ = false;
-    return false;
+  } catch (const std::exception& e) {
+    std::cerr << "TaskBar: " << e.what() << std::endl;
   }
-  switch (e->direction) {
-    case GDK_SCROLL_DOWN:
-    case GDK_SCROLL_RIGHT:
-      name = getCycleWorkspace(it, false);
-      break;
-    case GDK_SCROLL_UP:
-    case GDK_SCROLL_LEFT:
-      name = getCycleWorkspace(it, true);
-      break;
-    case GDK_SCROLL_SMOOTH:
-      gdouble delta_x, delta_y;
-      gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
-      if (delta_y < 0) {
-        name = getCycleWorkspace(it, true);
-      } else if (delta_y > 0) {
-        name = getCycleWorkspace(it, false);
-      }
-      break;
-    default:
-      break;
-  }
-  if (name.empty() || name == (*it)["name"].asString()) {
-    scrolling_ = false;
-    return false;
-  }
-}
-try {
-  ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
-} catch (const std::exception &e) {
-  std::cerr << "Workspaces: " << e.what() << std::endl;
-}
-*/
   return true;
 }
-/*
-const std::string TaskBar::getCycleWorkspace(std::vector<Json::Value>::iterator it,
-                                             bool                               prev) const {
-  if (prev && it == workspaces_.begin()) {
-    return (*(--workspaces_.end()))["name"].asString();
-  }
-  if (prev && it != workspaces_.begin())
-    --it;
-  else if (!prev && it != workspaces_.end())
-    ++it;
-  if (!prev && it == workspaces_.end()) {
-    return (*(workspaces_.begin()))["name"].asString();
-  }
-  return (*it)["name"].asString();
+const int TaskBar::getCycleTasks(int current_focus, bool prev) {
+  int application_max_index = taskMap_[current_workspace].applications.size() - 1;
+  if (prev && !current_focus) {
+    return application_max_index;
+  } else if (prev && current_focus)
+    return --current_focus;
+  else if (!prev && current_focus != application_max_index)
+    return ++current_focus;
+  else
+    return 0;
 }
-*/
 void     TaskBar::onButtonReady(Gtk::Button& button) { button.show(); }
 TaskBar::operator Gtk::Widget&() { return box_; }
 
@@ -236,7 +209,6 @@ void TaskBar::parseTree(const Json::Value& nodes) {
     if (node["type"] == "workspace") {
       for (auto const& window : node["nodes"]) {
         if (window["type"] == "con") {
-          std::cout << window << std::endl;
           std::string workspace_name = node["name"].asString();
           if (!taskMap_.count(workspace_name)) {
             WorkspaceMap wp;

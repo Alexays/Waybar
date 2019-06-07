@@ -34,11 +34,10 @@ class TaskBar : public IModule, public sigc::trackable {
 
   void        onButtonReady(Gtk::Button&);
   std::string getIcon(const std::string&);
-  // const std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
-  // uint16_t          getWorkspaceIndex(const std::string& name) const;
-  bool handleScroll(GdkEventScroll*);
-  void parseTree(const Json::Value&);
-  void parseCurrentWorkspace(const Json::Value&);
+  const int   getCycleTasks(int current_focus, bool prev);
+  bool        handleScroll(GdkEventScroll*);
+  void        parseTree(const Json::Value&);
+  void        parseCurrentWorkspace(const Json::Value&);
 
   struct WorkspaceMap {
     int                      focused_num = 0;
