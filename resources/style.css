@@ -136,11 +136,11 @@ label:focus {
     min-width: 100px;
 }
 
-.custom-spotify {
+#custom-media.custom-spotify {
     background-color: #66cc99;
 }
 
-.custom-vlc {
+#custom-media.custom-vlc {
     background-color: #ffa000;
 }
 
