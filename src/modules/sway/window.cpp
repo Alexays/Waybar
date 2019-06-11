@@ -9,7 +9,7 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     label_.set_hexpand(true);
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
   }
-  ipc_.subscribe(R"(["window"])");
+  ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
   // Get Initial focused window
