@@ -246,7 +246,12 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
       case GDK_SCROLL_SMOOTH: {
         gdouble delta_x, delta_y;
         gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
-        distance_scrolled_ += delta_y;
+
+        if (abs(delta_x) > abs(delta_y)) {
+          distance_scrolled_ += delta_x;
+        } else {
+          distance_scrolled_ += delta_y;
+        }
         gdouble threshold = 0;
         if (config_["smooth-scrolling-threshold"].isNumeric()) {
           threshold = config_["smooth-scrolling-threshold"].asDouble();
