@@ -36,6 +36,7 @@ class ALabel : public IModule {
 
  private:
   std::vector<int> pid_;
+  gdouble distance_scrolled_;
 };
 
 }  // namespace waybar

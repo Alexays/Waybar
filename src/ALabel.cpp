@@ -97,11 +97,23 @@ bool waybar::ALabel::handleScroll(GdkEventScroll* e) {
   }
   if (e->direction == GDK_SCROLL_SMOOTH) {
     gdouble delta_x, delta_y;
-    gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent*>(e), &delta_x, &delta_y);
-    if (delta_y < 0) {
+    gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
+    distance_scrolled_ += delta_y;
+    gdouble threshold = 0;
+    if (config_["smooth-scrolling-threshold"].isNumeric()) {
+      threshold = config_["smooth-scrolling-threshold"].asDouble();
+    }
+
+    if (distance_scrolled_ < -threshold) {
       direction_up = true;
-    } else if (delta_y > 0) {
+    } else if (distance_scrolled_ > threshold) {
       direction_up = false;
+    }
+    if(abs(distance_scrolled_) > threshold) {
+      distance_scrolled_ = 0;
+    } else {
+      // Don't execute the action if we haven't met the threshold!
+      return false;
     }
   }
   if (direction_up && config_["on-scroll-up"].isString()) {
