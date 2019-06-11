@@ -234,24 +234,37 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
     switch (e->direction) {
       case GDK_SCROLL_DOWN:
-      case GDK_SCROLL_RIGHT:
+      case GDK_SCROLL_RIGHT: {
         name = getCycleWorkspace(it, false);
         break;
+      }
       case GDK_SCROLL_UP:
-      case GDK_SCROLL_LEFT:
+      case GDK_SCROLL_LEFT: {
         name = getCycleWorkspace(it, true);
         break;
-      case GDK_SCROLL_SMOOTH:
+      }
+      case GDK_SCROLL_SMOOTH: {
         gdouble delta_x, delta_y;
         gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
-        if (delta_y < 0) {
+        distance_scrolled_ += delta_y;
+        gdouble threshold = 0;
+        if (config_["smooth-scrolling-threshold"].isNumeric()) {
+          threshold = config_["smooth-scrolling-threshold"].asDouble();
+        }
+
+        if (distance_scrolled_ < -threshold) {
           name = getCycleWorkspace(it, true);
-        } else if (delta_y > 0) {
+        } else if (distance_scrolled_ > threshold) {
           name = getCycleWorkspace(it, false);
         }
+        if(abs(distance_scrolled_) > threshold) {
+          distance_scrolled_ = 0;
+        }
         break;
-      default:
+      }
+      default: {
         break;
+      }
     }
     if (name.empty() || name == (*it)["name"].asString()) {
       scrolling_ = false;
