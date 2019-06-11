@@ -1,6 +1,6 @@
+#include "modules/sni/item.hpp"
 #include <glibmm/main.h>
 #include <spdlog/spdlog.h>
-#include "modules/sni/item.hpp"
 
 template <>
 struct fmt::formatter<Glib::ustring> : formatter<std::string> {
@@ -334,7 +334,7 @@ void Item::makeMenu(GdkEventButton* const& ev) {
 bool Item::handleClick(GdkEventButton* const& ev) {
   auto parameters = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<int>::create(ev->x), Glib::Variant<int>::create(ev->y)});
-  if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
+  if ((ev->button == 1 && (item_is_menu || !menu.empty())) || ev->button == 3) {
     makeMenu(ev);
     if (gtk_menu != nullptr) {
 #if GTK_CHECK_VERSION(3, 22, 0)
