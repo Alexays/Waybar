@@ -33,7 +33,7 @@ inline int close(FILE* fp, pid_t pid) {
   fclose(fp);
   while (waitpid(pid, &stat, 0) == -1) {
     if (errno != EINTR) {
-      stat = -1;
+      stat = 0;
       break;
     }
   }
