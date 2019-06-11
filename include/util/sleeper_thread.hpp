@@ -14,7 +14,10 @@ class SleeperThread {
 
   SleeperThread(std::function<void()> func)
       : thread_{[this, func] {
-          while (do_run_) func();
+          while (do_run_) {
+            signal_ = false;
+            func();
+          }
         }} {}
 
   SleeperThread& operator=(std::function<void()> func) {
@@ -42,7 +45,10 @@ class SleeperThread {
   }
 
   auto wake_up() {
-    signal_ = true;
+    {
+      std::lock_guard<std::mutex> lck(mutex_);
+      signal_ = true;
+    }
     condvar_.notify_all();
   }
 
