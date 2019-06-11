@@ -154,6 +154,11 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("urgent");
     }
+    if ((*it)["target_output"].isString()) {
+      button.get_style_context()->add_class("persistant");
+    } else {
+      button.get_style_context()->remove_class("persistant");
+    }
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
     }
