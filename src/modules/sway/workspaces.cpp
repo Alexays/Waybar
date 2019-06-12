@@ -80,6 +80,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
               // Adding to all outputs
               Json::Value v;
               v["name"] = p_w_name;
+              v["target_output"] = "";
               workspaces_.emplace_back(std::move(v));
             }
           }
