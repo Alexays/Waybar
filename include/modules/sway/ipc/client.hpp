@@ -5,7 +5,6 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <cstring>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include "ipc.hpp"

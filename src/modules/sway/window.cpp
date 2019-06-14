@@ -24,7 +24,7 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto                        payload = parser_.parse(res.payload);
     auto output = payload["ouput"].isString() ? payload["output"].asString() : "";
-    std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload, output);
+    std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload["nodes"], output);
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
@@ -70,23 +70,28 @@ auto Window::update() -> void {
 }
 
 std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
-    const Json::Value& nodes, std::string output) {
-  for (auto const& node : nodes["nodes"]) {
+    const Json::Value& nodes, std::string& output) {
+  for (auto const& node : nodes) {
     if (node["output"].isString()) {
       output = node["output"].asString();
     }
-    if (node["focused"].asBool() && node["type"] == "con") {
+    if (node["focused"].asBool() && (node["type"] == "con" || node["type"] == "floating_con")) {
       if ((!config_["all-outputs"].asBool() && output == bar_.output->name) ||
           config_["all-outputs"].asBool()) {
         auto app_id = node["app_id"].isString() ? node["app_id"].asString()
                                                 : node["window_properties"]["instance"].asString();
-        return {nodes["nodes"].size(),
+        return {nodes.size(),
                 node["id"].asInt(),
                 Glib::Markup::escape_text(node["name"].asString()),
                 app_id};
       }
     }
-    auto [nb, id, name, app_id] = getFocusedNode(node, output);
+    auto [nb, id, name, app_id] = getFocusedNode(node["nodes"], output);
+    if (id > -1 && !name.empty()) {
+      return {nb, id, name, app_id};
+    }
+    // Search for floating node
+    std::tie(nb, id, name, app_id) = getFocusedNode(node["floating_nodes"], output);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }
