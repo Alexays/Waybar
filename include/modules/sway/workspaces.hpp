@@ -41,6 +41,7 @@ class Workspaces : public IModule, public sigc::trackable {
   util::JsonParser                             parser_;
   bool                                         scrolling_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
+  gdouble                                      distance_scrolled_;
 
   util::SleeperThread thread_;
   Ipc                 ipc_;
