@@ -23,7 +23,8 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
     auto                        payload = parser_.parse(res.payload);
-    std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload);
+    auto output = payload["ouput"].isString() ? payload["output"].asString() : "";
+    std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload, output);
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
@@ -69,10 +70,13 @@ auto Window::update() -> void {
 }
 
 std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
-    const Json::Value& nodes) {
+    const Json::Value& nodes, std::string output) {
   for (auto const& node : nodes["nodes"]) {
+    if (node["output"].isString()) {
+      output = node["output"].asString();
+    }
     if (node["focused"].asBool() && node["type"] == "con") {
-      if ((!config_["all-outputs"].asBool() && nodes["output"] == bar_.output->name) ||
+      if ((!config_["all-outputs"].asBool() && output == bar_.output->name) ||
           config_["all-outputs"].asBool()) {
         auto app_id = node["app_id"].isString() ? node["app_id"].asString()
                                                 : node["window_properties"]["instance"].asString();
@@ -82,7 +86,7 @@ std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
                 app_id};
       }
     }
-    auto [nb, id, name, app_id] = getFocusedNode(node);
+    auto [nb, id, name, app_id] = getFocusedNode(node, output);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }
