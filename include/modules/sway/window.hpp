@@ -21,7 +21,7 @@ class Window : public ALabel, public sigc::trackable {
   void                                                   onEvent(const struct Ipc::ipc_response&);
   void                                                   onCmd(const struct Ipc::ipc_response&);
   void                                                   worker();
-  std::tuple<std::size_t, int, std::string, std::string> getFocusedNode(const Json::Value& nodes);
+  std::tuple<std::size_t, int, std::string, std::string> getFocusedNode(const Json::Value& nodes, std::string output);
   void                                                   getTree();
 
   const Bar&       bar_;
