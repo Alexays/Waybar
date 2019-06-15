@@ -11,6 +11,7 @@ waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config
 auto waybar::modules::Memory::update() -> void {
   parseMeminfo();
   if (memtotal_ > 0 && memfree_ >= 0) {
+    auto total_ram_gigabytes = memtotal_ / std::pow(1024, 2);
     int  used_ram_percentage = 100 * (memtotal_ - memfree_) / memtotal_;
     auto used_ram_gigabytes = (memtotal_ - memfree_) / std::pow(1024, 2);
     auto available_ram_gigabytes = memfree_ / std::pow(1024, 2);
@@ -18,6 +19,7 @@ auto waybar::modules::Memory::update() -> void {
     getState(used_ram_percentage);
     label_.set_markup(fmt::format(format_,
                                   used_ram_percentage,
+                                  fmt::arg("total", total_ram_gigabytes),
                                   fmt::arg("percentage", used_ram_percentage),
                                   fmt::arg("used", used_ram_gigabytes),
                                   fmt::arg("avail", available_ram_gigabytes)));
