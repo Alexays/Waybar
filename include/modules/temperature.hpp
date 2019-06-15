@@ -17,8 +17,8 @@ class Temperature : public ALabel {
   std::tuple<uint16_t, uint16_t> getTemperature();
   bool                           isCritical(uint16_t);
 
-  std::string                 file_path_;
-  waybar::util::SleeperThread thread_;
+  std::string         file_path_;
+  util::SleeperThread thread_;
 };
 
 }  // namespace waybar::modules

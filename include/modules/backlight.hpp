@@ -47,7 +47,6 @@ class Backlight : public ALabel {
   template <class ForwardIt, class Inserter>
   static void enumerate_devices(ForwardIt first, ForwardIt last, Inserter inserter, udev *udev);
 
-  const std::string    name_;
   const std::string    preferred_device_;
   static constexpr int EPOLL_MAX_EVENTS = 16;
 
@@ -57,6 +56,6 @@ class Backlight : public ALabel {
   std::mutex                udev_thread_mutex_;
   std::vector<BacklightDev> devices_;
   // thread must destruct before shared data
-  waybar::util::SleeperThread udev_thread_;
+  util::SleeperThread udev_thread_;
 };
 }  // namespace waybar::modules

@@ -15,10 +15,12 @@ class Memory : public ALabel {
 
  private:
   static inline const std::string data_dir_ = "/proc/meminfo";
-  unsigned long                   memtotal_;
-  unsigned long                   memfree_;
   void                            parseMeminfo();
-  waybar::util::SleeperThread     thread_;
+
+  unsigned long memtotal_;
+  unsigned long memfree_;
+
+  util::SleeperThread thread_;
 };
 
 }  // namespace waybar::modules

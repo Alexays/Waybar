@@ -5,75 +5,76 @@
 
 namespace {
 
-  constexpr const char * NETSTAT_FILE = "/proc/net/netstat"; // std::ifstream does not take std::string_view as param
-  constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
-  constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
-  constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
+constexpr const char *NETSTAT_FILE =
+    "/proc/net/netstat";  // std::ifstream does not take std::string_view as param
+constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
+constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
+constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
 
-  std::ifstream netstat(NETSTAT_FILE);
-  std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
-    if (!netstat) {
-      spdlog::warn("Failed to open netstat file {}", NETSTAT_FILE);
-      return {};
-    }
-    netstat.seekg(std::ios_base::beg);
-
-
-    // finding corresponding line (category)
-    // looks into the file for the first line starting by the 'category' string
-    auto starts_with = [](const std::string& str, std::string_view start) {
-      return start == std::string_view{str.data(), std::min(str.size(), start.size())};
-    };
-
-    std::string read;
-    while (std::getline(netstat, read) && !starts_with(read, category));
-    if (!starts_with(read, category)) {
-      spdlog::warn("Category '{}' not found in netstat file {}", category, NETSTAT_FILE);
-      return {};
-    }
-
-    // finding corresponding column (key)
-    // looks into the fetched line for the first word (space separated) equal to 'key'
-    int index = 0;
-    auto r_it = read.begin();
-    auto k_it = key.begin();
-    while (k_it != key.end() && r_it != read.end()) {
-      if (*r_it != *k_it) {
-        r_it = std::find(r_it, read.end(), ' ');
-        if (r_it != read.end()) {
-          ++r_it;
-        }
-        k_it = key.begin();
-        ++index;
-      } else {
-        ++r_it;
-        ++k_it;
-      }
-    }
-
-    if (r_it == read.end() && k_it != key.end()) {
-      spdlog::warn("Key '{}' not found in category '{}' of netstat file {}", key, category, NETSTAT_FILE);
-      return {};
-    }
-
-    // finally accessing value
-    // accesses the line right under the fetched one
-    std::getline(netstat, read);
-    assert(starts_with(read, category));
-    std::istringstream iss(read);
-    while (index--) {
-      std::getline(iss, read, ' ');
-    }
-    unsigned long long value;
-    iss >> value;
-    return value;
+std::ifstream                     netstat(NETSTAT_FILE);
+std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
+  if (!netstat) {
+    spdlog::warn("Failed to open netstat file {}", NETSTAT_FILE);
+    return {};
   }
+  netstat.seekg(std::ios_base::beg);
+
+  // finding corresponding line (category)
+  // looks into the file for the first line starting by the 'category' string
+  auto starts_with = [](const std::string &str, std::string_view start) {
+    return start == std::string_view{str.data(), std::min(str.size(), start.size())};
+  };
+
+  std::string read;
+  while (std::getline(netstat, read) && !starts_with(read, category))
+    ;
+  if (!starts_with(read, category)) {
+    spdlog::warn("Category '{}' not found in netstat file {}", category, NETSTAT_FILE);
+    return {};
+  }
+
+  // finding corresponding column (key)
+  // looks into the fetched line for the first word (space separated) equal to 'key'
+  int  index = 0;
+  auto r_it = read.begin();
+  auto k_it = key.begin();
+  while (k_it != key.end() && r_it != read.end()) {
+    if (*r_it != *k_it) {
+      r_it = std::find(r_it, read.end(), ' ');
+      if (r_it != read.end()) {
+        ++r_it;
+      }
+      k_it = key.begin();
+      ++index;
+    } else {
+      ++r_it;
+      ++k_it;
+    }
+  }
+
+  if (r_it == read.end() && k_it != key.end()) {
+    spdlog::warn(
+        "Key '{}' not found in category '{}' of netstat file {}", key, category, NETSTAT_FILE);
+    return {};
+  }
+
+  // finally accessing value
+  // accesses the line right under the fetched one
+  std::getline(netstat, read);
+  assert(starts_with(read, category));
+  std::istringstream iss(read);
+  while (index--) {
+    std::getline(iss, read, ' ');
+  }
+  unsigned long long value;
+  iss >> value;
+  return value;
 }
+}  // namespace
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "{ifname}", 60),
+    : ALabel(config, "network", id, "{ifname}", 60),
       ifid_(-1),
-      last_ext_iface_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
@@ -81,11 +82,6 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       signal_strength_dbm_(0),
       signal_strength_(0),
       frequency_(0) {
-  label_.set_name("network");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
-
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
   if (down_octets) {
@@ -100,10 +96,11 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     bandwidth_up_total_ = 0;
   }
 
-  createInfoSocket();
   createEventSocket();
+  createInfoSocket();
   auto default_iface = getPreferredIface();
   if (default_iface != -1) {
+    ifid_ = default_iface;
     char ifname[IF_NAMESIZE];
     if_indextoname(default_iface, ifname);
     ifname_ = ifname;
@@ -124,8 +121,11 @@ waybar::modules::Network::~Network() {
   }
   if (ev_sock_ != nullptr) {
     nl_socket_drop_membership(ev_sock_, RTNLGRP_LINK);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
-    nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+    if (family_ == AF_INET) {
+      nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
+    } else {
+      nl_socket_drop_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+    }
     nl_close(ev_sock_);
     nl_socket_free(ev_sock_);
   }
@@ -135,17 +135,21 @@ waybar::modules::Network::~Network() {
   }
 }
 
-void waybar::modules::Network::createInfoSocket() {
+void waybar::modules::Network::createEventSocket() {
   ev_sock_ = nl_socket_alloc();
   nl_socket_disable_seq_check(ev_sock_);
   nl_socket_modify_cb(ev_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
-  nl_join_groups(ev_sock_, RTMGRP_LINK);
+  auto groups = RTMGRP_LINK | (family_ == AF_INET ? RTMGRP_IPV4_IFADDR : RTMGRP_IPV6_IFADDR);
+  nl_join_groups(ev_sock_, groups);  // Deprecated
   if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
     throw std::runtime_error("Can't connect network socket");
   }
   nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
-  nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+  if (family_ == AF_INET) {
+    nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
+  } else {
+    nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
+  }
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
@@ -172,7 +176,7 @@ void waybar::modules::Network::createInfoSocket() {
   }
 }
 
-void waybar::modules::Network::createEventSocket() {
+void waybar::modules::Network::createInfoSocket() {
   sock_ = nl_socket_alloc();
   if (genl_connect(sock_) != 0) {
     throw std::runtime_error("Can't connect to netlink socket");
@@ -202,9 +206,7 @@ void waybar::modules::Network::worker() {
     int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
-        if (events[i].data.fd == nl_socket_get_fd(ev_sock_)) {
-          nl_recvmsgs_default(ev_sock_);
-        } else {
+        if (events[i].data.fd != nl_socket_get_fd(ev_sock_) || nl_recvmsgs_default(ev_sock_) < 0) {
           thread_.stop();
           break;
         }
@@ -213,10 +215,16 @@ void waybar::modules::Network::worker() {
   };
 }
 
+const std::string waybar::modules::Network::getNetworkState() const {
+  if (ifid_ == -1) return "disconnected";
+  if (ipaddr_.empty()) return "linked";
+  if (essid_.empty()) return "ethernet";
+  return "wifi";
+}
+
 auto waybar::modules::Network::update() -> void {
-  std::string                 connectiontype;
-  std::string                 tooltip_format;
   std::lock_guard<std::mutex> lock(mutex_);
+  std::string                 tooltip_format;
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
 
@@ -231,80 +239,60 @@ auto waybar::modules::Network::update() -> void {
     bandwidth_up = *up_octets - bandwidth_up_total_;
     bandwidth_up_total_ = *up_octets;
   }
-  if (ifid_ <= 0 || !linked_) {
-    if (config_["format-disconnected"].isString()) {
-      default_format_ = config_["format-disconnected"].asString();
-    }
-    if (config_["tooltip-format-disconnected"].isString()) {
-      tooltip_format = config_["tooltip-format-disconnected"].asString();
-    }
-    label_.get_style_context()->add_class("disconnected");
-    connectiontype = "disconnected";
-  } else {
-    if (essid_.empty()) {
-      if (config_["format-ethernet"].isString()) {
-        default_format_ = config_["format-ethernet"].asString();
-      }
-      if (config_["tooltip-format-ethernet"].isString()) {
-        tooltip_format = config_["tooltip-format-ethernet"].asString();
-      }
-      connectiontype = "ethernet";
-    } else if (ipaddr_.empty()) {
-      if (config_["format-linked"].isString()) {
-        default_format_ = config_["format-linked"].asString();
-      }
-      if (config_["tooltip-format-linked"].isString()) {
-        tooltip_format = config_["tooltip-format-linked"].asString();
-      }
-      connectiontype = "linked";
-    } else {
-      if (config_["format-wifi"].isString()) {
-        default_format_ = config_["format-wifi"].asString();
-      }
-      if (config_["tooltip-format-wifi"].isString()) {
-        tooltip_format = config_["tooltip-format-wifi"].asString();
-      }
-      connectiontype = "wifi";
-    }
-    label_.get_style_context()->remove_class("disconnected");
-  }
   if (!alt_) {
+    auto state = getNetworkState();
+    if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
+      label_.get_style_context()->remove_class(state_);
+    }
+    if (config_["format-" + state].isString()) {
+      default_format_ = config_["format-" + state].asString();
+    }
+    if (config_["tooltip-format-" + state].isString()) {
+      tooltip_format = config_["tooltip-format-" + state].asString();
+    }
+    if (!label_.get_style_context()->has_class(state)) {
+      label_.get_style_context()->add_class(state);
+    }
     format_ = default_format_;
+    state_ = state;
   }
   getState(signal_strength_);
-  
-  auto pow_format = [](unsigned long long value, const std::string& unit) {
-    if (value > 2000ull * 1000ull * 1000ull) { // > 2G
+
+  auto pow_format = [](unsigned long long value, const std::string &unit) {
+    if (value > 2000ull * 1000ull * 1000ull) {  // > 2G
       auto go = value / (1000 * 1000 * 1000);
-      return std::to_string(go) + "." + std::to_string((value - go * 1000 * 1000 * 1000) / (100 * 1000 * 1000)) + "G" + unit;
+      return std::to_string(go) + "." +
+             std::to_string((value - go * 1000 * 1000 * 1000) / (100 * 1000 * 1000)) + "G" + unit;
 
-    } else if (value > 2000ull * 1000ull) { // > 2M
+    } else if (value > 2000ull * 1000ull) {  // > 2M
       auto mo = value / (1000 * 1000);
-      return std::to_string(mo) + "." + std::to_string((value - mo * 1000 * 1000) / (100 * 1000)) + "M" + unit;
+      return std::to_string(mo) + "." + std::to_string((value - mo * 1000 * 1000) / (100 * 1000)) +
+             "M" + unit;
 
-    } else if (value > 2000ull) { // > 2k
+    } else if (value > 2000ull) {  // > 2k
       auto ko = value / 1000;
       return std::to_string(ko) + "." + std::to_string((value - ko * 1000) / 100) + "k" + unit;
-      
+
     } else {
       return std::to_string(value) + unit;
     }
   };
 
-  auto text = fmt::format(format_,
-                          fmt::arg("essid", essid_),
-                          fmt::arg("signaldBm", signal_strength_dbm_),
-                          fmt::arg("signalStrength", signal_strength_),
-                          fmt::arg("ifname", ifname_),
-                          fmt::arg("netmask", netmask_),
-                          fmt::arg("ipaddr", ipaddr_),
-                          fmt::arg("cidr", cidr_),
-                          fmt::arg("frequency", frequency_),
-                          fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
-                          fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
-                          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
-                          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
-                          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
+  auto text = fmt::format(
+      format_,
+      fmt::arg("essid", essid_),
+      fmt::arg("signaldBm", signal_strength_dbm_),
+      fmt::arg("signalStrength", signal_strength_),
+      fmt::arg("ifname", ifname_),
+      fmt::arg("netmask", netmask_),
+      fmt::arg("ipaddr", ipaddr_),
+      fmt::arg("cidr", cidr_),
+      fmt::arg("frequency", frequency_),
+      fmt::arg("icon", getIcon(signal_strength_, state_)),
+      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
+      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
+      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
   if (text != label_.get_label()) {
     label_.set_markup(text);
   }
@@ -313,20 +301,22 @@ auto waybar::modules::Network::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      auto tooltip_text = fmt::format(tooltip_format,
-                                      fmt::arg("essid", essid_),
-                                      fmt::arg("signaldBm", signal_strength_dbm_),
-                                      fmt::arg("signalStrength", signal_strength_),
-                                      fmt::arg("ifname", ifname_),
-                                      fmt::arg("netmask", netmask_),
-                                      fmt::arg("ipaddr", ipaddr_),
-                                      fmt::arg("cidr", cidr_),
-                                      fmt::arg("frequency", frequency_),
-                                      fmt::arg("icon", getIcon(signal_strength_, connectiontype)),
-                                      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
-                                      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
-                                      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
-                                      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
+      auto tooltip_text = fmt::format(
+          tooltip_format,
+          fmt::arg("essid", essid_),
+          fmt::arg("signaldBm", signal_strength_dbm_),
+          fmt::arg("signalStrength", signal_strength_),
+          fmt::arg("ifname", ifname_),
+          fmt::arg("netmask", netmask_),
+          fmt::arg("ipaddr", ipaddr_),
+          fmt::arg("cidr", cidr_),
+          fmt::arg("frequency", frequency_),
+          fmt::arg("icon", getIcon(signal_strength_, state_)),
+          fmt::arg("bandwidthDownBits",
+                   pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
+          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
+          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
       if (label_.get_tooltip_text() != text) {
         label_.set_tooltip_text(tooltip_text);
       }
@@ -337,7 +327,7 @@ auto waybar::modules::Network::update() -> void {
 }
 
 // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
-int waybar::modules::Network::getExternalInterface() {
+int waybar::modules::Network::getExternalInterface(int skip_idx) const {
   static const uint32_t route_buffer_size = 8192;
   struct nlmsghdr *     hdr = nullptr;
   struct rtmsg *        rt = nullptr;
@@ -447,7 +437,7 @@ int waybar::modules::Network::getExternalInterface() {
       /* If this is the default route, and we know the interface index,
        * we can stop parsing this message.
        */
-      if (has_gateway && !has_destination && temp_idx != -1) {
+      if (has_gateway && !has_destination && temp_idx != -1 && temp_idx != skip_idx) {
         ifidx = temp_idx;
         break;
       }
@@ -455,22 +445,19 @@ int waybar::modules::Network::getExternalInterface() {
   } while (true);
 
 out:
-  last_ext_iface_ = ifidx;
   return ifidx;
 }
 
 void waybar::modules::Network::getInterfaceAddress() {
   unsigned int    cidrRaw;
   struct ifaddrs *ifaddr, *ifa;
-  ipaddr_.clear();
-  netmask_.clear();
   cidr_ = 0;
   int success = getifaddrs(&ifaddr);
   if (success != 0) {
     return;
   }
   ifa = ifaddr;
-  while (ifa != nullptr && ipaddr_.empty() && netmask_.empty()) {
+  while (ifa != nullptr) {
     if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
         ifa->ifa_name == ifname_) {
       char ipaddr[INET6_ADDRSTRLEN];
@@ -482,20 +469,20 @@ void waybar::modules::Network::getInterfaceAddress() {
       auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
       netmask_ = inet_ntop(family_, &net_addr->sin_addr, netmask, INET6_ADDRSTRLEN);
       cidrRaw = net_addr->sin_addr.s_addr;
-      linked_ = ifa->ifa_flags & IFF_RUNNING;
       unsigned int cidr = 0;
       while (cidrRaw) {
         cidr += cidrRaw & 1;
         cidrRaw >>= 1;
       }
       cidr_ = cidr;
+      break;
     }
     ifa = ifa->ifa_next;
   }
   freeifaddrs(ifaddr);
 }
 
-int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) {
+int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) const {
   struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
@@ -509,7 +496,7 @@ int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_
   return sendmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
 }
 
-int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint32_t groups) {
+int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint32_t groups) const {
   struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
   sa.nl_groups = groups;
@@ -532,20 +519,23 @@ bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::strin
     return config_["interface"].asString() == name ||
            wildcardMatch(config_["interface"].asString(), name);
   }
-  auto external_iface = getExternalInterface();
-  if (external_iface == -1) {
-    // Try with lastest working external iface
-    return last_ext_iface_ == rtif->ifi_index;
+  // getExternalInterface may need some delay to detect external interface
+  for (uint8_t tries = 0; tries < MAX_RETRY; tries += 1) {
+    auto external_iface = getExternalInterface();
+    if (external_iface > 0) {
+      return external_iface == rtif->ifi_index;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
-  return external_iface == rtif->ifi_index;
+  return false;
 }
 
-int waybar::modules::Network::getPreferredIface() {
+int waybar::modules::Network::getPreferredIface(int skip_idx) const {
+  int ifid = -1;
   if (config_["interface"].isString()) {
-    ifid_ = if_nametoindex(config_["interface"].asCString());
-    if (ifid_ > 0) {
-      ifname_ = config_["interface"].asString();
-      return ifid_;
+    ifid = if_nametoindex(config_["interface"].asCString());
+    if (ifid > 0) {
+      return ifid;
     } else {
       // Try with wildcard
       struct ifaddrs *ifaddr, *ifa;
@@ -554,85 +544,112 @@ int waybar::modules::Network::getPreferredIface() {
         return -1;
       }
       ifa = ifaddr;
-      ifid_ = -1;
+      ifid = -1;
       while (ifa != nullptr) {
-        if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
-          ifid_ = if_nametoindex(ifa->ifa_name);
+        if (ifa->ifa_addr->sa_family == family_ &&
+            wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
+          ifid = if_nametoindex(ifa->ifa_name);
           break;
         }
         ifa = ifa->ifa_next;
       }
       freeifaddrs(ifaddr);
-      return ifid_;
+      return ifid;
     }
   }
-  ifid_ = getExternalInterface();
-  if (ifid_ > 0) {
-    char ifname[IF_NAMESIZE];
-    if_indextoname(ifid_, ifname);
-    ifname_ = ifname;
-    return ifid_;
+  // getExternalInterface may need some delay to detect external interface
+  for (uint8_t tries = 0; tries < MAX_RETRY; tries += 1) {
+    ifid = getExternalInterface(skip_idx);
+    if (ifid > 0) {
+      return ifid;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
   return -1;
 }
 
+void waybar::modules::Network::clearIface() {
+  essid_.clear();
+  ipaddr_.clear();
+  netmask_.clear();
+  cidr_ = 0;
+  signal_strength_dbm_ = 0;
+  signal_strength_ = 0;
+  frequency_ = 0;
+}
+
+void waybar::modules::Network::checkNewInterface(struct ifinfomsg *rtif) {
+  auto new_iface = getPreferredIface(rtif->ifi_index);
+  if (new_iface != -1) {
+    ifid_ = new_iface;
+    char ifname[IF_NAMESIZE];
+    if_indextoname(new_iface, ifname);
+    ifname_ = ifname;
+    getInterfaceAddress();
+    thread_timer_.wake_up();
+  } else {
+    ifid_ = -1;
+    dp.emit();
+  }
+}
+
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   auto                        net = static_cast<waybar::modules::Network *>(data);
-  auto                        nh = nlmsg_hdr(msg);
   std::lock_guard<std::mutex> lock(net->mutex_);
-
-  if (nh->nlmsg_type == RTM_NEWADDR) {
-    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-    char ifname[IF_NAMESIZE];
-    if_indextoname(rtif->ifi_index, ifname);
-    // Auto detected network can also be assigned here
-    if (net->ifid_ == -1 && net->checkInterface(rtif, ifname)) {
-      net->linked_ = true;
-      net->ifname_ = ifname;
-      net->ifid_ = rtif->ifi_index;
-    }
+  auto                        nh = nlmsg_hdr(msg);
+  auto                        ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+  if (nh->nlmsg_type == RTM_DELADDR) {
     // Check for valid interface
-    if (rtif->ifi_index == net->ifid_) {
-      net->linked_ = true;
-      // Get Iface and WIFI info
-      net->getInterfaceAddress();
-      net->thread_timer_.wake_up();
-    }
-  } else if (nh->nlmsg_type == RTM_DELADDR) {
-    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-    // Check for valid interface
-    if (rtif->ifi_index == net->ifid_) {
+    if (ifi->ifi_index == net->ifid_) {
       net->ipaddr_.clear();
       net->netmask_.clear();
       net->cidr_ = 0;
-      net->dp.emit();
-    }
-  } else if (nh->nlmsg_type < RTM_NEWADDR) {
-    auto rtif = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-    char ifname[IF_NAMESIZE];
-    if_indextoname(rtif->ifi_index, ifname);
-    // Check for valid interface
-    if (rtif->ifi_flags & IFF_RUNNING && net->checkInterface(rtif, ifname)) {
-      net->linked_ = true;
-      net->ifname_ = ifname;
-      net->ifid_ = rtif->ifi_index;
-      net->dp.emit();
-    } else if (rtif->ifi_index == net->ifid_) {
-      net->linked_ = false;
-      net->ifname_.clear();
-      net->ifid_ = -1;
-      net->essid_.clear();
-      net->signal_strength_dbm_ = 0;
-      net->signal_strength_ = 0;
-      net->frequency_ = 0;
-      // Check for a new interface and get info
-      auto new_iface = net->getPreferredIface();
-      if (new_iface != -1) {
-        net->getInterfaceAddress();
-        net->thread_timer_.wake_up();
+      if (!(ifi->ifi_flags & IFF_RUNNING)) {
+        net->clearIface();
+        // Check for a new interface and get info
+        net->checkNewInterface(ifi);
       } else {
         net->dp.emit();
       }
+      return NL_OK;
+    }
+  } else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK) {
+    char ifname[IF_NAMESIZE];
+    if_indextoname(ifi->ifi_index, ifname);
+    // Check for valid interface
+    if (ifi->ifi_index != net->ifid_ && net->checkInterface(ifi, ifname)) {
+      net->ifname_ = ifname;
+      net->ifid_ = ifi->ifi_index;
+      // Get Iface and WIFI info
+      net->getInterfaceAddress();
+      net->thread_timer_.wake_up();
+      return NL_OK;
+    } else if (ifi->ifi_index == net->ifid_ &&
+               (!(ifi->ifi_flags & IFF_RUNNING) || !(ifi->ifi_flags & IFF_UP) ||
+                !net->checkInterface(ifi, ifname))) {
+      net->clearIface();
+      // Check for a new interface and get info
+      net->checkNewInterface(ifi);
+      return NL_OK;
+    }
+  } else {
+    char ifname[IF_NAMESIZE];
+    if_indextoname(ifi->ifi_index, ifname);
+    // Auto detected network can also be assigned here
+    if (ifi->ifi_index != net->ifid_ && net->checkInterface(ifi, ifname)) {
+      // If iface is different, clear data
+      if (ifi->ifi_index != net->ifid_) {
+        net->clearIface();
+      }
+      net->ifname_ = ifname;
+      net->ifid_ = ifi->ifi_index;
+    }
+    // Check for valid interface
+    if (ifi->ifi_index == net->ifid_) {
+      // Get Iface and WIFI info
+      net->getInterfaceAddress();
+      net->thread_timer_.wake_up();
+      return NL_OK;
     }
   }
   return NL_SKIP;
@@ -670,11 +687,10 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   net->parseEssid(bss);
   net->parseSignal(bss);
   net->parseFreq(bss);
-  return NL_SKIP;
+  return NL_OK;
 }
 
 void waybar::modules::Network::parseEssid(struct nlattr **bss) {
-  essid_.clear();
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
     auto       ies = static_cast<char *>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
     auto       ies_len = nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS]);
@@ -747,7 +763,8 @@ auto waybar::modules::Network::getInfo() -> void {
 }
 
 // https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
-bool waybar::modules::Network::wildcardMatch(const std::string &pattern, const std::string &text) {
+bool waybar::modules::Network::wildcardMatch(const std::string &pattern,
+                                             const std::string &text) const {
   auto P = int(pattern.size());
   auto T = int(text.size());
 

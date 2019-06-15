@@ -3,11 +3,7 @@
 
 namespace waybar::modules::sway {
 
-Mode::Mode(const std::string& id, const Json::Value& config) : ALabel(config, "{}") {
-  label_.set_name("mode");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
+Mode::Mode(const std::string& id, const Json::Value& config) : ALabel(config, "mode", id, "{}") {
   ipc_.subscribe(R"(["mode"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Mode::onEvent));
   // Launch worker

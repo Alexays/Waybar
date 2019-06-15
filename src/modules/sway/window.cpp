@@ -4,11 +4,7 @@
 namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "{}"), bar_(bar), windowId_(-1) {
-  label_.set_name("window");
-  if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
-  }
+    : ALabel(config, "window", id, "{}"), bar_(bar), windowId_(-1) {
   if (label_.get_max_width_chars() == -1) {
     label_.set_hexpand(true);
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
@@ -27,34 +23,9 @@ void Window::onEvent(const struct Ipc::ipc_response& res) { getTree(); }
 void Window::onCmd(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto payload = parser_.parse(res.payload);
-    auto [nb, id, name, app_id] = getFocusedNode(payload);
-    if (!app_id_.empty()) {
-      bar_.window.get_style_context()->remove_class(app_id_);
-    }
-    if (nb == 0) {
-      bar_.window.get_style_context()->remove_class("solo");
-      if (!bar_.window.get_style_context()->has_class("empty")) {
-        bar_.window.get_style_context()->add_class("empty");
-      }
-    } else if (nb == 1) {
-      bar_.window.get_style_context()->remove_class("empty");
-      if (!bar_.window.get_style_context()->has_class("solo")) {
-        bar_.window.get_style_context()->add_class("solo");
-      }
-      if (!app_id.empty() && !bar_.window.get_style_context()->has_class(app_id)) {
-        bar_.window.get_style_context()->add_class(app_id);
-      }
-    } else {
-      bar_.window.get_style_context()->remove_class("solo");
-      bar_.window.get_style_context()->remove_class("empty");
-    }
-    app_id_ = app_id;
-    if (windowId_ != id || window_ != name) {
-      windowId_ = id;
-      window_ = name;
-      dp.emit();
-    }
+    auto                        payload = parser_.parse(res.payload);
+    std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload);
+    dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
   }
@@ -71,6 +42,27 @@ void Window::worker() {
 }
 
 auto Window::update() -> void {
+  if (!old_app_id_.empty()) {
+    bar_.window.get_style_context()->remove_class(old_app_id_);
+  }
+  if (app_nb_ == 0) {
+    bar_.window.get_style_context()->remove_class("solo");
+    if (!bar_.window.get_style_context()->has_class("empty")) {
+      bar_.window.get_style_context()->add_class("empty");
+    }
+  } else if (app_nb_ == 1) {
+    bar_.window.get_style_context()->remove_class("empty");
+    if (!bar_.window.get_style_context()->has_class("solo")) {
+      bar_.window.get_style_context()->add_class("solo");
+    }
+    if (!app_id_.empty() && !bar_.window.get_style_context()->has_class(app_id_)) {
+      bar_.window.get_style_context()->add_class(app_id_);
+      old_app_id_ = app_id_;
+    }
+  } else {
+    bar_.window.get_style_context()->remove_class("solo");
+    bar_.window.get_style_context()->remove_class("empty");
+  }
   label_.set_markup(fmt::format(format_, window_));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
