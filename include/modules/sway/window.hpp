@@ -26,7 +26,6 @@ class Window : public ALabel, public sigc::trackable {
   void                                                   getTree();
 
   const Bar&       bar_;
-  std::mutex       mutex_;
   std::string      window_;
   int              windowId_;
   std::string      app_id_;

@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
-#include "IModule.hpp"
+#include "AModule.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
@@ -12,12 +12,11 @@
 
 namespace waybar::modules::sway {
 
-class Workspaces : public IModule, public sigc::trackable {
+class Workspaces : public AModule, public sigc::trackable {
  public:
   Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Workspaces() = default;
   auto update() -> void;
-       operator Gtk::Widget&();
 
  private:
   void              onCmd(const struct Ipc::ipc_response&);
@@ -33,15 +32,11 @@ class Workspaces : public IModule, public sigc::trackable {
   bool              handleScroll(GdkEventScroll*);
 
   const Bar&                                   bar_;
-  const Json::Value&                           config_;
   std::vector<Json::Value>                     workspaces_;
   std::vector<std::string>                     workspaces_order_;
-  std::mutex                                   mutex_;
   Gtk::Box                                     box_;
   util::JsonParser                             parser_;
-  bool                                         scrolling_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
-  gdouble                                      distance_scrolled_;
 
   util::SleeperThread thread_;
   Ipc                 ipc_;

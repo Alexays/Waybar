@@ -2,7 +2,7 @@
 
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
-waybar::IModule* waybar::Factory::makeModule(const std::string& name) const {
+waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
   try {
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
