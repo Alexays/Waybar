@@ -1,4 +1,5 @@
 #include "modules/sway/taskbar.hpp"
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
 
@@ -40,7 +41,7 @@ void TaskBar::onEvent(const struct Ipc::ipc_response& res) {
 
     dp.emit();
   } catch (const std::exception& e) {
-    std::cerr << "TaskBar: " << e.what() << std::endl;
+    spdlog::error("TaskBar: {}", e.what());
   }
 }
 
@@ -56,7 +57,7 @@ void TaskBar::onCmd(const struct Ipc::ipc_response& res) {
     }
 
   } catch (const std::exception& e) {
-    std::cerr << "TaskBar: " << e.what() << std::endl;
+    spdlog::error("TaskBar: {}", e.what());
   }
 }
 
@@ -65,7 +66,7 @@ void TaskBar::worker() {
     try {
       ipc_.handleEvent();
     } catch (const std::exception& e) {
-      std::cerr << "TaskBar: " << e.what() << std::endl;
+      spdlog::error("TaskBar: {}", e.what());
     }
   };
 }
@@ -201,7 +202,7 @@ bool TaskBar::handleScroll(GdkEventScroll* e) {
         fmt::format("[con_id={}] focus", taskMap_[current_workspace].applications[new_focus].id));
     scrolling_ = false;
   } catch (const std::exception& e) {
-    std::cerr << "TaskBar: " << e.what() << std::endl;
+    spdlog::error("TaskBar: {}", e.what());
   }
   return true;
 }
