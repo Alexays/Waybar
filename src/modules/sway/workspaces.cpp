@@ -4,14 +4,14 @@
 namespace waybar::modules::sway {
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : bar_(bar),
-      config_(config),
-      box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
-      scrolling_(false) {
+    : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
+      bar_(bar),
+      box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  event_box_.add(box_);
   ipc_.subscribe(R"(["workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
@@ -38,7 +38,6 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
     try {
       auto payload = parser_.parse(res.payload);
       if (payload.isArray()) {
-        std::lock_guard<std::mutex> lock(mutex_);
         workspaces_.clear();
         std::copy_if(payload.begin(),
                      payload.end(),
@@ -97,10 +96,6 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
     } catch (const std::exception &e) {
       spdlog::error("Workspaces: {}", e.what());
     }
-  } else {
-    if (scrolling_) {
-      scrolling_ = false;
-    }
   }
 }
 
@@ -132,8 +127,7 @@ bool Workspaces::filterButtons() {
 }
 
 auto Workspaces::update() -> void {
-  std::lock_guard<std::mutex> lock(mutex_);
-  bool                        needReorder = filterButtons();
+  bool needReorder = filterButtons();
   for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
     auto bit = buttons_.find((*it)["name"].asString());
     if (bit == buttons_.end()) {
@@ -181,8 +175,8 @@ auto Workspaces::update() -> void {
 }
 
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
-  auto  pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
-  auto &button = pair.first->second;
+  auto   pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
+  auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   button.signal_clicked().connect([this, node] {
@@ -201,10 +195,6 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
       spdlog::error("Workspaces: {}", e.what());
     }
   });
-  if (!config_["disable-scroll"].asBool()) {
-    button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    button.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
-  }
   return button;
 }
 
@@ -223,64 +213,26 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {
-  // Avoid concurrent scroll event
-  if (scrolling_) {
-    return false;
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+  auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
+    return workspace["focused"].asBool();
+  });
+  if (it == workspaces_.end()) {
+    return true;
   }
   std::string name;
-  scrolling_ = true;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
-      return workspace["focused"].asBool();
-    });
-    if (it == workspaces_.end()) {
-      scrolling_ = false;
-      return false;
-    }
-    switch (e->direction) {
-      case GDK_SCROLL_DOWN:
-      case GDK_SCROLL_RIGHT: {
-        name = getCycleWorkspace(it, false);
-        break;
-      }
-      case GDK_SCROLL_UP:
-      case GDK_SCROLL_LEFT: {
-        name = getCycleWorkspace(it, true);
-        break;
-      }
-      case GDK_SCROLL_SMOOTH: {
-        gdouble delta_x, delta_y;
-        gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
-
-        if (abs(delta_x) > abs(delta_y)) {
-          distance_scrolled_ += delta_x;
-        } else {
-          distance_scrolled_ += delta_y;
-        }
-        gdouble threshold = 0;
-        if (config_["smooth-scrolling-threshold"].isNumeric()) {
-          threshold = config_["smooth-scrolling-threshold"].asDouble();
-        }
-
-        if (distance_scrolled_ < -threshold) {
-          name = getCycleWorkspace(it, true);
-        } else if (distance_scrolled_ > threshold) {
-          name = getCycleWorkspace(it, false);
-        }
-        if(abs(distance_scrolled_) > threshold) {
-          distance_scrolled_ = 0;
-        }
-        break;
-      }
-      default: {
-        break;
-      }
-    }
-    if (name.empty() || name == (*it)["name"].asString()) {
-      scrolling_ = false;
-      return false;
-    }
+  if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
+    name = getCycleWorkspace(it, false);
+  } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
+    name = getCycleWorkspace(it, true);
+  } else {
+    return true;
+  }
+  if (name == (*it)["name"].asString()) {
+    return true;
   }
   try {
     ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
@@ -328,7 +280,5 @@ void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
     button.show();
   }
 }
-
-Workspaces::operator Gtk::Widget &() { return box_; }
 
 }  // namespace waybar::modules::sway

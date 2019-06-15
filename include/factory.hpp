@@ -37,7 +37,7 @@ namespace waybar {
 class Factory {
  public:
   Factory(const Bar& bar, const Json::Value& config);
-  IModule* makeModule(const std::string& name) const;
+  AModule* makeModule(const std::string& name) const;
 
  private:
   const Bar&         bar_;
