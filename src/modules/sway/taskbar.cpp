@@ -147,7 +147,7 @@ Gtk::Button& TaskBar::addButton(const Application& application) {
       ipc_.sendCmd(IPC_COMMAND,
                    fmt::format("[con_id={}] focus", std::to_string(pair.first->first)));
     } catch (const std::exception& e) {
-      std::cerr << e.what() << std::endl;
+      spdlog::error("TaskBar: {}", e.what());
     }
   });
   if (!config_["disable-scroll"].asBool()) {
