@@ -88,9 +88,6 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
 }
 
 bool AModule::handleScroll(GdkEventScroll* e) {
-  // Avoid concurrent scroll event
-  std::lock_guard<std::mutex> lock(mutex_);
-
   auto dir = getScrollDir(e);
   if (dir == SCROLL_DIR::UP && config_["on-scroll-up"].isString()) {
     pid_.push_back(util::command::forkExec(config_["on-scroll-up"].asString()));
