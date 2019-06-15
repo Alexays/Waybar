@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 #include <gtkmm/button.h>
+#include <gtkmm/image.h>
 #include <gtkmm/label.h>
 #include "IModule.hpp"
 #include "bar.hpp"

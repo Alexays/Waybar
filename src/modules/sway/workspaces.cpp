@@ -166,7 +166,7 @@ auto Workspaces::update() -> void {
                            fmt::arg("index", (*it)["num"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
+      static_cast<Gtk::Label *>(button.get_child())->set_markup(output);
     } else {
       button.set_label(output);
     }

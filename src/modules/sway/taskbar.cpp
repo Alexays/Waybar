@@ -112,7 +112,20 @@ auto TaskBar::update() -> void {
       output = fmt::format(format, fmt::arg("name", it->display_name), fmt::arg("icon", ""));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(output);
+      if (!button.get_image()) {
+        static_cast<Gtk::Label*>(button.get_child())->set_markup(output);
+      } else {
+        auto button_inner_container = dynamic_cast<Gtk::Container*>(button.get_child());
+        auto label_and_icon_container =
+            dynamic_cast<Gtk::Container*>(button_inner_container->get_children()[0]);
+
+        // Here 1 is index of Gtk::Label, while 0 is index of Gtk::Image
+        // It's undocumented, but behaviour is pretty stable during significant amount of testing
+        auto label_of_button =
+            dynamic_cast<Gtk::Label*>(label_and_icon_container->get_children()[1]);
+        label_of_button->set_markup(output);
+      }
+
     } else {
       button.set_label(output);
     }
