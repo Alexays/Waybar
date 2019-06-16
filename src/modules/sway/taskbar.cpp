@@ -88,7 +88,7 @@ bool TaskBar::filterButtons() {
 
 auto TaskBar::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
-  bool                        needReorder = filterButtons();
+  bool needReorder = filterButtons();
   if (current_workspace == "") current_workspace = taskMap_.begin()->first;
   for (auto it = taskMap_[current_workspace].applications.begin();
        it != taskMap_[current_workspace].applications.end();
@@ -116,14 +116,14 @@ auto TaskBar::update() -> void {
       if (!button.get_image()) {
         static_cast<Gtk::Label*>(button.get_child())->set_markup(output);
       } else {
-        auto button_inner_container = dynamic_cast<Gtk::Container*>(button.get_child());
+        auto button_inner_container = static_cast<Gtk::Container*>(button.get_child());
         auto label_and_icon_container =
-            dynamic_cast<Gtk::Container*>(button_inner_container->get_children()[0]);
+            static_cast<Gtk::Container*>(button_inner_container->get_children()[0]);
 
         // Here 1 is index of Gtk::Label, while 0 is index of Gtk::Image
         // It's undocumented, but behaviour is pretty stable during significant amount of testing
         auto label_of_button =
-            dynamic_cast<Gtk::Label*>(label_and_icon_container->get_children()[1]);
+            static_cast<Gtk::Label*>(label_and_icon_container->get_children()[1]);
         label_of_button->set_markup(output);
       }
 
@@ -138,8 +138,10 @@ auto TaskBar::update() -> void {
 Gtk::Button& TaskBar::addButton(const Application& application) {
   auto  pair = buttons_.emplace(application.id, application.display_name);
   auto& button = pair.first->second;
+  std::cout << application.instance_name << "\n";
+  std::cout << application.display_name << "\n";
   if (config_["format"].asString().find("{icon}") != std::string::npos) {
-    button.set_image_from_icon_name(application.instante_name);
+    button.set_image_from_icon_name(application.instance_name);
   }
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
@@ -240,7 +242,7 @@ void TaskBar::parseTree(const Json::Value& nodes) {
             instance_name = window["window_properties"]["class"].asString();
             std::transform(
                 instance_name.begin(), instance_name.end(), instance_name.begin(), ::tolower);
-            if (instance_name == "pcmanfm") {
+            if (instance_name == "pcmanfm") { //TODO why only pcmanfm?.. Need full list here
               instance_name = "system-file-manager";
             }
           }

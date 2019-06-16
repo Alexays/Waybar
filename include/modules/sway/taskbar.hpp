@@ -29,7 +29,7 @@ class TaskBar : public IModule, public sigc::trackable {
   struct Application {
     int         id;
     std::string display_name;
-    std::string instante_name;
+    std::string instance_name;
   };
   Gtk::Button& addButton(const Application&);
 
