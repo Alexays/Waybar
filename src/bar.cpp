@@ -287,14 +287,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
           modules_right_.emplace_back(module);
         }
         module->dp.connect([module, &name] {
-          // Fix https://github.com/Alexays/Waybar/issues/320, proper way?
-          Glib::signal_idle().connect_once([module, &name] {
-            try {
-              module->update();
-            } catch (const std::exception& e) {
-              spdlog::error("{}: {}", name.asString(), e.what());
-            }
-          });
+          try {
+            module->update();
+          } catch (const std::exception& e) {
+            spdlog::error("{}: {}", name.asString(), e.what());
+          }
         });
       } catch (const std::exception& e) {
         spdlog::warn("module {}: {}", name.asString(), e.what());
