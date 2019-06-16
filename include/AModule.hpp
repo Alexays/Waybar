@@ -33,7 +33,8 @@ class AModule : public IModule {
 
  private:
   std::vector<int> pid_;
-  gdouble          distance_scrolled_;
+  gdouble          distance_scrolled_y_;
+  gdouble          distance_scrolled_x_;
 };
 
 }  // namespace waybar
