@@ -222,6 +222,7 @@ TaskBar::operator Gtk::Widget&() { return box_; }
 
 void TaskBar::parseTree(const Json::Value& nodes) {
   for (auto const& node : nodes["nodes"]) {
+    std::cout << node << std::endl;
     if (node["type"] == "workspace") {
       for (auto const& window : node["nodes"]) {
         if (window["type"] == "con") {
