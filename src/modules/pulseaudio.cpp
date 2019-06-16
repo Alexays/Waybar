@@ -69,7 +69,7 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
 bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   // change the pulse volume only when no user provided
   // events are configured
-  if (config["on-scroll-up"].isString() || config["on-scroll-down"].isString()) {
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);
   }
   auto dir = AModule::getScrollDir(e);
