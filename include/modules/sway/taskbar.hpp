@@ -10,6 +10,8 @@
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
+#include <algorithm>
+#include <functional>
 
 namespace waybar::modules::sway {
 
@@ -38,6 +40,8 @@ class TaskBar : public IModule, public sigc::trackable {
   const int   getCycleTasks(int current_focus, bool prev);
   bool        handleScroll(GdkEventScroll*);
   void        parseTree(const Json::Value&);
+  void        parseWorkspaceTree(const std::string& workspace_name, const Json::Value&);
+  void        parseWorkspaceTreeEntry(const std::string& workspace_name, const Json::Value&);
   void        parseCurrentWorkspace(const Json::Value&);
 
   struct WorkspaceMap {

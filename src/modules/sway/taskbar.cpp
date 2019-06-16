@@ -138,8 +138,6 @@ auto TaskBar::update() -> void {
 Gtk::Button& TaskBar::addButton(const Application& application) {
   auto  pair = buttons_.emplace(application.id, application.display_name);
   auto& button = pair.first->second;
-  std::cout << application.instance_name << "\n";
-  std::cout << application.display_name << "\n";
   if (config_["format"].asString().find("{icon}") != std::string::npos) {
     button.set_image_from_icon_name(application.instance_name);
   }
@@ -225,36 +223,49 @@ TaskBar::operator Gtk::Widget&() { return box_; }
 void TaskBar::parseTree(const Json::Value& nodes) {
   for (auto const& node : nodes["nodes"]) {
     if (node["type"] == "workspace") {
-      for (auto const& window : node["nodes"]) {
-        if (window["type"] == "con") {
-          std::string workspace_name = node["name"].asString();
-          if (!taskMap_.count(workspace_name)) {
-            WorkspaceMap wp;
-            taskMap_.emplace(workspace_name, wp);
-          }
-          size_t max_length = config_["max_length"].isUInt() ? config_["max_length"].asUInt() : 0;
-          std::string window_name = max_length && window["name"].asString().length() > max_length
-                                        ? std::string(window["name"].asString(), 0, max_length)
-                                        : window["name"].asString();
+      parseWorkspaceTree(node["name"].asString(), node);
+    }else{
+      parseTree(node);
+    }
+  }
+}
 
-          std::string instance_name = "terminal";
-          if (!window["window_properties"].isNull()) {
-            instance_name = window["window_properties"]["class"].asString();
-            std::transform(
-                instance_name.begin(), instance_name.end(), instance_name.begin(), ::tolower);
-            if (instance_name == "pcmanfm") { //TODO why only pcmanfm?.. Need full list here
-              instance_name = "system-file-manager";
-            }
-          }
-          taskMap_[workspace_name].applications.push_back(
-              {window["id"].asInt(), window_name, instance_name});
-          if (window["focused"].asBool())
-            taskMap_[workspace_name].focused_num =
-                taskMap_.at(workspace_name).applications.size() - 1;
+void TaskBar::parseWorkspaceTree(const std::string& workspace_name, const Json::Value& node){
+  auto functorGoDeeper =
+        std::bind(&TaskBar::parseWorkspaceTreeEntry, this, workspace_name, std::placeholders::_1);
+  for_each(node["nodes"].begin(), node["nodes"].end(), functorGoDeeper);
+  for_each(node["floating_nodes"].begin(), node["floating_nodes"].end(), functorGoDeeper);
+}
+
+void TaskBar::parseWorkspaceTreeEntry(const std::string& workspace_name, const Json::Value& node){
+  //By documentation, only actual view has member "pid1"
+  if (node.isMember("pid")){
+      //Yeah, it's window
+      if (!taskMap_.count(workspace_name)) {
+        WorkspaceMap wp;
+        taskMap_.emplace(workspace_name, wp);
+      }
+      size_t max_length = config_["max_length"].isUInt() ? config_["max_length"].asUInt() : 0;
+      std::string window_name = max_length && node["name"].asString().length() > max_length
+                                    ? std::string(node["name"].asString(), 0, max_length)
+                                    : node["name"].asString();
+      std::string instance_name = "terminal"; //TODO remove
+      if (!node["window_properties"].isNull()) {
+        instance_name = node["window_properties"]["class"].asString();
+        std::transform(
+            instance_name.begin(), instance_name.end(), instance_name.begin(), ::tolower);
+        if (instance_name == "pcmanfm") { //TODO why only pcmanfm?.. Need full list here
+          instance_name = "system-file-manager";
         }
       }
-    }
-    parseTree(node);
+      taskMap_[workspace_name].applications.push_back(
+          {node["id"].asInt(), window_name, instance_name});
+      if (node["focused"].asBool())
+        taskMap_[workspace_name].focused_num =
+            taskMap_.at(workspace_name).applications.size() - 1;
+  }else{
+    //It's not window, parse further
+    parseWorkspaceTree(workspace_name, node);
   }
 }
 
