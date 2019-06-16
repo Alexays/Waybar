@@ -31,13 +31,6 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
     throw std::runtime_error("pa_mainloop_run() failed.");
   }
   pa_threaded_mainloop_unlock(mainloop_);
-
-  // define the pulse scroll events only when no user provided
-  // events are configured
-  if (!config["on-scroll-up"].isString() && !config["on-scroll-down"].isString()) {
-    event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleVolume));
-  }
 }
 
 waybar::modules::Pulseaudio::~Pulseaudio() {
@@ -73,11 +66,13 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
   }
 }
 
-bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
-  // Avoid concurrent scroll event
-  std::lock_guard<std::mutex> lock(mutex_);
-
-  auto dir = ALabel::getScrollDir(e);
+bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+  // change the pulse volume only when no user provided
+  // events are configured
+  if (config["on-scroll-up"].isString() || config["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+  auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
