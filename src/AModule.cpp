@@ -65,23 +65,28 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
   } else if (e->direction == GDK_SCROLL_SMOOTH) {
     gdouble delta_x, delta_y;
     gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent*>(e), &delta_x, &delta_y);
-    distance_scrolled_ += delta_y;
-    // TODO: handle X axis
+    distance_scrolled_y_ += delta_y;
+    distance_scrolled_x_ += delta_x;
+
     gdouble threshold = 0;
     if (config_["smooth-scrolling-threshold"].isNumeric()) {
       threshold = config_["smooth-scrolling-threshold"].asDouble();
     }
 
-    if (distance_scrolled_ < -threshold) {
+    if (distance_scrolled_y_ < -threshold) {
       dir = SCROLL_DIR::UP;
-    } else if (distance_scrolled_ > threshold) {
+    } else if (distance_scrolled_y_ > threshold) {
       dir = SCROLL_DIR::DOWN;
+    } else if (distance_scrolled_x_ > threshold) {
+      dir = SCROLL_DIR::RIGHT;
+    } else if (distance_scrolled_x_ < -threshold) {
+      dir = SCROLL_DIR::LEFT;
     }
-    if (abs(distance_scrolled_) > threshold) {
-      distance_scrolled_ = 0;
-    } else {
-      // Don't execute the action if we haven't met the threshold!
-      return SCROLL_DIR::NONE;
+
+    if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::DOWN) {
+      distance_scrolled_y_ = 0;
+    } else if (dir == SCROLL_DIR::LEFT || dir == SCROLL_DIR::RIGHT) {
+      distance_scrolled_x_ = 0;
     }
   }
   return dir;
