@@ -79,11 +79,19 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
         dir = SCROLL_DIR::LEFT;
       }
 
-      if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::DOWN) {
-        distance_scrolled_y_ = 0;
-      } else if (dir == SCROLL_DIR::LEFT || dir == SCROLL_DIR::RIGHT) {
-        distance_scrolled_x_ = 0;
+      switch (dir) {
+        case SCROLL_DIR::UP:
+        case SCROLL_DIR::DOWN:
+          distance_scrolled_y_ = 0;
+          break;
+        case SCROLL_DIR::LEFT:
+        case SCROLL_DIR::RIGHT:
+          distance_scrolled_x_ = 0;
+          break;
+        case SCROLL_DIR::NONE:
+          break;
       }
+
       return dir;
     }
     // Silence -Wreturn-type:
