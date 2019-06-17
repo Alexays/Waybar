@@ -63,10 +63,9 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
     return SCROLL_DIR::RIGHT;
   } else if (e->direction == GDK_SCROLL_SMOOTH) {
     SCROLL_DIR dir{SCROLL_DIR::NONE};
-    gdouble delta_x, delta_y;
-    gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent*>(e), &delta_x, &delta_y);
-    distance_scrolled_y_ += delta_y;
-    distance_scrolled_x_ += delta_x;
+
+    distance_scrolled_y_ += e->delta_y;
+    distance_scrolled_x_ += e->delta_x;
 
     gdouble threshold = 0;
     if (config_["smooth-scrolling-threshold"].isNumeric()) {
