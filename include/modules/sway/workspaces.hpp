@@ -37,6 +37,7 @@ class Workspaces : public AModule, public sigc::trackable {
   Gtk::Box                                     box_;
   util::JsonParser                             parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
+  std::mutex                                   mutex_;
 
   util::SleeperThread thread_;
   Ipc                 ipc_;

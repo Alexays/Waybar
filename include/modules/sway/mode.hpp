@@ -22,6 +22,7 @@ class Mode : public ALabel, public sigc::trackable {
 
   std::string      mode_;
   util::JsonParser parser_;
+  std::mutex       mutex_;
 
   util::SleeperThread thread_;
   Ipc                 ipc_;
