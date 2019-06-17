@@ -36,8 +36,9 @@ void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
 void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   if (res.type == IPC_GET_WORKSPACES) {
     try {
-      auto payload = parser_.parse(res.payload);
-      if (payload.isArray()) {
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto                        payload = parser_.parse(res.payload);
         workspaces_.clear();
         std::copy_if(payload.begin(),
                      payload.end(),
@@ -90,9 +91,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                       return lhs["name"].asString() < rhs["name"].asString();
                     });
         }
-
-        dp.emit();
       }
+      dp.emit();
     } catch (const std::exception &e) {
       spdlog::error("Workspaces: {}", e.what());
     }
@@ -127,7 +127,8 @@ bool Workspaces::filterButtons() {
 }
 
 auto Workspaces::update() -> void {
-  bool needReorder = filterButtons();
+  std::lock_guard<std::mutex> lock(mutex_);
+  bool                        needReorder = filterButtons();
   for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
     auto bit = buttons_.find((*it)["name"].asString());
     if (bit == buttons_.end()) {
@@ -217,6 +218,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
+  std::lock_guard<std::mutex> lock(mutex_);
   auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
     return workspace["focused"].asBool();
   });
