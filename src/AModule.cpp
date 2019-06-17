@@ -53,41 +53,41 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
 }
 
 AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
-  if (e->direction == GDK_SCROLL_UP) {
-    return SCROLL_DIR::UP;
-  } else if (e->direction == GDK_SCROLL_DOWN) {
-    return SCROLL_DIR::DOWN;
-  } else if (e->direction == GDK_SCROLL_LEFT) {
-    return SCROLL_DIR::LEFT;
-  } else if (e->direction == GDK_SCROLL_RIGHT) {
-    return SCROLL_DIR::RIGHT;
-  } else if (e->direction == GDK_SCROLL_SMOOTH) {
-    SCROLL_DIR dir{SCROLL_DIR::NONE};
+  switch (e -> direction) {
+    case GDK_SCROLL_UP: return SCROLL_DIR::UP;
+    case GDK_SCROLL_DOWN: return SCROLL_DIR::DOWN;
+    case GDK_SCROLL_LEFT: return SCROLL_DIR::LEFT;
+    case GDK_SCROLL_RIGHT: return SCROLL_DIR::RIGHT;
+    case GDK_SCROLL_SMOOTH: {
+      SCROLL_DIR dir{SCROLL_DIR::NONE};
 
-    distance_scrolled_y_ += e->delta_y;
-    distance_scrolled_x_ += e->delta_x;
+      distance_scrolled_y_ += e->delta_y;
+      distance_scrolled_x_ += e->delta_x;
 
-    gdouble threshold = 0;
-    if (config_["smooth-scrolling-threshold"].isNumeric()) {
-      threshold = config_["smooth-scrolling-threshold"].asDouble();
+      gdouble threshold = 0;
+      if (config_["smooth-scrolling-threshold"].isNumeric()) {
+        threshold = config_["smooth-scrolling-threshold"].asDouble();
+      }
+
+      if (distance_scrolled_y_ < -threshold) {
+        dir = SCROLL_DIR::UP;
+      } else if (distance_scrolled_y_ > threshold) {
+        dir = SCROLL_DIR::DOWN;
+      } else if (distance_scrolled_x_ > threshold) {
+        dir = SCROLL_DIR::RIGHT;
+      } else if (distance_scrolled_x_ < -threshold) {
+        dir = SCROLL_DIR::LEFT;
+      }
+
+      if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::DOWN) {
+        distance_scrolled_y_ = 0;
+      } else if (dir == SCROLL_DIR::LEFT || dir == SCROLL_DIR::RIGHT) {
+        distance_scrolled_x_ = 0;
+      }
+      return dir;
     }
-
-    if (distance_scrolled_y_ < -threshold) {
-      dir = SCROLL_DIR::UP;
-    } else if (distance_scrolled_y_ > threshold) {
-      dir = SCROLL_DIR::DOWN;
-    } else if (distance_scrolled_x_ > threshold) {
-      dir = SCROLL_DIR::RIGHT;
-    } else if (distance_scrolled_x_ < -threshold) {
-      dir = SCROLL_DIR::LEFT;
-    }
-
-    if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::DOWN) {
-      distance_scrolled_y_ = 0;
-    } else if (dir == SCROLL_DIR::LEFT || dir == SCROLL_DIR::RIGHT) {
-      distance_scrolled_x_ = 0;
-    }
-    return dir;
+    // Silence -Wreturn-type:
+    default: return SCROLL_DIR::NONE;
   }
 }
 
