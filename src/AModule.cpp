@@ -53,16 +53,16 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
 }
 
 AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
-  SCROLL_DIR dir{SCROLL_DIR::NONE};
   if (e->direction == GDK_SCROLL_UP) {
-    dir = SCROLL_DIR::UP;
+    return SCROLL_DIR::UP;
   } else if (e->direction == GDK_SCROLL_DOWN) {
-    dir = SCROLL_DIR::DOWN;
+    return SCROLL_DIR::DOWN;
   } else if (e->direction == GDK_SCROLL_LEFT) {
-    dir = SCROLL_DIR::LEFT;
+    return SCROLL_DIR::LEFT;
   } else if (e->direction == GDK_SCROLL_RIGHT) {
-    dir = SCROLL_DIR::RIGHT;
+    return SCROLL_DIR::RIGHT;
   } else if (e->direction == GDK_SCROLL_SMOOTH) {
+    SCROLL_DIR dir{SCROLL_DIR::NONE};
     gdouble delta_x, delta_y;
     gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent*>(e), &delta_x, &delta_y);
     distance_scrolled_y_ += delta_y;
@@ -88,8 +88,8 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
     } else if (dir == SCROLL_DIR::LEFT || dir == SCROLL_DIR::RIGHT) {
       distance_scrolled_x_ = 0;
     }
+    return dir;
   }
-  return dir;
 }
 
 bool AModule::handleScroll(GdkEventScroll* e) {
