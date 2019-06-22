@@ -65,6 +65,7 @@ libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 
 src_files = files(
     'src/factory.cpp',
+    'src/AModule.cpp',
     'src/ALabel.cpp',
     'src/modules/memory.cpp',
     'src/modules/battery.cpp',

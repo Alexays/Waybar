@@ -4,8 +4,9 @@
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
+#include <gtkmm/box.h>
 #include <json/json.h>
-#include "IModule.hpp"
+#include "AModule.hpp"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
@@ -73,9 +74,9 @@ class Bar {
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;
   Gtk::Box                                      box_;
-  std::vector<std::unique_ptr<waybar::IModule>> modules_left_;
-  std::vector<std::unique_ptr<waybar::IModule>> modules_center_;
-  std::vector<std::unique_ptr<waybar::IModule>> modules_right_;
+  std::vector<std::unique_ptr<waybar::AModule>> modules_left_;
+  std::vector<std::unique_ptr<waybar::AModule>> modules_center_;
+  std::vector<std::unique_ptr<waybar::AModule>> modules_right_;
 };
 
 }  // namespace waybar

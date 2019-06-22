@@ -5,7 +5,6 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
       mainloop_(nullptr),
       mainloop_api_(nullptr),
       context_(nullptr),
-      scrolling_(false),
       sink_idx_(0),
       volume_(0),
       muted_(false),
@@ -32,13 +31,6 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
     throw std::runtime_error("pa_mainloop_run() failed.");
   }
   pa_threaded_mainloop_unlock(mainloop_);
-
-  // define the pulse scroll events only when no user provided
-  // events are configured
-  if (!config["on-scroll-up"].isString() && !config["on-scroll-down"].isString()) {
-    event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleVolume));
-  }
 }
 
 waybar::modules::Pulseaudio::~Pulseaudio() {
@@ -74,50 +66,33 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
   }
 }
 
-bool waybar::modules::Pulseaudio::handleVolume(GdkEventScroll *e) {
-  // Avoid concurrent scroll event
-  if (scrolling_) {
-    return false;
+bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+  // change the pulse volume only when no user provided
+  // events are configured
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
   }
-  bool        direction_up = false;
-  double      volume_tick = (double)PA_VOLUME_NORM / 100;
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+  double      volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_volume_t change = volume_tick;
   pa_cvolume  pa_volume = pa_volume_;
-  scrolling_ = true;
-  if (e->direction == GDK_SCROLL_UP) {
-    direction_up = true;
-  }
-  if (e->direction == GDK_SCROLL_DOWN) {
-    direction_up = false;
-  }
-
-  if (e->direction == GDK_SCROLL_SMOOTH) {
-    gdouble delta_x, delta_y;
-    gdk_event_get_scroll_deltas(reinterpret_cast<const GdkEvent *>(e), &delta_x, &delta_y);
-    if (delta_y < 0) {
-      direction_up = true;
-    } else if (delta_y > 0) {
-      direction_up = false;
-    }
-  }
-
   // isDouble returns true for integers as well, just in case
   if (config_["scroll-step"].isDouble()) {
     change = round(config_["scroll-step"].asDouble() * volume_tick);
   }
-
-  if (direction_up) {
+  if (dir == SCROLL_DIR::UP) {
     if (volume_ + 1 < 100) {
       pa_cvolume_inc(&pa_volume, change);
     }
-  } else {
+  } else if (dir == SCROLL_DIR::DOWN) {
     if (volume_ - 1 >= 0) {
       pa_cvolume_dec(&pa_volume, change);
     }
   }
-
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
-
   return true;
 }
 
@@ -248,8 +223,5 @@ auto waybar::modules::Pulseaudio::update() -> void {
   getState(volume_);
   if (tooltipEnabled()) {
     label_.set_tooltip_text(desc_);
-  }
-  if (scrolling_) {
-    scrolling_ = false;
   }
 }

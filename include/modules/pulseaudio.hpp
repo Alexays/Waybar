@@ -21,14 +21,13 @@ class Pulseaudio : public ALabel {
   static void sourceInfoCb(pa_context*, const pa_source_info* i, int, void* data);
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
   static void volumeModifyCb(pa_context*, int, void*);
-  bool        handleVolume(GdkEventScroll* e);
 
+  bool              handleScroll(GdkEventScroll* e);
   const std::string getPortIcon() const;
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api*      mainloop_api_;
   pa_context*           context_;
-  bool                  scrolling_;
   // SINK
   uint32_t    sink_idx_{0};
   uint16_t    volume_;
