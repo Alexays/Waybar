@@ -546,8 +546,7 @@ int waybar::modules::Network::getPreferredIface(int skip_idx) const {
       ifa = ifaddr;
       ifid = -1;
       while (ifa != nullptr) {
-        if (ifa->ifa_addr->sa_family == family_ &&
-            wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
+        if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
           ifid = if_nametoindex(ifa->ifa_name);
           break;
         }
