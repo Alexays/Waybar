@@ -1,8 +1,5 @@
-#include <iostream>
-#include <sstream>
-#include <string>
 #include "modules/backlight.hpp"
-#include "util/command.hpp"
+#include "util/condshow.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -181,15 +178,7 @@ auto waybar::modules::Backlight::update() -> void {
 
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
 
-    bool show_module = true;
-    if (config_["exec-if"].isString()) {
-      std::ostringstream command;
-      command << config_["exec-if"].asString() << " " << percent;
-      auto res = util::command::exec(command.str());
-      if (res.exit_code != 0) {
-        show_module = false;
-      }
-    }
+    bool show_module = util::condshow::show_module(config_, std::to_string(percent));
     if (show_module) {
       label_.set_markup(fmt::format(format_,
                                     fmt::arg("percent", std::to_string(percent)),
