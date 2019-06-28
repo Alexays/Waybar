@@ -1,4 +1,8 @@
+#include <iostream>
+#include <sstream>
+#include <string>
 #include "modules/backlight.hpp"
+#include "util/command.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -176,14 +180,31 @@ auto waybar::modules::Backlight::update() -> void {
     }
 
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
-    label_.set_markup(fmt::format(
-        format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
-    getState(percent);
+
+    bool show_module = true;
+    if (config_["exec-if"].isString()) {
+      std::ostringstream command;
+      command << config_["exec-if"].asString() << " " << percent;
+      auto res = util::command::exec(command.str());
+      if (res.exit_code != 0) {
+        show_module = false;
+      }
+    }
+    if (show_module) {
+      label_.set_markup(fmt::format(format_,
+                                    fmt::arg("percent", std::to_string(percent)),
+                                    fmt::arg("icon", getIcon(percent))));
+      getState(percent);
+      event_box_.show();
+    } else {
+      event_box_.hide();
+    }
   } else {
     if (!previous_best_.has_value()) {
       return;
     }
     label_.set_markup("");
+    event_box_.hide();
   }
   previous_best_ = best == nullptr ? std::nullopt : std::optional{*best};
   previous_format_ = format_;
