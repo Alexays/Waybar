@@ -3,7 +3,8 @@
 
 namespace waybar::modules::sway {
 
-Mode::Mode(const std::string& id, const Json::Value& config) : ALabel(config, "mode", id, "{}") {
+Mode::Mode(const std::string& id, const Json::Value& config)
+    : ALabel(config, "mode", id, "{}", 0, true) {
   ipc_.subscribe(R"(["mode"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Mode::onEvent));
   // Launch worker
@@ -14,7 +15,7 @@ Mode::Mode(const std::string& id, const Json::Value& config) : ALabel(config, "m
 void Mode::onEvent(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto payload = parser_.parse(res.payload);
+    auto                        payload = parser_.parse(res.payload);
     if (payload["change"] != "default") {
       mode_ = Glib::Markup::escape_text(payload["change"].asString());
     } else {

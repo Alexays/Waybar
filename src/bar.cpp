@@ -302,9 +302,9 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
 
 auto waybar::Bar::setupWidgets() -> void {
   window.add(box_);
-  box_.pack_start(left_, true, true);
+  box_.pack_start(left_, false, false);
   box_.set_center_widget(center_);
-  box_.pack_end(right_, true, true);
+  box_.pack_end(right_, false, false);
 
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
@@ -316,13 +316,13 @@ auto waybar::Bar::setupWidgets() -> void {
   getModules(factory, "modules-center");
   getModules(factory, "modules-right");
   for (auto const& module : modules_left_) {
-    left_.pack_start(*module, false, true, 0);
+    left_.pack_start(*module, false, false);
   }
   for (auto const& module : modules_center_) {
-    center_.pack_start(*module, true, true, 0);
+    center_.pack_start(*module, false, false);
   }
   std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
-    right_.pack_end(*module, false, false, 0);
+    right_.pack_end(*module, false, false);
   }
 }

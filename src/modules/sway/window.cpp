@@ -4,7 +4,7 @@
 namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "window", id, "{}"), bar_(bar), windowId_(-1) {
+    : ALabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
