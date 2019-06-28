@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <memory>
+#include <sstream>
 
 #include <libudev.h>
 
@@ -178,8 +179,9 @@ auto waybar::modules::Backlight::update() -> void {
 
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
 
-    bool show_module = util::condshow::show_module(config_, std::to_string(percent));
-    if (show_module) {
+    std::stringstream args;
+    args << percent;
+    if (util::condshow::show_module(config_, args.str())) {
       label_.set_markup(fmt::format(format_,
                                     fmt::arg("percent", std::to_string(percent)),
                                     fmt::arg("icon", getIcon(percent))));

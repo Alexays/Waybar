@@ -1,4 +1,5 @@
 #include <numeric>
+#include <sstream>
 #include "modules/cpu.hpp"
 #include "util/condshow.hpp"
 
@@ -17,9 +18,9 @@ auto waybar::modules::Cpu::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }
-  bool show_module =
-      util::condshow::show_module(config_, std::to_string(cpu_load) + std::to_string(cpu_usage));
-  if (show_module) {
+  std::stringstream args;
+  args << cpu_load << " " << cpu_usage;
+  if (util::condshow::show_module(config_, args.str())) {
     label_.set_markup(
         fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
     getState(cpu_usage);
