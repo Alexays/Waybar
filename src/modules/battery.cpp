@@ -1,4 +1,5 @@
 #include <spdlog/spdlog.h>
+#include <sstream>
 #include "modules/battery.hpp"
 #include "util/condshow.hpp"
 
