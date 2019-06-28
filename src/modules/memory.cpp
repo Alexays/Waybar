@@ -1,4 +1,6 @@
+#include <sstream>
 #include "modules/memory.hpp"
+#include "util/condshow.hpp"
 
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
     : ALabel(config, "memory", id, "{}%", 30) {
@@ -16,17 +18,24 @@ auto waybar::modules::Memory::update() -> void {
     auto used_ram_gigabytes = (memtotal_ - memfree_) / std::pow(1024, 2);
     auto available_ram_gigabytes = memfree_ / std::pow(1024, 2);
 
-    getState(used_ram_percentage);
-    label_.set_markup(fmt::format(format_,
-                                  used_ram_percentage,
-                                  fmt::arg("total", total_ram_gigabytes),
-                                  fmt::arg("percentage", used_ram_percentage),
-                                  fmt::arg("used", used_ram_gigabytes),
-                                  fmt::arg("avail", available_ram_gigabytes)));
-    if (tooltipEnabled()) {
-      label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
+    std::stringstream args;
+    args << total_ram_gigabytes << " " << used_ram_percentage << " " << used_ram_gigabytes << " "
+         << available_ram_gigabytes;
+    if (util::condshow::show_module(config_, args.str())) {
+      getState(used_ram_percentage);
+      label_.set_markup(fmt::format(format_,
+                                    used_ram_percentage,
+                                    fmt::arg("total", total_ram_gigabytes),
+                                    fmt::arg("percentage", used_ram_percentage),
+                                    fmt::arg("used", used_ram_gigabytes),
+                                    fmt::arg("avail", available_ram_gigabytes)));
+      if (tooltipEnabled()) {
+        label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
+      }
+      event_box_.show();
+    } else {
+      event_box_.hide();
     }
-    event_box_.show();
   } else {
     event_box_.hide();
   }
