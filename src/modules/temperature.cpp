@@ -1,4 +1,6 @@
+#include <sstream>
 #include "modules/temperature.hpp"
+#include "util/condshow.hpp"
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
@@ -29,10 +31,18 @@ auto waybar::modules::Temperature::update() -> void {
     label_.get_style_context()->remove_class("critical");
   }
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("temperatureC", temperature_c),
-                                fmt::arg("temperatureF", temperature_f),
-                                fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+
+  std::stringstream args;
+  args << temperature_c << " " << temperature_f;
+  if (util::condshow::show_module(config_, args.str())) {
+    label_.set_markup(fmt::format(format,
+                                  fmt::arg("temperatureC", temperature_c),
+                                  fmt::arg("temperatureF", temperature_f),
+                                  fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+    event_box_.show();
+  } else {
+    event_box_.hide();
+  }
 }
 
 std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {
