@@ -1,5 +1,6 @@
-#include "modules/battery.hpp"
 #include <spdlog/spdlog.h>
+#include "modules/battery.hpp"
+#include "util/condshow.hpp"
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60) {
@@ -177,10 +178,16 @@ auto waybar::modules::Battery::update() -> void {
   if (format.empty()) {
     event_box_.hide();
   } else {
-    event_box_.show();
-    label_.set_markup(fmt::format(format,
-                                  fmt::arg("capacity", capacity),
-                                  fmt::arg("icon", getIcon(capacity, state)),
-                                  fmt::arg("time", formatTimeRemaining(time_remaining))));
+    std::stringstream args;
+    args << capacity << " " << time_remaining;
+    if (util::condshow::show_module(config_, args.str())) {
+      event_box_.show();
+      label_.set_markup(fmt::format(format,
+                                    fmt::arg("capacity", capacity),
+                                    fmt::arg("icon", getIcon(capacity, state)),
+                                    fmt::arg("time", formatTimeRemaining(time_remaining))));
+    } else {
+      event_box_.hide();
+    }
   }
 }
