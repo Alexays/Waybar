@@ -1,5 +1,6 @@
-#include "modules/cpu.hpp"
 #include <numeric>
+#include "modules/cpu.hpp"
+#include "util/condshow.hpp"
 
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu", id, "{usage}%", 10) {
@@ -16,8 +17,16 @@ auto waybar::modules::Cpu::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
-  getState(cpu_usage);
+  bool show_module =
+      util::condshow::show_module(config_, std::to_string(cpu_load) + std::to_string(cpu_usage));
+  if (show_module) {
+    label_.set_markup(
+        fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
+    getState(cpu_usage);
+    event_box_.show();
+  } else {
+    event_box_.hide();
+  }
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad() {
