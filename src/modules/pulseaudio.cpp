@@ -1,4 +1,6 @@
+#include <sstream>
 #include "modules/pulseaudio.hpp"
+#include "util/condshow.hpp"
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
     : ALabel(config, "pulseaudio", id, "{volume}%"),
@@ -215,13 +217,20 @@ auto waybar::modules::Pulseaudio::update() -> void {
   } else if (!source_muted_ && config_["format-source"].isString()) {
     format_source = config_["format-source"].asString();
   }
-  format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("volume", volume_),
-                                fmt::arg("format_source", format_source),
-                                fmt::arg("icon", getIcon(volume_, getPortIcon()))));
-  getState(volume_);
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(desc_);
+  std::stringstream args;
+  args << volume_;
+  if (util::condshow::show_module(config_, args.str())) {
+    format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
+    label_.set_markup(fmt::format(format,
+                                  fmt::arg("volume", volume_),
+                                  fmt::arg("format_source", format_source),
+                                  fmt::arg("icon", getIcon(volume_, getPortIcon()))));
+    getState(volume_);
+    if (tooltipEnabled()) {
+      label_.set_tooltip_text(desc_);
+    }
+    event_box_.show();
+  } else {
+    event_box_.hide();
   }
 }
