@@ -36,12 +36,18 @@ window#waybar.chromium {
     border: none;
 }
 
-/* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
 #workspaces button {
     padding: 0 5px;
     background-color: transparent;
     color: #ffffff;
     border-bottom: 3px solid transparent;
+}
+
+/* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
+#workspaces button:hover {
+    background: rgba(0, 0, 0, 0.2);
+    box-shadow: inherit;
+    border-bottom: 3px solid #ffffff;
 }
 
 #workspaces button.focused {
