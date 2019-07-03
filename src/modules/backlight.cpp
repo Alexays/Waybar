@@ -176,9 +176,28 @@ auto waybar::modules::Backlight::update() -> void {
     }
 
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
-    label_.set_markup(fmt::format(
-        format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
-    getState(percent);
+    getState(percent); // Set the state class
+
+    // Set the module text
+    auto text = fmt::format(
+        format_,
+        fmt::arg("percent", std::to_string(percent)),
+        fmt::arg("icon", getIcon(percent)));
+    label_.set_markup(text);
+
+    // Set the tooltip text
+    if (tooltipEnabled()) {
+      if (config_["tooltip-format"].isString()) {
+        auto tooltip_format = config_["tooltip-format"].asString();
+        auto tooltip_text = fmt::format(
+            tooltip_format,
+            fmt::arg("percent", std::to_string(percent)),
+            fmt::arg("icon", getIcon(percent)));
+        label_.set_tooltip_text(tooltip_text);
+      } else {
+        label_.set_tooltip_text(text);
+      }
+    }
   } else {
     if (!previous_best_.has_value()) {
       return;
