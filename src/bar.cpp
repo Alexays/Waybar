@@ -18,6 +18,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.set_name("waybar");
   window.set_decorated(false);
   window.get_style_context()->add_class(output->name);
+  window.get_style_context()->add_class(config["name"].asString());
+  window.get_style_context()->add_class(config["position"].asString());
 
   if (config["position"] == "right" || config["position"] == "left") {
     height_ = 0;
