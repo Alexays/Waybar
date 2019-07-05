@@ -196,6 +196,11 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const {
 }
 
 auto waybar::modules::Pulseaudio::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   auto format = format_;
   std::string format_name = "format";
   if (monitor_.find("a2dp_sink") != std::string::npos) {

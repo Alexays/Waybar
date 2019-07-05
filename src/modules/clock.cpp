@@ -13,6 +13,11 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Clock::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   tzset(); // Update timezone information
   auto now = std::chrono::system_clock::now();
   auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));

@@ -26,6 +26,11 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
 }
 
 auto waybar::modules::IdleInhibitor::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   label_.set_markup(
       fmt::format(format_, fmt::arg("status", status_), fmt::arg("icon", getIcon(0, status_))));
   label_.get_style_context()->add_class(status_);

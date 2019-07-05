@@ -10,6 +10,11 @@ waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Cpu::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto cpu_load = getCpuLoad();
   auto [cpu_usage, tooltip] = getCpuUsage();

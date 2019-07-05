@@ -228,6 +228,11 @@ const std::string waybar::modules::Network::getNetworkState() const {
 }
 
 auto waybar::modules::Network::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   std::lock_guard<std::mutex> lock(mutex_);
   std::string                 tooltip_format;
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
