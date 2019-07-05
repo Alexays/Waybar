@@ -9,6 +9,11 @@ waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config
 }
 
 auto waybar::modules::Memory::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   parseMeminfo();
   if (memtotal_ > 0 && memfree_ >= 0) {
     auto total_ram_gigabytes = memtotal_ / std::pow(1024, 2);

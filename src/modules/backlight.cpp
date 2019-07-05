@@ -175,6 +175,11 @@ auto waybar::modules::Backlight::update() -> void {
       return;
     }
 
+    // Run user-provided update handler if configured
+    if (config_["on-update"].isString()) {
+      AModule::update();
+    }
+
     const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
     label_.set_markup(fmt::format(
         format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));

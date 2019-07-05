@@ -35,6 +35,11 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::MPD::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   std::lock_guard guard(connection_lock_);
   tryConnect();
 

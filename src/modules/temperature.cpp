@@ -19,6 +19,11 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
 }
 
 auto waybar::modules::Temperature::update() -> void {
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    AModule::update();
+  }
+
   auto [temperature_c, temperature_f] = getTemperature();
   auto critical = isCritical(temperature_c);
   auto format = format_;
