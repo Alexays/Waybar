@@ -218,23 +218,25 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-  std::lock_guard<std::mutex> lock(mutex_);
-  auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
-    return workspace["focused"].asBool();
-  });
-  if (it == workspaces_.end()) {
-    return true;
-  }
   std::string name;
-  if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
-    name = getCycleWorkspace(it, false);
-  } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
-    name = getCycleWorkspace(it, true);
-  } else {
-    return true;
-  }
-  if (name == (*it)["name"].asString()) {
-    return true;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
+      return workspace["focused"].asBool();
+    });
+    if (it == workspaces_.end()) {
+      return true;
+    }
+    if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
+      name = getCycleWorkspace(it, false);
+    } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
+      name = getCycleWorkspace(it, true);
+    } else {
+      return true;
+    }
+    if (name == (*it)["name"].asString()) {
+      return true;
+    }
   }
   try {
     ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
