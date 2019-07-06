@@ -28,7 +28,12 @@ class ALabel : public AModule {
 
   std::tuple<Json::Value, const std::string> extractArgs(const std::string &format);
 
-  std::unordered_map<std::string, std::function<Json::Value(void)>> args_;
+  struct Arg {
+    std::function<Json::Value(void)> func;
+    bool                             isState = false;
+  };
+
+  std::unordered_map<std::string, Arg> args_;
 };
 
 }  // namespace waybar

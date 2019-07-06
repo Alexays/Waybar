@@ -14,6 +14,8 @@ class IdleInhibitor : public ALabel {
   auto update() -> void;
 
  private:
+  const std::string getStatus() const;
+
   bool handleToggle(GdkEventButton* const& e);
 
   const Bar&                    bar_;

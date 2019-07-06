@@ -34,10 +34,15 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
 auto ALabel::update() -> void {
   auto [args, output] = extractArgs(format_);
-  label_.set_markup(output);
-  // TODO: getState
-  if (args["usage"].isUInt()) {
-    getState(args["usage"].asUInt());
+  if (output.empty()) {
+    event_box_.hide();
+  } else {
+    label_.set_markup(output);
+    // TODO: getState, getIcon
+    if (args["usage"].isUInt()) {
+      getState(args["usage"].asUInt());
+    }
+    event_box_.show();
   }
 }
 
@@ -85,15 +90,19 @@ std::tuple<Json::Value, const std::string> ALabel::extractArgs(const std::string
       for (const auto& arg : args_) {
         if (format.find("{" + arg.first + "}") != std::string::npos ||
             format.find("{" + arg.first + ":") != std::string::npos) {
-          auto val = arg.second();
+          auto val = arg.second.func();
           if (val.isString()) {
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asString())));
+            auto varg = val.asString();
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
           } else if (val.isInt()) {
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asInt())));
+            auto varg = val.asInt();
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
           } else if (val.isUInt()) {
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asUInt())));
+            auto varg = val.asUInt();
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
           } else if (val.isDouble()) {
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asDouble())));
+            auto varg = val.asDouble();
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
           }
         }
       }

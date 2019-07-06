@@ -5,8 +5,8 @@ namespace waybar {
 
 modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu", id, "{usage}%", 10) {
-  args_.emplace("load", std::bind(&Cpu::getCpuLoad, this));
-  args_.emplace("usage", std::bind(&Cpu::getCpuUsage, this));
+  args_.emplace("load", Arg{std::bind(&Cpu::getCpuLoad, this)});
+  args_.emplace("usage", Arg{std::bind(&Cpu::getCpuUsage, this), true});
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
