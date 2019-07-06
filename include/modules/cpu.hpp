@@ -17,12 +17,11 @@ class Cpu : public ALabel {
  public:
   Cpu(const std::string&, const Json::Value&);
   ~Cpu() = default;
-  auto update() -> void;
 
  private:
   static inline const std::string         data_dir_ = "/proc/stat";
   uint16_t                                getCpuLoad();
-  std::tuple<uint16_t, std::string>       getCpuUsage();
+  uint16_t                                getCpuUsage();
   std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
 
   std::vector<std::tuple<size_t, size_t>> prev_times_;

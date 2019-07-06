@@ -25,6 +25,10 @@ class ALabel : public AModule {
 
   virtual bool        handleToggle(GdkEventButton *const &e);
   virtual std::string getState(uint8_t value, bool lesser = false);
+
+  std::tuple<Json::Value, const std::string> extractArgs(const std::string &format);
+
+  std::unordered_map<std::string, std::function<Json::Value(void)>> args_;
 };
 
 }  // namespace waybar

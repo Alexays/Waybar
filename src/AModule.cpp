@@ -53,11 +53,15 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
 }
 
 AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
-  switch (e -> direction) {
-    case GDK_SCROLL_UP: return SCROLL_DIR::UP;
-    case GDK_SCROLL_DOWN: return SCROLL_DIR::DOWN;
-    case GDK_SCROLL_LEFT: return SCROLL_DIR::LEFT;
-    case GDK_SCROLL_RIGHT: return SCROLL_DIR::RIGHT;
+  switch (e->direction) {
+    case GDK_SCROLL_UP:
+      return SCROLL_DIR::UP;
+    case GDK_SCROLL_DOWN:
+      return SCROLL_DIR::DOWN;
+    case GDK_SCROLL_LEFT:
+      return SCROLL_DIR::LEFT;
+    case GDK_SCROLL_RIGHT:
+      return SCROLL_DIR::RIGHT;
     case GDK_SCROLL_SMOOTH: {
       SCROLL_DIR dir{SCROLL_DIR::NONE};
 
@@ -95,7 +99,8 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
       return dir;
     }
     // Silence -Wreturn-type:
-    default: return SCROLL_DIR::NONE;
+    default:
+      return SCROLL_DIR::NONE;
   }
 }
 

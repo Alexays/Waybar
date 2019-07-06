@@ -2,6 +2,8 @@
 #include <fmt/format.h>
 #include <util/command.hpp>
 
+#include <iostream>
+
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
@@ -31,7 +33,12 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 }
 
 auto ALabel::update() -> void {
-  // Nothing here
+  auto [args, output] = extractArgs(format_);
+  label_.set_markup(output);
+  // TODO: getState
+  if (args["usage"].isUInt()) {
+    getState(args["usage"].asUInt());
+  }
 }
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
@@ -64,6 +71,39 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     }
   }
   return AModule::handleToggle(e);
+}
+
+std::tuple<Json::Value, const std::string> ALabel::extractArgs(const std::string& format) {
+  // TODO: workaround as fmt doest support dynamic named args
+  Json::Value              root(Json::objectValue);
+  std::vector<std::string> formats;
+  std::stringstream        ss(format);
+  std::string              tok;
+
+  while (getline(ss, tok, '}')) {
+    if (tok.find('{') != std::string::npos) {
+      for (const auto& arg : args_) {
+        if (format.find("{" + arg.first + "}") != std::string::npos ||
+            format.find("{" + arg.first + ":") != std::string::npos) {
+          auto val = arg.second();
+          if (val.isString()) {
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asString())));
+          } else if (val.isInt()) {
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asInt())));
+          } else if (val.isUInt()) {
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asUInt())));
+          } else if (val.isDouble()) {
+            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, val.asDouble())));
+          }
+        }
+      }
+    } else {
+      formats.push_back(tok);
+    }
+  }
+  std::ostringstream oss;
+  std::copy(formats.begin(), formats.end(), std::ostream_iterator<std::string>(oss, ""));
+  return {root, oss.str()};
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {

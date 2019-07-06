@@ -10,8 +10,8 @@ namespace waybar {
 
 class AModule : public IModule {
  public:
-  AModule(const Json::Value &, const std::string &, const std::string &,
-          bool enable_click = false, bool enable_scroll = false);
+  AModule(const Json::Value &, const std::string &, const std::string &, bool enable_click = false,
+          bool enable_scroll = false);
   virtual ~AModule();
   virtual auto update() -> void;
   virtual      operator Gtk::Widget &();
