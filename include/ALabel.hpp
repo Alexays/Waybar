@@ -34,6 +34,8 @@ class ALabel : public AModule {
     bool                             tooltip = false;
   };
 
+  std::string old_state_;
+
   std::tuple<Json::Value, const std::string> handleArg(const std::string &         format,
                                                        const std::string &         key,
                                                        std::pair<std::string, Arg> arg);

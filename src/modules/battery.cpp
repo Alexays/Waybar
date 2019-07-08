@@ -171,11 +171,6 @@ auto Battery::update() -> void {
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
   auto format = format_;
   auto state = getState(capacity, true);
-  if (!old_status_.empty()) {
-    label_.get_style_context()->remove_class(old_status_);
-  }
-  label_.get_style_context()->add_class(status);
-  old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
   } else if (config_["format-" + status].isString()) {

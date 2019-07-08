@@ -115,7 +115,16 @@ const std::string ALabel::extractArgs(const std::string& format) {
   if (state_it != args_.end()) {
     auto val = state_it->second.func();
     auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
-    state = {getState(state_val, state_it->second.reversedState), val};
+    auto state_str = getState(state_val, state_it->second.reversedState);
+    state_str = val.isString() && state_str.empty() ? val.asString() : state_str;
+    state = {state_str, val};
+    if (!old_state_.empty()) {
+      label_.get_style_context()->remove_class(old_state_);
+    }
+    if (!state_str.empty()) {
+      label_.get_style_context()->add_class(state_str);
+      old_state_ = state_str;
+    }
     // If state arg is also tooltip
     if (state_it->second.tooltip && tooltipEnabled() && val.isString()) {
       label_.set_tooltip_text(val.asString());
