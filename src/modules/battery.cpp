@@ -3,7 +3,6 @@
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60) {
-  // _args.emplace("capacity", Arg{std::bind(&Battery::getCapacity, this), true, true});
   getBatteries();
   fd_ = inotify_init1(IN_CLOEXEC);
   if (fd_ == -1) {

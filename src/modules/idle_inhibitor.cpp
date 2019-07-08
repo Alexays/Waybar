@@ -29,15 +29,6 @@ IdleInhibitor::~IdleInhibitor() {
 
 const std::string IdleInhibitor::getStatus() const { return status_; }
 
-auto IdleInhibitor::update() -> void {
-  label_.set_markup(
-      fmt::format(format_, fmt::arg("status", status_), fmt::arg("icon", getIcon(0, status_))));
-  label_.get_style_context()->add_class(status_);
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(status_);
-  }
-}
-
 bool IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
     label_.get_style_context()->remove_class(status_);

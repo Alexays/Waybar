@@ -106,22 +106,34 @@ const std::string ALabel::extractArgs(const std::string& format) {
 
   // Args requirement
   std::vector<std::tuple<Arg, Json::Value, std::string>> args;
-  std::pair<std::string, uint8_t>                        state;
+  std::pair<std::string, uint8_t>                        state{"", 0};
 
   while (getline(ss, tok, '}')) {
     if (tok.find('{') != std::string::npos) {
-      auto it = std::find_if(args_.begin(), args_.end(), [&tok](const auto& arg) {
-        return tok.find(arg.first) != std::string::npos;
+      auto str = tok + "}";
+      auto it = std::find_if(args_.begin(), args_.end(), [&str](const auto& arg) {
+        return str.find(arg.first) != std::string::npos;
       });
       if (it != args_.end()) {
-        auto [val, output] = handleArg(format, tok + "}", *it);
+        auto [val, output] = handleArg(format, str, *it);
         formats.push_back(output);
-        if (it->second.isState && val.isConvertibleTo(Json::uintValue)) {
-          auto stateVal = val.asUInt();
-          state = {getState(stateVal, it->second.reversedState), stateVal};
+        if (it->second.isState) {
+          auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
+          state = {getState(state_val, it->second.reversedState), state_val};
         }
-      } else if (tok.find("{icon}") != std::string::npos) {
-        auto icon = fmt::format(tok + "}", fmt::arg(tok, getIcon(state.second, state.first)));
+      } else if (str.find("{icon}") != std::string::npos) {
+        // Icon need state arg
+        if (state.second == 0 && state.first.empty()) {
+          auto state_it = std::find_if(
+              args_.begin(), args_.end(), [](const auto& arg) { return arg.second.isState; });
+          if (state_it != args_.end()) {
+            auto val = state_it->second.func();
+            auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
+            auto state_str = getState(state_val, state_it->second.reversedState);
+            state = {state_str.empty() && val.isString() ? val.asString() : state_str, state_val};
+          }
+        }
+        auto icon = fmt::format(str, fmt::arg("icon", getIcon(state.second, state.first)));
         formats.push_back(icon);
       }
     } else {

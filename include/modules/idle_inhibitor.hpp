@@ -11,7 +11,6 @@ class IdleInhibitor : public ALabel {
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~IdleInhibitor();
-  auto update() -> void;
 
  private:
   const std::string getStatus() const;
