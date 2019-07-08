@@ -35,16 +35,21 @@ class Battery : public ALabel {
   void                                          worker();
   const std::string                             getAdapterStatus(uint8_t capacity) const;
   const std::tuple<uint8_t, float, std::string> getInfos() const;
-  const std::string                             formatTimeRemaining(float hoursRemaining);
+  const std::string                             formatTimeRemaining(float hoursRemaining) const;
+
+  uint8_t           getCapacity() const;
+  const std::string getTimeRemaining() const;
 
   std::vector<fs::path> batteries_;
   fs::path              adapter_;
   int                   fd_;
   std::vector<int>      wds_;
   std::string           old_status_;
+  uint8_t               capacity_;
+  float                 time_remaining_;
 
-  util::SleeperThread   thread_;
-  util::SleeperThread   thread_timer_;
+  util::SleeperThread thread_;
+  util::SleeperThread thread_timer_;
 };
 
 }  // namespace waybar::modules

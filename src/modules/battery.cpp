@@ -1,8 +1,12 @@
 #include "modules/battery.hpp"
 #include <spdlog/spdlog.h>
 
-waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
+namespace waybar::modules {
+
+Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60) {
+  args_.emplace("capacity", Arg{std::bind(&Battery::getCapacity, this), true, true, true});
+  args_.emplace("time", Arg{std::bind(&Battery::getTimeRemaining, this)});
   getBatteries();
   fd_ = inotify_init1(IN_CLOEXEC);
   if (fd_ == -1) {
@@ -17,14 +21,14 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
   worker();
 }
 
-waybar::modules::Battery::~Battery() {
+Battery::~Battery() {
   for (auto wd : wds_) {
     inotify_rm_watch(fd_, wd);
   }
   close(fd_);
 }
 
-void waybar::modules::Battery::worker() {
+void Battery::worker() {
   thread_timer_ = [this] {
     dp.emit();
     thread_timer_.sleep_for(interval_);
@@ -42,7 +46,7 @@ void waybar::modules::Battery::worker() {
   };
 }
 
-void waybar::modules::Battery::getBatteries() {
+void Battery::getBatteries() {
   try {
     for (auto& node : fs::directory_iterator(data_dir_)) {
       if (!fs::is_directory(node)) {
@@ -72,7 +76,7 @@ void waybar::modules::Battery::getBatteries() {
   }
 }
 
-const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() const {
+const std::tuple<uint8_t, float, std::string> Battery::getInfos() const {
   try {
     uint16_t    total = 0;
     uint32_t    total_power = 0;   // μW
@@ -122,7 +126,7 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
   }
 }
 
-const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
+const std::string Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
@@ -137,25 +141,30 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
   return "Unknown";
 }
 
-const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemaining) {
+const std::string Battery::formatTimeRemaining(float hoursRemaining) const {
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
   return std::to_string(full_hours) + " h " + std::to_string(minutes) + " min";
 }
 
-auto waybar::modules::Battery::update() -> void {
+uint8_t Battery::getCapacity() const { return capacity_; }
+
+const std::string Battery::getTimeRemaining() const { return formatTimeRemaining(time_remaining_); }
+
+auto Battery::update() -> void {
   auto [capacity, time_remaining, status] = getInfos();
+  capacity_ = capacity;
+  time_remaining_ = time_remaining;
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
   if (tooltipEnabled()) {
-    std::string tooltip_text;
+    std::string tooltip_text = status;
+    ;
     if (time_remaining != 0) {
       std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
       tooltip_text = time_to + ": " + formatTimeRemaining(time_remaining);
-    } else {
-      tooltip_text = status;
     }
     label_.set_tooltip_text(tooltip_text);
   }
@@ -174,13 +183,7 @@ auto waybar::modules::Battery::update() -> void {
   } else if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
   }
-  if (format.empty()) {
-    event_box_.hide();
-  } else {
-    event_box_.show();
-    label_.set_markup(fmt::format(format,
-                                  fmt::arg("capacity", capacity),
-                                  fmt::arg("icon", getIcon(capacity, state)),
-                                  fmt::arg("time", formatTimeRemaining(time_remaining))));
-  }
+  ALabel::update();
 }
+
+}  // namespace waybar::modules
