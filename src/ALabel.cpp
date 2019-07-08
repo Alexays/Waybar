@@ -33,15 +33,11 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 }
 
 auto ALabel::update() -> void {
-  auto [args, output] = extractArgs(format_);
+  auto output = extractArgs(format_);
   if (output.empty()) {
     event_box_.hide();
   } else {
     label_.set_markup(output);
-    // TODO: getState, getIcon
-    if (args["usage"].isUInt()) {
-      getState(args["usage"].asUInt());
-    }
     event_box_.show();
   }
 }
@@ -78,33 +74,55 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   return AModule::handleToggle(e);
 }
 
-std::tuple<Json::Value, const std::string> ALabel::extractArgs(const std::string& format) {
+// Needed atm with the workaround and this json lib
+std::tuple<Json::Value, const std::string> ALabel::handleArg(const std::string&          format,
+                                                             const std::string&          key,
+                                                             std::pair<std::string, Arg> arg) {
+  if (format.find("{" + arg.first + "}") != std::string::npos ||
+      format.find("{" + arg.first + ":") != std::string::npos) {
+    auto val = arg.second.func();
+    if (val.isString()) {
+      auto varg = val.asString();
+      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+    } else if (val.isInt()) {
+      auto varg = val.asInt();
+      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+    } else if (val.isUInt()) {
+      auto varg = val.asUInt();
+      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+    } else if (val.isDouble()) {
+      auto varg = val.asDouble();
+      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+    }
+  }
+  return {Json::Value(), ""};
+}
+
+const std::string ALabel::extractArgs(const std::string& format) {
   // TODO: workaround as fmt doest support dynamic named args
-  Json::Value              root(Json::objectValue);
   std::vector<std::string> formats;
   std::stringstream        ss(format);
   std::string              tok;
 
+  // Args requirement
+  std::vector<std::tuple<Arg, Json::Value, std::string>> args;
+  std::pair<std::string, uint8_t>                        state;
+
   while (getline(ss, tok, '}')) {
     if (tok.find('{') != std::string::npos) {
-      for (const auto& arg : args_) {
-        if (format.find("{" + arg.first + "}") != std::string::npos ||
-            format.find("{" + arg.first + ":") != std::string::npos) {
-          auto val = arg.second.func();
-          if (val.isString()) {
-            auto varg = val.asString();
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
-          } else if (val.isInt()) {
-            auto varg = val.asInt();
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
-          } else if (val.isUInt()) {
-            auto varg = val.asUInt();
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
-          } else if (val.isDouble()) {
-            auto varg = val.asDouble();
-            formats.push_back(fmt::format(tok + "}", fmt::arg(arg.first, varg)));
-          }
+      auto it = std::find_if(args_.begin(), args_.end(), [&tok](const auto& arg) {
+        return tok.find(arg.first) != std::string::npos;
+      });
+      if (it != args_.end()) {
+        auto [val, output] = handleArg(format, tok + "}", *it);
+        formats.push_back(output);
+        if (it->second.isState && val.isConvertibleTo(Json::uintValue)) {
+          auto stateVal = val.asUInt();
+          state = {getState(stateVal, it->second.reversedState), stateVal};
         }
+      } else if (tok.find("{icon}") != std::string::npos) {
+        auto icon = fmt::format(tok + "}", fmt::arg(tok, getIcon(state.second, state.first)));
+        formats.push_back(icon);
       }
     } else {
       formats.push_back(tok);
@@ -112,7 +130,7 @@ std::tuple<Json::Value, const std::string> ALabel::extractArgs(const std::string
   }
   std::ostringstream oss;
   std::copy(formats.begin(), formats.end(), std::ostream_iterator<std::string>(oss, ""));
-  return {root, oss.str()};
+  return oss.str();
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {

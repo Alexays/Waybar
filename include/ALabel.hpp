@@ -26,12 +26,16 @@ class ALabel : public AModule {
   virtual bool        handleToggle(GdkEventButton *const &e);
   virtual std::string getState(uint8_t value, bool lesser = false);
 
-  std::tuple<Json::Value, const std::string> extractArgs(const std::string &format);
-
   struct Arg {
     std::function<Json::Value(void)> func;
     bool                             isState = false;
+    bool                             reversedState = false;
   };
+
+  std::tuple<Json::Value, const std::string> handleArg(const std::string &         format,
+                                                       const std::string &         key,
+                                                       std::pair<std::string, Arg> arg);
+  const std::string                          extractArgs(const std::string &format);
 
   std::unordered_map<std::string, Arg> args_;
 };
