@@ -78,21 +78,22 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
 std::tuple<Json::Value, const std::string> ALabel::handleArg(const std::string&          format,
                                                              const std::string&          key,
                                                              std::pair<std::string, Arg> arg) {
-  if (format.find("{" + arg.first + "}") != std::string::npos ||
+  bool def = key == "{}" || key.find("{:") != std::string::npos;
+  if (def || format.find("{" + arg.first + "}") != std::string::npos ||
       format.find("{" + arg.first + ":") != std::string::npos) {
     auto val = arg.second.func();
     if (val.isString()) {
       auto varg = val.asString();
-      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+      return {val, def ? fmt::format(key, varg) : fmt::format(key, fmt::arg(arg.first, varg))};
     } else if (val.isInt()) {
       auto varg = val.asInt();
-      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+      return {val, def ? fmt::format(key, varg) : fmt::format(key, fmt::arg(arg.first, varg))};
     } else if (val.isUInt()) {
       auto varg = val.asUInt();
-      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+      return {val, def ? fmt::format(key, varg) : fmt::format(key, fmt::arg(arg.first, varg))};
     } else if (val.isDouble()) {
       auto varg = val.asDouble();
-      return {val, fmt::format(key, fmt::arg(arg.first, varg))};
+      return {val, def ? fmt::format(key, varg) : fmt::format(key, fmt::arg(arg.first, varg))};
     }
   }
   return {Json::Value(), ""};
@@ -106,34 +107,40 @@ const std::string ALabel::extractArgs(const std::string& format) {
 
   // Args requirement
   std::vector<std::tuple<Arg, Json::Value, std::string>> args;
-  std::pair<std::string, uint8_t>                        state{"", 0};
+  std::pair<std::string, Json::Value>                    state;
+
+  // We need state arg first
+  auto state_it =
+      std::find_if(args_.begin(), args_.end(), [](const auto& arg) { return arg.second.isState; });
+  if (state_it != args_.end()) {
+    auto val = state_it->second.func();
+    auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
+    state = {getState(state_val, state_it->second.reversedState), val};
+    // If state arg is also tooltip
+    if (state_it->second.tooltip && tooltipEnabled() && val.isString()) {
+      label_.set_tooltip_text(val.asString());
+    }
+  }
 
   while (getline(ss, tok, '}')) {
     if (tok.find('{') != std::string::npos) {
       auto str = tok + "}";
       auto it = std::find_if(args_.begin(), args_.end(), [&str](const auto& arg) {
-        return str.find(arg.first) != std::string::npos;
+        return ((str == "{}" || str.find("{:") != std::string::npos) && arg.second.isDefault) ||
+               str.find(arg.first) != std::string::npos;
       });
       if (it != args_.end()) {
         auto [val, output] = handleArg(format, str, *it);
         formats.push_back(output);
-        if (it->second.isState) {
-          auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
-          state = {getState(state_val, it->second.reversedState), state_val};
+        if (it->second.tooltip && tooltipEnabled() && val.isString()) {
+          label_.set_tooltip_text(val.asString());
         }
       } else if (str.find("{icon}") != std::string::npos) {
-        // Icon need state arg
-        if (state.second == 0 && state.first.empty()) {
-          auto state_it = std::find_if(
-              args_.begin(), args_.end(), [](const auto& arg) { return arg.second.isState; });
-          if (state_it != args_.end()) {
-            auto val = state_it->second.func();
-            auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
-            auto state_str = getState(state_val, state_it->second.reversedState);
-            state = {state_str.empty() && val.isString() ? val.asString() : state_str, state_val};
-          }
+        if (state.second.isNull() && state.first.empty()) {
+          throw std::runtime_error("Icon arg need state arg.");
         }
-        auto icon = fmt::format(str, fmt::arg("icon", getIcon(state.second, state.first)));
+        auto state_val = state.second.isConvertibleTo(Json::uintValue) ? state.second.asUInt() : 0;
+        auto icon = fmt::format(str, fmt::arg("icon", getIcon(state_val, state.first)));
         formats.push_back(icon);
       }
     } else {

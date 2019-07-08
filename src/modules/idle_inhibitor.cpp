@@ -9,7 +9,7 @@ IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar, const Json::
       status_("deactivated"),
       idle_inhibitor_(nullptr),
       pid_(-1) {
-  args_.emplace("status", Arg{std::bind(&IdleInhibitor::getStatus, this), true});
+  args_.emplace("status", Arg{std::bind(&IdleInhibitor::getStatus, this), true, .tooltip = true});
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));

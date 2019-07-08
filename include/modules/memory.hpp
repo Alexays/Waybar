@@ -17,6 +17,11 @@ class Memory : public ALabel {
   static inline const std::string data_dir_ = "/proc/meminfo";
   void                            parseMeminfo();
 
+  uint8_t getPercentage() const;
+  uint16_t getTotal() const;
+  uint16_t getUsed() const;
+  uint16_t getAvailable() const;
+
   unsigned long memtotal_;
   unsigned long memfree_;
 

@@ -30,6 +30,8 @@ class ALabel : public AModule {
     std::function<Json::Value(void)> func;
     bool                             isState = false;
     bool                             reversedState = false;
+    bool                             isDefault = false;
+    bool                             tooltip = false;
   };
 
   std::tuple<Json::Value, const std::string> handleArg(const std::string &         format,
