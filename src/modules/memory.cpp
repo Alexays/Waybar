@@ -5,9 +5,9 @@ namespace waybar::modules {
 Memory::Memory(const std::string& id, const Json::Value& config)
     : ALabel(config, "memory", id, "{}%", 30) {
   args_.emplace("percentage",
-                Arg{std::bind(&Memory::getPercentage, this), true, .isDefault = true});
+                Arg{std::bind(&Memory::getPercentage, this), STATE | DEFAULT});
   args_.emplace("total", Arg{std::bind(&Memory::getTotal, this)});
-  args_.emplace("used", Arg{std::bind(&Memory::getUsed, this), .tooltip = true});
+  args_.emplace("used", Arg{std::bind(&Memory::getUsed, this), TOOLTIP});
   args_.emplace("avail", Arg{std::bind(&Memory::getAvailable, this)});
   thread_ = [this] {
     dp.emit();

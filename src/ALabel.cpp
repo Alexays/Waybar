@@ -99,65 +99,104 @@ std::tuple<Json::Value, const std::string> ALabel::handleArg(const std::string& 
   return {Json::Value(), ""};
 }
 
+bool ALabel::checkFormatArg(const std::string& format, std::pair<std::string, ALabel::Arg>&& arg) {
+  return format.find("{" + arg.first + "}") != std::string::npos ||
+         format.find("{" + arg.first + ":") != std::string::npos ||
+         ((format.find("{}") != std::string::npos || format.find("{:") != std::string::npos) &&
+          arg.second.state & DEFAULT);
+}
+
 const std::string ALabel::extractArgs(const std::string& format) {
   // TODO: workaround as fmt doest support dynamic named args
-  std::vector<std::string> formats;
-  std::stringstream        ss(format);
-  std::string              tok;
+  std::vector<std::pair<std::string, std::string>> formats;
+  std::vector<std::string>                         outputs;
+  std::stringstream                                ss(format);
+  std::string                                      tok;
 
   // Args requirement
-  std::vector<std::tuple<Arg, Json::Value, std::string>> args;
-  std::pair<std::string, Json::Value>                    state;
+  std::vector<std::tuple<std::pair<std::string, Arg>, Json::Value, std::string>> args;
+  std::pair<std::string, Json::Value>                                            state;
 
-  // We need state arg first
-  auto state_it =
-      std::find_if(args_.begin(), args_.end(), [](const auto& arg) { return arg.second.isState; });
-  if (state_it != args_.end()) {
-    auto val = state_it->second.func();
-    auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
-    auto state_str = getState(state_val, state_it->second.reversedState);
-    state_str = val.isString() && state_str.empty() ? val.asString() : state_str;
-    state = {state_str, val};
-    if (!old_state_.empty()) {
-      label_.get_style_context()->remove_class(old_state_);
+  while (getline(ss, tok, '}')) {
+    if (tok.find('{') != std::string::npos) {
+      auto str = tok + '}';
+      auto it = std::find_if(args_.begin(), args_.end(), [this, &str](const auto& arg) {
+        return checkFormatArg(str, arg);
+      });
+      formats.emplace_back(it != args_.end() ? it->first : "", tok + '}');
+    } else {
+      formats.emplace_back("", tok);
     }
-    if (!state_str.empty()) {
-      label_.get_style_context()->add_class(state_str);
-      old_state_ = state_str;
+  }
+
+  for (const auto& arg : args_) {
+    // Avoid useless logic
+    if (arg.second.state & NONE || arg.second.state == DEFAULT ||
+        (arg.second.state == TOOLTIP && !tooltipEnabled())) {
+      continue;
+    }
+    Json::Value val;
+    // Check if the full format contains this arg
+    if (checkFormatArg(format, arg)) {
+      // Find the proper format
+      auto it = std::find_if(formats.begin(), formats.end(), [&arg](const auto& form) {
+        return form.first == arg.first;
+      });
+      if (it == formats.end()) {
+        throw std::runtime_error("Can't find proper format: " + arg.first);
+      }
+      auto [value, output] = handleArg(format, it->second, arg);
+      val = value;
+      args.emplace_back(arg, value, output);
+    } else {
+      val = arg.second.func();
+      args.emplace_back(arg, val, "");
+    }
+    if (arg.second.state & STATE || arg.second.state & REVERSED_STATE) {
+      auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
+      auto state_str = getState(state_val, arg.second.state & REVERSED_STATE);
+      state_str = val.isString() && state_str.empty() ? val.asString() : state_str;
+      state = {state_str, val};
+      if (!old_state_.empty()) {
+        label_.get_style_context()->remove_class(old_state_);
+      }
+      if (!state_str.empty()) {
+        label_.get_style_context()->add_class(state_str);
+        old_state_ = state_str;
+      }
     }
     // If state arg is also tooltip
-    if (state_it->second.tooltip && tooltipEnabled() && val.isString()) {
+    if (arg.second.state & TOOLTIP && tooltipEnabled() && val.isConvertibleTo(Json::stringValue)) {
       label_.set_tooltip_text(val.asString());
     }
   }
 
-  while (getline(ss, tok, '}')) {
-    if (tok.find('{') != std::string::npos) {
-      auto str = tok + "}";
-      auto it = std::find_if(args_.begin(), args_.end(), [&str](const auto& arg) {
-        return ((str == "{}" || str.find("{:") != std::string::npos) && arg.second.isDefault) ||
-               str.find(arg.first) != std::string::npos;
+  for (const auto& form : formats) {
+    // Find proper arg
+    if (!form.first.empty()) {
+      auto it = std::find_if(args.begin(), args.end(), [&form](const auto& arg) {
+        return std::get<0>(arg).first == form.first;
       });
-      if (it != args_.end()) {
-        auto [val, output] = handleArg(format, str, *it);
-        formats.push_back(output);
-        if (it->second.tooltip && tooltipEnabled() && val.isString()) {
-          label_.set_tooltip_text(val.asString());
+      if (it != args.end()) {
+        auto output = std::get<2>(*it);
+        if (!output.empty()) {
+          outputs.push_back(output);
         }
-      } else if (str.find("{icon}") != std::string::npos) {
-        if (state.second.isNull() && state.first.empty()) {
-          throw std::runtime_error("Icon arg need state arg.");
-        }
-        auto state_val = state.second.isConvertibleTo(Json::uintValue) ? state.second.asUInt() : 0;
-        auto icon = fmt::format(str, fmt::arg("icon", getIcon(state_val, state.first)));
-        formats.push_back(icon);
       }
+    } else if (form.second.find("{icon}") != std::string::npos) {
+      if (state.second.isNull() && state.first.empty()) {
+        throw std::runtime_error("Icon arg need state arg");
+      }
+      auto state_val = state.second.isConvertibleTo(Json::uintValue) ? state.second.asUInt() : 0;
+      auto icon = fmt::format(form.second, fmt::arg("icon", getIcon(state_val, state.first)));
+      outputs.push_back(icon);
     } else {
-      formats.push_back(tok);
+      outputs.push_back(form.second);
     }
   }
+
   std::ostringstream oss;
-  std::copy(formats.begin(), formats.end(), std::ostream_iterator<std::string>(oss, ""));
+  std::copy(outputs.begin(), outputs.end(), std::ostream_iterator<std::string>(oss, ""));
   return oss.str();
 }
 

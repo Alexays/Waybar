@@ -26,12 +26,15 @@ class ALabel : public AModule {
   virtual bool        handleToggle(GdkEventButton *const &e);
   virtual std::string getState(uint8_t value, bool lesser = false);
 
+  enum STATE_TYPE { NONE, STATE, REVERSED_STATE, TOOLTIP, DEFAULT };
+  friend STATE_TYPE operator|(STATE_TYPE a, STATE_TYPE b) {
+    typedef std::underlying_type<STATE_TYPE>::type UL;
+    return ALabel::STATE_TYPE(static_cast<UL>(a) | static_cast<UL>(b));
+  };
+
   struct Arg {
     std::function<Json::Value(void)> func;
-    bool                             isState = false;
-    bool                             reversedState = false;
-    bool                             isDefault = false;
-    bool                             tooltip = false;
+    STATE_TYPE                       state = STATE_TYPE::NONE;
   };
 
   std::string old_state_;
@@ -42,6 +45,9 @@ class ALabel : public AModule {
   const std::string                          extractArgs(const std::string &format);
 
   std::unordered_map<std::string, Arg> args_;
+
+ private:
+  bool checkFormatArg(const std::string &format, std::pair<std::string, ALabel::Arg> &&arg);
 };
 
 }  // namespace waybar
