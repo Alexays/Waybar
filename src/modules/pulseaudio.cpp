@@ -31,6 +31,8 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
     throw std::runtime_error("pa_mainloop_run() failed.");
   }
   pa_threaded_mainloop_unlock(mainloop_);
+  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
 }
 
 waybar::modules::Pulseaudio::~Pulseaudio() {
