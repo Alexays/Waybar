@@ -26,7 +26,13 @@ class ALabel : public AModule {
   virtual bool        handleToggle(GdkEventButton *const &e);
   virtual std::string getState(uint8_t value, bool lesser = false);
 
-  enum STATE_TYPE { NONE, STATE, REVERSED_STATE, TOOLTIP, DEFAULT };
+  enum STATE_TYPE {
+    NONE = 0,
+    STATE = 1 << 0,
+    REVERSED_STATE = 1 << 1,
+    TOOLTIP = 1 << 2,
+    DEFAULT = 1 << 3
+  };
   friend STATE_TYPE operator|(STATE_TYPE a, STATE_TYPE b) {
     typedef std::underlying_type<STATE_TYPE>::type UL;
     return ALabel::STATE_TYPE(static_cast<UL>(a) | static_cast<UL>(b));

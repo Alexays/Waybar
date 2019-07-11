@@ -7,6 +7,7 @@ Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60) {
   args_.emplace("capacity", Arg{std::bind(&Battery::getCapacity, this), REVERSED_STATE | DEFAULT});
   args_.emplace("time", Arg{std::bind(&Battery::getTimeRemaining, this)});
+  args_.emplace("", Arg{std::bind(&Battery::getTooltipText, this), TOOLTIP});
   getBatteries();
   fd_ = inotify_init1(IN_CLOEXEC);
   if (fd_ == -1) {
@@ -152,29 +153,26 @@ uint8_t Battery::getCapacity() const { return capacity_; }
 
 const std::string Battery::getTimeRemaining() const { return formatTimeRemaining(time_remaining_); }
 
+const std::string Battery::getTooltipText() const {
+  if (time_remaining_ != 0) {
+    std::string time_to = std::string("Time to ") + ((time_remaining_ > 0) ? "empty" : "full");
+    return time_to + ": " + getTimeRemaining();
+  }
+  return status_;
+};
+
 auto Battery::update() -> void {
-  auto [capacity, time_remaining, status] = getInfos();
-  capacity_ = capacity;
-  time_remaining_ = time_remaining;
-  if (status == "Unknown") {
-    status = getAdapterStatus(capacity);
+  std::tie(capacity_, time_remaining_, status_) = getInfos();
+  if (status_ == "Unknown") {
+    status_ = getAdapterStatus(capacity_);
   }
-  if (tooltipEnabled()) {
-    std::string tooltip_text = status;
-    ;
-    if (time_remaining != 0) {
-      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text = time_to + ": " + formatTimeRemaining(time_remaining);
-    }
-    label_.set_tooltip_text(tooltip_text);
-  }
-  std::transform(status.begin(), status.end(), status.begin(), ::tolower);
+  std::transform(status_.begin(), status_.end(), status_.begin(), ::tolower);
   auto format = format_;
-  auto state = getState(capacity, true);
-  if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
-    format = config_["format-" + status + "-" + state].asString();
-  } else if (config_["format-" + status].isString()) {
-    format = config_["format-" + status].asString();
+  auto state = getState(capacity_, true);
+  if (!state.empty() && config_["format-" + status_ + "-" + state].isString()) {
+    format = config_["format-" + status_ + "-" + state].asString();
+  } else if (config_["format-" + status_].isString()) {
+    format = config_["format-" + status_].asString();
   } else if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
   }

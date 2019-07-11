@@ -39,12 +39,13 @@ class Battery : public ALabel {
 
   uint8_t           getCapacity() const;
   const std::string getTimeRemaining() const;
+  const std::string getTooltipText() const;
 
   std::vector<fs::path> batteries_;
   fs::path              adapter_;
   int                   fd_;
   std::vector<int>      wds_;
-  std::string           old_status_;
+  std::string           status_;
   uint8_t               capacity_;
   float                 time_remaining_;
 

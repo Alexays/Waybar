@@ -137,7 +137,7 @@ const std::string ALabel::extractArgs(const std::string& format) {
     }
     Json::Value val;
     // Check if the full format contains this arg
-    if (checkFormatArg(format, arg)) {
+    if (!arg.first.empty() && checkFormatArg(format, arg)) {
       // Find the proper format
       auto it = std::find_if(formats.begin(), formats.end(), [&arg](const auto& form) {
         return form.first == arg.first;
