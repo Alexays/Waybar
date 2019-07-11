@@ -1,9 +1,14 @@
 #include "modules/custom.hpp"
 #include <spdlog/spdlog.h>
 
-waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
-                                const Json::Value& config)
+namespace waybar::modules {
+
+Custom::Custom(const std::string& name, const std::string& id, const Json::Value& config)
     : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
+  args_.emplace("text", Arg{std::bind(&Custom::getText, this), DEFAULT});
+  args_.emplace("percentage", Arg{std::bind(&Custom::getPercentage, this), STATE});
+  args_.emplace("alt", Arg{std::bind(&Custom::getPercentage, this)});
+  args_.emplace("tooltip", Arg{std::bind(&Custom::getTooltip, this), TOOLTIP});
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
       delayWorker();
@@ -14,14 +19,14 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
   dp.emit();
 }
 
-waybar::modules::Custom::~Custom() {
+Custom::~Custom() {
   if (pid_ != -1) {
     kill(-pid_, 9);
     pid_ = -1;
   }
 }
 
-void waybar::modules::Custom::delayWorker() {
+void Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
@@ -39,7 +44,7 @@ void waybar::modules::Custom::delayWorker() {
   };
 }
 
-void waybar::modules::Custom::continuousWorker() {
+void Custom::continuousWorker() {
   auto cmd = config_["exec"].asString();
   pid_ = -1;
   fp_ = util::command::open(cmd, pid_);
@@ -74,25 +79,33 @@ void waybar::modules::Custom::continuousWorker() {
   };
 }
 
-void waybar::modules::Custom::refresh(int sig) {
+void Custom::refresh(int sig) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }
 
-bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
+bool Custom::handleScroll(GdkEventScroll* e) {
   auto ret = ALabel::handleScroll(e);
   thread_.wake_up();
   return ret;
 }
 
-bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
+bool Custom::handleToggle(GdkEventButton* const& e) {
   auto ret = ALabel::handleToggle(e);
   thread_.wake_up();
   return ret;
 }
 
-auto waybar::modules::Custom::update() -> void {
+const std::string& Custom::getText() const { return text_; }
+
+uint8_t Custom::getPercentage() const { return percentage_; }
+
+const std::string& Custom::getAlt() const { return alt_; }
+
+const std::string& Custom::getTooltip() const { return tooltip_; }
+
+auto Custom::update() -> void {
   // Hide label if output is empty
   if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
     event_box_.hide();
@@ -102,35 +115,18 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
-    auto str = fmt::format(format_,
-                           text_,
-                           fmt::arg("alt", alt_),
-                           fmt::arg("icon", getIcon(percentage_, alt_)),
-                           fmt::arg("percentage", percentage_));
-    if (str.empty()) {
-      event_box_.hide();
-    } else {
-      label_.set_markup(str);
-      if (tooltipEnabled()) {
-        if (text_ == tooltip_) {
-          label_.set_tooltip_text(str);
-        } else {
-          label_.set_tooltip_text(tooltip_);
-        }
-      }
-      auto classes = label_.get_style_context()->list_classes();
-      for (auto const& c : classes) {
-        label_.get_style_context()->remove_class(c);
-      }
-      for (auto const& c : class_) {
-        label_.get_style_context()->add_class(c);
-      }
-      event_box_.show();
+    auto classes = label_.get_style_context()->list_classes();
+    for (auto const& c : classes) {
+      label_.get_style_context()->remove_class(c);
     }
+    for (auto const& c : class_) {
+      label_.get_style_context()->add_class(c);
+    }
+    ALabel::update();
   }
 }
 
-void waybar::modules::Custom::parseOutputRaw() {
+void Custom::parseOutputRaw() {
   std::istringstream output(output_.out);
   std::string        line;
   int                i = 0;
@@ -154,7 +150,7 @@ void waybar::modules::Custom::parseOutputRaw() {
   }
 }
 
-void waybar::modules::Custom::parseOutputJson() {
+void Custom::parseOutputJson() {
   std::istringstream output(output_.out);
   std::string        line;
   class_.clear();
@@ -186,3 +182,5 @@ void waybar::modules::Custom::parseOutputJson() {
     break;
   }
 }
+
+}  // namespace waybar::modules

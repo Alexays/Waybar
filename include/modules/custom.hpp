@@ -25,12 +25,17 @@ class Custom : public ALabel {
   bool handleScroll(GdkEventScroll* e);
   bool handleToggle(GdkEventButton* const& e);
 
+  const std::string& getText() const;
+  uint8_t            getPercentage() const;
+  const std::string& getAlt() const;
+  const std::string& getTooltip() const;
+
   const std::string        name_;
   std::string              text_;
   std::string              alt_;
   std::string              tooltip_;
   std::vector<std::string> class_;
-  int                      percentage_;
+  uint8_t                  percentage_;
   FILE*                    fp_;
   int                      pid_;
   util::command::res       output_;
