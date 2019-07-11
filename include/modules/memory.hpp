@@ -21,6 +21,7 @@ class Memory : public ALabel {
   uint16_t getTotal() const;
   uint16_t getUsed() const;
   uint16_t getAvailable() const;
+  const std::string getTooltipText() const;
 
   unsigned long memtotal_;
   unsigned long memfree_;

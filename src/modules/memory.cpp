@@ -4,11 +4,11 @@ namespace waybar::modules {
 
 Memory::Memory(const std::string& id, const Json::Value& config)
     : ALabel(config, "memory", id, "{}%", 30) {
-  args_.emplace("percentage",
-                Arg{std::bind(&Memory::getPercentage, this), STATE | DEFAULT});
+  args_.emplace("percentage", Arg{std::bind(&Memory::getPercentage, this), STATE | DEFAULT});
   args_.emplace("total", Arg{std::bind(&Memory::getTotal, this)});
-  args_.emplace("used", Arg{std::bind(&Memory::getUsed, this), TOOLTIP});
+  args_.emplace("used", Arg{std::bind(&Memory::getUsed, this)});
   args_.emplace("avail", Arg{std::bind(&Memory::getAvailable, this)});
+  args_.emplace("", Arg{std::bind(&Memory::getTooltipText, this), TOOLTIP});
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -27,6 +27,10 @@ uint16_t Memory::getTotal() const { return memtotal_ / std::pow(1024, 2); }
 uint16_t Memory::getUsed() const { return (memtotal_ - memfree_) / std::pow(1024, 2); }
 
 uint16_t Memory::getAvailable() const { return memfree_ / std::pow(1024, 2); }
+
+const std::string Memory::getTooltipText() const {
+  return fmt::format("{}Gb used", getUsed());
+}
 
 void Memory::parseMeminfo() {
   int64_t       memfree = -1, membuffer = -1, memcache = -1, memavail = -1;
