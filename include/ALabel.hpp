@@ -13,7 +13,7 @@ class ALabel : public AModule {
          uint16_t interval = 0, bool ellipsize = false);
   virtual ~ALabel() = default;
   virtual auto        update() -> void;
-  virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
+  virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0) const;
 
  protected:
   Gtk::Label                 label_;
@@ -23,8 +23,10 @@ class ALabel : public AModule {
   bool                       alt_ = false;
   std::string                default_format_;
 
-  virtual bool        handleToggle(GdkEventButton *const &e);
-  virtual std::string getState(uint8_t value, bool lesser = false);
+  virtual bool                           handleToggle(GdkEventButton *const &e);
+  virtual const std::string              getState(uint8_t value, bool lesser = false) const;
+  virtual const std::string              getFormat() const;
+  virtual const std::vector<std::string> getClasses() const;
 
   enum STATE_TYPE {
     NONE = 0,
@@ -39,21 +41,21 @@ class ALabel : public AModule {
   };
 
   struct Arg {
+    const std::string                key;
     std::function<Json::Value(void)> func;
     STATE_TYPE                       state = STATE_TYPE::NONE;
+    uint16_t                         state_threshold = 0;
   };
 
-  std::string old_state_;
+  std::tuple<const Json::Value, const std::string> handleArg(const std::string &format,
+                                                             const std::string &key,
+                                                             const Arg &        arg) const;
+  const std::string                                extractArgs(const std::string &format);
 
-  std::tuple<Json::Value, const std::string> handleArg(const std::string &         format,
-                                                       const std::string &         key,
-                                                       std::pair<std::string, Arg> arg);
-  const std::string                          extractArgs(const std::string &format);
-
-  std::unordered_map<std::string, Arg> args_;
+  std::vector<Arg> args_;
 
  private:
-  bool checkFormatArg(const std::string &format, std::pair<std::string, ALabel::Arg> &&arg);
+  bool checkFormatArg(const std::string &format, const Arg &arg);
 };
 
 }  // namespace waybar

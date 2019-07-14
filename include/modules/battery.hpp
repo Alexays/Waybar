@@ -37,6 +37,9 @@ class Battery : public ALabel {
   const std::tuple<uint8_t, float, std::string> getInfos() const;
   const std::string                             formatTimeRemaining(float hoursRemaining) const;
 
+  const std::string              getFormat() const override;
+  const std::vector<std::string> getClasses() const override;
+
   uint8_t           getCapacity() const;
   const std::string getTimeRemaining() const;
   const std::string getTooltipText() const;

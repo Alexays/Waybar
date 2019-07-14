@@ -5,10 +5,10 @@ namespace waybar::modules {
 
 Custom::Custom(const std::string& name, const std::string& id, const Json::Value& config)
     : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
-  args_.emplace("text", Arg{std::bind(&Custom::getText, this), DEFAULT});
-  args_.emplace("percentage", Arg{std::bind(&Custom::getPercentage, this), STATE});
-  args_.emplace("alt", Arg{std::bind(&Custom::getPercentage, this)});
-  args_.emplace("tooltip", Arg{std::bind(&Custom::getTooltip, this), TOOLTIP});
+  args_.push_back(Arg{"text", std::bind(&Custom::getText, this), DEFAULT});
+  args_.push_back(Arg{"percentage", std::bind(&Custom::getPercentage, this), STATE});
+  args_.push_back(Arg{"alt", std::bind(&Custom::getPercentage, this)});
+  args_.push_back(Arg{"tooltip", std::bind(&Custom::getTooltip, this), TOOLTIP});
   if (config_["exec"].isString()) {
     if (interval_.count() > 0) {
       delayWorker();
@@ -105,6 +105,8 @@ const std::string& Custom::getAlt() const { return alt_; }
 
 const std::string& Custom::getTooltip() const { return tooltip_; }
 
+const std::vector<std::string> Custom::getClasses() const { return class_; }
+
 auto Custom::update() -> void {
   // Hide label if output is empty
   if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
@@ -114,13 +116,6 @@ auto Custom::update() -> void {
       parseOutputJson();
     } else {
       parseOutputRaw();
-    }
-    auto classes = label_.get_style_context()->list_classes();
-    for (auto const& c : classes) {
-      label_.get_style_context()->remove_class(c);
-    }
-    for (auto const& c : class_) {
-      label_.get_style_context()->add_class(c);
     }
     ALabel::update();
   }

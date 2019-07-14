@@ -5,9 +5,10 @@ namespace waybar::modules {
 
 Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60) {
-  args_.emplace("capacity", Arg{std::bind(&Battery::getCapacity, this), REVERSED_STATE | DEFAULT});
-  args_.emplace("time", Arg{std::bind(&Battery::getTimeRemaining, this)});
-  args_.emplace("", Arg{std::bind(&Battery::getTooltipText, this), TOOLTIP});
+  args_.push_back(
+      Arg{"capacity", std::bind(&Battery::getCapacity, this), REVERSED_STATE | DEFAULT});
+  args_.push_back(Arg{"time", std::bind(&Battery::getTimeRemaining, this)});
+  args_.push_back(Arg{"", std::bind(&Battery::getTooltipText, this), TOOLTIP});
   getBatteries();
   fd_ = inotify_init1(IN_CLOEXEC);
   if (fd_ == -1) {
@@ -159,7 +160,21 @@ const std::string Battery::getTooltipText() const {
     return time_to + ": " + getTimeRemaining();
   }
   return status_;
-};
+}
+
+const std::string Battery::getFormat() const {
+  auto state = getState(capacity_, true);
+  if (!state.empty() && config_["format-" + status_ + "-" + state].isString()) {
+    return config_["format-" + status_ + "-" + state].asString();
+  } else if (config_["format-" + status_].isString()) {
+    return config_["format-" + status_].asString();
+  } else if (!state.empty() && config_["format-" + state].isString()) {
+    return config_["format-" + state].asString();
+  }
+  return ALabel::getFormat();
+}
+
+const std::vector<std::string> Battery::getClasses() const { return {status_}; };
 
 auto Battery::update() -> void {
   std::tie(capacity_, time_remaining_, status_) = getInfos();
@@ -167,15 +182,6 @@ auto Battery::update() -> void {
     status_ = getAdapterStatus(capacity_);
   }
   std::transform(status_.begin(), status_.end(), status_.begin(), ::tolower);
-  auto format = format_;
-  auto state = getState(capacity_, true);
-  if (!state.empty() && config_["format-" + status_ + "-" + state].isString()) {
-    format = config_["format-" + status_ + "-" + state].asString();
-  } else if (config_["format-" + status_].isString()) {
-    format = config_["format-" + status_].asString();
-  } else if (!state.empty() && config_["format-" + state].isString()) {
-    format = config_["format-" + state].asString();
-  }
   ALabel::update();
 }
 

@@ -25,6 +25,8 @@ class Custom : public ALabel {
   bool handleScroll(GdkEventScroll* e);
   bool handleToggle(GdkEventButton* const& e);
 
+  const std::vector<std::string> getClasses() const override;
+
   const std::string& getText() const;
   uint8_t            getPercentage() const;
   const std::string& getAlt() const;

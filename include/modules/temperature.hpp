@@ -14,10 +14,17 @@ class Temperature : public ALabel {
   auto update() -> void;
 
  private:
-  std::tuple<uint16_t, uint16_t> getTemperature();
-  bool                           isCritical(uint16_t);
+  uint16_t getTemperature() const;
+  bool     isCritical() const;
+
+  const std::string              getFormat() const override;
+  const std::vector<std::string> getClasses() const override;
+
+  uint16_t getCelcius() const;
+  uint16_t getFahrenheit() const;
 
   std::string         file_path_;
+  uint16_t            temperature_;
   util::SleeperThread thread_;
 };
 
