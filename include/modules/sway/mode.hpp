@@ -19,7 +19,7 @@ class Mode : public ALabel, public sigc::trackable {
   void onEvent(const struct Ipc::ipc_response&);
   void worker();
 
-  const std::string getMode() const;
+  const std::string& getMode() const;
 
   std::string      mode_;
   util::JsonParser parser_;

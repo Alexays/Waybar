@@ -25,6 +25,8 @@ class Window : public ALabel, public sigc::trackable {
                                                                         std::string&       output);
   void                                                   getTree();
 
+  const std::string& getWindow() const;
+
   const Bar&       bar_;
   std::string      window_;
   int              windowId_;

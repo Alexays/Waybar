@@ -38,6 +38,6 @@ void Mode::worker() {
   };
 }
 
-const std::string Mode::getMode() const { return mode_; }
+const std::string& Mode::getMode() const { return mode_; }
 
 }  // namespace waybar::modules::sway

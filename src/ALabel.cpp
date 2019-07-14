@@ -44,10 +44,10 @@ auto ALabel::update() -> void {
   }
   // Extract args output
   auto output = extractArgs(getFormat());
-  if (output.empty()) {
+  label_.set_markup(output);
+  if (label_.get_text().empty()) {
     event_box_.hide();
   } else {
-    label_.set_markup(output);
     event_box_.show();
   }
 }

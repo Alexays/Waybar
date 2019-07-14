@@ -5,6 +5,7 @@ namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
+  args_.push_back(Arg{"window", std::bind(&Window::getWindow, this), DEFAULT | TOOLTIP});
   ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
@@ -19,7 +20,7 @@ void Window::onEvent(const struct Ipc::ipc_response& res) { getTree(); }
 void Window::onCmd(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto payload = parser_.parse(res.payload);
+    auto                        payload = parser_.parse(res.payload);
     auto output = payload["ouput"].isString() ? payload["output"].asString() : "";
     std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload["nodes"], output);
     dp.emit();
@@ -37,6 +38,8 @@ void Window::worker() {
     }
   };
 }
+
+const std::string& Window::getWindow() const { return window_; }
 
 auto Window::update() -> void {
   if (!old_app_id_.empty()) {
@@ -59,10 +62,6 @@ auto Window::update() -> void {
   } else {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
-  }
-  label_.set_markup(fmt::format(format_, window_));
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(window_);
   }
 }
 
