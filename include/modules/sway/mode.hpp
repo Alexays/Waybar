@@ -14,11 +14,12 @@ class Mode : public ALabel, public sigc::trackable {
  public:
   Mode(const std::string&, const Json::Value&);
   ~Mode() = default;
-  auto update() -> void;
 
  private:
   void onEvent(const struct Ipc::ipc_response&);
   void worker();
+
+  const std::string getMode() const;
 
   std::string      mode_;
   util::JsonParser parser_;

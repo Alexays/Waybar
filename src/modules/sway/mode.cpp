@@ -5,6 +5,7 @@ namespace waybar::modules::sway {
 
 Mode::Mode(const std::string& id, const Json::Value& config)
     : ALabel(config, "mode", id, "{}", 0, true) {
+  args_.push_back(Arg{"mode", std::bind(&Mode::getMode, this), DEFAULT | TOOLTIP});
   ipc_.subscribe(R"(["mode"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Mode::onEvent));
   // Launch worker
@@ -37,16 +38,6 @@ void Mode::worker() {
   };
 }
 
-auto Mode::update() -> void {
-  if (mode_.empty()) {
-    event_box_.hide();
-  } else {
-    label_.set_markup(fmt::format(format_, mode_));
-    if (tooltipEnabled()) {
-      label_.set_tooltip_text(mode_);
-    }
-    event_box_.show();
-  }
-}
+const std::string Mode::getMode() const { return mode_; }
 
 }  // namespace waybar::modules::sway
