@@ -10,7 +10,7 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
       host_(nb_hosts_, config, std::bind(&Tray::onAdd, this, std::placeholders::_1),
             std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
   spdlog::warn(
-      "For a functionnal tray you must have libappindicator-* installed and export "
+      "For a functional tray you must have libappindicator-* installed and export "
       "XDG_CURRENT_DESKTOP=Unity");
   box_.set_name("tray");
   event_box_.add(box_);
