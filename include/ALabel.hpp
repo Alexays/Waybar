@@ -32,8 +32,9 @@ class ALabel : public AModule {
     NONE = 0,
     STATE = 1 << 0,
     REVERSED_STATE = 1 << 1,
-    TOOLTIP = 1 << 2,
-    DEFAULT = 1 << 3
+    STATE_ALT = 1 << 2,
+    TOOLTIP = 1 << 3,
+    DEFAULT = 1 << 4
   };
   friend STATE_TYPE operator|(STATE_TYPE a, STATE_TYPE b) {
     typedef std::underlying_type<STATE_TYPE>::type UL;

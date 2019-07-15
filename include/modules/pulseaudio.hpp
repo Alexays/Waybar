@@ -12,7 +12,6 @@ class Pulseaudio : public ALabel {
  public:
   Pulseaudio(const std::string&, const Json::Value&);
   ~Pulseaudio();
-  auto update() -> void;
 
  private:
   static void subscribeCb(pa_context*, pa_subscription_event_type_t, uint32_t, void*);
@@ -22,8 +21,14 @@ class Pulseaudio : public ALabel {
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
   static void volumeModifyCb(pa_context*, int, void*);
 
-  bool              handleScroll(GdkEventScroll* e);
-  const std::string getPortIcon() const;
+  bool                           handleScroll(GdkEventScroll* e) override;
+  const std::vector<std::string> getClasses() const override;
+  const std::string              getFormat() const override;
+
+  const std::string& getPortIcon() const;
+  const std::string  getSourceFormat() const;
+  uint16_t           getVolume() const;
+  const std::string& getDesc() const;
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api*      mainloop_api_;

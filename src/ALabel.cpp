@@ -165,10 +165,17 @@ const std::string ALabel::extractArgs(const std::string& format) {
       auto state_val = val.isConvertibleTo(Json::uintValue) ? val.asUInt() : 0;
       auto state_str = getState(state_val, arg.state & REVERSED_STATE);
       state_str = val.isString() && state_str.empty() ? val.asString() : state_str;
-      state = {state_str, val, arg.state_threshold};
+      // State alt might be already defined
+      if (std::get<0>(state).empty()) {
+        state = {state_str, val, arg.state_threshold};
+      } else {
+        state = {std::get<0>(state), val, arg.state_threshold};
+      }
       if (!state_str.empty()) {
         label_.get_style_context()->add_class(state_str);
       }
+    } else if (arg.state & STATE_ALT && val.isConvertibleTo(Json::stringValue)) {
+      std::get<0>(state) = val.asString();
     }
     auto classes = getClasses();
     for (const auto& c : classes) {
