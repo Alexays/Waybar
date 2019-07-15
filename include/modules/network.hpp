@@ -18,7 +18,7 @@ class Network : public ALabel {
  public:
   Network(const std::string&, const Json::Value&);
   ~Network();
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   static const uint8_t MAX_RETRY = 5;

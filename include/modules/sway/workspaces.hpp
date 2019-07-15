@@ -16,7 +16,7 @@ class Workspaces : public AModule, public sigc::trackable {
  public:
   Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Workspaces() = default;
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   void              onCmd(const struct Ipc::ipc_response&);

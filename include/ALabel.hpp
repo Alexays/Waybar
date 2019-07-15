@@ -45,7 +45,7 @@ class ALabel : public AModule {
     const std::string                key;
     std::function<Json::Value(void)> func;
     STATE_TYPE                       state = STATE_TYPE::NONE;
-    uint16_t                         state_threshold = 0;
+    std::size_t                      state_threshold = 0;
   };
 
   std::tuple<const Json::Value, const std::string> handleArg(const std::string &format,

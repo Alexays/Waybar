@@ -11,7 +11,7 @@ class Clock : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
   ~Clock() = default;
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   util::SleeperThread thread_;

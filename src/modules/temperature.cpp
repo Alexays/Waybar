@@ -7,9 +7,9 @@ Temperature::Temperature(const std::string& id, const Json::Value& config)
   args_.push_back(Arg{"temperatureC",
                       std::bind(&Temperature::getCelcius, this),
                       STATE | DEFAULT,
-                      .state_threshold = config_["critical-threshold"].isInt()
-                                             ? config_["critical-threshold"].asInt()
-                                             : 0});
+                      .state_threshold = config_["critical-threshold"].isUInt()
+                                             ? config_["critical-threshold"].asUInt()
+                                             : 0U});
   args_.push_back(Arg{"temperatureF", std::bind(&Temperature::getFahrenheit, this)});
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();

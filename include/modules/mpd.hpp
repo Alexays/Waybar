@@ -11,7 +11,7 @@ namespace waybar::modules {
 class MPD : public ALabel {
  public:
   MPD(const std::string&, const Json::Value&);
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   std::thread periodic_updater();
