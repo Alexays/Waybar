@@ -88,7 +88,7 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
 std::tuple<const Json::Value, const std::string> ALabel::handleArg(const std::string& format,
                                                                    const std::string& key,
                                                                    const Arg&         arg) const {
-  bool def = key == "{}" || key.find("{:") != std::string::npos;
+  bool def = key.find("{}") != std::string::npos || key.find("{:") != std::string::npos;
   if (def || format.find("{" + arg.key + "}") != std::string::npos ||
       format.find("{" + arg.key + ":") != std::string::npos) {
     auto val = arg.func();
@@ -106,7 +106,7 @@ std::tuple<const Json::Value, const std::string> ALabel::handleArg(const std::st
       return {val, def ? fmt::format(key, varg) : fmt::format(key, fmt::arg(arg.key, varg))};
     }
   }
-  return {Json::Value{}, ""};
+  return {Json::Value{}, key};
 }
 
 bool ALabel::checkFormatArg(const std::string& format, const Arg& arg) {
