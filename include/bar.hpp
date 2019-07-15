@@ -1,10 +1,10 @@
 #pragma once
 
 #include <glibmm/refptr.h>
+#include <gtkmm/box.h>
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
-#include <gtkmm/box.h>
 #include <json/json.h>
 #include "AModule.hpp"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
@@ -15,10 +15,10 @@ namespace waybar {
 
 class Factory;
 struct waybar_output {
-  struct wl_output *     output;
+  struct wl_output *     output = nullptr;
   std::string            name;
   uint32_t               wl_name;
-  struct zxdg_output_v1 *xdg_output;
+  struct zxdg_output_v1 *xdg_output = nullptr;
 };
 
 class Bar {

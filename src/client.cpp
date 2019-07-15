@@ -65,8 +65,14 @@ void waybar::Client::handleGlobalRemove(void *   data, struct wl_registry * /*re
                          client->outputs_.end(),
                          [&name](const auto &output) { return output->wl_name == name; });
   if (it != client->outputs_.end()) {
-    zxdg_output_v1_destroy((*it)->xdg_output);
-    wl_output_destroy((*it)->output);
+    if ((*it)->xdg_output != nullptr) {
+      zxdg_output_v1_destroy((*it)->xdg_output);
+      (*it)->xdg_output = nullptr;
+    }
+    if ((*it)->output != nullptr) {
+      wl_output_destroy((*it)->output);
+      (*it)->output = nullptr;
+    }
     client->outputs_.erase(it);
   }
 }
@@ -151,8 +157,14 @@ void waybar::Client::handleName(void *      data, struct zxdg_output_v1 * /*xdg_
     output->name = name;
     auto configs = client->getOutputConfigs(output);
     if (configs.empty()) {
-      wl_output_destroy(output->output);
-      zxdg_output_v1_destroy(output->xdg_output);
+      if (output->output != nullptr) {
+        wl_output_destroy(output->output);
+        output->output = nullptr;
+      }
+      if (output->xdg_output != nullptr) {
+        zxdg_output_v1_destroy(output->xdg_output);
+        output->xdg_output = nullptr;
+      }
     } else {
       wl_display_roundtrip(client->wl_display);
       for (const auto &config : configs) {
