@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <sys/sysinfo.h>
+#include <unistd.h>
 #include <cstdint>
 #include <fstream>
 #include <numeric>

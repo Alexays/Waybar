@@ -23,11 +23,9 @@ auto waybar::modules::Cpu::update() -> void {
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad() {
-  struct sysinfo info = {0};
-  if (sysinfo(&info) == 0) {
-    float    f_load = 1.F / (1U << SI_LOAD_SHIFT);
-    uint16_t load = info.loads[0] * f_load * 100 / get_nprocs();
-    return load;
+  double load[1];
+  if (getloadavg(load, 1) != -1) {
+    return load[0] * 100 / sysconf(_SC_NPROCESSORS_ONLN);
   }
   throw std::runtime_error("Can't get Cpu load");
 }
