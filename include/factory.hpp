@@ -12,7 +12,9 @@
 #endif
 #include "modules/cpu.hpp"
 #include "modules/idle_inhibitor.hpp"
+#if defined(HAVE_MEMORY_LINUX) || defined(HAVE_MEMORY_BSD)
 #include "modules/memory.hpp"
+#endif
 #include "modules/disk.hpp"
 #ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"

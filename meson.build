@@ -67,6 +67,10 @@ add_global_arguments(cpp_args, language : 'cpp')
 add_global_link_arguments(cpp_link_args, language : 'cpp')
 
 is_linux = host_machine.system() == 'linux'
+is_dragonfly = host_machine.system() == 'dragonfly'
+is_freebsd = host_machine.system() == 'freebsd'
+is_netbsd = host_machine.system() == 'netbsd'
+is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
@@ -113,7 +117,6 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
-    'src/modules/memory.cpp',
     'src/modules/bluetooth.cpp',
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
@@ -128,8 +131,17 @@ src_files = files(
 )
 
 if is_linux
+    add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
+        'src/modules/memory/common.cpp',
+        'src/modules/memory/linux.cpp',
+    )
+elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
+    add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
+    src_files += files(
+        'src/modules/memory/bsd.cpp',
+        'src/modules/memory/common.cpp',
     )
 endif
 
