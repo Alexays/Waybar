@@ -66,6 +66,8 @@ endif
 add_global_arguments(cpp_args, language : 'cpp')
 add_global_link_arguments(cpp_link_args, language : 'cpp')
 
+is_linux = host_machine.system() == 'linux'
+
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
 spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdlog_dep'])
@@ -77,6 +79,7 @@ dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gt
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
+libepoll = dependency('epoll-shim', required: false)
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
@@ -155,7 +158,7 @@ if dbusmenu_gtk.found()
     )
 endif
 
-if libudev.found()
+if libudev.found() and (is_linux or libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
 endif
@@ -190,6 +193,7 @@ executable(
         libnlgen,
         libpulse,
         libudev,
+        libepoll,
         libmpdclient,
         gtk_layer_shell,
         tz_dep
