@@ -17,11 +17,13 @@ cpp_link_args = []
 if get_option('libcxx')
     cpp_args += ['-stdlib=libc++']
     cpp_link_args += ['-stdlib=libc++', '-lc++abi']
+endif
 
-    if compiler.has_link_argument('-lc++fs')
-        cpp_link_args += ['-lc++fs']
-    endif
-else
+if compiler.has_link_argument('-lc++fs')
+    cpp_link_args += ['-lc++fs']
+elif compiler.has_link_argument('-lc++experimental')
+    cpp_link_args += ['-lc++experimental']
+elif compiler.has_link_argument('-lstdc++fs')
     cpp_link_args += ['-lstdc++fs']
 endif
 
