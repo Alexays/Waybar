@@ -117,7 +117,6 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
-    'src/modules/bluetooth.cpp',
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
@@ -126,7 +125,6 @@ src_files = files(
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
-    'src/util/rfkill.cpp'
 )
 
 if is_linux
@@ -134,10 +132,12 @@ if is_linux
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
+        'src/modules/bluetooth.cpp',
         'src/modules/cpu/common.cpp',
         'src/modules/cpu/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
+        'src/util/rfkill.cpp'
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')

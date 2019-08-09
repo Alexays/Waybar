@@ -36,7 +36,9 @@
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
+#if defined(__linux__)
 #include "modules/bluetooth.hpp"
+#endif
 
 namespace waybar {
 
