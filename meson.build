@@ -67,7 +67,6 @@ add_global_arguments(cpp_args, language : 'cpp')
 add_global_link_arguments(cpp_link_args, language : 'cpp')
 
 thread_dep = dependency('threads')
-libinput = dependency('libinput')
 fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
 spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdlog_dep'])
 wayland_client = dependency('wayland-client')
@@ -180,7 +179,6 @@ executable(
         spdlog,
         sigcpp,
         jsoncpp,
-        libinput,
         wayland_cursor,
         gtkmm,
         dbusmenu_gtk,

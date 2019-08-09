@@ -44,7 +44,6 @@ $ waybar
 ```
 gtkmm3
 jsoncpp
-libinput
 libsigc++
 fmt
 wayland
