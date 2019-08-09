@@ -114,7 +114,6 @@ src_files = files(
     'src/AModule.cpp',
     'src/ALabel.cpp',
     'src/modules/memory.cpp',
-    'src/modules/battery.cpp',
     'src/modules/bluetooth.cpp',
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
@@ -127,6 +126,12 @@ src_files = files(
     'src/client.cpp',
     'src/util/rfkill.cpp'
 )
+
+if is_linux
+    src_files += files(
+        'src/modules/battery.cpp',
+    )
+endif
 
 if true # find_program('sway', required : false).found()
     add_project_arguments('-DHAVE_SWAY', language: 'cpp')

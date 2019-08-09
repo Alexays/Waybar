@@ -7,7 +7,7 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
-#ifndef NO_FILESYSTEM
+#if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
 #endif
 #include "modules/cpu.hpp"
