@@ -89,8 +89,11 @@ systemd = dependency('systemd', required: get_option('systemd'))
 tz_dep = dependency('date', default_options : [ 'use_system_tzdb=true' ], fallback: [ 'date', 'tz_dep' ])
 
 prefix = get_option('prefix')
+sysconfdir = get_option('sysconfdir')
 conf_data = configuration_data()
 conf_data.set('prefix', prefix)
+
+add_project_arguments('-DSYSCONFDIR="/@0@"'.format(join_paths(prefix, sysconfdir)), language : 'cpp')
 
 if systemd.found()
   user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
@@ -198,7 +201,7 @@ executable(
 install_data(
     './resources/config',
     './resources/style.css',
-    install_dir: join_paths(get_option('out'), 'etc/xdg/waybar')
+    install_dir: sysconfdir + '/xdg/waybar'
 )
 
 scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
