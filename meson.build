@@ -120,7 +120,6 @@ src_files = files(
     'src/modules/bluetooth.cpp',
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
-    'src/modules/cpu.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/temperature.cpp',
@@ -131,15 +130,21 @@ src_files = files(
 )
 
 if is_linux
+    add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
+        'src/modules/cpu/common.cpp',
+        'src/modules/cpu/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
+    add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
     src_files += files(
+        'src/modules/cpu/bsd.cpp',
+        'src/modules/cpu/common.cpp',
         'src/modules/memory/bsd.cpp',
         'src/modules/memory/common.cpp',
     )

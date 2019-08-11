@@ -31,9 +31,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Memory(id, config_[name]);
     }
 #endif
+#if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);
     }
+#endif
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
