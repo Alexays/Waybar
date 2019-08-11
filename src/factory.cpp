@@ -38,7 +38,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
     }
-#if defined(HAVE_DBUSMENU) && !defined(NO_FILESYSTEM)
+#ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
     }

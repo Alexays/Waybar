@@ -14,7 +14,7 @@
 #include "modules/idle_inhibitor.hpp"
 #include "modules/memory.hpp"
 #include "modules/disk.hpp"
-#if defined(HAVE_DBUSMENU) && !defined(NO_FILESYSTEM)
+#ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"
 #endif
 #ifdef HAVE_LIBNL

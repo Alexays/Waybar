@@ -1,6 +1,7 @@
 #include "modules/sni/item.hpp"
 #include <glibmm/main.h>
 #include <spdlog/spdlog.h>
+#include <fstream>
 
 template <>
 struct fmt::formatter<Glib::ustring> : formatter<std::string> {
@@ -256,11 +257,8 @@ void Item::updateImage() {
   if (!icon_name.empty()) {
     try {
       // Try to find icons specified by path and filename
-#ifdef FILESYSTEM_EXPERIMENTAL
-      if (std::experimental::filesystem::exists(icon_name)) {
-#else
-      if (std::filesystem::exists(icon_name)) {
-#endif
+      std::ifstream temp(icon_name);
+      if (temp.is_open()) {
         auto pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
         if (pixbuf->gobj() != nullptr) {
           // An icon specified by path and filename may be the wrong size for
