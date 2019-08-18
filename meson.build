@@ -62,6 +62,9 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+gtk_layer_shell = dependency('gtk-layer-shell-0',
+        required: get_option('gtk-layer-shell'),
+        fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
 systemd = dependency('systemd', required: get_option('systemd'))
 
 prefix = get_option('prefix')
@@ -136,6 +139,10 @@ if libmpdclient.found()
     src_files += 'src/modules/mpd.cpp'
 endif
 
+if gtk_layer_shell.found()
+    add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
+endif
+
 subdir('protocol')
 
 executable(
@@ -158,7 +165,8 @@ executable(
         libnlgen,
         libpulse,
         libudev,
-        libmpdclient
+        libmpdclient,
+        gtk_layer_shell
     ],
     include_directories: [include_directories('include')],
     install: true,
