@@ -197,19 +197,21 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const {
 
 auto waybar::modules::Pulseaudio::update() -> void {
   auto format = format_;
-  if (muted_) {
-    format = config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
+  std::string format_name = "format";
+  if (monitor_.find("a2dp_sink") != std::string::npos) {
+    format_name = format_name + "-bluetooth";
+    label_.get_style_context()->add_class("bluetooth");
+  } else {
+    label_.get_style_context()->remove_class("bluetooth");
+  }
+  if (muted_ ) {
+    format_name = format_name + "-muted";
     label_.get_style_context()->add_class("muted");
   } else {
     label_.get_style_context()->remove_class("muted");
-    if (monitor_.find("a2dp_sink") != std::string::npos) {
-      format =
-          config_["format-bluetooth"].isString() ? config_["format-bluetooth"].asString() : format;
-      label_.get_style_context()->add_class("bluetooth");
-    } else {
-      label_.get_style_context()->remove_class("bluetooth");
-    }
   }
+  format = 
+    config_[format_name].isString() ? config_[format_name].asString() : format;
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
   if (source_muted_ && config_["format-source-muted"].isString()) {
