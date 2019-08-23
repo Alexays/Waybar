@@ -53,6 +53,51 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     vertical = true;
   }
 
+  if (config["margin-top"].isInt() || config["margin-right"].isInt() ||
+      config["margin-bottom"].isInt() || config["margin-left"].isInt()) {
+    margins_ = {
+        config["margin-top"].isInt() ? config["margin-top"].asInt() : 0,
+        config["margin-right"].isInt() ? config["margin-right"].asInt() : 0,
+        config["margin-bottom"].isInt() ? config["margin-bottom"].asInt() : 0,
+        config["margin-left"].isInt() ? config["margin-left"].asInt() : 0,
+    };
+  } else if (config["margin"].isString()) {
+    std::istringstream       iss(config["margin"].asString());
+    std::vector<std::string> margins{std::istream_iterator<std::string>(iss), {}};
+    try {
+      if (margins.size() == 1) {
+        auto gaps = std::stoi(margins[0], nullptr, 10);
+        margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
+      }
+      if (margins.size() == 2) {
+        auto vertical_margins = std::stoi(margins[0], nullptr, 10);
+        auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
+        margins_ = {.top = vertical_margins,
+                    .right = horizontal_margins,
+                    .bottom = vertical_margins,
+                    .left = horizontal_margins};
+      }
+      if (margins.size() == 3) {
+        auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
+        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
+                    .right = horizontal_margins,
+                    .bottom = std::stoi(margins[2], nullptr, 10),
+                    .left = horizontal_margins};
+      }
+      if (margins.size() == 4) {
+        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
+                    .right = std::stoi(margins[1], nullptr, 10),
+                    .bottom = std::stoi(margins[2], nullptr, 10),
+                    .left = std::stoi(margins[3], nullptr, 10)};
+      }
+    } catch (...) {
+      spdlog::warn("Invalid margins: {}", config["margin"].asString());
+    }
+  } else if (config["margin"].isInt()) {
+    auto gaps = config["margin"].asInt();
+    margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
+  }
+
   setupWidgets();
 
   if (window.get_realized()) {
@@ -109,7 +154,10 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
   zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface, false);
   zwlr_layer_surface_v1_set_anchor(layer_surface, anchor_);
   zwlr_layer_surface_v1_set_size(layer_surface, width_, height_);
-  setMarginsAndZone(height_, width_);
+  zwlr_layer_surface_v1_set_margin(
+      layer_surface, margins_.top, margins_.right, margins_.bottom, margins_.left);
+  setExclusiveZone(width_, height_);
+
   static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
       .configure = layerSurfaceHandleConfigure,
       .closed = layerSurfaceHandleClosed,
@@ -120,54 +168,20 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
   wl_display_roundtrip(client->wl_display);
 }
 
-void waybar::Bar::setMarginsAndZone(uint32_t height, uint32_t width) {
-  if (config["margin-top"].isInt() || config["margin-right"].isInt() ||
-      config["margin-bottom"].isInt() || config["margin-left"].isInt()) {
-    margins_ = {
-        config["margin-top"].isInt() ? config["margin-top"].asInt() : 0,
-        config["margin-right"].isInt() ? config["margin-right"].asInt() : 0,
-        config["margin-bottom"].isInt() ? config["margin-bottom"].asInt() : 0,
-        config["margin-left"].isInt() ? config["margin-left"].asInt() : 0,
-    };
-  } else if (config["margin"].isString()) {
-    std::istringstream       iss(config["margin"].asString());
-    std::vector<std::string> margins{std::istream_iterator<std::string>(iss), {}};
-    try {
-      if (margins.size() == 1) {
-        auto gaps = std::stoi(margins[0], nullptr, 10);
-        margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
-      }
-      if (margins.size() == 2) {
-        auto vertical_margins = std::stoi(margins[0], nullptr, 10);
-        auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
-        margins_ = {.top = vertical_margins,
-                    .right = horizontal_margins,
-                    .bottom = vertical_margins,
-                    .left = horizontal_margins};
-      }
-      if (margins.size() == 3) {
-        auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
-        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
-                    .right = horizontal_margins,
-                    .bottom = std::stoi(margins[2], nullptr, 10),
-                    .left = horizontal_margins};
-      }
-      if (margins.size() == 4) {
-        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
-                    .right = std::stoi(margins[1], nullptr, 10),
-                    .bottom = std::stoi(margins[2], nullptr, 10),
-                    .left = std::stoi(margins[3], nullptr, 10)};
-      }
-    } catch (...) {
-      spdlog::warn("Invalid margins: {}", config["margin"].asString());
+void waybar::Bar::setExclusiveZone(uint32_t width, uint32_t height) {
+  auto zone = 0;
+  if (visible) {
+    // exclusive zone already includes margin for anchored edge,
+    // only opposite margin should be added
+    if (vertical) {
+      zone += width;
+      zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) ? margins_.right : margins_.left;
+    } else {
+      zone += height;
+      zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) ? margins_.bottom : margins_.top;
     }
-  } else if (config["margin"].isInt()) {
-    auto gaps = config["margin"].asInt();
-    margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
-  zwlr_layer_surface_v1_set_margin(
-      layer_surface, margins_.top, margins_.right, margins_.bottom, margins_.left);
-  auto zone = vertical ? width + margins_.right : height + margins_.bottom;
+  spdlog::debug("Set exclusive zone {} for output {}", zone, output->name);
   zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
 }
 
@@ -240,8 +254,7 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     o->height_ = height;
     o->window.set_size_request(o->width_, o->height_);
     o->window.resize(o->width_, o->height_);
-    auto zone = o->vertical ? width + o->margins_.right : height + o->margins_.bottom;
-    zwlr_layer_surface_v1_set_exclusive_zone(o->layer_surface, zone);
+    o->setExclusiveZone(width, height);
     spdlog::info(BAR_SIZE_MSG,
                  o->width_ == 1 ? "auto" : std::to_string(o->width_),
                  o->height_ == 1 ? "auto" : std::to_string(o->height_),
@@ -264,13 +277,12 @@ void waybar::Bar::layerSurfaceHandleClosed(void* data, struct zwlr_layer_surface
 
 auto waybar::Bar::toggle() -> void {
   visible = !visible;
-  auto zone = visible ? height_ : 0;
   if (!visible) {
     window.get_style_context()->add_class("hidden");
   } else {
     window.get_style_context()->remove_class("hidden");
   }
-  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
+  setExclusiveZone(width_, height_);
   wl_surface_commit(surface);
 }
 
