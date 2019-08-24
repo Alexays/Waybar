@@ -161,7 +161,7 @@ if scdoc.found()
     mandir = get_option('mandir')
     man_files = [
         'waybar.5.scd',
-
+        'waybar-backlight.5.scd',
     ]
 
     foreach filename : man_files
