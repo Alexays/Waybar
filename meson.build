@@ -162,6 +162,7 @@ if scdoc.found()
     man_files = [
         'waybar.5.scd',
         'waybar-backlight.5.scd',
+        'waybar-battery.5.scd',
     ]
 
     foreach filename : man_files
