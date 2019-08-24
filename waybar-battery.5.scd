@@ -8,6 +8,8 @@ waybar - battery module
 
 The *battery* module displays the current capacity and state (eg. charging) of your battery.
 
+# CONFIGURATION
+
 *bat* ++
 	typeof: string ++
 	The battery to monitor, as in /sys/class/power_supply/ instead of auto detect.
@@ -68,7 +70,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: true ++
 	Option to disable tooltip on hover.
 
-# Format Replacements:
+# FORMAT REPLACEMENTS
 
 *{capacity}*: Capacity in percentage
 
@@ -76,7 +78,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *{time}*: Estimate of time until full or empty. Note that this is based on the power draw at the last refresh time, not an average.
 
-# Custom Formats:
+# CUSTOM FORMATS
 
 The *battery* module allows to define custom formats based on up to two factors. The best fitting format will be selected.
 
@@ -86,7 +88,7 @@ The *battery* module allows to define custom formats based on up to two factors.
 
 *format-<status>-<state>*: You can also set a custom format depending on both values.
 
-# States:
+# STATES
 
 - Every entry (*state*) consists of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
 	- The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.	Each class gets activated when the current capacity is equal or below the configured *<value>*.
@@ -94,7 +96,7 @@ The *battery* module allows to define custom formats based on up to two factors.
 
 
 
-# Example:
+# EXAMPLE
 
 ```
 "battery": {
@@ -110,7 +112,7 @@ The *battery* module allows to define custom formats based on up to two factors.
 }
 ```
 
-# Style
+# STYLE
 
 - *#battery*
 - *#battery.<status>*

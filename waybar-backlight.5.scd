@@ -8,7 +8,7 @@ waybar - backlight module
 
 The *backlight* module displays the current backlight level.
 
-# Config
+# CONFIGURATION
 
 *interval* ++
 	typeof: integer ++
@@ -52,7 +52,7 @@ The *backlight* module displays the current backlight level.
 	typeof: double
 	Threshold to be used when scrolling.
 
-# Example:
+# EXAMPLE:
 
 ```
 "backlight": {
@@ -60,9 +60,8 @@ The *backlight* module displays the current backlight level.
     "format": "{percent}% {icon}",
     "format-icons": ["", ""]
 }
-
 ```
 
-# Style
+# STYLE
 
 - *#backlight*
