@@ -21,54 +21,52 @@ All valid options for the modules are listed on the modules page: https://github
 
 ## Bar Config
 
-[- option
-:- typeof
-:- default
-:- description
-|- `layer`
-:- string
-:- `bottom`
-:- Decide if the bar is displayed in front of the windows or behind them.
-|- `output`
-:- string|array
-:-
-:- Specifies on which screen this bar will be displayed.
-|- `position`
-:- string
-:- `top`
-:- Bar position, can be `top`,`bottom`,`left`,`right`.
-|- `height`
-:- integer
-:-
-:- Height to be used by the bar if possible, leave blank for a dynamic value.
-|- `width`
-:- integer
-:-
-:- Width to be used by the bar if possible, leave blank for a dynamic value.
-|- `modules-left`
-:- array
-:-
-:- Modules that will be displayed on the left.
-|- `modules-center`
-:- array
-:-
-:- Modules that will be displayed in the center.
-|- `modules-right`
-:- array
-:-
-:- Modules that will be displayed on the right.
-|- `margin`
-:- string
-:-
-:- Margins value using the css format without units.
-|- `margin-<top\|left\|bottom\|right>`
-:- integer
-:-
-:- Margins value without units.
-|- `name`
-:- string
-:-
-:- Optional name added as a CSS class, for styling multiple waybars.
+*layer* ++
+	typeof: string ++
+	default: bottom ++
+	Decide if the bar is displayed in front of the windows or behind them.
+
+*output* ++
+	typeof: string|array ++
+	Specifies on which screen this bar will be displayed.
+
+*position* ++
+	typeof: string ++
+	default: top ++
+	Bar position, can be `top`,`bottom`,`left`,`right`.
+
+*height* ++
+	typeof: integer ++
+	Height to be used by the bar if possible, leave blank for a dynamic value.
+
+*width* ++
+	typeof: integer ++
+	Width to be used by the bar if possible, leave blank for a dynamic value.
+
+*modules-left* ++
+	typeof: array ++
+	Modules that will be displayed on the left.
+
+*modules-center* ++
+	typeof: array ++
+	Modules that will be displayed in the center.
+
+*modules-right* ++
+	typeof: array
+	Modules that will be displayed on the right.
+
+*margin* ++
+	typeof: string ++
+	Margins value using the css format without units.
+
+*margin-<top\|left\|bottom\|right>* ++
+	typeof: integer ++
+	Margins value without units.
+
+*name* ++
+	typeof: string ++
+	Optional name added as a CSS class, for styling multiple waybars.
+
 
 ## Module format
 
