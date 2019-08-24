@@ -65,4 +65,4 @@ The *backlight* module displays the current backlight level.
 
 # Style
 
-- `#backlight`
+- *#backlight*
