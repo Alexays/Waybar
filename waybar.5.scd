@@ -17,7 +17,7 @@ Valid directories for this file are:
 A good starting point is the default config found at https://github.com/Alexays/Waybar/blob/master/resources/config.
 Also a minimal example config can be found on the at the bottom of this man page.
 
-# Bar Config
+# BAR CONFIG
 
 *layer* ++
 	typeof: string ++
@@ -74,7 +74,7 @@ e.g.
 ```
 "format": "<span style=\"italic\">{}</span>"
 ```
-# Multiple instances of a module
+# MULTIPLE INSTANCES OF A MODULE
 
 If you want to have a second instance of a module, you can suffix it by a '#' and a custom name.
 For example if you want a second battery module, you can add `"battery#bat2"` to your modules.
@@ -92,7 +92,7 @@ This could then look something like this *(this is an incomplete example)*:
 }
 ```
 
-# Minimal config
+# MINIMAL CONFIG
 
 A minimal *config* file could look like this:
 
@@ -115,7 +115,7 @@ A minimal *config* file could look like this:
 }
 ```
 
-# Multi output config
+# MULTI OUTPUT CONFIG
 
 ## Limit a configuration to some outputs
 

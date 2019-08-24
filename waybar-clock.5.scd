@@ -8,6 +8,8 @@ waybar - clock module
 
 The *clock* module displays the current date and time.
 
+# CONFIGURATION
+
 *interval*: ++
 	typeof: integer ++
 	default: 60 ++
@@ -48,7 +50,7 @@ The *clock* module displays the current date and time.
 
 View all valid format options in *strftime(3)*.
 
-# Example:
+# EXAMPLE
 
 ```
 "clock": {
@@ -56,9 +58,8 @@ View all valid format options in *strftime(3)*.
     "format": "{:%H:%M}",
     "max-length": 25
 }
-
 ```
 
-# Style
+# STYLE
 
 - *#clock*
