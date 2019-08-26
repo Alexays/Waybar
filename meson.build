@@ -172,6 +172,7 @@ if scdoc.found()
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
         'waybar-sway-mode.5.scd',
+        'waybar-sway-window.5.scd',
     ]
 
     foreach filename : man_files
