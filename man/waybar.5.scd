@@ -65,7 +65,7 @@ Also a minimal example config can be found on the at the bottom of this man page
 	typeof: string ++
 	Optional name added as a CSS class, for styling multiple waybars.
 
-# Module format
+# MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
 
@@ -172,3 +172,21 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 ```
 
 Valid options for the "rotate" property are: 0, 90, 180 and 270.
+
+# SUPPORTED MODULES
+
+- *waybar-backlight(5)*
+- *waybar-battery(5)*
+- *waybar-clock(5)*
+- *waybar-cpu(5)*
+- *waybar-custom(5)*
+- *waybar-idle-inhibitor(5)*
+- *waybar-memory(5)*
+- *waybar-mdp(5)*
+- *waybar-network(5)*
+- *waybar-pulseaudio(5)*
+- *waybar-sway-mode(5)*
+- *waybar-sway-window(5)*
+- *waybar-sway-workspaces(5)*
+- *waybar-temperature(5)*
+- *waybar-tray(5)*
