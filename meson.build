@@ -165,7 +165,7 @@ if scdoc.found()
         'waybar-battery.5.scd',
         'waybar-clock.5.scd',
         'waybar-cpu.5.scd',
-        'warbar-custom.5.scd',
+        'waybar-custom.5.scd',
     ]
 
     foreach filename : man_files
