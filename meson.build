@@ -173,7 +173,7 @@ if scdoc.found()
 
         custom_target(
             output,
-            input: filename,
+            input: 'man/@0@'.format(filename),
             output: output,
             command: [
                 sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.path(), output)
