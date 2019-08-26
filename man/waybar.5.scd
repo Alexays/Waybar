@@ -8,11 +8,11 @@ waybar - configuration file
 
 The configuration uses the JSON file format and is named *config*.
 
-Valid directories for this file are:
+Valid locations for this file are:
 
-- *~/.config/waybar/*
-- *~/waybar/*
-- */etc/xdg/waybar/*
+- *~/.config/waybar/config*
+- *~/waybar/config*
+- */etc/xdg/waybar/config*
 
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.
 Also a minimal example configuration can be found on the at the bottom of this man page.
@@ -35,11 +35,11 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *height* ++
 	typeof: integer ++
-	Height to be used by the bar if possible, leave blank for a dynamic value.
+	Height to be used by the bar if possible. Leave blank for a dynamic value.
 
 *width* ++
 	typeof: integer ++
-	Width to be used by the bar if possible, leave blank for a dynamic value.
+	Width to be used by the bar if possible. Leave blank for a dynamic value.
 
 *modules-left* ++
 	typeof: array ++
@@ -55,7 +55,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *margin* ++
 	typeof: string ++
-	Margins value using the css format without units.
+	Margins value using the CSS format without units.
 
 *margin-<top\|left\|bottom\|right>* ++
 	typeof: integer ++
