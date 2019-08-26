@@ -96,7 +96,7 @@ The *battery* module allows to define custom formats based on up to two factors.
 
 
 
-# EXAMPLE
+# EXAMPLES
 
 ```
 "battery": {

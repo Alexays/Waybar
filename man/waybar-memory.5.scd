@@ -69,7 +69,7 @@ Addressed by *memory*
 
 *{avail}*: Amount of available memory in GiB.
 
-# EXAMPLE
+# EXAMPLES
 
 ```
 "memory": {
