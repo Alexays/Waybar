@@ -170,6 +170,7 @@ if scdoc.found()
         'waybar-memory.5.scd',
         'waybar-mpd.5.scd',
         'waybar-network.5.scd',
+        'waybar-pulseaudio.5.scd',
     ]
 
     foreach filename : man_files
