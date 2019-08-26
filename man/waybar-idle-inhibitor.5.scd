@@ -58,7 +58,7 @@ screensaving, also known as "presentation mode".
 
 *{icon}*: Icon, as defined in *format-icons*
 
-# EXAMPLE
+# EXAMPLES
 
 ```
 "idle_inhibitor": {
