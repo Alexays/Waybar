@@ -174,6 +174,7 @@ if scdoc.found()
         'waybar-sway-mode.5.scd',
         'waybar-sway-window.5.scd',
         'waybar-sway-workspaces.5.scd',
+        'waybar-temperature.5.scd',
     ]
 
     foreach filename : man_files
