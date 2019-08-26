@@ -31,7 +31,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *position* ++
 	typeof: string ++
 	default: top ++
-	Bar position, can be `top`,`bottom`,`left`,`right`.
+	Bar position, can be *top*, *bottom*, *left*, *right*.
 
 *height* ++
 	typeof: integer ++
@@ -77,7 +77,7 @@ e.g.
 # MULTIPLE INSTANCES OF A MODULE
 
 If you want to have a second instance of a module, you can suffix it by a '#' and a custom name.
-For example if you want a second battery module, you can add `"battery#bat2"` to your modules.
+For example if you want a second battery module, you can add *"battery#bat2"* to your modules.
 To configure the newly added module, you then also add a module configuration with the same name.
 
 This could then look something like this *(this is an incomplete example)*:
