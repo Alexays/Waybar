@@ -14,10 +14,10 @@ Valid directories for this file are:
 - *~/waybar/*
 - */etc/xdg/waybar/*
 
-A good starting point is the default config found at https://github.com/Alexays/Waybar/blob/master/resources/config.
-Also a minimal example config can be found on the at the bottom of this man page.
+A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.
+Also a minimal example configuration can be found on the at the bottom of this man page.
 
-# BAR CONFIG
+# BAR CONFIGURATION
 
 *layer* ++
 	typeof: string ++
@@ -92,7 +92,7 @@ This could then look something like this *(this is an incomplete example)*:
 }
 ```
 
-# MINIMAL CONFIG
+# MINIMAL CONFIGURATION
 
 A minimal *config* file could look like this:
 
@@ -115,7 +115,7 @@ A minimal *config* file could look like this:
 }
 ```
 
-# MULTI OUTPUT CONFIG
+# MULTI OUTPUT CONFIGURATION
 
 ## Limit a configuration to some outputs
 
