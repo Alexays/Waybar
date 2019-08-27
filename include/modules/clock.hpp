@@ -1,8 +1,12 @@
 #pragma once
 
 #include <fmt/format.h>
+#if FMT_VERSION < 60000
+#include <fmt/time.h>
+#else
+#include <fmt/chrono.h>
+#endif
 #include "ALabel.hpp"
-#include "fmt/time.h"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {

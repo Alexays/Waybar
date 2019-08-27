@@ -1,6 +1,6 @@
 #include "modules/sni/host.hpp"
-#include <spdlog/spdlog.h>
 #include <fmt/ostream.h>
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules::SNI {
 
