@@ -1,4 +1,4 @@
-waybar-idle_inhibitor(5)
+waybar-idle-inhibitor(5)
 
 # NAME
 

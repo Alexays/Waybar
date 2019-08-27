@@ -6,7 +6,7 @@ waybar - mpd module
 
 # DESCRIPTION
 
-The *mpd* module displays the current date and time.
+The *mpd* module displays information about a running "Music Player Daemon" instance.
 
 # CONFIGURATION
 
