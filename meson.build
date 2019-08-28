@@ -52,7 +52,7 @@ spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdl
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-gtkmm = dependency('gtkmm-3.0')
+gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')

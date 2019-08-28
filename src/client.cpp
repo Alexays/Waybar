@@ -1,4 +1,5 @@
 #include "client.hpp"
+#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 #include <fstream>
 #include <iostream>
@@ -33,11 +34,6 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
   if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
     client->layer_shell = static_cast<struct zwlr_layer_shell_v1 *>(
         wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version));
-  } else if (strcmp(interface, wl_output_interface.name) == 0) {
-    auto wl_output = static_cast<struct wl_output *>(
-        wl_registry_bind(registry, name, &wl_output_interface, version));
-    client->outputs_.emplace_back(new struct waybar_output({wl_output, "", name, nullptr}));
-    client->handleOutput(client->outputs_.back());
   } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
              version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
     client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1 *>(wl_registry_bind(
@@ -50,58 +46,21 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
 
 void waybar::Client::handleGlobalRemove(void *   data, struct wl_registry * /*registry*/,
                                         uint32_t name) {
-  auto client = static_cast<Client *>(data);
-  for (auto it = client->bars.begin(); it != client->bars.end();) {
-    if ((*it)->output->wl_name == name) {
-      auto output_name = (*it)->output->name;
-      (*it)->window.close();
-      it = client->bars.erase(it);
-      spdlog::info("Bar removed from output: {}", output_name);
-    } else {
-      ++it;
-    }
-  }
-  auto it = std::find_if(client->outputs_.begin(),
-                         client->outputs_.end(),
-                         [&name](const auto &output) { return output->wl_name == name; });
-  if (it != client->outputs_.end()) {
-    if ((*it)->xdg_output != nullptr) {
-      zxdg_output_v1_destroy((*it)->xdg_output);
-      (*it)->xdg_output = nullptr;
-    }
-    if ((*it)->output != nullptr) {
-      wl_output_destroy((*it)->output);
-      (*it)->output = nullptr;
-    }
-    client->outputs_.erase(it);
-  }
+  // Nothing here
 }
 
 void waybar::Client::handleOutput(std::unique_ptr<struct waybar_output> &output) {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
-      .logical_position = handleLogicalPosition,
-      .logical_size = handleLogicalSize,
-      .done = handleDone,
-      .name = handleName,
-      .description = handleDescription,
+      .logical_position = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
+      .logical_size = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
+      .done = [](void *, struct zxdg_output_v1 *) {},
+      .name = &handleOutputName,
+      .description = [](void *, struct zxdg_output_v1 *, const char *) {},
   };
-  output->xdg_output = zxdg_output_manager_v1_get_xdg_output(xdg_output_manager, output->output);
-  zxdg_output_v1_add_listener(output->xdg_output, &xdgOutputListener, &output->wl_name);
-}
-
-void waybar::Client::handleLogicalPosition(void * /*data*/,
-                                           struct zxdg_output_v1 * /*zxdg_output_v1*/,
-                                           int32_t /*x*/, int32_t /*y*/) {
-  // Nothing here
-}
-
-void waybar::Client::handleLogicalSize(void * /*data*/, struct zxdg_output_v1 * /*zxdg_output_v1*/,
-                                       int32_t /*width*/, int32_t /*height*/) {
-  // Nothing here
-}
-
-void waybar::Client::handleDone(void * /*data*/, struct zxdg_output_v1 * /*zxdg_output_v1*/) {
-  // Nothing here
+  // owned by output->monitor; no need to destroy
+  auto wl_output = gdk_wayland_monitor_get_wl_output(output->monitor->gobj());
+  output->xdg_output.reset(zxdg_output_manager_v1_get_xdg_output(xdg_output_manager, wl_output));
+  zxdg_output_v1_add_listener(output->xdg_output.get(), &xdgOutputListener, output.get());
 }
 
 bool waybar::Client::isValidOutput(const Json::Value &                    config,
@@ -123,9 +82,9 @@ bool waybar::Client::isValidOutput(const Json::Value &                    config
   return found;
 }
 
-std::unique_ptr<struct waybar::waybar_output> &waybar::Client::getOutput(uint32_t wl_name) {
-  auto it = std::find_if(outputs_.begin(), outputs_.end(), [&wl_name](const auto &output) {
-    return output->wl_name == wl_name;
+std::unique_ptr<struct waybar::waybar_output> &waybar::Client::getOutput(void *addr) {
+  auto it = std::find_if(outputs_.begin(), outputs_.end(), [&addr](const auto &output) {
+    return output.get() == addr;
   });
   if (it == outputs_.end()) {
     throw std::runtime_error("Unable to find valid output");
@@ -148,23 +107,19 @@ std::vector<Json::Value> waybar::Client::getOutputConfigs(
   return configs;
 }
 
-void waybar::Client::handleName(void *      data, struct zxdg_output_v1 * /*xdg_output*/,
-                                const char *name) {
-  auto wl_name = *static_cast<uint32_t *>(data);
+void waybar::Client::handleOutputName(void *      data, struct zxdg_output_v1 * /*xdg_output*/,
+                                      const char *name) {
   auto client = waybar::Client::inst();
   try {
-    auto &output = client->getOutput(wl_name);
+    auto &output = client->getOutput(data);
     output->name = name;
+    spdlog::debug("Output detected: {} ({} {})",
+                  name,
+                  output->monitor->get_manufacturer(),
+                  output->monitor->get_model());
     auto configs = client->getOutputConfigs(output);
     if (configs.empty()) {
-      if (output->output != nullptr) {
-        wl_output_destroy(output->output);
-        output->output = nullptr;
-      }
-      if (output->xdg_output != nullptr) {
-        zxdg_output_v1_destroy(output->xdg_output);
-        output->xdg_output = nullptr;
-      }
+      output->xdg_output.reset();
     } else {
       wl_display_roundtrip(client->wl_display);
       for (const auto &config : configs) {
@@ -179,9 +134,26 @@ void waybar::Client::handleName(void *      data, struct zxdg_output_v1 * /*xdg_
   }
 }
 
-void waybar::Client::handleDescription(void * /*data*/, struct zxdg_output_v1 * /*zxdg_output_v1*/,
-                                       const char * /*description*/) {
-  // Nothing here
+void waybar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
+  auto &output = outputs_.emplace_back(new struct waybar_output({monitor}));
+  handleOutput(output);
+}
+
+void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
+  spdlog::debug("Output removed: {} {}", monitor->get_manufacturer(), monitor->get_model());
+  for (auto it = bars.begin(); it != bars.end();) {
+    if ((*it)->output->monitor == monitor) {
+      auto output_name = (*it)->output->name;
+      (*it)->window.close();
+      it = bars.erase(it);
+      spdlog::info("Bar removed from output: {}", output_name);
+    } else {
+      ++it;
+    }
+  }
+  std::remove_if(outputs_.begin(), outputs_.end(), [&monitor](const auto &output) {
+    return output->monitor == monitor;
+  });
 }
 
 std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
@@ -240,6 +212,14 @@ void waybar::Client::bindInterfaces() {
   if (layer_shell == nullptr || xdg_output_manager == nullptr) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
+  // add existing outputs and subscribe to updates
+  for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
+    auto monitor = gdk_display->get_monitor(i);
+    handleMonitorAdded(monitor);
+  }
+  gdk_display->signal_monitor_added().connect(sigc::mem_fun(*this, &Client::handleMonitorAdded));
+  gdk_display->signal_monitor_removed().connect(
+      sigc::mem_fun(*this, &Client::handleMonitorRemoved));
 }
 
 int waybar::Client::main(int argc, char *argv[]) {

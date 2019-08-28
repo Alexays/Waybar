@@ -146,10 +146,12 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 
   auto client = waybar::Client::inst();
+  // owned by output->monitor; no need to destroy
+  auto wl_output = gdk_wayland_monitor_get_wl_output(output->monitor->gobj());
   auto layer =
       config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-      client->layer_shell, surface, output->output, layer, "waybar");
+      client->layer_shell, surface, wl_output, layer, "waybar");
 
   zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface, false);
   zwlr_layer_surface_v1_set_anchor(layer_surface, anchor_);
