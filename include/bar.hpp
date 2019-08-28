@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gdkmm/monitor.h>
 #include <glibmm/refptr.h>
 #include <gtkmm/box.h>
 #include <gtkmm/cssprovider.h>
@@ -15,10 +16,11 @@ namespace waybar {
 
 class Factory;
 struct waybar_output {
-  struct wl_output *     output = nullptr;
-  std::string            name;
-  uint32_t               wl_name;
-  struct zxdg_output_v1 *xdg_output = nullptr;
+  Glib::RefPtr<Gdk::Monitor> monitor;
+  std::string                name;
+
+  std::unique_ptr<struct zxdg_output_v1, decltype(&zxdg_output_v1_destroy)> xdg_output = {
+      nullptr, &zxdg_output_v1_destroy};
 };
 
 class Bar {
