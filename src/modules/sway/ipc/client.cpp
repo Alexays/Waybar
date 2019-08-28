@@ -10,18 +10,22 @@ Ipc::Ipc() {
 }
 
 Ipc::~Ipc() {
-  // To fail the IPC header
-  write(fd_, "close-sway-ipc", 14);
-  write(fd_event_, "close-sway-ipc", 14);
+  thread_.stop();
+
   if (fd_ > 0) {
+    // To fail the IPC header
+    write(fd_, "close-sway-ipc", 14);
     close(fd_);
     fd_ = -1;
   }
   if (fd_event_ > 0) {
+    write(fd_event_, "close-sway-ipc", 14);
     close(fd_event_);
     fd_event_ = -1;
   }
 }
+
+void Ipc::setWorker(std::function<void()>&& func) { thread_ = func; }
 
 const std::string Ipc::getSocketPath() const {
   const char* env = getenv("SWAYSOCK");

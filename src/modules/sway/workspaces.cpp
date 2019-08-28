@@ -22,7 +22,13 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
   // Launch worker
-  worker();
+  ipc_.setWorker([this] {
+    try {
+      ipc_.handleEvent();
+    } catch (const std::exception &e) {
+      spdlog::error("Workspaces: {}", e.what());
+    }
+  });
 }
 
 void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
@@ -100,16 +106,6 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
       spdlog::error("Workspaces: {}", e.what());
     }
   }
-}
-
-void Workspaces::worker() {
-  thread_ = [this] {
-    try {
-      ipc_.handleEvent();
-    } catch (const std::exception &e) {
-      spdlog::error("Workspaces: {}", e.what());
-    }
-  };
 }
 
 bool Workspaces::filterButtons() {
