@@ -8,7 +8,6 @@
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
-#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
@@ -21,7 +20,6 @@ class Workspaces : public AModule, public sigc::trackable {
  private:
   void              onCmd(const struct Ipc::ipc_response&);
   void              onEvent(const struct Ipc::ipc_response&);
-  void              worker();
   bool              filterButtons();
   Gtk::Button&      addButton(const Json::Value&);
   void              onButtonReady(const Json::Value&, Gtk::Button&);
@@ -38,9 +36,7 @@ class Workspaces : public AModule, public sigc::trackable {
   util::JsonParser                             parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
   std::mutex                                   mutex_;
-
-  util::SleeperThread thread_;
-  Ipc                 ipc_;
+  Ipc                                          ipc_;
 };
 
 }  // namespace waybar::modules::sway
