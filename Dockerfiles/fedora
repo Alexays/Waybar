@@ -1,5 +1,5 @@
 FROM fedora:30
 
-RUN dnf install sway meson git libinput-devel wayland-devel wayland-protocols-devel egl-wayland-devel mesa-libEGL-devel mesa-libGLES-devel mesa-libgbm-devel libxkbcommon-devel libudev-devel pixman-devel gtkmm30-devel jsoncpp-devel -y && \
+RUN dnf install sway meson git libinput-devel wayland-devel wayland-protocols-devel egl-wayland-devel mesa-libEGL-devel mesa-libGLES-devel mesa-libgbm-devel libxkbcommon-devel libudev-devel pixman-devel gtkmm30-devel jsoncpp-devel scdoc -y && \
     dnf group install "C Development Tools and Libraries" -y && \
     dnf clean all -y
