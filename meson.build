@@ -72,7 +72,7 @@ src_files = files(
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
-	'src/modules/idle_inhibitor.cpp',
+    'src/modules/idle_inhibitor.cpp',
     'src/modules/temperature.cpp',
     'src/main.cpp',
     'src/bar.cpp',
@@ -152,6 +152,50 @@ install_data(
     './resources/style.css',
     install_dir: join_paths(get_option('out'), 'etc/xdg/waybar')
 )
+
+scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: false)
+
+if scdoc.found()
+    scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
+    sh = find_program('sh', native: true)
+    mandir = get_option('mandir')
+    man_files = [
+        'waybar.5.scd',
+        'waybar-backlight.5.scd',
+        'waybar-battery.5.scd',
+        'waybar-clock.5.scd',
+        'waybar-cpu.5.scd',
+        'waybar-custom.5.scd',
+        'waybar-idle-inhibitor.5.scd',
+        'waybar-memory.5.scd',
+        'waybar-mpd.5.scd',
+        'waybar-network.5.scd',
+        'waybar-pulseaudio.5.scd',
+        'waybar-sway-mode.5.scd',
+        'waybar-sway-window.5.scd',
+        'waybar-sway-workspaces.5.scd',
+        'waybar-temperature.5.scd',
+        'waybar-tray.5.scd',
+        'waybar-states.5.scd',
+    ]
+
+    foreach filename : man_files
+        topic = filename.split('.')[-3].split('/')[-1]
+        section = filename.split('.')[-2]
+        output = '@0@.@1@'.format(topic, section)
+
+        custom_target(
+            output,
+            input: 'man/@0@'.format(filename),
+            output: output,
+            command: [
+                sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.path(), output)
+            ],
+            install: true,
+            install_dir: '@0@/man@1@'.format(mandir, section)
+        )
+    endforeach
+endif
 
 clangtidy = find_program('clang-tidy', required: false)
 
