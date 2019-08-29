@@ -201,8 +201,9 @@ void waybar::modules::Network::worker() {
     }
     thread_timer_.sleep_for(interval_);
   };
-  std::array<struct epoll_event, EPOLL_MAX> events{};
-  thread_ = [this, &events] {
+  thread_ = [this] {
+    std::array<struct epoll_event, EPOLL_MAX> events{};
+
     int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
