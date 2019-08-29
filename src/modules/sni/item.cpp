@@ -128,6 +128,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       }
     } else if (name == "Menu") {
       menu = get_variant<std::string>(value);
+      makeMenu();
     } else if (name == "ItemIsMenu") {
       item_is_menu = get_variant<bool>(value);
     }
@@ -319,7 +320,7 @@ void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {
   }
 }
 
-void Item::makeMenu(GdkEventButton* const& ev) {
+void Item::makeMenu() {
   if (gtk_menu == nullptr && !menu.empty()) {
     dbus_menu = dbusmenu_gtkmenu_new(bus_name.data(), menu.data());
     if (dbus_menu != nullptr) {
@@ -334,8 +335,8 @@ void Item::makeMenu(GdkEventButton* const& ev) {
 bool Item::handleClick(GdkEventButton* const& ev) {
   auto parameters = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<int>::create(ev->x), Glib::Variant<int>::create(ev->y)});
-  if ((ev->button == 1 && (item_is_menu || !menu.empty())) || ev->button == 3) {
-    makeMenu(ev);
+  if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
+    makeMenu();
     if (gtk_menu != nullptr) {
 #if GTK_CHECK_VERSION(3, 22, 0)
       gtk_menu->popup_at_pointer(reinterpret_cast<GdkEvent*>(ev));
