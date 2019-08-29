@@ -130,7 +130,8 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::st
 }
 
 void Host::addRegisteredItem(std::string service) {
-  auto [bus_name, object_path] = getBusNameAndObjectPath(service);
+  std::string bus_name, object_path;
+  std::tie(bus_name, object_path) = getBusNameAndObjectPath(service);
   auto it = std::find_if(items_.begin(), items_.end(), [&bus_name, &object_path](const auto& item) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
