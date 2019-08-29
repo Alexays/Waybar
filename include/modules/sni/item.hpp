@@ -46,7 +46,12 @@ class Item : public sigc::trackable {
   std::string                  menu;
   DbusmenuGtkMenu*             dbus_menu = nullptr;
   Gtk::Menu*                   gtk_menu = nullptr;
-  bool                         item_is_menu = false;
+  /**
+   * ItemIsMenu flag means that the item only supports the context menu.
+   * Default value is true because libappindicator supports neither ItemIsMenu nor Activate method
+   * while compliant SNI implementation would always reset the flag to desired value.
+   */
+  bool item_is_menu = true;
 
  private:
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
@@ -60,7 +65,7 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   static void               onMenuDestroyed(Item* self, GObject* old_menu_pointer);
-  void                      makeMenu(GdkEventButton* const& ev);
+  void                      makeMenu();
   bool                      handleClick(GdkEventButton* const& /*ev*/);
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
