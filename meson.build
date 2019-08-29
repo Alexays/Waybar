@@ -153,7 +153,7 @@ install_data(
     install_dir: join_paths(get_option('out'), 'etc/xdg/waybar')
 )
 
-scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: false)
+scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
 
 if scdoc.found()
     scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
