@@ -1,7 +1,7 @@
 #include "bar.hpp"
-#include <spdlog/spdlog.h>
 #include "client.hpp"
 #include "factory.hpp"
+#include <spdlog/spdlog.h>
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
