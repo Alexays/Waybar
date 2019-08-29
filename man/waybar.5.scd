@@ -10,6 +10,7 @@ The configuration uses the JSON file format and is named *config*.
 
 Valid locations for this file are:
 
+- *$XDG_CONFIG_HOME/waybar/config*
 - *~/.config/waybar/config*
 - *~/waybar/config*
 - */etc/xdg/waybar/config*
