@@ -6,7 +6,7 @@ waybar - memory module
 
 # DESCRIPTION
 
-The *memory* module displays the current date and time.
+The *memory* module displays the current memory utilization.
 
 # CONFIGURATION
 
