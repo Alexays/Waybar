@@ -76,15 +76,15 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *urgent*: Will be shown, when workspace is flagged as urgent
 - *focused*: Will be shown, when workspace is focused
 
-# PERSISTANT WORKSPACES
+# PERSISTENT WORKSPACES
 
-Each entry of *persistant_workspace* names a workspace that should always be shown.
+Each entry of *persistent_workspace* names a workspace that should always be shown.
 Associated with that value is a list of outputs indicating *where* the workspace should be shown,
 an empty list denoting all outputs.
 
 ```
 "sway/workspaces": {
-    "persistant_workspaces": {
+    "persistent_workspaces": {
         "3": [], // Always show a workspace with name '3', on all outputs if it does not exists
         "4": ["eDP-1"], // Always show a workspace with name '4', on output 'eDP-1' if it does not exists
         "5": ["eDP-1", "DP-2"] // Always show a workspace with name '5', on outputs 'eDP-1' and 'DP-2' if it does not exists
@@ -120,4 +120,4 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.visible*
 - *#workspaces button.focused*
 - *#workspaces button.urgent*
-- *#workspaces button.persistant*
+- *#workspaces button.persistent*
