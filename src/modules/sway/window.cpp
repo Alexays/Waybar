@@ -20,7 +20,7 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
-    auto output = payload["ouput"].isString() ? payload["output"].asString() : "";
+    auto output = payload["output"].isString() ? payload["output"].asString() : "";
     std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload["nodes"], output);
     dp.emit();
   } catch (const std::exception& e) {
