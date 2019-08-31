@@ -49,9 +49,9 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                                   : true;
                      });
 
-        // adding persistant workspaces (as per the config file)
-        if (config_["persistant_workspaces"].isObject()) {
-          const Json::Value &            p_workspaces = config_["persistant_workspaces"];
+        // adding persistent workspaces (as per the config file)
+        if (config_["persistent_workspaces"].isObject()) {
+          const Json::Value &            p_workspaces = config_["persistent_workspaces"];
           const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
           for (const std::string &p_w_name : p_workspaces_names) {
@@ -151,9 +151,9 @@ auto Workspaces::update() -> void {
       button.get_style_context()->remove_class("urgent");
     }
     if ((*it)["target_output"].isString()) {
-      button.get_style_context()->add_class("persistant");
+      button.get_style_context()->add_class("persistent");
     } else {
-      button.get_style_context()->remove_class("persistant");
+      button.get_style_context()->remove_class("persistent");
     }
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
