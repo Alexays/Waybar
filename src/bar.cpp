@@ -132,7 +132,7 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
     }
   }
   if (tmp_width != width_ || tmp_height != height_) {
-    zwlr_layer_surface_v1_set_size(layer_surface, tmp_width, tmp_height);
+    setSurfaceSize(tmp_width, tmp_height);
   }
 }
 
@@ -153,9 +153,9 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
 
   zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface, false);
   zwlr_layer_surface_v1_set_anchor(layer_surface, anchor_);
-  zwlr_layer_surface_v1_set_size(layer_surface, width_, height_);
   zwlr_layer_surface_v1_set_margin(
       layer_surface, margins_.top, margins_.right, margins_.bottom, margins_.left);
+  setSurfaceSize(width_, height_);
   setExclusiveZone(width_, height_);
 
   static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
@@ -183,6 +183,22 @@ void waybar::Bar::setExclusiveZone(uint32_t width, uint32_t height) {
   }
   spdlog::debug("Set exclusive zone {} for output {}", zone, output->name);
   zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
+}
+
+void waybar::Bar::setSurfaceSize(uint32_t width, uint32_t height) {
+  /* If the client is anchored to two opposite edges, layer_surface.configure will return
+   * size without margins for the axis.
+   * layer_surface.set_size, however, expects size with margins for the anchored axis.
+   * This is not specified by wlr-layer-shell and based on actual behavior of sway.
+   */
+  if (vertical && height > 1) {
+    height += margins_.top + margins_.bottom;
+  }
+  if (!vertical && width > 1) {
+    width += margins_.right + margins_.left;
+  }
+  spdlog::debug("Set surface size {}x{} for output {}", width, height, output->name);
+  zwlr_layer_surface_v1_set_size(layer_surface, width, height);
 }
 
 // Converting string to button code rn as to avoid doing it later
