@@ -7,7 +7,7 @@ apply a class when the value matches the declared state value.
 
 # STATES
 
-- Every entry (*state*) consits of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
+- Every entry (*state*) consists of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
 
 	- The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.
 	  Each class gets activated when the current capacity is equal or below the configured *<value>*.
