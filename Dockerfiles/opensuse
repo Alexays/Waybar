@@ -1,3 +1,5 @@
+# vim: ft=Dockerfile
+
 FROM opensuse/tumbleweed:latest
 
 RUN zypper -n up && \
