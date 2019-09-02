@@ -53,74 +53,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     vertical = true;
   }
 
-  setupWidgets();
-
-  if (window.get_realized()) {
-    onRealize();
-  }
-  window.show_all();
-}
-
-void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
-  auto tmp_height = height_;
-  auto tmp_width = width_;
-  if (ev->height > static_cast<int>(height_)) {
-    // Default minimal value
-    if (height_ != 1) {
-      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
-    }
-    if (config["height"].isUInt()) {
-      spdlog::info(SIZE_DEFINED, "Height");
-    } else {
-      tmp_height = ev->height;
-    }
-  }
-  if (ev->width > static_cast<int>(width_)) {
-    // Default minimal value
-    if (width_ != 1) {
-      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
-    }
-    if (config["width"].isUInt()) {
-      spdlog::info(SIZE_DEFINED, "Width");
-    } else {
-      tmp_width = ev->width;
-    }
-  }
-  if (tmp_width != width_ || tmp_height != height_) {
-    zwlr_layer_surface_v1_set_size(layer_surface, tmp_width, tmp_height);
-  }
-}
-
-void waybar::Bar::onRealize() {
-  auto gdk_window = window.get_window()->gobj();
-  gdk_wayland_window_set_use_custom_surface(gdk_window);
-}
-
-void waybar::Bar::onMap(GdkEventAny* ev) {
-  auto gdk_window = window.get_window()->gobj();
-  surface = gdk_wayland_window_get_wl_surface(gdk_window);
-
-  auto client = waybar::Client::inst();
-  auto layer =
-      config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-  layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-      client->layer_shell, surface, output->output, layer, "waybar");
-
-  zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface, false);
-  zwlr_layer_surface_v1_set_anchor(layer_surface, anchor_);
-  zwlr_layer_surface_v1_set_size(layer_surface, width_, height_);
-  setMarginsAndZone(height_, width_);
-  static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
-      .configure = layerSurfaceHandleConfigure,
-      .closed = layerSurfaceHandleClosed,
-  };
-  zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, this);
-
-  wl_surface_commit(surface);
-  wl_display_roundtrip(client->wl_display);
-}
-
-void waybar::Bar::setMarginsAndZone(uint32_t height, uint32_t width) {
   if (config["margin-top"].isInt() || config["margin-right"].isInt() ||
       config["margin-bottom"].isInt() || config["margin-left"].isInt()) {
     margins_ = {
@@ -165,10 +97,108 @@ void waybar::Bar::setMarginsAndZone(uint32_t height, uint32_t width) {
     auto gaps = config["margin"].asInt();
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
+
+  setupWidgets();
+
+  if (window.get_realized()) {
+    onRealize();
+  }
+  window.show_all();
+}
+
+void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
+  auto tmp_height = height_;
+  auto tmp_width = width_;
+  if (ev->height > static_cast<int>(height_)) {
+    // Default minimal value
+    if (height_ != 1) {
+      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
+    }
+    if (config["height"].isUInt()) {
+      spdlog::info(SIZE_DEFINED, "Height");
+    } else {
+      tmp_height = ev->height;
+    }
+  }
+  if (ev->width > static_cast<int>(width_)) {
+    // Default minimal value
+    if (width_ != 1) {
+      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
+    }
+    if (config["width"].isUInt()) {
+      spdlog::info(SIZE_DEFINED, "Width");
+    } else {
+      tmp_width = ev->width;
+    }
+  }
+  if (tmp_width != width_ || tmp_height != height_) {
+    setSurfaceSize(tmp_width, tmp_height);
+  }
+}
+
+void waybar::Bar::onRealize() {
+  auto gdk_window = window.get_window()->gobj();
+  gdk_wayland_window_set_use_custom_surface(gdk_window);
+}
+
+void waybar::Bar::onMap(GdkEventAny* ev) {
+  auto gdk_window = window.get_window()->gobj();
+  surface = gdk_wayland_window_get_wl_surface(gdk_window);
+
+  auto client = waybar::Client::inst();
+  auto layer =
+      config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
+  layer_surface = zwlr_layer_shell_v1_get_layer_surface(
+      client->layer_shell, surface, output->output, layer, "waybar");
+
+  zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface, false);
+  zwlr_layer_surface_v1_set_anchor(layer_surface, anchor_);
   zwlr_layer_surface_v1_set_margin(
       layer_surface, margins_.top, margins_.right, margins_.bottom, margins_.left);
-  auto zone = vertical ? width + margins_.right : height + margins_.bottom;
+  setSurfaceSize(width_, height_);
+  setExclusiveZone(width_, height_);
+
+  static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
+      .configure = layerSurfaceHandleConfigure,
+      .closed = layerSurfaceHandleClosed,
+  };
+  zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, this);
+
+  wl_surface_commit(surface);
+  wl_display_roundtrip(client->wl_display);
+}
+
+void waybar::Bar::setExclusiveZone(uint32_t width, uint32_t height) {
+  auto zone = 0;
+  if (visible) {
+    // exclusive zone already includes margin for anchored edge,
+    // only opposite margin should be added
+    if (vertical) {
+      zone += width;
+      zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) ? margins_.right : margins_.left;
+    } else {
+      zone += height;
+      zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) ? margins_.bottom : margins_.top;
+    }
+  }
+  spdlog::debug("Set exclusive zone {} for output {}", zone, output->name);
   zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
+}
+
+void waybar::Bar::setSurfaceSize(uint32_t width, uint32_t height) {
+  /* If the client is anchored to two opposite edges, layer_surface.configure will return
+   * size without margins for the axis.
+   * layer_surface.set_size, however, expects size with margins for the anchored axis.
+   * This is not specified by wlr-layer-shell and based on actual behavior of sway.
+   */
+  if (vertical && height > 1) {
+    height += margins_.top + margins_.bottom;
+  }
+  if (!vertical && width > 1) {
+    width += margins_.right + margins_.left;
+  }
+  spdlog::debug("Set surface size {}x{} for output {}", width, height, output->name);
+  zwlr_layer_surface_v1_set_size(layer_surface, width, height);
 }
 
 // Converting string to button code rn as to avoid doing it later
@@ -240,8 +270,7 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     o->height_ = height;
     o->window.set_size_request(o->width_, o->height_);
     o->window.resize(o->width_, o->height_);
-    auto zone = o->vertical ? width + o->margins_.right : height + o->margins_.bottom;
-    zwlr_layer_surface_v1_set_exclusive_zone(o->layer_surface, zone);
+    o->setExclusiveZone(width, height);
     spdlog::info(BAR_SIZE_MSG,
                  o->width_ == 1 ? "auto" : std::to_string(o->width_),
                  o->height_ == 1 ? "auto" : std::to_string(o->height_),
@@ -264,13 +293,12 @@ void waybar::Bar::layerSurfaceHandleClosed(void* data, struct zwlr_layer_surface
 
 auto waybar::Bar::toggle() -> void {
   visible = !visible;
-  auto zone = visible ? height_ : 0;
   if (!visible) {
     window.get_style_context()->add_class("hidden");
   } else {
     window.get_style_context()->remove_class("hidden");
   }
-  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
+  setExclusiveZone(width_, height_);
   wl_surface_commit(surface);
 }
 
