@@ -55,7 +55,8 @@ class Bar {
   void onConfigure(GdkEventConfigure *ev);
   void onRealize();
   void onMap(GdkEventAny *ev);
-  void setMarginsAndZone(uint32_t height, uint32_t width);
+  void setExclusiveZone(uint32_t width, uint32_t height);
+  void setSurfaceSize(uint32_t width, uint32_t height);
   auto setupWidgets() -> void;
   void getModules(const Factory &, const std::string &);
   void setupAltFormatKeyForModule(const std::string &module_name);
