@@ -36,7 +36,7 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 
 *format-icons*: ++
 	typeof: array ++
-	Based on the current port-name and volume, the corresponding icon gets selected. The order is *low* to *high*. See [`Icons`](#module-pulseaudio-config-icons)
+	Based on the current port-name and volume, the corresponding icon gets selected. The order is *low* to *high*. See *Icons*.
 
 *rotate*: ++
 	typeof: integer ++
@@ -84,13 +84,13 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 
 *{volume}*: Volume in percentage.
 
-*{icon}*: Icon, as defined in `format-icons`.
+*{icon}*: Icon, as defined in *format-icons*.
 
-*{format_source}*: Source format, `format-source`, `format-source-muted`.
+*{format_source}*: Source format, *format-source*, *format-source-muted*.
 
 # ICONS:
 
-The following strings for `format-icons` are supported.
+The following strings for *format-icons* are supported.
 If they are found in the current PulseAudio port name, the corresponding icons will be selected.
 
 - *default* (Shown, when no other port is found)
