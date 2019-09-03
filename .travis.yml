@@ -17,4 +17,4 @@ script:
     - echo FROM alexays/waybar:${distro} > Dockerfile
     - echo ADD . /root >> Dockerfile
     - docker build -t waybar .
-    - docker run waybar /bin/sh -c "cd /root && meson build && ninja -C build"
+    - docker run waybar /bin/sh -c "cd /root && meson build -Dman-pages=enabled && ninja -C build"

@@ -1,3 +1,5 @@
+# vim: ft=Dockerfile
+
 FROM debian:sid
 
 RUN apt-get update && \
