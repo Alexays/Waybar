@@ -6,7 +6,6 @@ services:
 env:
     - distro: debian
     - distro: archlinux
-    - distro: opensuse
     - distro: fedora
     - distro: alpine
 
