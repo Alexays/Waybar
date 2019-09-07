@@ -32,6 +32,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: {capacity}% ++
 	The format, how the time should be displayed.
 
+*format-time* ++
+	typeof: string ++
+	default: {H} h {M} min ++
+	The format, how the time should be displayed.
+
 *format-icons*
 	typeof: array/object
 	Based on the current capacity, the corresponding icon gets selected. ++
@@ -77,6 +82,14 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{time}*: Estimate of time until full or empty. Note that this is based on the power draw at the last refresh time, not an average.
+
+# TIME FORMAT
+
+The *battery* module allows you to define how time should be formatted via *format-time*.
+
+The two arguments are:
+*{H}*: Hours
+*{M}*: Minutes
 
 # CUSTOM FORMATS
 
