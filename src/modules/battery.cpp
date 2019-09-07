@@ -141,7 +141,11 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
-  return std::to_string(full_hours) + " h " + std::to_string(minutes) + " min";
+  auto format = std::string("{H} h {M} min");
+  if (config_["format-time"].isString()) {
+    format = config_["format-time"].asString();
+  }
+  return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
 }
 
 auto waybar::modules::Battery::update() -> void {
