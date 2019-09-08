@@ -6,7 +6,7 @@ PartOf=wayland-session.target
 [Service]
 Type=dbus
 BusName=fr.arouillard.waybar
-ExecStart=/usr/bin/waybar
+ExecStart=@prefix@/bin/waybar
 
 [Install]
 WantedBy=wayland-session.target
