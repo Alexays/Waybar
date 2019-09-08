@@ -62,6 +62,13 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+systemd = dependency('systemd', required: get_option('systemd'))
+
+if systemd.found()
+  user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
+  install_data('./resources/waybar.service',
+    install_dir: user_units_dir)
+endif
 
 src_files = files(
     'src/factory.cpp',
