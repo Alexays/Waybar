@@ -66,8 +66,13 @@ systemd = dependency('systemd', required: get_option('systemd'))
 
 if systemd.found()
   user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
-  install_data('./resources/waybar.service',
-    install_dir: user_units_dir)
+
+  configure_file(
+    configuration: config,
+    input: './resources/waybar.service.in',
+    output: '@BASENAME@',
+    install_dir: user_units_dir
+  )
 endif
 
 src_files = files(
