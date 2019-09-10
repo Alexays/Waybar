@@ -64,7 +64,9 @@ libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 systemd = dependency('systemd', required: get_option('systemd'))
 
+prefix = get_option('prefix')
 conf_data = configuration_data()
+conf_data.set('prefix', prefix)
 
 if systemd.found()
   user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
