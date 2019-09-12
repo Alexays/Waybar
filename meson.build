@@ -64,10 +64,19 @@ libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 systemd = dependency('systemd', required: get_option('systemd'))
 
+prefix = get_option('prefix')
+conf_data = configuration_data()
+conf_data.set('prefix', prefix)
+
 if systemd.found()
   user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
-  install_data('./resources/waybar.service',
-    install_dir: user_units_dir)
+
+  configure_file(
+    configuration: conf_data,
+    input: './resources/waybar.service.in',
+    output: '@BASENAME@',
+    install_dir: user_units_dir
+  )
 endif
 
 src_files = files(
