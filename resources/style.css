@@ -75,7 +75,8 @@ window#waybar.chromium {
 #custom-media,
 #tray,
 #mode,
-#idle_inhibitor {
+#idle_inhibitor,
+#mpd {
     padding: 0 10px;
     margin: 0 4px;
     color: #ffffff;
