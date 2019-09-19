@@ -718,7 +718,7 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     const int hardwareMax = -20;
     const int hardwareMin = -90;
     signal_strength_ =
-        ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
+        std::clamp(((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100, 0, 100);
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
     signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
