@@ -41,6 +41,10 @@ auto waybar::modules::MPD::update() -> void {
   if (connection_ != nullptr) {
     try {
       bool wasPlaying = playing();
+      if(!wasPlaying) {
+        // Wait until the periodic_updater has stopped
+        std::lock_guard periodic_guard(periodic_lock_);
+      }
       fetchState();
       if (!wasPlaying && playing()) {
         periodic_updater().detach();
@@ -75,6 +79,7 @@ std::thread waybar::modules::MPD::event_listener() {
 
 std::thread waybar::modules::MPD::periodic_updater() {
   return std::thread([this] {
+    std::lock_guard guard(periodic_lock_);
     while (connection_ != nullptr && playing()) {
       dp.emit();
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -297,7 +302,7 @@ void waybar::modules::MPD::waitForEvent() {
   // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist
   // change
   if (!mpd_send_idle_mask(
-          conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_PLAYLIST))) {
+          conn, static_cast<mpd_idle>(MPD_IDLE_PLAYER | MPD_IDLE_OPTIONS | MPD_IDLE_QUEUE))) {
     checkErrors(conn);
     return;
   }
@@ -306,6 +311,10 @@ void waybar::modules::MPD::waitForEvent() {
   // See issue #277:
   // https://github.com/Alexays/Waybar/issues/277
   mpd_recv_idle(conn, /* disable_timeout = */ false);
+  // See issue #281:
+  // https://github.com/Alexays/Waybar/issues/281
+  std::lock_guard guard(connection_lock_);
+
   checkErrors(conn);
   mpd_response_finish(conn);
 
