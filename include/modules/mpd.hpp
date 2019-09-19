@@ -65,6 +65,9 @@ class MPD : public ALabel {
   unique_status status_;
   mpd_state     state_;
   unique_song   song_;
+
+  // To make sure the previous periodic_updater stops before creating a new one
+  std::mutex periodic_lock_;
 };
 
 }  // namespace waybar::modules
