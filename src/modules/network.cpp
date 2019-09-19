@@ -717,8 +717,9 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     // WiFi-hardware usually operates in the range -90 to -20dBm.
     const int hardwareMax = -20;
     const int hardwareMin = -90;
-    signal_strength_ =
-        std::clamp(((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100, 0, 100);
+    const int strength =
+      ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
+    signal_strength_ = std::clamp(strength, 0, 100);
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
     signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
