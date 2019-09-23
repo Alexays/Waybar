@@ -88,8 +88,10 @@ src_files = files(
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
+    'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/temperature.cpp',
+    'src/util/format.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp'

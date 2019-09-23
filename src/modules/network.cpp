@@ -2,8 +2,12 @@
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
 #include <fstream>
+#include "util/format.hpp"
+
 
 namespace {
+
+using namespace waybar::util;
 
 constexpr const char *NETSTAT_FILE =
     "/proc/net/netstat";  // std::ifstream does not take std::string_view as param
@@ -258,26 +262,6 @@ auto waybar::modules::Network::update() -> void {
     state_ = state;
   }
   getState(signal_strength_);
-
-  auto pow_format = [](unsigned long long value, const std::string &unit) {
-    if (value > 2000ull * 1000ull * 1000ull) {  // > 2G
-      auto go = value / (1000 * 1000 * 1000);
-      return std::to_string(go) + "." +
-             std::to_string((value - go * 1000 * 1000 * 1000) / (100 * 1000 * 1000)) + "G" + unit;
-
-    } else if (value > 2000ull * 1000ull) {  // > 2M
-      auto mo = value / (1000 * 1000);
-      return std::to_string(mo) + "." + std::to_string((value - mo * 1000 * 1000) / (100 * 1000)) +
-             "M" + unit;
-
-    } else if (value > 2000ull) {  // > 2k
-      auto ko = value / 1000;
-      return std::to_string(ko) + "." + std::to_string((value - ko * 1000) / 100) + "k" + unit;
-
-    } else {
-      return std::to_string(value) + unit;
-    }
-  };
 
   auto text = fmt::format(
       format_,
