@@ -3,6 +3,9 @@ sudo: false
 services:
     - docker
 
+git:
+    submodules: false
+
 env:
     - distro: debian
     - distro: archlinux
