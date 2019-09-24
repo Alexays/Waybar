@@ -515,7 +515,7 @@ bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::strin
   return false;
 }
 
-int waybar::modules::Network::getPreferredIface(int skip_idx, bool wait = true) const {
+int waybar::modules::Network::getPreferredIface(int skip_idx, bool wait) const {
   int ifid = -1;
   if (config_["interface"].isString()) {
     ifid = if_nametoindex(config_["interface"].asCString());
