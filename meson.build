@@ -184,6 +184,7 @@ if scdoc.found()
         'waybar-clock.5.scd',
         'waybar-cpu.5.scd',
         'waybar-custom.5.scd',
+        'waybar-disk.5.scd',
         'waybar-idle-inhibitor.5.scd',
         'waybar-memory.5.scd',
         'waybar-mpd.5.scd',
