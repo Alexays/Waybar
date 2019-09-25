@@ -12,6 +12,7 @@
 - Battery
 - Network
 - Pulseaudio
+- Disk
 - Memory
 - Cpu load average
 - Temperature
