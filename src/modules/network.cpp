@@ -102,7 +102,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 
   createEventSocket();
   createInfoSocket();
-  auto default_iface = getPreferredIface();
+  auto default_iface = getPreferredIface(-1, false);
   if (default_iface != -1) {
     ifid_ = default_iface;
     char ifname[IF_NAMESIZE];
@@ -515,7 +515,7 @@ bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::strin
   return false;
 }
 
-int waybar::modules::Network::getPreferredIface(int skip_idx) const {
+int waybar::modules::Network::getPreferredIface(int skip_idx, bool wait = true) const {
   int ifid = -1;
   if (config_["interface"].isString()) {
     ifid = if_nametoindex(config_["interface"].asCString());
@@ -547,7 +547,9 @@ int waybar::modules::Network::getPreferredIface(int skip_idx) const {
     if (ifid > 0) {
       return ifid;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    if (wait) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
   }
   return -1;
 }

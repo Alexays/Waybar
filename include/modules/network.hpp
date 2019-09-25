@@ -39,7 +39,7 @@ class Network : public ALabel {
   void              parseFreq(struct nlattr**);
   bool              associatedOrJoined(struct nlattr**);
   bool              checkInterface(struct ifinfomsg* rtif, std::string name);
-  int               getPreferredIface(int skip_idx = -1) const;
+  int               getPreferredIface(int skip_idx = -1, bool wait = true) const;
   auto              getInfo() -> void;
   void              checkNewInterface(struct ifinfomsg* rtif);
   const std::string getNetworkState() const;
