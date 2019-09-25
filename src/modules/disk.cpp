@@ -44,15 +44,33 @@ auto waybar::modules::Disk::update() -> void {
     return;
   }
 
-  label_.set_markup(fmt::format(format_,
-        stats.f_bavail * 100 / stats.f_blocks,
-        fmt::arg("free", pow_format(stats.f_bavail * stats.f_bsize, "B", true)),
-        fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks),
-        fmt::arg("used", pow_format((stats.f_blocks - stats.f_bavail) * stats.f_bsize, "B", true)),
-        fmt::arg("percentage_used", (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks)
-  ));
+  auto free = pow_format(stats.f_bavail * stats.f_bsize, "B", true);
+  auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_bsize, "B", true);
+  auto total = pow_format(stats.f_blocks * stats.f_bsize, "B", true);
+
+  label_.set_markup(fmt::format(format_
+      , stats.f_bavail * 100 / stats.f_blocks
+      , fmt::arg("free", free)
+      , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
+      , fmt::arg("used", used)
+      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks)
+      , fmt::arg("total", total)
+      , fmt::arg("path", path_)
+      ));
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(fmt::format("{} used", pow_format(stats.f_bavail * stats.f_bsize, "B", true)));
+    std::string tooltip_format = "{used} used out of {total} on {path} ({percentage_used}%)";
+    if (config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    label_.set_tooltip_text(fmt::format(tooltip_format
+      , stats.f_bavail * 100 / stats.f_blocks
+      , fmt::arg("free", free)
+      , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
+      , fmt::arg("used", used)
+      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks)
+      , fmt::arg("total", total)
+      , fmt::arg("path", path_)
+      ));
   }
   event_box_.show();
 }
