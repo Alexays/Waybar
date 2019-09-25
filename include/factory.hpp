@@ -13,6 +13,7 @@
 #include "modules/cpu.hpp"
 #include "modules/idle_inhibitor.hpp"
 #include "modules/memory.hpp"
+#include "modules/disk.hpp"
 #if defined(HAVE_DBUSMENU) && !defined(NO_FILESYSTEM)
 #include "modules/sni/tray.hpp"
 #endif

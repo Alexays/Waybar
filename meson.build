@@ -88,8 +88,10 @@ src_files = files(
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
+    'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/temperature.cpp',
+    'src/util/format.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp'
@@ -182,6 +184,7 @@ if scdoc.found()
         'waybar-clock.5.scd',
         'waybar-cpu.5.scd',
         'waybar-custom.5.scd',
+        'waybar-disk.5.scd',
         'waybar-idle-inhibitor.5.scd',
         'waybar-memory.5.scd',
         'waybar-mpd.5.scd',
