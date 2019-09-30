@@ -44,9 +44,9 @@ auto waybar::modules::Disk::update() -> void {
     return;
   }
 
-  auto free = pow_format(stats.f_bavail * stats.f_bsize, "B", true);
-  auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_bsize, "B", true);
-  auto total = pow_format(stats.f_blocks * stats.f_bsize, "B", true);
+  auto free = pow_format(stats.f_bavail * stats.f_frsize, "B", true);
+  auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_frsize, "B", true);
+  auto total = pow_format(stats.f_blocks * stats.f_frsize, "B", true);
 
   label_.set_markup(fmt::format(format_
       , stats.f_bavail * 100 / stats.f_blocks
