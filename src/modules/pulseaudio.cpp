@@ -86,7 +86,7 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
     change = round(config_["scroll-step"].asDouble() * volume_tick);
   }
   if (dir == SCROLL_DIR::UP) {
-    if (volume_ + 1 < 100) {
+    if (volume_ + 1 <= 100) {
       pa_cvolume_inc(&pa_volume, change);
     }
   } else if (dir == SCROLL_DIR::DOWN) {
