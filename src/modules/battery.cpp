@@ -130,7 +130,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
       return "Full";
     }
     if (online) {
-      return "Charging";
+      return "Plugged";
     }
     return "Discharging";
   }
