@@ -38,12 +38,16 @@ Addressed by *mpd*
 *format*: ++
 	typeof: string ++
 	default: "{album} - {artist} - {title}" ++
-	Information displayed when a song is playing or paused
+	Information displayed when a song is playing.
 
 *format-stopped*: ++
 	typeof: string ++
 	default: "stopped" ++
 	Information displayed when the player is stopped.
+
+*format-paused*: ++
+	typeof: string ++
+	This format is used when a song is paused.
 
 *format-disconnected*: ++
 	typeof: string ++

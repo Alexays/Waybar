@@ -36,6 +36,7 @@ class MPD : public ALabel {
 
   bool stopped();
   bool playing();
+  bool paused();
 
   const std::string module_name_;
 
