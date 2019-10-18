@@ -26,7 +26,6 @@ class AModule : public IModule {
 
   const Json::Value &config_;
   Gtk::EventBox      event_box_;
-  std::string        click_param_;
 
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
