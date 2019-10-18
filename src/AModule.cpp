@@ -46,7 +46,7 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
     format = config_["on-click-forward"].asString();
   }
   if (!format.empty()) {
-    pid_.push_back(util::command::forkExec(fmt::format(format, fmt::arg("arg", click_param_))));
+    pid_.push_back(util::command::forkExec(format));
   }
   dp.emit();
   return true;
