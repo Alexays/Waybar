@@ -88,6 +88,9 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
           std::sort(workspaces_.begin(),
                     workspaces_.end(),
                     [](const Json::Value &lhs, const Json::Value &rhs) {
+                      if (lhs["name"].isInt() && rhs["name"].isInt()) {
+                        return lhs["name"].asInt() < rhs["name"].asInt();
+                      }
                       return lhs["name"].asString() < rhs["name"].asString();
                     });
         }
