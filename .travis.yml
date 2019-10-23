@@ -14,6 +14,7 @@ env:
 
 before_install:
     - docker pull alexays/waybar:${distro}
+    - find . -type f \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -r0 clang-format -i
 
 script:
     - echo FROM alexays/waybar:${distro} > Dockerfile
