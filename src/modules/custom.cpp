@@ -112,10 +112,16 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       label_.set_markup(str);
       if (tooltipEnabled()) {
-        if (text_ == tooltip_) {
-          label_.set_tooltip_text(str);
+        if (config_["tooltip-format"].isString()) {
+          auto tooltip_format = config_["tooltip-format"].asString();
+          auto tooltip_text = fmt::format(tooltip_format,
+                              text_,
+                              fmt::arg("alt", alt_),
+                              fmt::arg("icon", getIcon(percentage_, alt_)),
+                              fmt::arg("percentage", percentage_));
+          label_.set_tooltip_text(tooltip_text);
         } else {
-          label_.set_tooltip_text(tooltip_);
+          label_.set_tooltip_text(str);
         }
       }
       auto classes = label_.get_style_context()->list_classes();
