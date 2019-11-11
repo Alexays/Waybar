@@ -2,7 +2,7 @@
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
 > Available in Arch [community](https://www.archlinux.org/packages/community/x86_64/waybar/) or
-[AUR](https://aur.archlinux.org/packages/waybar-git/) and [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar)<br>
+[AUR](https://aur.archlinux.org/packages/waybar-git/), [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar), and [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=waybar)<br>
 > *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
 
 **Current features**
