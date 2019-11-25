@@ -221,6 +221,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
   }
   format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
   label_.set_markup(fmt::format(format,
+                                fmt::arg("desc", desc_),
                                 fmt::arg("volume", volume_),
                                 fmt::arg("format_source", format_source),
                                 fmt::arg("icon", getIcon(volume_, getPortIcon()))));

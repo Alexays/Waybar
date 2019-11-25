@@ -82,6 +82,8 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 
 # FORMAT REPLACEMENTS
 
+*{desc}*: Pulseaudio port's description, for bluetooth it'll be the device name.
+
 *{volume}*: Volume in percentage.
 
 *{icon}*: Icon, as defined in *format-icons*.
