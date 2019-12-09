@@ -56,6 +56,13 @@ libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
 ```
 
+On Ubuntu 19.10 you can install all the relevant dependencies using this command:
+
+```
+sudo apt install libgtkmm-3.0-dev libjsoncpp-dev libinput-dev libsigc++-2.0-dev libpulse-dev libnl-3-dev libdbusmenu-gtk3-dev libnl-genl-3-dev libfmt-dev clang-tidy scdoc libmpdclient-dev
+```
+
+
 Contributions welcome! - have fun :)<br>
 The style guidelines is [Google's](https://google.github.io/styleguide/cppguide.html)
 
