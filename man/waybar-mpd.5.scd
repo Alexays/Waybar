@@ -76,10 +76,6 @@ Addressed by *mpd*
 *on-click*: ++
     typeof: string ++
     Command to execute when clicked on the module.
-    
-*on-click-middle*: ++
-        typeof: string ++
-        Command to execute when middle-clicked on the module using mousewheel.
 
 *on-click-right*: ++
     typeof: string ++
