@@ -59,10 +59,6 @@ Addressed by *custom/<name>*
 	typeof: string ++
 	Command to execute when clicked on the module.
 
-*on-click-middle*: ++
-        typeof: string ++
-        Command to execute when middle-clicked on the module using mousewheel.
-
 *on-click-right*: ++
 	typeof: string ++
 	Command to execute when you right clicked on the module.
@@ -141,7 +137,6 @@ $text\\n$tooltip\\n$class*
 	"exec": "mpc current",
 	"exec-if": "pgrep mpd",
 	"on-click": "mpc toggle",
-	"on-click-middle": "playerctl play-pause",
 	"on-click-right": "sonata"
 }
 ```
