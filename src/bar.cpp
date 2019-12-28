@@ -1,3 +1,7 @@
+#ifdef HAVE_GTK_LAYER_SHELL
+#include <gtk-layer-shell.h>
+#endif
+
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
@@ -8,7 +12,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
       surface(nullptr),
-      layer_surface(nullptr),
+      layer_surface_(nullptr),
       anchor_(ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP),
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -27,11 +31,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
   height_ = config["height"].isUInt() ? config["height"].asUInt() : height_;
   width_ = config["width"].isUInt() ? config["width"].asUInt() : width_;
-
-  window.signal_realize().connect_notify(sigc::mem_fun(*this, &Bar::onRealize));
-  window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
-  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
-  window.set_size_request(width_, height_);
 
   if (config["position"] == "bottom") {
     anchor_ = ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
@@ -98,6 +97,17 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
 
+#ifdef HAVE_GTK_LAYER_SHELL
+  use_gls_ = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
+  if (use_gls_) {
+    initGtkLayerShell();
+  }
+#endif
+
+  window.signal_realize().connect_notify(sigc::mem_fun(*this, &Bar::onRealize));
+  window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
+  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
+  window.set_size_request(width_, height_);
   setupWidgets();
 
   if (window.get_realized()) {
@@ -131,10 +141,42 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
       tmp_width = ev->width;
     }
   }
-  if (tmp_width != width_ || tmp_height != height_) {
+  if (use_gls_) {
+    width_ = tmp_width;
+    height_ = tmp_height;
+    spdlog::debug("Set surface size {}x{} for output {}", width_, height_, output->name);
+    setExclusiveZone(tmp_width, tmp_height);
+  } else if (tmp_width != width_ || tmp_height != height_) {
     setSurfaceSize(tmp_width, tmp_height);
   }
 }
+
+#ifdef HAVE_GTK_LAYER_SHELL
+void waybar::Bar::initGtkLayerShell() {
+  auto gtk_window = window.gobj();
+  // this has to be executed before GtkWindow.realize
+  gtk_layer_init_for_window(gtk_window);
+  gtk_layer_set_keyboard_interactivity(gtk_window, FALSE);
+  auto layer = config["layer"] == "top" ? GTK_LAYER_SHELL_LAYER_TOP : GTK_LAYER_SHELL_LAYER_BOTTOM;
+  gtk_layer_set_layer(gtk_window, layer);
+  gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
+  gtk_layer_set_namespace(gtk_window, "waybar");
+
+  gtk_layer_set_anchor(
+      gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
+  gtk_layer_set_anchor(
+      gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
+  gtk_layer_set_anchor(
+      gtk_window, GTK_LAYER_SHELL_EDGE_TOP, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP);
+  gtk_layer_set_anchor(
+      gtk_window, GTK_LAYER_SHELL_EDGE_BOTTOM, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
+
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_TOP, margins_.top);
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_BOTTOM, margins_.bottom);
+}
+#endif
 
 void waybar::Bar::onRealize() {
   auto gdk_window = window.get_window()->gobj();
@@ -145,16 +187,22 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
   auto gdk_window = window.get_window()->gobj();
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 
+  if (use_gls_) {
+    return;
+  }
+
   auto client = waybar::Client::inst();
+  // owned by output->monitor; no need to destroy
+  auto wl_output = gdk_wayland_monitor_get_wl_output(output->monitor->gobj());
   auto layer =
       config["layer"] == "top" ? ZWLR_LAYER_SHELL_V1_LAYER_TOP : ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-  layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-      client->layer_shell, surface, output->output, layer, "waybar");
+  layer_surface_ = zwlr_layer_shell_v1_get_layer_surface(
+      client->layer_shell, surface, wl_output, layer, "waybar");
 
-  zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface, false);
-  zwlr_layer_surface_v1_set_anchor(layer_surface, anchor_);
+  zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface_, false);
+  zwlr_layer_surface_v1_set_anchor(layer_surface_, anchor_);
   zwlr_layer_surface_v1_set_margin(
-      layer_surface, margins_.top, margins_.right, margins_.bottom, margins_.left);
+      layer_surface_, margins_.top, margins_.right, margins_.bottom, margins_.left);
   setSurfaceSize(width_, height_);
   setExclusiveZone(width_, height_);
 
@@ -162,7 +210,7 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
       .configure = layerSurfaceHandleConfigure,
       .closed = layerSurfaceHandleClosed,
   };
-  zwlr_layer_surface_v1_add_listener(layer_surface, &layer_surface_listener, this);
+  zwlr_layer_surface_v1_add_listener(layer_surface_, &layer_surface_listener, this);
 
   wl_surface_commit(surface);
   wl_display_roundtrip(client->wl_display);
@@ -182,7 +230,15 @@ void waybar::Bar::setExclusiveZone(uint32_t width, uint32_t height) {
     }
   }
   spdlog::debug("Set exclusive zone {} for output {}", zone, output->name);
-  zwlr_layer_surface_v1_set_exclusive_zone(layer_surface, zone);
+
+#ifdef HAVE_GTK_LAYER_SHELL
+  if (use_gls_) {
+    gtk_layer_set_exclusive_zone(window.gobj(), zone);
+  } else
+#endif
+  {
+    zwlr_layer_surface_v1_set_exclusive_zone(layer_surface_, zone);
+  }
 }
 
 void waybar::Bar::setSurfaceSize(uint32_t width, uint32_t height) {
@@ -198,7 +254,7 @@ void waybar::Bar::setSurfaceSize(uint32_t width, uint32_t height) {
     width += margins_.right + margins_.left;
   }
   spdlog::debug("Set surface size {}x{} for output {}", width, height, output->name);
-  zwlr_layer_surface_v1_set_size(layer_surface, width, height);
+  zwlr_layer_surface_v1_set_size(layer_surface_, width, height);
 }
 
 // Converting string to button code rn as to avoid doing it later
@@ -282,9 +338,9 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
 
 void waybar::Bar::layerSurfaceHandleClosed(void* data, struct zwlr_layer_surface_v1* /*surface*/) {
   auto o = static_cast<waybar::Bar*>(data);
-  if (o->layer_surface) {
-    zwlr_layer_surface_v1_destroy(o->layer_surface);
-    o->layer_surface = nullptr;
+  if (o->layer_surface_) {
+    zwlr_layer_surface_v1_destroy(o->layer_surface_);
+    o->layer_surface_ = nullptr;
   }
   o->modules_left_.clear();
   o->modules_center_.clear();
