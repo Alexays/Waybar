@@ -31,6 +31,10 @@ screensaving, also known as "presentation mode".
 	typeof: string ++
 	Command to execute when clicked on the module. A click also toggles the state
 
+*on-click-middle*: ++
+	typeof: string ++
+	Command to execute when middle-clicked on the module using mousewheel.
+
 *on-click-right*: ++
 	typeof: string ++
 	Command to execute when you right clicked on the module.
