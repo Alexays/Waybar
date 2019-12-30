@@ -163,7 +163,12 @@ auto waybar::modules::Battery::update() -> void {
     }
     label_.set_tooltip_text(tooltip_text);
   }
+  // Transform to lowercase
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
+  // Replace space with underscore
+  std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
+    return ch == ' ' ? '_' : ch;
+  });
   auto format = format_;
   auto state = getState(capacity, true);
   if (!old_status_.empty()) {
