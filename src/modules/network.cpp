@@ -280,6 +280,11 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
   if (text != label_.get_label()) {
     label_.set_markup(text);
+    if (text.empty()) {
+      event_box_.hide();
+    } else {
+      event_box_.show();
+    }
   }
   if (tooltipEnabled()) {
     if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
