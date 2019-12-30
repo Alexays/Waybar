@@ -165,9 +165,9 @@ auto waybar::modules::Battery::update() -> void {
   }
   // Transform to lowercase
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
-  // Replace space with underscore
+  // Replace space with dash
   std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
-    return ch == ' ' ? '_' : ch;
+    return ch == ' ' ? '-' : ch;
   });
   auto format = format_;
   auto state = getState(capacity, true);
