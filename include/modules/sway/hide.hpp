@@ -21,6 +21,8 @@ class Hide : public ALabel, public sigc::trackable {
   void onEvent(const struct Ipc::ipc_response&);
   void worker();
 
+  std::string      current_mode;
+  bool             visible_on_modifier;
   const Bar&       bar_;
   std::string      window_;
   int              windowId_;

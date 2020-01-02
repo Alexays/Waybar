@@ -5,9 +5,12 @@
 
 namespace waybar::modules::sway {
 
+std::string current_mode = "hide";
+bool visible_by_modifier = true;
+
 Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "hide", id, "{}", 0, true), bar_(bar), windowId_(-1) {
-  ipc_.subscribe(R"(["bar_state_update"])");
+  ipc_.subscribe(R"(["bar_state_update","barconfig_update"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Hide::onEvent));
   bar_.window.get_style_context()->add_class("hidden");
   // Launch worker
@@ -18,21 +21,27 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
   auto client = waybar::Client::inst();
 
   auto payload = parser_.parse(res.payload);
-  if (payload.isMember("visible_by_modifier")) {
-    if (payload["visible_by_modifier"].asBool()) {
-      bar_.window.get_style_context()->remove_class("hidden");
-        zwlr_layer_surface_v1_set_layer(bar_.layer_surface,
-                                        ZWLR_LAYER_SHELL_V1_LAYER_TOP
-                                        | ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY);
-    } else {
-      bar_.window.get_style_context()->add_class("hidden");
-        zwlr_layer_surface_v1_set_layer(bar_.layer_surface,
-                                        ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM);
-    }
-
-    wl_surface_commit(bar_.surface);
-    wl_display_roundtrip(client->wl_display);
+  if (payload.isMember("mode")) {
+    // barconfig_update: get mode
+    current_mode = payload["mode"];
+  } else if (payload.isMember("visible_by_modifier")) {
+    // bar_state_update: get visible_by_modifier
+    visible_by_modifier = payload["visible_by_modifier"].asBool();
   }
+  if (current_mode == "invisible"
+      || (current_mode == "hide" && ! visible_by_modifier)) {
+    bar_.window.get_style_context()->add_class("hidden");
+    zwlr_layer_surface_v1_set_layer(bar_.layer_surface,
+                                    ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM);
+  } else {
+    // TODO: support "bar mode overlay"
+    bar_.window.get_style_context()->remove_class("hidden");
+    zwlr_layer_surface_v1_set_layer(bar_.layer_surface,
+                                    ZWLR_LAYER_SHELL_V1_LAYER_TOP
+                                    | ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY);
+  }
+  wl_surface_commit(bar_.surface);
+  wl_display_roundtrip(client->wl_display);
 }
 
 void Hide::worker() {
