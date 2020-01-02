@@ -5,9 +5,6 @@
 
 namespace waybar::modules::sway {
 
-std::string current_mode = "hide";
-bool visible_by_modifier = true;
-
 Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "hide", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["bar_state_update","barconfig_update"])");
@@ -23,13 +20,13 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
   auto payload = parser_.parse(res.payload);
   if (payload.isMember("mode")) {
     // barconfig_update: get mode
-    current_mode = payload["mode"];
+    current_mode_ = payload["mode"].asString();
   } else if (payload.isMember("visible_by_modifier")) {
     // bar_state_update: get visible_by_modifier
-    visible_by_modifier = payload["visible_by_modifier"].asBool();
+    visible_by_modifier_ = payload["visible_by_modifier"].asBool();
   }
-  if (current_mode == "invisible"
-      || (current_mode == "hide" && ! visible_by_modifier)) {
+  if (current_mode_ == "invisible"
+      || (current_mode_ == "hide" && ! visible_by_modifier_)) {
     bar_.window.get_style_context()->add_class("hidden");
     zwlr_layer_surface_v1_set_layer(bar_.layer_surface,
                                     ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM);
