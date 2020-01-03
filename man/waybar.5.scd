@@ -66,6 +66,12 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	typeof: string ++
 	Optional name added as a CSS class, for styling multiple waybars.
 
+*gtk-layer-shell* ++
+	typeof: bool ++
+	default: true ++
+	Option to disable the use of gtk-layer-shell for popups.
+	Only functional if compiled with gtk-layer-shell support.
+
 # MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
