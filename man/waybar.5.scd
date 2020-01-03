@@ -23,7 +23,8 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *layer* ++
 	typeof: string ++
 	default: bottom ++
-	Decide if the bar is displayed in front of the windows or behind them.
+	Decide if the bar is displayed in front (*top*) of the windows or behind (*bottom*)
+	them.
 
 *output* ++
 	typeof: string|array ++
