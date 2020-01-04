@@ -21,6 +21,11 @@ Addressed by *network*
 	default: 60 ++
 	The interval in which the network information gets polled (e.g. signal strength).
 
+*family*: ++
+	typeof: string ++
+	default: *ipv4* ++
+	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present.
+
 *format*: ++
 	typeof: string  ++
 	default: *{ifname}* ++
