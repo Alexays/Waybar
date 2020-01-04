@@ -47,6 +47,11 @@ Addressed by *network*
 	typeof: string ++
 	This format is used when the displayed interface is disconnected.
 
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current signal strength, the corresponding icon gets selected. ++
+	The order is *low* to *high*. Or by the state if it is an object.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
@@ -121,6 +126,8 @@ Addressed by *network*
 *{bandwidthUpOctets}*: Instant up speed in octets/seconds.
 
 *{bandwidthDownOctets}*: Instant down speed in octets/seconds.
+
+*{icon}*: Icon, as defined in *format-icons*.
 
 # EXAMPLES
 
