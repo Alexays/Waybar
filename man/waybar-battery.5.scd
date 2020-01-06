@@ -37,32 +37,32 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: {H} h {M} min ++
 	The format, how the time should be displayed.
 
-*format-icons*
-	typeof: array/object
+*format-icons*: ++
+	typeof: array/object ++
 	Based on the current capacity, the corresponding icon gets selected. ++
 	The order is *low* to *high*. Or by the state if it is an object.
 
-*max-length* ++
+*max-length*: ++
 	typeof: integer++
 	The maximum length in character the module should display.
 
-*rotate* ++
+*rotate*: ++
 	typeof: integer++
 	Positive value to rotate the text label.
 
-*on-click* ++
+*on-click*: ++
 	typeof: string ++
 	Command to execute when clicked on the module.
 
-*on-click-right* ++
+*on-click-right*: ++
 	typeof: string ++
 	Command to execute when you right clicked on the module.
 
-*on-scroll-up* ++
+*on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module.
 
-*on-scroll-down* ++
+*on-scroll-down*: ++
 	typeof: string ++
 	Command to execute when scrolling down on the module.
 

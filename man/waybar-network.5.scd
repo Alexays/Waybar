@@ -21,6 +21,11 @@ Addressed by *network*
 	default: 60 ++
 	The interval in which the network information gets polled (e.g. signal strength).
 
+*family*: ++
+	typeof: string ++
+	default: *ipv4* ++
+	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present.
+
 *format*: ++
 	typeof: string  ++
 	default: *{ifname}* ++
@@ -41,6 +46,11 @@ Addressed by *network*
 *format-disconnected*: ++
 	typeof: string ++
 	This format is used when the displayed interface is disconnected.
+
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current signal strength, the corresponding icon gets selected. ++
+	The order is *low* to *high*. Or by the state if it is an object.
 
 *rotate*: ++
 	typeof: integer ++
@@ -116,6 +126,8 @@ Addressed by *network*
 *{bandwidthUpOctets}*: Instant up speed in octets/seconds.
 
 *{bandwidthDownOctets}*: Instant down speed in octets/seconds.
+
+*{icon}*: Icon, as defined in *format-icons*.
 
 # EXAMPLES
 
