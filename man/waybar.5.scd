@@ -23,7 +23,8 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *layer* ++
 	typeof: string ++
 	default: bottom ++
-	Decide if the bar is displayed in front of the windows or behind them.
+	Decide if the bar is displayed in front (*top*) of the windows or behind (*bottom*)
+	them.
 
 *output* ++
 	typeof: string|array ++
@@ -65,6 +66,12 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *name* ++
 	typeof: string ++
 	Optional name added as a CSS class, for styling multiple waybars.
+
+*gtk-layer-shell* ++
+	typeof: bool ++
+	default: true ++
+	Option to disable the use of gtk-layer-shell for popups.
+	Only functional if compiled with gtk-layer-shell support.
 
 # MODULE FORMAT
 
