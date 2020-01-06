@@ -31,7 +31,9 @@
     <property name='Id' type='s' access='read'/>
     <property name='Title' type='s' access='read'/>
     <property name='Status' type='s' access='read'/>
+    <!-- See discussion on pull #536
     <property name='WindowId' type='u' access='read'/>
+    -->
     <property name='IconThemePath' type='s' access='read'/>
     <property name='IconName' type='s' access='read'/>
     <property name='IconPixmap' type='a(iiay)' access='read'/>
