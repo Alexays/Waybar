@@ -140,7 +140,9 @@ void waybar::modules::MPD::setLabel() {
     if (playing()) {
       label_.get_style_context()->add_class("playing");
       label_.get_style_context()->remove_class("paused");
-    } else {
+    } else if (paused()) {
+      format =
+        config_["format-paused"].isString() ? config_["format-paused"].asString() : config_["format"].asString();
       label_.get_style_context()->add_class("paused");
       label_.get_style_context()->remove_class("playing");
     }
@@ -346,3 +348,5 @@ bool waybar::modules::MPD::stopped() {
 }
 
 bool waybar::modules::MPD::playing() { return connection_ != nullptr && state_ == MPD_STATE_PLAY; }
+
+bool waybar::modules::MPD::paused() { return connection_ != nullptr && state_ == MPD_STATE_PAUSE; }
