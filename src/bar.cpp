@@ -2,10 +2,10 @@
 #include <gtk-layer-shell.h>
 #endif
 
+#include <spdlog/spdlog.h>
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
-#include <spdlog/spdlog.h>
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
@@ -351,13 +351,24 @@ auto waybar::Bar::toggle() -> void {
   visible = !visible;
   if (!visible) {
     window.get_style_context()->add_class("hidden");
-    window.set_opacity(0);
+#ifdef HAVE_GTK_LAYER_SHELL
+    if (use_gls_) {
+      gtk_layer_set_layer(window.gobj(), GTK_LAYER_SHELL_LAYER_BACKGROUND);
+    }
+#endif
   } else {
     window.get_style_context()->remove_class("hidden");
-    window.set_opacity(1);
+#ifdef HAVE_GTK_LAYER_SHELL
+    if (use_gls_) {
+      auto layer =
+          config["layer"] == "top" ? GTK_LAYER_SHELL_LAYER_TOP : GTK_LAYER_SHELL_LAYER_BOTTOM;
+      gtk_layer_set_layer(window.gobj(), layer);
+      window.show_all();
+    }
+#endif
   }
   setExclusiveZone(width_, height_);
-  wl_surface_commit(surface);
+  //wl_surface_commit(surface);
 }
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
