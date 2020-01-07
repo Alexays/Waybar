@@ -2,6 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
 #include <fstream>
+#include <cassert>
 #include "util/format.hpp"
 
 
