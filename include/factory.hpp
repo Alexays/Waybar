@@ -6,6 +6,7 @@
 #include "modules/sway/mode.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
+#include "modules/sway/layout.hpp"
 #endif
 #ifndef NO_FILESYSTEM
 #include "modules/battery.hpp"
