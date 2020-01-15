@@ -49,7 +49,7 @@ void waybar::Client::handleGlobalRemove(void *   data, struct wl_registry * /*re
   // Nothing here
 }
 
-void waybar::Client::handleOutput(std::unique_ptr<struct waybar_output> &output) {
+void waybar::Client::handleOutput(struct waybar_output &output) {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
       .logical_position = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
       .logical_size = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
@@ -58,42 +58,39 @@ void waybar::Client::handleOutput(std::unique_ptr<struct waybar_output> &output)
       .description = [](void *, struct zxdg_output_v1 *, const char *) {},
   };
   // owned by output->monitor; no need to destroy
-  auto wl_output = gdk_wayland_monitor_get_wl_output(output->monitor->gobj());
-  output->xdg_output.reset(zxdg_output_manager_v1_get_xdg_output(xdg_output_manager, wl_output));
-  zxdg_output_v1_add_listener(output->xdg_output.get(), &xdgOutputListener, output.get());
+  auto wl_output = gdk_wayland_monitor_get_wl_output(output.monitor->gobj());
+  output.xdg_output.reset(zxdg_output_manager_v1_get_xdg_output(xdg_output_manager, wl_output));
+  zxdg_output_v1_add_listener(output.xdg_output.get(), &xdgOutputListener, &output);
 }
 
-bool waybar::Client::isValidOutput(const Json::Value &                    config,
-                                   std::unique_ptr<struct waybar_output> &output) {
+bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_output &output) {
   bool found = true;
   if (config["output"].isArray()) {
     bool in_array = false;
     for (auto const &output_conf : config["output"]) {
-      if (output_conf.isString() && output_conf.asString() == output->name) {
+      if (output_conf.isString() && output_conf.asString() == output.name) {
         in_array = true;
         break;
       }
     }
     found = in_array;
   }
-  if (config["output"].isString() && config["output"].asString() != output->name) {
+  if (config["output"].isString() && config["output"].asString() != output.name) {
     found = false;
   }
   return found;
 }
 
-std::unique_ptr<struct waybar::waybar_output> &waybar::Client::getOutput(void *addr) {
-  auto it = std::find_if(outputs_.begin(), outputs_.end(), [&addr](const auto &output) {
-    return output.get() == addr;
-  });
+struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
+  auto it = std::find_if(
+      outputs_.begin(), outputs_.end(), [&addr](const auto &output) { return &output == addr; });
   if (it == outputs_.end()) {
     throw std::runtime_error("Unable to find valid output");
   }
   return *it;
 }
 
-std::vector<Json::Value> waybar::Client::getOutputConfigs(
-    std::unique_ptr<struct waybar_output> &output) {
+std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &output) {
   std::vector<Json::Value> configs;
   if (config_.isArray()) {
     for (auto const &config : config_) {
@@ -112,18 +109,18 @@ void waybar::Client::handleOutputName(void *      data, struct zxdg_output_v1 * 
   auto client = waybar::Client::inst();
   try {
     auto &output = client->getOutput(data);
-    output->name = name;
+    output.name = name;
     spdlog::debug("Output detected: {} ({} {})",
                   name,
-                  output->monitor->get_manufacturer(),
-                  output->monitor->get_model());
+                  output.monitor->get_manufacturer(),
+                  output.monitor->get_model());
     auto configs = client->getOutputConfigs(output);
     if (configs.empty()) {
-      output->xdg_output.reset();
+      output.xdg_output.reset();
     } else {
       wl_display_roundtrip(client->wl_display);
       for (const auto &config : configs) {
-        client->bars.emplace_back(std::make_unique<Bar>(output.get(), config));
+        client->bars.emplace_back(std::make_unique<Bar>(&output, config));
         Glib::RefPtr<Gdk::Screen> screen = client->bars.back()->window.get_screen();
         client->style_context_->add_provider_for_screen(
             screen, client->css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
@@ -135,7 +132,8 @@ void waybar::Client::handleOutputName(void *      data, struct zxdg_output_v1 * 
 }
 
 void waybar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
-  auto &output = outputs_.emplace_back(new struct waybar_output({monitor}));
+  auto &output = outputs_.emplace_back();
+  output.monitor = monitor;
   handleOutput(output);
 }
 
@@ -151,9 +149,7 @@ void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
       ++it;
     }
   }
-  std::remove_if(outputs_.begin(), outputs_.end(), [&monitor](const auto &output) {
-    return output->monitor == monitor;
-  });
+  outputs_.remove_if([&monitor](const auto &output) { return output.monitor == monitor; });
 }
 
 std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
