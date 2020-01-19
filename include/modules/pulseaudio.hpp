@@ -34,6 +34,7 @@ class Pulseaudio : public ALabel {
   pa_cvolume  pa_volume_;
   bool        muted_;
   std::string port_name_;
+  std::string form_factor_;
   std::string desc_;
   std::string monitor_;
   // SOURCE

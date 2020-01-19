@@ -158,6 +158,9 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
     pa->desc_ = i->description;
     pa->monitor_ = i->monitor_source_name;
     pa->port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
+    if (auto ff = pa_proplist_gets(i->proplist, PA_PROP_DEVICE_FORM_FACTOR)) {
+      pa->form_factor_ = ff;
+    }
     pa->dp.emit();
   }
 }
@@ -185,7 +188,7 @@ static const std::array<std::string, 9> ports = {
 };
 
 const std::string waybar::modules::Pulseaudio::getPortIcon() const {
-  std::string nameLC = port_name_;
+  std::string nameLC = port_name_ + form_factor_;
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
     if (nameLC.find(port) != std::string::npos) {

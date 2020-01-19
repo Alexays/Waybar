@@ -265,7 +265,11 @@ void Item::updateImage() {
         if (pixbuf->gobj() != nullptr) {
           // An icon specified by path and filename may be the wrong size for
           // the tray
-          pixbuf = pixbuf->scale_simple(icon_size, icon_size, Gdk::InterpType::INTERP_BILINEAR);
+          // Keep the aspect ratio and scale to make the height equal to icon_size
+          // If people have non square icons, assume they want it to grow in width not height
+          int width = icon_size * pixbuf->get_width() / pixbuf->get_height();
+
+          pixbuf = pixbuf->scale_simple(width, icon_size, Gdk::InterpType::INTERP_BILINEAR);
           image.set(pixbuf);
         }
       } else {

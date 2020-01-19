@@ -5,6 +5,6 @@ source_url = https://github.com/fmtlib/fmt/archive/5.3.0.tar.gz
 source_filename = fmt-5.3.0.tar.gz
 source_hash = defa24a9af4c622a7134076602070b45721a43c51598c8456ec6f2c4dbb51c89
 
-patch_url = https://wrapdb.mesonbuild.com/v1/projects/fmt/5.3.0/1/get_zip
+patch_url = https://github.com/mesonbuild/fmt/releases/download/5.3.0-1/fmt.zip
 patch_filename = fmt-5.3.0-1-wrap.zip
 patch_hash = 18f21a3b8833949c35d4ac88a7059577d5fa24b98786e4b1b2d3d81bb811440f
