@@ -36,6 +36,10 @@ The *backlight* module displays the current backlight level.
 	typeof: string ++
 	Command to execute when the module is clicked.
 
+*on-click-middle*: ++
+	typeof: string ++
+	Command to execute when middle-clicked on the module using mousewheel.
+
 *on-click-right* ++
 	typeof: string ++
 	Command to execute when the module is right clicked.

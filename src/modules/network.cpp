@@ -2,6 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
 #include <fstream>
+#include <cassert>
 #include "util/format.hpp"
 
 
@@ -439,7 +440,6 @@ out:
 }
 
 void waybar::modules::Network::getInterfaceAddress() {
-  unsigned int    cidrRaw;
   struct ifaddrs *ifaddr, *ifa;
   cidr_ = 0;
   int success = getifaddrs(&ifaddr);
@@ -451,18 +451,34 @@ void waybar::modules::Network::getInterfaceAddress() {
     if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
         ifa->ifa_name == ifname_) {
       char ipaddr[INET6_ADDRSTRLEN];
-      ipaddr_ = inet_ntop(family_,
-                          &reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr)->sin_addr,
-                          ipaddr,
-                          INET6_ADDRSTRLEN);
       char netmask[INET6_ADDRSTRLEN];
-      auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
-      netmask_ = inet_ntop(family_, &net_addr->sin_addr, netmask, INET6_ADDRSTRLEN);
-      cidrRaw = net_addr->sin_addr.s_addr;
       unsigned int cidr = 0;
-      while (cidrRaw) {
-        cidr += cidrRaw & 1;
-        cidrRaw >>= 1;
+      if (family_ == AF_INET) {
+        ipaddr_ = inet_ntop(AF_INET,
+                            &reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr)->sin_addr,
+                            ipaddr,
+                            INET_ADDRSTRLEN);
+        auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
+        netmask_ = inet_ntop(AF_INET, &net_addr->sin_addr, netmask, INET_ADDRSTRLEN);
+        unsigned int cidrRaw = net_addr->sin_addr.s_addr;
+        while (cidrRaw) {
+          cidr += cidrRaw & 1;
+          cidrRaw >>= 1;
+        }
+      } else {
+        ipaddr_ = inet_ntop(AF_INET6,
+                            &reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_addr)->sin6_addr,
+                            ipaddr,
+                            INET6_ADDRSTRLEN);
+        auto net_addr = reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_netmask);
+        netmask_ = inet_ntop(AF_INET6, &net_addr->sin6_addr, netmask, INET6_ADDRSTRLEN);
+        for (size_t i = 0; i < sizeof(net_addr->sin6_addr.s6_addr); ++i) {
+          unsigned char cidrRaw = net_addr->sin6_addr.s6_addr[i];
+          while (cidrRaw) {
+            cidr += cidrRaw & 1;
+            cidrRaw >>= 1;
+          }
+        }
       }
       cidr_ = cidr;
       break;
