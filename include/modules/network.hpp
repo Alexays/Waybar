@@ -9,6 +9,7 @@
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
 #include <sys/epoll.h>
+#include <linux/rfkill.h>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -45,6 +46,7 @@ class Network : public ALabel {
   const std::string getNetworkState() const;
   void              clearIface();
   bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
+  bool				isDisabled(enum rfkill_type rfkill_type) const;
 
   int                ifid_;
   sa_family_t        family_;
