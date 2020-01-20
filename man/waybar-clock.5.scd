@@ -20,6 +20,11 @@ The *clock* module displays the current date and time.
 	default: {:%H:%M} ++
 	The format, how the date and time should be displayed.
 
+*timezone*: ++
+	typeof: string ++
+	default: inferred local timezone ++
+	The timezone to display the time in, e.g. America/New_York.
+
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.

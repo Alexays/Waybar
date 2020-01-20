@@ -1,5 +1,5 @@
 #include "modules/clock.hpp"
-#include <time.h>
+#include <date/tz.h>
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60) {
@@ -14,8 +14,14 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 
 auto waybar::modules::Clock::update() -> void {
   tzset(); // Update timezone information
-  auto now = std::chrono::system_clock::now();
-  auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
+  const date::time_zone* zone;
+  auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
+  if (config_["timezone"].isString()) {
+    zone = date::locate_zone(config_["timezone"].asString());
+  } else {
+    zone = date::current_zone();
+  }
+  auto localtime = date::make_zoned(zone, now);
   auto text = fmt::format(format_, localtime);
   label_.set_markup(text);
 
@@ -29,3 +35,23 @@ auto waybar::modules::Clock::update() -> void {
     }
   }
 }
+
+template <typename ZonedTimeInner>
+struct fmt::formatter<date::zoned_time<ZonedTimeInner>> {
+
+  std::string *format_string;
+
+  constexpr auto parse(format_parse_context& ctx) {
+    format_string = new std::string[1];
+    auto it = ctx.begin(), end = ctx.end();
+    while (it != (end - 1)) {
+      *format_string += *it++;
+    }
+    return it;
+  }
+
+  template <typename FormatContext>
+  auto format(const date::zoned_time<ZonedTimeInner>& d, FormatContext& ctx) {
+    return format_to(ctx.out(), "{}", date::format(*format_string, d));
+  }
+};
