@@ -18,12 +18,18 @@ The *clock* module displays the current date and time.
 *format*: ++
 	typeof: string ++
 	default: {:%H:%M} ++
-	The format, how the date and time should be displayed.
+	The format, how the date and time should be displayed. ++
+	It uses the format of the date library. See https://howardhinnant.github.io/date/date.html#to_stream_formatting for details.
 
 *timezone*: ++
 	typeof: string ++
 	default: inferred local timezone ++
 	The timezone to display the time in, e.g. America/New_York.
+
+*locale*: ++
+	typeof: string ++
+	default: inferred from current locale ++
+	A locale to be used to display the time. Intended to render times in custom timezones with the proper language and format.
 
 *max-length*: ++
 	typeof: integer ++
