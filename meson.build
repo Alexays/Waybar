@@ -88,6 +88,7 @@ src_files = files(
     'src/ALabel.cpp',
     'src/modules/memory.cpp',
     'src/modules/battery.cpp',
+    'src/modules/bluetooth.cpp',
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
