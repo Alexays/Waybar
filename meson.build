@@ -97,7 +97,8 @@ src_files = files(
     'src/modules/temperature.cpp',
     'src/main.cpp',
     'src/bar.cpp',
-    'src/client.cpp'
+    'src/client.cpp',
+    'src/util/rfkill.cpp'
 )
 
 if true # find_program('sway', required : false).found()
