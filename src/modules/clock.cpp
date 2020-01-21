@@ -1,5 +1,4 @@
 #include "modules/clock.hpp"
-#include <date/tz.h>
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60) {
@@ -52,6 +51,6 @@ struct fmt::formatter<date::zoned_time<ZonedTimeInner>> {
 
   template <typename FormatContext>
   auto format(const date::zoned_time<ZonedTimeInner>& d, FormatContext& ctx) {
-    return format_to(ctx.out(), "{}", date::format(*format_string, d));
+    return format_to(ctx.out(), "{}", date::format(std::locale(""), *format_string, d));
   }
 };
