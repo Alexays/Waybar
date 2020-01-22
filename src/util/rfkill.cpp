@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <cerrno>
 
-bool waybar::util::isDisabled(enum rfkill_type rfkill_type) {
+bool waybar::util::rfkill::isDisabled(enum rfkill_type rfkill_type) {
   struct rfkill_event event;
   ssize_t len;
   int fd;

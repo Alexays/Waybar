@@ -223,7 +223,7 @@ void waybar::modules::Network::worker() {
 
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1) {
-    if (waybar::util::isDisabled(RFKILL_TYPE_WLAN))
+    if (waybar::util::rfkill::isDisabled(RFKILL_TYPE_WLAN))
       return "disabled";
     return "disconnected";
   }
