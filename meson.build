@@ -88,6 +88,7 @@ src_files = files(
     'src/ALabel.cpp',
     'src/modules/memory.cpp',
     'src/modules/battery.cpp',
+    'src/modules/bluetooth.cpp',
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/cpu.cpp',
@@ -96,7 +97,8 @@ src_files = files(
     'src/modules/temperature.cpp',
     'src/main.cpp',
     'src/bar.cpp',
-    'src/client.cpp'
+    'src/client.cpp',
+    'src/util/rfkill.cpp'
 )
 
 if true # find_program('sway', required : false).found()
