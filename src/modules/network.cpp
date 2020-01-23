@@ -87,7 +87,9 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       cidr_(-1),
       signal_strength_dbm_(0),
       signal_strength_(0),
-      frequency_(0) {
+      frequency_(0),
+      rfkill_(*(new waybar::util::Rfkill(RFKILL_TYPE_WLAN))) {
+
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
   if (down_octets) {
@@ -224,7 +226,7 @@ void waybar::modules::Network::worker() {
 
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1) {
-    if (waybar::util::rfkill::isDisabled(RFKILL_TYPE_WLAN))
+    if (rfkill_.isDisabled())
       return "disabled";
     return "disconnected";
   }

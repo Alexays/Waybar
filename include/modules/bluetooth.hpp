@@ -5,6 +5,7 @@
 
 #include <fmt/chrono.h>
 #include "util/sleeper_thread.hpp"
+#include "util/rfkill.hpp"
 
 namespace waybar::modules {
 
@@ -15,8 +16,10 @@ class Bluetooth : public ALabel {
   auto update() -> void;
 
  private:
-  std::string                   status_;
-  util::SleeperThread thread_;
+  std::string           status_;
+  util::SleeperThread 	thread_;
+
+  util::Rfkill rfkill_;
 };
 
 }  // namespace waybar::modules
