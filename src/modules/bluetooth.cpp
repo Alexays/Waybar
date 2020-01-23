@@ -1,25 +1,23 @@
 #include "modules/bluetooth.hpp"
 #include "util/rfkill.hpp"
 #include <linux/rfkill.h>
-
 #include <time.h>
+
+#include <iostream>
 
 waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
     : ALabel(config, "bluetooth", id, "{status}", 10),
-      status_("disabled") {
+      status_("disabled"),
+      rfkill_(*(new waybar::util::Rfkill(RFKILL_TYPE_BLUETOOTH))) {
   thread_ = [this] {
     dp.emit();
-    auto now = std::chrono::system_clock::now();
-    auto timeout = std::chrono::floor<std::chrono::seconds>(now + interval_);
-    auto diff = std::chrono::seconds(timeout.time_since_epoch().count() % interval_.count());
-    thread_.sleep_until(timeout - diff);
+    rfkill_.waitForEvent();
   };
-  //dp.emit();
 }
 
 auto waybar::modules::Bluetooth::update() -> void {
   status_ = "enabled";
-  if (waybar::util::rfkill::isDisabled(RFKILL_TYPE_BLUETOOTH)) {
+  if (rfkill_.getState()) {
     status_ = "disabled";
   } else {
     status_ = "enabled";
@@ -35,7 +33,7 @@ auto waybar::modules::Bluetooth::update() -> void {
       ////auto tooltip_text = fmt::format(tooltip_format, localtime);
       //label_.set_tooltip_text(tooltip_text);
     //} else {
-      //label_.set_tooltip_text(text);
+      //label_.set_tooltip_text(status_);
     //}
   //}
 }
