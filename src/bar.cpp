@@ -368,7 +368,7 @@ auto waybar::Bar::toggle() -> void {
 #endif
   }
   setExclusiveZone(width_, height_);
-  //wl_surface_commit(surface);
+  wl_surface_commit(surface);
 }
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
