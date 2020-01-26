@@ -5,12 +5,11 @@
 namespace waybar::util {
 
 class Rfkill {
- public:
+ public:;
   Rfkill(enum rfkill_type rfkill_type);
   ~Rfkill() = default;
-  bool isDisabled() const;
   void waitForEvent();
-  int getState();
+  int getState() const;
 
  private:
   enum rfkill_type rfkill_type_;

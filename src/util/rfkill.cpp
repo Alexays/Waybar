@@ -1,11 +1,12 @@
 #include "util/rfkill.hpp"
+#include <linux/rfkill.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <cstring>
 #include <fcntl.h>
 #include <sys/poll.h>
 #include <cerrno>
-#include <stdio.h>
+#include <stdexcept>
 
 waybar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type)
   : rfkill_type_(rfkill_type) {
@@ -19,7 +20,7 @@ void waybar::util::Rfkill::waitForEvent() {
 
   fd = open("/dev/rfkill", O_RDONLY);
   if (fd < 0) {
-    //perror("Can't open RFKILL control device");
+    throw std::runtime_error("Can't open RFKILL control device");
     return;
   }
 
@@ -30,7 +31,7 @@ void waybar::util::Rfkill::waitForEvent() {
   while (1) {
     n = poll(&p, 1, -1);
     if (n < 0) {
-      //perror("Failed to poll RFKILL control device");
+      throw std::runtime_error("Failed to poll RFKILL control device");
       break;
     }
 
@@ -39,22 +40,18 @@ void waybar::util::Rfkill::waitForEvent() {
 
     len = read(fd, &event, sizeof(event));
     if (len < 0) {
-      //perror("Reading of RFKILL events failed");
+      throw std::runtime_error("Reading of RFKILL events failed");
       break;
     }
 
     if (len != RFKILL_EVENT_SIZE_V1) {
-      //fprintf(stderr, "Wrong size of RFKILL event\n");
+      throw std::runtime_error("Wrong size of RFKILL event");
       continue;
     }
 
-    if(event.type == rfkill_type_) {
+    if(event.type == rfkill_type_ && event.op == RFKILL_OP_CHANGE) {
       state_ = event.soft || event.hard;
-      if (prev_state_ != state_) {
-        prev_state_ = state_;
-        break;
-      }
-      //ret = event.soft || event.hard;
+      break;
     }
   }
 
@@ -63,49 +60,6 @@ void waybar::util::Rfkill::waitForEvent() {
 }
 
 
-int waybar::util::Rfkill::getState() {
+int waybar::util::Rfkill::getState() const {
   return state_;
-}
-
-bool waybar::util::Rfkill::isDisabled() const {
-  struct rfkill_event event;
-  ssize_t len;
-  int fd;
-  int ret;
-  ret = false;
-
-  fd = open("/dev/rfkill", O_RDONLY);
-  if (fd < 0) {
-    //perror("Can't open RFKILL control device");
-    return false;
-  }
-
-  if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
-    //perror("Can't set RFKILL control device to non-blocking");
-    close(fd);
-    return false;
-  }
-
-  while(true) {
-    len = read(fd, &event, sizeof(event));
-    if (len < 0) {
-      if (errno == EAGAIN)
-        return 1;
-      //perror("Reading of RFKILL events failed");
-      return false;
-    }
-
-    if (len != RFKILL_EVENT_SIZE_V1) {
-      //fprintf(stderr, "Wrong size of RFKILL event\n");
-      return false;
-    }
-
-    if(event.type == rfkill_type_) {
-      ret = event.soft || event.hard;
-      break;
-    }
-  }
-
-  close(fd);
-  return ret;
 }
