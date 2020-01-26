@@ -18,6 +18,7 @@ class Bluetooth : public ALabel {
  private:
   std::string           status_;
   util::SleeperThread 	thread_;
+  util::SleeperThread 	intervall_thread_;
 
   util::Rfkill rfkill_;
 };

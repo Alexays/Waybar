@@ -3,9 +3,9 @@
 #include <sys/eventfd.h>
 #include <fstream>
 #include <cassert>
+#include <linux/rfkill.h>
 #include "util/format.hpp"
 #include "util/rfkill.hpp"
-#include <linux/rfkill.h>
 
 namespace {
 
@@ -88,8 +88,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       signal_strength_dbm_(0),
       signal_strength_(0),
       frequency_(0),
-      rfkill_(*(new waybar::util::Rfkill(RFKILL_TYPE_WLAN))) {
-
+      rfkill_{RFKILL_TYPE_WLAN} {
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
   if (down_octets) {
@@ -199,6 +198,7 @@ void waybar::modules::Network::createInfoSocket() {
 }
 
 void waybar::modules::Network::worker() {
+  // update via here not working
   thread_timer_ = [this] {
     {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -208,6 +208,16 @@ void waybar::modules::Network::worker() {
       }
     }
     thread_timer_.sleep_for(interval_);
+  };
+  thread_rfkill_ = [this] {
+    rfkill_.waitForEvent();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (ifid_ > 0) {
+        getInfo();
+        dp.emit();
+      }
+    }
   };
   thread_ = [this] {
     std::array<struct epoll_event, EPOLL_MAX> events{};
@@ -226,7 +236,7 @@ void waybar::modules::Network::worker() {
 
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1) {
-    if (rfkill_.isDisabled())
+    if (rfkill_.getState())
       return "disabled";
     return "disconnected";
   }
