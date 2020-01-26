@@ -6,6 +6,7 @@
 #else
 #include <fmt/chrono.h>
 #endif
+#include <date/tz.h>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -19,6 +20,9 @@ class Clock : public ALabel {
 
  private:
   util::SleeperThread thread_;
+  std::locale locale_;
+  const date::time_zone* time_zone_;
+  bool fixed_time_zone_;
 };
 
 }  // namespace waybar::modules
