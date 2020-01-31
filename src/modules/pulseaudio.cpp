@@ -176,11 +176,11 @@ void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_ser
 }
 
 static const std::array<std::string, 9> ports = {
-    "headphones",
+    "headphone",
     "speaker",
     "hdmi",
     "headset",
-    "handsfree",
+    "hands-free",
     "portable",
     "car",
     "hifi",
