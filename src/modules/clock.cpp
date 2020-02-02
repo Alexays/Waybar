@@ -1,6 +1,5 @@
 #include "modules/clock.hpp"
 #include <sstream>
-#include <utf8.h>
 
 using zoned_time = date::zoned_time<std::chrono::system_clock::duration>;
 
@@ -11,31 +10,18 @@ struct waybar_time {
 
 namespace {
 
-size_t utf8_strlen(const std::string& s) {
-  return utf8::distance(s.begin(), s.end());
-}
-
-std::string utf8_substr(const std::string s, size_t len) {
-  utf8::iterator it(s.begin(), s.begin(), s.end());
-  for (size_t i = 0; i < len; ++i) {
-    ++it;
-  }
-  int byte_count = it.base() - s.begin();
-  return s.substr(0, byte_count);
-}
-
 void weekdays_header(const std::locale& locale, const date::weekday& first_dow, std::ostream& os) {
   auto wd = first_dow;
   do {
     if (wd != first_dow) os << ' ';
-    auto wd_string = date::format(locale, "%a", wd);
-    auto wd_string_len = utf8_strlen(wd_string);
-    if (wd_string_len > 2) {
-      wd_string = utf8_substr(wd_string, 2);
-      wd_string_len = 2;
+    Glib::ustring wd_ustring(date::format(locale, "%a", wd));
+    auto wd_len = wd_ustring.length();
+    if (wd_len > 2) {
+      wd_ustring = wd_ustring.substr(0, 2);
+      wd_len = 2;
     }
-    const std::string pad(2 - wd_string_len, ' ');
-    os << pad << wd_string;
+    const std::string pad(2 - wd_len, ' ');
+    os << pad << wd_ustring;
   } while (++wd != first_dow);
   os << "\n";
 }

@@ -67,7 +67,6 @@ gtk_layer_shell = dependency('gtk-layer-shell-0',
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
 systemd = dependency('systemd', required: get_option('systemd'))
 tz_dep = dependency('date', default_options : [ 'use_system_tzdb=true' ], fallback: [ 'date', 'tz_dep' ])
-utfcpp = dependency('utfcpp', fallback: [ 'utfcpp', 'utfcpp_dep' ])
 
 prefix = get_option('prefix')
 conf_data = configuration_data()
@@ -169,8 +168,7 @@ executable(
         libudev,
         libmpdclient,
         gtk_layer_shell,
-        tz_dep,
-        utfcpp
+        tz_dep
     ],
     include_directories: [include_directories('include')],
     install: true,
