@@ -61,21 +61,13 @@ std::string calendar_text(const waybar_time& wtime, const date::weekday& first_d
   if (empty_days > 0) {
     os << std::string(empty_days * 3 - 1, ' ');
   }
-  auto d = date::day(1);
-  do {
-    if (wd != first_dow) os << ' ';
-    if (d == curr_day) {
-      os << "<b><u>" << date::format("%e", d) << "</u></b>";
-    } else {
-      os << date::format("%e", d);
-    }
-    ++d;
-  } while (++wd != first_dow);
-
-  // Following weeks.
   auto last_day = (ym/date::literals::last).day();
-  for ( ; d <= last_day; ++d, ++wd) {
-    os << ((wd == first_dow) ? '\n' : ' ');
+  for (auto d = date::day(1); d <= last_day; ++d, ++wd) {
+    if (wd != first_dow) {
+      os << ' ';
+    } else if (unsigned(d) != 1) {
+      os << '\n';
+    }
     if (d == curr_day) {
       os << "<b><u>" << date::format("%e", d) << "</u></b>";
     } else {
