@@ -1,4 +1,5 @@
 #include "modules/clock.hpp"
+#include <mutex>
 #include <sstream>
 
 using zoned_time = date::zoned_time<std::chrono::system_clock::duration>;
@@ -26,9 +27,28 @@ void weekdays_header(const std::locale& locale, const date::weekday& first_dow, 
   os << "\n";
 }
 
+struct CachedCalendar {
+  date::year_month_day ymd;
+  std::string text;
+
+  void set(const date::year_month_day& ymd_, std::string text_) {
+    ymd = ymd_;
+    text = text_;
+  }
+};
+
+std::mutex cached_calendar_mutex;  // protects cached_calendar.
+CachedCalendar cached_calendar;
+
 std::string calendar_text(const waybar_time& wtime, const date::weekday& first_dow) {
   const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
   const auto ymd = date::year_month_day(daypoint);
+
+  const std::lock_guard<std::mutex> lock(cached_calendar_mutex);
+  if (cached_calendar.ymd == ymd) {
+    return cached_calendar.text;
+  }
+
   const date::year_month ym(ymd.year(), ymd.month());
   const auto curr_day = ymd.day();
 
@@ -63,7 +83,9 @@ std::string calendar_text(const waybar_time& wtime, const date::weekday& first_d
     }
   }
 
-  return os.str();
+  auto result = os.str();
+  cached_calendar.set(ymd, result);
+  return result;
 }
 
 }
