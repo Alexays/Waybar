@@ -79,7 +79,7 @@ def signal_handler(sig, frame):
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
-    # Increase verbosity with every occurance of -v
+    # Increase verbosity with every occurence of -v
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
     # Define for which player we're listening
