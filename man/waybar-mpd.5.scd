@@ -20,6 +20,10 @@ Addressed by *mpd*
 	typeof: integer ++
 	The port MPD listens to. If empty, use the default port.
 
+*password*: ++
+	typeof: string ++
+	The password required to connect to the MPD server. If empty, password is not required.
+
 *interval*: ++
 	typeof: integer++
 	default: 5 ++

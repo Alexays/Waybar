@@ -48,6 +48,7 @@ class MPD : public ALabel {
   // (It's either nullptr, or from the config)
   const char*    server_;
   const unsigned port_;
+  const std::string password_;
 
   unsigned timeout_;
 
