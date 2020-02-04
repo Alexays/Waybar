@@ -1,5 +1,8 @@
 #include "modules/clock.hpp"
 #include <sstream>
+#ifdef HAVE_LANGINFO_1STDAY
+#include <langinfo.h>
+#endif
 
 using zoned_time = date::zoned_time<std::chrono::system_clock::duration>;
 
@@ -9,6 +12,17 @@ struct waybar_time {
 };
 
 namespace {
+
+#ifdef HAVE_LANGINFO_1STDAY
+// Computations done similarly to Linux cal utility.
+date::weekday first_day_of_week() {
+  const int i = (std::intptr_t) nl_langinfo(_NL_TIME_WEEK_1STDAY);
+  auto ymd = date::year(i / 10000)/(i / 100 % 100)/(i % 100);
+  auto wd = date::weekday(ymd);
+  uint8_t j = *nl_langinfo(_NL_TIME_FIRST_WEEKDAY);
+  return wd + date::days(j - 1);
+}
+#endif
 
 void weekdays_header(const std::locale& locale, const date::weekday& first_dow, std::ostream& os) {
   auto wd = first_dow;
@@ -38,7 +52,7 @@ struct CachedCalendar {
 
 CachedCalendar cached_calendar;
 
-std::string calendar_text(const waybar_time& wtime, const date::weekday& first_dow) {
+std::string calendar_text(const waybar_time& wtime) {
   const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
   const auto ymd = date::year_month_day(daypoint);
   if (cached_calendar.ymd == ymd) {
@@ -49,6 +63,11 @@ std::string calendar_text(const waybar_time& wtime, const date::weekday& first_d
   const auto curr_day = ymd.day();
 
   std::stringstream os;
+#ifdef HAVE_LANGINFO_1STDAY
+  const auto first_dow = first_day_of_week();
+#else
+  const auto first_dow = date::Sunday;
+#endif
   weekdays_header(wtime.locale, first_dow, os);
 
   // First week prefixed with spaces if needed.
@@ -115,7 +134,7 @@ auto waybar::modules::Clock::update() -> void {
 
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
-      const auto calendar = calendar_text(wtime, date::Sunday);
+      const auto calendar = calendar_text(wtime);
       auto tooltip_format = config_["tooltip-format"].asString();
       auto tooltip_text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendar));
       label_.set_tooltip_markup(tooltip_text);
