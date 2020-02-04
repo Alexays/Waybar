@@ -100,15 +100,16 @@ The following strings for *format-icons* are supported.
 If they are found in the current PulseAudio port name, the corresponding icons will be selected.
 
 - *default* (Shown, when no other port is found)
-- *headphones*
+- *headphone*
 - *speaker*
 - *hdmi*
 - *headset*
-- *handsfree*
+- *hands-free*
 - *portable*
 - *car*
 - *hifi*
 - *phone*
+
 
 # EXAMPLES
 
