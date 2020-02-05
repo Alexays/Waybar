@@ -14,7 +14,7 @@ namespace waybar::modules {
 
 struct waybar_time {
   std::locale locale;
-  date::zoned_time<std::chrono::system_clock::duration> ztime;
+  date::zoned_seconds ztime;
 };
 
 class Clock : public ALabel {
