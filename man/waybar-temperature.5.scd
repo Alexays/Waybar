@@ -22,7 +22,7 @@ Addressed by *temperature*
 
 *critical-threshold*: ++
 	typeof: integer ++
-	The threshold before it is considered critical (Celcius).
+	The threshold before it is considered critical (Celsius).
 
 *interval*: ++
 	typeof: integer ++
@@ -36,11 +36,11 @@ Addressed by *temperature*
 *format*: ++
 	typeof: string  ++
 	default: {temperatureC}°C ++
-	The format (Celcius/Farenheit) in which the temperature should be displayed.
+	The format (Celsius/Fahrenheit) in which the temperature should be displayed.
 
 *format-icons*: ++
 	typeof: array ++
-	Based on the current temperature (Celcius) and *critical-threshold* if available, the corresponding icon gets selected. The order is *low* to *high*.
+	Based on the current temperature (Celsius) and *critical-threshold* if available, the corresponding icon gets selected. The order is *low* to *high*.
 
 *rotate*: ++
 	typeof: integer ++
@@ -81,7 +81,7 @@ Addressed by *temperature*
 
 # FORMAT REPLACEMENTS
 
-*{temperatureC}*: Temperature in Celcius.
+*{temperatureC}*: Temperature in Celsius.
 
 *{temperatureF}*: Temperature in Fahrenheit.
 
