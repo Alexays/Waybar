@@ -1,101 +1,12 @@
 #include "modules/clock.hpp"
 #include <sstream>
+#include <type_traits>
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>
+#include <locale.h>
 #endif
 
-using zoned_time = date::zoned_time<std::chrono::system_clock::duration>;
-
-struct waybar_time {
-  std::locale locale;
-  zoned_time ztime;
-};
-
-namespace {
-
-#ifdef HAVE_LANGINFO_1STDAY
-// Computations done similarly to Linux cal utility.
-date::weekday first_day_of_week() {
-  const int i = (std::intptr_t) nl_langinfo(_NL_TIME_WEEK_1STDAY);
-  auto ymd = date::year(i / 10000)/(i / 100 % 100)/(i % 100);
-  auto wd = date::weekday(ymd);
-  uint8_t j = *nl_langinfo(_NL_TIME_FIRST_WEEKDAY);
-  return wd + date::days(j - 1);
-}
-#endif
-
-void weekdays_header(const std::locale& locale, const date::weekday& first_dow, std::ostream& os) {
-  auto wd = first_dow;
-  do {
-    if (wd != first_dow) os << ' ';
-    Glib::ustring wd_ustring(date::format(locale, "%a", wd));
-    auto wd_len = wd_ustring.length();
-    if (wd_len > 2) {
-      wd_ustring = wd_ustring.substr(0, 2);
-      wd_len = 2;
-    }
-    const std::string pad(2 - wd_len, ' ');
-    os << pad << wd_ustring;
-  } while (++wd != first_dow);
-  os << "\n";
-}
-
-struct CachedCalendar {
-  date::year_month_day ymd;
-  std::string text;
-
-  void set(const date::year_month_day& ymd_, std::string text_) {
-    ymd = ymd_;
-    text = text_;
-  }
-};
-
-CachedCalendar cached_calendar;
-
-std::string calendar_text(const waybar_time& wtime) {
-  const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
-  const auto ymd = date::year_month_day(daypoint);
-  if (cached_calendar.ymd == ymd) {
-    return cached_calendar.text;
-  }
-
-  const date::year_month ym(ymd.year(), ymd.month());
-  const auto curr_day = ymd.day();
-
-  std::stringstream os;
-#ifdef HAVE_LANGINFO_1STDAY
-  const auto first_dow = first_day_of_week();
-#else
-  const auto first_dow = date::Sunday;
-#endif
-  weekdays_header(wtime.locale, first_dow, os);
-
-  // First week prefixed with spaces if needed.
-  auto wd = date::weekday(ym/1);
-  auto empty_days = (wd - first_dow).count();
-  if (empty_days > 0) {
-    os << std::string(empty_days * 3 - 1, ' ');
-  }
-  auto last_day = (ym/date::literals::last).day();
-  for (auto d = date::day(1); d <= last_day; ++d, ++wd) {
-    if (wd != first_dow) {
-      os << ' ';
-    } else if (unsigned(d) != 1) {
-      os << '\n';
-    }
-    if (d == curr_day) {
-      os << "<b><u>" << date::format("%e", d) << "</u></b>";
-    } else {
-      os << date::format("%e", d);
-    }
-  }
-
-  auto result = os.str();
-  cached_calendar.set(ymd, result);
-  return result;
-}
-
-}
+using waybar::modules::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60)
@@ -142,6 +53,86 @@ auto waybar::modules::Clock::update() -> void {
       label_.set_tooltip_markup(text);
     }
   }
+}
+
+auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::string {
+  const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
+  const auto ymd = date::year_month_day(daypoint);
+  if (cached_calendar_ymd_ == ymd) {
+    return cached_calendar_text_;
+  }
+
+  const date::year_month ym(ymd.year(), ymd.month());
+  const auto curr_day = ymd.day();
+
+  std::stringstream os;
+  const auto first_dow = first_day_of_week();
+  weekdays_header(first_dow, os);
+
+  // First week prefixed with spaces if needed.
+  auto wd = date::weekday(ym/1);
+  auto empty_days = (wd - first_dow).count();
+  if (empty_days > 0) {
+    os << std::string(empty_days * 3 - 1, ' ');
+  }
+  auto last_day = (ym/date::literals::last).day();
+  for (auto d = date::day(1); d <= last_day; ++d, ++wd) {
+    if (wd != first_dow) {
+      os << ' ';
+    } else if (unsigned(d) != 1) {
+      os << '\n';
+    }
+    if (d == curr_day) {
+      os << "<b><u>" << date::format("%e", d) << "</u></b>";
+    } else {
+      os << date::format("%e", d);
+    }
+  }
+
+  auto result = os.str();
+  cached_calendar_ymd_ = ymd;
+  cached_calendar_text_ = result;
+  return result;
+}
+
+auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void {
+  auto wd = first_dow;
+  do {
+    if (wd != first_dow) os << ' ';
+    Glib::ustring wd_ustring(date::format(locale_, "%a", wd));
+    auto wd_len = wd_ustring.length();
+    if (wd_len > 2) {
+      wd_ustring = wd_ustring.substr(0, 2);
+      wd_len = 2;
+    }
+    const std::string pad(2 - wd_len, ' ');
+    os << pad << wd_ustring;
+  } while (++wd != first_dow);
+  os << "\n";
+}
+
+#ifdef HAVE_LANGINFO_1STDAY
+template <auto fn>
+using deleter_from_fn = std::integral_constant<decltype(fn), fn>;
+
+template <typename T, auto fn>
+using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
+#endif
+
+// Computations done similarly to Linux cal utility.
+auto waybar::modules::Clock::first_day_of_week() -> date::weekday {
+#ifdef HAVE_LANGINFO_1STDAY
+  deleting_unique_ptr<std::remove_pointer<locale_t>::type, freelocale>
+    posix_locale{newlocale(LC_ALL, locale_.name().c_str(), nullptr)};
+  if (posix_locale) {
+    const int i = (std::intptr_t) nl_langinfo_l(_NL_TIME_WEEK_1STDAY, posix_locale.get());
+    auto ymd = date::year(i / 10000)/(i / 100 % 100)/(i % 100);
+    auto wd = date::weekday(ymd);
+    uint8_t j = *nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, posix_locale.get());
+    return wd + date::days(j - 1);
+  }
+#endif
+  return date::Sunday;
 }
 
 template <>

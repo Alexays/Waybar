@@ -42,11 +42,15 @@ if not compiler.has_header('filesystem')
     endif
 endif
 
-code = '''#include<langinfo.h>
+code = '''
+#include <langinfo.h>
+#include <locale.h>
 int main(int argc, char** argv) {
+    locale_t locale = newlocale(LC_ALL, "en_US.UTF-8", nullptr);
     char* str;
-    str = nl_langinfo(_NL_TIME_WEEK_1STDAY);
-    str = nl_langinfo(_NL_TIME_FIRST_WEEKDAY);
+    str = nl_langinfo_l(_NL_TIME_WEEK_1STDAY, locale);
+    str = nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, locale);
+    freelocale(locale);
     return 0;
 }
 '''
