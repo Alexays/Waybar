@@ -42,6 +42,22 @@ if not compiler.has_header('filesystem')
     endif
 endif
 
+code = '''
+#include <langinfo.h>
+#include <locale.h>
+int main(int argc, char** argv) {
+    locale_t locale = newlocale(LC_ALL, "en_US.UTF-8", nullptr);
+    char* str;
+    str = nl_langinfo_l(_NL_TIME_WEEK_1STDAY, locale);
+    str = nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, locale);
+    freelocale(locale);
+    return 0;
+}
+'''
+if compiler.links(code, name : 'nl_langinfo with _NL_TIME_WEEK_1STDAY, _NL_TIME_FIRST_WEEKDAY')
+    add_project_arguments('-DHAVE_LANGINFO_1STDAY', language: 'cpp')
+endif
+
 add_global_arguments(cpp_args, language : 'cpp')
 add_global_link_arguments(cpp_link_args, language : 'cpp')
 

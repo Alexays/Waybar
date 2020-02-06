@@ -12,6 +12,11 @@
 
 namespace waybar::modules {
 
+struct waybar_time {
+  std::locale locale;
+  date::zoned_time<std::chrono::system_clock::duration> ztime;
+};
+
 class Clock : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
@@ -23,6 +28,12 @@ class Clock : public ALabel {
   std::locale locale_;
   const date::time_zone* time_zone_;
   bool fixed_time_zone_;
+  date::year_month_day cached_calendar_ymd_;
+  std::string cached_calendar_text_;
+
+  auto calendar_text(const waybar_time& wtime) -> std::string;
+  auto weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void;
+  auto first_day_of_week() -> date::weekday;
 };
 
 }  // namespace waybar::modules
