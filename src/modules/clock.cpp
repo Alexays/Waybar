@@ -37,8 +37,9 @@ auto waybar::modules::Clock::update() -> void {
     // Time zone can change. Be sure to pick that.
     time_zone_ = date::current_zone();
   }
-  auto now = std::chrono::system_clock::now();
-  waybar_time wtime = {locale_, date::make_zoned(time_zone_, now)};
+  auto        now = std::chrono::system_clock::now();
+  waybar_time wtime = {locale_,
+                       date::make_zoned(time_zone_, date::floor<std::chrono::seconds>(now))};
 
   auto text = fmt::format(format_, wtime);
   label_.set_markup(text);
