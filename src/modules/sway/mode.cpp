@@ -8,7 +8,13 @@ Mode::Mode(const std::string& id, const Json::Value& config)
   ipc_.subscribe(R"(["mode"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Mode::onEvent));
   // Launch worker
-  worker();
+  ipc_.setWorker([this] {
+    try {
+      ipc_.handleEvent();
+    } catch (const std::exception& e) {
+      spdlog::error("Mode: {}", e.what());
+    }
+  });
   dp.emit();
 }
 
@@ -29,16 +35,6 @@ void Mode::onEvent(const struct Ipc::ipc_response& res) {
   } catch (const std::exception& e) {
     spdlog::error("Mode: {}", e.what());
   }
-}
-
-void Mode::worker() {
-  thread_ = [this] {
-    try {
-      ipc_.handleEvent();
-    } catch (const std::exception& e) {
-      spdlog::error("Mode: {}", e.what());
-    }
-  };
 }
 
 auto Mode::update() -> void {
