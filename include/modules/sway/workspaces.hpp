@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <fmt/format.h>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
