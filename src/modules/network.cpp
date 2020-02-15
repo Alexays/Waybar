@@ -279,7 +279,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
       fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
-  if (text != label_.get_label()) {
+  if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
       event_box_.hide();
