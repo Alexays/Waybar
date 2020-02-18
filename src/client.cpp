@@ -77,7 +77,7 @@ bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_outp
 
   if (config["output"].isArray()) {
     for (auto const &output_conf : config["output"]) {
-      if (output_conf.isString()) {
+      if (output_conf.isString() && check_output(output_conf.asString(), output)) {
         if(check_output(output_conf.asString(), output)) {
           return true;
         }
