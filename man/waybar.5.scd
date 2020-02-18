@@ -28,7 +28,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *output* ++
 	typeof: string|array ++
-	Specifies on which screen this bar will be displayed.
+	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
 
 *position* ++
 	typeof: string ++
