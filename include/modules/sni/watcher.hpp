@@ -7,9 +7,23 @@
 namespace waybar::modules::SNI {
 
 class Watcher {
+ private:
+  Watcher();
+
  public:
-  Watcher(std::size_t id);
   ~Watcher();
+
+  using singleton = std::shared_ptr<Watcher>;
+  static singleton getInstance() {
+    static std::weak_ptr<Watcher> weak;
+
+    std::shared_ptr<Watcher> strong = weak.lock();
+    if (!strong) {
+      strong = std::shared_ptr<Watcher>(new Watcher());
+      weak = strong;
+    }
+    return strong;
+  }
 
  private:
   typedef enum { GF_WATCH_TYPE_HOST, GF_WATCH_TYPE_ITEM } GfWatchType;
@@ -34,7 +48,6 @@ class Watcher {
   void updateRegisteredItems(SnWatcher *obj);
 
   uint32_t   bus_name_id_;
-  uint32_t   watcher_id_;
   GSList *   hosts_ = nullptr;
   GSList *   items_ = nullptr;
   SnWatcher *watcher_ = nullptr;
