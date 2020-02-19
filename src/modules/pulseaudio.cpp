@@ -52,7 +52,8 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
       pa_context_set_subscribe_callback(c, subscribeCb, data);
       pa_context_subscribe(
           c,
-          static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
+          static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
+                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
                                                  static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE)),
           nullptr,
           nullptr);
@@ -109,7 +110,9 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
   if (operation != PA_SUBSCRIPTION_EVENT_CHANGE) {
     return;
   }
-  if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
+  if (facility == PA_SUBSCRIPTION_EVENT_SERVER) {
+    pa_context_get_server_info(context, serverInfoCb, data);
+  } else if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
     pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE) {
     pa_context_get_source_info_by_index(context, idx, sourceInfoCb, data);
@@ -214,7 +217,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     } else {
       label_.get_style_context()->remove_class("muted");
     }
-    format = 
+    format =
       config_[format_name].isString() ? config_[format_name].asString() : format;
   }
   // TODO: find a better way to split source/sink
