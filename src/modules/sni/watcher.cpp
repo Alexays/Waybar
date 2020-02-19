@@ -3,14 +3,13 @@
 
 using namespace waybar::modules::SNI;
 
-Watcher::Watcher(std::size_t id)
+Watcher::Watcher()
     : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
                                        "org.kde.StatusNotifierWatcher",
                                        sigc::mem_fun(*this, &Watcher::busAcquired),
                                        Gio::DBus::SlotNameAcquired(), Gio::DBus::SlotNameLost(),
                                        Gio::DBus::BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT |
                                            Gio::DBus::BUS_NAME_OWNER_FLAGS_REPLACE)),
-      watcher_id_(id),
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {
@@ -23,6 +22,7 @@ Watcher::~Watcher() {
     g_slist_free_full(items_, gfWatchFree);
     items_ = nullptr;
   }
+  Gio::DBus::unown_name(bus_name_id_);
   auto iface = G_DBUS_INTERFACE_SKELETON(watcher_);
   g_dbus_interface_skeleton_unexport(iface);
 }
@@ -34,7 +34,7 @@ void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib:
   if (error != nullptr) {
     // Don't print an error when a watcher is already present
     if (error->code != 2) {
-      spdlog::error("Watcher {}: {}", watcher_id_, error->message);
+      spdlog::error("Watcher: {}", error->message);
     }
     g_error_free(error);
     return;
