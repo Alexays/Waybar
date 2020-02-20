@@ -21,7 +21,7 @@ class Tray : public AModule {
 
   static inline std::size_t nb_hosts_ = 0;
   Gtk::Box                  box_;
-  SNI::Watcher              watcher_;
+  SNI::Watcher::singleton   watcher_;
   SNI::Host                 host_;
 };
 
