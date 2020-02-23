@@ -78,6 +78,6 @@ void waybar::util::Rfkill::waitForEvent() {
 }
 
 
-int waybar::util::Rfkill::getState() const {
+bool waybar::util::Rfkill::getState() const {
   return state_;
 }
