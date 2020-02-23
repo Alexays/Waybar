@@ -65,6 +65,10 @@ The *clock* module displays the current date and time.
 
 View all valid format options in *strftime(3)*.
 
+# FORMAT REPLACEMENTS
+
+*{calendar}*: Current month calendar
+
 # EXAMPLES
 
 ```

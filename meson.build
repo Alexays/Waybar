@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.0',
+    version: '0.9.1',
     license: 'MIT',
     default_options : [
         'cpp_std=c++17',
@@ -9,6 +9,8 @@ project(
     ],
 )
 
+compiler = meson.get_compiler('cpp')
+
 cpp_args = []
 cpp_link_args = []
 
@@ -16,12 +18,13 @@ if get_option('libcxx')
     cpp_args += ['-stdlib=libc++']
     cpp_link_args += ['-stdlib=libc++', '-lc++abi']
 
-    cpp_link_args += ['-lc++fs']
+    if compiler.has_link_argument('-lc++fs')
+        cpp_link_args += ['-lc++fs']
+    endif
 else
     cpp_link_args += ['-lstdc++fs']
 endif
 
-compiler = meson.get_compiler('cpp')
 git = find_program('git', required: false)
 
 if not git.found()
@@ -40,6 +43,22 @@ if not compiler.has_header('filesystem')
         add_project_arguments('-DNO_FILESYSTEM', language: 'cpp')
         warning('No filesystem header found, some modules may not work')
     endif
+endif
+
+code = '''
+#include <langinfo.h>
+#include <locale.h>
+int main(int argc, char** argv) {
+    locale_t locale = newlocale(LC_ALL, "en_US.UTF-8", nullptr);
+    char* str;
+    str = nl_langinfo_l(_NL_TIME_WEEK_1STDAY, locale);
+    str = nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, locale);
+    freelocale(locale);
+    return 0;
+}
+'''
+if compiler.links(code, name : 'nl_langinfo with _NL_TIME_WEEK_1STDAY, _NL_TIME_FIRST_WEEKDAY')
+    add_project_arguments('-DHAVE_LANGINFO_1STDAY', language: 'cpp')
 endif
 
 add_global_arguments(cpp_args, language : 'cpp')
