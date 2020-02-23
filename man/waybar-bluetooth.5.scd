@@ -15,7 +15,7 @@ Addressed by *bluetooth*
 *interval*: ++
 	typeof: integer ++
 	default: 60 ++
-	The interval in which the network information gets polled (e.g. signal strength).
+	The interval in which the bluetooth state gets updated.
 
 *format*: ++
 	typeof: string  ++
