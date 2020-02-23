@@ -11,7 +11,13 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   // Get Initial focused window
   getTree();
   // Launch worker
-  worker();
+  ipc_.setWorker([this] {
+    try {
+      ipc_.handleEvent();
+    } catch (const std::exception& e) {
+      spdlog::error("Window: {}", e.what());
+    }
+  });
 }
 
 void Window::onEvent(const struct Ipc::ipc_response& res) { getTree(); }
@@ -26,16 +32,6 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
   }
-}
-
-void Window::worker() {
-  thread_ = [this] {
-    try {
-      ipc_.handleEvent();
-    } catch (const std::exception& e) {
-      spdlog::error("Window: {}", e.what());
-    }
-  };
 }
 
 auto Window::update() -> void {

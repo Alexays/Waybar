@@ -52,7 +52,8 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
       pa_context_set_subscribe_callback(c, subscribeCb, data);
       pa_context_subscribe(
           c,
-          static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
+          static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
+                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
                                                  static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE)),
           nullptr,
           nullptr);
@@ -109,7 +110,9 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
   if (operation != PA_SUBSCRIPTION_EVENT_CHANGE) {
     return;
   }
-  if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
+  if (facility == PA_SUBSCRIPTION_EVENT_SERVER) {
+    pa_context_get_server_info(context, serverInfoCb, data);
+  } else if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
     pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE) {
     pa_context_get_source_info_by_index(context, idx, sourceInfoCb, data);
@@ -176,11 +179,11 @@ void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_ser
 }
 
 static const std::array<std::string, 9> ports = {
-    "headphones",
+    "headphone",
     "speaker",
     "hdmi",
     "headset",
-    "handsfree",
+    "hands-free",
     "portable",
     "car",
     "hifi",
@@ -200,21 +203,23 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const {
 
 auto waybar::modules::Pulseaudio::update() -> void {
   auto format = format_;
-  std::string format_name = "format";
-  if (monitor_.find("a2dp_sink") != std::string::npos) {
-    format_name = format_name + "-bluetooth";
-    label_.get_style_context()->add_class("bluetooth");
-  } else {
-    label_.get_style_context()->remove_class("bluetooth");
+  if (!alt_) {
+    std::string format_name = "format";
+    if (monitor_.find("a2dp_sink") != std::string::npos) {
+      format_name = format_name + "-bluetooth";
+      label_.get_style_context()->add_class("bluetooth");
+    } else {
+      label_.get_style_context()->remove_class("bluetooth");
+    }
+    if (muted_ ) {
+      format_name = format_name + "-muted";
+      label_.get_style_context()->add_class("muted");
+    } else {
+      label_.get_style_context()->remove_class("muted");
+    }
+    format =
+      config_[format_name].isString() ? config_[format_name].asString() : format;
   }
-  if (muted_ ) {
-    format_name = format_name + "-muted";
-    label_.get_style_context()->add_class("muted");
-  } else {
-    label_.get_style_context()->remove_class("muted");
-  }
-  format = 
-    config_[format_name].isString() ? config_[format_name].asString() : format;
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
   if (source_muted_ && config_["format-source-muted"].isString()) {
