@@ -134,15 +134,15 @@ void waybar::modules::Pulseaudio::volumeModifyCb(pa_context *c, int success, voi
  */
 void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const pa_source_info *i,
                                                int /*eol*/, void *data) {
-  if (i != nullptr) {
-    auto self = static_cast<waybar::modules::Pulseaudio *>(data);
+  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+  if (i != nullptr && pa->default_source_name_ == i->name) {
     auto source_volume = static_cast<float>(pa_cvolume_avg(&(i->volume))) / float{PA_VOLUME_NORM};
-    self->source_volume_ = std::round(source_volume * 100.0F);
-    self->source_idx_ = i->index;
-    self->source_muted_ = i->mute != 0;
-    self->source_desc_ = i->description;
-    self->source_port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
-    self->dp.emit();
+    pa->source_volume_ = std::round(source_volume * 100.0F);
+    pa->source_idx_ = i->index;
+    pa->source_muted_ = i->mute != 0;
+    pa->source_desc_ = i->description;
+    pa->source_port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
+    pa->dp.emit();
   }
 }
 
@@ -150,9 +150,9 @@ void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const p
  * Called when the requested sink information is ready.
  */
 void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i,
-                                             int /*eol*/, void *                           data) {
-  if (i != nullptr) {
-    auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+                                             int /*eol*/, void *data) {
+  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+  if (i != nullptr && pa->default_sink_name_ == i->name) {
     pa->pa_volume_ = i->volume;
     float volume = static_cast<float>(pa_cvolume_avg(&(pa->pa_volume_))) / float{PA_VOLUME_NORM};
     pa->sink_idx_ = i->index;
@@ -174,6 +174,10 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
  */
 void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_server_info *i,
                                                void *data) {
+  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+  pa->default_sink_name_ = i->default_sink_name;
+  pa->default_source_name_ = i->default_source_name;
+
   pa_context_get_sink_info_by_name(context, i->default_sink_name, sinkInfoCb, data);
   pa_context_get_source_info_by_name(context, i->default_source_name, sourceInfoCb, data);
 }
