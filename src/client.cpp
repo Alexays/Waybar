@@ -64,28 +64,22 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
 }
 
 bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_output &output) {
+  if (config["output"].isArray()) {
+    for (auto const &output_conf : config["output"]) {
+      if (output_conf.isString() && output_conf.asString() == output.name) {
+        return true;
+      }
+    }
+  }
 
-  auto check_output = [](std::string_view config_output_name, struct waybar_output &output) {
+  if (config["output"].isString()) {
+    auto config_output_name = config["output"].asString();
     if (!config_output_name.empty()) {
       if (config_output_name.substr(0, 1) == "!") {
           return config_output_name.substr(1) != output.name;
       }
       return config_output_name == output.name;
     }
-    return false;
-  };
-
-  if (config["output"].isArray()) {
-    for (auto const &output_conf : config["output"]) {
-      if (output_conf.isString() && check_output(output_conf.asString(), output)) {
-        if(check_output(output_conf.asString(), output)) {
-          return true;
-        }
-      }
-    }
-  }
-  if (config["output"].isString()) {
-    return check_output(config["output"].asString(), output);
   }
 
   return false;
