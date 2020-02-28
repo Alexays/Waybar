@@ -82,7 +82,7 @@ bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_outp
     }
   }
 
-  return false;
+  return true;
 }
 
 struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
