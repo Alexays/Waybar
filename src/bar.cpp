@@ -175,6 +175,11 @@ void waybar::Bar::initGtkLayerShell() {
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_TOP, margins_.top);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_BOTTOM, margins_.bottom);
+
+  if (width_ > 1 && height_ > 1) {
+    /* configure events are not emitted if the bar is using initial size */
+    setExclusiveZone(width_, height_);
+  }
 }
 #endif
 
