@@ -20,6 +20,14 @@ Addressed by *temperature*
 	typeof: string ++
 	The temperature path to use, e.g. */sys/class/hwmon/hwmon2/temp1_input* instead of one in */sys/class/thermal/*.
 
+*hwmon-path-abs*: ++
+	typeof: string ++
+	The path of the hwmon-directory of the device, e.g. */sys/devices/pci0000:00/0000:00:18.3/hwmon*. (Note that the subdirectory *hwmon/hwmon#*, where *#* is a number is not part of the path!) Has to be used together with *input-filename*.
+
+*input-filename*: ++
+	typeof: string ++
+	The temperature filename of your *hwmon-path-abs*, e.g. *temp1_input*
+
 *critical-threshold*: ++
 	typeof: integer ++
 	The threshold before it is considered critical (Celsius).
