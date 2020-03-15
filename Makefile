@@ -1,6 +1,6 @@
 .PHONY: build build-debug run clean default install
 
-default: run
+default: build
 
 build:
 	meson build
