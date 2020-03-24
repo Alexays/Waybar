@@ -17,8 +17,7 @@ class Memory : public ALabel {
   static inline const std::string data_dir_ = "/proc/meminfo";
   void                            parseMeminfo();
 
-  unsigned long memtotal_;
-  unsigned long memfree_;
+  std::unordered_map<std::string, unsigned long> meminfo_;
 
   util::SleeperThread thread_;
 };
