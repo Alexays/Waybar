@@ -215,7 +215,11 @@ auto waybar::modules::Pulseaudio::update() -> void {
     } else {
       label_.get_style_context()->remove_class("bluetooth");
     }
-    if (muted_ ) {
+    if (muted_) {
+      // Check muted bluetooth format exist, otherwise fallback to default muted format
+      if (format_name != "format" && !config_[format_name + "-muted"].isString()) {
+        format_name = "format";
+      }
       format_name = format_name + "-muted";
       label_.get_style_context()->add_class("muted");
     } else {
