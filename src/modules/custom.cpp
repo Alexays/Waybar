@@ -55,11 +55,20 @@ void waybar::modules::Custom::continuousWorker() {
         exit_code = WEXITSTATUS(util::command::close(fp_, pid_));
         fp_ = nullptr;
       }
-      thread_.stop();
       if (exit_code != 0) {
         output_ = {exit_code, ""};
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
+      }
+      if (config_["restart-interval"].isUInt()) {
+        pid_ = -1;
+        fp_ = util::command::open(cmd, pid_);
+        if (!fp_) {
+          throw std::runtime_error("Unable to open " + cmd);
+        }
+        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+      } else {
+        thread_.stop();
       }
       return;
     }
