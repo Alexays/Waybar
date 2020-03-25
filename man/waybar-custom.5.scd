@@ -33,11 +33,11 @@ Addressed by *custom/<name>*
 	You can update it manually with a signal. If no *interval* is defined,
 	it is assumed that the out script loops it self.
 
-*restart_interval*: ++
+*restart-interval*: ++
 	typeof: integer ++
 	The restart interval (in seconds).
 	Can't be used with the *interval* option, so only with continuous scripts.
-	Once the scripts exit, it'll be re-executed after the *restart_interval*.
+	Once the script exit, it'll be re-executed after the *restart-interval*.
 
 *signal*: ++
 	typeof: integer ++
