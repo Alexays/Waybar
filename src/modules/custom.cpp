@@ -66,7 +66,7 @@ void waybar::modules::Custom::continuousWorker() {
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
         }
-        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt());
+        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
       } else {
         thread_.stop();
       }
