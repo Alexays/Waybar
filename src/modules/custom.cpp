@@ -49,6 +49,7 @@ void waybar::modules::Custom::continuousWorker() {
   thread_ = [&] {
     char*  buff = nullptr;
     size_t len = 0;
+    bool restart = false;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
       if (fp_) {
@@ -61,16 +62,11 @@ void waybar::modules::Custom::continuousWorker() {
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
       if (config_["restart-interval"].isUInt()) {
-        pid_ = -1;
-        fp_ = util::command::open(cmd, pid_);
-        if (!fp_) {
-          throw std::runtime_error("Unable to open " + cmd);
-        }
-        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+        restart = true;
       } else {
         thread_.stop();
+        return;
       }
-      return;
     }
     std::string output = buff;
 
@@ -80,6 +76,14 @@ void waybar::modules::Custom::continuousWorker() {
     }
     output_ = {0, output};
     dp.emit();
+    if (restart) {
+      pid_ = -1;
+      fp_ = util::command::open(cmd, pid_);
+      if (!fp_) {
+        throw std::runtime_error("Unable to open " + cmd);
+      }
+      thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+    }
   };
 }
 
