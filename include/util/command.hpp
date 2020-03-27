@@ -88,6 +88,7 @@ inline int32_t forkExec(std::string cmd) {
   // Child executes the command
   if (!pid) {
     setpgid(pid, pid);
+    signal(SIGCHLD, SIG_DFL);
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
