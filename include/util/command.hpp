@@ -72,7 +72,10 @@ inline struct res exec(std::string cmd) {
   if (!fp) return {-1, ""};
   auto output = command::read(fp);
   auto stat = command::close(fp, pid);
-  return {WEXITSTATUS(stat), output};
+  if (WIFEXITED(stat)) {
+    return {WEXITSTATUS(stat), output};
+  }
+  return {-1, output};
 }
 
 inline int32_t forkExec(std::string cmd) {
