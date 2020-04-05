@@ -115,6 +115,14 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       time_remaining = -(float)(total_energy_full - total_energy) / total_power;
     }
     uint16_t capacity = total / batteries_.size();
+    // Handle full-at
+    if (config_["full-at"].isUInt()) {
+      auto full_at = config_["full-at"].asUInt();
+      if (full_at < 100) {
+        capacity = static_cast<float>(capacity / 100) * full_at;
+        capacity = std::clamp(capacity, 0, full_at);
+      }
+    }
     return {capacity, time_remaining, status};
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
