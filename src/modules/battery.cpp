@@ -120,7 +120,9 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       auto full_at = config_["full-at"].asUInt();
       if (full_at < 100) {
         capacity = static_cast<float>(capacity / full_at) * 100;
-        capacity = std::clamp(capacity, static_cast<uint16_t>(0), full_at);
+        if (capacity > full_at) {
+          capacity = full_at;
+        }
       }
     }
     return {capacity, time_remaining, status};
