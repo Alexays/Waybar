@@ -25,7 +25,7 @@ else
     cpp_link_args += ['-lstdc++fs']
 endif
 
-git = find_program('git', required: false)
+git = find_program('git', native: true, required: false)
 
 if not git.found()
     add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')

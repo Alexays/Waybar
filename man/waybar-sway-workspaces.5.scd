@@ -75,6 +75,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *default*: Will be shown, when no string matches is found.
 - *urgent*: Will be shown, when workspace is flagged as urgent
 - *focused*: Will be shown, when workspace is focused
+- *persistent*: Will be shown, when workspace is persistent one.
 
 # PERSISTENT WORKSPACES
 
