@@ -21,7 +21,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
   if (context_ == nullptr) {
     throw std::runtime_error("pa_context_new() failed.");
   }
-  if (pa_context_connect(context_, nullptr, PA_CONTEXT_NOAUTOSPAWN, nullptr) < 0) {
+  if (pa_context_connect(context_, nullptr, PA_CONTEXT_NOFAIL, nullptr) < 0) {
     auto err =
         fmt::format("pa_context_connect() failed: {}", pa_strerror(pa_context_errno(context_)));
     throw std::runtime_error(err);
