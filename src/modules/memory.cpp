@@ -10,11 +10,23 @@ waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config
 
 auto waybar::modules::Memory::update() -> void {
   parseMeminfo();
-  if (memtotal_ > 0 && memfree_ >= 0) {
-    auto total_ram_gigabytes = memtotal_ / std::pow(1024, 2);
-    int  used_ram_percentage = 100 * (memtotal_ - memfree_) / memtotal_;
-    auto used_ram_gigabytes = (memtotal_ - memfree_) / std::pow(1024, 2);
-    auto available_ram_gigabytes = memfree_ / std::pow(1024, 2);
+
+  unsigned long memtotal = meminfo_["MemTotal"];
+  unsigned long memfree;
+  if (meminfo_.count("MemAvailable")) {
+    // New kernels (3.4+) have an accurate available memory field.
+    memfree = meminfo_["MemAvailable"];
+  } else {
+    // Old kernel; give a best-effort approximation of available memory.
+    memfree = meminfo_["MemFree"] + meminfo_["Buffers"] + meminfo_["Cached"] +
+              meminfo_["SReclaimable"] - meminfo_["Shmem"];
+  }
+
+  if (memtotal > 0 && memfree >= 0) {
+    auto total_ram_gigabytes = memtotal / std::pow(1024, 2);
+    int  used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
+    auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
+    auto available_ram_gigabytes = memfree / std::pow(1024, 2);
 
     getState(used_ram_percentage);
     label_.set_markup(fmt::format(format_,
@@ -33,7 +45,6 @@ auto waybar::modules::Memory::update() -> void {
 }
 
 void waybar::modules::Memory::parseMeminfo() {
-  int64_t       memfree = -1, membuffer = -1, memcache = -1, memavail = -1;
   std::ifstream info(data_dir_);
   if (!info.is_open()) {
     throw std::runtime_error("Can't open " + data_dir_);
@@ -44,23 +55,9 @@ void waybar::modules::Memory::parseMeminfo() {
     if (posDelim == std::string::npos) {
       continue;
     }
+
     std::string name = line.substr(0, posDelim);
     int64_t     value = std::stol(line.substr(posDelim + 1));
-
-    if (name.compare("MemTotal") == 0) {
-      memtotal_ = value;
-    } else if (name.compare("MemAvailable") == 0) {
-      memavail = value;
-    } else if (name.compare("MemFree") == 0) {
-      memfree = value;
-    } else if (name.compare("Buffers") == 0) {
-      membuffer = value;
-    } else if (name.compare("Cached") == 0) {
-      memcache = value;
-    }
-    if (memtotal_ > 0 && (memavail >= 0 || (memfree > -1 && membuffer > -1 && memcache > -1))) {
-      break;
-    }
+    meminfo_[name] = value;
   }
-  memfree_ = memavail >= 0 ? memavail : memfree + membuffer + memcache;
 }
