@@ -19,7 +19,7 @@ Addressed by *sway/workspaces*
 
 *format*: ++
     typeof: string ++
-    default: {name} ++
+    default: {value} ++
     The format, how information should be displayed.
 
 *format-icons*: ++
@@ -62,7 +62,9 @@ Addressed by *sway/workspaces*
 
 # FORMAT REPLACEMENTS
 
-*{name}*: Name of the workspace, as defined by sway.
+*{value}*: Name of the workspace, as defined by sway.
+
+*{name}*: Number stripped from workspace value.
 
 *{icon}*: Icon, as defined in *format-icons*.
 
