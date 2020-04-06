@@ -18,6 +18,10 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: string ++
 	The adapter to monitor, as in /sys/class/power_supply/ instead of auto detect.
 
+*full-at* ++
+	typeof: integer ++
+	Define the max percentage of the battery, usefull for an old battery, e.g. 96
+
 *interval* ++
 	typeof: integer ++
 	default: 60 ++
