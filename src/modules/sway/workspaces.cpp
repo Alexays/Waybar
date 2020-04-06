@@ -162,7 +162,7 @@ auto Workspaces::update() -> void {
       auto format = config_["format"].asString();
       output = fmt::format(format,
                            fmt::arg("icon", getIcon(output, *it)),
-                           fmt::arg("value", output)
+                           fmt::arg("value", output),
                            fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
