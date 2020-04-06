@@ -157,12 +157,13 @@ auto Workspaces::update() -> void {
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
     }
-    std::string output = getIcon((*it)["name"].asString(), *it);
+    std::string output = (*it)["name"].asString();
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
       output = fmt::format(format,
-                           fmt::arg("icon", output),
-                           fmt::arg("name", trimWorkspaceName((*it)["name"].asString())),
+                           fmt::arg("icon", getIcon(output, *it)),
+                           fmt::arg("value", output)
+                           fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
