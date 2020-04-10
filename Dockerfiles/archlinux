@@ -3,4 +3,4 @@
 FROM archlinux/base:latest
 
 RUN pacman -Syu --noconfirm && \
-    pacman -S git meson base-devel libinput wayland wayland-protocols pixman libxkbcommon mesa gtkmm3 jsoncpp scdoc --noconfirm
+    pacman -S git meson base-devel libinput wayland wayland-protocols pixman libxkbcommon mesa gtkmm3 jsoncpp pugixml scdoc --noconfirm
