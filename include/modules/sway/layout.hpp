@@ -6,6 +6,8 @@
 #include <filesystem>
 #endif
 #include <fmt/format.h>
+#include <unordered_map>
+#include <tuple>
 #include <fstream>
 #include <regex>
 #include "ALabel.hpp"
@@ -30,21 +32,28 @@ class Layout : public ALabel, public sigc::trackable {
   auto update() -> void;
 
  private:
+
+  using ShortNames = std::tuple<std::string, std::string>;
+
   static inline const fs::path xbk_file_ = "/usr/share/X11/xkb/rules/evdev.xml";
 
   void               onCmd(const struct Ipc::ipc_response&);
   void               onEvent(const struct Ipc::ipc_response&);
   void               worker();
-  void               shortName();
+  ShortNames         getShortNames();
+  ShortNames         fromFileGetShortNames();
   inline std::string sanitize(const std::string& text) {
     std::regex specialChars {R"([-[\]{}()*+?.,\^$|#\s])"};
     return std::regex_replace(text, specialChars, R"(\$&)");
   }
 
   std::string      layout_;
-  std::string      short_description_;
-  std::string      short_variant_;
   util::JsonParser parser_;
+  std::unordered_map<
+    std::string,
+    std::tuple<std::string, std::string>
+  > memoizedShortNames_;
+
   std::mutex       mutex_;
 
   util::SleeperThread thread_;
