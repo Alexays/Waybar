@@ -35,23 +35,24 @@ class Layout : public ALabel, public sigc::trackable {
  private:
 
   using ShortNames = std::tuple<std::string, std::string>;
+  using MemoizedShortNames = std::unordered_map<
+    std::string,
+    std::tuple<std::string, std::string>
+  >;
 
   static inline const fs::path xbk_file_ = "/usr/share/X11/xkb/rules/evdev.xml";
 
-  void               onCmd(const struct Ipc::ipc_response&);
-  void               onEvent(const struct Ipc::ipc_response&);
-  void               worker();
-  ShortNames         getShortNames();
-  ShortNames         fromFileGetShortNames();
+  void                onCmd(const struct Ipc::ipc_response&);
+  void                onEvent(const struct Ipc::ipc_response&);
+  void                worker();
+  ShortNames          getShortNames();
+  ShortNames          fromFileGetShortNames();
 
-  std::string      layout_;
-  util::JsonParser parser_;
-  std::unordered_map<
-    std::string,
-    std::tuple<std::string, std::string>
-  > memoizedShortNames_;
+  std::string         layout_;
+  util::JsonParser    parser_;
+  MemoizedShortNames  memoizedShortNames_;
 
-  std::mutex       mutex_;
+  std::string         keyboard_id_;
 
   util::SleeperThread thread_;
   Ipc                 ipc_;

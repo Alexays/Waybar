@@ -5,41 +5,45 @@ namespace waybar::modules::sway {
 
 Layout::Layout(const std::string& id, const Json::Value& config)
     : ALabel(config, "layout", id, "{}", 0) {
+
+  keyboard_id_ = config_["keyboard_id"].isString()
+    ? config_["keyboard_id"].asString()
+    : "1:1:AT_Translated_Set_2_keyboard";
+
   ipc_.subscribe(R"(["input"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Layout::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Layout::onCmd));
   ipc_.sendCmd(IPC_GET_INPUTS);
   // Launch worker
   worker();
-  dp.emit();
 }
 
 void Layout::onEvent(const struct Ipc::ipc_response& res) {
-  try {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto                        payload = parser_.parse(res.payload);
-    if (payload["change"] == "xkb_layout") {
-      layout_ = payload["input"]["xkb_active_layout_name"].asString();
-    }
+  if (res.type != static_cast<uint32_t>(IPC_EVENT_INPUT)) {
+    return;
+  }
+
+  auto payload = parser_.parse(res.payload);
+
+  if ((payload["change"] != "xkb_layout" || payload["change"] != "xkb_keymap" ) &&
+      payload["input"]["identifier"] == keyboard_id_) {
+    layout_ = payload["input"]["xkb_active_layout_name"].asString();
     dp.emit();
-  } catch (const std::exception& e) {
-    spdlog::error("Layout: {}", e.what());
   }
 }
 
 void Layout::onCmd(const struct Ipc::ipc_response &res) {
-  if (res.type == IPC_GET_INPUTS) {
-    try {
-      std::lock_guard<std::mutex> lock(mutex_);
-      auto                        payload = parser_.parse(res.payload);
-      for (auto keyboard : payload) {
-        if (keyboard["identifier"] == "1:1:AT_Translated_Set_2_keyboard") {
-          layout_ = keyboard["xkb_active_layout_name"].asString();
-        }
-      }
+  if (res.type != IPC_GET_INPUTS) {
+    return;
+  }
+
+  auto payload = parser_.parse(res.payload);
+
+  for (auto keyboard : payload) {
+    if (keyboard["identifier"] == keyboard_id_) {
+      layout_ = keyboard["xkb_active_layout_name"].asString();
       dp.emit();
-    } catch (const std::exception& e) {
-      spdlog::error("Layout: {}", e.what());
+      break;
     }
   }
 }
@@ -85,7 +89,7 @@ Layout::ShortNames Layout::getShortNames() {
   try {
     return memoizedShortNames_.at(layout_);
   } catch (std::out_of_range &e) {
-    spdlog::debug("Layout: Getting short names from XKB file.");
+    spdlog::debug("Layout: Getting short names from XKB file for {}.", layout_);
     auto shortNames = fromFileGetShortNames();
     memoizedShortNames_[layout_] = shortNames;
     return shortNames;
