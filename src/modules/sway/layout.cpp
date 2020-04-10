@@ -99,14 +99,25 @@ Layout::ShortNames Layout::fromFileGetShortNames() {
   pugi::xml_document doc;
   doc.load_file(xbk_file_.c_str());
 
-  for (auto xkb_layout : doc.select_nodes("/xkbConfigRegistry/layoutList/layout")) {
-    auto configItemNode = xkb_layout.node().child("configItem");
+  for (auto xkb_layout_xpath : doc.select_nodes("/xkbConfigRegistry/layoutList/layout")) {
+    auto xkb_layout_config = xkb_layout_xpath.node().child("configItem");
 
-    if (configItemNode.child_value("description") == layout_) {
+    if (xkb_layout_config.child_value("description") == layout_) {
       return std::make_tuple(
-        configItemNode.child_value("shortDescription"),
-        configItemNode.child_value("name")
+        xkb_layout_config.child_value("shortDescription"),
+        xkb_layout_config.child_value("name")
       );
+    }
+
+    for (auto xkb_variant_xpath : xkb_layout_xpath.node().select_nodes("variantList/variant")) {
+      auto xkb_variant_config = xkb_variant_xpath.node().child("configItem");
+
+      if (xkb_variant_config.child_value("description") == layout_) {
+        return std::make_tuple(
+          xkb_layout_config.child_value("shortDescription"),
+          xkb_variant_config.child_value("name")
+        );
+      }
     }
   }
 

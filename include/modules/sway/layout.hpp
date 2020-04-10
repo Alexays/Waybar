@@ -43,10 +43,6 @@ class Layout : public ALabel, public sigc::trackable {
   void               worker();
   ShortNames         getShortNames();
   ShortNames         fromFileGetShortNames();
-  inline std::string sanitize(const std::string& text) {
-    std::regex specialChars {R"([-[\]{}()*+?.,\^$|#\s])"};
-    return std::regex_replace(text, specialChars, R"(\$&)");
-  }
 
   std::string      layout_;
   util::JsonParser parser_;
