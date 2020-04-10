@@ -28,7 +28,8 @@
     },
     "sway/layout": {
         "tooltip-format": "{long}",
-        "format": "{short}  "
+        "format": "{short}  ",
+        "keyboard_id": "1:1:AT_Translated_Set_2_keyboard"
     },
     "mpd": {
         "format": "{stateIcon} {consumeIcon}{randomIcon}{repeatIcon}{singleIcon}{artist} - {album} - {title} ({elapsedTime:%M:%S}/{totalTime:%M:%S}) ",
