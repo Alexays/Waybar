@@ -82,6 +82,7 @@ gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')
+pugixml = dependency('pugixml')
 sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
@@ -208,6 +209,8 @@ executable(
         spdlog,
         sigcpp,
         jsoncpp,
+        pugixml,
+        libinput,
         wayland_cursor,
         gtkmm,
         dbusmenu_gtk,

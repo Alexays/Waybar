@@ -16,6 +16,7 @@
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
+#include <pugixml.hpp>
 
 namespace waybar::modules::sway {
 

@@ -93,24 +93,24 @@ Layout::ShortNames Layout::getShortNames() {
 }
 
 Layout::ShortNames Layout::fromFileGetShortNames() {
-  const std::regex e1 (".*<shortDescription>(.*)</shortDescription>.*");
-  const std::regex e2 (".*<name>(.*)</name>.*");
-
-  std::string line;
-  std::ifstream file (xbk_file_);
-
   std::string short_description;
   std::string short_variant;
 
-  while (getline(file,line)) {
-    if(std::regex_match(line, e1)) {
-      short_description = std::regex_replace(line, e1, "$1");
-    } else if(std::regex_match(line, e2)) {
-      short_variant = std::regex_replace(line, e2, "$1");
-    } else if(std::regex_match(line, std::regex(".*<description>"+sanitize(layout_)+"</description>.*"))){
-      return std::make_tuple(short_description, short_variant);
+  pugi::xml_document doc;
+  doc.load_file(xbk_file_.c_str());
+
+  for (auto xkb_layout : doc.select_nodes("/xkbConfigRegistry/layoutList/layout")) {
+    auto configItemNode = xkb_layout.node().child("configItem");
+
+    if (configItemNode.child_value("description") == layout_) {
+      return std::make_tuple(
+        configItemNode.child_value("shortDescription"),
+        configItemNode.child_value("name")
+      );
     }
   }
+
+  throw new std::out_of_range("Could not find layout in XKB file.");
 }
 
 }  // namespace waybar::modules::sway
