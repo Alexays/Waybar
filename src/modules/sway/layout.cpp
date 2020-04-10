@@ -121,7 +121,8 @@ Layout::ShortNames Layout::fromFileGetShortNames() {
     }
   }
 
-  throw new std::out_of_range("Could not find layout in XKB file.");
+  spdlog::warn("Layout: Could not find layout \"{}\" in XKB file.", layout_);
+  return std::make_tuple("N/A", "N/A");
 }
 
 }  // namespace waybar::modules::sway
