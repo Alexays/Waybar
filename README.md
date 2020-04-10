@@ -44,6 +44,8 @@ $ waybar
 ```
 gtkmm3
 jsoncpp
+pugixml
+libinput
 libsigc++
 fmt
 wayland
@@ -81,6 +83,7 @@ sudo apt install \
   libgtkmm-3.0-dev \
   libinput-dev \
   libjsoncpp-dev \
+  libpugixml-dev \
   libmpdclient-dev \
   libnl-3-dev \
   libnl-genl-3-dev \
