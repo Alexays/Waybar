@@ -60,6 +60,10 @@ Addressed by *sway/workspaces*
     default: empty ++
     Lists workspaces that should always be shown, even when non existent
 
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, as defined by sway.

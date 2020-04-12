@@ -40,6 +40,8 @@ auto Tray::update() -> void {
   } else {
     box_.show_all();
   }
+  // Call parent update
+  AModule::update();
 }
 
 }  // namespace waybar::modules::SNI
