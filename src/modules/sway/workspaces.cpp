@@ -22,7 +22,13 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
   // Launch worker
-  worker();
+  ipc_.setWorker([this] {
+    try {
+      ipc_.handleEvent();
+    } catch (const std::exception &e) {
+      spdlog::error("Workspaces: {}", e.what());
+    }
+  });
 }
 
 void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
@@ -102,16 +108,6 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   }
 }
 
-void Workspaces::worker() {
-  thread_ = [this] {
-    try {
-      ipc_.handleEvent();
-    } catch (const std::exception &e) {
-      spdlog::error("Workspaces: {}", e.what());
-    }
-  };
-}
-
 bool Workspaces::filterButtons() {
   bool needReorder = false;
   for (auto it = buttons_.begin(); it != buttons_.end();) {
@@ -161,12 +157,13 @@ auto Workspaces::update() -> void {
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
     }
-    std::string output = getIcon((*it)["name"].asString(), *it);
+    std::string output = (*it)["name"].asString();
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
       output = fmt::format(format,
-                           fmt::arg("icon", output),
-                           fmt::arg("name", trimWorkspaceName((*it)["name"].asString())),
+                           fmt::arg("icon", getIcon(output, *it)),
+                           fmt::arg("value", output),
+                           fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
@@ -211,6 +208,8 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
         return config_["format-icons"][key].asString();
       }
+    } else if (config_["format_icons"]["persistent"].isString() && node["target_output"].isString()) {
+      return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
     }

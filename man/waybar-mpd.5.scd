@@ -13,110 +13,118 @@ The *mpd* module displays information about a running "Music Player Daemon" inst
 Addressed by *mpd*
 
 *server*: ++
-    typeof: string ++
-    The network address or Unix socket path of the MPD server. If empty, connect to the default host.
+	typeof: string ++
+	The network address or Unix socket path of the MPD server. If empty, connect to the default host.
 
 *port*: ++
-    typeof: integer ++
-    The port MPD listens to. If empty, use the default port.
+	typeof: integer ++
+	The port MPD listens to. If empty, use the default port.
 
 *interval*: ++
-    typeof: integer++
-    default: 5 ++
-    The interval in which the connection to the MPD server is retried
+	typeof: integer++
+	default: 5 ++
+	The interval in which the connection to the MPD server is retried
 
 *timeout*: ++
-    typeof: integer++
-    default: 30 ++
-    The timeout for the connection. Change this if your MPD server has a low `connection_timeout` setting
+	typeof: integer++
+	default: 30 ++
+	The timeout for the connection. Change this if your MPD server has a low `connection_timeout` setting
 
 *unknown-tag*: ++
-    typeof: string ++
-    default: "N/A" ++
-    The text to display when a tag is not present in the current song, but used in `format`
+	typeof: string ++
+	default: "N/A" ++
+	The text to display when a tag is not present in the current song, but used in `format`
 
 *format*: ++
-    typeof: string ++
-    default: "{album} - {artist} - {title}" ++
-    Information displayed when a song is playing or paused
+	typeof: string ++
+	default: "{album} - {artist} - {title}" ++
+	Information displayed when a song is playing.
 
 *format-stopped*: ++
-    typeof: string ++
-    default: "stopped" ++
-    Information displayed when the player is stopped.
+	typeof: string ++
+	default: "stopped" ++
+	Information displayed when the player is stopped.
+
+*format-paused*: ++
+	typeof: string ++
+	This format is used when a song is paused.
 
 *format-disconnected*: ++
-    typeof: string ++
-    default: "disconnected" ++
-    Information displayed when the MPD server can't be reached.
+	typeof: string ++
+	default: "disconnected" ++
+	Information displayed when the MPD server can't be reached.
 
 *tooltip*: ++
-    typeof: bool ++
-    default: true ++
-    Option to disable tooltip on hover.
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
 
 *tooltip-format*: ++
-    typeof: string ++
-    default: "MPD (connected)" ++
-    Tooltip information displayed when connected to MPD.
+	typeof: string ++
+	default: "MPD (connected)" ++
+	Tooltip information displayed when connected to MPD.
 
 *tooltip-format-disconnected*: ++
-    typeof: string ++
-    default: "MPD (disconnected)" ++
-    Tooltip information displayed when the MPD server can't be reached.
+	typeof: string ++
+	default: "MPD (disconnected)" ++
+	Tooltip information displayed when the MPD server can't be reached.
 
 *rotate*: ++
-    typeof: integer ++
-    Positive value to rotate the text label.
+	typeof: integer ++
+	Positive value to rotate the text label.
 
 *max-length*: ++
-    typeof: integer ++
-    The maximum length in character the module should display.
+	typeof: integer ++
+	The maximum length in character the module should display.
 
 *on-click*: ++
-    typeof: string ++
-    Command to execute when clicked on the module.
+	typeof: string ++
+	Command to execute when clicked on the module.
+
+*on-click-middle*: ++
+	typeof: string ++
+	Command to execute when middle-clicked on the module using mousewheel.
 
 *on-click-right*: ++
-    typeof: string ++
-    Command to execute when you right clicked on the module.
+	typeof: string ++
+	Command to execute when you right clicked on the module.
 
 *on-scroll-up*: ++
-    typeof: string ++
-    Command to execute when scrolling up on the module.
+	typeof: string ++
+	Command to execute when scrolling up on the module.
 
 *on-scroll-down*: ++
-    typeof: string ++
-    Command to execute when scrolling down on the module.
+	typeof: string ++
+	Command to execute when scrolling down on the module.
 
 *smooth-scrolling-threshold*: ++
-    typeof: double ++
-    Threshold to be used when scrolling.
+	typeof: double ++
+	Threshold to be used when scrolling.
 
 *state-icons*: ++
-    typeof: object ++
-    default: {} ++
-    Icon to show depending on the play/pause state of the player (*{ "playing": "...", "paused": "..." }*)
+	typeof: object ++
+	default: {} ++
+	Icon to show depending on the play/pause state of the player (*{ "playing": "...", "paused": "..." }*)
 
 *consume-icons*: ++
-    typeof: object ++
-    default: {} ++
-    Icon to show depending on the "consume" option (*{ "on": "...", "off": "..." }*)
+	typeof: object ++
+	default: {} ++
+	Icon to show depending on the "consume" option (*{ "on": "...", "off": "..." }*)
 
 *random-icons*: ++
-    typeof: object ++
-    default: {} ++
-    Icon to show depending on the "random" option (*{ "on": "...", "off": "..." }*)
+	typeof: object ++
+	default: {} ++
+	Icon to show depending on the "random" option (*{ "on": "...", "off": "..." }*)
 
 *repeat-icons*: ++
-    typeof: object ++
-    default: {} ++
-    Icon to show depending on the "repeat" option (*{ "on": "...", "off": "..." }*)
+	typeof: object ++
+	default: {} ++
+	Icon to show depending on the "repeat" option (*{ "on": "...", "off": "..." }*)
 
 *single-icons*: ++
-    typeof: object ++
-    default: {} ++
-    Icon to show depending on the "single" option (*{ "on": "...", "off": "..." }*)
+	typeof: object ++
+	default: {} ++
+	Icon to show depending on the "single" option (*{ "on": "...", "off": "..." }*)
 
 # FORMAT REPLACEMENTS
 

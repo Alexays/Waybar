@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include "ipc.hpp"
+#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
@@ -28,6 +29,7 @@ class Ipc {
   void sendCmd(uint32_t type, const std::string &payload = "");
   void subscribe(const std::string &payload);
   void handleEvent();
+  void setWorker(std::function<void()> &&func);
 
  protected:
   static inline const std::string ipc_magic_ = "i3-ipc";
@@ -38,9 +40,10 @@ class Ipc {
   struct ipc_response send(int fd, uint32_t type, const std::string &payload = "");
   struct ipc_response recv(int fd);
 
-  int        fd_;
-  int        fd_event_;
-  std::mutex mutex_;
+  int                 fd_;
+  int                 fd_event_;
+  std::mutex          mutex_;
+  util::SleeperThread thread_;
 };
 
 }  // namespace waybar::modules::sway

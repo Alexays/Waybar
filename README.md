@@ -49,12 +49,39 @@ libsigc++
 fmt
 wayland
 wlroots
+libgtk-3-dev [gtk-layer-shell]
+gobject-introspection [gtk-layer-shell]
+libgirepository1.0-dev [gtk-layer-shell]
 libpulse [Pulseaudio module]
 libnl [Network module]
 sway [Sway modules]
 libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
 ```
+
+On Ubuntu 19.10 you can install all the relevant dependencies using this command:
+
+```
+sudo apt install \
+  clang-tidy \
+  gobject-introspection \
+  libdbusmenu-gtk3-dev \
+  libfmt-dev \
+  libgirepository1.0-dev \
+  libgtk-3-dev \
+  libgtkmm-3.0-dev \
+  libinput-dev \
+  libjsoncpp-dev \
+  libmpdclient-dev \
+  libnl-3-dev \
+  libnl-genl-3-dev \
+  libpulse-dev \
+  libsigc++-2.0-dev \
+  libspdlog-dev \
+  libwayland-dev \
+  scdoc
+```
+
 
 Contributions welcome! - have fun :)<br>
 The style guidelines is [Google's](https://google.github.io/styleguide/cppguide.html)

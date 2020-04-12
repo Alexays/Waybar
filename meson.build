@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.8.0',
+    version: '0.9.2',
     license: 'MIT',
     default_options : [
         'cpp_std=c++17',
@@ -9,6 +9,8 @@ project(
     ],
 )
 
+compiler = meson.get_compiler('cpp')
+
 cpp_args = []
 cpp_link_args = []
 
@@ -16,13 +18,14 @@ if get_option('libcxx')
     cpp_args += ['-stdlib=libc++']
     cpp_link_args += ['-stdlib=libc++', '-lc++abi']
 
-    cpp_link_args += ['-lc++fs']
+    if compiler.has_link_argument('-lc++fs')
+        cpp_link_args += ['-lc++fs']
+    endif
 else
     cpp_link_args += ['-lstdc++fs']
 endif
 
-compiler = meson.get_compiler('cpp')
-git = find_program('git', required: false)
+git = find_program('git', native: true, required: false)
 
 if not git.found()
     add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
@@ -42,6 +45,22 @@ if not compiler.has_header('filesystem')
     endif
 endif
 
+code = '''
+#include <langinfo.h>
+#include <locale.h>
+int main(int argc, char** argv) {
+    locale_t locale = newlocale(LC_ALL, "en_US.UTF-8", nullptr);
+    char* str;
+    str = nl_langinfo_l(_NL_TIME_WEEK_1STDAY, locale);
+    str = nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, locale);
+    freelocale(locale);
+    return 0;
+}
+'''
+if compiler.links(code, name : 'nl_langinfo with _NL_TIME_WEEK_1STDAY, _NL_TIME_FIRST_WEEKDAY')
+    add_project_arguments('-DHAVE_LANGINFO_1STDAY', language: 'cpp')
+endif
+
 add_global_arguments(cpp_args, language : 'cpp')
 add_global_link_arguments(cpp_link_args, language : 'cpp')
 
@@ -52,7 +71,7 @@ spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdl
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-gtkmm = dependency('gtkmm-3.0')
+gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')
@@ -62,7 +81,11 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+gtk_layer_shell = dependency('gtk-layer-shell-0',
+        required: get_option('gtk-layer-shell'),
+        fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
 systemd = dependency('systemd', required: get_option('systemd'))
+tz_dep = dependency('date', default_options : [ 'use_system_tzdb=true' ], fallback: [ 'date', 'tz_dep' ])
 
 prefix = get_option('prefix')
 conf_data = configuration_data()
@@ -136,6 +159,10 @@ if libmpdclient.found()
     src_files += 'src/modules/mpd.cpp'
 endif
 
+if gtk_layer_shell.found()
+    add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
+endif
+
 subdir('protocol')
 
 executable(
@@ -158,7 +185,9 @@ executable(
         libnlgen,
         libpulse,
         libudev,
-        libmpdclient
+        libmpdclient,
+        gtk_layer_shell,
+        tz_dep
     ],
     include_directories: [include_directories('include')],
     install: true,

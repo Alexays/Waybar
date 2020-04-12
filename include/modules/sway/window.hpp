@@ -7,7 +7,6 @@
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
-#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
@@ -20,7 +19,6 @@ class Window : public ALabel, public sigc::trackable {
  private:
   void                                                   onEvent(const struct Ipc::ipc_response&);
   void                                                   onCmd(const struct Ipc::ipc_response&);
-  void                                                   worker();
   std::tuple<std::size_t, int, std::string, std::string> getFocusedNode(const Json::Value& nodes,
                                                                         std::string&       output);
   void                                                   getTree();
@@ -33,9 +31,7 @@ class Window : public ALabel, public sigc::trackable {
   std::size_t      app_nb_;
   util::JsonParser parser_;
   std::mutex       mutex_;
-
-  util::SleeperThread thread_;
-  Ipc                 ipc_;
+  Ipc              ipc_;
 };
 
 }  // namespace waybar::modules::sway

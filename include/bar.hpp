@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gdkmm/monitor.h>
 #include <glibmm/refptr.h>
 #include <gtkmm/box.h>
 #include <gtkmm/cssprovider.h>
@@ -15,10 +16,11 @@ namespace waybar {
 
 class Factory;
 struct waybar_output {
-  struct wl_output *     output = nullptr;
-  std::string            name;
-  uint32_t               wl_name;
-  struct zxdg_output_v1 *xdg_output = nullptr;
+  Glib::RefPtr<Gdk::Monitor> monitor;
+  std::string                name;
+
+  std::unique_ptr<struct zxdg_output_v1, decltype(&zxdg_output_v1_destroy)> xdg_output = {
+      nullptr, &zxdg_output_v1_destroy};
 };
 
 class Bar {
@@ -30,13 +32,12 @@ class Bar {
   auto toggle() -> void;
   void handleSignal(int);
 
-  struct waybar_output *        output;
-  Json::Value                   config;
-  Gtk::Window                   window;
-  struct wl_surface *           surface;
-  struct zwlr_layer_surface_v1 *layer_surface;
-  bool                          visible = true;
-  bool                          vertical = false;
+  struct waybar_output *output;
+  Json::Value           config;
+  Gtk::Window           window;
+  struct wl_surface *   surface;
+  bool                  visible = true;
+  bool                  vertical = false;
 
  private:
   static constexpr const char *MIN_HEIGHT_MSG =
@@ -51,7 +52,9 @@ class Bar {
                                           uint32_t, uint32_t);
   static void layerSurfaceHandleClosed(void *, struct zwlr_layer_surface_v1 *);
 
-  void destroyOutput();
+#ifdef HAVE_GTK_LAYER_SHELL
+  void initGtkLayerShell();
+#endif
   void onConfigure(GdkEventConfigure *ev);
   void onRealize();
   void onMap(GdkEventAny *ev);
@@ -68,6 +71,9 @@ class Bar {
     int bottom = 0;
     int left = 0;
   } margins_;
+  struct zwlr_layer_surface_v1 *layer_surface_;
+  // use gtk-layer-shell instead of handling layer surfaces directly
+  bool                                          use_gls_ = false;
   uint32_t                                      width_ = 0;
   uint32_t                                      height_ = 1;
   uint8_t                                       anchor_;

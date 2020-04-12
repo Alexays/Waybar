@@ -59,6 +59,10 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	typeof: string ++
 	Command to execute when clicked on the module.
 
+*on-click-middle*: ++
+	typeof: string ++
+	Command to execute when middle-clicked on the module using mousewheel.
+
 *on-click-right*: ++
 	typeof: string ++
 	Command to execute when you right clicked on the module.
@@ -96,15 +100,16 @@ The following strings for *format-icons* are supported.
 If they are found in the current PulseAudio port name, the corresponding icons will be selected.
 
 - *default* (Shown, when no other port is found)
-- *headphones*
+- *headphone*
 - *speaker*
 - *hdmi*
 - *headset*
-- *handsfree*
+- *hands-free*
 - *portable*
 - *car*
 - *hifi*
 - *phone*
+
 
 # EXAMPLES
 

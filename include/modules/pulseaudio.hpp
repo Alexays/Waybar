@@ -34,14 +34,17 @@ class Pulseaudio : public ALabel {
   pa_cvolume  pa_volume_;
   bool        muted_;
   std::string port_name_;
+  std::string form_factor_;
   std::string desc_;
   std::string monitor_;
+  std::string default_sink_name_;
   // SOURCE
   uint32_t    source_idx_{0};
   uint16_t    source_volume_;
   bool        source_muted_;
   std::string source_port_name_;
   std::string source_desc_;
+  std::string default_source_name_;
 };
 
 }  // namespace waybar::modules

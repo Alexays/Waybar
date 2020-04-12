@@ -21,7 +21,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
   if (context_ == nullptr) {
     throw std::runtime_error("pa_context_new() failed.");
   }
-  if (pa_context_connect(context_, nullptr, PA_CONTEXT_NOAUTOSPAWN, nullptr) < 0) {
+  if (pa_context_connect(context_, nullptr, PA_CONTEXT_NOFAIL, nullptr) < 0) {
     auto err =
         fmt::format("pa_context_connect() failed: {}", pa_strerror(pa_context_errno(context_)));
     throw std::runtime_error(err);
@@ -52,7 +52,8 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
       pa_context_set_subscribe_callback(c, subscribeCb, data);
       pa_context_subscribe(
           c,
-          static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
+          static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
+                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
                                                  static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE)),
           nullptr,
           nullptr);
@@ -109,7 +110,9 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
   if (operation != PA_SUBSCRIPTION_EVENT_CHANGE) {
     return;
   }
-  if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
+  if (facility == PA_SUBSCRIPTION_EVENT_SERVER) {
+    pa_context_get_server_info(context, serverInfoCb, data);
+  } else if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
     pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE) {
     pa_context_get_source_info_by_index(context, idx, sourceInfoCb, data);
@@ -131,15 +134,15 @@ void waybar::modules::Pulseaudio::volumeModifyCb(pa_context *c, int success, voi
  */
 void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const pa_source_info *i,
                                                int /*eol*/, void *data) {
-  if (i != nullptr) {
-    auto self = static_cast<waybar::modules::Pulseaudio *>(data);
+  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+  if (i != nullptr && pa->default_source_name_ == i->name) {
     auto source_volume = static_cast<float>(pa_cvolume_avg(&(i->volume))) / float{PA_VOLUME_NORM};
-    self->source_volume_ = std::round(source_volume * 100.0F);
-    self->source_idx_ = i->index;
-    self->source_muted_ = i->mute != 0;
-    self->source_desc_ = i->description;
-    self->source_port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
-    self->dp.emit();
+    pa->source_volume_ = std::round(source_volume * 100.0F);
+    pa->source_idx_ = i->index;
+    pa->source_muted_ = i->mute != 0;
+    pa->source_desc_ = i->description;
+    pa->source_port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
+    pa->dp.emit();
   }
 }
 
@@ -147,9 +150,9 @@ void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const p
  * Called when the requested sink information is ready.
  */
 void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i,
-                                             int /*eol*/, void *                           data) {
-  if (i != nullptr) {
-    auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+                                             int /*eol*/, void *data) {
+  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+  if (i != nullptr && pa->default_sink_name_ == i->name) {
     pa->pa_volume_ = i->volume;
     float volume = static_cast<float>(pa_cvolume_avg(&(pa->pa_volume_))) / float{PA_VOLUME_NORM};
     pa->sink_idx_ = i->index;
@@ -158,6 +161,9 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
     pa->desc_ = i->description;
     pa->monitor_ = i->monitor_source_name;
     pa->port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
+    if (auto ff = pa_proplist_gets(i->proplist, PA_PROP_DEVICE_FORM_FACTOR)) {
+      pa->form_factor_ = ff;
+    }
     pa->dp.emit();
   }
 }
@@ -168,16 +174,20 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
  */
 void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_server_info *i,
                                                void *data) {
+  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+  pa->default_sink_name_ = i->default_sink_name;
+  pa->default_source_name_ = i->default_source_name;
+
   pa_context_get_sink_info_by_name(context, i->default_sink_name, sinkInfoCb, data);
   pa_context_get_source_info_by_name(context, i->default_source_name, sourceInfoCb, data);
 }
 
 static const std::array<std::string, 9> ports = {
-    "headphones",
+    "headphone",
     "speaker",
     "hdmi",
     "headset",
-    "handsfree",
+    "hands-free",
     "portable",
     "car",
     "hifi",
@@ -185,7 +195,7 @@ static const std::array<std::string, 9> ports = {
 };
 
 const std::string waybar::modules::Pulseaudio::getPortIcon() const {
-  std::string nameLC = port_name_;
+  std::string nameLC = port_name_ + form_factor_;
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
     if (nameLC.find(port) != std::string::npos) {
@@ -197,21 +207,27 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const {
 
 auto waybar::modules::Pulseaudio::update() -> void {
   auto format = format_;
-  std::string format_name = "format";
-  if (monitor_.find("a2dp_sink") != std::string::npos) {
-    format_name = format_name + "-bluetooth";
-    label_.get_style_context()->add_class("bluetooth");
-  } else {
-    label_.get_style_context()->remove_class("bluetooth");
+  if (!alt_) {
+    std::string format_name = "format";
+    if (monitor_.find("a2dp_sink") != std::string::npos) {
+      format_name = format_name + "-bluetooth";
+      label_.get_style_context()->add_class("bluetooth");
+    } else {
+      label_.get_style_context()->remove_class("bluetooth");
+    }
+    if (muted_) {
+      // Check muted bluetooth format exist, otherwise fallback to default muted format
+      if (format_name != "format" && !config_[format_name + "-muted"].isString()) {
+        format_name = "format";
+      }
+      format_name = format_name + "-muted";
+      label_.get_style_context()->add_class("muted");
+    } else {
+      label_.get_style_context()->remove_class("muted");
+    }
+    format =
+      config_[format_name].isString() ? config_[format_name].asString() : format;
   }
-  if (muted_ ) {
-    format_name = format_name + "-muted";
-    label_.get_style_context()->add_class("muted");
-  } else {
-    label_.get_style_context()->remove_class("muted");
-  }
-  format =
-    config_[format_name].isString() ? config_[format_name].asString() : format;
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
   if (source_muted_ && config_["format-source-muted"].isString()) {
