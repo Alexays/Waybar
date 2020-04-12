@@ -39,6 +39,10 @@ screensaving, also known as "presentation mode".
 	typeof: string ++
 	Command to execute when you right clicked on the module.
 
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module.
