@@ -35,11 +35,6 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::MPD::update() -> void {
-  // Run user-provided update handler if configured
-  if (config_["on-update"].isString()) {
-    AModule::update();
-  }
-
   std::lock_guard guard(connection_lock_);
   tryConnect();
 
@@ -61,6 +56,9 @@ auto waybar::modules::MPD::update() -> void {
   }
 
   setLabel();
+
+  // Call parent update
+  ALabel::update();
 }
 
 std::thread waybar::modules::MPD::event_listener() {
