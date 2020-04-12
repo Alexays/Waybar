@@ -1,4 +1,5 @@
 #include "modules/battery.hpp"
+
 #include <spdlog/spdlog.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
@@ -151,7 +152,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
-  auto format = std::string("{H} h {M} min");
+  auto     format = std::string("{H} h {M} min");
   if (config_["format-time"].isString()) {
     format = config_["format-time"].asString();
   }
@@ -173,11 +174,9 @@ auto waybar::modules::Battery::update() -> void {
     }
     label_.set_tooltip_text(tooltip_text);
   }
-  // Transform to lowercase
-  std::transform(status.begin(), status.end(), status.begin(), ::tolower);
-  // Replace space with dash
+  // Transform to lowercase  and replace space with dash
   std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
-    return ch == ' ' ? '-' : ch;
+    return ch == ' ' ? '-' : std::tolower(ch);
   });
   auto format = format_;
   auto state = getState(capacity, true);
@@ -197,9 +196,10 @@ auto waybar::modules::Battery::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
+    auto icons = std::vector<const std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(format,
                                   fmt::arg("capacity", capacity),
-                                  fmt::arg("icon", getIcon(capacity, state)),
+                                  fmt::arg("icon", getIcon(capacity, icons)),
                                   fmt::arg("time", formatTimeRemaining(time_remaining))));
   }
 }
