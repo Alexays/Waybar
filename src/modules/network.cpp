@@ -315,6 +315,9 @@ auto waybar::modules::Network::update() -> void {
       label_.set_tooltip_text(text);
     }
   }
+
+  // Call parent update
+  ALabel::update();
 }
 
 // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698

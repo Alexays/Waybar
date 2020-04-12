@@ -42,6 +42,8 @@ auto waybar::modules::Memory::update() -> void {
   } else {
     event_box_.hide();
   }
+  // Call parent update
+  ALabel::update();
 }
 
 void waybar::modules::Memory::parseMeminfo() {

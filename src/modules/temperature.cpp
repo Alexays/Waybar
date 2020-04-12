@@ -36,6 +36,8 @@ auto waybar::modules::Temperature::update() -> void {
                                 fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+  // Call parent update
+  ALabel::update();
 }
 
 std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {

@@ -47,6 +47,8 @@ auto Mode::update() -> void {
     }
     event_box_.show();
   }
+  // Call parent update
+  ALabel::update();
 }
 
 }  // namespace waybar::modules::sway
