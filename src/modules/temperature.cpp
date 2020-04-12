@@ -19,11 +19,6 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
 }
 
 auto waybar::modules::Temperature::update() -> void {
-  // Run user-provided update handler if configured
-  if (config_["on-update"].isString()) {
-    AModule::update();
-  }
-
   auto [temperature_c, temperature_f] = getTemperature();
   auto critical = isCritical(temperature_c);
   auto format = format_;
@@ -38,6 +33,8 @@ auto waybar::modules::Temperature::update() -> void {
                                 fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+  // Call parent update
+  ALabel::update();
 }
 
 std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {

@@ -192,6 +192,8 @@ auto waybar::modules::Backlight::update() -> void {
   }
   previous_best_ = best == nullptr ? std::nullopt : std::optional{*best};
   previous_format_ = format_;
+  // Call parent update
+  ALabel::update();
 }
 
 template <class ForwardIt>

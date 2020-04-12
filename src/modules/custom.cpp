@@ -93,11 +93,6 @@ bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
 }
 
 auto waybar::modules::Custom::update() -> void {
-  // Run user-provided update handler if configured
-  if (config_["on-update"].isString()) {
-    AModule::update();
-  }
-
   // Hide label if output is empty
   if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
     event_box_.hide();
@@ -133,6 +128,8 @@ auto waybar::modules::Custom::update() -> void {
       event_box_.show();
     }
   }
+  // Call parent update
+  ALabel::update();
 }
 
 void waybar::modules::Custom::parseOutputRaw() {

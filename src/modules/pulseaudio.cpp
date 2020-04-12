@@ -196,11 +196,6 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const {
 }
 
 auto waybar::modules::Pulseaudio::update() -> void {
-  // Run user-provided update handler if configured
-  if (config_["on-update"].isString()) {
-    AModule::update();
-  }
-
   auto format = format_;
   std::string format_name = "format";
   if (monitor_.find("a2dp_sink") != std::string::npos) {
@@ -215,7 +210,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
   } else {
     label_.get_style_context()->remove_class("muted");
   }
-  format = 
+  format =
     config_[format_name].isString() ? config_[format_name].asString() : format;
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
@@ -234,4 +229,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(desc_);
   }
+
+  // Call parent update
+  ALabel::update();
 }

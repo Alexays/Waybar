@@ -31,7 +31,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 }
 
 auto ALabel::update() -> void {
-  // Nothing here
+  AModule::update();
 }
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {

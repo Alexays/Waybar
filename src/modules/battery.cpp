@@ -149,11 +149,6 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 }
 
 auto waybar::modules::Battery::update() -> void {
-  // Run user-provided update handler if configured
-  if (config_["on-update"].isString()) {
-    AModule::update();
-  }
-
   auto [capacity, time_remaining, status] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
@@ -192,4 +187,6 @@ auto waybar::modules::Battery::update() -> void {
                                   fmt::arg("icon", getIcon(capacity, state)),
                                   fmt::arg("time", formatTimeRemaining(time_remaining))));
   }
+  // Call parent update
+  ALabel::update();
 }

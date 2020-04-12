@@ -29,7 +29,10 @@ AModule::~AModule() {
 }
 
 auto AModule::update() -> void {
-  pid_.push_back(util::command::forkExec(config_["on-update"].asString()));
+  // Run user-provided update handler if configured
+  if (config_["on-update"].isString()) {
+    pid_.push_back(util::command::forkExec(config_["on-update"].asString()));
+  }
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) {

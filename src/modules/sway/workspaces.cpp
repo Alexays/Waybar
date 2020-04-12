@@ -176,6 +176,8 @@ auto Workspaces::update() -> void {
     }
     onButtonReady(*it, button);
   }
+  // Call parent update
+  AModule::update();
 }
 
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
