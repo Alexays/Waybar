@@ -30,26 +30,24 @@ class Client {
                                                               const std::string &style) const;
   void                                             bindInterfaces();
   const std::string getValidPath(const std::vector<std::string> &paths) const;
-  void              handleOutput(std::unique_ptr<struct waybar_output> &output);
-  bool isValidOutput(const Json::Value &config, std::unique_ptr<struct waybar_output> &output);
+  void              handleOutput(struct waybar_output &output);
+  bool isValidOutput(const Json::Value &config, struct waybar_output &output);
   auto setupConfig(const std::string &config_file) -> void;
   auto setupCss(const std::string &css_file) -> void;
-  std::unique_ptr<struct waybar_output> &getOutput(uint32_t wl_name);
-  std::vector<Json::Value> getOutputConfigs(std::unique_ptr<struct waybar_output> &output);
+  struct waybar_output &getOutput(void *);
+  std::vector<Json::Value> getOutputConfigs(struct waybar_output &output);
 
   static void handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                            const char *interface, uint32_t version);
   static void handleGlobalRemove(void *data, struct wl_registry *registry, uint32_t name);
-  static void handleLogicalPosition(void *, struct zxdg_output_v1 *, int32_t, int32_t);
-  static void handleLogicalSize(void *, struct zxdg_output_v1 *, int32_t, int32_t);
-  static void handleDone(void *, struct zxdg_output_v1 *);
-  static void handleName(void *, struct zxdg_output_v1 *, const char *);
-  static void handleDescription(void *, struct zxdg_output_v1 *, const char *);
+  static void handleOutputName(void *, struct zxdg_output_v1 *, const char *);
+  void        handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor);
+  void        handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
 
-  Json::Value                                        config_;
-  Glib::RefPtr<Gtk::StyleContext>                    style_context_;
-  Glib::RefPtr<Gtk::CssProvider>                     css_provider_;
-  std::vector<std::unique_ptr<struct waybar_output>> outputs_;
+  Json::Value                     config_;
+  Glib::RefPtr<Gtk::StyleContext> style_context_;
+  Glib::RefPtr<Gtk::CssProvider>  css_provider_;
+  std::list<struct waybar_output> outputs_;
 };
 
 }  // namespace waybar

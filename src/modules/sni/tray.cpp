@@ -6,7 +6,7 @@ namespace waybar::modules::SNI {
 Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "tray", id),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
-      watcher_(nb_hosts_),
+      watcher_(SNI::Watcher::getInstance()),
       host_(nb_hosts_, config, std::bind(&Tray::onAdd, this, std::placeholders::_1),
             std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
   spdlog::warn(

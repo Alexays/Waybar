@@ -115,6 +115,16 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       time_remaining = -(float)(total_energy_full - total_energy) / total_power;
     }
     uint16_t capacity = total / batteries_.size();
+    // Handle full-at
+    if (config_["full-at"].isUInt()) {
+      auto full_at = config_["full-at"].asUInt();
+      if (full_at < 100) {
+        capacity = static_cast<float>(capacity / full_at) * 100;
+        if (capacity > full_at) {
+          capacity = full_at;
+        }
+      }
+    }
     return {capacity, time_remaining, status};
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
@@ -163,7 +173,12 @@ auto waybar::modules::Battery::update() -> void {
     }
     label_.set_tooltip_text(tooltip_text);
   }
+  // Transform to lowercase
   std::transform(status.begin(), status.end(), status.begin(), ::tolower);
+  // Replace space with dash
+  std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
+    return ch == ' ' ? '-' : ch;
+  });
   auto format = format_;
   auto state = getState(capacity, true);
   if (!old_status_.empty()) {

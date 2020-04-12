@@ -1,9 +1,12 @@
 #include "modules/temperature.hpp"
+#include <filesystem>
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
+  } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
+    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())).path().u8string() + "/" + config_["input-filename"].asString();
   } else {
     auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);

@@ -72,7 +72,10 @@ inline struct res exec(std::string cmd) {
   if (!fp) return {-1, ""};
   auto output = command::read(fp);
   auto stat = command::close(fp, pid);
-  return {WEXITSTATUS(stat), output};
+  if (WIFEXITED(stat)) {
+    return {WEXITSTATUS(stat), output};
+  }
+  return {-1, output};
 }
 
 inline int32_t forkExec(std::string cmd) {
@@ -88,6 +91,7 @@ inline int32_t forkExec(std::string cmd) {
   // Child executes the command
   if (!pid) {
     setpgid(pid, pid);
+    signal(SIGCHLD, SIG_DFL);
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
