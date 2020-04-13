@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 #include <fstream>
+#include <unordered_map>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
