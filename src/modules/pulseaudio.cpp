@@ -245,4 +245,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(desc_);
   }
+
+  // Call parent update
+  ALabel::update();
 }

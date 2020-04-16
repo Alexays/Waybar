@@ -56,6 +56,9 @@ auto waybar::modules::MPD::update() -> void {
   }
 
   setLabel();
+
+  // Call parent update
+  ALabel::update();
 }
 
 std::thread waybar::modules::MPD::event_listener() {
