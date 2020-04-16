@@ -141,6 +141,8 @@ auto waybar::modules::Custom::update() -> void {
       event_box_.show();
     }
   }
+  // Call parent update
+  ALabel::update();
 }
 
 void waybar::modules::Custom::parseOutputRaw() {

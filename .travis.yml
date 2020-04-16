@@ -11,6 +11,7 @@ env:
     - distro: archlinux
     - distro: fedora
     - distro: alpine
+    - distro: opensuse
 
 before_install:
     - docker pull alexays/waybar:${distro}

@@ -202,4 +202,6 @@ auto waybar::modules::Battery::update() -> void {
                                   fmt::arg("icon", getIcon(capacity, state)),
                                   fmt::arg("time", formatTimeRemaining(time_remaining))));
   }
+  // Call parent update
+  ALabel::update();
 }

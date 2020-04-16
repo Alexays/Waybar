@@ -44,6 +44,10 @@ The *cpu* module displays the current cpu utilization.
 	typeof: string ++
 	Command to execute when you right clicked on the module.
 
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module.

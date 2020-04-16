@@ -10,29 +10,29 @@ The *backlight* module displays the current backlight level.
 
 # CONFIGURATION
 
-*interval* ++
+*interval*: ++
 	typeof: integer ++
 	default: 2 ++
 	The interval in which information gets polled.
 
-*format* ++
+*format*: ++
 	typeof: string ++
 	default: {percent}% ++
 	The format, how information should be displayed. On {} data gets inserted.
 
-*max-length* ++
+*max-length*: ++
 	typeof: integer ++
 	The maximum length in characters the module should display.
 
-*rotate* ++
+*rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
 
-*states* ++
+*states*: ++
 	typeof: array ++
 	A number of backlight states which get activated on certain brightness levels.
 
-*on-click* ++
+*on-click*: ++
 	typeof: string ++
 	Command to execute when the module is clicked.
 
@@ -40,19 +40,23 @@ The *backlight* module displays the current backlight level.
 	typeof: string ++
 	Command to execute when middle-clicked on the module using mousewheel.
 
-*on-click-right* ++
+*on-click-right*: ++
 	typeof: string ++
 	Command to execute when the module is right clicked.
 
-*on-scroll-up* ++
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
+
+*on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when performing a scroll up on the module.
 
-*on-scroll-down* ++
+*on-scroll-down*: ++
 	typeof: string
 	Command to execute when performing a scroll down on the module.
 
-*smooth-scrolling-threshold* ++
+*smooth-scrolling-threshold*: ++
 	typeof: double
 	Threshold to be used when scrolling.
 
