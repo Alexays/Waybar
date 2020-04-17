@@ -64,21 +64,24 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
 }
 
 bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_output &output) {
-  bool found = true;
   if (config["output"].isArray()) {
-    bool in_array = false;
     for (auto const &output_conf : config["output"]) {
       if (output_conf.isString() && output_conf.asString() == output.name) {
-        in_array = true;
-        break;
+        return true;
       }
     }
-    found = in_array;
+    return false;
+  } else if (config["output"].isString()) {
+    auto config_output_name = config["output"].asString();
+    if (!config_output_name.empty()) {
+      if (config_output_name.substr(0, 1) == "!") {
+          return config_output_name.substr(1) != output.name;
+      }
+      return config_output_name == output.name;
+    }
   }
-  if (config["output"].isString() && config["output"].asString() != output.name) {
-    found = false;
-  }
-  return found;
+
+  return true;
 }
 
 struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
