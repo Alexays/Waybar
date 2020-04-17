@@ -70,9 +70,8 @@ bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_outp
         return true;
       }
     }
-  }
-
-  if (config["output"].isString()) {
+    return false;
+  } else if (config["output"].isString()) {
     auto config_output_name = config["output"].asString();
     if (!config_output_name.empty()) {
       if (config_output_name.substr(0, 1) == "!") {
