@@ -11,6 +11,7 @@
 - Local time
 - Battery
 - Network
+- Bluetooth
 - Pulseaudio
 - Disk
 - Memory
