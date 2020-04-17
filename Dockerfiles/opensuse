@@ -4,4 +4,4 @@ FROM opensuse/tumbleweed:latest
 
 RUN zypper -n up && \
     zypper -n install -t pattern devel_C_C++ && \
-    zypper -n install git meson clang libinput10 libinput-devel libwayland-client0 libwayland-cursor0 wayland-protocols-devel wayland-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libgbm-devel libxkbcommon-devel libudev-devel libpixman-1-0-devel gtkmm3-devel jsoncpp-devel scdoc
+    zypper -n install git meson clang libinput10 libinput-devel libpugixml1 libwayland-client0 libwayland-cursor0 wayland-protocols-devel wayland-devel Mesa-libEGL-devel Mesa-libGLESv2-devel libgbm-devel libxkbcommon-devel libudev-devel libpixman-1-0-devel gtkmm3-devel jsoncpp-devel scdoc

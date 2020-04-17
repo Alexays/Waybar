@@ -157,12 +157,13 @@ auto Workspaces::update() -> void {
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
     }
-    std::string output = getIcon((*it)["name"].asString(), *it);
+    std::string output = (*it)["name"].asString();
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
       output = fmt::format(format,
-                           fmt::arg("icon", output),
-                           fmt::arg("name", trimWorkspaceName((*it)["name"].asString())),
+                           fmt::arg("icon", getIcon(output, *it)),
+                           fmt::arg("value", output),
+                           fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
@@ -172,6 +173,8 @@ auto Workspaces::update() -> void {
     }
     onButtonReady(*it, button);
   }
+  // Call parent update
+  AModule::update();
 }
 
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
@@ -205,6 +208,8 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
         return config_["format-icons"][key].asString();
       }
+    } else if (config_["format_icons"]["persistent"].isString() && node["target_output"].isString()) {
+      return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
     }

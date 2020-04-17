@@ -32,6 +32,8 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(status_);
   }
+  // Call parent update
+  ALabel::update();
 }
 
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {

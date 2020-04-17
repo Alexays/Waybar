@@ -54,6 +54,8 @@ auto waybar::modules::Clock::update() -> void {
       label_.set_tooltip_markup(text);
     }
   }
+  // Call parent update
+  ALabel::update();
 }
 
 auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::string {

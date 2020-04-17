@@ -47,6 +47,10 @@ Addressed by *network*
 	typeof: string ++
 	This format is used when the displayed interface is disconnected.
 
+*format-disabled*: ++
+	typeof: string ++
+	This format is used when the displayed interface is disabled.
+
 *format-icons*: ++
 	typeof: array/object ++
 	Based on the current signal strength, the corresponding icon gets selected. ++
@@ -71,6 +75,10 @@ Addressed by *network*
 *on-click-right*: ++
 	typeof: string ++
 	Command to execute when you right clicked on the module.
+
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
 
 *on-scroll-up*: ++
 	typeof: string ++
@@ -104,6 +112,10 @@ Addressed by *network*
 *tooltip-format-disconnected*: ++
 	typeof: string ++
 	This format is used when the displayed interface is disconnected.
+
+*tooltip-format-disabled*: ++
+	typeof: string ++
+	This format is used when the displayed interface is disabled.
 
 # FORMAT REPLACEMENTS
 
@@ -142,6 +154,7 @@ Addressed by *network*
 	"format-wifi": "{essid} ({signalStrength}%) ",
 	"format-ethernet": "{ifname} ",
 	"format-disconnected": "", //An empty format will hide the module.
+	"format-disconnected": "",
 	"tooltip-format": "{ifname}",
 	"tooltip-format-wifi": "{essid} ({signalStrength}%) ",
 	"tooltip-format-ethernet": "{ifname} ",
@@ -154,6 +167,7 @@ Addressed by *network*
 
 - *#network*
 - *#network.disconnected*
+- *#network.disabled*
 - *#network.linked*
 - *#network.ethernet*
 - *#network.wifi*
