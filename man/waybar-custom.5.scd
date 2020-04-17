@@ -33,6 +33,12 @@ Addressed by *custom/<name>*
 	You can update it manually with a signal. If no *interval* is defined,
 	it is assumed that the out script loops it self.
 
+*restart-interval*: ++
+	typeof: integer ++
+	The restart interval (in seconds).
+	Can't be used with the *interval* option, so only with continuous scripts.
+	Once the script exit, it'll be re-executed after the *restart-interval*.
+
 *signal*: ++
 	typeof: integer ++
 	The signal number used to update the module.
@@ -66,6 +72,10 @@ Addressed by *custom/<name>*
 *on-click-right*: ++
 	typeof: string ++
 	Command to execute when you right clicked on the module.
+
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
 
 *on-scroll-up*: ++
 	typeof: string ++

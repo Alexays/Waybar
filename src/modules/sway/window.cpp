@@ -60,6 +60,8 @@ auto Window::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
+  // Call parent update
+  ALabel::update();
 }
 
 std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(

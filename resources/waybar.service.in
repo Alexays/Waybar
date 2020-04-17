@@ -2,6 +2,7 @@
 Description=Highly customizable Wayland bar for Sway and Wlroots based compositors.
 Documentation=https://github.com/Alexays/Waybar/wiki/
 PartOf=wayland-session.target
+After=wayland-session.target
 
 [Service]
 Type=dbus

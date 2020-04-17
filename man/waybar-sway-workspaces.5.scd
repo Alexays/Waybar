@@ -19,7 +19,7 @@ Addressed by *sway/workspaces*
 
 *format*: ++
     typeof: string ++
-    default: {name} ++
+    default: {value} ++
     The format, how information should be displayed.
 
 *format-icons*: ++
@@ -60,9 +60,15 @@ Addressed by *sway/workspaces*
     default: empty ++
     Lists workspaces that should always be shown, even when non existent
 
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
+
 # FORMAT REPLACEMENTS
 
-*{name}*: Name of the workspace, as defined by sway.
+*{value}*: Name of the workspace, as defined by sway.
+
+*{name}*: Number stripped from workspace value.
 
 *{icon}*: Icon, as defined in *format-icons*.
 
@@ -75,6 +81,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *default*: Will be shown, when no string matches is found.
 - *urgent*: Will be shown, when workspace is flagged as urgent
 - *focused*: Will be shown, when workspace is focused
+- *persistent*: Will be shown, when workspace is persistent one.
 
 # PERSISTENT WORKSPACES
 

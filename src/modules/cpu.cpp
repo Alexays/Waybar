@@ -18,6 +18,8 @@ auto waybar::modules::Cpu::update() -> void {
   }
   label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
   getState(cpu_usage);
+  // Call parent update
+  ALabel::update();
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad() {

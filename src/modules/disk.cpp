@@ -73,4 +73,6 @@ auto waybar::modules::Disk::update() -> void {
       ));
   }
   event_box_.show();
+  // Call parent update
+  ALabel::update();
 }

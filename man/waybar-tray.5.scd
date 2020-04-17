@@ -20,6 +20,10 @@ Addressed by *tray*
     typeof: integer ++
     Defines the spacing between the tray icons.
 
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
+
 # EXAMPLES
 
 ```

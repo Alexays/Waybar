@@ -67,6 +67,10 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	typeof: string ++
 	Command to execute when you right clicked on the module.
 
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
+
 *on-scroll-up*: ++
 	typeof: string ++
 	Command to execute when scrolling up on the module. This replaces the default behaviour of volume control.

@@ -10,29 +10,33 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 # CONFIGURATION
 
-*bat* ++
+*bat*: ++
 	typeof: string ++
 	The battery to monitor, as in /sys/class/power_supply/ instead of auto detect.
 
-*adapter* ++
+*adapter*: ++
 	typeof: string ++
 	The adapter to monitor, as in /sys/class/power_supply/ instead of auto detect.
 
-*interval* ++
+*full-at*: ++
+	typeof: integer ++
+	Define the max percentage of the battery, usefull for an old battery, e.g. 96
+
+*interval*: ++
 	typeof: integer ++
 	default: 60 ++
 	The interval in which the information gets polled.
 
-*states* ++
+*states*: ++
 	typeof: array ++
 	A number of battery states which get activated on certain capacity levels. See *waybar-states(5)*.
 
-*format* ++
+*format*: ++
 	typeof: string ++
 	default: {capacity}% ++
 	The format, how the time should be displayed.
 
-*format-time* ++
+*format-time*: ++
 	typeof: string ++
 	default: {H} h {M} min ++
 	The format, how the time should be displayed.
@@ -58,9 +62,13 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: string ++
 	Command to execute when middle-clicked on the module using mousewheel.
 
-*on-click-right* ++
+*on-click-right*: ++
 	typeof: string ++
 	Command to execute when you right clicked on the module.
+
+*on-update*: ++
+	typeof: string ++
+	Command to execute when the module is updated.
 
 *on-scroll-up*: ++
 	typeof: string ++
@@ -70,11 +78,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: string ++
 	Command to execute when scrolling down on the module.
 
-*smooth-scrolling-threshold* ++
+*smooth-scrolling-threshold*: ++
 	typeof: double ++
 	Threshold to be used when scrolling.
 
-*tooltip* ++
+*tooltip*: ++
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.

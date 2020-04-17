@@ -21,7 +21,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
   if (context_ == nullptr) {
     throw std::runtime_error("pa_context_new() failed.");
   }
-  if (pa_context_connect(context_, nullptr, PA_CONTEXT_NOAUTOSPAWN, nullptr) < 0) {
+  if (pa_context_connect(context_, nullptr, PA_CONTEXT_NOFAIL, nullptr) < 0) {
     auto err =
         fmt::format("pa_context_connect() failed: {}", pa_strerror(pa_context_errno(context_)));
     throw std::runtime_error(err);
@@ -215,7 +215,11 @@ auto waybar::modules::Pulseaudio::update() -> void {
     } else {
       label_.get_style_context()->remove_class("bluetooth");
     }
-    if (muted_ ) {
+    if (muted_) {
+      // Check muted bluetooth format exist, otherwise fallback to default muted format
+      if (format_name != "format" && !config_[format_name + "-muted"].isString()) {
+        format_name = "format";
+      }
       format_name = format_name + "-muted";
       label_.get_style_context()->add_class("muted");
     } else {
@@ -241,4 +245,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(desc_);
   }
+
+  // Call parent update
+  ALabel::update();
 }
