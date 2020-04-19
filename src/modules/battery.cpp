@@ -193,7 +193,7 @@ auto waybar::modules::Battery::update(std::string format, waybar::args& args) ->
   // Set tooltip
   // TODO: tooltip-format based on args
   if (AModule::tooltipEnabled()) {
-    std::string tooltip_text = status;
+    std::string tooltip_text = status_;
     if (time_remaining != 0) {
       std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
       tooltip_text = time_to + ": " + timeRemaining;
@@ -202,6 +202,7 @@ auto waybar::modules::Battery::update(std::string format, waybar::args& args) ->
   }
 
   // Transform to lowercase and replace space with dash
+  auto status = status_
   std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
     return ch == ' ' ? '-' : std::tolower(ch);
   });
