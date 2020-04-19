@@ -1,7 +1,6 @@
 #pragma once
 
 #include <fmt/chrono.h>
-#include <fmt/format.h>
 
 #include "ALabel.hpp"
 #include "util/rfkill.hpp"

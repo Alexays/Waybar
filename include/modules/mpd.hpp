@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
 #include <mpd/client.h>
 #include <condition_variable>
 #include <thread>

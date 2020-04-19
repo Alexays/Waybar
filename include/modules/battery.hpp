@@ -5,7 +5,6 @@
 #else
 #include <filesystem>
 #endif
-#include <fmt/format.h>
 #include <sys/inotify.h>
 
 #include <algorithm>

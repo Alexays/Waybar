@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
 #if FMT_VERSION < 60000
 #include <fmt/time.h>
 #else

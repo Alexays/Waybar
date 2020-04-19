@@ -1,7 +1,6 @@
 #pragma once
 
 #include <arpa/inet.h>
-#include <fmt/format.h>
 #include <ifaddrs.h>
 #include <linux/nl80211.h>
 #include <net/if.h>

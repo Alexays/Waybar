@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
 #include <fstream>
 #include <sys/statvfs.h>
 #include "ALabel.hpp"

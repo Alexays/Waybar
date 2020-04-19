@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fmt/format.h>
 #include <glibmm/markup.h>
 #include <gtkmm/label.h>
 #include <json/json.h>

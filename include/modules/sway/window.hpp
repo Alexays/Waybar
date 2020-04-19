@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
 #include <tuple>
 #include "ALabel.hpp"
 #include "bar.hpp"

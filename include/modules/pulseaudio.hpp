@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
 #include <pulse/pulseaudio.h>
 #include <pulse/volume.h>
 #include <algorithm>
