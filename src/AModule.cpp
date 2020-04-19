@@ -24,6 +24,12 @@ AModule::AModule(const Json::Value& config,
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
+
+  if (config_["tooltip-format"].isString()) {
+    tooltipFormat_ = config_["tooltip-format"].asString();
+  } else {
+    tooltipFormat_ = tooltipFormat;
+  }
 }
 
 AModule::~AModule() {

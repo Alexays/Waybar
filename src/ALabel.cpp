@@ -6,10 +6,15 @@
 
 namespace waybar {
 
-ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
-               const std::string& format, const std::string& tooltipFormat, uint16_t interval,
+ALabel::ALabel(const Json::Value& config,
+               const std::string& name,
+               const std::string& id,
+               const std::string& format,
+               const std::string& tooltipFormat,
+               uint16_t interval,
                bool ellipsize)
-    : AModule(config, name, id, tooltipFormat, config["format-alt"].isString()) {
+    : AModule(config, name, id, tooltipFormat, config["format-alt"].isString()),
+      interval_(interval) {
   label_.set_name(name);
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -22,19 +27,13 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     format_ = format;
   }
 
-  if (config_["tooltip-format"].isString()) {
-    tooltipFormat_ = config_["tooltip-format"].asString();
-  } else {
-    tooltipFormat_ tooltipFormat;
-  }
-
   if (config_["interval"] == "once") {
     // Endlessly
     interval_ = std::chrono::seconds(100000000);
   } else if (config_["interval"].isUInt()) {
-    interval_ = config_["interval"].asUInt();
+    interval_ = std::chrono::seconds(config_["interval"].asUInt());
   } else {
-    interval_ = interval;
+    interval_ = std::chrono::seconds(interval);
   }
 
   if (config_["max-length"].isUInt()) {
@@ -54,7 +53,7 @@ auto ALabel::update() -> void {
   AModule::update();
 }
 
-auto ALabel::update(std::string format, waybar::args& args, std::string& defaultTooltip = "")
+auto ALabel::update(std::string format, waybar::args& args)
     -> void {
   // Hide the module on empty format
   if (format.empty()) {
@@ -74,8 +73,8 @@ auto ALabel::update(std::string format, waybar::args& args, std::string& default
         auto tooltip_format = config_["tooltip-format"].asString();
         auto tooltip_text = fmt::vformat(tooltip_format, args);
         label_.set_tooltip_markup(tooltip_text);
-      } else if (!defaultTooltip.empty()) {
-        label_.set_tooltip_markup(fmt::vformat(defaultTooltip, args));
+      } else if (!tooltipFormat_.empty()) {
+        label_.set_tooltip_markup(fmt::vformat(tooltipFormat_, args));
       }
     }
   }
