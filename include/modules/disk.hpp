@@ -13,7 +13,7 @@ class Disk : public ALabel {
  public:
   Disk(const std::string&, const Json::Value&);
   ~Disk() = default;
-  auto update() -> void override;
+  auto update(std::string format, waybar::args &args) -> void override;
 
  private:
   util::SleeperThread thread_;

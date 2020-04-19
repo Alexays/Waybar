@@ -12,8 +12,13 @@ using args = fmt::dynamic_format_arg_store<fmt::format_context>;
 
 class ALabel : public AModule {
  public:
-  ALabel(const Json::Value &, const std::string &, const std::string &, const std::string &format,
-         uint16_t interval = 0, bool ellipsize = false);
+  ALabel(const Json::Value &config,
+         const std::string &name,
+         const std::string &id,
+         const std::string &format,
+         const std::string &formatTooltip,
+         uint16_t interval = 0,
+         bool ellipsize = false);
   virtual ~ALabel() = default;
   virtual auto update() -> void override;
   virtual auto update(const std::string format, waybar::args &args) -> void;

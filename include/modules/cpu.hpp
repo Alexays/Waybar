@@ -17,7 +17,7 @@ class Cpu : public ALabel {
  public:
   Cpu(const std::string&, const Json::Value&);
   ~Cpu() = default;
-  auto update() -> void override;
+  auto update(std::string format, waybar::args &args) -> void override;
 
  private:
   static inline const std::string         data_dir_ = "/proc/stat";

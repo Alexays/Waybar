@@ -11,7 +11,7 @@ class IdleInhibitor : public ALabel {
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~IdleInhibitor();
-  auto update() -> void override;
+  auto update(std::string format, waybar::args &args) -> void override;
 
  private:
   bool handleToggle(GdkEventButton* const& e);
