@@ -117,7 +117,7 @@ auto Custom::update(std::string format, waybar::args &args) -> void {
   }
 
   // Restore default context
-  abel_.get_style_context()->context_restore();
+  label_.get_style_context()->context_restore();
 
   if (config_["return-type"].asString() == "json") {
     parseOutputJson();
