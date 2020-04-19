@@ -1,6 +1,6 @@
 #pragma once
 
-#if FMT_VERSION < 60000
+#if defined(FMT_VERSION) && FMT_VERSION < 60000
 #include <fmt/time.h>
 #else
 #include <fmt/chrono.h>
