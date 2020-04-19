@@ -36,17 +36,22 @@ auto waybar::modules::Clock::update(std::string format, waybar::args& args) -> v
   if (!fixed_time_zone_) {
     auto localtime = fmt::localtime(std::time(nullptr));
     args.push_back(localtime);
+
+    if (AModule::tooltipEnabled()) {
+      auto calendarArg = fmt::arg("calendar", localtime);
+      args.push_back(std::cref(calendarArg));
+    }
   } else {
     auto now = std::chrono::system_clock::now();
     auto nowSecs = date::floor<std::chrono::seconds>(now);
     waybar_time wtime = {locale_, date::make_zoned(time_zone_, nowSecs)};
     args.push_back(wtime);
-  }
 
-  if (AModule::tooltipEnabled()) {
-    const auto calendar = calendar_text(wtime);
-    auto calendarArg = fmt::arg("calendar", calendar);
-    args.push_back(std::cref(calendarArg));
+    if (AModule::tooltipEnabled()) {
+      const auto calendar = calendar_text(wtime);
+      auto calendarArg = fmt::arg("calendar", calendar);
+      args.push_back(std::cref(calendarArg));
+    }
   }
 
   // Call parent update
