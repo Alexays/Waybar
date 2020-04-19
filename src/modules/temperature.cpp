@@ -31,7 +31,8 @@ auto Temperature::update(std::string format, waybar::args& args) -> void {
   // Add default arg
   auto temperature_c = getTemperature();
   args.push_back(temperature_c);
-  args.push_back(fmt::arg("temperatureC", temperature_c));
+  auto temperatureCArg = fmt::arg("temperatureC", temperature_c);
+  args.push_back(std::cref(temperatureCArg));
 
   auto temp = temperature_c;
   bool critical = false;
@@ -57,13 +58,16 @@ auto Temperature::update(std::string format, waybar::args& args) -> void {
 
   if (ALabel::hasFormat("temperatureF")) {
     auto temperature_f = temperature_c * 1.8 + 32;
-    args.push_back(fmt::arg("temperatureF", temperature_f));
+    auto temperatureFArg = fmt::arg("temperatureF", temperature_f);
+    args.push_back(std::cref(temperatureFArg));
   }
 
   if (ALabel::hasFormat("icon")) {
     auto max_temp =
         config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-    args.push_back(fmt::arg("icon", getIcon(temp, "", max_temp)));
+    auto icon = getIcon(temp, "", max_temp);
+    auto iconArg = fmt::arg("icon", icon);
+    args.push_back(std::cref(iconArg));
   }
 
   // Call parent update

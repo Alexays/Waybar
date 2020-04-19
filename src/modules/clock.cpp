@@ -45,7 +45,8 @@ auto waybar::modules::Clock::update(std::string format, waybar::args& args) -> v
 
   if (AModule::tooltipEnabled()) {
     const auto calendar = calendar_text(wtime);
-    args.push_back(fmt::arg("calendar", calendar));
+    auto calendarArg = fmt::arg("calendar", calendar);
+    args.push_back(std::cref(calendarArg));
   }
 
   // Call parent update

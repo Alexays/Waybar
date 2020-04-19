@@ -126,14 +126,20 @@ auto Custom::update(std::string format, waybar::args &args) -> void {
   }
 
   args.push_back(text_);
-  args.push_back(fmt::arg("alt", alt_));
-  args.push_back(fmt::arg("icon", getIcon(percentage_, alt_)));
-  args.push_back(fmt::arg("percentage", percentage_));
+  auto altArg = fmt::arg("alt", alt_);
+  args.push_back(std::cref(altArg));
+  auto icon = getIcon(percentage_, alt_);
+  auto iconArg = fmt::arg("icon", icon);
+  args.push_back(std::cref(iconArg));
+  auto percentageArg = fmt::arg("percentage", percentage_);
+  args.push_back(std::cref(percentageArg));
 
   if (tooltip_.empty()) {
-    args.push_back(fmt::arg("tooltip", text_)));
+    auto tooltipArg = fmt::arg("tooltip", text_);
+    args.push_back(std::cref(tooltipArg));
   } else {
-    args.push_back(fmt::arg("tooltip", tooltip_)));
+    auto tooltipArg = fmt::arg("tooltip", tooltip_);
+    args.push_back(std::cref(tooltipArg));
   }
 
   // Add classes

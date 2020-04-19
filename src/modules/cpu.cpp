@@ -12,12 +12,14 @@ waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
 auto waybar::modules::Cpu::update(std::string format, waybar::args &args) -> void {
   if (ALabel::hasFormat("load")) {
     auto cpu_load = getCpuLoad();
-    args.push_back(fmt::arg("load", cpu_load));
+    auto loadArg = fmt::arg("load", cpu_load);
+    args.push_back(std::cref(loadArg));
   }
 
   // Usage is the default format and also the state one
   auto [cpu_usage, tooltip] = getCpuUsage();
-  args.push_back(fmt::arg("usage", cpu_usage));
+  auto usageArg = fmt::arg("usage", cpu_usage);
+  args.push_back(std::cref(usageArg));
   if (AModule::tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }

@@ -10,54 +10,58 @@ Memory::Memory(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Memory::update(std::string format, waybar::args &args) -> void {
+auto Memory::update(std::string format, waybar::args& args) -> void {
   // Get memory infos
   auto meminfo = parseMeminfo();
 
   // Hide if wen can't have MemTotal info
-  if (meminfo.find("MemTotal") == m.end()) {
+  if (meminfo.find("MemTotal") == meminfo.end()) {
     event_box_.hide();
     return;
   }
 
   unsigned long memfree = 0;
-  auto memtotal = meminfo_["MemTotal"];
-  if (meminfo_.count("MemAvailable")) {
+  auto memtotal = meminfo["MemTotal"];
+  if (meminfo.count("MemAvailable")) {
     // New kernels (3.4+) have an accurate available memory field.
-    memfree = meminfo_["MemAvailable"];
+    memfree = meminfo["MemAvailable"];
   } else {
     // Old kernel; give a best-effort approximation of available memory.
-    memfree = meminfo_["MemFree"] + meminfo_["Buffers"] + meminfo_["Cached"] +
-              meminfo_["SReclaimable"] - meminfo_["Shmem"];
+    memfree = meminfo["MemFree"] + meminfo["Buffers"] + meminfo["Cached"] +
+              meminfo["SReclaimable"] - meminfo["Shmem"];
   }
 
   // Add default percentage arg
   int used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
   args.push_back(used_ram_percentage);
-  args.push_back(fmt::arg("percentage", used_ram_percentage));
+  auto percentageArg = fmt::arg("percentage", used_ram_percentage);
+  args.push_back(std::cref(percentageArg));
   getState(used_ram_percentage);
 
   if (ALabel::hasFormat("total")) {
     auto total_ram_gigabytes = memtotal / std::pow(1024, 2);
-    args.push_back(fmt::arg("total", total_ram_gigabytes));
+    auto totalArg = fmt::arg("total", total_ram_gigabytes);
+    args.push_back(std::cref(totalArg));
   }
 
   // Used arg is used for default tooltip
   if (ALabel::hasFormat("used") || AModule::tooltipEnabled()) {
     auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
-    args.push_back(fmt::arg("used", used_ram_gigabytes));
+    auto usedArg = fmt::arg("used", used_ram_gigabytes);
+    args.push_back(std::cref(usedArg));
   }
 
   if (ALabel::hasFormat("avail")) {
     auto available_ram_gigabytes = memfree / std::pow(1024, 2);
-    args.push_back(fmt::arg("avail", available_ram_gigabytes));
+    auto availArg = fmt::arg("avail", available_ram_gigabytes);
+    args.push_back(std::cref(availArg));
   }
 
   // Call parent update
   ALabel::update(format, args);
 }
 
-std::unordered_map<std::string, unsigned long> Memory::parseMeminfo() {
+std::unordered_map<std::string, unsigned long> Memory::parseMeminfo() const {
   std::unordered_map<std::string, unsigned long> meminfo;
 
   std::ifstream info(data_dir_);

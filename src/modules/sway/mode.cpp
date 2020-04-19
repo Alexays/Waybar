@@ -38,7 +38,8 @@ void Mode::onEvent(const struct Ipc::ipc_response& res) {
 }
 
 auto Mode::update(std::string format, waybar::args& args) -> void {
-  args.push_back(fmt::format(format_, mode_));
+  auto modeArg = fmt::format(format_, mode_);
+  args.push_back(std::cref(modeArg));
   // Call parent update
   ALabel::update(format, args);
 }

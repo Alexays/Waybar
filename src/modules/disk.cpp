@@ -32,28 +32,34 @@ auto Disk::update(std::string format, waybar::args &args) -> void {
   // Add default format and path
   auto percentageFree = stats.f_bavail * 100 / stats.f_blocks;
   args.push_back(percentageFree);
-  args.push_back(fmt::arg("percentage_free", percentageFree));
-  args.push_back(fmt::arg("path", path_));
+  auto percentageFreeArg = fmt::arg("percentage_free", percentageFree);
+  args.push_back(std::cref(percentageFreeArg));
+  auto pathArg = fmt::arg("path", path_);
+  args.push_back(std::cref(pathArg));
   getState(percentageFree);
 
   if (ALabel::hasFormat("free")) {
     auto free = pow_format(stats.f_bavail * stats.f_bsize, "B", true);
-    args.push_back(fmt::arg("free", free));
+    auto freeArg = fmt::arg("free", free);
+    args.push_back(std::cref(freeArg));
   }
 
   if (ALabel::hasFormat("used") || AModule::tooltipEnabled()) {
     auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_bsize, "B", true);
-    args.push_back(fmt::arg("used", used));
+    auto usedArg = fmt::arg("used", used);
+    args.push_back(std::cref(usedArg));
   }
 
   if (ALabel::hasFormat("percentage_used") || AModule::tooltipEnabled()) {
     auto percentageUsed = (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks);
-    args.push_back(fmt::arg("percentage_used", percentageUsed));
+    auto percentageUsedArg = fmt::arg("percentage_used", percentageUsed);
+    args.push_back(std::cref(percentageUsedArg));
   }
 
   if (ALabel::hasFormat("total") || AModule::tooltipEnabled()) {
     auto total = pow_format(stats.f_blocks * stats.f_bsize, "B", true);
-    args.push_back(fmt::arg("total", total));
+    auto totalArg = fmt::arg("total", total);
+    args.push_back(std::cref(totalArg));
   }
 
   // Call parent update

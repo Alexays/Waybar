@@ -30,13 +30,16 @@ IdleInhibitor::~IdleInhibitor() {
 auto IdleInhibitor::update(std::string format, waybar::args &args) -> void {
   // Default to status
   args.push_back(status_);
-  args.push_back(fmt::arg("status", status_));
+  auto statusArg = fmt::arg("status", status_);
+  args.push_back(std::cref(statusArg));
 
   // Add status class
   label_.get_style_context()->add_class(status_);
 
   if (ALabel::hasFormat("icon")) {
-    args.push_back(fmt::arg("icon", getIcon(0, status_)));
+    auto icon = getIcon(0, status_);
+    auto iconArg = fmt::arg("icon", icon);
+    args.push_back(std::cref(iconArg));
   }
 
   // Call parent update

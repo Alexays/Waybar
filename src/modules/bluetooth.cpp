@@ -40,8 +40,11 @@ auto waybar::modules::Bluetooth::update(std::string format, waybar::args &args) 
 
   // Add status and icon args
   args.push_back(status_);
-  args.push_back(fmt::arg("status", status_));
-  args.push_back(fmt::arg("icon", getIcon(0, status_)));
+  auto statusArg = fmt::arg("status", status_);
+  args.push_back(std::cref(statusArg));
+  auto icon = getIcon(0, status_);
+  auto iconArg = fmt::arg("icon", icon);
+  args.push_back(std::cref(iconArg));
 
   // Call parent update
   ALabel::update(format, args);

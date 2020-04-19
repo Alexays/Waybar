@@ -176,14 +176,19 @@ auto waybar::modules::Battery::update(std::string format, waybar::args &args) ->
   label_.get_style_context()->add_class(status_);
 
   // Add capacity format arg
-  args.push_back(fmt::arg("capacity", capacity));
+  auto capacityArg = fmt::arg("capacity", capacity);
+  args.push_back(std::cref(capacityArg));
 
   // Add icon based on capacity and state
   auto state = getState(capacity, true);
-  args.push_back(fmt::arg("icon", getIcon(capacity, state)));
+  auto icon = getIcon(capacity, state);
+  auto iconArg = fmt::arg("icon", icon);
+  args.push_back(std::cref(iconArg));
 
   // Add time remaining
-  args.push_back(fmt::arg("time", formatTimeRemaining(time_remaining)));
+  auto timeRemaining = formatTimeRemaining(time_remaining);
+  auto timeArg = fmt::arg("time", timeRemaining);
+  args.push_back(std::cref(timeArg));
 
   // Set tooltip
   // TODO: tooltip-format based on args
@@ -191,7 +196,7 @@ auto waybar::modules::Battery::update(std::string format, waybar::args &args) ->
     std::string tooltip_text = status;
     if (time_remaining != 0) {
       std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text = time_to + ": " + formatTimeRemaining(time_remaining);
+      tooltip_text = time_to + ": " + timeRemaining;
     }
     label_.set_tooltip_text(tooltip_text);
   }
