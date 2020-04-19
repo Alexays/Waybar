@@ -14,7 +14,10 @@ ALabel::ALabel(const Json::Value& config,
                uint16_t interval,
                bool ellipsize)
     : AModule(config, name, id, tooltipFormat, config["format-alt"].isString()),
-      interval_(interval) {
+      interval_(config_["interval"] == "once"
+                    ? std::chrono::seconds(100000000)
+                    : std::chrono::seconds(
+                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)) {
   label_.set_name(name);
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -25,15 +28,6 @@ ALabel::ALabel(const Json::Value& config,
     format_ = config_["format"].asString();
   } else {
     format_ = format;
-  }
-
-  if (config_["interval"] == "once") {
-    // Endlessly
-    interval_ = std::chrono::seconds(100000000);
-  } else if (config_["interval"].isUInt()) {
-    interval_ = std::chrono::seconds(config_["interval"].asUInt());
-  } else {
-    interval_ = std::chrono::seconds(interval);
   }
 
   if (config_["max-length"].isUInt()) {
@@ -53,8 +47,7 @@ auto ALabel::update() -> void {
   AModule::update();
 }
 
-auto ALabel::update(std::string format, waybar::args& args)
-    -> void {
+auto ALabel::update(std::string format, waybar::args& args) -> void {
   // Hide the module on empty format
   if (format.empty()) {
     event_box_.hide();
