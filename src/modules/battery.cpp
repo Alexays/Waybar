@@ -32,7 +32,7 @@ void waybar::modules::Battery::worker() {
   };
   thread_ = [this] {
     struct inotify_event event = {0};
-    int                  nbytes = read(fd_, &event, sizeof(event));
+    int nbytes = read(fd_, &event, sizeof(event));
     if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
       thread_.stop();
       return;
@@ -75,16 +75,16 @@ void waybar::modules::Battery::getBatteries() {
 
 const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() const {
   try {
-    uint16_t    total = 0;
-    uint32_t    total_power = 0;   // μW
-    uint32_t    total_energy = 0;  // μWh
-    uint32_t    total_energy_full = 0;
+    uint16_t total = 0;
+    uint32_t total_power = 0;   // μW
+    uint32_t total_energy = 0;  // μWh
+    uint32_t total_energy_full = 0;
     std::string status = "Unknown";
     for (auto const& bat : batteries_) {
-      uint16_t    capacity;
-      uint32_t    power_now;
-      uint32_t    energy_full;
-      uint32_t    energy_now;
+      uint16_t capacity;
+      uint32_t power_now;
+      uint32_t energy_full;
+      uint32_t energy_now;
       std::string _status;
       std::ifstream(bat / "capacity") >> capacity;
       std::ifstream(bat / "status") >> _status;
@@ -120,8 +120,8 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     if (config_["full-at"].isUInt()) {
       auto full_at = config_["full-at"].asUInt();
       if (full_at < 100) {
-        capacity = static_cast<uint16_t>(static_cast<int> static_cast<float>(capacity) /
-                                         static_cast<float>(full_at) * 100);
+        capacity = static_cast<uint16_t>(
+            (static_cast<float>(capacity) / static_cast<float>(full_at)) * 100);
         if (capacity > full_at) {
           capacity = full_at;
         }
@@ -153,14 +153,14 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
-  auto     format = std::string("{H} h {M} min");
+  auto format = std::string("{H} h {M} min");
   if (config_["format-time"].isString()) {
     format = config_["format-time"].asString();
   }
   return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
 }
 
-auto waybar::modules::Battery::update(std::string format, waybar::args &args) -> void {
+auto waybar::modules::Battery::update(std::string format, waybar::args& args) -> void {
   // Remove older status
   if (!status_.empty()) {
     label_.get_style_context()->remove_class(status_);
