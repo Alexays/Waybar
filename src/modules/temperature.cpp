@@ -33,6 +33,7 @@ auto Temperature::update(std::string format, waybar::args& args) -> void {
   args.push_back(temperature_c);
   auto temperatureCArg = fmt::arg("temperatureC", temperature_c);
   args.push_back(std::cref(temperatureCArg));
+  auto temp = temperature_c;
 
   bool critical = false;
 
@@ -40,9 +41,17 @@ auto Temperature::update(std::string format, waybar::args& args) -> void {
   if (ALabel::hasFormat("") || ALabel::hasFormat("temperatureC")) {
     getState(temperature_c);
     critical = isCritical(temperature_c);
-  } else if (ALabel::hasFormat("temperatureF")) {
-    getState(temperature_f);
-    critical = isCritical(temperature_f);
+  }
+
+  if (ALabel::hasFormat("temperatureF")) {
+    auto temperature_f = temperature_c * 1.8 + 32;
+    auto temperatureFArg = fmt::arg("temperatureF", temperature_f);
+    if (!(ALabel::hasFormat("") || ALabel::hasFormat("temperatureC"))) {
+      temp = temperature_f;
+      getState(temperature_f);
+      critical = isCritical(temperature_f);
+    }
+    args.push_back(std::cref(temperatureFArg));
   }
 
   if (critical) {
@@ -54,16 +63,10 @@ auto Temperature::update(std::string format, waybar::args& args) -> void {
     label_.get_style_context()->remove_class("critical");
   }
 
-  if (ALabel::hasFormat("temperatureF")) {
-    auto temperature_f = temperature_c * 1.8 + 32;
-    auto temperatureFArg = fmt::arg("temperatureF", temperature_f);
-    args.push_back(std::cref(temperatureFArg));
-  }
-
   if (ALabel::hasFormat("icon")) {
     auto max_temp =
         config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-    auto icon = getIcon(temperature_c, "", max_temp);
+    auto icon = getIcon(temp, "", max_temp);
     auto iconArg = fmt::arg("icon", icon);
     args.push_back(std::cref(iconArg));
   }
