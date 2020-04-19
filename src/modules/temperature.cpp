@@ -1,12 +1,18 @@
 #include "modules/temperature.hpp"
+
 #include <filesystem>
 
-waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
-    : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
+namespace waybar::modules {
+
+Temperature::Temperature(const std::string& id, const Json::Value& config)
+    : ALabel(config, "temperature", id, "{temperatureC}°C", "{temperatureC}", 10) {
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
   } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
-    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())).path().u8string() + "/" + config_["input-filename"].asString();
+    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString()))
+                     .path()
+                     .u8string() +
+                 "/" + config_["input-filename"].asString();
   } else {
     auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
@@ -21,26 +27,50 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
   };
 }
 
-auto waybar::modules::Temperature::update() -> void {
-  auto [temperature_c, temperature_f] = getTemperature();
-  auto critical = isCritical(temperature_c);
-  auto format = format_;
+auto Temperature::update(std::string format, waybar::args& args) -> void {
+  // Add default arg
+  auto temperature_c = getTemperature();
+  args.push_back(temperature_c);
+  args.push_back(fmt::arg("temperatureC", temperature_c));
+
+  auto temp = temperature_c;
+  bool critical = false;
+
+  // If temperature_c is used, so use celcius, otherwise use farenheit
+  if ((ALabel::hasFormat("") || ALabel::hasFormat("temperatureC"))) {
+    getState(temperature_c);
+    critical = isCritical(temperature_c);
+  } else if (ALabel::hasFormat("temperatureF")) {
+    temp = temperature_f;
+    getState(temperature_f);
+    critical = isCritical(temperature_f);
+  }
+
   if (critical) {
-    format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
+    if (config_["format-critical"].isString()) {
+      format = config_["format-critical"].asString();
+    }
     label_.get_style_context()->add_class("critical");
   } else {
     label_.get_style_context()->remove_class("critical");
   }
-  auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("temperatureC", temperature_c),
-                                fmt::arg("temperatureF", temperature_f),
-                                fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+
+  if (ALabel::hasFormat("temperatureF")) {
+    auto temperature_f = temperature_c * 1.8 + 32;
+    args.push_back(fmt::arg("temperatureF", temperature_f));
+  }
+
+  if (ALabel::hasFormat("icon")) {
+    auto max_temp =
+        config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
+    args.push_back(fmt::arg("icon", getIcon(temp, "", max_temp)));
+  }
+
   // Call parent update
-  ALabel::update();
+  ALabel::update(format, args);
 }
 
-std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {
+uint16_t Temperature::getTemperature() const {
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
@@ -50,13 +80,13 @@ std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {
     getline(temp, line);
   }
   temp.close();
-  auto                           temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
-  auto                           temperature_f = temperature_c * 1.8 + 32;
-  std::tuple<uint16_t, uint16_t> temperatures(std::round(temperature_c), std::round(temperature_f));
-  return temperatures;
+  auto temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
+  return std::round(temperature_c);
 }
 
-bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {
+bool Temperature::isCritical(uint16_t temperature_c) const {
   return config_["critical-threshold"].isInt() &&
          temperature_c >= config_["critical-threshold"].asInt();
 }
+
+}  // namespace waybar::modules

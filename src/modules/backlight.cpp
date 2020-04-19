@@ -1,15 +1,13 @@
 #include "modules/backlight.hpp"
 
-#include <algorithm>
-#include <chrono>
-#include <memory>
-
+#include <fmt/format.h>
 #include <libudev.h>
-
 #include <sys/epoll.h>
 #include <unistd.h>
 
-#include <fmt/format.h>
+#include <algorithm>
+#include <chrono>
+#include <memory>
 
 namespace {
 class FileDescriptor {
@@ -75,20 +73,22 @@ void check_nn(const void *ptr, const char *message = "ptr was null") {
 }
 }  // namespace
 
-waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max)
+namespace waybar::modules {
+
+Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max)
     : name_(std::move(name)), actual_(actual), max_(max) {}
 
-std::string_view waybar::modules::Backlight::BacklightDev::name() const { return name_; }
+std::string_view Backlight::BacklightDev::name() const { return name_; }
 
-int waybar::modules::Backlight::BacklightDev::get_actual() const { return actual_; }
+int Backlight::BacklightDev::get_actual() const { return actual_; }
 
-void waybar::modules::Backlight::BacklightDev::set_actual(int actual) { actual_ = actual; }
+void Backlight::BacklightDev::set_actual(int actual) { actual_ = actual; }
 
-int waybar::modules::Backlight::BacklightDev::get_max() const { return max_; }
+int Backlight::BacklightDev::get_max() const { return max_; }
 
-void waybar::modules::Backlight::BacklightDev::set_max(int max) { max_ = max; }
+void Backlight::BacklightDev::set_max(int max) { max_ = max; }
 
-waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
+Backlight::Backlight(const std::string &id, const Json::Value &config)
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
   // Get initial state
@@ -159,9 +159,7 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
   };
 }
 
-waybar::modules::Backlight::~Backlight() = default;
-
-auto waybar::modules::Backlight::update() -> void {
+auto Backlight::update() -> void {
   decltype(devices_) devices;
   {
     std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
@@ -192,8 +190,8 @@ auto waybar::modules::Backlight::update() -> void {
 }
 
 template <class ForwardIt>
-const waybar::modules::Backlight::BacklightDev *waybar::modules::Backlight::best_device(
-    ForwardIt first, ForwardIt last, std::string_view preferred_device) {
+const Backlight::BacklightDev *Backlight::best_device(ForwardIt first, ForwardIt last,
+                                                      std::string_view preferred_device) {
   const auto found = std::find_if(
       first, last, [preferred_device](const auto &dev) { return dev.name() == preferred_device; });
   if (found != last) {
@@ -207,8 +205,8 @@ const waybar::modules::Backlight::BacklightDev *waybar::modules::Backlight::best
 }
 
 template <class ForwardIt, class Inserter>
-void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, Inserter inserter,
-                                               udev_device *dev) {
+void Backlight::upsert_device(ForwardIt first, ForwardIt last, Inserter inserter,
+                              udev_device *dev) {
   const char *name = udev_device_get_sysname(dev);
   check_nn(name);
 
@@ -235,17 +233,18 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
 }
 
 template <class ForwardIt, class Inserter>
-void waybar::modules::Backlight::enumerate_devices(ForwardIt first, ForwardIt last,
-                                                   Inserter inserter, udev *udev) {
+void Backlight::enumerate_devices(ForwardIt first, ForwardIt last, Inserter inserter, udev *udev) {
   std::unique_ptr<udev_enumerate, UdevEnumerateDeleter> enumerate{udev_enumerate_new(udev)};
   udev_enumerate_add_match_subsystem(enumerate.get(), "backlight");
   udev_enumerate_scan_devices(enumerate.get());
   udev_list_entry *enum_devices = udev_enumerate_get_list_entry(enumerate.get());
   udev_list_entry *dev_list_entry;
   udev_list_entry_foreach(dev_list_entry, enum_devices) {
-    const char *                                    path = udev_list_entry_get_name(dev_list_entry);
+    const char *path = udev_list_entry_get_name(dev_list_entry);
     std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_device_new_from_syspath(udev, path)};
     check_nn(dev.get(), "dev new failed");
     upsert_device(first, last, inserter, dev.get());
   }
 }
+
+}  // namespace waybar::modules

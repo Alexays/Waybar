@@ -1,23 +1,42 @@
 #include "ALabel.hpp"
+
 #include <fmt/format.h>
+
 #include <util/command.hpp>
 
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
-               const std::string& format, uint16_t interval, bool ellipsize)
-    : AModule(config, name, id, config["format-alt"].isString()),
-      format_(config_["format"].isString() ? config_["format"].asString() : format),
-      interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds(100000000)
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
-      default_format_(format_) {
+               const std::string& format, const std::string& tooltipFormat, uint16_t interval,
+               bool ellipsize)
+    : AModule(config, name, id, tooltipFormat, config["format-alt"].isString()) {
   label_.set_name(name);
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
   event_box_.add(label_);
+
+  if (config_["format"].isString()) {
+    format_ = config_["format"].asString();
+  } else {
+    format_ = format;
+  }
+
+  if (config_["tooltip-format"].isString()) {
+    tooltipFormat_ = config_["tooltip-format"].asString();
+  } else {
+    tooltipFormat_ tooltipFormat;
+  }
+
+  if (config_["interval"] == "once") {
+    // Endlessly
+    interval_ = std::chrono::seconds(100000000);
+  } else if (config_["interval"].isUInt()) {
+    interval_ = config_["interval"].asUInt();
+  } else {
+    interval_ = interval;
+  }
+
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asUInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
@@ -31,7 +50,43 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 }
 
 auto ALabel::update() -> void {
+  // Call parent update
   AModule::update();
+}
+
+auto ALabel::update(std::string format, waybar::args& args, std::string& defaultTooltip = "")
+    -> void {
+  // Hide the module on empty format
+  if (format.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+    // Set the label
+    if (alt_ && config_["format-alt"].isString()) {
+      label_.set_markup(fmt::vformat(config_["format-alt"].asString(), args));
+    } else {
+      label_.set_markup(fmt::vformat(format, args));
+    }
+
+    // Add tooltip if enabled and not already set
+    if (AModule::tooltipEnabled() && label_.get_tooltip_text().empty()) {
+      if (config_["tooltip-format"].isString()) {
+        auto tooltip_format = config_["tooltip-format"].asString();
+        auto tooltip_text = fmt::vformat(tooltip_format, args);
+        label_.set_tooltip_markup(tooltip_text);
+      } else if (!defaultTooltip.empty()) {
+        label_.set_tooltip_markup(fmt::vformat(defaultTooltip, args));
+      }
+    }
+  }
+
+  // Call parent update
+  AModule::update();
+}
+
+bool ALabel::hasFormat(const std::string& key) const {
+  return format_.find("{" + key + "}") != std::string::npos ||
+         format_.find("{" + key + ":") != std::string::npos;
 }
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
@@ -57,21 +112,16 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
-    if (alt_ && config_["format-alt"].isString()) {
-      format_ = config_["format-alt"].asString();
-    } else {
-      format_ = default_format_;
-    }
   }
   return AModule::handleToggle(e);
 }
 
-std::string ALabel::getState(uint8_t value, bool lesser) {
+std::string ALabel::getState(uint16_t value, bool lesser) {
   if (!config_["states"].isObject()) {
     return "";
   }
   // Get current state
-  std::vector<std::pair<std::string, uint8_t>> states;
+  std::vector<std::pair<std::string, uint16_t>> states;
   if (config_["states"].isObject()) {
     for (auto it = config_["states"].begin(); it != config_["states"].end(); ++it) {
       if (it->isUInt() && it.key().isString()) {

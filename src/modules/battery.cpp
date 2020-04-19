@@ -1,8 +1,9 @@
 #include "modules/battery.hpp"
+
 #include <spdlog/spdlog.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60) {
+    : ALabel(config, "battery", id, "{capacity}%", "{time}", 60) {
   getBatteries();
   fd_ = inotify_init1(IN_CLOEXEC);
   if (fd_ == -1) {
@@ -119,7 +120,8 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     if (config_["full-at"].isUInt()) {
       auto full_at = config_["full-at"].asUInt();
       if (full_at < 100) {
-        capacity = static_cast<float>(capacity / full_at) * 100;
+        capacity = static_cast<uint16_t>(static_cast<int> static_cast<float>(capacity) /
+                                         static_cast<float>(full_at) * 100);
         if (capacity > full_at) {
           capacity = full_at;
         }
@@ -147,45 +149,58 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
   return "Unknown";
 }
 
-const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemaining) {
+const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemaining) const {
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
-  auto format = std::string("{H} h {M} min");
+  auto     format = std::string("{H} h {M} min");
   if (config_["format-time"].isString()) {
     format = config_["format-time"].asString();
   }
   return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
 }
 
-auto waybar::modules::Battery::update() -> void {
-  auto [capacity, time_remaining, status] = getInfos();
-  if (status == "Unknown") {
-    status = getAdapterStatus(capacity);
+auto waybar::modules::Battery::update(std::string format, waybar::args &args) -> void {
+  // Remove older status
+  if (!status_.empty()) {
+    label_.get_style_context()->remove_class(status_);
   }
-  if (tooltipEnabled()) {
-    std::string tooltip_text;
+
+  auto [capacity, time_remaining, status_] = getInfos();
+  // If status is `Unknown` fallback to adapter status
+  if (status_ == "Unknown") {
+    status_ = getAdapterStatus(capacity);
+  }
+
+  // Add status class
+  label_.get_style_context()->add_class(status_);
+
+  // Add capacity format arg
+  args.push_back(fmt::arg("capacity", capacity));
+
+  // Add icon based on capacity and state
+  auto state = getState(capacity, true);
+  args.push_back(fmt::arg("icon", getIcon(capacity, state)));
+
+  // Add time remaining
+  args.push_back(fmt::arg("time", formatTimeRemaining(time_remaining)));
+
+  // Set tooltip
+  // TODO: tooltip-format based on args
+  if (AModule::tooltipEnabled()) {
+    std::string tooltip_text = status;
     if (time_remaining != 0) {
       std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
       tooltip_text = time_to + ": " + formatTimeRemaining(time_remaining);
-    } else {
-      tooltip_text = status;
     }
     label_.set_tooltip_text(tooltip_text);
   }
-  // Transform to lowercase
-  std::transform(status.begin(), status.end(), status.begin(), ::tolower);
-  // Replace space with dash
+
+  // Transform to lowercase and replace space with dash
   std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
-    return ch == ' ' ? '-' : ch;
+    return ch == ' ' ? '-' : std::tolower(ch);
   });
-  auto format = format_;
-  auto state = getState(capacity, true);
-  if (!old_status_.empty()) {
-    label_.get_style_context()->remove_class(old_status_);
-  }
-  label_.get_style_context()->add_class(status);
-  old_status_ = status;
+
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
   } else if (config_["format-" + status].isString()) {
@@ -193,15 +208,7 @@ auto waybar::modules::Battery::update() -> void {
   } else if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
   }
-  if (format.empty()) {
-    event_box_.hide();
-  } else {
-    event_box_.show();
-    label_.set_markup(fmt::format(format,
-                                  fmt::arg("capacity", capacity),
-                                  fmt::arg("icon", getIcon(capacity, state)),
-                                  fmt::arg("time", formatTimeRemaining(time_remaining))));
-  }
+
   // Call parent update
-  ALabel::update();
+  ALabel::update(format, args);
 }

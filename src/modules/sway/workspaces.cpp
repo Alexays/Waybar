@@ -1,10 +1,11 @@
 #include "modules/sway/workspaces.hpp"
+
 #include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
+    : AModule(config, "workspaces", id, "", false, !config["disable-scroll"].asBool()),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.set_name("workspaces");
@@ -44,7 +45,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
     try {
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto                        payload = parser_.parse(res.payload);
+        auto payload = parser_.parse(res.payload);
         workspaces_.clear();
         std::copy_if(payload.begin(),
                      payload.end(),
@@ -57,12 +58,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
         // adding persistent workspaces (as per the config file)
         if (config_["persistent_workspaces"].isObject()) {
-          const Json::Value &            p_workspaces = config_["persistent_workspaces"];
+          const Json::Value &p_workspaces = config_["persistent_workspaces"];
           const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
           for (const std::string &p_w_name : p_workspaces_names) {
             const Json::Value &p_w = p_workspaces[p_w_name];
-            auto               it =
+            auto it =
                 std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
                   return node["name"].asString() == p_w_name;
                 });
@@ -127,7 +128,7 @@ bool Workspaces::filterButtons() {
 
 auto Workspaces::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
-  bool                        needReorder = filterButtons();
+  bool needReorder = filterButtons();
   for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
     auto bit = buttons_.find((*it)["name"].asString());
     if (bit == buttons_.end()) {
@@ -178,7 +179,7 @@ auto Workspaces::update() -> void {
 }
 
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
-  auto   pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
+  auto pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
@@ -208,7 +209,8 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
         return config_["format-icons"][key].asString();
       }
-    } else if (config_["format_icons"]["persistent"].isString() && node["target_output"].isString()) {
+    } else if (config_["format_icons"]["persistent"].isString() &&
+               node["target_output"].isString()) {
       return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
@@ -251,7 +253,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
 }
 
 const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
-                                                bool                               prev) const {
+                                                bool prev) const {
   if (prev && it == workspaces_.begin() && !config_["disable-scroll-wraparound"].asBool()) {
     return (*(--workspaces_.end()))["name"].asString();
   }

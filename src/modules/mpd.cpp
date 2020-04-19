@@ -3,8 +3,10 @@
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
-waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
-    : ALabel(config, "mpd", id, "{album} - {artist} - {title}", 5),
+namespace waybar::modules {
+
+MPD::MPD(const std::string& id, const Json::Value& config)
+    : ALabel(config, "mpd", id, "{album} - {artist} - {title}", "", 5),
       module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
       port_(config_["port"].isUInt() ? config["port"].asUInt() : 0),
@@ -34,14 +36,14 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
 }
 
-auto waybar::modules::MPD::update() -> void {
+auto MPD::update(std::string format, waybar::args &args) -> void {
   std::lock_guard guard(connection_lock_);
   tryConnect();
 
   if (connection_ != nullptr) {
     try {
       bool wasPlaying = playing();
-      if(!wasPlaying) {
+      if (!wasPlaying) {
         // Wait until the periodic_updater has stopped
         std::lock_guard periodic_guard(periodic_lock_);
       }
@@ -58,10 +60,10 @@ auto waybar::modules::MPD::update() -> void {
   setLabel();
 
   // Call parent update
-  ALabel::update();
+  ALabel::update(format, args);
 }
 
-std::thread waybar::modules::MPD::event_listener() {
+std::thread MPD::event_listener() {
   return std::thread([this] {
     while (true) {
       try {
@@ -80,7 +82,7 @@ std::thread waybar::modules::MPD::event_listener() {
   });
 }
 
-std::thread waybar::modules::MPD::periodic_updater() {
+std::thread MPD::periodic_updater() {
   return std::thread([this] {
     std::lock_guard guard(periodic_lock_);
     while (connection_ != nullptr && playing()) {
@@ -90,7 +92,7 @@ std::thread waybar::modules::MPD::periodic_updater() {
   });
 }
 
-std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) {
+std::string MPD::getTag(mpd_tag_type type, unsigned idx) {
   std::string result =
       config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
   const char* tag = mpd_song_get_tag(song_.get(), type, idx);
@@ -101,7 +103,7 @@ std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) {
   return result;
 }
 
-void waybar::modules::MPD::setLabel() {
+void MPD::setLabel() {
   if (connection_ == nullptr) {
     label_.get_style_context()->add_class("disconnected");
     label_.get_style_context()->remove_class("stopped");
@@ -128,7 +130,7 @@ void waybar::modules::MPD::setLabel() {
 
   auto format = format_;
 
-  std::string          artist, album_artist, album, title, date;
+  std::string artist, album_artist, album, title, date;
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
@@ -144,8 +146,8 @@ void waybar::modules::MPD::setLabel() {
       label_.get_style_context()->add_class("playing");
       label_.get_style_context()->remove_class("paused");
     } else if (paused()) {
-      format =
-        config_["format-paused"].isString() ? config_["format-paused"].asString() : config_["format"].asString();
+      format = config_["format-paused"].isString() ? config_["format-paused"].asString()
+                                                   : config_["format"].asString();
       label_.get_style_context()->add_class("paused");
       label_.get_style_context()->remove_class("playing");
     }
@@ -161,13 +163,13 @@ void waybar::modules::MPD::setLabel() {
     totalTime = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
   }
 
-  bool        consumeActivated = mpd_status_get_consume(status_.get());
+  bool consumeActivated = mpd_status_get_consume(status_.get());
   std::string consumeIcon = getOptionIcon("consume", consumeActivated);
-  bool        randomActivated = mpd_status_get_random(status_.get());
+  bool randomActivated = mpd_status_get_random(status_.get());
   std::string randomIcon = getOptionIcon("random", randomActivated);
-  bool        repeatActivated = mpd_status_get_repeat(status_.get());
+  bool repeatActivated = mpd_status_get_repeat(status_.get());
   std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
-  bool        singleActivated = mpd_status_get_single(status_.get());
+  bool singleActivated = mpd_status_get_single(status_.get());
   std::string singleIcon = getOptionIcon("single", singleActivated);
 
   // TODO: format can fail
@@ -205,7 +207,7 @@ void waybar::modules::MPD::setLabel() {
   }
 }
 
-std::string waybar::modules::MPD::getStateIcon() {
+std::string MPD::getStateIcon() {
   if (!config_["state-icons"].isObject()) {
     return "";
   }
@@ -227,7 +229,7 @@ std::string waybar::modules::MPD::getStateIcon() {
   }
 }
 
-std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool activated) {
+std::string MPD::getOptionIcon(std::string optionName, bool activated) {
   if (!config_[optionName + "-icons"].isObject()) {
     return "";
   }
@@ -244,7 +246,7 @@ std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool act
   }
 }
 
-void waybar::modules::MPD::tryConnect() {
+void MPD::tryConnect() {
   if (connection_ != nullptr) {
     return;
   }
@@ -272,7 +274,7 @@ void waybar::modules::MPD::tryConnect() {
   }
 }
 
-void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
+void MPD::checkErrors(mpd_connection* conn) {
   switch (mpd_connection_get_error(conn)) {
     case MPD_ERROR_SUCCESS:
       mpd_connection_clear_error(conn);
@@ -291,7 +293,7 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
   }
 }
 
-void waybar::modules::MPD::fetchState() {
+void MPD::fetchState() {
   auto conn = connection_.get();
   status_ = unique_status(mpd_run_status(conn), &mpd_status_free);
   checkErrors(conn);
@@ -302,7 +304,7 @@ void waybar::modules::MPD::fetchState() {
   checkErrors(conn);
 }
 
-void waybar::modules::MPD::waitForEvent() {
+void MPD::waitForEvent() {
   auto conn = alternate_connection_.get();
   // Wait for a player (play/pause), option (random, shuffle, etc.), or playlist
   // change
@@ -326,7 +328,7 @@ void waybar::modules::MPD::waitForEvent() {
   checkErrors(conn);
 }
 
-bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
+bool MPD::handlePlayPause(GdkEventButton* const& e) {
   if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || connection_ == nullptr) {
     return false;
   }
@@ -346,10 +348,12 @@ bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
   return true;
 }
 
-bool waybar::modules::MPD::stopped() {
+bool MPD::stopped() {
   return connection_ == nullptr || state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP;
 }
 
-bool waybar::modules::MPD::playing() { return connection_ != nullptr && state_ == MPD_STATE_PLAY; }
+bool MPD::playing() { return connection_ != nullptr && state_ == MPD_STATE_PLAY; }
 
-bool waybar::modules::MPD::paused() { return connection_ != nullptr && state_ == MPD_STATE_PAUSE; }
+bool MPD::paused() { return connection_ != nullptr && state_ == MPD_STATE_PAUSE; }
+
+}  // namespace waybar::modules

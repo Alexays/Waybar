@@ -13,7 +13,7 @@ class Tray : public AModule {
  public:
   Tray(const std::string&, const Bar&, const Json::Value&);
   ~Tray() = default;
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   void onAdd(std::unique_ptr<Item>& item);

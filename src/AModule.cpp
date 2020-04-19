@@ -1,13 +1,19 @@
 #include "AModule.hpp"
+
 #include <fmt/format.h>
+
 #include <util/command.hpp>
 
 namespace waybar {
 
-AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
-                 bool enable_click, bool enable_scroll)
+AModule::AModule(const Json::Value& config,
+                 const std::string& name,
+                 const std::string& id,
+                 const std::string& tooltipFormat,
+                 bool enable_click,
+                 bool enable_scroll)
     : config_(std::move(config)) {
-  // configure events' user commands
+  // Configure events' user commands
   if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
       config_["on-click-backward"].isString() || config_["on-click-forward"].isString() ||
       config_["on-click-right"].isString() || enable_click) {
@@ -56,11 +62,15 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
 }
 
 AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
-  switch (e -> direction) {
-    case GDK_SCROLL_UP: return SCROLL_DIR::UP;
-    case GDK_SCROLL_DOWN: return SCROLL_DIR::DOWN;
-    case GDK_SCROLL_LEFT: return SCROLL_DIR::LEFT;
-    case GDK_SCROLL_RIGHT: return SCROLL_DIR::RIGHT;
+  switch (e->direction) {
+    case GDK_SCROLL_UP:
+      return SCROLL_DIR::UP;
+    case GDK_SCROLL_DOWN:
+      return SCROLL_DIR::DOWN;
+    case GDK_SCROLL_LEFT:
+      return SCROLL_DIR::LEFT;
+    case GDK_SCROLL_RIGHT:
+      return SCROLL_DIR::RIGHT;
     case GDK_SCROLL_SMOOTH: {
       SCROLL_DIR dir{SCROLL_DIR::NONE};
 
@@ -98,7 +108,8 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
       return dir;
     }
     // Silence -Wreturn-type:
-    default: return SCROLL_DIR::NONE;
+    default:
+      return SCROLL_DIR::NONE;
   }
 }
 

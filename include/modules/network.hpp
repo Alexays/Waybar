@@ -9,6 +9,7 @@
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
 #include <sys/epoll.h>
+
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 #include "util/rfkill.hpp"
@@ -19,11 +20,16 @@ class Network : public ALabel {
  public:
   Network(const std::string&, const Json::Value&);
   ~Network();
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
-  static const uint8_t MAX_RETRY = 5;
-  static const uint8_t EPOLL_MAX = 200;
+  static constexpr const uint8_t MAX_RETRY = 5;
+  static constexpr const uint8_t EPOLL_MAX = 200;
+  // std::ifstream does not take std::string_view as param
+  static constexpr const char* NETSTAT_FILE = "/proc/net/netstat";
+  static constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
+  static constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
+  static constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
 
   static int handleEvents(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);

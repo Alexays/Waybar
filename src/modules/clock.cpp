@@ -1,4 +1,5 @@
 #include "modules/clock.hpp"
+
 #include <sstream>
 #include <type_traits>
 #ifdef HAVE_LANGINFO_1STDAY
@@ -9,9 +10,7 @@
 using waybar::modules::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "clock", id, "{:%H:%M}", 60)
-    , fixed_time_zone_(false)
-{
+    : ALabel(config, "clock", id, "{:%H:%M}", "{calendar}", 60), fixed_time_zone_(false) {
   if (config_["timezone"].isString()) {
     time_zone_ = date::locate_zone(config_["timezone"].asString());
     fixed_time_zone_ = true;
@@ -32,30 +31,25 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   };
 }
 
-auto waybar::modules::Clock::update() -> void {
+auto waybar::modules::Clock::update(std::string format, waybar::args& args) -> void {
+  // Default to fmt when no timezone is specified
   if (!fixed_time_zone_) {
-    // Time zone can change. Be sure to pick that.
-    time_zone_ = date::current_zone();
+    auto localtime = fmt::localtime(std::time(nullptr));
+    args.push_back(localtime);
+  } else {
+    auto now = std::chrono::system_clock::now();
+    auto nowSecs = date::floor<std::chrono::seconds>(now);
+    waybar_time wtime = {locale_, date::make_zoned(time_zone_, nowSecs)};
+    args.push_back(wtime);
   }
-  auto        now = std::chrono::system_clock::now();
-  waybar_time wtime = {locale_,
-                       date::make_zoned(time_zone_, date::floor<std::chrono::seconds>(now))};
 
-  auto text = fmt::format(format_, wtime);
-  label_.set_markup(text);
-
-  if (tooltipEnabled()) {
-    if (config_["tooltip-format"].isString()) {
-      const auto calendar = calendar_text(wtime);
-      auto tooltip_format = config_["tooltip-format"].asString();
-      auto tooltip_text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendar));
-      label_.set_tooltip_markup(tooltip_text);
-    } else {
-      label_.set_tooltip_markup(text);
-    }
+  if (AModule::tooltipEnabled()) {
+    const auto calendar = calendar_text(wtime);
+    args.push_back(fmt::arg("calendar", calendar));
   }
+
   // Call parent update
-  ALabel::update();
+  ALabel::update(format, args);
 }
 
 auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::string {
@@ -73,12 +67,12 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   weekdays_header(first_dow, os);
 
   // First week prefixed with spaces if needed.
-  auto wd = date::weekday(ym/1);
+  auto wd = date::weekday(ym / 1);
   auto empty_days = (wd - first_dow).count();
   if (empty_days > 0) {
     os << std::string(empty_days * 3 - 1, ' ');
   }
-  auto last_day = (ym/date::literals::last).day();
+  auto last_day = (ym / date::literals::last).day();
   for (auto d = date::day(1); d <= last_day; ++d, ++wd) {
     if (wd != first_dow) {
       os << ' ';
@@ -98,7 +92,8 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   return result;
 }
 
-auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void {
+auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std::ostream& os)
+    -> void {
   auto wd = first_dow;
   do {
     if (wd != first_dow) os << ' ';
@@ -125,11 +120,11 @@ using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
 // Computations done similarly to Linux cal utility.
 auto waybar::modules::Clock::first_day_of_week() -> date::weekday {
 #ifdef HAVE_LANGINFO_1STDAY
-  deleting_unique_ptr<std::remove_pointer<locale_t>::type, freelocale>
-    posix_locale{newlocale(LC_ALL, locale_.name().c_str(), nullptr)};
+  deleting_unique_ptr<std::remove_pointer<locale_t>::type, freelocale> posix_locale{
+      newlocale(LC_ALL, locale_.name().c_str(), nullptr)};
   if (posix_locale) {
-    const int i = (std::intptr_t) nl_langinfo_l(_NL_TIME_WEEK_1STDAY, posix_locale.get());
-    auto ymd = date::year(i / 10000)/(i / 100 % 100)/(i % 100);
+    const int i = (std::intptr_t)nl_langinfo_l(_NL_TIME_WEEK_1STDAY, posix_locale.get());
+    auto ymd = date::year(i / 10000) / (i / 100 % 100) / (i % 100);
     auto wd = date::weekday(ymd);
     uint8_t j = *nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, posix_locale.get());
     return wd + date::days(j - 1);

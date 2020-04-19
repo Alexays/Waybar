@@ -14,7 +14,7 @@ class Window : public ALabel, public sigc::trackable {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   void                                                   onEvent(const struct Ipc::ipc_response&);

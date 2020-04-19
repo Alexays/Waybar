@@ -2,10 +2,11 @@
 #include <gtk-layer-shell.h>
 #endif
 
+#include <spdlog/spdlog.h>
+
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
-#include <spdlog/spdlog.h>
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
@@ -71,23 +72,29 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
       if (margins.size() == 2) {
         auto vertical_margins = std::stoi(margins[0], nullptr, 10);
         auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
-        margins_ = {.top = vertical_margins,
-                    .right = horizontal_margins,
-                    .bottom = vertical_margins,
-                    .left = horizontal_margins};
+        margins_ = {
+            .top = vertical_margins,
+            .right = horizontal_margins,
+            .bottom = vertical_margins,
+            .left = horizontal_margins,
+        };
       }
       if (margins.size() == 3) {
         auto horizontal_margins = std::stoi(margins[1], nullptr, 10);
-        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
-                    .right = horizontal_margins,
-                    .bottom = std::stoi(margins[2], nullptr, 10),
-                    .left = horizontal_margins};
+        margins_ = {
+            .top = std::stoi(margins[0], nullptr, 10),
+            .right = horizontal_margins,
+            .bottom = std::stoi(margins[2], nullptr, 10),
+            .left = horizontal_margins,
+        };
       }
       if (margins.size() == 4) {
-        margins_ = {.top = std::stoi(margins[0], nullptr, 10),
-                    .right = std::stoi(margins[1], nullptr, 10),
-                    .bottom = std::stoi(margins[2], nullptr, 10),
-                    .left = std::stoi(margins[3], nullptr, 10)};
+        margins_ = {
+            .top = std::stoi(margins[0], nullptr, 10),
+            .right = std::stoi(margins[1], nullptr, 10),
+            .bottom = std::stoi(margins[2], nullptr, 10),
+            .left = std::stoi(margins[3], nullptr, 10),
+        };
       }
     } catch (...) {
       spdlog::warn("Invalid margins: {}", config["margin"].asString());
@@ -380,8 +387,9 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
           modules_right_.emplace_back(module);
         }
         module->dp.connect([module, &name] {
+          fmt::dynamic_format_arg_store<fmt::format_context> args;
           try {
-            module->update();
+            module->update(module->format_, args);
           } catch (const std::exception& e) {
             spdlog::error("{}: {}", name.asString(), e.what());
           }

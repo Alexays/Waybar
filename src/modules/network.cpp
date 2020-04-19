@@ -1,20 +1,17 @@
 #include "modules/network.hpp"
+
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
-#include <fstream>
+
 #include <cassert>
+#include <fstream>
+
 #include "util/format.hpp"
 #include "util/rfkill.hpp"
 
 namespace {
 
 using namespace waybar::util;
-
-constexpr const char *NETSTAT_FILE =
-    "/proc/net/netstat";  // std::ifstream does not take std::string_view as param
-constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
-constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
-constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
 
 std::ifstream                     netstat(NETSTAT_FILE);
 std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
@@ -78,7 +75,7 @@ std::optional<unsigned long long> read_netstat(std::string_view category, std::s
 }  // namespace
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, "{ifname}", 60),
+    : ALabel(config, "network", id, "{ifname}", "{ipaddr}" 60),
       ifid_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
@@ -235,8 +232,7 @@ void waybar::modules::Network::worker() {
 
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1) {
-    if (rfkill_.getState())
-      return "disabled";
+    if (rfkill_.getState()) return "disabled";
     return "disconnected";
   }
   if (ipaddr_.empty()) return "linked";
@@ -469,8 +465,8 @@ void waybar::modules::Network::getInterfaceAddress() {
   while (ifa != nullptr) {
     if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
         ifa->ifa_name == ifname_) {
-      char ipaddr[INET6_ADDRSTRLEN];
-      char netmask[INET6_ADDRSTRLEN];
+      char         ipaddr[INET6_ADDRSTRLEN];
+      char         netmask[INET6_ADDRSTRLEN];
       unsigned int cidr = 0;
       if (family_ == AF_INET) {
         ipaddr_ = inet_ntop(AF_INET,
@@ -744,7 +740,7 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     const int hardwareMax = -20;
     const int hardwareMin = -90;
     const int strength =
-      ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
+        ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
     signal_strength_ = std::clamp(strength, 0, 100);
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {

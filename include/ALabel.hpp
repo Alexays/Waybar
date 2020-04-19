@@ -3,28 +3,33 @@
 #include <glibmm/markup.h>
 #include <gtkmm/label.h>
 #include <json/json.h>
+
 #include "AModule.hpp"
 
 namespace waybar {
+
+using args = fmt::dynamic_format_arg_store<fmt::format_context>;
 
 class ALabel : public AModule {
  public:
   ALabel(const Json::Value &, const std::string &, const std::string &, const std::string &format,
          uint16_t interval = 0, bool ellipsize = false);
   virtual ~ALabel() = default;
-  virtual auto        update() -> void;
-  virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
+  virtual auto update() -> void override;
+  virtual auto update(const std::string format, waybar::args &args) -> void;
+  virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
 
  protected:
-  Gtk::Label                 label_;
-  std::string                format_;
-  std::string                click_param;
+  Gtk::Label label_;
+  std::string format_;
+  std::string click_param;
   const std::chrono::seconds interval_;
-  bool                       alt_ = false;
-  std::string                default_format_;
+  bool alt_ = false;
 
-  virtual bool        handleToggle(GdkEventButton *const &e);
-  virtual std::string getState(uint8_t value, bool lesser = false);
+  virtual bool hasFormat(const std::string &key) const;
+
+  virtual bool handleToggle(GdkEventButton *const &e);
+  virtual std::string getState(uint16_t value, bool lesser = false);
 };
 
 }  // namespace waybar

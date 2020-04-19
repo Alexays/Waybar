@@ -2,24 +2,29 @@
 #include <numeric>
 
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
-    : ALabel(config, "cpu", id, "{usage}%", 10) {
+    : ALabel(config, "cpu", id, "{usage}%", "", 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
   };
 }
 
-auto waybar::modules::Cpu::update() -> void {
-  // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
-  auto cpu_load = getCpuLoad();
+auto waybar::modules::Cpu::update(std::string format, waybar::args &args) -> void {
+  if (ALabel::hasFormat("load")) {
+    auto cpu_load = getCpuLoad();
+    args.push_back(fmt::arg("load", cpu_load));
+  }
+
+  // Usage is the default format and also the state one
   auto [cpu_usage, tooltip] = getCpuUsage();
-  if (tooltipEnabled()) {
+  args.push_back(fmt::arg("usage", cpu_usage));
+  if (AModule::tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
   getState(cpu_usage);
+
   // Call parent update
-  ALabel::update();
+  ALabel::update(format, args);
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad() {

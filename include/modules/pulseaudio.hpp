@@ -12,7 +12,7 @@ class Pulseaudio : public ALabel {
  public:
   Pulseaudio(const std::string&, const Json::Value&);
   ~Pulseaudio();
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   static void subscribeCb(pa_context*, pa_subscription_event_type_t, uint32_t, void*);

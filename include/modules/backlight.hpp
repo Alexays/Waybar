@@ -36,8 +36,8 @@ class Backlight : public ALabel {
 
  public:
   Backlight(const std::string &, const Json::Value &);
-  ~Backlight();
-  auto update() -> void;
+  ~Backlight() = default;
+  auto update() -> void override;
 
  private:
   template <class ForwardIt>

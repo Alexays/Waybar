@@ -1,8 +1,10 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <csignal>
 #include <string>
+
 #include "ALabel.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
@@ -14,7 +16,7 @@ class Custom : public ALabel {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&);
   ~Custom();
-  auto update() -> void;
+  auto update() -> void override;
   void refresh(int /*signal*/);
 
  private:
@@ -30,7 +32,7 @@ class Custom : public ALabel {
   std::string              alt_;
   std::string              tooltip_;
   std::vector<std::string> class_;
-  int                      percentage_;
+  uint8_t                  percentage_;
   FILE*                    fp_;
   int                      pid_;
   util::command::res       output_;

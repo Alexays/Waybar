@@ -1,7 +1,9 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <fstream>
+
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -11,13 +13,13 @@ class Temperature : public ALabel {
  public:
   Temperature(const std::string&, const Json::Value&);
   ~Temperature() = default;
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
-  std::tuple<uint16_t, uint16_t> getTemperature();
-  bool                           isCritical(uint16_t);
+  int16_t getTemperature() const;
+  bool isCritical(uint16_t) const;
 
-  std::string         file_path_;
+  std::string file_path_;
   util::SleeperThread thread_;
 };
 

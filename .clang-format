@@ -1,6 +1,7 @@
 ---
 BasedOnStyle: Google
-AlignConsecutiveDeclarations: true
 BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
 ColumnLimit: 100
 ...

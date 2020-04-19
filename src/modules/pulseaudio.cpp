@@ -1,7 +1,9 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "pulseaudio", id, "{volume}%"),
+namespace waybar::modules {
+
+Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
+    : ALabel(config, "pulseaudio", id, "{volume}%", "{desc}"),
       mainloop_(nullptr),
       mainloop_api_(nullptr),
       context_(nullptr),
@@ -35,14 +37,14 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
 }
 
-waybar::modules::Pulseaudio::~Pulseaudio() {
+Pulseaudio::~Pulseaudio() {
   mainloop_api_->quit(mainloop_api_, 0);
   pa_threaded_mainloop_stop(mainloop_);
   pa_threaded_mainloop_free(mainloop_);
 }
 
-void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
-  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+void Pulseaudio::contextStateCb(pa_context *c, void *data) {
+  auto pa = static_cast<Pulseaudio *>(data);
   switch (pa_context_get_state(c)) {
     case PA_CONTEXT_TERMINATED:
       pa->mainloop_api_->quit(pa->mainloop_api_, 0);
@@ -69,7 +71,7 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
   }
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+bool Pulseaudio::handleScroll(GdkEventScroll *e) {
   // change the pulse volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -79,9 +81,9 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-  double      volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
+  double volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_volume_t change = volume_tick;
-  pa_cvolume  pa_volume = pa_volume_;
+  pa_cvolume pa_volume = pa_volume_;
   // isDouble returns true for integers as well, just in case
   if (config_["scroll-step"].isDouble()) {
     change = round(config_["scroll-step"].asDouble() * volume_tick);
@@ -102,9 +104,8 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
 /*
  * Called when an event we subscribed to occurs.
  */
-void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 context,
-                                              pa_subscription_event_type_t type, uint32_t idx,
-                                              void *data) {
+void Pulseaudio::subscribeCb(pa_context *context, pa_subscription_event_type_t type, uint32_t idx,
+                             void *data) {
   unsigned facility = type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
   unsigned operation = type & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
   if (operation != PA_SUBSCRIPTION_EVENT_CHANGE) {
@@ -122,8 +123,8 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
 /*
  * Called in response to a volume change request
  */
-void waybar::modules::Pulseaudio::volumeModifyCb(pa_context *c, int success, void *data) {
-  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+void Pulseaudio::volumeModifyCb(pa_context *c, int success, void *data) {
+  auto pa = static_cast<Pulseaudio *>(data);
   if (success != 0) {
     pa_context_get_sink_info_by_index(pa->context_, pa->sink_idx_, sinkInfoCb, data);
   }
@@ -132,9 +133,9 @@ void waybar::modules::Pulseaudio::volumeModifyCb(pa_context *c, int success, voi
 /*
  * Called when the requested source information is ready.
  */
-void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const pa_source_info *i,
-                                               int /*eol*/, void *data) {
-  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+void Pulseaudio::sourceInfoCb(pa_context * /*context*/, const pa_source_info *i, int /*eol*/,
+                              void *data) {
+  auto pa = static_cast<Pulseaudio *>(data);
   if (i != nullptr && pa->default_source_name_ == i->name) {
     auto source_volume = static_cast<float>(pa_cvolume_avg(&(i->volume))) / float{PA_VOLUME_NORM};
     pa->source_volume_ = std::round(source_volume * 100.0F);
@@ -149,9 +150,9 @@ void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const p
 /*
  * Called when the requested sink information is ready.
  */
-void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i,
-                                             int /*eol*/, void *data) {
-  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+void Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, int /*eol*/,
+                            void *data) {
+  auto pa = static_cast<Pulseaudio *>(data);
   if (i != nullptr && pa->default_sink_name_ == i->name) {
     pa->pa_volume_ = i->volume;
     float volume = static_cast<float>(pa_cvolume_avg(&(pa->pa_volume_))) / float{PA_VOLUME_NORM};
@@ -172,9 +173,8 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
  * Called when the requested information on the server is ready. This is
  * used to find the default PulseAudio sink.
  */
-void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_server_info *i,
-                                               void *data) {
-  auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+void Pulseaudio::serverInfoCb(pa_context *context, const pa_server_info *i, void *data) {
+  auto pa = static_cast<Pulseaudio *>(data);
   pa->default_sink_name_ = i->default_sink_name;
   pa->default_source_name_ = i->default_source_name;
 
@@ -194,7 +194,7 @@ static const std::array<std::string, 9> ports = {
     "phone",
 };
 
-const std::string waybar::modules::Pulseaudio::getPortIcon() const {
+const std::string Pulseaudio::getPortIcon() const {
   std::string nameLC = port_name_ + form_factor_;
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
@@ -205,7 +205,8 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const {
   return port_name_;
 }
 
-auto waybar::modules::Pulseaudio::update() -> void {
+auto Pulseaudio::update() -> void {
+  fmt::dynamic_format_arg_store<fmt::format_context> args;
   auto format = format_;
   if (!alt_) {
     std::string format_name = "format";
@@ -225,8 +226,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     } else {
       label_.get_style_context()->remove_class("muted");
     }
-    format =
-      config_[format_name].isString() ? config_[format_name].asString() : format;
+    format = config_[format_name].isString() ? config_[format_name].asString() : format;
   }
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
@@ -242,10 +242,9 @@ auto waybar::modules::Pulseaudio::update() -> void {
                                 fmt::arg("format_source", format_source),
                                 fmt::arg("icon", getIcon(volume_, getPortIcon()))));
   getState(volume_);
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(desc_);
-  }
 
   // Call parent update
-  ALabel::update();
+  ALabel::update(format, args);
 }
+
+}  // namespace waybar::modules

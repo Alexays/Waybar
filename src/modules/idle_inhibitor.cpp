@@ -1,9 +1,11 @@
 #include "modules/idle_inhibitor.hpp"
+
 #include "util/command.hpp"
 
-waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
-                                              const Json::Value& config)
-    : ALabel(config, "idle_inhibitor", id, "{status}"),
+namespace waybar::modules {
+
+IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
+    : ALabel(config, "idle_inhibitor", id, "{status}", "{status}"),
       bar_(bar),
       status_("deactivated"),
       idle_inhibitor_(nullptr),
@@ -14,7 +16,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   dp.emit();
 }
 
-waybar::modules::IdleInhibitor::~IdleInhibitor() {
+IdleInhibitor::~IdleInhibitor() {
   if (idle_inhibitor_ != nullptr) {
     zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
     idle_inhibitor_ = nullptr;
@@ -25,18 +27,23 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
   }
 }
 
-auto waybar::modules::IdleInhibitor::update() -> void {
-  label_.set_markup(
-      fmt::format(format_, fmt::arg("status", status_), fmt::arg("icon", getIcon(0, status_))));
+auto IdleInhibitor::update(std::string format, waybar::args &args) -> void {
+  // Default to status
+  args.push_back(status_);
+  args.push_back(fmt::arg("status", status_));
+
+  // Add status class
   label_.get_style_context()->add_class(status_);
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(status_);
+
+  if (ALabel::hasFormat("icon")) {
+    args.push_back(fmt::arg("icon", getIcon(0, status_)));
   }
+
   // Call parent update
-  ALabel::update();
+  ALabel::update(format, args);
 }
 
-bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
+bool IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
     label_.get_style_context()->remove_class(status_);
     if (idle_inhibitor_ != nullptr) {
@@ -53,3 +60,5 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   ALabel::handleToggle(e);
   return true;
 }
+
+}  // namespace waybar::modules
