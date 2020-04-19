@@ -34,15 +34,13 @@ auto Temperature::update(std::string format, waybar::args& args) -> void {
   auto temperatureCArg = fmt::arg("temperatureC", temperature_c);
   args.push_back(std::cref(temperatureCArg));
 
-  auto temp = temperature_c;
   bool critical = false;
 
   // If temperature_c is used, so use celcius, otherwise use farenheit
-  if ((ALabel::hasFormat("") || ALabel::hasFormat("temperatureC"))) {
+  if (ALabel::hasFormat("") || ALabel::hasFormat("temperatureC")) {
     getState(temperature_c);
     critical = isCritical(temperature_c);
   } else if (ALabel::hasFormat("temperatureF")) {
-    temp = temperature_f;
     getState(temperature_f);
     critical = isCritical(temperature_f);
   }
@@ -65,7 +63,7 @@ auto Temperature::update(std::string format, waybar::args& args) -> void {
   if (ALabel::hasFormat("icon")) {
     auto max_temp =
         config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-    auto icon = getIcon(temp, "", max_temp);
+    auto icon = getIcon(temperature_c, "", max_temp);
     auto iconArg = fmt::arg("icon", icon);
     args.push_back(std::cref(iconArg));
   }

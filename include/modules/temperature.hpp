@@ -14,7 +14,7 @@ class Temperature : public ALabel {
   auto update(std::string format, waybar::args &args) -> void override;
 
  private:
-  int16_t getTemperature() const;
+  uint16_t getTemperature() const;
   bool isCritical(uint16_t) const;
 
   std::string file_path_;

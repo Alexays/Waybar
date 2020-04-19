@@ -202,7 +202,7 @@ auto waybar::modules::Battery::update(std::string format, waybar::args& args) ->
   }
 
   // Transform to lowercase and replace space with dash
-  auto status = status_
+  auto status = status_;
   std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
     return ch == ' ' ? '-' : std::tolower(ch);
   });
