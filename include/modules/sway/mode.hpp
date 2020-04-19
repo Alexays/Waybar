@@ -12,7 +12,7 @@ class Mode : public ALabel, public sigc::trackable {
  public:
   Mode(const std::string&, const Json::Value&);
   ~Mode() = default;
-  auto update() -> void override;
+  auto update(std::string format, waybar::args& args) -> void override;
 
  private:
   void onEvent(const struct Ipc::ipc_response&);
