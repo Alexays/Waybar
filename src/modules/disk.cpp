@@ -51,7 +51,7 @@ auto Disk::update(std::string format, waybar::args &args) -> void {
   }
 
   if (ALabel::hasFormat("percentage_used") || AModule::tooltipEnabled()) {
-    auto percentageUsed = (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks);
+    auto percentageUsed = (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks;
     auto percentageUsedArg = fmt::arg("percentage_used", percentageUsed);
     args.push_back(std::cref(percentageUsedArg));
   }
