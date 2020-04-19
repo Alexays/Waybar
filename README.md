@@ -48,6 +48,7 @@ libinput
 libsigc++
 fmt
 wayland
+wayland-protocols
 wlroots
 chrono-date
 spdlog
