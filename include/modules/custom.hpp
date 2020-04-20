@@ -14,7 +14,7 @@ class Custom : public ALabel {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&);
   ~Custom();
-  auto update(std::string format, ALabel::args &args) -> void override;
+  auto update(std::string format, ALabel::args& args) -> void override;
   void refresh(int /*signal*/);
 
  private:
@@ -22,19 +22,19 @@ class Custom : public ALabel {
   void continuousWorker();
   void parseOutputRaw();
   void parseOutputJson();
-  bool handleScroll(GdkEventScroll* e);
+  bool handleScroll(GdkEventScroll* e) override;
   bool handleToggle(GdkEventButton* const& e);
 
-  const std::string        name_;
-  std::string              text_;
-  std::string              alt_;
-  std::string              tooltip_;
+  const std::string name_;
+  std::string text_;
+  std::string alt_;
+  std::string tooltip_;
   std::vector<std::string> class_;
-  uint8_t                  percentage_;
-  FILE*                    fp_;
-  int                      pid_;
-  util::command::res       output_;
-  util::JsonParser         parser_;
+  uint8_t percentage_;
+  FILE* fp_;
+  int pid_;
+  util::command::res output_;
+  util::JsonParser parser_;
 
   util::SleeperThread thread_;
 };
