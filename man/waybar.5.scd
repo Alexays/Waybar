@@ -15,7 +15,7 @@ Valid locations for this file are:
 - *~/waybar/config*
 - */etc/xdg/waybar/config*
 
-A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.
+A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
 Also a minimal example configuration can be found on the at the bottom of this man page.
 
 # BAR CONFIGURATION
