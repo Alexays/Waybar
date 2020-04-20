@@ -20,7 +20,8 @@ class ALabel : public AModule {
          bool ellipsize = false);
   virtual ~ALabel() = default;
   virtual auto update() -> void override;
-  virtual auto update(const std::string format, args &args) -> void;
+  virtual auto update(const std::string format,
+                      fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void;
   virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
   virtual const std::string &getFormat() const;
 
