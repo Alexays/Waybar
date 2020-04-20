@@ -138,12 +138,12 @@ auto Clock::first_day_of_week() -> date::weekday {
   return date::Sunday;
 }
 
+}  // namespace waybar::modules
+
 template <>
-struct fmt::formatter<waybar_time> : fmt::formatter<std::tm> {
+struct fmt::formatter<waybar::modules::waybar_time> : fmt::formatter<std::tm> {
   template <typename FormatContext>
-  auto format(const waybar_time& t, FormatContext& ctx) {
+  auto format(const waybar::modules::waybar_time& t, FormatContext& ctx) {
     return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
   }
 };
-
-}  // namespace waybar::modules
