@@ -81,6 +81,8 @@ bool ALabel::hasFormat(const std::string& key) const {
          format_.find("{" + key + ":") != std::string::npos;
 }
 
+const std::string& ALabel::getFormat() const { return format_; }
+
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
