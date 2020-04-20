@@ -2,9 +2,11 @@
 #include <gtk-layer-shell.h>
 #endif
 
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 #include "bar.hpp"
+#include "ALabel.hpp"
 #include "client.hpp"
 #include "factory.hpp"
 
