@@ -24,6 +24,7 @@ class ALabel : public AModule {
   virtual auto update() -> void override;
   virtual auto update(const std::string format, args &args) -> void;
   virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
+  virtual const std::string &getFormat() const;
 
  protected:
   Gtk::Label label_;
@@ -33,7 +34,6 @@ class ALabel : public AModule {
   bool alt_ = false;
 
   virtual bool hasFormat(const std::string &key) const;
-  virtual const std::string &getFormat() const;
   virtual bool handleToggle(GdkEventButton *const &e);
   virtual std::string getState(uint16_t value, bool lesser = false);
 };
