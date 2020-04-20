@@ -387,9 +387,14 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
           modules_right_.emplace_back(module);
         }
         module->dp.connect([module, &name] {
-          fmt::dynamic_format_arg_store<fmt::format_context> args;
           try {
-            module->update(module->format_, args);
+            auto* labelModule = dynamic_cast<waybar::ALabel*>(module);
+            if (labelModule != nullptr) {
+              fmt::dynamic_format_arg_store<fmt::format_context> args;
+              labelModule->update(module->format_, args);
+            } else {
+              module->update();
+            }
           } catch (const std::exception& e) {
             spdlog::error("{}: {}", name.asString(), e.what());
           }
