@@ -10,12 +10,13 @@ namespace waybar::modules {
 
 class Bluetooth : public ALabel {
  public:
-  Bluetooth(const std::string&, const Json::Value&);
+  Bluetooth(const std::string &, const Json::Value &);
   ~Bluetooth() = default;
-  auto update(std::string format, ALabel::args &args) -> void override;
+  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args)
+      -> void override;
 
  private:
-  std::string         status_;
+  std::string status_;
   util::SleeperThread thread_;
   util::SleeperThread intervall_thread_;
 

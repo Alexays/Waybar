@@ -24,7 +24,7 @@ Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Bluetooth::update(std::string format, ALabel::args& args) -> void {
+auto Bluetooth::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
   // Remove older status
   if (!status_.empty()) {
     label_.get_style_context()->remove_class(status_);

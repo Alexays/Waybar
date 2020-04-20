@@ -390,7 +390,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
           try {
             auto* labelModule = dynamic_cast<waybar::ALabel*>(module);
             if (labelModule != nullptr) {
-              waybar::ALabel::args args;
+              fmt::dynamic_format_arg_store<fmt::format_context> args;
               labelModule->update(labelModule->getFormat(), args);
             } else {
               module->update();

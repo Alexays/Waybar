@@ -11,8 +11,6 @@ namespace waybar {
 
 class ALabel : public AModule {
  public:
-  using args = fmt::dynamic_format_arg_store<fmt::format_context>;
-
   ALabel(const Json::Value &config,
          const std::string &name,
          const std::string &id,

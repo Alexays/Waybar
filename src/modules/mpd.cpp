@@ -36,7 +36,7 @@ MPD::MPD(const std::string& id, const Json::Value& config)
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
 }
 
-auto MPD::update(std::string format, ALabel::args &args) -> void {
+auto MPD::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void {
   std::lock_guard guard(connection_lock_);
   tryConnect();
 

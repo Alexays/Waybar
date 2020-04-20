@@ -12,7 +12,7 @@ Cpu::Cpu(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Cpu::update(std::string format, ALabel::args& args) -> void {
+auto Cpu::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
   if (ALabel::hasFormat("load")) {
     auto cpu_load = getCpuLoad();
     auto loadArg = fmt::arg("load", cpu_load);

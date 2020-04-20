@@ -162,7 +162,7 @@ const std::string Battery::formatTimeRemaining(float hoursRemaining) const {
   return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
 }
 
-auto Battery::update(std::string format, ALabel::args& args) -> void {
+auto Battery::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
   // Remove older status
   if (!status_.empty()) {
     label_.get_style_context()->remove_class(status_);

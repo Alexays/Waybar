@@ -10,7 +10,7 @@ class IdleInhibitor : public ALabel {
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~IdleInhibitor();
-  auto update(std::string format, ALabel::args &args) -> void override;
+  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void override;
 
  private:
   bool handleToggle(GdkEventButton* const& e);
