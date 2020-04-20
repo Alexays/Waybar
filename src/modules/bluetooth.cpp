@@ -5,7 +5,9 @@
 
 #include "util/rfkill.hpp"
 
-waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
+namespace waybar::modules {
+
+Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
     : ALabel(config, "bluetooth", id, "{icon}", "{status}", 10),
       status_("disabled"),
       rfkill_{RFKILL_TYPE_BLUETOOTH} {
@@ -22,7 +24,7 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
   };
 }
 
-auto waybar::modules::Bluetooth::update(std::string format, waybar::args &args) -> void {
+auto Bluetooth::update(std::string format, ALabel::args& args) -> void {
   // Remove older status
   if (!status_.empty()) {
     label_.get_style_context()->remove_class(status_);
@@ -49,3 +51,5 @@ auto waybar::modules::Bluetooth::update(std::string format, waybar::args &args) 
   // Call parent update
   ALabel::update(format, args);
 }
+
+}  // namespace waybar::modules

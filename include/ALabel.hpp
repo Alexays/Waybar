@@ -9,10 +9,10 @@
 
 namespace waybar {
 
-using args = fmt::dynamic_format_arg_store<fmt::format_context>;
-
 class ALabel : public AModule {
  public:
+  using args = fmt::dynamic_format_arg_store<fmt::format_context>;
+
   ALabel(const Json::Value &config,
          const std::string &name,
          const std::string &id,
@@ -22,7 +22,7 @@ class ALabel : public AModule {
          bool ellipsize = false);
   virtual ~ALabel() = default;
   virtual auto update() -> void override;
-  virtual auto update(const std::string format, waybar::args &args) -> void;
+  virtual auto update(const std::string format, args &args) -> void;
   virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
 
  protected:

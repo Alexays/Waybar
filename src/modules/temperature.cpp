@@ -27,7 +27,7 @@ Temperature::Temperature(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Temperature::update(std::string format, waybar::args& args) -> void {
+auto Temperature::update(std::string format, ALabel::args& args) -> void {
   // Add default arg
   auto temperature_c = getTemperature();
   args.push_back(temperature_c);

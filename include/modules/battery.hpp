@@ -27,7 +27,7 @@ class Battery : public ALabel {
  public:
   Battery(const std::string&, const Json::Value&);
   ~Battery();
-  auto update(std::string format, waybar::args &args) -> void override;
+  auto update(std::string format, ALabel::args &args) -> void override;
 
  private:
   static inline const fs::path data_dir_ = "/sys/class/power_supply/";

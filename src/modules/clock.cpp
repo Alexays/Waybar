@@ -7,9 +7,9 @@
 #include <locale.h>
 #endif
 
-using waybar::modules::waybar_time;
+namespace waybar::modules {
 
-waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
+Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", "{calendar}", 60), fixed_time_zone_(false) {
   if (config_["timezone"].isString()) {
     time_zone_ = date::locate_zone(config_["timezone"].asString());
@@ -31,7 +31,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   };
 }
 
-auto waybar::modules::Clock::update(std::string format, waybar::args& args) -> void {
+auto Clock::update(std::string format, ALabel::args& args) -> void {
   // Default to fmt when no timezone is specified
   if (!fixed_time_zone_) {
     auto localtime = fmt::localtime(std::time(nullptr));
@@ -58,7 +58,7 @@ auto waybar::modules::Clock::update(std::string format, waybar::args& args) -> v
   ALabel::update(format, args);
 }
 
-auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::string {
+auto Clock::calendar_text(const waybar_time& wtime) -> std::string {
   const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
   const auto ymd = date::year_month_day(daypoint);
   if (cached_calendar_ymd_ == ymd) {
@@ -98,8 +98,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   return result;
 }
 
-auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std::ostream& os)
-    -> void {
+auto Clock::weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void {
   auto wd = first_dow;
   do {
     if (wd != first_dow) os << ' ';
@@ -124,7 +123,7 @@ using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
 #endif
 
 // Computations done similarly to Linux cal utility.
-auto waybar::modules::Clock::first_day_of_week() -> date::weekday {
+auto Clock::first_day_of_week() -> date::weekday {
 #ifdef HAVE_LANGINFO_1STDAY
   deleting_unique_ptr<std::remove_pointer<locale_t>::type, freelocale> posix_locale{
       newlocale(LC_ALL, locale_.name().c_str(), nullptr)};
@@ -146,3 +145,5 @@ struct fmt::formatter<waybar_time> : fmt::formatter<std::tm> {
     return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
   }
 };
+
+}  // namespace waybar::modules

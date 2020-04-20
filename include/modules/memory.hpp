@@ -12,7 +12,7 @@ class Memory : public ALabel {
  public:
   Memory(const std::string&, const Json::Value&);
   ~Memory() = default;
-  auto update(std::string format, waybar::args &args) -> void override;
+  auto update(std::string format, ALabel::args &args) -> void override;
 
  private:
   static inline const std::string data_dir_ = "/proc/meminfo";

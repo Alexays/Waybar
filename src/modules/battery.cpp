@@ -2,7 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
-waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
+namespace waybar::modules {
+
+Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", "{time}", 60) {
   getBatteries();
   fd_ = inotify_init1(IN_CLOEXEC);
@@ -18,14 +20,14 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
   worker();
 }
 
-waybar::modules::Battery::~Battery() {
+Battery::~Battery() {
   for (auto wd : wds_) {
     inotify_rm_watch(fd_, wd);
   }
   close(fd_);
 }
 
-void waybar::modules::Battery::worker() {
+void Battery::worker() {
   thread_timer_ = [this] {
     dp.emit();
     thread_timer_.sleep_for(interval_);
@@ -43,7 +45,7 @@ void waybar::modules::Battery::worker() {
   };
 }
 
-void waybar::modules::Battery::getBatteries() {
+void Battery::getBatteries() {
   try {
     for (auto& node : fs::directory_iterator(data_dir_)) {
       if (!fs::is_directory(node)) {
@@ -73,7 +75,7 @@ void waybar::modules::Battery::getBatteries() {
   }
 }
 
-const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() const {
+const std::tuple<uint8_t, float, std::string> Battery::getInfos() const {
   try {
     uint16_t total = 0;
     uint32_t total_power = 0;   // μW
@@ -134,7 +136,7 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
   }
 }
 
-const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
+const std::string Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
@@ -149,7 +151,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
   return "Unknown";
 }
 
-const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemaining) const {
+const std::string Battery::formatTimeRemaining(float hoursRemaining) const {
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
@@ -160,7 +162,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
   return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
 }
 
-auto waybar::modules::Battery::update(std::string format, waybar::args& args) -> void {
+auto Battery::update(std::string format, ALabel::args& args) -> void {
   // Remove older status
   if (!status_.empty()) {
     label_.get_style_context()->remove_class(status_);
@@ -218,3 +220,5 @@ auto waybar::modules::Battery::update(std::string format, waybar::args& args) ->
   // Call parent update
   ALabel::update(format, args);
 }
+
+}  // namespace waybar::modules

@@ -19,7 +19,7 @@ Disk::Disk(const std::string& id, const Json::Value& config)
   }
 }
 
-auto Disk::update(std::string format, waybar::args &args) -> void {
+auto Disk::update(std::string format, ALabel::args &args) -> void {
   struct statvfs stats;
   int err = statvfs(path_.c_str(), &stats);
 

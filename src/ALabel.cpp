@@ -47,7 +47,7 @@ auto ALabel::update() -> void {
   AModule::update();
 }
 
-auto ALabel::update(std::string format, waybar::args& args) -> void {
+auto ALabel::update(std::string format, args& args) -> void {
   // Hide the module on empty format
   if (format.empty()) {
     event_box_.hide();

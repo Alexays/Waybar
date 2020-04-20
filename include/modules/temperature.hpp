@@ -11,7 +11,7 @@ class Temperature : public ALabel {
  public:
   Temperature(const std::string&, const Json::Value&);
   ~Temperature() = default;
-  auto update(std::string format, waybar::args &args) -> void override;
+  auto update(std::string format, ALabel::args &args) -> void override;
 
  private:
   uint16_t getTemperature() const;

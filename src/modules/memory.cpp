@@ -10,7 +10,7 @@ Memory::Memory(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Memory::update(std::string format, waybar::args& args) -> void {
+auto Memory::update(std::string format, ALabel::args& args) -> void {
   // Get memory infos
   auto meminfo = parseMeminfo();
 
