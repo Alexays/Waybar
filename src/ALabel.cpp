@@ -43,11 +43,18 @@ ALabel::ALabel(const Json::Value& config,
 }
 
 auto ALabel::update() -> void {
+  auto text = label_.get_text();
+  if (text.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+  }
   // Call parent update
   AModule::update();
 }
 
-auto ALabel::update(std::string format, args& args) -> void {
+auto ALabel::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args)
+    -> void {
   // Hide the module on empty format
   if (format.empty()) {
     event_box_.hide();
