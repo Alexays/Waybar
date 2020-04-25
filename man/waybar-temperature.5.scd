@@ -44,7 +44,7 @@ Addressed by *temperature*
 *format*: ++
 	typeof: string  ++
 	default: {temperatureC}°C ++
-	The format (Celsius/Fahrenheit) in which the temperature should be displayed.
+	The format (Celsius/Fahrenheit/Kelvin) in which the temperature should be displayed.
 
 *format-icons*: ++
 	typeof: array ++
@@ -96,6 +96,8 @@ Addressed by *temperature*
 *{temperatureC}*: Temperature in Celsius.
 
 *{temperatureF}*: Temperature in Fahrenheit.
+
+*{temperatureK}*: Temperature in Kelvin.
 
 # EXAMPLES
 
