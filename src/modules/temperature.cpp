@@ -22,7 +22,10 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
 }
 
 auto waybar::modules::Temperature::update() -> void {
-  auto [temperature_c, temperature_f] = getTemperature();
+  auto temperature = getTemperature();
+  uint16_t temperature_c = std::round(temperature);
+  uint16_t temperature_f = std::round(temperature * 1.8 + 32);
+  uint16_t temperature_k = std::round(temperature + 273.15);
   auto critical = isCritical(temperature_c);
   auto format = format_;
   if (critical) {
@@ -35,12 +38,13 @@ auto waybar::modules::Temperature::update() -> void {
   label_.set_markup(fmt::format(format,
                                 fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
+                                fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
   // Call parent update
   ALabel::update();
 }
 
-std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {
+float waybar::modules::Temperature::getTemperature() {
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
@@ -51,9 +55,7 @@ std::tuple<uint16_t, uint16_t> waybar::modules::Temperature::getTemperature() {
   }
   temp.close();
   auto                           temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
-  auto                           temperature_f = temperature_c * 1.8 + 32;
-  std::tuple<uint16_t, uint16_t> temperatures(std::round(temperature_c), std::round(temperature_f));
-  return temperatures;
+  return temperature_c;
 }
 
 bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {
