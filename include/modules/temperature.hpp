@@ -14,8 +14,8 @@ class Temperature : public ALabel {
   auto update() -> void;
 
  private:
-  std::tuple<uint16_t, uint16_t> getTemperature();
-  bool                           isCritical(uint16_t);
+  float               getTemperature();
+  bool                isCritical(uint16_t);
 
   std::string         file_path_;
   util::SleeperThread thread_;
