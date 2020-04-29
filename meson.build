@@ -131,6 +131,11 @@ if true # find_program('sway', required : false).found()
     ]
 endif
 
+if true
+    add_project_arguments('-DHAVE_WLR', language: 'cpp')
+    src_files += 'src/modules/wlr/taskbar.cpp'
+endif
+
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += 'src/modules/network.cpp'

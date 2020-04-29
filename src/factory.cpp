@@ -23,6 +23,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::sway::Window(id, bar_, config_[name]);
     }
 #endif
+#ifdef HAVE_WLR
+    if (ref == "wlr/taskbar") {
+        return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
+    }
+#endif
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
     }
