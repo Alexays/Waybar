@@ -11,6 +11,7 @@
 
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
+#include <gtkmm/image.h>
 
 #include <wayland-client.h>
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
@@ -23,7 +24,7 @@ class Taskbar;
 class Task
 {
    public:
-    Task(Taskbar*, struct zwlr_foreign_toplevel_handle_v1 *);
+    Task(const waybar::Bar&, Taskbar*, struct zwlr_foreign_toplevel_handle_v1 *);
     ~Task();
 
    public:
@@ -39,15 +40,19 @@ class Task
     static uint32_t global_id;
 
    private:
+    const waybar::Bar &bar_;
     Taskbar *tbar_;
     struct zwlr_foreign_toplevel_handle_v1 *handle_;
 
     uint32_t id_;
 
+    Gtk::Button button_;
+    Gtk::Image icon_;
+    bool button_visible_;
+
     std::string title_;
     std::string app_id_;
     uint32_t state_;
-    std::vector<wl_output*> outputs_;
 
    private:
     std::string repr() const;
@@ -62,7 +67,6 @@ class Task
     bool minimized() const { return state_ & MINIMIZED; }
     bool active() const { return state_ & ACTIVE; }
     bool fullscreen() const { return state_ & FULLSCREEN; }
-    std::vector<wl_output*> outputs() const { return outputs_; }
 
    public:
     /* Callbacks for the wlr protocol */
@@ -115,7 +119,9 @@ class Taskbar : public waybar::AModule
     void handle_finished();
 
    public:
-    void remove_task(uint32_t id);
+    void add_button(Gtk::Button &);
+    void remove_button(Gtk::Button &);
+    void remove_task(uint32_t);
 };
 
 } /* namespace waybar::modules::wlr */

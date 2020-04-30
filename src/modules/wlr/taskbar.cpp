@@ -1,15 +1,100 @@
 #include "modules/wlr/taskbar.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstring>
 #include <memory>
 #include <sstream>
+#include "gtkmm/enums.h"
+
+#include <gdkmm/monitor.h>
+
+#include <gtkmm/icontheme.h>
+
+#include <giomm/desktopappinfo.h>
 
 #include <spdlog/spdlog.h>
 
 
 namespace waybar::modules::wlr {
 
+/* Icon loading functions */
+
+/* Method 1 - get the correct icon name from the desktop file */
+static std::string get_from_desktop_app_info(const std::string &app_id)
+{
+    Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+
+    std::vector<std::string> prefixes = {
+        "",
+        "/usr/share/applications/",
+        "/usr/share/applications/kde/",
+        "/usr/share/applications/org.kde.",
+        "/usr/local/share/applications/",
+        "/usr/local/share/applications/org.kde.",
+    };
+
+    std::string lower_app_id = app_id;
+    std::transform(std::begin(lower_app_id), std::end(lower_app_id), std::begin(lower_app_id),
+            [](unsigned char c) { return std::tolower(c); });
+
+
+    std::vector<std::string> app_id_variations = {
+        app_id,
+        lower_app_id
+    };
+
+    std::vector<std::string> suffixes = {
+        "",
+        ".desktop"
+    };
+
+    for (auto& prefix : prefixes)
+        for (auto& id : app_id_variations)
+            for (auto& suffix : suffixes)
+                if (!app_info)
+                    app_info = Gio::DesktopAppInfo::create_from_filename(prefix + id + suffix);
+
+    if (app_info)
+        return app_info->get_icon()->to_string();
+
+    return "";
+}
+
+/* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
+static std::string get_from_icon_theme(const std::string& app_id) {
+    if (Gtk::IconTheme::get_default()->lookup_icon(app_id, 24))
+        return app_id;
+
+    return "";
+}
+
+static bool image_load_icon(Gtk::Image& image, std::string app_id_list, int size)
+{
+    std::string app_id;
+    std::istringstream stream(app_id_list);
+    bool found = false;
+
+    /* Wayfire sends a list of app-id's in space separated format, other compositors
+     * send a single app-id, but in any case this works fine */
+    while (stream >> app_id)
+    {
+        std::string icon_name = get_from_desktop_app_info(app_id);
+        if (icon_name.empty())
+            icon_name = get_from_icon_theme(app_id);
+
+        if (icon_name.empty())
+            continue;
+
+        image.set_from_icon_name(icon_name, Gtk::ICON_SIZE_BUTTON);
+        found = true;
+        break;
+    }
+
+    return found;
+}
+
+/* Task class implementation */
 uint32_t Task::global_id = 0;
 
 static void tl_handle_title(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
@@ -62,10 +147,13 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
     .closed = tl_handle_closed,
 };
 
-Task::Task(Taskbar* tbar, struct zwlr_foreign_toplevel_handle_v1 *tl_handle) :
-    tbar_{tbar}, handle_{tl_handle}, id_{global_id++}
+Task::Task(const waybar::Bar &bar, Taskbar* tbar, struct zwlr_foreign_toplevel_handle_v1 *tl_handle) :
+    bar_{bar}, tbar_{tbar}, handle_{tl_handle}, id_{global_id++}, button_visible_{false}
 {
     zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
+
+    button_.add(icon_);
+    button_.set_relief(Gtk::RELIEF_NONE);
 }
 
 Task::~Task()
@@ -74,16 +162,21 @@ Task::~Task()
         zwlr_foreign_toplevel_handle_v1_destroy(handle_);
         handle_ = nullptr;
     }
+    if (button_visible_) {
+        tbar_->remove_button(button_);
+        button_visible_ = false;
+    }
 }
 
 std::string Task::repr() const
 {
     std::stringstream ss;
-    ss << "Task (" << id_ << ") " << title_ << " [" << app_id_ << "] "
+    ss << "Task (" << id_ << ") " << title_ << " [" << app_id_ << "] <"
         << (active() ? "A" : "a")
         << (maximized() ? "M" : "m")
         << (minimized() ? "I" : "i")
-        << (fullscreen() ? "F" : "f");
+        << (fullscreen() ? "F" : "f")
+        << ">";
 
     return ss.str();
 }
@@ -96,23 +189,37 @@ void Task::handle_title(const char *title)
 void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
+    if (!image_load_icon(icon_, app_id_, 24))
+        spdlog::warn("Failed to load icon for {}", app_id);
+    else
+        icon_.show();
 }
 
 void Task::handle_output_enter(struct wl_output *output)
 {
-    auto it = std::find(std::begin(outputs_), std::end(outputs_), output);
-    if (it == std::end(outputs_)) {
-        outputs_.push_back(output);
-        spdlog::debug("{} entered output {}", repr(), (void*)output);
+    spdlog::debug("{} entered output {}", repr(), (void*)output);
+
+    if (output == gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj()) &&
+        !button_visible_) {
+        /* The task entered the output of the current bar make the button visible */
+        tbar_->add_button(button_);
+        button_.show();
+        button_visible_ = true;
+        spdlog::debug("{} now visible on {}", repr(), bar_.output->name);
     }
 }
 
 void Task::handle_output_leave(struct wl_output *output)
 {
-    auto it = std::find(std::begin(outputs_), std::end(outputs_), output);
-    if (it != std::end(outputs_)) {
-        outputs_.erase(it);
-        spdlog::debug("{} left output {}", repr(), (void*)output);
+    spdlog::debug("{} left output {}", repr(), (void*)output);
+
+    if (output == gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj()) &&
+        button_visible_) {
+        /* The task left the output of the current bar, make the button invisible */
+        tbar_->remove_button(button_);
+        button_.hide();
+        button_visible_ = false;
+        spdlog::debug("{} now invisible on {}", repr(), bar_.output->name);
     }
 }
 
@@ -136,6 +243,32 @@ void Task::handle_state(struct wl_array *state)
 void Task::handle_done()
 {
     spdlog::debug("{} changed", repr());
+
+    if (state_ & MAXIMIZED) {
+        button_.get_style_context()->add_class("maximized");
+    } else if (!(state_ & MAXIMIZED)) {
+        button_.get_style_context()->remove_class("maximized");
+    }
+
+    if (state_ & MINIMIZED) {
+        button_.get_style_context()->add_class("minimized");
+    } else if (!(state_ & MINIMIZED)) {
+        button_.get_style_context()->remove_class("minimized");
+    }
+
+    if (state_ & ACTIVE) {
+        button_.get_style_context()->add_class("active");
+    } else if (!(state_ & ACTIVE)) {
+        button_.get_style_context()->remove_class("active");
+    }
+
+    if (state_ & FULLSCREEN) {
+        button_.get_style_context()->add_class("fullscreen");
+    } else if (!(state_ & FULLSCREEN)) {
+        button_.get_style_context()->remove_class("fullscreen");
+    }
+
+    tbar_->dp.emit();
 }
 
 void Task::handle_closed()
@@ -143,6 +276,10 @@ void Task::handle_closed()
     spdlog::debug("{} closed", repr());
     zwlr_foreign_toplevel_handle_v1_destroy(handle_);
     handle_ = nullptr;
+    if (button_visible_) {
+        tbar_->remove_button(button_);
+        button_visible_ = false;
+    }
     tbar_->remove_task(id_);
 }
 
@@ -157,6 +294,7 @@ bool Task::operator!=(const Task &o) const
 }
 
 
+/* Taskbar class implementation */
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
         const char *interface, uint32_t version)
 {
@@ -184,6 +322,12 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
       box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       manager_{nullptr}, seat_{nullptr}
 {
+    box_.set_name("taskbar");
+    if (!id.empty()) {
+        box_.get_style_context()->add_class(id);
+    }
+    event_box_.add(box_);
+
     struct wl_display *display = Client::inst()->wl_display;
     struct wl_registry *registry = wl_display_get_registry(display);
 
@@ -211,6 +355,7 @@ Taskbar::~Taskbar()
 
 void Taskbar::update()
 {
+    AModule::update();
 }
 
 static void tm_handle_toplevel(void *data, struct zwlr_foreign_toplevel_manager_v1 *manager,
@@ -260,13 +405,25 @@ void Taskbar::register_seat(struct wl_registry *registry, uint32_t name, uint32_
 
 void Taskbar::handle_toplevel_create(struct zwlr_foreign_toplevel_handle_v1 *tl_handle)
 {
-    tasks_.push_back(std::make_unique<Task>(this, tl_handle));
+    tasks_.push_back(std::make_unique<Task>(bar_, this, tl_handle));
 }
 
 void Taskbar::handle_finished()
 {
     zwlr_foreign_toplevel_manager_v1_destroy(manager_);
     manager_ = nullptr;
+}
+
+void Taskbar::add_button(Gtk::Button &bt)
+{
+    spdlog::debug("Add button");
+    box_.pack_start(bt, false, false);
+}
+
+void Taskbar::remove_button(Gtk::Button &bt)
+{
+    spdlog::debug("Remove button");
+    box_.remove(bt);
 }
 
 void Taskbar::remove_task(uint32_t id)
