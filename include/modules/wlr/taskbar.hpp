@@ -136,6 +136,7 @@ class Taskbar : public waybar::AModule
 
    public:
     void add_button(Gtk::Button &);
+    void move_button(Gtk::Button &, int);
     void remove_button(Gtk::Button &);
     void remove_task(uint32_t);
 };

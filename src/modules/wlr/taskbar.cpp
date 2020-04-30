@@ -335,6 +335,9 @@ void Task::handle_done()
         button_.get_style_context()->remove_class("fullscreen");
     }
 
+    if (config_["active-first"].isBool() && config_["active-first"].asBool() && active())
+        tbar_->move_button(button_, 0);
+
     tbar_->dp.emit();
 }
 
@@ -525,6 +528,11 @@ void Taskbar::add_button(Gtk::Button &bt)
 {
     spdlog::debug("Add button");
     box_.pack_start(bt, false, false);
+}
+
+void Taskbar::move_button(Gtk::Button &bt, int pos)
+{
+    box_.reorder_child(bt, pos);
 }
 
 void Taskbar::remove_button(Gtk::Button &bt)
