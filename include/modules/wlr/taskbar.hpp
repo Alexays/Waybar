@@ -12,6 +12,7 @@
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
 #include <gtkmm/image.h>
+#include <gtkmm/label.h>
 
 #include <wayland-client.h>
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
@@ -24,7 +25,7 @@ class Taskbar;
 class Task
 {
    public:
-    Task(const waybar::Bar&, Taskbar*, struct zwlr_foreign_toplevel_handle_v1 *);
+    Task(const waybar::Bar&, const Json::Value&, Taskbar*, struct zwlr_foreign_toplevel_handle_v1 *, struct wlr_seat*);
     ~Task();
 
    public:
@@ -41,14 +42,25 @@ class Task
 
    private:
     const waybar::Bar &bar_;
+    const Json::Value &config_;
     Taskbar *tbar_;
     struct zwlr_foreign_toplevel_handle_v1 *handle_;
+    struct wlr_seat *seat_;
 
     uint32_t id_;
 
     Gtk::Button button_;
+    Gtk::Box content_;
     Gtk::Image icon_;
+    Gtk::Label text_before_;
+    Gtk::Label text_after_;
     bool button_visible_;
+
+    bool with_icon_;
+    std::string format_before_;
+    std::string format_after_;
+
+    std::string format_tooltip_;
 
     std::string title_;
     std::string app_id_;
@@ -56,6 +68,7 @@ class Task
 
    private:
     std::string repr() const;
+    std::string state_string(bool = false) const;
 
    public:
     /* Getter functions */
@@ -81,6 +94,9 @@ class Task
   public:
     bool operator==(const Task&) const;
     bool operator!=(const Task&) const;
+
+  public:
+    void update();
 
   public:
     /* Interaction with the tasks */

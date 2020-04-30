@@ -1,11 +1,12 @@
 #include "modules/wlr/taskbar.hpp"
 
+#include "util/format.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <memory>
 #include <sstream>
-#include "gtkmm/enums.h"
 
 #include <gdkmm/monitor.h>
 
@@ -147,13 +148,61 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
     .closed = tl_handle_closed,
 };
 
-Task::Task(const waybar::Bar &bar, Taskbar* tbar, struct zwlr_foreign_toplevel_handle_v1 *tl_handle) :
-    bar_{bar}, tbar_{tbar}, handle_{tl_handle}, id_{global_id++}, button_visible_{false}
+Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar* tbar,
+        struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wlr_seat *seat) :
+    bar_{bar}, config_{config}, tbar_{tbar}, handle_{tl_handle}, seat_{seat},
+    id_{global_id++},
+    content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
+    button_visible_{false}
 {
     zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
-    button_.add(icon_);
     button_.set_relief(Gtk::RELIEF_NONE);
+
+    content_.add(text_before_);
+    content_.add(icon_);
+    content_.add(text_after_);
+
+    content_.show();
+    button_.add(content_);
+
+    with_icon_ = false;
+    format_before_.clear();
+    format_after_.clear();
+
+    if (config_["format"].isString()) {
+        /* The user defined a format string, use it */
+        auto format = config_["format"].asString();
+
+        auto icon_pos = format.find("{icon}");
+        if (icon_pos == 0) {
+            with_icon_ = true;
+            format_after_ = format.substr(6);
+        } else if (icon_pos == std::string::npos) {
+            format_after_ = format;
+        } else {
+            with_icon_ = true;
+            format_before_ = format.substr(0, icon_pos);
+            format_after_ = format.substr(icon_pos + 6);
+        }
+    } else {
+        /* The default is to only show the icon */
+        with_icon_ = true;
+    }
+
+    /* Strip spaces at the beginning and end of the format strings */
+    if (!format_before_.empty() && format_before_.back() == ' ')
+        format_before_.pop_back();
+    if (!format_after_.empty() && format_after_.front() == ' ')
+        format_after_.erase(std::cbegin(format_after_));
+
+    format_tooltip_.clear();
+    if (!config_["tooltip"].isBool() || config_["tooltip"].asBool()) {
+        if (config_["tooltip-format"].isString())
+            format_tooltip_ = config_["tooltip-format"].asString();
+        else
+            format_tooltip_ = "{title}";
+    }
 }
 
 Task::~Task()
@@ -172,13 +221,30 @@ std::string Task::repr() const
 {
     std::stringstream ss;
     ss << "Task (" << id_ << ") " << title_ << " [" << app_id_ << "] <"
-        << (active() ? "A" : "a")
-        << (maximized() ? "M" : "m")
-        << (minimized() ? "I" : "i")
-        << (fullscreen() ? "F" : "f")
-        << ">";
+       << (active() ? "A" : "a")
+       << (maximized() ? "M" : "m")
+       << (minimized() ? "I" : "i")
+       << (fullscreen() ? "F" : "f")
+       << ">";
 
     return ss.str();
+}
+
+std::string Task::state_string(bool shortened) const
+{
+    std::stringstream ss;
+    if (shortened)
+        ss << (minimized() ? "m" : "") << (maximized() ? "M" : "")
+           << (active() ? "A" : "") << (fullscreen() ? "F" : "");
+    else
+        ss << (minimized() ? "minimized " : "") << (maximized() ? "maximized " : "")
+           << (active() ? "active " : "") << (fullscreen() ? "fullscreen " : "");
+
+    std::string res = ss.str();
+    if (shortened || res.empty())
+        return res;
+    else
+        return res.substr(0, res.size() - 1);
 }
 
 void Task::handle_title(const char *title)
@@ -191,7 +257,8 @@ void Task::handle_app_id(const char *app_id)
     app_id_ = app_id;
     if (!image_load_icon(icon_, app_id_, 24))
         spdlog::warn("Failed to load icon for {}", app_id);
-    else
+
+    if (with_icon_)
         icon_.show();
 }
 
@@ -293,6 +360,43 @@ bool Task::operator!=(const Task &o) const
     return o.id_ != id_;
 }
 
+void Task::update()
+{
+    if (!format_before_.empty()) {
+        text_before_.set_label(
+                fmt::format(format_before_,
+                    fmt::arg("title", title_),
+                    fmt::arg("app_id", app_id_),
+                    fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true))
+                )
+        );
+        text_before_.show();
+    }
+    if (!format_after_.empty()) {
+        text_after_.set_label(
+                fmt::format(format_before_,
+                    fmt::arg("title", title_),
+                    fmt::arg("app_id", app_id_),
+                    fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true))
+                )
+        );
+        text_after_.show();
+    }
+
+    if (!format_tooltip_.empty()) {
+        button_.set_tooltip_markup(
+                fmt::format(format_tooltip_,
+                    fmt::arg("title", title_),
+                    fmt::arg("app_id", app_id_),
+                    fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true))
+                )
+        );
+    }
+}
+
 
 /* Taskbar class implementation */
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
@@ -332,7 +436,6 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     struct wl_registry *registry = wl_display_get_registry(display);
 
     wl_registry_add_listener(registry, &registry_listener_impl, this);
-    //wl_display_dispatch(display);
     wl_display_roundtrip(display);
 
     if (!manager_) {
@@ -355,6 +458,10 @@ Taskbar::~Taskbar()
 
 void Taskbar::update()
 {
+    for (auto& t : tasks_) {
+        t->update();
+    }
+
     AModule::update();
 }
 
@@ -405,7 +512,7 @@ void Taskbar::register_seat(struct wl_registry *registry, uint32_t name, uint32_
 
 void Taskbar::handle_toplevel_create(struct zwlr_foreign_toplevel_handle_v1 *tl_handle)
 {
-    tasks_.push_back(std::make_unique<Task>(bar_, this, tl_handle));
+    tasks_.push_back(std::make_unique<Task>(bar_, config_, this, tl_handle, seat_));
 }
 
 void Taskbar::handle_finished()
