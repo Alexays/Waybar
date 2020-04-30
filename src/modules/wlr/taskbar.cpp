@@ -526,7 +526,6 @@ void Taskbar::handle_finished()
 
 void Taskbar::add_button(Gtk::Button &bt)
 {
-    spdlog::debug("Add button");
     box_.pack_start(bt, false, false);
 }
 
@@ -537,7 +536,6 @@ void Taskbar::move_button(Gtk::Button &bt, int pos)
 
 void Taskbar::remove_button(Gtk::Button &bt)
 {
-    spdlog::debug("Remove button");
     box_.remove(bt);
 }
 
