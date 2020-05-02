@@ -25,7 +25,8 @@ class Taskbar;
 class Task
 {
    public:
-    Task(const waybar::Bar&, const Json::Value&, Taskbar*, struct zwlr_foreign_toplevel_handle_v1 *, struct wlr_seat*);
+    Task(const waybar::Bar&, const Json::Value&, Taskbar*,
+         struct zwlr_foreign_toplevel_handle_v1 *, struct wl_seat*);
     ~Task();
 
    public:
@@ -45,7 +46,7 @@ class Task
     const Json::Value &config_;
     Taskbar *tbar_;
     struct zwlr_foreign_toplevel_handle_v1 *handle_;
-    struct wlr_seat *seat_;
+    struct wl_seat *seat_;
 
     uint32_t id_;
 
@@ -123,7 +124,7 @@ class Taskbar : public waybar::AModule
     std::vector<TaskPtr> tasks_;
 
     struct zwlr_foreign_toplevel_manager_v1 *manager_;
-    struct wlr_seat *seat_;
+    struct wl_seat *seat_;
 
    public:
     /* Callbacks for global registration */

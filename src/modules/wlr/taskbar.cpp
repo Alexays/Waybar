@@ -149,7 +149,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
 };
 
 Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar* tbar,
-        struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wlr_seat *seat) :
+        struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat) :
     bar_{bar}, config_{config}, tbar_{tbar}, handle_{tl_handle}, seat_{seat},
     id_{global_id++},
     content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
@@ -510,7 +510,7 @@ void Taskbar::register_seat(struct wl_registry *registry, uint32_t name, uint32_
         return;
     }
 
-    seat_ = static_cast<struct wlr_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
+    seat_ = static_cast<wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
 }
 
 void Taskbar::handle_toplevel_create(struct zwlr_foreign_toplevel_handle_v1 *tl_handle)
