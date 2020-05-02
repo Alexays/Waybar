@@ -274,8 +274,7 @@ void Task::handle_output_enter(struct wl_output *output)
 {
     spdlog::debug("{} entered output {}", repr(), (void*)output);
 
-    if (output == gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj()) &&
-        !button_visible_) {
+    if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
         /* The task entered the output of the current bar make the button visible */
         tbar_->add_button(button_);
         button_.show();
@@ -288,8 +287,7 @@ void Task::handle_output_leave(struct wl_output *output)
 {
     spdlog::debug("{} left output {}", repr(), (void*)output);
 
-    if (output == gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj()) &&
-        button_visible_) {
+    if (button_visible_ && !tbar_->all_outputs() && tbar_->show_output(output)) {
         /* The task left the output of the current bar, make the button invisible */
         tbar_->remove_button(button_);
         button_.hide();
@@ -620,6 +618,18 @@ void Taskbar::remove_task(uint32_t id)
     }
 
     tasks_.erase(it);
+}
+
+bool Taskbar::show_output(struct wl_output *output) const
+{
+    return output == gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+}
+
+bool Taskbar::all_outputs() const
+{
+    static bool result = config_["all_outputs"].isBool() ? config_["all_outputs"].asBool() : false;
+
+    return result;
 }
 
 } /* namespace waybar::modules::wlr */

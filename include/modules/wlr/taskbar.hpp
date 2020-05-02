@@ -145,6 +145,9 @@ class Taskbar : public waybar::AModule
     void move_button(Gtk::Button &, int);
     void remove_button(Gtk::Button &);
     void remove_task(uint32_t);
+
+    bool show_output(struct wl_output *) const;
+    bool all_outputs() const;
 };
 
 } /* namespace waybar::modules::wlr */
