@@ -48,8 +48,6 @@ libinput
 libsigc++
 fmt
 wayland
-wayland-protocols
-wlroots
 chrono-date
 spdlog
 libgtk-3-dev [gtk-layer-shell]
@@ -60,6 +58,15 @@ libnl [Network module]
 libappindicator-gtk3 [Tray module]
 libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
+```
+
+**Build dependencies**
+
+```
+cmake
+meson
+scdoc
+wayland-protocols
 ```
 
 On Ubuntu 19.10 you can install all the relevant dependencies using this command:
