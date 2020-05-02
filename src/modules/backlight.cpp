@@ -1,15 +1,13 @@
 #include "modules/backlight.hpp"
 
-#include <algorithm>
-#include <chrono>
-#include <memory>
-
+#include <fmt/format.h>
 #include <libudev.h>
-
 #include <sys/epoll.h>
 #include <unistd.h>
 
-#include <fmt/format.h>
+#include <algorithm>
+#include <chrono>
+#include <memory>
 
 namespace {
 class FileDescriptor {
@@ -213,7 +211,7 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
   check_nn(name);
 
   const char *actual_brightness_attr =
-      strcmp(name, "amdgpu_bl0") == 0 ? "brightness" : "actual_brightness";
+      strncmp(name, "amdgpu_bl", 9) == 0 ? "brightness" : "actual_brightness";
 
   const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
   check_nn(actual);
