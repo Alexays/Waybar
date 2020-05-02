@@ -1,5 +1,6 @@
 #include "modules/wlr/taskbar.hpp"
 
+#include "glibmm/refptr.h"
 #include "util/format.hpp"
 
 #include <algorithm>
@@ -63,18 +64,22 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
 }
 
 /* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
-static std::string get_from_icon_theme(const std::string& app_id) {
-    if (Gtk::IconTheme::get_default()->lookup_icon(app_id, 24))
+static std::string get_from_icon_theme(Glib::RefPtr<Gtk::IconTheme> icon_theme,
+        const std::string &app_id) {
+
+    if (icon_theme->lookup_icon(app_id, 24))
         return app_id;
 
     return "";
 }
 
-static bool image_load_icon(Gtk::Image& image, std::string app_id_list, int size)
+static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon_theme,
+        const std::string &app_id_list, int size)
 {
     std::string app_id;
     std::istringstream stream(app_id_list);
     bool found = false;
+
 
     /* Wayfire sends a list of app-id's in space separated format, other compositors
      * send a single app-id, but in any case this works fine */
@@ -82,14 +87,17 @@ static bool image_load_icon(Gtk::Image& image, std::string app_id_list, int size
     {
         std::string icon_name = get_from_desktop_app_info(app_id);
         if (icon_name.empty())
-            icon_name = get_from_icon_theme(app_id);
+            icon_name = get_from_icon_theme(icon_theme, app_id);
 
         if (icon_name.empty())
             continue;
 
-        image.set_from_icon_name(icon_name, Gtk::ICON_SIZE_BUTTON);
-        found = true;
-        break;
+        auto pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+        if (pixbuf) {
+            image.set(pixbuf);
+            found = true;
+            break;
+        }
     }
 
     return found;
@@ -148,7 +156,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
     .closed = tl_handle_closed,
 };
 
-Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar* tbar,
+Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
         struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat) :
     bar_{bar}, config_{config}, tbar_{tbar}, handle_{tl_handle}, seat_{seat},
     id_{global_id++},
@@ -263,7 +271,8 @@ void Task::handle_title(const char *title)
 void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
-    if (!image_load_icon(icon_, app_id_, 24))
+    if (!image_load_icon(icon_, tbar_->icon_theme(), app_id_,
+                 config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16))
         spdlog::warn("Failed to load icon for {}", app_id);
 
     if (with_icon_)
@@ -517,6 +526,16 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
         spdlog::error("Failed to get wayland seat");
         return;
     }
+
+    /* Get the configured icon theme if specified */
+    if (config_["icon-theme"].isString()) {
+        icon_theme_ = Gtk::IconTheme::create();
+        icon_theme_->set_custom_theme(config_["icon-theme"].asString());
+        spdlog::debug("Use custom icon theme: {}.", config_["icon-theme"].asString());
+    } else {
+        spdlog::debug("Use system default icon theme");
+        icon_theme_ = Gtk::IconTheme::get_default();
+    }
 }
 
 Taskbar::~Taskbar()
@@ -630,6 +649,11 @@ bool Taskbar::all_outputs() const
     static bool result = config_["all_outputs"].isBool() ? config_["all_outputs"].asBool() : false;
 
     return result;
+}
+
+Glib::RefPtr<Gtk::IconTheme> Taskbar::icon_theme() const
+{
+    return icon_theme_;
 }
 
 } /* namespace waybar::modules::wlr */
