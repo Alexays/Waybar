@@ -203,6 +203,14 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar* tbar,
         else
             format_tooltip_ = "{title}";
     }
+
+    /* Handle click events if configured */
+    if (config_["on-click"].isString() || config_["on-click-middle"].isString()
+            || config_["on-click-left"].isString()) {
+        button_.add_events(Gdk::BUTTON_PRESS_MASK);
+        button_.signal_button_press_event().connect(
+                sigc::mem_fun(*this, &Task::handle_clicked), false);
+    }
 }
 
 Task::~Task()
@@ -353,6 +361,34 @@ void Task::handle_closed()
     tbar_->remove_task(id_);
 }
 
+bool Task::handle_clicked(GdkEventButton *bt)
+{
+    std::string action;
+    if (config_["on-click"].isString() && bt->button == 1)
+        action = config_["on-click"].asString();
+    else if (config_["on-click-middle"].isString() && bt->button == 2)
+        action = config_["on-click-middle"].asString();
+    else if (config_["on-click-right"].isString() && bt->button == 3)
+        action = config_["on-click-right"].asString();
+
+    if (action.empty())
+        return true;
+    else if (action == "activate")
+        activate();
+    else if (action == "minimize")
+        minimize(!minimized());
+    else if (action == "maximize")
+        maximize(!maximized());
+    else if (action == "fullscreen")
+        fullscreen(!fullscreen());
+    else if (action == "close")
+        close();
+    else
+        spdlog::warn("Unknown action {}", action);
+
+    return true;
+}
+
 bool Task::operator==(const Task &o) const
 {
     return o.id_ == id_;
@@ -398,6 +434,40 @@ void Task::update()
                 )
         );
     }
+}
+
+void Task::maximize(bool set)
+{
+    if (set)
+        zwlr_foreign_toplevel_handle_v1_set_maximized(handle_);
+    else
+        zwlr_foreign_toplevel_handle_v1_unset_maximized(handle_);
+}
+
+void Task::minimize(bool set)
+{
+    if (set)
+        zwlr_foreign_toplevel_handle_v1_set_minimized(handle_);
+    else
+        zwlr_foreign_toplevel_handle_v1_unset_minimized(handle_);
+}
+
+void Task::activate()
+{
+    zwlr_foreign_toplevel_handle_v1_activate(handle_, seat_);
+}
+
+void Task::fullscreen(bool set)
+{
+    if (set)
+        zwlr_foreign_toplevel_handle_v1_set_fullscreen(handle_, nullptr);
+    else
+        zwlr_foreign_toplevel_handle_v1_unset_fullscreen(handle_);
+}
+
+void Task::close()
+{
+    zwlr_foreign_toplevel_handle_v1_close(handle_);
 }
 
 

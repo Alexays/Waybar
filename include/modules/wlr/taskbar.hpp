@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <gdk/gdk.h>
+
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
 #include <gtkmm/image.h>
@@ -91,6 +93,9 @@ class Task
     void handle_state(struct wl_array *);
     void handle_done();
     void handle_closed();
+
+    /* Callbacks for Gtk events */
+    bool handle_clicked(GdkEventButton *);
 
   public:
     bool operator==(const Task&) const;
