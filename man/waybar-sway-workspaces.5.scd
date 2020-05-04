@@ -128,3 +128,4 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.focused*
 - *#workspaces button.urgent*
 - *#workspaces button.persistent*
+- *#workspaces button.current_output*
