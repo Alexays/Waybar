@@ -154,6 +154,15 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("persistent");
     }
+    if ((*it)["output"].isString()) {
+      if (((*it)["output"].asString()) == bar_.output->name) {
+        button.get_style_context()->add_class("current_output");
+      } else {
+        button.get_style_context()->remove_class("current_output");
+      }
+    } else {
+      button.get_style_context()->remove_class("current_output");
+    }
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
     }
