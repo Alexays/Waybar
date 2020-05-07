@@ -69,7 +69,7 @@ scdoc
 wayland-protocols
 ```
 
-On Ubuntu 19.10 you can install all the relevant dependencies using this command:
+On Ubuntu you can install all the relevant dependencies using this command (tested with 19.10 and 20.04):
 
 ```
 sudo apt install \
