@@ -69,6 +69,7 @@
         "format-alt": "{:%Y-%m-%d}"
     },
     "cpu": {
+        // "critical-threshold": 80,
         "format": "{usage}% ",
         "tooltip": false
     },

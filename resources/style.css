@@ -123,6 +123,10 @@ label:focus {
     color: #000000;
 }
 
+#cpu.critical {
+    background-color: #eb4d4b;
+}
+
 #memory {
     background-color: #9b59b6;
 }

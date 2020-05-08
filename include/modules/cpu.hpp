@@ -22,6 +22,7 @@ class Cpu : public ALabel {
  private:
   static inline const std::string         data_dir_ = "/proc/stat";
   uint16_t                                getCpuLoad();
+  bool                                    isCritical(uint16_t);
   std::tuple<uint16_t, std::string>       getCpuUsage();
   std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
 

@@ -15,6 +15,10 @@ The *cpu* module displays the current cpu utilization.
 	default: 10 ++
 	The interval in which the information gets polled.
 
+*critical-threshold*: ++
+	typeof: integer ++
+	The threshold before it is considered critical (percentage used).
+
 *format*: ++
 	typeof: string  ++
 	default: {usage}% ++

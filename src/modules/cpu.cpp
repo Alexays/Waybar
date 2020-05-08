@@ -13,8 +13,16 @@ auto waybar::modules::Cpu::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto cpu_load = getCpuLoad();
   auto [cpu_usage, tooltip] = getCpuUsage();
+  auto critical = isCritical(cpu_usage);
+  auto format = format_;
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
+  }
+  if (critical) {
+    format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
+    label_.get_style_context()->add_class("critical");
+  } else {
+    label_.get_style_context()->remove_class("critical");
   }
   label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
   getState(cpu_usage);
@@ -82,4 +90,9 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
     cpuinfo.emplace_back(idle_time, total_time);
   }
   return cpuinfo;
+}
+
+bool waybar::modules::Cpu::isCritical(uint16_t cpu_load) {
+  return config_["critical-threshold"].isInt() &&
+         cpu_load >= config_["critical-threshold"].asInt();
 }
