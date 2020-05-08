@@ -28,6 +28,15 @@ auto waybar::modules::Memory::update() -> void {
     auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
     auto available_ram_gigabytes = memfree / std::pow(1024, 2);
 
+    auto critical = isCritical(used_ram_percentage);
+    auto format = format_;
+    if (critical) {
+      format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
+      label_.get_style_context()->add_class("critical");
+    } else {
+      label_.get_style_context()->remove_class("critical");
+    }
+
     getState(used_ram_percentage);
     label_.set_markup(fmt::format(format_,
                                   used_ram_percentage,
@@ -62,4 +71,9 @@ void waybar::modules::Memory::parseMeminfo() {
     int64_t     value = std::stol(line.substr(posDelim + 1));
     meminfo_[name] = value;
   }
+}
+
+bool waybar::modules::Memory::isCritical(uint16_t cpu_load) {
+  return config_["critical-threshold"].isInt() &&
+         cpu_load >= config_["critical-threshold"].asInt();
 }

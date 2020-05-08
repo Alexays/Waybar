@@ -17,6 +17,7 @@ class Memory : public ALabel {
  private:
   static inline const std::string data_dir_ = "/proc/meminfo";
   void                            parseMeminfo();
+  bool                            isCritical(uint16_t);
 
   std::unordered_map<std::string, unsigned long> meminfo_;
 

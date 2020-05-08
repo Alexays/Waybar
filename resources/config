@@ -73,6 +73,7 @@
         "tooltip": false
     },
     "memory": {
+        // "critical-threshold": 80,
         "format": "{}% "
     },
     "temperature": {

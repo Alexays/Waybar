@@ -127,6 +127,10 @@ label:focus {
     background-color: #9b59b6;
 }
 
+#memory.critical {
+    background-color: #eb4d4b;
+}
+
 #backlight {
     background-color: #90b1b1;
 }
