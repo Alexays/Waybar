@@ -69,10 +69,12 @@
         "format-alt": "{:%Y-%m-%d}"
     },
     "cpu": {
+        // "critical-threshold": 80,
         "format": "{usage}% ",
         "tooltip": false
     },
     "memory": {
+        // "critical-threshold": 80,
         "format": "{}% "
     },
     "temperature": {
