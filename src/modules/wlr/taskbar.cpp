@@ -482,7 +482,6 @@ void Task::close()
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
         const char *interface, uint32_t version)
 {
-    spdlog::debug("taskbar: {} {} {}", name, interface, version);
     if (std::strcmp(interface, zwlr_foreign_toplevel_manager_v1_interface.name) == 0) {
         static_cast<Taskbar*>(data)->register_manager(registry, name, version);
     } else if (std::strcmp(interface, wl_seat_interface.name) == 0) {
