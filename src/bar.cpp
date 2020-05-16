@@ -3,7 +3,6 @@
 #endif
 
 #include <fmt/core.h>
-#define SPDLOG_FMT_EXTERNAL
 #include <spdlog/spdlog.h>
 
 #include "bar.hpp"

@@ -1,6 +1,5 @@
 #pragma once
 
-#define SPDLOG_FMT_EXTERNAL
 #include <gtkmm/widget.h>
 
 namespace waybar {
