@@ -264,7 +264,7 @@ void waybar::modules::MPD::tryConnect() {
 
   try {
     checkErrors(connection_.get());
-    spdlog::info("{}: Connected to MPD", module_name_);
+    spdlog::debug("{}: Connected to MPD", module_name_);
   } catch (std::runtime_error& e) {
     spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
     connection_.reset();
