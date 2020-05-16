@@ -1,5 +1,4 @@
 #include "modules/sway/workspaces.hpp"
-
 #include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
