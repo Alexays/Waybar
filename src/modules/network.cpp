@@ -12,6 +12,8 @@
 namespace {
 
 using namespace waybar::util;
+// std::ifstream does not take std::string_view as param
+static constexpr const char* NETSTAT_FILE = "/proc/net/netstat";
 
 std::ifstream                     netstat(NETSTAT_FILE);
 std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {

@@ -24,8 +24,6 @@ class Network : public ALabel {
  private:
   static constexpr const uint8_t MAX_RETRY = 5;
   static constexpr const uint8_t EPOLL_MAX = 200;
-  // std::ifstream does not take std::string_view as param
-  static constexpr const char* NETSTAT_FILE = "/proc/net/netstat";
   static constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
   static constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
   static constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
