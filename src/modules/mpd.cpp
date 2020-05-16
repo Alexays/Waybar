@@ -74,7 +74,11 @@ std::thread waybar::modules::MPD::event_listener() {
           dp.emit();
         }
       } catch (const std::exception& e) {
-        spdlog::warn("{}: {}", module_name_, e.what());
+        if (e.what() == "Connection to MPD closed") {
+          spdlog::debug("{}: {}", module_name_, e.what());
+        } else {
+          spdlog::warn("{}: {}", module_name_, e.what());
+        }
       }
     }
   });
