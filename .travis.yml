@@ -1,24 +1,51 @@
-sudo: false
-
-services:
-    - docker
-
 git:
     submodules: false
 
-env:
-    - distro: debian
-    - distro: archlinux
-    - distro: fedora
-    - distro: alpine
-    - distro: opensuse
+_linux_shared: &linux_shared
+    os: linux
+    sudo: false
+    services:
+        - docker
+    before_install:
+        - docker pull alexays/waybar:${distro}
+        - find . -type f \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -r0 clang-format -i
+    script:
+        - echo FROM alexays/waybar:${distro} > Dockerfile
+        - echo ADD . /root >> Dockerfile
+        - docker build -t waybar .
+        - docker run waybar /bin/sh -c "cd /root && meson build -Dman-pages=enabled && ninja -C build"
 
-before_install:
-    - docker pull alexays/waybar:${distro}
-    - find . -type f \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -r0 clang-format -i
-
-script:
-    - echo FROM alexays/waybar:${distro} > Dockerfile
-    - echo ADD . /root >> Dockerfile
-    - docker build -t waybar .
-    - docker run waybar /bin/sh -c "cd /root && meson build -Dman-pages=enabled && ninja -C build"
+jobs:
+  include:
+    - <<: *linux_shared
+      env: distro=debian
+    - <<: *linux_shared
+      env: distro=archlinux
+    - <<: *linux_shared
+      env: distro=fedora
+    - <<: *linux_shared
+      env: distro=alpine
+    - <<: *linux_shared
+      env: distro=opensuse
+    - os: freebsd
+      language: cpp
+      compiler: clang
+      addons:
+        pkg:
+          branch: latest
+          packages:
+            - date
+            - gtk-layer-shell
+            - gtkmm30
+            - jsoncpp
+            - libdbusmenu
+            - libfmt
+            - libmpdclient
+            - libudev-devd
+            - meson
+            - pulseaudio
+            - scdoc
+            - spdlog
+      script:
+        - meson build -Dman-pages=enabled
+        - ninja -C build
