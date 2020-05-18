@@ -30,22 +30,11 @@ jobs:
     - os: freebsd
       language: cpp
       compiler: clang
-      addons:
-        pkg:
-          branch: latest
-          packages:
-            - date
-            - gtk-layer-shell
-            - gtkmm30
-            - jsoncpp
-            - libdbusmenu
-            - libfmt
-            - libmpdclient
-            - libudev-devd
-            - meson
-            - pulseaudio
-            - scdoc
-            - spdlog
+      sudo: required
+      install:
+        - sudo sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+        - sudo pkg install -y date gtk-layer-shell gtkmm30 jsoncpp libdbusmenu
+               libfmt libmpdclient libudev-devd meson pulseaudio scdoc spdlog
       script:
         - meson build -Dman-pages=enabled
         - ninja -C build
