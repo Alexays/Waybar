@@ -3,6 +3,7 @@
 #include <giomm.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <array>
 
 namespace waybar::util::command {
 

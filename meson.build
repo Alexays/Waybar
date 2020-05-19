@@ -17,11 +17,13 @@ cpp_link_args = []
 if get_option('libcxx')
     cpp_args += ['-stdlib=libc++']
     cpp_link_args += ['-stdlib=libc++', '-lc++abi']
+endif
 
-    if compiler.has_link_argument('-lc++fs')
-        cpp_link_args += ['-lc++fs']
-    endif
-else
+if compiler.has_link_argument('-lc++fs')
+    cpp_link_args += ['-lc++fs']
+elif compiler.has_link_argument('-lc++experimental')
+    cpp_link_args += ['-lc++experimental']
+elif compiler.has_link_argument('-lstdc++fs')
     cpp_link_args += ['-lstdc++fs']
 endif
 
@@ -64,8 +66,13 @@ endif
 add_global_arguments(cpp_args, language : 'cpp')
 add_global_link_arguments(cpp_link_args, language : 'cpp')
 
+is_linux = host_machine.system() == 'linux'
+is_dragonfly = host_machine.system() == 'dragonfly'
+is_freebsd = host_machine.system() == 'freebsd'
+is_netbsd = host_machine.system() == 'netbsd'
+is_openbsd = host_machine.system() == 'openbsd'
+
 thread_dep = dependency('threads')
-libinput = dependency('libinput')
 fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
 spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdlog_dep'])
 wayland_client = dependency('wayland-client')
@@ -76,6 +83,7 @@ dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gt
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
+libepoll = dependency('epoll-shim', required: false)
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
@@ -88,8 +96,11 @@ systemd = dependency('systemd', required: get_option('systemd'))
 tz_dep = dependency('date', default_options : [ 'use_system_tzdb=true' ], fallback: [ 'date', 'tz_dep' ])
 
 prefix = get_option('prefix')
+sysconfdir = get_option('sysconfdir')
 conf_data = configuration_data()
 conf_data.set('prefix', prefix)
+
+add_project_arguments('-DSYSCONFDIR="/@0@"'.format(join_paths(prefix, sysconfdir)), language : 'cpp')
 
 if systemd.found()
   user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
@@ -106,20 +117,38 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
-    'src/modules/memory.cpp',
-    'src/modules/battery.cpp',
-    'src/modules/bluetooth.cpp',
     'src/modules/clock.cpp',
     'src/modules/custom.cpp',
-    'src/modules/cpu.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/temperature.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
-    'src/util/rfkill.cpp'
 )
+
+if is_linux
+    add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
+    add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
+    src_files += files(
+        'src/modules/battery.cpp',
+        'src/modules/bluetooth.cpp',
+        'src/modules/cpu/common.cpp',
+        'src/modules/cpu/linux.cpp',
+        'src/modules/memory/common.cpp',
+        'src/modules/memory/linux.cpp',
+        'src/util/rfkill.cpp'
+    )
+elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
+    add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
+    add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
+    src_files += files(
+        'src/modules/cpu/bsd.cpp',
+        'src/modules/cpu/common.cpp',
+        'src/modules/memory/bsd.cpp',
+        'src/modules/memory/common.cpp',
+    )
+endif
 
 if true # find_program('sway', required : false).found()
     add_project_arguments('-DHAVE_SWAY', language: 'cpp')
@@ -151,7 +180,7 @@ if dbusmenu_gtk.found()
     )
 endif
 
-if libudev.found()
+if libudev.found() and (is_linux or libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
 endif
@@ -178,7 +207,6 @@ executable(
         spdlog,
         sigcpp,
         jsoncpp,
-        libinput,
         wayland_cursor,
         gtkmm,
         dbusmenu_gtk,
@@ -187,6 +215,7 @@ executable(
         libnlgen,
         libpulse,
         libudev,
+        libepoll,
         libmpdclient,
         gtk_layer_shell,
         tz_dep
@@ -198,7 +227,7 @@ executable(
 install_data(
     './resources/config',
     './resources/style.css',
-    install_dir: join_paths(get_option('out'), 'etc/xdg/waybar')
+    install_dir: sysconfdir + '/xdg/waybar'
 )
 
 scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))

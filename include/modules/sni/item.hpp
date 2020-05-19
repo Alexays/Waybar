@@ -10,11 +10,6 @@
 #include <json/json.h>
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #include <sigc++/trackable.h>
-#ifdef FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-#else
-#include <filesystem>
-#endif
 
 namespace waybar::modules::SNI {
 
