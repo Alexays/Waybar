@@ -77,7 +77,7 @@ std::optional<unsigned long long> read_netstat(std::string_view category, std::s
 }  // namespace
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, "{ifname}", "{ipaddr}" 60),
+    : ALabel(config, "network", id, "{ifname}", "{ipaddr}", 60),
       ifid_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
