@@ -74,7 +74,7 @@ std::thread waybar::modules::MPD::event_listener() {
           dp.emit();
         }
       } catch (const std::exception& e) {
-        if (e.what() == "Connection to MPD closed") {
+        if (strcmp(e.what(), "Connection to MPD closed") == 0) {
           spdlog::debug("{}: {}", module_name_, e.what());
         } else {
           spdlog::warn("{}: {}", module_name_, e.what());
