@@ -231,6 +231,7 @@ if scdoc.found()
         'waybar-temperature.5.scd',
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
+        'waybar-wlr-taskbar.5.scd',
     ]
 
     foreach filename : man_files
