@@ -15,7 +15,6 @@ class Memory : public ALabel {
   auto update() -> void;
 
  private:
-  static inline const std::string data_dir_ = "/proc/meminfo";
   void                            parseMeminfo();
 
   std::unordered_map<std::string, unsigned long> meminfo_;

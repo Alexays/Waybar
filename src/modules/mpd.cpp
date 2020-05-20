@@ -74,7 +74,11 @@ std::thread waybar::modules::MPD::event_listener() {
           dp.emit();
         }
       } catch (const std::exception& e) {
-        spdlog::warn("{}: {}", module_name_, e.what());
+        if (strcmp(e.what(), "Connection to MPD closed") == 0) {
+          spdlog::debug("{}: {}", module_name_, e.what());
+        } else {
+          spdlog::warn("{}: {}", module_name_, e.what());
+        }
       }
     }
   });
@@ -264,7 +268,7 @@ void waybar::modules::MPD::tryConnect() {
 
   try {
     checkErrors(connection_.get());
-    spdlog::info("{}: Connected to MPD", module_name_);
+    spdlog::debug("{}: Connected to MPD", module_name_);
   } catch (std::runtime_error& e) {
     spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
     connection_.reset();

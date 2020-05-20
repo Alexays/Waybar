@@ -1,5 +1,4 @@
 #include "modules/cpu.hpp"
-#include <numeric>
 
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu", id, "{usage}%", 10) {
@@ -23,11 +22,9 @@ auto waybar::modules::Cpu::update() -> void {
 }
 
 uint16_t waybar::modules::Cpu::getCpuLoad() {
-  struct sysinfo info = {0};
-  if (sysinfo(&info) == 0) {
-    float    f_load = 1.F / (1U << SI_LOAD_SHIFT);
-    uint16_t load = info.loads[0] * f_load * 100 / get_nprocs();
-    return load;
+  double load[1];
+  if (getloadavg(load, 1) != -1) {
+    return load[0] * 100 / sysconf(_SC_NPROCESSORS_ONLN);
   }
   throw std::runtime_error("Can't get Cpu load");
 }
@@ -55,31 +52,4 @@ std::tuple<uint16_t, std::string> waybar::modules::Cpu::getCpuUsage() {
   }
   prev_times_ = curr_times;
   return {usage, tooltip};
-}
-
-std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
-  std::ifstream info(data_dir_);
-  if (!info.is_open()) {
-    throw std::runtime_error("Can't open " + data_dir_);
-  }
-  std::vector<std::tuple<size_t, size_t>> cpuinfo;
-  std::string                             line;
-  while (getline(info, line)) {
-    if (line.substr(0, 3).compare("cpu") != 0) {
-      break;
-    }
-    std::stringstream   sline(line.substr(5));
-    std::vector<size_t> times;
-    for (size_t time = 0; sline >> time; times.push_back(time))
-      ;
-
-    size_t idle_time = 0;
-    size_t total_time = 0;
-    if (times.size() >= 4) {
-      idle_time = times[3];
-      total_time = std::accumulate(times.begin(), times.end(), 0);
-    }
-    cpuinfo.emplace_back(idle_time, total_time);
-  }
-  return cpuinfo;
 }

@@ -64,6 +64,10 @@ Addressed by *sway/workspaces*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*numeric-first*: ++
+	typeof: bool ++
+	Whether to put workspaces starting with numbers before workspaces that do not start with a number.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, as defined by sway.
@@ -107,6 +111,7 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 "sway/workspaces": {
     "disable-scroll": true,
     "all-outputs": true,
+    "numeric-first": false,
     "format": "{name}: {icon}",
     "format-icons": {
         "1": "",
@@ -128,3 +133,4 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.focused*
 - *#workspaces button.urgent*
 - *#workspaces button.persistent*
+- *#workspaces button.current_output*

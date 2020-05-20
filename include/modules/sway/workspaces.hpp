@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
+#include <unordered_map>
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "client.hpp"

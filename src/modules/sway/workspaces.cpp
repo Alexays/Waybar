@@ -1,4 +1,5 @@
 #include "modules/sway/workspaces.hpp"
+
 #include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
@@ -90,16 +91,38 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
               workspaces_.emplace_back(std::move(v));
             }
           }
-
-          std::sort(workspaces_.begin(),
-                    workspaces_.end(),
-                    [](const Json::Value &lhs, const Json::Value &rhs) {
-                      if (lhs["name"].isInt() && rhs["name"].isInt()) {
-                        return lhs["name"].asInt() < rhs["name"].asInt();
-                      }
-                      return lhs["name"].asString() < rhs["name"].asString();
-                    });
         }
+
+        // config option to sort numeric workspace names before others
+        bool config_numeric_first = config_["numeric-first"].asBool();
+
+        std::sort(workspaces_.begin(),
+                  workspaces_.end(),
+                  [config_numeric_first](const Json::Value &lhs, const Json::Value &rhs) {
+                    // the "num" property (integer type):
+                    // The workspace number or -1 for workspaces that do
+                    // not start with a number.
+                    auto l = lhs["num"].asInt();
+                    auto r = rhs["num"].asInt();
+                    if (l == r) {
+                      // in case both integers are the same, lexicographical
+                      // sort. This also covers the case when both don't have a
+                      // number (i.e., l == r == -1).
+                      return lhs["name"].asString() < rhs["name"].asString();
+                    }
+
+                    // one of the workspaces doesn't begin with a number, so
+                    // num is -1.
+                    if (l < 0 || r < 0) {
+                      if (config_numeric_first) {
+                        return r < 0;
+                      }
+                      return l < 0;
+                    }
+
+                    // both workspaces have a "num" so let's just compare those
+                    return l < r;
+                  });
       }
       dp.emit();
     } catch (const std::exception &e) {
@@ -153,6 +176,15 @@ auto Workspaces::update() -> void {
       button.get_style_context()->add_class("persistent");
     } else {
       button.get_style_context()->remove_class("persistent");
+    }
+    if ((*it)["output"].isString()) {
+      if (((*it)["output"].asString()) == bar_.output->name) {
+        button.get_style_context()->add_class("current_output");
+      } else {
+        button.get_style_context()->remove_class("current_output");
+      }
+    } else {
+      button.get_style_context()->remove_class("current_output");
     }
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
@@ -208,7 +240,8 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
         return config_["format-icons"][key].asString();
       }
-    } else if (config_["format_icons"]["persistent"].isString() && node["target_output"].isString()) {
+    } else if (config_["format_icons"]["persistent"].isString() &&
+               node["target_output"].isString()) {
       return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
