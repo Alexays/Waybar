@@ -31,7 +31,8 @@ Clock::Clock(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Clock::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
+auto Clock::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args)
+    -> void {
   // Default to fmt when no timezone is specified
   if (!fixed_time_zone_) {
     auto localtime = fmt::localtime(std::time(nullptr));

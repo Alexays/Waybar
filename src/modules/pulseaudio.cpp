@@ -205,43 +205,59 @@ const std::string Pulseaudio::getPortIcon() const {
   return port_name_;
 }
 
-auto Pulseaudio::update() -> void {
-  fmt::dynamic_format_arg_store<fmt::format_context> args;
-  auto format = format_;
-  if (!alt_) {
-    std::string format_name = "format";
-    if (monitor_.find("a2dp_sink") != std::string::npos) {
-      format_name = format_name + "-bluetooth";
-      label_.get_style_context()->add_class("bluetooth");
-    } else {
-      label_.get_style_context()->remove_class("bluetooth");
+auto Pulseaudio::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void {
+  // Check bluetooth
+  if (monitor_.find("a2dp_sink") != std::string::npos) {
+    if (config_["format-bluetooth"].isString()) {
+      format = "format-bluetooth";
     }
-    if (muted_) {
-      // Check muted bluetooth format exist, otherwise fallback to default muted format
-      if (format_name != "format" && !config_[format_name + "-muted"].isString()) {
-        format_name = "format";
-      }
-      format_name = format_name + "-muted";
-      label_.get_style_context()->add_class("muted");
-    } else {
-      label_.get_style_context()->remove_class("muted");
-    }
-    format = config_[format_name].isString() ? config_[format_name].asString() : format;
+    label_.get_style_context()->add_class("bluetooth");
+  } else {
+    label_.get_style_context()->remove_class("bluetooth");
   }
+
+  // Check is muted
+  if (muted_) {
+    if (config_[format + "-muted"].isString()) {
+      format = format + "-muted";
+    } else {
+      format = "format-muted";
+    }
+    label_.get_style_context()->add_class("muted");
+  } else {
+    label_.get_style_context()->remove_class("muted");
+  }
+
+  // Add default args
+  args.push_back(volume_);
+  auto volumeArg = fmt::arg("volume", volume_);
+  args.push_back(std::cref(volumeArg));
+
+  // Desc arg
+  auto descArg = fmt::arg("desc", desc_);
+  args.push_back(std::cref(descArg));
+
+  // Input
   // TODO: find a better way to split source/sink
-  std::string format_source = "{volume}%";
-  if (source_muted_ && config_["format-source-muted"].isString()) {
-    format_source = config_["format-source-muted"].asString();
-  } else if (!source_muted_ && config_["format-source"].isString()) {
-    format_source = config_["format-source"].asString();
+  if (ALabel::hasFormat("format_source")) {
+    std::string formatSource = "{volume}%";
+    if (source_muted_ && config_["format-source-muted"].isString()) {
+      formatSource = config_["format-source-muted"].asString();
+    } else if (!source_muted_ && config_["format-source"].isString()) {
+      formatSource = config_["format-source"].asString();
+    }
+    formatSource = fmt::format(formatSource, fmt::arg("volume", source_volume_));
+    auto formatSourceArg = fmt::arg("format_source", formatSource);
+    args.push_back(std::cref(formatSourceArg));
   }
-  format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("desc", desc_),
-                                fmt::arg("volume", volume_),
-                                fmt::arg("format_source", format_source),
-                                fmt::arg("icon", getIcon(volume_, getPortIcon()))));
-  getState(volume_);
+
+  auto state = getState(volume_);
+
+  if (ALabel::hasFormat("icon")) {
+    auto portIcon =  getPortIcon();
+    auto iconArg = fmt::arg("icon", getIcon(volume_, portIcon)));
+    args.push_back(std::cref(iconArg));
+  }
 
   // Call parent update
   ALabel::update(format, args);

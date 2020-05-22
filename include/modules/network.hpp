@@ -46,7 +46,7 @@ class Network : public ALabel {
   int               getPreferredIface(int skip_idx = -1, bool wait = true) const;
   auto              getInfo() -> void;
   void              checkNewInterface(struct ifinfomsg* rtif);
-  const std::string getNetworkState() const;
+  const std::string getNetworkStatus() const;
   void              clearIface();
   bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
 
@@ -63,7 +63,7 @@ class Network : public ALabel {
   unsigned long long bandwidth_down_total_;
   unsigned long long bandwidth_up_total_;
 
-  std::string state_;
+  std::string status_;
   std::string essid_;
   std::string ifname_;
   std::string ipaddr_;

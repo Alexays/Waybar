@@ -55,6 +55,12 @@ auto ALabel::update() -> void {
 
 auto ALabel::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args)
     -> void {
+  ALabel::update(format, args, "");
+}
+
+auto ALabel::update(std::string format,
+                    fmt::dynamic_format_arg_store<fmt::format_context>& args,
+                    std::string tooltipFormat) -> void {
   // Hide the module on empty format
   if (format.empty()) {
     event_box_.hide();
@@ -68,8 +74,10 @@ auto ALabel::update(std::string format, fmt::dynamic_format_arg_store<fmt::forma
     }
 
     // Add tooltip if enabled and not already set
-    if (AModule::tooltipEnabled() && label_.get_tooltip_text().empty()) {
-      if (config_["tooltip-format"].isString()) {
+    if (AModule::tooltipEnabled()) {
+      if (!tooltipFormat.empty()) {
+        label_.set_tooltip_markup(fmt::vformat(tooltipFormat, args));
+      } else if (config_["tooltip-format"].isString()) {
         auto tooltip_format = config_["tooltip-format"].asString();
         auto tooltip_text = fmt::vformat(tooltip_format, args);
         label_.set_tooltip_markup(tooltip_text);
@@ -89,6 +97,19 @@ bool ALabel::hasFormat(const std::string& key) const {
 }
 
 const std::string& ALabel::getFormat() const { return format_; }
+
+const std::string& ALabel::getFormat(const std::string& prefix,
+                                     const std::string& a,
+                                     const std::string& b = "") {
+  if (!b.empty() && config_[prefix + "-" + a + "-" + b].isString()) {
+    return config_[prefix + "-" + a + "-" + b].asString();
+  } else if (config_[prefix + "-" + a].isString()) {
+    return config_[prefix + "-" + a].asString();
+  } else if (!b.empty() && config_[prefix + "-" + b].isString()) {
+    return config_[prefix + "-" + b].asString();
+  }
+  return "";
+}
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];

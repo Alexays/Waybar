@@ -162,7 +162,9 @@ const std::string Battery::formatTimeRemaining(float hoursRemaining) const {
   return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
 }
 
-auto Battery::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
+auto Battery::update(std::string format,
+                     fmt::dynamic_format_arg_store<fmt::format_context>& args,
+                     std::string tooltipFormat) -> void {
   // Remove older status
   if (!status_.empty()) {
     label_.get_style_context()->remove_class(status_);
@@ -183,24 +185,24 @@ auto Battery::update(std::string format, fmt::dynamic_format_arg_store<fmt::form
 
   // Add icon based on capacity and state
   auto state = getState(capacity, true);
-  auto icon = getIcon(capacity, state);
-  auto iconArg = fmt::arg("icon", icon);
-  args.push_back(std::cref(iconArg));
+
+  if (ALabel::hasFormat("icon")) {
+    auto icon = getIcon(capacity, state);
+    auto iconArg = fmt::arg("icon", icon);
+    args.push_back(std::cref(iconArg));
+  }
 
   // Add time remaining
   auto timeRemaining = formatTimeRemaining(time_remaining);
   auto timeArg = fmt::arg("time", timeRemaining);
   args.push_back(std::cref(timeArg));
 
-  // Set tooltip
+  // Tooltip
   // TODO: tooltip-format based on args
-  if (AModule::tooltipEnabled()) {
-    std::string tooltip_text = status_;
-    if (time_remaining != 0) {
-      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text = time_to + ": " + timeRemaining;
-    }
-    label_.set_tooltip_text(tooltip_text);
+  tooltipFormat = status_;
+  if (time_remaining != 0) {
+    std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
+    tooltipFormat = time_to + ": " + timeRemaining;
   }
 
   // Transform to lowercase and replace space with dash
@@ -209,16 +211,13 @@ auto Battery::update(std::string format, fmt::dynamic_format_arg_store<fmt::form
     return ch == ' ' ? '-' : std::tolower(ch);
   });
 
-  if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
-    format = config_["format-" + status + "-" + state].asString();
-  } else if (config_["format-" + status].isString()) {
-    format = config_["format-" + status].asString();
-  } else if (!state.empty() && config_["format-" + state].isString()) {
-    format = config_["format-" + state].asString();
+  formatTmp = getFormat("format", status, state);
+  if (!formatTmp.empty()) {
+    format = formatTmp;
   }
 
   // Call parent update
-  ALabel::update(format, args);
+  ALabel::update(format, args, tooltipFormat);
 }
 
 }  // namespace waybar::modules

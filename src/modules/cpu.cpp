@@ -23,13 +23,10 @@ auto Cpu::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_c
   auto [cpu_usage, tooltip] = getCpuUsage();
   auto usageArg = fmt::arg("usage", cpu_usage);
   args.push_back(std::cref(usageArg));
-  if (AModule::tooltipEnabled()) {
-    label_.set_tooltip_text(tooltip);
-  }
   getState(cpu_usage);
 
   // Call parent update
-  ALabel::update(format, args);
+  ALabel::update(format, args, tooltip);
 }
 
 uint16_t Cpu::getCpuLoad() {
