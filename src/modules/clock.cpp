@@ -43,14 +43,15 @@ auto waybar::modules::Clock::update() -> void {
   waybar_time wtime = {locale_,
                        date::make_zoned(time_zone_, date::floor<std::chrono::seconds>(now))};
 
+  std::string text;
   if (!fixed_time_zone_) {
     // As date dep is not fully compatible, prefer fmt
     tzset();
     auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
-    auto text = fmt::format(format_, localtime);
+    text = fmt::format(format_, localtime);
     label_.set_markup(text);
   } else {
-    auto text = fmt::format(format_, wtime);
+    text = fmt::format(format_, wtime);
     label_.set_markup(text);
   }
 
