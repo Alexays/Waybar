@@ -196,7 +196,7 @@ auto waybar::modules::Battery::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    auto icons = std::vector<const std::string>{status + "-" + state, status, state};
+    auto const icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(format,
                                   fmt::arg("capacity", capacity),
                                   fmt::arg("icon", getIcon(capacity, icons)),
