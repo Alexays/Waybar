@@ -14,6 +14,7 @@ class ALabel : public AModule {
   virtual ~ALabel() = default;
   virtual auto        update() -> void;
   virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
+  virtual std::string getIcon(uint16_t, std::vector<std::string> &alts, uint16_t max = 0);
 
  protected:
   Gtk::Label                 label_;
