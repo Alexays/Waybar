@@ -36,10 +36,11 @@ auto Temperature::update(std::string format, fmt::dynamic_format_arg_store<fmt::
   auto temp = temperature_c;
 
   bool critical = false;
+  std::string state;
 
   // If temperature_c is used, so use celcius, otherwise use farenheit
   if (ALabel::hasFormat("") || ALabel::hasFormat("temperatureC")) {
-    getState(temperature_c);
+    state = getState(temperature_c);
     critical = isCritical(temperature_c);
   }
 
@@ -48,7 +49,7 @@ auto Temperature::update(std::string format, fmt::dynamic_format_arg_store<fmt::
     auto temperatureFArg = fmt::arg("temperatureF", temperature_f);
     if (!(ALabel::hasFormat("") || ALabel::hasFormat("temperatureC"))) {
       temp = temperature_f;
-      getState(temperature_f);
+      state = getState(temperature_f);
       critical = isCritical(temperature_f);
     }
     args.push_back(std::cref(temperatureFArg));
@@ -66,7 +67,7 @@ auto Temperature::update(std::string format, fmt::dynamic_format_arg_store<fmt::
   if (ALabel::hasFormat("icon")) {
     auto max_temp =
         config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-    auto icon = getIcon(temp, "", max_temp);
+    auto icon = getIcon(temp, state, max_temp);
     auto iconArg = fmt::arg("icon", icon);
     args.push_back(std::cref(iconArg));
   }
