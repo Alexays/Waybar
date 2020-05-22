@@ -18,8 +18,8 @@ class AModule : public IModule {
           bool enable_click = false,
           bool enable_scroll = false);
   virtual ~AModule();
-  virtual auto update() -> void;
-  virtual operator Gtk::Widget &();
+  virtual auto update() -> void override;
+  virtual operator Gtk::Widget &() override;
 
   Glib::Dispatcher dp;
 

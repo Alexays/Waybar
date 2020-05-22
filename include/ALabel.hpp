@@ -34,7 +34,7 @@ class ALabel : public AModule {
   bool alt_ = false;
 
   virtual bool hasFormat(const std::string &key) const;
-  virtual bool handleToggle(GdkEventButton *const &e);
+  virtual bool handleToggle(GdkEventButton *const &e) override;
   virtual std::string getState(uint16_t value, bool lesser = false);
 };
 
