@@ -19,7 +19,7 @@ class Network : public ALabel {
  public:
   Network(const std::string&, const Json::Value&);
   ~Network();
-  auto update() -> void override;
+  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void override;
 
  private:
   static constexpr const uint8_t MAX_RETRY = 5;
