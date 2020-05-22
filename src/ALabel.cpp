@@ -54,7 +54,7 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   return "";
 }
 
-std::string ALabel::getIcon(uint16_t percentage, const std::vector<const std::string>& alts, uint16_t max) {
+std::string ALabel::getIcon(uint16_t percentage, std::vector<std::string>& alts, uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
     for (const auto& alt : alts) {
