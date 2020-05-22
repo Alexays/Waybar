@@ -99,8 +99,8 @@ bool ALabel::hasFormat(const std::string& key) const {
 const std::string& ALabel::getFormat() const { return format_; }
 
 const std::string ALabel::getFormat(const std::string& prefix,
-                                     const std::string& a,
-                                     const std::string& b = "") {
+                                    const std::string& a,
+                                    const std::string& b) {
   if (!b.empty() && config_[prefix + "-" + a + "-" + b].isString()) {
     return config_[prefix + "-" + a + "-" + b].asString();
   } else if (config_[prefix + "-" + a].isString()) {
