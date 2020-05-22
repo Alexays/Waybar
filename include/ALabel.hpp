@@ -28,7 +28,7 @@ class ALabel : public AModule {
                       std::string tooltipFormat) -> void;
   virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
   virtual const std::string &getFormat() const;
-  virtual const std::string &getFormat(const std::string &prefix,
+  virtual const std::string getFormat(const std::string &prefix,
                                        const std::string &a,
                                        const std::string &b = "");
 
