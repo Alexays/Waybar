@@ -325,7 +325,7 @@ auto Network::update(std::string format, fmt::dynamic_format_arg_store<fmt::form
     }
 
     if (ALabel::hasFormat("bandwidthUpOctets")) {
-      auto upOctets = pow_format(bandwidth_up / interval_.count(), "o/s"));
+      auto upOctets = pow_format(bandwidth_up / interval_.count(), "o/s");
       auto upOctetsArg = fmt::arg("bandwidthUpOctets", upOctets);
       args.push_back(std::cref(upOctetsArg));
     }
