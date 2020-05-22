@@ -1,6 +1,7 @@
 #include "modules/clock.hpp"
 
 #include <time.h>
+#include <spdlog/spdlog.h>
 
 #include <sstream>
 #include <type_traits>
