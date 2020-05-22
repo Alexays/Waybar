@@ -83,6 +83,7 @@ dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gt
 giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
 jsoncpp = dependency('jsoncpp')
 pugixml = dependency('pugixml')
+libinput = dependency('libinput')
 sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
