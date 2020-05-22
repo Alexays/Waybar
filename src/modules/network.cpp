@@ -337,7 +337,7 @@ auto Network::update(std::string format, fmt::dynamic_format_arg_store<fmt::form
 
   // Get format and tooltip based on state and status
   auto state = getState(signal_strength_);
-  formatTmp = getFormat("format", status, state);
+  auto formatTmp = getFormat("format", status, state);
   if (!formatTmp.empty()) {
     format = formatTmp;
   }

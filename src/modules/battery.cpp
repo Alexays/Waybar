@@ -211,7 +211,7 @@ auto Battery::update(std::string format,
     return ch == ' ' ? '-' : std::tolower(ch);
   });
 
-  formatTmp = getFormat("format", status, state);
+  auto formatTmp = getFormat("format", status, state);
   if (!formatTmp.empty()) {
     format = formatTmp;
   }
