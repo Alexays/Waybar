@@ -283,13 +283,9 @@ auto Network::update(std::string format, fmt::dynamic_format_arg_store<fmt::form
   args.push_back(std::cref(frequencyArg));
 
   if (ALabel::hasFormat("icon")) {
-    auto iconArg = fmt::arg("icon", getIcon(signal_strength_, state_));
+    auto iconArg = fmt::arg("icon", getIcon(signal_strength_, status_));
     args.push_back(std::cref(iconArg));
   }
-
-  // Bandwidth stuffs
-  unsigned long long bandwidth_down = 0;
-  unsigned long long bandwidth_up = 0;
 
   // Has one bandwith related arg
   // In  order to setup bandwith args
@@ -337,11 +333,11 @@ auto Network::update(std::string format, fmt::dynamic_format_arg_store<fmt::form
 
   // Get format and tooltip based on state and status
   auto state = getState(signal_strength_);
-  auto formatTmp = getFormat("format", status, state);
+  auto formatTmp = getFormat("format", status_, state);
   if (!formatTmp.empty()) {
     format = formatTmp;
   }
-  auto tooltipFormat = getFormat("tooltip-format", status, state);
+  auto tooltipFormat = getFormat("tooltip-format", status_, state);
 
   // Call parent update
   ALabel::update(format, args, tooltipFormat);

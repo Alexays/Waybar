@@ -254,8 +254,8 @@ auto Pulseaudio::update(std::string format, fmt::dynamic_format_arg_store<fmt::f
   auto state = getState(volume_);
 
   if (ALabel::hasFormat("icon")) {
-    auto portIcon =  getPortIcon();
-    auto iconArg = fmt::arg("icon", getIcon(volume_, portIcon)));
+    auto portIcon = getPortIcon();
+    auto iconArg = fmt::arg("icon", getIcon(volume_, portIcon));
     args.push_back(std::cref(iconArg));
   }
 
