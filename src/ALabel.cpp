@@ -59,13 +59,13 @@ auto ALabel::update() -> void {
   AModule::update();
 }
 
-auto ALabel::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args)
+auto ALabel::update(std::string format, waybar::args& args)
     -> void {
   ALabel::update(format, args, "");
 }
 
 auto ALabel::update(std::string format,
-                    fmt::dynamic_format_arg_store<fmt::format_context>& args,
+                    waybar::args& args,
                     std::string tooltipFormat) -> void {
   // Set the label
   spdlog::warn("{}\n", format);

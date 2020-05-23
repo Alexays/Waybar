@@ -12,7 +12,7 @@ namespace waybar::modules {
 class MPD : public ALabel {
  public:
   MPD(const std::string&, const Json::Value&);
-  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args, std::string tooltipFormat)
+  auto update(std::string format, waybar::args& args, std::string tooltipFormat)
       -> void override;
 
  private:

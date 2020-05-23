@@ -14,7 +14,7 @@ class Pulseaudio : public ALabel {
  public:
   Pulseaudio(const std::string&, const Json::Value&);
   ~Pulseaudio();
-  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args)
+  auto update(std::string format, waybar::args& args)
       -> void override;
 
  private:

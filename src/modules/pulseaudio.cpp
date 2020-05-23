@@ -104,7 +104,9 @@ bool Pulseaudio::handleScroll(GdkEventScroll *e) {
 /*
  * Called when an event we subscribed to occurs.
  */
-void Pulseaudio::subscribeCb(pa_context *context, pa_subscription_event_type_t type, uint32_t idx,
+void Pulseaudio::subscribeCb(pa_context *context,
+                             pa_subscription_event_type_t type,
+                             uint32_t idx,
                              void *data) {
   unsigned facility = type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
   unsigned operation = type & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
@@ -133,7 +135,9 @@ void Pulseaudio::volumeModifyCb(pa_context *c, int success, void *data) {
 /*
  * Called when the requested source information is ready.
  */
-void Pulseaudio::sourceInfoCb(pa_context * /*context*/, const pa_source_info *i, int /*eol*/,
+void Pulseaudio::sourceInfoCb(pa_context * /*context*/,
+                              const pa_source_info *i,
+                              int /*eol*/,
                               void *data) {
   auto pa = static_cast<Pulseaudio *>(data);
   if (i != nullptr && pa->default_source_name_ == i->name) {
@@ -150,7 +154,9 @@ void Pulseaudio::sourceInfoCb(pa_context * /*context*/, const pa_source_info *i,
 /*
  * Called when the requested sink information is ready.
  */
-void Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, int /*eol*/,
+void Pulseaudio::sinkInfoCb(pa_context * /*context*/,
+                            const pa_sink_info *i,
+                            int /*eol*/,
                             void *data) {
   auto pa = static_cast<Pulseaudio *>(data);
   if (i != nullptr && pa->default_sink_name_ == i->name) {
@@ -205,7 +211,7 @@ const std::string Pulseaudio::getPortIcon() const {
   return port_name_;
 }
 
-auto Pulseaudio::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void {
+auto Pulseaudio::update(std::string format, waybar::args &args) -> void {
   // Check bluetooth
   if (monitor_.find("a2dp_sink") != std::string::npos) {
     if (config_["format-bluetooth"].isString()) {

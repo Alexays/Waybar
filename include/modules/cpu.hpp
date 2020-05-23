@@ -17,7 +17,7 @@ class Cpu : public ALabel {
  public:
   Cpu(const std::string&, const Json::Value&);
   ~Cpu() = default;
-  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void override;
+  auto update(std::string format, waybar::args &args) -> void override;
 
  private:
   uint16_t                                getCpuLoad();

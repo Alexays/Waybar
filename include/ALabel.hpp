@@ -10,6 +10,8 @@
 
 namespace waybar {
 
+using args = fmt::template dynamic_format_arg_store<fmt::format_context>;
+
 class ALabel : public AModule {
  public:
   ALabel(const Json::Value &config,
@@ -22,9 +24,9 @@ class ALabel : public AModule {
   virtual ~ALabel() = default;
   virtual auto update() -> void override;
   virtual auto update(const std::string format,
-                      fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void;
+                      waybar::args &args) -> void;
   virtual auto update(const std::string format,
-                      fmt::dynamic_format_arg_store<fmt::format_context> &args,
+                      waybar::args &args,
                       std::string tooltipFormat) -> void;
   virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
   virtual const std::string &getFormat() const;

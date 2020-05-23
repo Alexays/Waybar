@@ -37,7 +37,7 @@ void Mode::onEvent(const struct Ipc::ipc_response& res) {
   }
 }
 
-auto Mode::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
+auto Mode::update(std::string format, waybar::args& args) -> void {
   auto modeArg = fmt::format(format_, mode_);
   args.push_back(std::cref(modeArg));
   // Call parent update

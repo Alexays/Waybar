@@ -28,7 +28,7 @@ class Battery : public ALabel {
   Battery(const std::string &, const Json::Value &);
   ~Battery();
   auto update(std::string format,
-              fmt::dynamic_format_arg_store<fmt::format_context> &args,
+              waybar::args &args,
               std::string tooltipFormat) -> void override;
 
  private:

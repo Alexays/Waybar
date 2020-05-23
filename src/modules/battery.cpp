@@ -139,7 +139,8 @@ const std::string Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
-    if (capacity == 100 || (config_["full-at"].isUInt() && capacity >= config_["full-at"].asUInt())) {
+    if (capacity == 100 ||
+        (config_["full-at"].isUInt() && capacity >= config_["full-at"].asUInt())) {
       return "Full";
     }
     if (online) {
@@ -161,9 +162,7 @@ const std::string Battery::formatTimeRemaining(float hoursRemaining) const {
   return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
 }
 
-auto Battery::update(std::string format,
-                     fmt::dynamic_format_arg_store<fmt::format_context>& args,
-                     std::string tooltipFormat) -> void {
+auto Battery::update(std::string format, waybar::args& args, std::string tooltipFormat) -> void {
   // Remove older status
   if (!status_.empty()) {
     label_.get_style_context()->remove_class(status_);

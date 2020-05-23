@@ -12,7 +12,7 @@ class Bluetooth : public ALabel {
  public:
   Bluetooth(const std::string &, const Json::Value &);
   ~Bluetooth() = default;
-  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args)
+  auto update(std::string format, waybar::args &args)
       -> void override;
 
  private:

@@ -27,8 +27,7 @@ Temperature::Temperature(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Temperature::update(std::string format,
-                         fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
+auto Temperature::update(std::string format, waybar::args& args) -> void {
   // Add default arg
   auto temperature = getTemperature();
   uint16_t temperature_c = std::round(temperature);
@@ -51,10 +50,10 @@ auto Temperature::update(std::string format,
     auto temperatureFArg = fmt::arg("temperatureF", temperature_f);
     if (!ALabel::hasFormat("") && !ALabel::hasFormat("temperatureC") &&
         !ALabel::hasFormat("temperatureK")) {
-        temp = temperature_f;
-        state = getState(temperature_f);
-        critical = isCritical(temperature_f);
-      }
+      temp = temperature_f;
+      state = getState(temperature_f);
+      critical = isCritical(temperature_f);
+    }
     args.push_back(std::cref(temperatureFArg));
   }
 

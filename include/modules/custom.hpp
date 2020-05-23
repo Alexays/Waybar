@@ -14,7 +14,7 @@ class Custom : public ALabel {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&);
   ~Custom();
-  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void override;
+  auto update(std::string format, waybar::args& args) -> void override;
   void refresh(int /*signal*/);
 
  private:

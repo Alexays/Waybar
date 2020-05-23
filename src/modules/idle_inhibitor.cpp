@@ -27,8 +27,7 @@ IdleInhibitor::~IdleInhibitor() {
   }
 }
 
-auto IdleInhibitor::update(std::string format,
-                           fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
+auto IdleInhibitor::update(std::string format, waybar::args& args) -> void {
   // Default to status
   args.push_back(status_);
   auto statusArg = fmt::arg("status", status_);

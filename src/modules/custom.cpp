@@ -109,7 +109,7 @@ bool Custom::handleToggle(GdkEventButton* const& e) {
   return ret;
 }
 
-auto Custom::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void {
+auto Custom::update(std::string format, waybar::args& args) -> void {
   // Hide label if output is empty
   if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
     event_box_.hide();

@@ -244,8 +244,7 @@ const std::string Network::getNetworkStatus() const {
   return "wifi";
 }
 
-auto Network::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args)
-    -> void {
+auto Network::update(std::string format, waybar::args &args) -> void {
   std::lock_guard<std::mutex> lock(mutex_);
 
   // Remove old status
