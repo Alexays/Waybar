@@ -34,7 +34,7 @@ jobs:
       install:
         - sudo sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
         - sudo pkg install -y date gtk-layer-shell gtkmm30 jsoncpp libdbusmenu
-               libfmt libmpdclient libudev-devd meson pulseaudio scdoc spdlog
+               libfmt libmpdclient libudev-devd meson pulseaudio scdoc spdlog libinput libxml2
       script:
         - meson build -Dman-pages=enabled
         - ninja -C build
