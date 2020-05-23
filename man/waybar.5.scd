@@ -15,7 +15,7 @@ Valid locations for this file are:
 - *~/waybar/config*
 - */etc/xdg/waybar/config*
 
-A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.
+A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
 Also a minimal example configuration can be found on the at the bottom of this man page.
 
 # BAR CONFIGURATION
@@ -28,7 +28,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *output* ++
 	typeof: string|array ++
-	Specifies on which screen this bar will be displayed.
+	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
 
 *position* ++
 	typeof: string ++

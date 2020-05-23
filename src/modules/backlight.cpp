@@ -214,7 +214,7 @@ void Backlight::upsert_device(ForwardIt first,
   check_nn(name);
 
   const char *actual_brightness_attr =
-      strcmp(name, "amdgpu_bl0") == 0 ? "brightness" : "actual_brightness";
+      strncmp(name, "amdgpu_bl", 9) == 0 ? "brightness" : "actual_brightness";
 
   const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
   check_nn(actual);

@@ -19,7 +19,8 @@ Disk::Disk(const std::string& id, const Json::Value& config)
   }
 }
 
-auto Disk::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void {
+auto Disk::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args)
+    -> void {
   struct statvfs stats;
   int err = statvfs(path_.c_str(), &stats);
 
@@ -39,13 +40,13 @@ auto Disk::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_
   getState(percentageFree);
 
   if (ALabel::hasFormat("free")) {
-    auto free = pow_format(stats.f_bavail * stats.f_bsize, "B", true);
+    auto free = pow_format(stats.f_bavail * stats.f_frsize, "B", true);
     auto freeArg = fmt::arg("free", free);
     args.push_back(std::cref(freeArg));
   }
 
   if (ALabel::hasFormat("used") || AModule::tooltipEnabled()) {
-    auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_bsize, "B", true);
+    auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_frsize, "B", true);
     auto usedArg = fmt::arg("used", used);
     args.push_back(std::cref(usedArg));
   }
@@ -57,7 +58,7 @@ auto Disk::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_
   }
 
   if (ALabel::hasFormat("total") || AModule::tooltipEnabled()) {
-    auto total = pow_format(stats.f_blocks * stats.f_bsize, "B", true);
+    auto total = pow_format(stats.f_blocks * stats.f_frsize, "B", true);
     auto totalArg = fmt::arg("total", total);
     args.push_back(std::cref(totalArg));
   }

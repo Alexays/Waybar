@@ -10,7 +10,8 @@ Memory::Memory(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Memory::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
+auto Memory::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args)
+    -> void {
   // Get memory infos
   auto meminfo = parseMeminfo();
 
@@ -59,28 +60,6 @@ auto Memory::update(std::string format, fmt::dynamic_format_arg_store<fmt::forma
 
   // Call parent update
   ALabel::update(format, args);
-}
-
-std::unordered_map<std::string, unsigned long> Memory::parseMeminfo() const {
-  std::unordered_map<std::string, unsigned long> meminfo;
-
-  std::ifstream info(data_dir_);
-  if (!info.is_open()) {
-    throw std::runtime_error("Can't open " + data_dir_);
-  }
-  std::string line;
-  while (getline(info, line)) {
-    auto posDelim = line.find(':');
-    if (posDelim == std::string::npos) {
-      continue;
-    }
-
-    std::string name = line.substr(0, posDelim);
-    int64_t value = std::stol(line.substr(posDelim + 1));
-    meminfo[name] = value;
-  }
-
-  return meminfo;
 }
 
 }  // namespace waybar::modules

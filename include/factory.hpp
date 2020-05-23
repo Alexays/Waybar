@@ -7,14 +7,18 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
-#ifndef NO_FILESYSTEM
+#if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
 #endif
+#if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
 #include "modules/cpu.hpp"
+#endif
 #include "modules/idle_inhibitor.hpp"
+#if defined(HAVE_MEMORY_LINUX) || defined(HAVE_MEMORY_BSD)
 #include "modules/memory.hpp"
+#endif
 #include "modules/disk.hpp"
-#if defined(HAVE_DBUSMENU) && !defined(NO_FILESYSTEM)
+#ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"
 #endif
 #ifdef HAVE_LIBNL
@@ -32,7 +36,9 @@
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
+#if defined(__linux__)
 #include "modules/bluetooth.hpp"
+#endif
 
 namespace waybar {
 

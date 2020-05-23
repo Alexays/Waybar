@@ -1,6 +1,7 @@
 #pragma once
 
-#include <sys/sysinfo.h>
+#include <fmt/format.h>
+#include <unistd.h>
 #include <cstdint>
 #include <fstream>
 #include <numeric>
@@ -19,7 +20,6 @@ class Cpu : public ALabel {
   auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void override;
 
  private:
-  static inline const std::string         data_dir_ = "/proc/stat";
   uint16_t                                getCpuLoad();
   std::tuple<uint16_t, std::string>       getCpuUsage();
   std::vector<std::tuple<size_t, size_t>> parseCpuinfo();

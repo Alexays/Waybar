@@ -1,5 +1,8 @@
 #include "modules/clock.hpp"
 
+#include <spdlog/spdlog.h>
+#include <time.h>
+
 #include <sstream>
 #include <type_traits>
 #ifdef HAVE_LANGINFO_1STDAY
@@ -12,6 +15,9 @@ namespace waybar::modules {
 Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", "{calendar}", 60), fixed_time_zone_(false) {
   if (config_["timezone"].isString()) {
+    spdlog::warn(
+        "As using a timezone, some format args may be missing as the date library havn't got a "
+        "release since 2018.");
     time_zone_ = date::locate_zone(config_["timezone"].asString());
     fixed_time_zone_ = true;
   }
@@ -35,6 +41,7 @@ auto Clock::update(std::string format, fmt::dynamic_format_arg_store<fmt::format
     -> void {
   // Default to fmt when no timezone is specified
   if (!fixed_time_zone_) {
+    tzset();
     auto localtime = fmt::localtime(std::time(nullptr));
     args.push_back(localtime);
 

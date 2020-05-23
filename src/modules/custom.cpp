@@ -20,7 +20,7 @@ Custom::Custom(const std::string& name, const std::string& id, const Json::Value
 
 Custom::~Custom() {
   if (pid_ != -1) {
-    kill(-pid_, 9);
+    killpg(pid_, SIGTERM);
     pid_ = -1;
   }
 }

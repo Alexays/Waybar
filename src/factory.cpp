@@ -7,7 +7,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
-#ifndef NO_FILESYSTEM
+#if defined(__linux__) && !defined(NO_FILESYSTEM)
     if (ref == "battery") {
       return new waybar::modules::Battery(id, config_[name]);
     }
@@ -26,19 +26,23 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
     }
+#if defined(HAVE_MEMORY_LINUX) || defined(HAVE_MEMORY_BSD)
     if (ref == "memory") {
       return new waybar::modules::Memory(id, config_[name]);
     }
+#endif
+#if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);
     }
+#endif
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
     }
-#if defined(HAVE_DBUSMENU) && !defined(NO_FILESYSTEM)
+#ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
     }
@@ -66,9 +70,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }
+#if defined(__linux__)
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
     }
+#endif
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name]);
     }

@@ -2,7 +2,9 @@
 
 #include <giomm.h>
 #include <sys/wait.h>
+#include <spdlog/spdlog.h>
 #include <unistd.h>
+#include <array>
 
 namespace waybar::util::command {
 
@@ -28,16 +30,22 @@ inline std::string read(FILE* fp) {
 }
 
 inline int close(FILE* fp, pid_t pid) {
-  int stat;
+  int stat = -1;
 
   fclose(fp);
-  while (waitpid(pid, &stat, 0) == -1) {
-    if (errno != EINTR) {
-      stat = 0;
+  do {
+    if (WIFEXITED(stat)) {
+      spdlog::debug("%s exited with code %d", WEXITSTATUS(stat));
+    } else if (WIFSIGNALED(stat)) {
+      spdlog::debug("%s killed by %d", WTERMSIG(stat));
+    } else if (WIFSTOPPED(stat)) {
+      spdlog::debug("%s stopped by %d", WSTOPSIG(stat));
+    } else if (WIFCONTINUED(stat)) {
+      spdlog::debug("%s continued");
+    } else {
       break;
     }
-  }
-
+  } while (!WIFEXITED(stat) && !WIFSIGNALED(stat));
   return stat;
 }
 
@@ -57,7 +65,7 @@ inline FILE* open(const std::string cmd, int& pid) {
     ::close(fd[0]);
     dup2(fd[1], 1);
     setpgid(child_pid, child_pid);
-    execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
+    execlp("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
     ::close(fd[1]);
@@ -72,10 +80,7 @@ inline struct res exec(std::string cmd) {
   if (!fp) return {-1, ""};
   auto output = command::read(fp);
   auto stat = command::close(fp, pid);
-  if (WIFEXITED(stat)) {
-    return {WEXITSTATUS(stat), output};
-  }
-  return {-1, output};
+  return {WEXITSTATUS(stat), output};
 }
 
 inline int32_t forkExec(std::string cmd) {

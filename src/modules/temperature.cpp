@@ -27,9 +27,11 @@ Temperature::Temperature(const std::string& id, const Json::Value& config)
   };
 }
 
-auto Temperature::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
+auto Temperature::update(std::string format,
+                         fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
   // Add default arg
-  auto temperature_c = getTemperature();
+  auto temperature = getTemperature();
+  uint16_t temperature_c = std::round(temperature);
   args.push_back(temperature_c);
   auto temperatureCArg = fmt::arg("temperatureC", temperature_c);
   args.push_back(std::cref(temperatureCArg));
@@ -45,14 +47,27 @@ auto Temperature::update(std::string format, fmt::dynamic_format_arg_store<fmt::
   }
 
   if (ALabel::hasFormat("temperatureF")) {
-    auto temperature_f = temperature_c * 1.8 + 32;
+    auto temperature_f = std::round(temperature * 1.8 + 32);
     auto temperatureFArg = fmt::arg("temperatureF", temperature_f);
-    if (!(ALabel::hasFormat("") || ALabel::hasFormat("temperatureC"))) {
-      temp = temperature_f;
-      state = getState(temperature_f);
-      critical = isCritical(temperature_f);
-    }
+    if (!ALabel::hasFormat("") && !ALabel::hasFormat("temperatureC") &&
+        !ALabel::hasFormat("temperatureK"))) {
+        temp = temperature_f;
+        state = getState(temperature_f);
+        critical = isCritical(temperature_f);
+      }
     args.push_back(std::cref(temperatureFArg));
+  }
+
+  if (ALabel::hasFormat("temperatureK")) {
+    auto temperature_k = std::round(temperature * 273.15);
+    auto temperatureKArg = fmt::arg("temperatureK", temperature_k);
+    if (!ALabel::hasFormat("") && !ALabel::hasFormat("temperatureC") &&
+        !ALabel::hasFormat("temperatureF")) {
+      temp = temperature_k;
+      state = getState(temperature_k);
+      critical = isCritical(temperature_k);
+    }
+    args.push_back(std::cref(temperatureKArg));
   }
 
   if (critical) {
@@ -76,7 +91,7 @@ auto Temperature::update(std::string format, fmt::dynamic_format_arg_store<fmt::
   ALabel::update(format, args);
 }
 
-uint16_t Temperature::getTemperature() const {
+float Temperature::getTemperature() {
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
@@ -87,7 +102,7 @@ uint16_t Temperature::getTemperature() const {
   }
   temp.close();
   auto temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
-  return std::round(temperature_c);
+  return temperature_c;
 }
 
 bool Temperature::isCritical(uint16_t temperature_c) const {
