@@ -1,8 +1,10 @@
 #pragma once
 
 #include <mpd/client.h>
+
 #include <condition_variable>
 #include <thread>
+
 #include "ALabel.hpp"
 
 namespace waybar::modules {
@@ -10,12 +12,12 @@ namespace waybar::modules {
 class MPD : public ALabel {
  public:
   MPD(const std::string&, const Json::Value&);
-  auto update() -> void override;
+  auto update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context>& args, std::string tooltipFormat)
+      -> void override;
 
  private:
   std::thread periodic_updater();
   std::string getTag(mpd_tag_type type, unsigned idx = 0);
-  void        setLabel();
   std::string getStateIcon();
   std::string getOptionIcon(std::string optionName, bool activated);
 
@@ -45,7 +47,7 @@ class MPD : public ALabel {
 
   // Not using unique_ptr since we don't manage the pointer
   // (It's either nullptr, or from the config)
-  const char*    server_;
+  const char* server_;
   const unsigned port_;
 
   unsigned timeout_;
@@ -53,7 +55,7 @@ class MPD : public ALabel {
   // We need a mutex here because we can trigger updates from multiple thread:
   // the event based updates, the periodic updates needed for the elapsed time,
   // and the click play/pause feature
-  std::mutex        connection_lock_;
+  std::mutex connection_lock_;
   unique_connection connection_;
   // The alternate connection will be used to wait for events: since it will
   // be blocking (idle) we can't send commands via this connection
@@ -63,8 +65,8 @@ class MPD : public ALabel {
 
   // Protect them using the `connection_lock_`
   unique_status status_;
-  mpd_state     state_;
-  unique_song   song_;
+  mpd_state state_;
+  unique_song song_;
 
   // To make sure the previous periodic_updater stops before creating a new one
   std::mutex periodic_lock_;

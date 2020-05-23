@@ -101,8 +101,12 @@ auto ALabel::update(std::string format,
 }
 
 bool ALabel::hasFormat(const std::string& key) const {
-  return format_.find("{" + key + "}") != std::string::npos ||
-         format_.find("{" + key + ":") != std::string::npos;
+  return ALabel::hasFormat(key, format_);
+}
+
+bool ALabel::hasFormat(const std::string& key, const std::string& format) const {
+  return format.find("{" + key + "}") != std::string::npos ||
+         format.find("{" + key + ":") != std::string::npos;
 }
 
 const std::string& ALabel::getFormat() const { return format_; }
