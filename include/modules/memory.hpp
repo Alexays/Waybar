@@ -16,8 +16,6 @@ class Memory : public ALabel {
       -> void override;
 
  private:
-  void parseMeminfo();
-
   std::unordered_map<std::string, unsigned long> parseMeminfo() const;
 
   util::SleeperThread thread_;
