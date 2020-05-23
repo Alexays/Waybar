@@ -139,7 +139,7 @@ const std::string Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
     std::ifstream(adapter_ / "online") >> online;
-    if (capacity == 100) {
+    if (capacity == 100 || (config_["full-at"].isUInt() && capacity >= config_["full-at"].asUInt())) {
       return "Full";
     }
     if (online) {

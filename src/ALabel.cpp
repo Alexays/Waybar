@@ -16,12 +16,12 @@ ALabel::ALabel(const Json::Value& config,
                bool ellipsize)
     : AModule(config, name, id, tooltipFormat, config["format-alt"].isString()),
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds(100000000)
+                    ? std::chrono::seconds(100000000) // ~3 years
                     : std::chrono::seconds(
                           config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)) {
   // Check interval type
   if (config_["interval"].isString()) {
-    spdlog::warn("%s config has an incorrect interval type.", name);
+    spdlog::warn("{} config has an incorrect interval type.", name);
   }
 
   label_.set_name(name);
@@ -68,6 +68,7 @@ auto ALabel::update(std::string format,
                     fmt::dynamic_format_arg_store<fmt::format_context>& args,
                     std::string tooltipFormat) -> void {
   // Set the label
+  spdlog::warn("{}\n", format);
   if (alt_ && config_["format-alt"].isString()) {
     label_.set_markup(fmt::vformat(config_["format-alt"].asString(), args));
   } else {
@@ -109,8 +110,10 @@ bool ALabel::hasFormat(const std::string& key, const std::string& format) const 
          format.find("{" + key + ":") != std::string::npos;
 }
 
+// Get default format
 const std::string& ALabel::getFormat() const { return format_; }
 
+// Get format based on a status and an optional state
 const std::string ALabel::getFormat(const std::string& prefix,
                                     const std::string& a,
                                     const std::string& b) {

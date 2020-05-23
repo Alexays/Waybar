@@ -27,7 +27,8 @@ IdleInhibitor::~IdleInhibitor() {
   }
 }
 
-auto IdleInhibitor::update(std::string format, fmt::dynamic_format_arg_store<fmt::format_context> &args) -> void {
+auto IdleInhibitor::update(std::string format,
+                           fmt::dynamic_format_arg_store<fmt::format_context>& args) -> void {
   // Default to status
   args.push_back(status_);
   auto statusArg = fmt::arg("status", status_);
@@ -36,7 +37,7 @@ auto IdleInhibitor::update(std::string format, fmt::dynamic_format_arg_store<fmt
   // Add status class
   label_.get_style_context()->add_class(status_);
 
-  if (ALabel::hasFormat("icon")) {
+  if (ALabel::hasFormat("icon", format)) {
     auto icon = getIcon(0, status_);
     auto iconArg = fmt::arg("icon", icon);
     args.push_back(std::cref(iconArg));
