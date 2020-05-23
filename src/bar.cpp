@@ -342,8 +342,8 @@ void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surf
     o->window.resize(o->width_, o->height_);
     o->setExclusiveZone(width, height);
     spdlog::info(BAR_SIZE_MSG,
-                 o->width_ == 1 ? "auto" : std::to_string(o->width_),
-                 o->height_ == 1 ? "auto" : std::to_string(o->height_),
+                 o->width_ <= 1 ? "auto" : std::to_string(o->width_),
+                 o->height_ <= 1 ? "auto" : std::to_string(o->height_),
                  o->output->name);
     wl_surface_commit(o->surface);
   }
