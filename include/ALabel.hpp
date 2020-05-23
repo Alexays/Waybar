@@ -23,11 +23,9 @@ class ALabel : public AModule {
          bool ellipsize = false);
   virtual ~ALabel() = default;
   virtual auto update() -> void override;
-  virtual auto update(const std::string format,
-                      waybar::args &args) -> void;
-  virtual auto update(const std::string format,
-                      waybar::args &args,
-                      std::string tooltipFormat) -> void;
+  virtual auto update(const std::string format, waybar::args &args) -> void;
+  virtual auto update(const std::string format, waybar::args &args, std::string tooltipFormat)
+      -> void;
   virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
   virtual const std::string &getFormat() const;
   virtual const std::string getFormat(const std::string &prefix,

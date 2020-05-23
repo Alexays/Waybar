@@ -7,6 +7,7 @@
 #include <gtkmm/main.h>
 #include <gtkmm/window.h>
 #include <json/json.h>
+
 #include "AModule.hpp"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
@@ -17,10 +18,11 @@ namespace waybar {
 class Factory;
 struct waybar_output {
   Glib::RefPtr<Gdk::Monitor> monitor;
-  std::string                name;
+  std::string name;
 
   std::unique_ptr<struct zxdg_output_v1, decltype(&zxdg_output_v1_destroy)> xdg_output = {
-      nullptr, &zxdg_output_v1_destroy};
+      nullptr,
+      &zxdg_output_v1_destroy};
 };
 
 class Bar {
@@ -33,11 +35,11 @@ class Bar {
   void handleSignal(int);
 
   struct waybar_output *output;
-  Json::Value           config;
-  Gtk::Window           window;
-  struct wl_surface *   surface;
-  bool                  visible = true;
-  bool                  vertical = false;
+  Json::Value config;
+  Gtk::Window window;
+  struct wl_surface *surface;
+  bool visible = true;
+  bool vertical = false;
 
  private:
   static constexpr const char *MIN_HEIGHT_MSG =
@@ -48,8 +50,11 @@ class Bar {
       "Bar configured (width: {}, height: {}) for output: {}";
   static constexpr const char *SIZE_DEFINED =
       "{} size is defined in the config file so it will stay like that";
-  static void layerSurfaceHandleConfigure(void *, struct zwlr_layer_surface_v1 *, uint32_t,
-                                          uint32_t, uint32_t);
+  static void layerSurfaceHandleConfigure(void *,
+                                          struct zwlr_layer_surface_v1 *,
+                                          uint32_t,
+                                          uint32_t,
+                                          uint32_t);
   static void layerSurfaceHandleClosed(void *, struct zwlr_layer_surface_v1 *);
 
 #ifdef HAVE_GTK_LAYER_SHELL
@@ -73,14 +78,14 @@ class Bar {
   } margins_;
   struct zwlr_layer_surface_v1 *layer_surface_;
   // use gtk-layer-shell instead of handling layer surfaces directly
-  bool                                          use_gls_ = false;
-  uint32_t                                      width_ = 0;
-  uint32_t                                      height_ = 1;
-  uint8_t                                       anchor_;
-  Gtk::Box                                      left_;
-  Gtk::Box                                      center_;
-  Gtk::Box                                      right_;
-  Gtk::Box                                      box_;
+  bool use_gls_ = false;
+  uint32_t width_ = 0;
+  uint32_t height_ = 1;
+  uint8_t anchor_;
+  Gtk::Box left_;
+  Gtk::Box center_;
+  Gtk::Box right_;
+  Gtk::Box box_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_left_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_center_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_right_;
