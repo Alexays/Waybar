@@ -1,6 +1,6 @@
 #include "modules/memory.hpp"
 
-std::unordered_map<std::string, unsigned long> waybar::modules::Memory::parseMeminfo() {
+std::unordered_map<std::string, unsigned long> waybar::modules::Memory::parseMeminfo() const {
   std::unordered_map<std::string, unsigned long> meminfo;
   const std::string data_dir_ = "/proc/meminfo";
   std::ifstream info(data_dir_);
