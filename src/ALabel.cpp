@@ -1,6 +1,7 @@
 #include "ALabel.hpp"
 
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
 
 #include <util/command.hpp>
 
@@ -18,6 +19,11 @@ ALabel::ALabel(const Json::Value& config,
                     ? std::chrono::seconds(100000000)
                     : std::chrono::seconds(
                           config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)) {
+  // Check interval type
+  if (config_["interval"].isString()) {
+    spdlog::warn("%s config has an incorrect interval type.", name);
+  }
+
   label_.set_name(name);
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
@@ -61,18 +67,21 @@ auto ALabel::update(std::string format, fmt::dynamic_format_arg_store<fmt::forma
 auto ALabel::update(std::string format,
                     fmt::dynamic_format_arg_store<fmt::format_context>& args,
                     std::string tooltipFormat) -> void {
-  // Hide the module on empty format
-  if (format.empty()) {
+  // Set the label
+  if (alt_ && config_["format-alt"].isString()) {
+    label_.set_markup(fmt::vformat(config_["format-alt"].asString(), args));
+  } else {
+    label_.set_markup(fmt::vformat(format, args));
+  }
+
+  // Hide the module on empty output
+  auto text = label_.get_text();
+  if (text.empty()) {
     event_box_.hide();
   } else {
     event_box_.show();
-    // Set the label
-    if (alt_ && config_["format-alt"].isString()) {
-      label_.set_markup(fmt::vformat(config_["format-alt"].asString(), args));
-    } else {
-      label_.set_markup(fmt::vformat(format, args));
-    }
 
+    // Update tooltip only if label is not empty
     // Add tooltip if enabled and not already set
     if (AModule::tooltipEnabled()) {
       if (!tooltipFormat.empty()) {

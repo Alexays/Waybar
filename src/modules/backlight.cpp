@@ -190,7 +190,8 @@ auto Backlight::update() -> void {
 }
 
 template <class ForwardIt>
-const Backlight::BacklightDev *Backlight::best_device(ForwardIt first, ForwardIt last,
+const Backlight::BacklightDev *Backlight::best_device(ForwardIt first,
+                                                      ForwardIt last,
                                                       std::string_view preferred_device) {
   const auto found = std::find_if(
       first, last, [preferred_device](const auto &dev) { return dev.name() == preferred_device; });
@@ -205,7 +206,9 @@ const Backlight::BacklightDev *Backlight::best_device(ForwardIt first, ForwardIt
 }
 
 template <class ForwardIt, class Inserter>
-void Backlight::upsert_device(ForwardIt first, ForwardIt last, Inserter inserter,
+void Backlight::upsert_device(ForwardIt first,
+                              ForwardIt last,
+                              Inserter inserter,
                               udev_device *dev) {
   const char *name = udev_device_get_sysname(dev);
   check_nn(name);
