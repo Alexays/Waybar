@@ -50,7 +50,7 @@ auto Temperature::update(std::string format,
     auto temperature_f = std::round(temperature * 1.8 + 32);
     auto temperatureFArg = fmt::arg("temperatureF", temperature_f);
     if (!ALabel::hasFormat("") && !ALabel::hasFormat("temperatureC") &&
-        !ALabel::hasFormat("temperatureK"))) {
+        !ALabel::hasFormat("temperatureK")) {
         temp = temperature_f;
         state = getState(temperature_f);
         critical = isCritical(temperature_f);
@@ -91,7 +91,7 @@ auto Temperature::update(std::string format,
   ALabel::update(format, args);
 }
 
-float Temperature::getTemperature() {
+float Temperature::getTemperature() const {
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
