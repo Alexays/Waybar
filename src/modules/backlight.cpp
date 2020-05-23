@@ -89,7 +89,7 @@ int Backlight::BacklightDev::get_max() const { return max_; }
 void Backlight::BacklightDev::set_max(int max) { max_ = max; }
 
 Backlight::Backlight(const std::string &id, const Json::Value &config)
-    : ALabel(config, "backlight", id, "{percent}%", 2),
+    : ALabel(config, "backlight", id, "{percent}%", "", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
   // Get initial state
   {
