@@ -4,14 +4,13 @@
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config)
     : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
-  if (config_["exec"].isString()) {
-    if (interval_.count() > 0) {
-      delayWorker();
-    } else {
-      continuousWorker();
-    }
+  if (interval_.count() > 0) {
+    delayWorker();
+  } else if (config_["exec"].isString()) {
+    continuousWorker();
+  } else {
+    dp.emit();
   }
-  dp.emit();
 }
 
 waybar::modules::Custom::~Custom() {
@@ -25,14 +24,16 @@ void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      auto res = util::command::exec(config_["exec-if"].asString());
-      if (res.exit_code != 0) {
+      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      if (output_.exit_code != 0) {
         can_update = false;
         event_box_.hide();
       }
     }
     if (can_update) {
-      output_ = util::command::exec(config_["exec"].asString());
+      if (config_["exec"].isString()) {
+        output_ = util::command::exec(config_["exec"].asString());
+      }
       dp.emit();
     }
     thread_.sleep_for(interval_);

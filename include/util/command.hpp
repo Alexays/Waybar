@@ -34,6 +34,8 @@ inline int close(FILE* fp, pid_t pid) {
 
   fclose(fp);
   do {
+    waitpid(pid, &stat, WCONTINUED | WUNTRACED);
+
     if (WIFEXITED(stat)) {
       spdlog::debug("%s exited with code %d", WEXITSTATUS(stat));
     } else if (WIFSIGNALED(stat)) {
@@ -81,6 +83,14 @@ inline struct res exec(std::string cmd) {
   auto output = command::read(fp);
   auto stat = command::close(fp, pid);
   return {WEXITSTATUS(stat), output};
+}
+
+inline struct res execNoRead(std::string cmd) {
+  int  pid;
+  auto fp = command::open(cmd, pid);
+  if (!fp) return {-1, ""};
+  auto stat = command::close(fp, pid);
+  return {WEXITSTATUS(stat), ""};
 }
 
 inline int32_t forkExec(std::string cmd) {
