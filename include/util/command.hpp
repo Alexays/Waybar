@@ -1,9 +1,10 @@
 #pragma once
 
 #include <giomm.h>
-#include <sys/wait.h>
 #include <spdlog/spdlog.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
 #include <array>
 
 namespace waybar::util::command {
@@ -34,6 +35,8 @@ inline int close(FILE* fp, pid_t pid) {
 
   fclose(fp);
   do {
+    waitpid(pid, &stat, WCONTINUED | WUNTRACED);
+
     if (WIFEXITED(stat)) {
       spdlog::debug("%s exited with code %d", WEXITSTATUS(stat));
     } else if (WIFSIGNALED(stat)) {
@@ -49,7 +52,7 @@ inline int close(FILE* fp, pid_t pid) {
   return stat;
 }
 
-inline FILE* open(const std::string cmd, int& pid) {
+inline FILE* open(const std::string& cmd, int& pid) {
   if (cmd == "") return nullptr;
   int fd[2];
   pipe(fd);
@@ -74,7 +77,7 @@ inline FILE* open(const std::string cmd, int& pid) {
   return fdopen(fd[0], "r");
 }
 
-inline struct res exec(std::string cmd) {
+inline struct res exec(const std::string& cmd) {
   int  pid;
   auto fp = command::open(cmd, pid);
   if (!fp) return {-1, ""};
@@ -83,7 +86,15 @@ inline struct res exec(std::string cmd) {
   return {WEXITSTATUS(stat), output};
 }
 
-inline int32_t forkExec(std::string cmd) {
+inline struct res execNoRead(const std::string& cmd) {
+  int  pid;
+  auto fp = command::open(cmd, pid);
+  if (!fp) return {-1, ""};
+  auto stat = command::close(fp, pid);
+  return {WEXITSTATUS(stat), ""};
+}
+
+inline int32_t forkExec(const std::string& cmd) {
   if (cmd == "") return -1;
 
   int32_t pid = fork();
@@ -100,7 +111,7 @@ inline int32_t forkExec(std::string cmd) {
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
-    signal(SIGCHLD,SIG_IGN);
+    signal(SIGCHLD, SIG_IGN);
   }
 
   return pid;

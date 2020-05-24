@@ -27,6 +27,9 @@ class ALabel : public AModule {
   virtual auto update(const std::string format, waybar::args &args, std::string tooltipFormat)
       -> void;
   virtual std::string getIcon(uint16_t percentage, const std::string &alt = "", uint16_t max = 0);
+  virtual std::string getIcon(uint16_t percentage,
+                              std::vector<std::string> &alts,
+                              uint16_t max = 0);
   virtual const std::string &getFormat() const;
   virtual const std::string getFormat(const std::string &prefix,
                                       const std::string &a,

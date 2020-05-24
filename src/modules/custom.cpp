@@ -2,19 +2,21 @@
 
 #include <spdlog/spdlog.h>
 
-namespace waybar::modules {
-
-Custom::Custom(const std::string& name, const std::string& id, const Json::Value& config)
+waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
+                                const Json::Value& config)
     : ALabel(config, "custom-" + name, id, "{}", "{tooltip}"), name_(name), fp_(nullptr), pid_(-1) {
   // Save context in order to restore it later
   label_.get_style_context()->context_save();
 
-  if (config_["exec"].isString()) {
-    if (interval_.count() > 0) {
-      delayWorker();
-    } else {
-      continuousWorker();
-    }
+  // Hide box by default
+  event_box_.hide();
+
+  if (interval_.count() > 0) {
+    delayWorker();
+  } else if (config_["exec"].isString()) {
+    continuousWorker();
+  } else {
+    dp.emit();
   }
 }
 
@@ -29,14 +31,16 @@ void Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
-      auto res = util::command::exec(config_["exec-if"].asString());
-      if (res.exit_code != 0) {
+      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      if (output_.exit_code != 0) {
         can_update = false;
         event_box_.hide();
       }
     }
     if (can_update) {
-      output_ = util::command::exec(config_["exec"].asString());
+      if (config_["exec"].isString()) {
+        output_ = util::command::exec(config_["exec"].asString());
+      }
       dp.emit();
     }
     thread_.sleep_for(interval_);
@@ -67,25 +71,26 @@ void Custom::continuousWorker() {
       }
       if (config_["restart-interval"].isUInt()) {
         restart = true;
+        pid_ = -1;
+        fp_ = util::command::open(cmd, pid_);
+        if (!fp_) {
+          throw std::runtime_error("Unable to open " + cmd);
+        }
       } else {
         thread_.stop();
         return;
       }
-    }
-    std::string output = buff;
+    } else {
+      std::string output = buff;
 
-    // Remove last newline
-    if (!output.empty() && output[output.length() - 1] == '\n') {
-      output.erase(output.length() - 1);
-    }
-    output_ = {0, output};
-    dp.emit();
-    if (restart) {
-      pid_ = -1;
-      fp_ = util::command::open(cmd, pid_);
-      if (!fp_) {
-        throw std::runtime_error("Unable to open " + cmd);
+      // Remove last newline
+      if (!output.empty() && output[output.length() - 1] == '\n') {
+        output.erase(output.length() - 1);
       }
+      output_ = {0, output};
+      dp.emit();
+    }
+    if (restart) {
       thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
     }
   };
