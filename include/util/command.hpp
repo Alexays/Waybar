@@ -38,13 +38,13 @@ inline int close(FILE* fp, pid_t pid) {
     waitpid(pid, &stat, WCONTINUED | WUNTRACED);
 
     if (WIFEXITED(stat)) {
-      spdlog::debug("{} exited with code {}", WEXITSTATUS(stat));
+      spdlog::debug("Cmd exited with code {}", WEXITSTATUS(stat));
     } else if (WIFSIGNALED(stat)) {
-      spdlog::debug("{} killed by {}", WTERMSIG(stat));
+      spdlog::debug("Cmd killed by {}", WTERMSIG(stat));
     } else if (WIFSTOPPED(stat)) {
-      spdlog::debug("{} stopped by {}", WSTOPSIG(stat));
+      spdlog::debug("Cmd stopped by {}", WSTOPSIG(stat));
     } else if (WIFCONTINUED(stat)) {
-      spdlog::debug("{} continued");
+      spdlog::debug("Cmd continued");
     } else {
       break;
     }
@@ -60,7 +60,7 @@ inline FILE* open(const std::string& cmd, int& pid) {
   pid_t child_pid = fork();
 
   if (child_pid < 0) {
-    printf("Unable to exec cmd %s, error %s", cmd.c_str(), strerror(errno));
+    spdlog::error("Unable to exec cmd {}, error {}", cmd.c_str(), strerror(errno));
     return nullptr;
   }
 
@@ -100,7 +100,7 @@ inline int32_t forkExec(const std::string& cmd) {
   int32_t pid = fork();
 
   if (pid < 0) {
-    printf("Unable to exec cmd %s, error %s", cmd.c_str(), strerror(errno));
+    spdlog::error("Unable to exec cmd {}, error {}", cmd.c_str(), strerror(errno));
     return pid;
   }
 
