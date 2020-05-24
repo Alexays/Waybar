@@ -252,7 +252,7 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar");
+  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar", Gio::APPLICATION_HANDLES_COMMAND_LINE);
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
     throw std::runtime_error("Can't find display");
