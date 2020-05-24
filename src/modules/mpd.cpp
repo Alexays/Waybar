@@ -289,9 +289,12 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
       state_ = MPD_STATE_UNKNOWN;
       throw std::runtime_error("Connection to MPD closed");
     default:
-      auto error_message = mpd_connection_get_error_message(conn);
-      mpd_connection_clear_error(conn);
-      throw std::runtime_error(std::string(error_message));
+      if (conn) {
+        auto error_message = mpd_connection_get_error_message(conn);
+        mpd_connection_clear_error(conn);
+        throw std::runtime_error(std::string(error_message));
+      }
+      throw std::runtime_error("Invalid connection");
   }
 }
 
