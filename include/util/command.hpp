@@ -38,13 +38,13 @@ inline int close(FILE* fp, pid_t pid) {
     waitpid(pid, &stat, WCONTINUED | WUNTRACED);
 
     if (WIFEXITED(stat)) {
-      spdlog::debug("%s exited with code %d", WEXITSTATUS(stat));
+      spdlog::debug("{} exited with code {}", WEXITSTATUS(stat));
     } else if (WIFSIGNALED(stat)) {
-      spdlog::debug("%s killed by %d", WTERMSIG(stat));
+      spdlog::debug("{} killed by {}", WTERMSIG(stat));
     } else if (WIFSTOPPED(stat)) {
-      spdlog::debug("%s stopped by %d", WSTOPSIG(stat));
+      spdlog::debug("{} stopped by {}", WSTOPSIG(stat));
     } else if (WIFCONTINUED(stat)) {
-      spdlog::debug("%s continued");
+      spdlog::debug("{} continued");
     } else {
       break;
     }
