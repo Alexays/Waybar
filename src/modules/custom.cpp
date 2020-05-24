@@ -2,8 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
-waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
-                                const Json::Value& config)
+namespace waybar::modules {
+
+Custom::Custom(const std::string& name, const std::string& id, const Json::Value& config)
     : ALabel(config, "custom-" + name, id, "{}", "{tooltip}"), name_(name), fp_(nullptr), pid_(-1) {
   // Save context in order to restore it later
   label_.get_style_context()->context_save();
