@@ -50,7 +50,7 @@ void waybar::modules::Custom::continuousWorker() {
   if (!fp_) {
     throw std::runtime_error("Unable to open " + cmd);
   }
-  thread_ = [&] {
+  thread_ = [this, cmd] {
     char*  buff = nullptr;
     size_t len = 0;
     bool restart = false;
@@ -67,25 +67,26 @@ void waybar::modules::Custom::continuousWorker() {
       }
       if (config_["restart-interval"].isUInt()) {
         restart = true;
+        pid_ = -1;
+        fp_ = util::command::open(cmd, pid_);
+        if (!fp_) {
+          throw std::runtime_error("Unable to open " + cmd);
+        }
       } else {
         thread_.stop();
         return;
       }
-    }
-    std::string output = buff;
+    } else {
+      std::string output = buff;
 
-    // Remove last newline
-    if (!output.empty() && output[output.length() - 1] == '\n') {
-      output.erase(output.length() - 1);
-    }
-    output_ = {0, output};
-    dp.emit();
-    if (restart) {
-      pid_ = -1;
-      fp_ = util::command::open(cmd, pid_);
-      if (!fp_) {
-        throw std::runtime_error("Unable to open " + cmd);
+      // Remove last newline
+      if (!output.empty() && output[output.length() - 1] == '\n') {
+        output.erase(output.length() - 1);
       }
+      output_ = {0, output};
+      dp.emit();
+    }
+    if (restart) {
       thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
     }
   };
