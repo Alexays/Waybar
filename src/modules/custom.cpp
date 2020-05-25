@@ -1,18 +1,15 @@
 #include "modules/custom.hpp"
+
 #include <spdlog/spdlog.h>
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config)
     : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
-  // Hide box by default
-  event_box_.hide();
-
+  dp.emit();
   if (interval_.count() > 0) {
     delayWorker();
   } else if (config_["exec"].isString()) {
     continuousWorker();
-  } else {
-    dp.emit();
   }
 }
 
@@ -30,7 +27,7 @@ void waybar::modules::Custom::delayWorker() {
       output_ = util::command::execNoRead(config_["exec-if"].asString());
       if (output_.exit_code != 0) {
         can_update = false;
-        event_box_.hide();
+        dp.emit();
       }
     }
     if (can_update) {
@@ -53,7 +50,7 @@ void waybar::modules::Custom::continuousWorker() {
   thread_ = [this, cmd] {
     char*  buff = nullptr;
     size_t len = 0;
-    bool restart = false;
+    bool   restart = false;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
       if (fp_) {
@@ -112,7 +109,8 @@ bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
 
 auto waybar::modules::Custom::update() -> void {
   // Hide label if output is empty
-  if (config_["exec"].isString() && (output_.out.empty() || output_.exit_code != 0)) {
+  if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
+      (output_.out.empty() || output_.exit_code != 0)) {
     event_box_.hide();
   } else {
     if (config_["return-type"].asString() == "json") {
