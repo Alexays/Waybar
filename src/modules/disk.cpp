@@ -45,7 +45,7 @@ auto waybar::modules::Disk::update() -> void {
   }
 
   auto free = pow_format(stats.f_bavail * stats.f_frsize, "B", true);
-  auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_frsize, "B", true);
+  auto used = pow_format((stats.f_blocks - stats.f_bfree) * stats.f_frsize, "B", true);
   auto total = pow_format(stats.f_blocks * stats.f_frsize, "B", true);
 
   label_.set_markup(fmt::format(format_
@@ -53,7 +53,7 @@ auto waybar::modules::Disk::update() -> void {
       , fmt::arg("free", free)
       , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
       , fmt::arg("used", used)
-      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks)
+      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bfree) * 100 / stats.f_blocks)
       , fmt::arg("total", total)
       , fmt::arg("path", path_)
       ));
@@ -67,7 +67,7 @@ auto waybar::modules::Disk::update() -> void {
       , fmt::arg("free", free)
       , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
       , fmt::arg("used", used)
-      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks)
+      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bfree) * 100 / stats.f_blocks)
       , fmt::arg("total", total)
       , fmt::arg("path", path_)
       ));
