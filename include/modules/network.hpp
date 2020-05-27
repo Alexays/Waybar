@@ -52,8 +52,6 @@ class Network : public ALabel {
   struct sockaddr_nl nladdr_ = {0};
   struct nl_sock*    sock_ = nullptr;
   struct nl_sock*    ev_sock_ = nullptr;
-  int                efd_;
-  int                ev_fd_;
   int                nl80211_id_;
   std::mutex         mutex_;
 

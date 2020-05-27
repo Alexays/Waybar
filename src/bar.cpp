@@ -10,8 +10,8 @@
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
-      window{Gtk::WindowType::WINDOW_TOPLEVEL},
       surface(nullptr),
+      window{Gtk::WindowType::WINDOW_TOPLEVEL},
       layer_surface_(nullptr),
       anchor_(ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP),
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),

@@ -6,7 +6,7 @@ namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
-    : config_(std::move(config)) {
+    : name_(std::move(name)), config_(std::move(config)) {
   // configure events' user commands
   if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
       config_["on-click-backward"].isString() || config_["on-click-forward"].isString() ||
@@ -23,10 +23,11 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 AModule::~AModule() {
   for (const auto& pid : pid_) {
     if (pid != -1) {
-      kill(-pid, 9);
+      killpg(pid, SIGTERM);
     }
   }
 }
+
 
 auto AModule::update() -> void {
   // Run user-provided update handler if configured

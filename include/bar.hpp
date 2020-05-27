@@ -34,10 +34,10 @@ class Bar {
 
   struct waybar_output *output;
   Json::Value           config;
-  Gtk::Window           window;
   struct wl_surface *   surface;
   bool                  visible = true;
   bool                  vertical = false;
+  Gtk::Window           window;
 
  private:
   static constexpr const char *MIN_HEIGHT_MSG =

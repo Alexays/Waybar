@@ -5,7 +5,7 @@
 namespace waybar::util {
 
 class Rfkill {
- public:;
+ public:
   Rfkill(enum rfkill_type rfkill_type);
   ~Rfkill() = default;
   void waitForEvent();
@@ -13,7 +13,7 @@ class Rfkill {
 
  private:
   enum rfkill_type rfkill_type_;
-  int state_ = 0;
+  int              state_ = 0;
 };
 
 }  // namespace waybar::util

@@ -145,7 +145,8 @@ void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
   for (auto it = bars.begin(); it != bars.end();) {
     if ((*it)->output->monitor == monitor) {
       auto output_name = (*it)->output->name;
-      (*it)->window.close();
+      (*it)->window.hide();
+      gtk_app->remove_window((*it)->window);
       it = bars.erase(it);
       spdlog::info("Bar removed from output: {}", output_name);
     } else {

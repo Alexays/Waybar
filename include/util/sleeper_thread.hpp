@@ -59,6 +59,11 @@ class SleeperThread {
       do_run_ = false;
     }
     condvar_.notify_all();
+    auto handle = thread_.native_handle();
+    if (handle != 0) {
+      // TODO: find a proper way to terminate thread...
+      pthread_cancel(handle);
+    }
   }
 
   ~SleeperThread() {
