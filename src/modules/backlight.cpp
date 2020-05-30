@@ -186,17 +186,13 @@ auto waybar::modules::Backlight::update() -> void {
     label_.set_markup(text);
 
     // Set the tooltip text
-    if (tooltipEnabled()) {
-      if (config_["tooltip-format"].isString()) {
-        auto tooltip_format = config_["tooltip-format"].asString();
-        auto tooltip_text = fmt::format(
-            tooltip_format,
-            fmt::arg("percent", std::to_string(percent)),
-            fmt::arg("icon", getIcon(percent)));
-        label_.set_tooltip_text(tooltip_text);
-      } else {
-        label_.set_tooltip_text(text);
-      }
+    if (tooltipEnabled() && config_["tooltip-format"].isString()) {
+      auto tooltip_format = config_["tooltip-format"].asString();
+      auto tooltip_text = fmt::format(
+          tooltip_format,
+          fmt::arg("percent", std::to_string(percent)),
+          fmt::arg("icon", getIcon(percent)));
+      label_.set_tooltip_markup(tooltip_text);
     }
   } else {
     if (!previous_best_.has_value()) {
