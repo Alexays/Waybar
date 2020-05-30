@@ -196,5 +196,6 @@ Valid options for the "rotate" property are: 0, 90, 180 and 270.
 - *waybar-sway-mode(5)*
 - *waybar-sway-window(5)*
 - *waybar-sway-workspaces(5)*
+- *waybar-wlr-taskbar(5)*
 - *waybar-temperature(5)*
 - *waybar-tray(5)*

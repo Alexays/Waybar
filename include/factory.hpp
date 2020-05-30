@@ -7,6 +7,9 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
+#ifdef HAVE_WLR
+#include "modules/wlr/taskbar.hpp"
+#endif
 #if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
 #endif

@@ -165,6 +165,11 @@ if true # find_program('sway', required : false).found()
     ]
 endif
 
+if true
+    add_project_arguments('-DHAVE_WLR', language: 'cpp')
+    src_files += 'src/modules/wlr/taskbar.cpp'
+endif
+
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += 'src/modules/network.cpp'
@@ -260,6 +265,7 @@ if scdoc.found()
         'waybar-temperature.5.scd',
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
+        'waybar-wlr-taskbar.5.scd',
         'waybar-bluetooth.5.scd',
     ]
 
