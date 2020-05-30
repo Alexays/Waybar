@@ -129,9 +129,9 @@ auto waybar::modules::Custom::update() -> void {
       label_.set_markup(str);
       if (tooltipEnabled()) {
         if (text_ == tooltip_) {
-          label_.set_tooltip_text(str);
+          label_.set_tooltip_markup(str);
         } else {
-          label_.set_tooltip_text(tooltip_);
+          label_.set_tooltip_markup(tooltip_);
         }
       }
       auto classes = label_.get_style_context()->list_classes();
