@@ -20,7 +20,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *full-at*: ++
 	typeof: integer ++
-	Define the max percentage of the battery, usefull for an old battery, e.g. 96
+	Define the max percentage of the battery, useful for an old battery, e.g. 96
 
 *interval*: ++
 	typeof: integer ++

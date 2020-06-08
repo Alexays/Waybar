@@ -33,7 +33,7 @@ Addressed by *network*
 
 *format-ethernet*: ++
 	typeof: string ++
-	This format is used when a ethernet interface is displayed.
+	This format is used when an ethernet interface is displayed.
 
 *format-wifi*: ++
 	typeof: string ++
@@ -103,7 +103,7 @@ Addressed by *network*
 
 *tooltip-format-ethernet*: ++
 	typeof: string ++
-	This format is used when a ethernet interface is displayed.
+	This format is used when an ethernet interface is displayed.
 
 *tooltip-format-wifi*: ++
 	typeof: string ++
