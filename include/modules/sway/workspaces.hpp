@@ -20,6 +20,8 @@ class Workspaces : public AModule, public sigc::trackable {
   auto update() -> void;
 
  private:
+  static inline const std::string workspace_switch_cmd_ = "workspace --no-auto-back-and-forth \"{}\"";
+
   void              onCmd(const struct Ipc::ipc_response&);
   void              onEvent(const struct Ipc::ipc_response&);
   bool              filterButtons();

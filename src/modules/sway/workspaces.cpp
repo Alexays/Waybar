@@ -219,12 +219,12 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
       if (node["target_output"].isString()) {
         ipc_.sendCmd(
             IPC_COMMAND,
-            fmt::format("workspace \"{}\"; move workspace to output \"{}\"; workspace \"{}\"",
+            fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
                         node["name"].asString(),
                         node["target_output"].asString(),
                         node["name"].asString()));
       } else {
-        ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", node["name"].asString()));
+        ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, node["name"].asString()));
       }
     } catch (const std::exception &e) {
       spdlog::error("Workspaces: {}", e.what());
@@ -276,7 +276,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
   }
   try {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
+    ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, name));
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }
