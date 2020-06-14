@@ -10,6 +10,9 @@
 #ifdef HAVE_WLR
 #include "modules/wlr/taskbar.hpp"
 #endif
+#ifdef HAVE_RIVER
+#include "modules/river/tags.hpp"
+#endif
 #if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
 #endif

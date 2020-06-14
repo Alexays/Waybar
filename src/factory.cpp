@@ -25,7 +25,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #endif
 #ifdef HAVE_WLR
     if (ref == "wlr/taskbar") {
-        return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
+      return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_RIVER
+    if (ref == "river/tags") {
+      return new waybar::modules::river::Tags(id, bar_, config_[name]);
     }
 #endif
     if (ref == "idle_inhibitor") {
