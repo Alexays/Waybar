@@ -53,8 +53,13 @@ void waybar::modules::Battery::getBatteries() {
       auto bat_defined = config_["bat"].isString();
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
           fs::exists(node.path() / "capacity") && fs::exists(node.path() / "uevent") &&
-          fs::exists(node.path() / "status")) {
-        batteries_.push_back(node.path());
+          fs::exists(node.path() / "status") && fs::exists(node.path() / "type")) {
+            std::string type;
+            std::ifstream(node.path() / "type") >> type;
+
+            if (!type.compare("Battery")){
+              batteries_.push_back(node.path());
+            }
       }
       auto adap_defined = config_["adapter"].isString();
       if (((adap_defined && dir_name == config_["adapter"].asString()) || !adap_defined) &&
