@@ -6,7 +6,7 @@
 > *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
 
 **Current features**
-- Sway (Workspaces, Binding mode, Focused window name)
+- Sway (Workspaces, Binding mode, Focused window name, Keyboard Layout)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
 - Battery

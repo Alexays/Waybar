@@ -161,7 +161,8 @@ if true # find_program('sway', required : false).found()
         'src/modules/sway/ipc/client.cpp',
         'src/modules/sway/mode.cpp',
         'src/modules/sway/window.cpp',
-        'src/modules/sway/workspaces.cpp'
+        'src/modules/sway/workspaces.cpp',
+        'src/modules/sway/layout.cpp'
     ]
 endif
 
