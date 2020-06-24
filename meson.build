@@ -36,7 +36,7 @@ else
     if meson.source_root() == git_path
         git_commit_hash = run_command([git.path(), 'describe', '--always', '--tags']).stdout().strip()
         git_branch = run_command([git.path(), 'rev-parse', '--abbrev-ref', 'HEAD']).stdout().strip()
-        version = '"@0@ (" __DATE__ ", branch \'@1@\')"'.format(git_commit_hash, git_branch)
+        version = '"@0@ (branch \'@1@\')"'.format(git_commit_hash, git_branch)
         add_project_arguments('-DVERSION=@0@'.format(version), language: 'cpp')
     else
         add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
