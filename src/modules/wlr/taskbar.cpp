@@ -187,7 +187,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
             with_icon_ = true;
             format_after_ = format.substr(6);
         } else if (icon_pos == std::string::npos) {
-            format_after_ = format;
+            format_before_ = format;
         } else {
             with_icon_ = true;
             format_before_ = format.substr(0, icon_pos);
@@ -421,7 +421,7 @@ void Task::update()
     }
     if (!format_after_.empty()) {
         text_after_.set_label(
-                fmt::format(format_before_,
+                fmt::format(format_after_,
                     fmt::arg("title", title_),
                     fmt::arg("app_id", app_id_),
                     fmt::arg("state", state_string()),
