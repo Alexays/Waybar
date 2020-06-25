@@ -87,10 +87,12 @@ Addressed by *wlr/taskbar*
 
 ```
 "wlr/taskbar": {
-    "format": "{icon}",
+	"format": "{icon}",
+	"icon-size": 14,
+	"icon-theme": "Numix-Circle",
 	"tooltip-format": "{title}",
 	"on-click": "activate",
-	"on-middle-click": "close"
+	"on-click-middle": "close"
 }
 ```
 
