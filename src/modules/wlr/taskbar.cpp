@@ -85,9 +85,9 @@ static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon
      * send a single app-id, but in any case this works fine */
     while (stream >> app_id)
     {
-        std::string icon_name = get_from_desktop_app_info(app_id);
+        std::string icon_name = get_from_icon_theme(icon_theme, app_id);
         if (icon_name.empty())
-            icon_name = get_from_icon_theme(icon_theme, app_id);
+            icon_name = get_from_desktop_app_info(app_id);
 
         if (icon_name.empty())
             continue;
@@ -271,7 +271,9 @@ void Task::handle_title(const char *title)
 void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
-    if (!image_load_icon(icon_, tbar_->icon_theme(), app_id_,
+    std::transform(app_id_.begin(), app_id_.end(), app_id_.begin(),
+            [](char c){ return std::tolower(c); });
+    if (!image_load_icon(icon_, tbar_->icon_theme(),  app_id_,
                  config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16))
         spdlog::warn("Failed to load icon for {}", app_id);
 
