@@ -190,7 +190,7 @@ Valid options for the "rotate" property are: 0, 90, 180 and 270.
 - *waybar-custom(5)*
 - *waybar-idle-inhibitor(5)*
 - *waybar-memory(5)*
-- *waybar-mdp(5)*
+- *waybar-mpd(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
 - *waybar-sway-mode(5)*
