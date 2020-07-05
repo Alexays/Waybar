@@ -298,12 +298,23 @@ void Task::handle_title(const char *title)
 void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
-    if (!image_load_icon(icon_, tbar_->icon_theme(),  app_id_,
-                 config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16))
-        spdlog::warn("Failed to load icon for {}", app_id);
 
-    if (with_icon_)
+    if (!with_icon_)
+        return;
+
+    int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+    bool found = false;
+    for (auto& icon_theme : tbar_->icon_themes()) {
+        if (image_load_icon(icon_, icon_theme, app_id_, icon_size)) {
+            found = true;
+            break;
+        }
+    }
+
+    if (found)
         icon_.show();
+    else
+        spdlog::debug("Couldn't find icon for {}", app_id_);
 }
 
 void Task::handle_output_enter(struct wl_output *output)
@@ -555,13 +566,23 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
 
     /* Get the configured icon theme if specified */
     if (config_["icon-theme"].isString()) {
-        icon_theme_ = Gtk::IconTheme::create();
-        icon_theme_->set_custom_theme(config_["icon-theme"].asString());
-        spdlog::debug("Use custom icon theme: {}.", config_["icon-theme"].asString());
-    } else {
-        spdlog::debug("Use system default icon theme");
-        icon_theme_ = Gtk::IconTheme::get_default();
+        auto icon_theme_config = config_["icon-theme"].asString();
+        size_t start = 0, end = 0;
+
+        do {
+            end = icon_theme_config.find(',', start);
+            auto it_name = trim(icon_theme_config.substr(start, end-start));
+
+            auto it = Gtk::IconTheme::create();
+            it->set_custom_theme(it_name);
+            spdlog::debug("Use custom icon theme: {}", it_name);
+
+            icon_themes_.push_back(it);
+
+            start = end == std::string::npos ? end : end + 1;
+        } while(end != std::string::npos);
     }
+    icon_themes_.push_back(Gtk::IconTheme::get_default());
 }
 
 Taskbar::~Taskbar()
@@ -677,9 +698,9 @@ bool Taskbar::all_outputs() const
     return result;
 }
 
-Glib::RefPtr<Gtk::IconTheme> Taskbar::icon_theme() const
+std::vector<Glib::RefPtr<Gtk::IconTheme>> Taskbar::icon_themes() const
 {
-    return icon_theme_;
+    return icon_themes_;
 }
 
 } /* namespace waybar::modules::wlr */
