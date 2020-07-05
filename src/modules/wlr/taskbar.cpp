@@ -20,6 +20,27 @@
 
 namespace waybar::modules::wlr {
 
+/* String manipulation methods */
+const std::string WHITESPACE = " \n\r\t\f\v";
+
+static std::string ltrim(const std::string& s)
+{
+	size_t start = s.find_first_not_of(WHITESPACE);
+	return (start == std::string::npos) ? "" : s.substr(start);
+}
+
+static std::string rtrim(const std::string& s)
+{
+	size_t end = s.find_last_not_of(WHITESPACE);
+	return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+
+static std::string trim(const std::string& s)
+{
+	return rtrim(ltrim(s));
+}
+
+
 /* Icon loading functions */
 
 /* Method 1 - get the correct icon name from the desktop file */
@@ -196,13 +217,13 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
         auto icon_pos = format.find("{icon}");
         if (icon_pos == 0) {
             with_icon_ = true;
-            format_after_ = format.substr(6);
+            format_after_ = trim(format.substr(6));
         } else if (icon_pos == std::string::npos) {
             format_before_ = format;
         } else {
             with_icon_ = true;
-            format_before_ = format.substr(0, icon_pos);
-            format_after_ = format.substr(icon_pos + 6);
+            format_before_ = trim(format.substr(0, icon_pos));
+            format_after_ = trim(format.substr(icon_pos + 6));
         }
     } else {
         /* The default is to only show the icon */
@@ -210,11 +231,6 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
     }
 
     /* Strip spaces at the beginning and end of the format strings */
-    if (!format_before_.empty() && format_before_.back() == ' ')
-        format_before_.pop_back();
-    if (!format_after_.empty() && format_after_.front() == ' ')
-        format_after_.erase(std::cbegin(format_after_));
-
     format_tooltip_.clear();
     if (!config_["tooltip"].isBool() || config_["tooltip"].asBool()) {
         if (config_["tooltip-format"].isString())
