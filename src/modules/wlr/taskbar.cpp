@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <sstream>
@@ -42,19 +43,43 @@ static std::string trim(const std::string& s)
 
 
 /* Icon loading functions */
+static std::vector<std::string> search_prefix()
+{
+    std::vector<std::string> prefixes = {""};
+
+    auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
+    if (!xdg_data_dirs) {
+        prefixes.push_back("/usr/share/");
+        prefixes.push_back("/usr/local/share/");
+    } else {
+        std::string xdg_data_dirs_str(xdg_data_dirs);
+        size_t start = 0, end = 0;
+
+        do {
+            end = xdg_data_dirs_str.find(':', start);
+            auto p = xdg_data_dirs_str.substr(start, end-start);
+            prefixes.push_back(trim(p) + "/");
+
+            start = end == std::string::npos ? end : end + 1;
+        } while(end != std::string::npos);
+    }
+
+    for (auto& p : prefixes)
+        spdlog::debug("Using 'desktop' search path prefix: {}", p);
+
+    return prefixes;
+}
 
 /* Method 1 - get the correct icon name from the desktop file */
 static std::string get_from_desktop_app_info(const std::string &app_id)
 {
-    Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+    static std::vector<std::string> prefixes = search_prefix();
 
-    std::vector<std::string> prefixes = {
+    std::vector<std::string> app_folders = {
         "",
-        "/usr/share/applications/",
-        "/usr/share/applications/kde/",
-        "/usr/share/applications/org.kde.",
-        "/usr/local/share/applications/",
-        "/usr/local/share/applications/org.kde.",
+        "applications/",
+        "applications/kde/",
+        "applications/org.kde."
     };
 
     std::string lower_app_id = app_id;
@@ -72,11 +97,14 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
         ".desktop"
     };
 
+    Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+
     for (auto& prefix : prefixes)
-        for (auto& id : app_id_variations)
-            for (auto& suffix : suffixes)
-                if (!app_info)
-                    app_info = Gio::DesktopAppInfo::create_from_filename(prefix + id + suffix);
+        for (auto& folder : app_folders)
+            for (auto& id : app_id_variations)
+                for (auto& suffix : suffixes)
+                    if (!app_info)
+                        app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + id + suffix);
 
     if (app_info)
         return app_info->get_icon()->to_string();
