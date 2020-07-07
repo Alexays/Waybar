@@ -82,16 +82,6 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
         "applications/org.kde."
     };
 
-    std::string lower_app_id = app_id;
-    std::transform(std::begin(lower_app_id), std::end(lower_app_id), std::begin(lower_app_id),
-            [](unsigned char c) { return std::tolower(c); });
-
-
-    std::vector<std::string> app_id_variations = {
-        app_id,
-        lower_app_id
-    };
-
     std::vector<std::string> suffixes = {
         "",
         ".desktop"
@@ -101,10 +91,9 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
 
     for (auto& prefix : prefixes)
         for (auto& folder : app_folders)
-            for (auto& id : app_id_variations)
-                for (auto& suffix : suffixes)
-                    if (!app_info)
-                        app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + id + suffix);
+            for (auto& suffix : suffixes)
+                if (!app_info)
+                    app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
 
     if (app_info)
         return app_info->get_icon()->to_string();
@@ -126,26 +115,23 @@ static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon
         const std::string &app_id_list, int size)
 {
     std::string app_id;
-    std::string lower_app_id;
     std::istringstream stream(app_id_list);
     bool found = false;
-
 
     /* Wayfire sends a list of app-id's in space separated format, other compositors
      * send a single app-id, but in any case this works fine */
     while (stream >> app_id)
     {
+        auto lower_app_id = app_id;
+        std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
+                [](char c){ return std::tolower(c); });
+
         std::string icon_name = get_from_icon_theme(icon_theme, app_id);
-        if (icon_name.empty()) {
-            lower_app_id = app_id;
-            std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
-                    [](char c){ return std::tolower(c); });
-            icon_name = get_from_icon_theme(icon_theme, lower_app_id);
-        }
 
         if (icon_name.empty())
+            icon_name = get_from_icon_theme(icon_theme, lower_app_id);
+        if (icon_name.empty())
             icon_name = get_from_desktop_app_info(app_id);
-
         if (icon_name.empty())
             icon_name = get_from_desktop_app_info(lower_app_id);
 
