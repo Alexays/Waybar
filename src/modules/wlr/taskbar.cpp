@@ -579,22 +579,24 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     }
 
     /* Get the configured icon theme if specified */
-    if (config_["icon-theme"].isString()) {
-        auto icon_theme_config = config_["icon-theme"].asString();
-        size_t start = 0, end = 0;
-
-        do {
-            end = icon_theme_config.find(',', start);
-            auto it_name = trim(icon_theme_config.substr(start, end-start));
+    if (config_["icon-theme"].isArray()) {
+        for (auto& c : config_["icon-theme"]) {
+            auto it_name = c.asString();
 
             auto it = Gtk::IconTheme::create();
             it->set_custom_theme(it_name);
             spdlog::debug("Use custom icon theme: {}", it_name);
 
             icon_themes_.push_back(it);
+        }
+    } else if (config_["icon-theme"].isString()) {
+        auto it_name = config_["icon-theme"].asString();
 
-            start = end == std::string::npos ? end : end + 1;
-        } while(end != std::string::npos);
+        auto it = Gtk::IconTheme::create();
+        it->set_custom_theme(it_name);
+        spdlog::debug("Use custom icon theme: {}", it_name);
+
+        icon_themes_.push_back(it);
     }
     icon_themes_.push_back(Gtk::IconTheme::get_default());
 }

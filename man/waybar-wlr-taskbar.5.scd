@@ -24,7 +24,7 @@ Addressed by *wlr/taskbar*
 	The format, how information should be displayed.
 
 *icon-theme*: ++
-	typeof: string ++
+	typeof: array|string ++
 	The names of the icon-themes that should be used to find an icon. The list will be traversed from left to right. If omitted, the system default will be used.
 
 *icon-size*: ++
