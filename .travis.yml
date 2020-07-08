@@ -30,7 +30,7 @@ jobs:
       env:
       before_install:
         - sudo sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-        - sudo pkg install -y date gtk-layer-shell gtkmm30 jsoncpp libdbusmenu
+        - sudo pkg install -y gtk-layer-shell gtkmm30 jsoncpp libdbusmenu
                libfmt libmpdclient libudev-devd meson pulseaudio scdoc spdlog
       script:
         - meson build -Dman-pages=enabled
