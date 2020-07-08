@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <sstream>
@@ -20,30 +21,65 @@
 
 namespace waybar::modules::wlr {
 
+/* String manipulation methods */
+const std::string WHITESPACE = " \n\r\t\f\v";
+
+static std::string ltrim(const std::string& s)
+{
+	size_t start = s.find_first_not_of(WHITESPACE);
+	return (start == std::string::npos) ? "" : s.substr(start);
+}
+
+static std::string rtrim(const std::string& s)
+{
+	size_t end = s.find_last_not_of(WHITESPACE);
+	return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+}
+
+static std::string trim(const std::string& s)
+{
+	return rtrim(ltrim(s));
+}
+
+
 /* Icon loading functions */
+static std::vector<std::string> search_prefix()
+{
+    std::vector<std::string> prefixes = {""};
+
+    auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
+    if (!xdg_data_dirs) {
+        prefixes.push_back("/usr/share/");
+        prefixes.push_back("/usr/local/share/");
+    } else {
+        std::string xdg_data_dirs_str(xdg_data_dirs);
+        size_t start = 0, end = 0;
+
+        do {
+            end = xdg_data_dirs_str.find(':', start);
+            auto p = xdg_data_dirs_str.substr(start, end-start);
+            prefixes.push_back(trim(p) + "/");
+
+            start = end == std::string::npos ? end : end + 1;
+        } while(end != std::string::npos);
+    }
+
+    for (auto& p : prefixes)
+        spdlog::debug("Using 'desktop' search path prefix: {}", p);
+
+    return prefixes;
+}
 
 /* Method 1 - get the correct icon name from the desktop file */
 static std::string get_from_desktop_app_info(const std::string &app_id)
 {
-    Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+    static std::vector<std::string> prefixes = search_prefix();
 
-    std::vector<std::string> prefixes = {
+    std::vector<std::string> app_folders = {
         "",
-        "/usr/share/applications/",
-        "/usr/share/applications/kde/",
-        "/usr/share/applications/org.kde.",
-        "/usr/local/share/applications/",
-        "/usr/local/share/applications/org.kde.",
-    };
-
-    std::string lower_app_id = app_id;
-    std::transform(std::begin(lower_app_id), std::end(lower_app_id), std::begin(lower_app_id),
-            [](unsigned char c) { return std::tolower(c); });
-
-
-    std::vector<std::string> app_id_variations = {
-        app_id,
-        lower_app_id
+        "applications/",
+        "applications/kde/",
+        "applications/org.kde."
     };
 
     std::vector<std::string> suffixes = {
@@ -51,11 +87,13 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
         ".desktop"
     };
 
+    Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+
     for (auto& prefix : prefixes)
-        for (auto& id : app_id_variations)
+        for (auto& folder : app_folders)
             for (auto& suffix : suffixes)
                 if (!app_info)
-                    app_info = Gio::DesktopAppInfo::create_from_filename(prefix + id + suffix);
+                    app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
 
     if (app_info)
         return app_info->get_icon()->to_string();
@@ -77,26 +115,23 @@ static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon
         const std::string &app_id_list, int size)
 {
     std::string app_id;
-    std::string lower_app_id;
     std::istringstream stream(app_id_list);
     bool found = false;
-
 
     /* Wayfire sends a list of app-id's in space separated format, other compositors
      * send a single app-id, but in any case this works fine */
     while (stream >> app_id)
     {
+        auto lower_app_id = app_id;
+        std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
+                [](char c){ return std::tolower(c); });
+
         std::string icon_name = get_from_icon_theme(icon_theme, app_id);
-        if (icon_name.empty()) {
-            lower_app_id = app_id;
-            std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
-                    [](char c){ return std::tolower(c); });
-            icon_name = get_from_icon_theme(icon_theme, lower_app_id);
-        }
 
         if (icon_name.empty())
+            icon_name = get_from_icon_theme(icon_theme, lower_app_id);
+        if (icon_name.empty())
             icon_name = get_from_desktop_app_info(app_id);
-
         if (icon_name.empty())
             icon_name = get_from_desktop_app_info(lower_app_id);
 
@@ -196,13 +231,13 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
         auto icon_pos = format.find("{icon}");
         if (icon_pos == 0) {
             with_icon_ = true;
-            format_after_ = format.substr(6);
+            format_after_ = trim(format.substr(6));
         } else if (icon_pos == std::string::npos) {
             format_before_ = format;
         } else {
             with_icon_ = true;
-            format_before_ = format.substr(0, icon_pos);
-            format_after_ = format.substr(icon_pos + 6);
+            format_before_ = trim(format.substr(0, icon_pos));
+            format_after_ = trim(format.substr(icon_pos + 6));
         }
     } else {
         /* The default is to only show the icon */
@@ -210,11 +245,6 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
     }
 
     /* Strip spaces at the beginning and end of the format strings */
-    if (!format_before_.empty() && format_before_.back() == ' ')
-        format_before_.pop_back();
-    if (!format_after_.empty() && format_after_.front() == ' ')
-        format_after_.erase(std::cbegin(format_after_));
-
     format_tooltip_.clear();
     if (!config_["tooltip"].isBool() || config_["tooltip"].asBool()) {
         if (config_["tooltip-format"].isString())
@@ -282,12 +312,23 @@ void Task::handle_title(const char *title)
 void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
-    if (!image_load_icon(icon_, tbar_->icon_theme(),  app_id_,
-                 config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16))
-        spdlog::warn("Failed to load icon for {}", app_id);
 
-    if (with_icon_)
+    if (!with_icon_)
+        return;
+
+    int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+    bool found = false;
+    for (auto& icon_theme : tbar_->icon_themes()) {
+        if (image_load_icon(icon_, icon_theme, app_id_, icon_size)) {
+            found = true;
+            break;
+        }
+    }
+
+    if (found)
         icon_.show();
+    else
+        spdlog::debug("Couldn't find icon for {}", app_id_);
 }
 
 void Task::handle_output_enter(struct wl_output *output)
@@ -538,14 +579,26 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     }
 
     /* Get the configured icon theme if specified */
-    if (config_["icon-theme"].isString()) {
-        icon_theme_ = Gtk::IconTheme::create();
-        icon_theme_->set_custom_theme(config_["icon-theme"].asString());
-        spdlog::debug("Use custom icon theme: {}.", config_["icon-theme"].asString());
-    } else {
-        spdlog::debug("Use system default icon theme");
-        icon_theme_ = Gtk::IconTheme::get_default();
+    if (config_["icon-theme"].isArray()) {
+        for (auto& c : config_["icon-theme"]) {
+            auto it_name = c.asString();
+
+            auto it = Gtk::IconTheme::create();
+            it->set_custom_theme(it_name);
+            spdlog::debug("Use custom icon theme: {}", it_name);
+
+            icon_themes_.push_back(it);
+        }
+    } else if (config_["icon-theme"].isString()) {
+        auto it_name = config_["icon-theme"].asString();
+
+        auto it = Gtk::IconTheme::create();
+        it->set_custom_theme(it_name);
+        spdlog::debug("Use custom icon theme: {}", it_name);
+
+        icon_themes_.push_back(it);
     }
+    icon_themes_.push_back(Gtk::IconTheme::get_default());
 }
 
 Taskbar::~Taskbar()
@@ -661,9 +714,9 @@ bool Taskbar::all_outputs() const
     return result;
 }
 
-Glib::RefPtr<Gtk::IconTheme> Taskbar::icon_theme() const
+std::vector<Glib::RefPtr<Gtk::IconTheme>> Taskbar::icon_themes() const
 {
-    return icon_theme_;
+    return icon_themes_;
 }
 
 } /* namespace waybar::modules::wlr */

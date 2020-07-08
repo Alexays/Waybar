@@ -131,7 +131,7 @@ class Taskbar : public waybar::AModule
     Gtk::Box box_;
     std::vector<TaskPtr> tasks_;
 
-    Glib::RefPtr<Gtk::IconTheme> icon_theme_;
+    std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
 
     struct zwlr_foreign_toplevel_manager_v1 *manager_;
     struct wl_seat *seat_;
@@ -154,7 +154,7 @@ class Taskbar : public waybar::AModule
     bool show_output(struct wl_output *) const;
     bool all_outputs() const;
 
-    Glib::RefPtr<Gtk::IconTheme> icon_theme() const;
+    std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes() const;
 };
 
 } /* namespace waybar::modules::wlr */
