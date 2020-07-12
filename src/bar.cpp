@@ -121,7 +121,7 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
   auto tmp_width = width_;
   if (ev->height > static_cast<int>(height_)) {
     // Default minimal value
-    if (height_ != 1) {
+    if (height_ > 1) {
       spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
     }
     if (config["height"].isUInt()) {
@@ -132,7 +132,7 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
   }
   if (ev->width > static_cast<int>(width_)) {
     // Default minimal value
-    if (width_ != 1) {
+    if (width_ > 1) {
       spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
     }
     if (config["width"].isUInt()) {
