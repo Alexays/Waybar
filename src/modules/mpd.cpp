@@ -352,7 +352,7 @@ bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
 }
 
 bool waybar::modules::MPD::stopped() {
-  return connection_ == nullptr || state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP;
+  return connection_ == nullptr || state_ == MPD_STATE_UNKNOWN || state_ == MPD_STATE_STOP || status_ == nullptr;
 }
 
 bool waybar::modules::MPD::playing() { return connection_ != nullptr && state_ == MPD_STATE_PLAY; }
