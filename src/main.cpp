@@ -1,6 +1,31 @@
 #include <csignal>
+#include <list>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <spdlog/spdlog.h>
 #include "client.hpp"
+
+sig_atomic_t is_inserting_pid = false;
+std::list<pid_t> reap;
+
+static void handler(int sig) {
+  int saved_errno = errno;
+  if (!is_inserting_pid) {
+    for (auto it = reap.begin(); it != reap.end(); ++it) {
+      if (waitpid(*it, nullptr, WNOHANG) == *it) {
+        it = reap.erase(it);
+      }
+    }
+  }
+  errno = saved_errno;
+}
+
+inline void installSigChldHandler(void) {
+  struct sigaction sa;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_handler = handler;
+  sigaction(SIGCHLD, &sa, nullptr);
+}
 
 int main(int argc, char* argv[]) {
   try {
@@ -18,6 +43,7 @@ int main(int argc, char* argv[]) {
         }
       });
     }
+    installSigChldHandler();
 
     auto ret = client->main(argc, argv);
     delete client;

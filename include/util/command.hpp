@@ -7,6 +7,9 @@
 
 #include <array>
 
+extern sig_atomic_t is_inserting_pid;
+extern std::list<pid_t> reap;
+
 namespace waybar::util::command {
 
 struct res {
@@ -32,10 +35,11 @@ inline std::string read(FILE* fp) {
 
 inline int close(FILE* fp, pid_t pid) {
   int stat = -1;
+  pid_t ret;
 
   fclose(fp);
   do {
-    waitpid(pid, &stat, WCONTINUED | WUNTRACED);
+    ret = waitpid(pid, &stat, WCONTINUED | WUNTRACED);
 
     if (WIFEXITED(stat)) {
       spdlog::debug("Cmd exited with code {}", WEXITSTATUS(stat));
@@ -45,6 +49,8 @@ inline int close(FILE* fp, pid_t pid) {
       spdlog::debug("Cmd stopped by {}", WSTOPSIG(stat));
     } else if (WIFCONTINUED(stat)) {
       spdlog::debug("Cmd continued");
+    } else if (ret == -1) {
+      spdlog::debug("waitpid failed: {}", strerror(errno));
     } else {
       break;
     }
@@ -111,7 +117,9 @@ inline int32_t forkExec(const std::string& cmd) {
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
-    signal(SIGCHLD, SIG_IGN);
+    is_inserting_pid = true;
+    reap.push_back(pid);
+    is_inserting_pid = false;
   }
 
   return pid;
