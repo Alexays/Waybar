@@ -7,7 +7,7 @@
 
 #include <array>
 
-extern sig_atomic_t is_inserting_pid;
+extern std::mutex reap_mtx;
 extern std::list<pid_t> reap;
 
 namespace waybar::util::command {
@@ -71,6 +71,12 @@ inline FILE* open(const std::string& cmd, int& pid) {
   }
 
   if (!child_pid) {
+    int err;
+    sigset_t mask;
+    sigfillset(&mask);
+    // Reset sigmask
+    err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
+    if (err != 0) spdlog::error("pthread_sigmask in open failed: {}", strerror(err));
     ::close(fd[0]);
     dup2(fd[1], 1);
     setpgid(child_pid, child_pid);
@@ -103,7 +109,7 @@ inline struct res execNoRead(const std::string& cmd) {
 inline int32_t forkExec(const std::string& cmd) {
   if (cmd == "") return -1;
 
-  int32_t pid = fork();
+  pid_t pid = fork();
 
   if (pid < 0) {
     spdlog::error("Unable to exec cmd {}, error {}", cmd.c_str(), strerror(errno));
@@ -112,14 +118,20 @@ inline int32_t forkExec(const std::string& cmd) {
 
   // Child executes the command
   if (!pid) {
+    int err;
+    sigset_t mask;
+    sigfillset(&mask);
+    // Reset sigmask
+    err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
+    if (err != 0) spdlog::error("pthread_sigmask in forkExec failed: {}", strerror(err));
     setpgid(pid, pid);
-    signal(SIGCHLD, SIG_DFL);
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
-    is_inserting_pid = true;
+    reap_mtx.lock();
     reap.push_back(pid);
-    is_inserting_pid = false;
+    reap_mtx.unlock();
+    spdlog::debug("Added child to reap list: {}", pid);
   }
 
   return pid;
