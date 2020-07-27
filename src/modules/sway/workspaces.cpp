@@ -1,15 +1,15 @@
 #include "modules/sway/workspaces.hpp"
 
-#include <string>
-#include <cctype>
 #include <spdlog/spdlog.h>
 
+#include <cctype>
+#include <string>
 
 namespace waybar::modules::sway {
 
-// this is the code that sway uses to assign a number to a workspace. This is
-// taken quite verbatim from `sway/ipc-json.c`.
-int sway_wsname_to_num(std::string name) {
+// Helper function to to assign a number to a workspace, just like sway. In fact
+// this is taken quite verbatim from `sway/ipc-json.c`.
+int Workspaces::convertWorkspaceNameToNum(std::string name) {
   if (isdigit(name[0])) {
     errno = 0;
     char *    endptr = NULL;
@@ -121,21 +121,23 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                     // the "num" property (integer type):
                     // The workspace number or -1 for workspaces that do
                     // not start with a number.
-                    //auto l = lhs["num"].asInt();
-                    //auto r = rhs["num"].asInt();
-
+                    // We could rely on sway providing this property:
+                    //
+                    //     auto l = lhs["num"].asInt();
+                    //     auto r = rhs["num"].asInt();
+                    //
                     // We cannot rely on the "num" property as provided by sway
                     // via IPC, because persistent workspace might not exist in
                     // sway's view. However, we need this property also for
                     // not-yet created persistent workspace. As such, we simply
                     // duplicate sway's logic of assigning the "num" property
-                    // into waybar (see sway_wsname_to_num). This way the
+                    // into waybar (see convertWorkspaceNameToNum). This way the
                     // sorting should work out even when we include workspaces
                     // that do not currently exist.
                     auto lname = lhs["name"].asString();
                     auto rname = rhs["name"].asString();
-                    auto l = sway_wsname_to_num(lname);
-                    auto r = sway_wsname_to_num(rname);
+                    int  l = convertWorkspaceNameToNum(lname);
+                    int  r = convertWorkspaceNameToNum(rname);
 
                     if (l == r) {
                       // in case both integers are the same, lexicographical
