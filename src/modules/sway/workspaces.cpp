@@ -2,7 +2,26 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cctype>
+#include <string>
+
 namespace waybar::modules::sway {
+
+// Helper function to to assign a number to a workspace, just like sway. In fact
+// this is taken quite verbatim from `sway/ipc-json.c`.
+int Workspaces::convertWorkspaceNameToNum(std::string name) {
+  if (isdigit(name[0])) {
+    errno = 0;
+    char *    endptr = NULL;
+    long long parsed_num = strtoll(name.c_str(), &endptr, 10);
+    if (errno != 0 || parsed_num > INT32_MAX || parsed_num < 0 || endptr == name.c_str()) {
+      return -1;
+    } else {
+      return (int)parsed_num;
+    }
+  }
+  return -1;
+}
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
     : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
@@ -102,13 +121,29 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                     // the "num" property (integer type):
                     // The workspace number or -1 for workspaces that do
                     // not start with a number.
-                    auto l = lhs["num"].asInt();
-                    auto r = rhs["num"].asInt();
+                    // We could rely on sway providing this property:
+                    //
+                    //     auto l = lhs["num"].asInt();
+                    //     auto r = rhs["num"].asInt();
+                    //
+                    // We cannot rely on the "num" property as provided by sway
+                    // via IPC, because persistent workspace might not exist in
+                    // sway's view. However, we need this property also for
+                    // not-yet created persistent workspace. As such, we simply
+                    // duplicate sway's logic of assigning the "num" property
+                    // into waybar (see convertWorkspaceNameToNum). This way the
+                    // sorting should work out even when we include workspaces
+                    // that do not currently exist.
+                    auto lname = lhs["name"].asString();
+                    auto rname = rhs["name"].asString();
+                    int  l = convertWorkspaceNameToNum(lname);
+                    int  r = convertWorkspaceNameToNum(rname);
+
                     if (l == r) {
                       // in case both integers are the same, lexicographical
                       // sort. This also covers the case when both don't have a
                       // number (i.e., l == r == -1).
-                      return lhs["name"].asString() < rhs["name"].asString();
+                      return lname < rname;
                     }
 
                     // one of the workspaces doesn't begin with a number, so
