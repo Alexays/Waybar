@@ -15,7 +15,6 @@ env:
 
 before_install:
   - docker pull alexays/waybar:${distro}
-  - find . -type f \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -r0 clang-format -i
 
 script:
   - echo FROM alexays/waybar:${distro} > Dockerfile
@@ -34,3 +33,8 @@ jobs:
       script:
         - meson build -Dman-pages=enabled
         - ninja -C build
+    - env:
+      before_install:
+      script:
+        - find . -type f \( -name '*.cpp' -o -name '*.hpp' \) -print0
+          | xargs -r0 clang-format --dry-run --Werror
