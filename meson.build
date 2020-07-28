@@ -98,7 +98,7 @@ gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
 systemd = dependency('systemd', required: get_option('systemd'))
-tz_dep = dependency('date', default_options : [ 'use_system_tzdb=true' ], fallback: [ 'date', 'tz_dep' ])
+tz_dep = dependency('date', default_options : [ 'use_system_tzdb=true' ], modules : [ 'date::date', 'date::date-tz' ], fallback: [ 'date', 'tz_dep' ])
 
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
