@@ -1,27 +1,27 @@
 language: cpp
 
 services:
-    - docker
+  - docker
 
 git:
-    submodules: false
+  submodules: false
 
 env:
-    - distro: debian
-    - distro: archlinux
-    - distro: fedora
-    - distro: alpine
-    - distro: opensuse
+  - distro: debian
+  - distro: archlinux
+  - distro: fedora
+  - distro: alpine
+  - distro: opensuse
 
 before_install:
-    - docker pull alexays/waybar:${distro}
-    - find . -type f \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -r0 clang-format -i
+  - docker pull alexays/waybar:${distro}
+  - find . -type f \( -name '*.cpp' -o -name '*.h' \) -print0 | xargs -r0 clang-format -i
 
 script:
-    - echo FROM alexays/waybar:${distro} > Dockerfile
-    - echo ADD . /root >> Dockerfile
-    - docker build -t waybar .
-    - docker run waybar /bin/sh -c "cd /root && meson build -Dman-pages=enabled && ninja -C build"
+  - echo FROM alexays/waybar:${distro} > Dockerfile
+  - echo ADD . /root >> Dockerfile
+  - docker build -t waybar .
+  - docker run waybar /bin/sh -c "cd /root && meson build -Dman-pages=enabled && ninja -C build"
 
 jobs:
   include:
