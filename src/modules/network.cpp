@@ -158,7 +158,7 @@ void waybar::modules::Network::createInfoSocket() {
   }
   nl80211_id_ = genl_ctrl_resolve(sock_, "nl80211");
   if (nl80211_id_ < 0) {
-    throw std::runtime_error("Can't resolve nl80211 interface");
+    spdlog::warn("Can't resolve nl80211 interface");
   }
 }
 
