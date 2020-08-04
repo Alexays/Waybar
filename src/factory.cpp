@@ -27,6 +27,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "wlr/taskbar") {
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
     }
+    if (ref == "wlr/workspaces") {
+      return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
+    }
 #endif
 #ifdef HAVE_RIVER
     if (ref == "river/tags") {
