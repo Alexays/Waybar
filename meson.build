@@ -166,7 +166,8 @@ src_files += [
 if true
     add_project_arguments('-DHAVE_WLR', language: 'cpp')
     src_files += 'src/modules/wlr/taskbar.cpp'
-    src_files += 'src/modules/wlr/workspaces.cpp'
+    src_files += 'src/modules/wlr/workspace_manager.cpp'
+    src_files += 'src/modules/wlr/workspace_manager_binding.cpp'
 endif
 
 if true
