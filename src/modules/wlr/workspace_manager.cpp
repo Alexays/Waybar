@@ -14,7 +14,7 @@ uint32_t WorkspaceGroup::group_global_id = 0;
 
 WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
                                    const Json::Value &config)
-    : waybar::AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
+    : waybar::AModule(config, "workspaces", id, false, false),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.set_name("workspaces");
@@ -53,6 +53,7 @@ auto WorkspaceManager::handle_finished() -> void {
 }
 
 auto WorkspaceManager::handle_done() -> void {
+  dp.emit();
 }
 
 auto WorkspaceManager::update() -> void {
@@ -92,8 +93,11 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, const Json::Value &config, Worksp
       id_(++group_global_id) {
   add_workspace_group_listener(workspace_group_handle, this);
 }
+auto WorkspaceGroup::add_button(Gtk::Button &button) -> void {
+  workspace_manager_.add_button(button);
+}
 
-WorkspaceGroup::~WorkspaceGroup()->void {
+WorkspaceGroup::~WorkspaceGroup() {
   if (!workspace_group_handle_) {
     return;
   }
@@ -135,7 +139,7 @@ auto WorkspaceGroup::remove_workspace(uint32_t id) -> void {
                          [id](const std::unique_ptr<Workspace> &w) { return w->id() == id; });
 
   if (it == workspaces_.end()) {
-    spdlog::warn("Can't find group with id {}", id);
+    spdlog::warn("Can't find workspace with id {}", id);
     return;
   }
 
@@ -148,8 +152,17 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
       config_(config),
       workspace_group_(workspace_group),
       workspace_handle_(workspace),
-      id_(++workspace_global_id) {
+      id_(++workspace_global_id),
+      content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   add_workspace_listener(workspace, this);
+  workspace_group.add_button(button_);
+  button_.set_relief(Gtk::RELIEF_NONE);
+  label_.set_label(fmt::format("{name}", fmt::arg("name", "1")));
+  label_.show();
+  content_.add(label_);
+  content_.show();
+  button_.add(content_);
+  button_.show();
 }
 
 Workspace::~Workspace() {
@@ -161,7 +174,10 @@ Workspace::~Workspace() {
   workspace_handle_ = nullptr;
 }
 
-auto Workspace::update() -> void {}
+auto Workspace::update() -> void {
+  label_.set_label(fmt::format("{name}", fmt::arg("name", name_)));
+  label_.show();
+}
 
 auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
   state_ = 0;

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <gtkmm/button.h>
 #include <gtkmm/image.h>
+#include <gtkmm/label.h>
 
 #include <memory>
 #include <vector>
@@ -23,6 +25,7 @@ class Workspace {
   auto update() -> void;
 
   auto id() const -> uint32_t { return id_; }
+  // wlr stuff
   auto handle_name(const std::string &name) -> void { name_ = name; }
   auto handle_coordinates(const std::vector<uint32_t> &coordinates) -> void {
     coordinates_ = coordinates;
@@ -46,8 +49,9 @@ class Workspace {
   std::string           name_;
   std::vector<uint32_t> coordinates_;
 
-  const Gtk::Box   box_;
-  const Gtk::Image icon_;
+  Gtk::Button button_;
+  Gtk::Box    content_;
+  Gtk::Label  label_;
 };
 
 class WorkspaceGroup {
@@ -62,10 +66,11 @@ class WorkspaceGroup {
 
   // wlr stuff
   auto handle_workspace_create(zwlr_workspace_handle_v1 *workspace_handle) -> void;
-
   auto handle_remove() -> void;
   auto handle_output_enter(wl_output *output) -> void;
   auto handle_output_leave() -> void;
+
+  auto add_button(Gtk::Button &button) -> void;
 
  private:
   static uint32_t    group_global_id;
@@ -93,9 +98,10 @@ class WorkspaceManager : public AModule {
   auto register_manager(wl_registry *registry, uint32_t name, uint32_t version) -> void;
   auto handle_workspace_group_create(zwlr_workspace_group_handle_v1 *workspace_group_handle)
       -> void;
-
   auto handle_done() -> void;
   auto handle_finished() -> void;
+
+  auto add_button(Gtk::Button &button) -> void { box_.pack_start(button, false, false); }
 
  private:
   const waybar::Bar &                          bar_;
