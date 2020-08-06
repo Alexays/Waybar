@@ -249,7 +249,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
-  button.signal_clicked().connect([this, node] {
+  button.signal_pressed().connect([this, node] {
     try {
       if (node["target_output"].isString()) {
         ipc_.sendCmd(
