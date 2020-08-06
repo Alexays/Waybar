@@ -709,7 +709,7 @@ bool Taskbar::show_output(struct wl_output *output) const
 
 bool Taskbar::all_outputs() const
 {
-    static bool result = config_["all_outputs"].isBool() ? config_["all_outputs"].asBool() : false;
+    static bool result = config_["all-outputs"].isBool() ? config_["all-outputs"].asBool() : false;
 
     return result;
 }
