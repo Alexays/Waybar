@@ -306,7 +306,7 @@ std::string Task::state_string(bool shortened) const
 
 void Task::handle_title(const char *title)
 {
-    title_ = title;
+    title_ = Glib::Markup::escape_text(title);
 }
 
 void Task::handle_app_id(const char *app_id)
