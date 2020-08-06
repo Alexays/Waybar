@@ -63,20 +63,22 @@ auto waybar::modules::MPD::update() -> void {
 
 std::thread waybar::modules::MPD::event_listener() {
   return std::thread([this] {
-    try {
-      if (connection_ == nullptr) {
-        // Retry periodically if no connection
-        dp.emit();
-        std::this_thread::sleep_for(interval_);
-      } else {
-        waitForEvent();
-        dp.emit();
-      }
-    } catch (const std::exception& e) {
-      if (strcmp(e.what(), "Connection to MPD closed") == 0) {
-        spdlog::debug("{}: {}", module_name_, e.what());
-      } else {
-        spdlog::warn("{}: {}", module_name_, e.what());
+    while (true) {
+      try {
+        if (connection_ == nullptr) {
+          // Retry periodically if no connection
+          dp.emit();
+          std::this_thread::sleep_for(interval_);
+        } else {
+          waitForEvent();
+          dp.emit();
+        }
+      } catch (const std::exception& e) {
+        if (strcmp(e.what(), "Connection to MPD closed") == 0) {
+          spdlog::debug("{}: {}", module_name_, e.what());
+        } else {
+          spdlog::warn("{}: {}", module_name_, e.what());
+        }
       }
     }
   });
