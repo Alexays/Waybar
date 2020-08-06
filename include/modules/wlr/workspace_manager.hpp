@@ -5,6 +5,7 @@
 #include <gtkmm/image.h>
 #include <gtkmm/label.h>
 
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -25,6 +26,7 @@ class Workspace {
   auto update() -> void;
 
   auto id() const -> uint32_t { return id_; }
+  auto is_active() const -> bool { return state_ & static_cast<uint32_t>(State::ACTIVE); }
   // wlr stuff
   auto handle_name(const std::string &name) -> void { name_ = name; }
   auto handle_coordinates(const std::vector<uint32_t> &coordinates) -> void {
@@ -33,9 +35,14 @@ class Workspace {
   auto handle_state(const std::vector<uint32_t> &state) -> void;
   auto handle_remove() -> void;
 
+  auto handle_done() -> void;
+  auto handle_clicked() -> void;
+
   enum class State { ACTIVE = 1 << 0 };
 
  private:
+  auto get_icon() -> std::string;
+
   static uint32_t    workspace_global_id;
   const Bar &        bar_;
   const Json::Value &config_;
@@ -45,9 +52,12 @@ class Workspace {
   zwlr_workspace_handle_v1 *workspace_handle_;
   uint32_t                  state_ = 0;
 
-  uint32_t              id_;
-  std::string           name_;
-  std::vector<uint32_t> coordinates_;
+  uint32_t                                  id_;
+  std::string                               name_;
+  std::vector<uint32_t>                     coordinates_;
+  static std::map<std::string, std::string> icons_map_;
+  std::string                               format_;
+  bool                                      with_icon_ = false;
 
   Gtk::Button button_;
   Gtk::Box    content_;
@@ -62,6 +72,7 @@ class WorkspaceGroup {
   auto update() -> void;
 
   auto id() const -> uint32_t { return id_; }
+  auto is_visible() const -> bool { return output_ != nullptr; }
   auto remove_workspace(uint32_t id_) -> void;
 
   // wlr stuff
@@ -71,6 +82,8 @@ class WorkspaceGroup {
   auto handle_output_leave() -> void;
 
   auto add_button(Gtk::Button &button) -> void;
+  auto handle_done() -> void;
+  auto commit() -> void;
 
  private:
   static uint32_t    group_global_id;
@@ -102,6 +115,7 @@ class WorkspaceManager : public AModule {
   auto handle_finished() -> void;
 
   auto add_button(Gtk::Button &button) -> void { box_.pack_start(button, false, false); }
+  auto commit() -> void;
 
  private:
   const waybar::Bar &                          bar_;

@@ -9,8 +9,9 @@
 
 namespace waybar::modules::wlr {
 
-uint32_t Workspace::workspace_global_id = 0;
-uint32_t WorkspaceGroup::group_global_id = 0;
+uint32_t                           Workspace::workspace_global_id = 0;
+uint32_t                           WorkspaceGroup::group_global_id = 0;
+std::map<std::string, std::string> Workspace::icons_map_;
 
 WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
                                    const Json::Value &config)
@@ -53,6 +54,9 @@ auto WorkspaceManager::handle_finished() -> void {
 }
 
 auto WorkspaceManager::handle_done() -> void {
+  for (auto &group : groups_) {
+    group->handle_done();
+  }
   dp.emit();
 }
 
@@ -83,6 +87,7 @@ auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
 
   groups_.erase(it);
 }
+auto WorkspaceManager::commit() -> void { zwlr_workspace_manager_v1_commit(workspace_manager_); }
 
 WorkspaceGroup::WorkspaceGroup(const Bar &bar, const Json::Value &config, WorkspaceManager &manager,
                                zwlr_workspace_group_handle_v1 *workspace_group_handle)
@@ -145,6 +150,14 @@ auto WorkspaceGroup::remove_workspace(uint32_t id) -> void {
 
   workspaces_.erase(it);
 }
+auto WorkspaceGroup::handle_done() -> void {
+  if (is_visible()) {
+    for (auto &workspace : workspaces_) {
+      workspace->handle_done();
+    }
+  }
+}
+auto WorkspaceGroup::commit() -> void { workspace_manager_.commit(); }
 
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
                      zwlr_workspace_handle_v1 *workspace)
@@ -152,17 +165,30 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
       config_(config),
       workspace_group_(workspace_group),
       workspace_handle_(workspace),
-      id_(++workspace_global_id),
-      content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
+      id_(++workspace_global_id) {
   add_workspace_listener(workspace, this);
+
+  auto config_format = config["format"];
+
+  format_ = config_format.isString() ? config_format.asString() : "{name}";
+  with_icon_ = format_.find("{icon}") != std::string::npos;
+
+  if (with_icon_ && icons_map_.empty()) {
+    auto format_icons = config["format-icons"];
+    for (auto &name : format_icons.getMemberNames()) {
+      icons_map_.emplace(name, format_icons[name].asString());
+    }
+  }
+
+  button_.signal_clicked().connect(sigc::mem_fun(this, &Workspace::handle_clicked));
+
   workspace_group.add_button(button_);
   button_.set_relief(Gtk::RELIEF_NONE);
-  label_.set_label(fmt::format("{name}", fmt::arg("name", "1")));
-  label_.show();
-  content_.add(label_);
-  content_.show();
+  content_.set_center_widget(label_);
   button_.add(content_);
   button_.show();
+  label_.show();
+  content_.show();
 }
 
 Workspace::~Workspace() {
@@ -175,8 +201,8 @@ Workspace::~Workspace() {
 }
 
 auto Workspace::update() -> void {
-  label_.set_label(fmt::format("{name}", fmt::arg("name", name_)));
-  label_.show();
+  label_.set_markup(fmt::format(
+      format_, fmt::arg("name", name_), fmt::arg("icon", with_icon_ ? get_icon() : "")));
 }
 
 auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
@@ -194,5 +220,39 @@ auto Workspace::handle_remove() -> void {
   zwlr_workspace_handle_v1_destroy(workspace_handle_);
   workspace_handle_ = nullptr;
   workspace_group_.remove_workspace(id_);
+}
+auto Workspace::handle_done() -> void {
+  spdlog::debug("Workspace {} changed to state {}", id_, state_);
+  auto style_context = button_.get_style_context();
+  if (is_active()) {
+    style_context->add_class("focused");
+  } else {
+    style_context->remove_class("focused");
+  }
+}
+auto Workspace::get_icon() -> std::string {
+  if (is_active()) {
+    auto focused_icon_it = icons_map_.find("focused");
+    if (focused_icon_it != icons_map_.end()) {
+      return focused_icon_it->second;
+    }
+  }
+
+  auto named_icon_it = icons_map_.find(name_);
+  if (named_icon_it != icons_map_.end()) {
+    return named_icon_it->second;
+  }
+
+  auto default_icon_it = icons_map_.find("default");
+  if (default_icon_it != icons_map_.end()) {
+    return default_icon_it->second;
+  }
+
+  return name_;
+}
+auto Workspace::handle_clicked() -> void {
+  spdlog::debug("Workspace {} clicked", (void*)workspace_handle_);
+  zwlr_workspace_handle_v1_activate(workspace_handle_);
+  workspace_group_.commit();
 }
 }  // namespace waybar::modules::wlr
