@@ -306,7 +306,7 @@ std::string Task::state_string(bool shortened) const
 
 void Task::handle_title(const char *title)
 {
-    title_ = title;
+    title_ = Glib::Markup::escape_text(title);
 }
 
 void Task::handle_app_id(const char *app_id)
@@ -709,7 +709,7 @@ bool Taskbar::show_output(struct wl_output *output) const
 
 bool Taskbar::all_outputs() const
 {
-    static bool result = config_["all_outputs"].isBool() ? config_["all_outputs"].asBool() : false;
+    static bool result = config_["all-outputs"].isBool() ? config_["all-outputs"].asBool() : false;
 
     return result;
 }
