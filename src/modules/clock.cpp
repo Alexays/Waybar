@@ -99,7 +99,12 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       os << '\n';
     }
     if (d == curr_day) {
-      os << "<b><u>" << date::format("%e", d) << "</u></b>";
+      if (config_["today-format"].isString()) {
+        auto today_format = config_["today-format"].asString();
+        os << fmt::format(today_format, date::format("%e", d));
+      } else {
+        os << "<b><u>" << date::format("%e", d) << "</u></b>";
+      }
     } else {
       os << date::format("%e", d);
     }

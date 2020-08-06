@@ -31,6 +31,11 @@ The *clock* module displays the current date and time.
 	default: inferred from current locale ++
 	A locale to be used to display the time. Intended to render times in custom timezones with the proper language and format.
 
+*today-format*: ++
+	typeof: string ++
+	default: <b><u>{}</u></b> ++
+	The format of today's date in the calendar.
+
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
