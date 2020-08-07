@@ -272,6 +272,7 @@ if scdoc.found()
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
+        'waybar-wlr-workspaces.5.scd',
         'waybar-bluetooth.5.scd',
     ]
 

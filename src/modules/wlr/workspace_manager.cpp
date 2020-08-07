@@ -101,12 +101,12 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value 
       workspace_group_handle_(workspace_group_handle),
       id_(id) {
   add_workspace_group_listener(workspace_group_handle, this);
-  auto config_sort_by_name = config_["sort_by_name"];
+  auto config_sort_by_name = config_["sort-by-name"];
   if (config_sort_by_name.isBool()) {
     sort_by_name = config_sort_by_name.asBool();
   }
 
-  auto config_sort_by_coordinates = config_["sort_by_coordinates"];
+  auto config_sort_by_coordinates = config_["sort-by-coordinates"];
   if (config_sort_by_coordinates.isBool()) {
     sort_by_coordinates = config_sort_by_coordinates.asBool();
   }
@@ -180,12 +180,25 @@ auto WorkspaceGroup::commit() -> void { workspace_manager_.commit(); }
 
 auto WorkspaceGroup::sort_workspaces() -> void {
   auto cmp = [=](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
-    if (sort_by_name && lhs->get_name() != rhs->get_name()) {
-      return lhs->get_name() < rhs->get_name();
+    auto is_name_less = lhs->get_name() < rhs->get_name();
+    auto is_name_eq = lhs->get_name() == rhs->get_name();
+    auto is_coords_less = lhs->get_coords() < rhs->get_coords();
+    if (sort_by_name) {
+      if (sort_by_coordinates) {
+        return is_name_eq ? is_coords_less : is_name_less;
+      }
+      else {
+        return is_name_less;
+      }
     }
 
-    return lhs->get_coords() < rhs->get_coords();
+    if (sort_by_coordinates) {
+      return is_coords_less;
+    }
+
+    return lhs->id() < rhs->id();
   };
+
   std::sort(workspaces_.begin(), workspaces_.end(), cmp);
   for (size_t i = 0; i < workspaces_.size(); ++i) {
     for (auto &workspace : workspaces_) {
