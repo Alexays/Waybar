@@ -107,12 +107,18 @@ void workspace_handle_coordinates(void *data, struct zwlr_workspace_handle_v1 *_
   static_cast<Workspace *>(data)->handle_coordinates(coords_vec);
 }
 
-void workspace_handle_state(void *data, struct zwlr_workspace_handle_v1 *_,
+void workspace_handle_state(void *data, struct zwlr_workspace_handle_v1 *workspace_handle,
                             struct wl_array *state) {
   std::vector<uint32_t> state_vec;
-  auto                  coords = static_cast<uint32_t *>(state->data);
+  auto                  states = static_cast<uint32_t *>(state->data);
   for (size_t i = 0; i < state->size; ++i) {
-    state_vec.push_back(coords[i]);
+    // To sync server and pending states
+    if (states[i] == ZWLR_WORKSPACE_HANDLE_V1_STATE_ACTIVE) {
+      zwlr_workspace_handle_v1_activate(workspace_handle);
+    } else {
+      zwlr_workspace_handle_v1_deactivate(workspace_handle);
+    }
+    state_vec.push_back(states[i]);
   }
 
   static_cast<Workspace *>(data)->handle_state(state_vec);

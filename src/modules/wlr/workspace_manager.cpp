@@ -9,8 +9,8 @@
 
 namespace waybar::modules::wlr {
 
-uint32_t                           Workspace::workspace_global_id = 0;
-uint32_t                           WorkspaceGroup::group_global_id = 0;
+uint32_t                           WorkspaceGroup::workspace_global_id = 0;
+uint32_t                           WorkspaceManager::group_global_id = 0;
 std::map<std::string, std::string> Workspace::icons_map_;
 
 WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
@@ -44,8 +44,10 @@ auto WorkspaceManager::register_manager(wl_registry *registry, uint32_t name, ui
 
 auto WorkspaceManager::handle_workspace_group_create(
     zwlr_workspace_group_handle_v1 *workspace_group_handle) -> void {
-  groups_.push_back(std::make_unique<WorkspaceGroup>(bar_, config_, *this, workspace_group_handle));
-  spdlog::debug("Workspace group {} created", groups_.back()->id());
+  auto new_id = ++group_global_id;
+  groups_.push_back(
+      std::make_unique<WorkspaceGroup>(bar_, box_, config_, *this, workspace_group_handle, new_id));
+  spdlog::debug("Workspace group {} created", new_id);
 }
 
 auto WorkspaceManager::handle_finished() -> void {
@@ -89,17 +91,28 @@ auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
 }
 auto WorkspaceManager::commit() -> void { zwlr_workspace_manager_v1_commit(workspace_manager_); }
 
-WorkspaceGroup::WorkspaceGroup(const Bar &bar, const Json::Value &config, WorkspaceManager &manager,
-                               zwlr_workspace_group_handle_v1 *workspace_group_handle)
+WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value &config,
+                               WorkspaceManager &              manager,
+                               zwlr_workspace_group_handle_v1 *workspace_group_handle, uint32_t id)
     : bar_(bar),
+      box_(box),
       config_(config),
       workspace_manager_(manager),
       workspace_group_handle_(workspace_group_handle),
-      id_(++group_global_id) {
+      id_(id) {
   add_workspace_group_listener(workspace_group_handle, this);
+  auto config_sort_by_name = config_["sort_by_name"];
+  if (config_sort_by_name.isBool()) {
+    sort_by_name = config_sort_by_name.asBool();
+  }
+
+  auto config_sort_by_coordinates = config_["sort_by_coordinates"];
+  if (config_sort_by_coordinates.isBool()) {
+    sort_by_coordinates = config_sort_by_coordinates.asBool();
+  }
 }
 auto WorkspaceGroup::add_button(Gtk::Button &button) -> void {
-  workspace_manager_.add_button(button);
+  box_.pack_start(button, false, false);
 }
 
 WorkspaceGroup::~WorkspaceGroup() {
@@ -112,8 +125,9 @@ WorkspaceGroup::~WorkspaceGroup() {
 }
 
 auto WorkspaceGroup::handle_workspace_create(zwlr_workspace_handle_v1 *workspace) -> void {
-  workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace));
-  spdlog::debug("Workspace {} created", workspaces_.back()->id());
+  auto new_id = ++workspace_global_id;
+  workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace, new_id));
+  spdlog::debug("Workspace {} created", new_id);
 }
 
 auto WorkspaceGroup::handle_remove() -> void {
@@ -124,12 +138,18 @@ auto WorkspaceGroup::handle_remove() -> void {
 
 auto WorkspaceGroup::handle_output_enter(wl_output *output) -> void {
   spdlog::debug("Output {} assigned to {} group", (void *)output, id_);
+  for (auto &workspace : workspaces_) {
+    workspace->show();
+  }
   output_ = output;
 }
 
 auto WorkspaceGroup::handle_output_leave() -> void {
   spdlog::debug("Output {} remove from {} group", (void *)output_, id_);
   output_ = nullptr;
+  for (auto &workspace : workspaces_) {
+    workspace->hide();
+  }
 }
 
 auto WorkspaceGroup::update() -> void {
@@ -150,22 +170,37 @@ auto WorkspaceGroup::remove_workspace(uint32_t id) -> void {
 
   workspaces_.erase(it);
 }
+
 auto WorkspaceGroup::handle_done() -> void {
-  if (is_visible()) {
-    for (auto &workspace : workspaces_) {
-      workspace->handle_done();
-    }
+  for (auto &workspace : workspaces_) {
+    workspace->handle_done();
   }
 }
 auto WorkspaceGroup::commit() -> void { workspace_manager_.commit(); }
 
+auto WorkspaceGroup::sort_workspaces() -> void {
+  auto cmp = [=](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
+    if (sort_by_name && lhs->get_name() != rhs->get_name()) {
+      return lhs->get_name() < rhs->get_name();
+    }
+
+    return lhs->get_coords() < rhs->get_coords();
+  };
+  std::sort(workspaces_.begin(), workspaces_.end(), cmp);
+  for (size_t i = 0; i < workspaces_.size(); ++i) {
+    for (auto &workspace : workspaces_) {
+      box_.reorder_child(workspace->get_button_ref(), i);
+    }
+  }
+}
+
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-                     zwlr_workspace_handle_v1 *workspace)
+                     zwlr_workspace_handle_v1 *workspace, uint32_t id)
     : bar_(bar),
       config_(config),
       workspace_group_(workspace_group),
       workspace_handle_(workspace),
-      id_(++workspace_global_id) {
+      id_(id) {
   add_workspace_listener(workspace, this);
 
   auto config_format = config["format"];
@@ -186,6 +221,10 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
   button_.set_relief(Gtk::RELIEF_NONE);
   content_.set_center_widget(label_);
   button_.add(content_);
+  if (!workspace_group.is_visible()) {
+    return;
+  }
+
   button_.show();
   label_.show();
   content_.show();
@@ -221,6 +260,7 @@ auto Workspace::handle_remove() -> void {
   workspace_handle_ = nullptr;
   workspace_group_.remove_workspace(id_);
 }
+
 auto Workspace::handle_done() -> void {
   spdlog::debug("Workspace {} changed to state {}", id_, state_);
   auto style_context = button_.get_style_context();
@@ -230,6 +270,7 @@ auto Workspace::handle_done() -> void {
     style_context->remove_class("focused");
   }
 }
+
 auto Workspace::get_icon() -> std::string {
   if (is_active()) {
     auto focused_icon_it = icons_map_.find("focused");
@@ -250,9 +291,20 @@ auto Workspace::get_icon() -> std::string {
 
   return name_;
 }
+
 auto Workspace::handle_clicked() -> void {
-  spdlog::debug("Workspace {} clicked", (void*)workspace_handle_);
+  spdlog::debug("Workspace {} clicked", (void *)workspace_handle_);
   zwlr_workspace_handle_v1_activate(workspace_handle_);
   workspace_group_.commit();
+}
+
+auto Workspace::handle_name(const std::string &name) -> void {
+  name_ = name;
+  workspace_group_.sort_workspaces();
+}
+
+auto Workspace::handle_coordinates(const std::vector<uint32_t> &coordinates) -> void {
+  coordinates_ = coordinates;
+  workspace_group_.sort_workspaces();
 }
 }  // namespace waybar::modules::wlr

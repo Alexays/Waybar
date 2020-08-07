@@ -21,29 +21,31 @@ class WorkspaceGroup;
 class Workspace {
  public:
   Workspace(const waybar::Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-            zwlr_workspace_handle_v1 *workspace);
+            zwlr_workspace_handle_v1 *workspace, uint32_t id);
   ~Workspace();
   auto update() -> void;
 
   auto id() const -> uint32_t { return id_; }
   auto is_active() const -> bool { return state_ & static_cast<uint32_t>(State::ACTIVE); }
   // wlr stuff
-  auto handle_name(const std::string &name) -> void { name_ = name; }
-  auto handle_coordinates(const std::vector<uint32_t> &coordinates) -> void {
-    coordinates_ = coordinates;
-  }
+  auto handle_name(const std::string &name) -> void;
+  auto handle_coordinates(const std::vector<uint32_t> &coordinates) -> void;
   auto handle_state(const std::vector<uint32_t> &state) -> void;
   auto handle_remove() -> void;
 
   auto handle_done() -> void;
   auto handle_clicked() -> void;
+  auto show() -> void { button_.show(); }
+  auto hide() -> void { button_.hide(); }
+  auto get_button_ref() -> Gtk::Button & { return button_; }
+  auto get_name() -> std::string & { return name_; }
+  auto get_coords() -> std::vector<uint32_t> & { return coordinates_; }
 
   enum class State { ACTIVE = 1 << 0 };
 
  private:
   auto get_icon() -> std::string;
 
-  static uint32_t    workspace_global_id;
   const Bar &        bar_;
   const Json::Value &config_;
   WorkspaceGroup &   workspace_group_;
@@ -66,8 +68,9 @@ class Workspace {
 
 class WorkspaceGroup {
  public:
-  WorkspaceGroup(const waybar::Bar &bar, const Json::Value &config, WorkspaceManager &manager,
-                 zwlr_workspace_group_handle_v1 *workspace_group_handle);
+  WorkspaceGroup(const waybar::Bar &bar, Gtk::Box &box, const Json::Value &config,
+                 WorkspaceManager &manager, zwlr_workspace_group_handle_v1 *workspace_group_handle,
+                 uint32_t id);
   ~WorkspaceGroup();
   auto update() -> void;
 
@@ -84,10 +87,12 @@ class WorkspaceGroup {
   auto add_button(Gtk::Button &button) -> void;
   auto handle_done() -> void;
   auto commit() -> void;
+  auto sort_workspaces() -> void;
 
  private:
-  static uint32_t    group_global_id;
+  static uint32_t    workspace_global_id;
   const waybar::Bar &bar_;
+  Gtk::Box &         box_;
   const Json::Value &config_;
   WorkspaceManager & workspace_manager_;
 
@@ -97,6 +102,8 @@ class WorkspaceGroup {
 
   uint32_t                                id_;
   std::vector<std::unique_ptr<Workspace>> workspaces_;
+  bool                                    sort_by_name = true;
+  bool                                    sort_by_coordinates = true;
 };
 
 class WorkspaceManager : public AModule {
@@ -114,7 +121,6 @@ class WorkspaceManager : public AModule {
   auto handle_done() -> void;
   auto handle_finished() -> void;
 
-  auto add_button(Gtk::Button &button) -> void { box_.pack_start(button, false, false); }
   auto commit() -> void;
 
  private:
@@ -124,6 +130,8 @@ class WorkspaceManager : public AModule {
 
   // wlr stuff
   zwlr_workspace_manager_v1 *workspace_manager_ = nullptr;
+
+  static uint32_t group_global_id;
 };
 
 }  // namespace waybar::modules::wlr
