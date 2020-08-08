@@ -5,7 +5,7 @@
 [AUR](https://aur.archlinux.org/packages/waybar-git/), [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar), and [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=waybar)<br>
 > *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
 
-**Current features**
+#### Current features
 - Sway (Workspaces, Binding mode, Focused window name)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
@@ -22,11 +22,21 @@
 - Multiple output configuration
 - And much more customizations
 
-**Configuration and Styling**
+#### Configuration and Styling
 
 [See the wiki for more details](https://github.com/Alexays/Waybar/wiki).
 
-**How to build**
+### Installation
+
+Waybar is available from a number of Linux distributions:
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/waybar.svg)](https://repology.org/project/waybar/versions)
+
+An Ubuntu PPA with more recent versions is available
+[here](https://launchpad.net/~nschloe/+archive/ubuntu/waybar).
+
+
+#### Building from source
 
 ```bash
 $ git clone https://github.com/Alexays/Waybar
