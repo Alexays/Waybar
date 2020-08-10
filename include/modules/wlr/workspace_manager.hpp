@@ -85,6 +85,7 @@ class WorkspaceGroup {
   auto handle_output_leave() -> void;
 
   auto add_button(Gtk::Button &button) -> void;
+  auto remove_button(Gtk::Button &button) -> void;
   auto handle_done() -> void;
   auto commit() -> void;
   auto sort_workspaces() -> void;

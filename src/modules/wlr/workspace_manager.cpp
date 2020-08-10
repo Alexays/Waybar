@@ -1,5 +1,6 @@
 #include "modules/wlr/workspace_manager.hpp"
 
+#include <gdk/gdkwayland.h>
 #include <gtkmm.h>
 #include <spdlog/spdlog.h>
 
@@ -77,6 +78,7 @@ WorkspaceManager::~WorkspaceManager() {
   zwlr_workspace_manager_v1_destroy(workspace_manager_);
   workspace_manager_ = nullptr;
 }
+
 auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
   auto it = std::find_if(groups_.begin(),
                          groups_.end(),
@@ -111,6 +113,7 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value 
     sort_by_coordinates = config_sort_by_coordinates.asBool();
   }
 }
+
 auto WorkspaceGroup::add_button(Gtk::Button &button) -> void {
   box_.pack_start(button, false, false);
 }
@@ -138,15 +141,25 @@ auto WorkspaceGroup::handle_remove() -> void {
 
 auto WorkspaceGroup::handle_output_enter(wl_output *output) -> void {
   spdlog::debug("Output {} assigned to {} group", (void *)output, id_);
+  output_ = output;
+
+  if (output != gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj())) {
+    return;
+  }
+
   for (auto &workspace : workspaces_) {
     workspace->show();
   }
-  output_ = output;
 }
 
 auto WorkspaceGroup::handle_output_leave() -> void {
   spdlog::debug("Output {} remove from {} group", (void *)output_, id_);
   output_ = nullptr;
+
+  if (output_ != gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj())) {
+    return;
+  }
+
   for (auto &workspace : workspaces_) {
     workspace->hide();
   }
@@ -176,6 +189,7 @@ auto WorkspaceGroup::handle_done() -> void {
     workspace->handle_done();
   }
 }
+
 auto WorkspaceGroup::commit() -> void { workspace_manager_.commit(); }
 
 auto WorkspaceGroup::sort_workspaces() -> void {
@@ -205,6 +219,10 @@ auto WorkspaceGroup::sort_workspaces() -> void {
       box_.reorder_child(workspace->get_button_ref(), i);
     }
   }
+}
+
+auto WorkspaceGroup::remove_button(Gtk::Button &button) -> void {
+  box_.remove(button);
 }
 
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
@@ -244,6 +262,7 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
 }
 
 Workspace::~Workspace() {
+  workspace_group_.remove_button(button_);
   if (!workspace_handle_) {
     return;
   }

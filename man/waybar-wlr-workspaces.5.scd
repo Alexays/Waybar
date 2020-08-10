@@ -6,7 +6,7 @@ waybar - wlr workspaces module
 
 # DESCRIPTION
 
-The *workspaces* module displays the currently used workspaces in waynland compositor.
+The *workspaces* module displays the currently used workspaces in wayland compositor.
 
 # CONFIGURATION
 
@@ -35,7 +35,7 @@ Addressed by *wlr/workspaces*
 
 # FORMAT REPLACEMENTS
 
-*{name}*: Number stripped from workspace value.
+*{name}*: Name of workspace assigned by compositor
 
 *{icon}*: Icon, as defined in *format-icons*.
 
@@ -43,7 +43,7 @@ Addressed by *wlr/workspaces*
 
 Additional to workspace name matching, the following *format-icons* can be set.
 
-- *default*: Will be shown, when no string matches is found.
+- *default*: Will be shown, when no string match is found.
 - *focused*: Will be shown, when workspace is focused
 
 # EXAMPLES
@@ -65,5 +65,6 @@ Additional to workspace name matching, the following *format-icons* can be set.
 
 # Style
 
+- *#workspaces*
 - *#workspaces button*
 - *#workspaces button.focused*
