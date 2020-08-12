@@ -249,22 +249,24 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
-  button.signal_pressed().connect([this, node] {
-    try {
-      if (node["target_output"].isString()) {
-        ipc_.sendCmd(
-            IPC_COMMAND,
-            fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
-                        node["name"].asString(),
-                        node["target_output"].asString(),
-                        node["name"].asString()));
-      } else {
-        ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, node["name"].asString()));
+  if (!config_["disable-click"].asBool()) {
+    button.signal_pressed().connect([this, node] {
+      try {
+        if (node["target_output"].isString()) {
+          ipc_.sendCmd(
+              IPC_COMMAND,
+              fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
+                          node["name"].asString(),
+                          node["target_output"].asString(),
+                          node["name"].asString()));
+        } else {
+          ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, node["name"].asString()));
+        }
+      } catch (const std::exception &e) {
+        spdlog::error("Workspaces: {}", e.what());
       }
-    } catch (const std::exception &e) {
-      spdlog::error("Workspaces: {}", e.what());
-    }
-  });
+    });
+  }
   return button;
 }
 
