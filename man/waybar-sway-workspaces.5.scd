@@ -31,6 +31,11 @@ Addressed by *sway/workspaces*
     default: false ++
     If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
 
+*disable-click*: ++
+    typeof: bool ++
+    default: false ++
+    If set to false, you can click to change workspace. If set to true this behaviour is disabled.
+
 *smooth-scrolling-threshold*: ++
     typeof: double ++
     Threshold to be used when scrolling.
