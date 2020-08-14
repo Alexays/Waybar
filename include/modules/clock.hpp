@@ -28,8 +28,11 @@ class Clock : public ALabel {
   std::locale locale_;
   const date::time_zone* time_zone_;
   bool fixed_time_zone_;
+  int time_zone_idx_;
   date::year_month_day cached_calendar_ymd_;
   std::string cached_calendar_text_;
+
+  bool handleScroll(GdkEventScroll* e);
 
   auto calendar_text(const waybar_time& wtime) -> std::string;
   auto weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void;

@@ -13,7 +13,7 @@
 using waybar::modules::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "clock", id, "{:%H:%M}", 60), fixed_time_zone_(false) {
+    : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true), fixed_time_zone_(false) {
   if (config_["timezone"].isString()) {
     spdlog::warn("As using a timezone, some format args may be missing as the date library havn't got a release since 2018.");
     time_zone_ = date::locate_zone(config_["timezone"].asString());
@@ -71,6 +71,40 @@ auto waybar::modules::Clock::update() -> void {
   ALabel::update();
 }
 
+bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
+  // defer to user commands if set
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+
+  auto dir = AModule::getScrollDir(e);
+  if (dir != SCROLL_DIR::UP && dir != SCROLL_DIR::DOWN) {
+    return true;
+  }
+  if (!config_["timezones"].isArray() || config_["timezones"].empty()) {
+    return true;
+  }
+  auto nr_zones = config_["timezones"].size();
+  int new_idx = time_zone_idx_ + ((dir == SCROLL_DIR::UP) ? 1 : -1);
+  if (new_idx < 0) {
+    time_zone_idx_ = nr_zones - 1;
+  } else if (new_idx >= nr_zones) {
+    time_zone_idx_ = 0;
+  } else {
+    time_zone_idx_ = new_idx;
+  }
+  auto zone_name = config_["timezones"][time_zone_idx_];
+  if (!zone_name.isString() || zone_name.empty()) {
+    fixed_time_zone_ = false;
+  } else {
+    time_zone_ = date::locate_zone(zone_name.asString());
+    fixed_time_zone_ = true;
+  }
+
+  update();
+  return true;
+}
+
 auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::string {
   const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
   const auto ymd = date::year_month_day(daypoint);
@@ -99,7 +133,12 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       os << '\n';
     }
     if (d == curr_day) {
-      os << "<b><u>" << date::format("%e", d) << "</u></b>";
+      if (config_["today-format"].isString()) {
+        auto today_format = config_["today-format"].asString();
+        os << fmt::format(today_format, date::format("%e", d));
+      } else {
+        os << "<b><u>" << date::format("%e", d) << "</u></b>";
+      }
     } else {
       os << date::format("%e", d);
     }
