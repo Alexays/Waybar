@@ -137,12 +137,10 @@ if is_linux
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
-        'src/modules/bluetooth.cpp',
         'src/modules/cpu/common.cpp',
         'src/modules/cpu/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
-        'src/util/rfkill.cpp'
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
@@ -205,6 +203,16 @@ endif
 
 if gtk_layer_shell.found()
     add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
+endif
+
+if get_option('rfkill').enabled()
+    if is_linux
+        add_project_arguments('-DWANT_RFKILL', language: 'cpp')
+        src_files += files(
+            'src/modules/bluetooth.cpp',
+            'src/util/rfkill.cpp'
+        )
+    endif
 endif
 
 subdir('protocol')
