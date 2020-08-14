@@ -4,7 +4,9 @@
 #include <fstream>
 #include <cassert>
 #include "util/format.hpp"
+#ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
+#endif
 
 namespace {
 
@@ -84,8 +86,10 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       cidr_(-1),
       signal_strength_dbm_(0),
       signal_strength_(0),
-      frequency_(0),
-      rfkill_{RFKILL_TYPE_WLAN} {
+#ifdef WANT_RFKILL
+      rfkill_{RFKILL_TYPE_WLAN},
+#endif
+      frequency_(0) {
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
   if (down_octets) {
@@ -174,6 +178,7 @@ void waybar::modules::Network::worker() {
     }
     thread_timer_.sleep_for(interval_);
   };
+#ifdef WANT_RFKILL
   thread_rfkill_ = [this] {
     rfkill_.waitForEvent();
     {
@@ -184,14 +189,19 @@ void waybar::modules::Network::worker() {
       }
     }
   };
+#else
+    spdlog::warn("Waybar has been built without rfkill support.");
+#endif
 }
 
 const std::string waybar::modules::Network::getNetworkState() const {
+#ifdef WANT_RFKILL
   if (ifid_ == -1) {
     if (rfkill_.getState())
       return "disabled";
     return "disconnected";
   }
+#endif
   if (ipaddr_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";

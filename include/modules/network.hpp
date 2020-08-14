@@ -11,7 +11,9 @@
 #include <sys/epoll.h>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
+#ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
+#endif
 
 namespace waybar::modules {
 
@@ -70,9 +72,11 @@ class Network : public ALabel {
 
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;
+#ifdef WANT_RFKILL
   util::SleeperThread thread_rfkill_;
 
   util::Rfkill rfkill_;
+#endif
 };
 
 }  // namespace waybar::modules
