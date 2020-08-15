@@ -195,13 +195,13 @@ void waybar::modules::Network::worker() {
 }
 
 const std::string waybar::modules::Network::getNetworkState() const {
-#ifdef WANT_RFKILL
   if (ifid_ == -1) {
+#ifdef WANT_RFKILL
     if (rfkill_.getState())
       return "disabled";
+#endif
     return "disconnected";
   }
-#endif
   if (ipaddr_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";
