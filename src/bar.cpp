@@ -101,54 +101,23 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   use_gls_ = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
   if (use_gls_) {
     initGtkLayerShell();
+    window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMapGLS));
+    window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigureGLS));
   }
 #endif
 
-  window.signal_realize().connect_notify(sigc::mem_fun(*this, &Bar::onRealize));
-  window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
-  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
+  if (!use_gls_) {
+    window.signal_realize().connect_notify(sigc::mem_fun(*this, &Bar::onRealize));
+    window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
+    window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
+  }
   window.set_size_request(width_, height_);
   setupWidgets();
 
-  if (window.get_realized()) {
+  if (!use_gls_ && window.get_realized()) {
     onRealize();
   }
   window.show_all();
-}
-
-void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
-  auto tmp_height = height_;
-  auto tmp_width = width_;
-  if (ev->height > static_cast<int>(height_)) {
-    // Default minimal value
-    if (height_ > 1) {
-      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
-    }
-    if (config["height"].isUInt()) {
-      spdlog::info(SIZE_DEFINED, "Height");
-    } else {
-      tmp_height = ev->height;
-    }
-  }
-  if (ev->width > static_cast<int>(width_)) {
-    // Default minimal value
-    if (width_ > 1) {
-      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
-    }
-    if (config["width"].isUInt()) {
-      spdlog::info(SIZE_DEFINED, "Width");
-    } else {
-      tmp_width = ev->width;
-    }
-  }
-  if (use_gls_) {
-    width_ = tmp_width;
-    height_ = tmp_height;
-    spdlog::debug("Set surface size {}x{} for output {}", width_, height_, output->name);
-    setExclusiveZone(tmp_width, tmp_height);
-  } else if (tmp_width != width_ || tmp_height != height_) {
-    setSurfaceSize(tmp_width, tmp_height);
-  }
 }
 
 #ifdef HAVE_GTK_LAYER_SHELL
@@ -181,7 +150,79 @@ void waybar::Bar::initGtkLayerShell() {
     setExclusiveZone(width_, height_);
   }
 }
+
+void waybar::Bar::onConfigureGLS(GdkEventConfigure* ev) {
+  /*
+   * GTK wants new size for the window.
+   * Actual resizing is done within the gtk-layer-shell code; the only remaining action is to apply
+   * exclusive zone.
+   * gtk_layer_auto_exclusive_zone_enable() could handle even that, but at the cost of ignoring
+   * margins on unanchored edge.
+   *
+   * Note: forced resizing to a window smaller than required by GTK would not work with
+   * gtk-layer-shell.
+   */
+  if (vertical) {
+    if (width_ > 1 && ev->width > static_cast<int>(width_)) {
+      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
+    }
+  } else {
+    if (!vertical && height_ > 1 && ev->height > static_cast<int>(height_)) {
+      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
+    }
+  }
+  width_ = ev->width;
+  height_ = ev->height;
+  spdlog::info(BAR_SIZE_MSG, width_, height_, output->name);
+  setExclusiveZone(width_, height_);
+}
+
+void waybar::Bar::onMapGLS(GdkEventAny* ev) {
+  /*
+   * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
+   */
+  auto gdk_window = window.get_window();
+  surface = gdk_wayland_window_get_wl_surface(gdk_window->gobj());
+}
+
 #endif
+
+void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
+  /*
+   * GTK wants new size for the window.
+   *
+   * Prefer configured size if it's non-default.
+   * If the size is not set and the window is smaller than requested by GTK, request resize from
+   * layer surface.
+   */
+  auto tmp_height = height_;
+  auto tmp_width = width_;
+  if (ev->height > static_cast<int>(height_)) {
+    // Default minimal value
+    if (height_ > 1) {
+      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
+    }
+    if (config["height"].isUInt()) {
+      spdlog::info(SIZE_DEFINED, "Height");
+    } else {
+      tmp_height = ev->height;
+    }
+  }
+  if (ev->width > static_cast<int>(width_)) {
+    // Default minimal value
+    if (width_ > 1) {
+      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
+    }
+    if (config["width"].isUInt()) {
+      spdlog::info(SIZE_DEFINED, "Width");
+    } else {
+      tmp_width = ev->width;
+    }
+  }
+  if (tmp_width != width_ || tmp_height != height_) {
+    setSurfaceSize(tmp_width, tmp_height);
+  }
+}
 
 void waybar::Bar::onRealize() {
   auto gdk_window = window.get_window()->gobj();
@@ -191,10 +232,6 @@ void waybar::Bar::onRealize() {
 void waybar::Bar::onMap(GdkEventAny* ev) {
   auto gdk_window = window.get_window()->gobj();
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
-
-  if (use_gls_) {
-    return;
-  }
 
   auto client = waybar::Client::inst();
   // owned by output->monitor; no need to destroy
@@ -362,7 +399,9 @@ auto waybar::Bar::toggle() -> void {
     window.set_opacity(1);
   }
   setExclusiveZone(width_, height_);
-  wl_surface_commit(surface);
+  if (!use_gls_) {
+    wl_surface_commit(surface);
+  }
 }
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
