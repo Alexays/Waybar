@@ -49,8 +49,8 @@ static std::vector<std::string> search_prefix()
 
     auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
     if (!xdg_data_dirs) {
-        prefixes.push_back("/usr/share/");
-        prefixes.push_back("/usr/local/share/");
+        prefixes.emplace_back("/usr/share/");
+        prefixes.emplace_back("/usr/local/share/");
     } else {
         std::string xdg_data_dirs_str(xdg_data_dirs);
         size_t start = 0, end = 0;
@@ -102,7 +102,7 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
 }
 
 /* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
-static std::string get_from_icon_theme(Glib::RefPtr<Gtk::IconTheme> icon_theme,
+static std::string get_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
         const std::string &app_id) {
 
     if (icon_theme->lookup_icon(app_id, 24))
@@ -111,7 +111,7 @@ static std::string get_from_icon_theme(Glib::RefPtr<Gtk::IconTheme> icon_theme,
     return "";
 }
 
-static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon_theme,
+static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
         const std::string &app_id_list, int size)
 {
     std::string app_id;
@@ -231,13 +231,13 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
         auto icon_pos = format.find("{icon}");
         if (icon_pos == 0) {
             with_icon_ = true;
-            format_after_ = trim(format.substr(6));
+            format_after_ = format.substr(6);
         } else if (icon_pos == std::string::npos) {
             format_before_ = format;
         } else {
             with_icon_ = true;
-            format_before_ = trim(format.substr(0, icon_pos));
-            format_after_ = trim(format.substr(icon_pos + 6));
+            format_before_ = format.substr(0, icon_pos);
+            format_after_ = format.substr(icon_pos + 6);
         }
     } else {
         /* The default is to only show the icon */
@@ -360,7 +360,7 @@ void Task::handle_output_leave(struct wl_output *output)
 void Task::handle_state(struct wl_array *state)
 {
     state_ = 0;
-    for (uint32_t* entry = static_cast<uint32_t*>(state->data);
+    for (auto* entry = static_cast<uint32_t*>(state->data);
          entry < static_cast<uint32_t*>(state->data) + state->size;
          entry++) {
         if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
@@ -709,9 +709,7 @@ bool Taskbar::show_output(struct wl_output *output) const
 
 bool Taskbar::all_outputs() const
 {
-    static bool result = config_["all_outputs"].isBool() ? config_["all_outputs"].asBool() : false;
-
-    return result;
+    return config_["all_outputs"].isBool() && config_["all_outputs"].asBool();
 }
 
 std::vector<Glib::RefPtr<Gtk::IconTheme>> Taskbar::icon_themes() const
