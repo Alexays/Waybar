@@ -56,7 +56,7 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, window_));
+  label_.set_text(fmt::format(format_, window_));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
