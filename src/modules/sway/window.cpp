@@ -56,7 +56,7 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, window_));
+  label_.set_text(fmt::format(format_, window_));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
@@ -77,7 +77,7 @@ std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
                                                 : node["window_properties"]["instance"].asString();
         return {nodes.size(),
                 node["id"].asInt(),
-                Glib::Markup::escape_text(node["name"].asString()),
+                node["name"].asString(),
                 app_id};
       }
     }
