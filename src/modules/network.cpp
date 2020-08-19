@@ -287,7 +287,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
           fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
           fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
-      if (label_.get_tooltip_text() != text) {
+      if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_text(tooltip_text);
       }
     } else if (label_.get_tooltip_text() != text) {
