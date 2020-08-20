@@ -22,8 +22,10 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asUInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_single_line_mode(true);
   } else if (ellipsize && label_.get_max_width_chars() == -1) {
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_single_line_mode(true);
   }
 
   if (config_["rotate"].isUInt()) {
