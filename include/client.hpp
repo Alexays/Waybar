@@ -14,6 +14,7 @@ class Client {
  public:
   static Client *inst();
   int            main(int argc, char *argv[]);
+  void           reset();
 
   Glib::RefPtr<Gtk::Application>      gtk_app;
   Glib::RefPtr<Gdk::Display>          gdk_display;

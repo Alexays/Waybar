@@ -269,10 +269,9 @@ int waybar::Client::main(int argc, char *argv[]) {
   gtk_app->hold();
   gtk_app->run();
   bars.clear();
-  zxdg_output_manager_v1_destroy(xdg_output_manager);
-  zwlr_layer_shell_v1_destroy(layer_shell);
-  zwp_idle_inhibit_manager_v1_destroy(idle_inhibit_manager);
-  wl_registry_destroy(registry);
-  wl_display_disconnect(wl_display);
   return 0;
+}
+
+void waybar::Client::reset() {
+  gtk_app->quit();
 }
