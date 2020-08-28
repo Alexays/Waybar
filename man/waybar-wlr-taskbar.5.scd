@@ -32,6 +32,11 @@ Addressed by *wlr/taskbar*
 	default: 16 ++
 	The size of the icon.
 
+*markup*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, pango markup will be accepted in format and tooltip-format.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
