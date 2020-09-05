@@ -8,7 +8,7 @@ class Rfkill {
  public:
   Rfkill(enum rfkill_type rfkill_type);
   ~Rfkill() = default;
-  void waitForEvent();
+  int waitForEvent();
   bool getState() const;
 
  private:

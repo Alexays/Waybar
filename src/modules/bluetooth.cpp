@@ -9,7 +9,9 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
       rfkill_{RFKILL_TYPE_BLUETOOTH} {
   thread_ = [this] {
     dp.emit();
-    rfkill_.waitForEvent();
+    if (rfkill_.waitForEvent() == -1) {
+      thread_.stop();
+    }
   };
   intervall_thread_ = [this] {
     auto now = std::chrono::system_clock::now();

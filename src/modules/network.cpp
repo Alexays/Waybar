@@ -180,8 +180,9 @@ void waybar::modules::Network::worker() {
   };
 #ifdef WANT_RFKILL
   thread_rfkill_ = [this] {
-    rfkill_.waitForEvent();
-    {
+    if (rfkill_.waitForEvent() == -1) {
+      thread_rfkill_.stop();
+    } else {
       std::lock_guard<std::mutex> lock(mutex_);
       if (ifid_ > 0) {
         getInfo();

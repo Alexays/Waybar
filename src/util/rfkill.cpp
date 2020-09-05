@@ -30,7 +30,7 @@
 
 waybar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type) : rfkill_type_(rfkill_type) {}
 
-void waybar::util::Rfkill::waitForEvent() {
+int waybar::util::Rfkill::waitForEvent() {
   struct rfkill_event event;
   struct pollfd       p;
   ssize_t             len;
@@ -38,8 +38,7 @@ void waybar::util::Rfkill::waitForEvent() {
 
   fd = open("/dev/rfkill", O_RDONLY);
   if (fd < 0) {
-    throw std::runtime_error("Can't open RFKILL control device");
-    return;
+    return -1;
   }
 
   memset(&p, 0, sizeof(p));
@@ -73,6 +72,7 @@ void waybar::util::Rfkill::waitForEvent() {
   }
 
   close(fd);
+  return 1;
 }
 
 bool waybar::util::Rfkill::getState() const { return state_; }
