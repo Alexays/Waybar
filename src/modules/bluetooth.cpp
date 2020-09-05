@@ -1,6 +1,7 @@
 #include "modules/bluetooth.hpp"
+#ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
-#include <linux/rfkill.h>
+#endif
 #include <time.h>
 
 waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
