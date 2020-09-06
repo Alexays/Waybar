@@ -20,8 +20,8 @@
 
 #include <fcntl.h>
 #include <linux/rfkill.h>
+#include <poll.h>
 #include <stdlib.h>
-#include <sys/poll.h>
 #include <unistd.h>
 
 #include <cerrno>
