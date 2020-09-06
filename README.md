@@ -103,7 +103,9 @@ sudo apt install \
 
 
 Contributions welcome! - have fun :)<br>
-The style guidelines is [Google's](https://google.github.io/styleguide/cppguide.html)
+The style guidelines is [Google's](https://google.github.io/styleguide/cppguide.html).
+
+An introduction to writing modules is available in [modules.md](./doc/modules.md).
 
 ## License
 
