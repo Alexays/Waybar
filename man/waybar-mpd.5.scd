@@ -148,6 +148,10 @@ Addressed by *mpd*
 
 *{totalTime}*: The length of the current song. To format as a date/time (see example configuration)
 
+*{songPosition}*: The position of the current song.
+
+*{queueLength}*: The length of the current queue.
+
 *{stateIcon}*: The icon corresponding the playing or paused status of the player (see *state-icons* option)
 
 *{consumeIcon}*: The icon corresponding the "consume" option (see *consume-icons* option)
