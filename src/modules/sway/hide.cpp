@@ -1,3 +1,4 @@
+#include <iostream>
 #include "modules/sway/hide.hpp"
 #include <spdlog/spdlog.h>
 #include "client.hpp"
@@ -15,8 +16,6 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
 }
 
 void Hide::onEvent(const struct Ipc::ipc_response& res) {
-  auto client = waybar::Client::inst();
-
   auto payload = parser_.parse(res.payload);
   if (payload.isMember("mode")) {
     // barconfig_update: get mode
@@ -24,21 +23,11 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
   } else if (payload.isMember("visible_by_modifier")) {
     // bar_state_update: get visible_by_modifier
     visible_by_modifier_ = payload["visible_by_modifier"].asBool();
+    std::cerr << "WayBar Hide: " << payload["visible_by_modifier"] << std::endl;
+    for (auto& bar : waybar::Client::inst()->bars) {
+      bar->setVisible(visible_by_modifier_);
+    }
   }
-  if (current_mode_ == "invisible"
-      || (current_mode_ == "hide" && ! visible_by_modifier_)) {
-    bar_.window.get_style_context()->add_class("hidden");
-    zwlr_layer_surface_v1_set_layer(bar_.layer_surface,
-                                    ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM);
-  } else {
-    // TODO: support "bar mode overlay"
-    bar_.window.get_style_context()->remove_class("hidden");
-    zwlr_layer_surface_v1_set_layer(bar_.layer_surface,
-                                    ZWLR_LAYER_SHELL_V1_LAYER_TOP
-                                    | ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY);
-  }
-  wl_surface_commit(bar_.surface);
-  wl_display_roundtrip(client->wl_display);
 }
 
 void Hide::worker() {
