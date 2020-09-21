@@ -91,15 +91,21 @@ void waybar::modules::Custom::refresh(int sig) {
   }
 }
 
+void waybar::modules::Custom::handleEvent() {
+  if (!config_["exec-on-event"].isBool() || config_["exec-on-event"].asBool()) {
+    thread_.wake_up();
+  }
+}
+
 bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
   auto ret = ALabel::handleScroll(e);
-  thread_.wake_up();
+  handleEvent();
   return ret;
 }
 
 bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
   auto ret = ALabel::handleToggle(e);
-  thread_.wake_up();
+  handleEvent();
   return ret;
 }
 
