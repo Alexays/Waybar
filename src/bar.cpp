@@ -260,7 +260,7 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
 
 void waybar::Bar::setExclusiveZone(uint32_t width, uint32_t height) {
   auto zone = 0;
-  if (visible && config["layer"] != "overlay") {
+  if (visible) {
     // exclusive zone already includes margin for anchored edge,
     // only opposite margin should be added
     if (vertical) {
