@@ -17,6 +17,7 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
 
 void Hide::onEvent(const struct Ipc::ipc_response& res) {
   auto payload = parser_.parse(res.payload);
+  std::lock_guard<std::mutex> lock(mutex_);
   if (payload.isMember("mode")) {
     // barconfig_update: get mode
     current_mode_ = payload["mode"].asString();

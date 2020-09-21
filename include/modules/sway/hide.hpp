@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 #include <tuple>
+#include <mutex>
 #include "ALabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
@@ -29,6 +30,7 @@ class Hide : public ALabel, public sigc::trackable {
   util::JsonParser parser_;
 
   util::SleeperThread thread_;
+  std::mutex          mutex_;
   Ipc                 ipc_;
 };
 
