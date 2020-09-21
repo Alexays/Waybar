@@ -20,7 +20,13 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (payload.isMember("mode")) {
     // barconfig_update: get mode
-    current_mode_ = payload["mode"].asString();
+    auto mode = payload["mode"].asString();
+    if (mode == "hide") {
+      // Hide the bars when configuring the "hide" bar
+      for (auto& bar : waybar::Client::inst()->bars) {
+        bar->setVisible(false);
+      }
+    }
   } else if (payload.isMember("visible_by_modifier")) {
     // bar_state_update: get visible_by_modifier
     visible_by_modifier_ = payload["visible_by_modifier"].asBool();
