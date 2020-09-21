@@ -24,7 +24,7 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
   } else if (payload.isMember("visible_by_modifier")) {
     // bar_state_update: get visible_by_modifier
     visible_by_modifier_ = payload["visible_by_modifier"].asBool();
-    std::cerr << "WayBar Hide: " << payload["visible_by_modifier"] << std::endl;
+    std::cerr << "WayBar Shown: " << payload["visible_by_modifier"] << std::endl;
     for (auto& bar : waybar::Client::inst()->bars) {
       bar->setVisible(visible_by_modifier_);
     }
