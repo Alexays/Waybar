@@ -44,9 +44,9 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
     format = config_["on-click-middle"].asString();
   } else if (config_["on-click-right"].isString() && e->button == 3) {
     format = config_["on-click-right"].asString();
-  } else if (config_["on-click-forward"].isString() && e->button == 8) {
+  } else if (config_["on-click-backward"].isString() && e->button == 8) {
     format = config_["on-click-backward"].asString();
-  } else if (config_["on-click-backward"].isString() && e->button == 9) {
+  } else if (config_["on-click-forward"].isString() && e->button == 9) {
     format = config_["on-click-forward"].asString();
   }
   if (!format.empty()) {
