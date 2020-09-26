@@ -164,6 +164,8 @@ src_files += [
 if true
     add_project_arguments('-DHAVE_WLR', language: 'cpp')
     src_files += 'src/modules/wlr/taskbar.cpp'
+    src_files += 'src/modules/wlr/workspace_manager.cpp'
+    src_files += 'src/modules/wlr/workspace_manager_binding.cpp'
 endif
 
 if true
@@ -278,6 +280,7 @@ if scdoc.found()
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
+        'waybar-wlr-workspaces.5.scd',
         'waybar-bluetooth.5.scd',
     ]
 
