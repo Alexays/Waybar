@@ -30,6 +30,7 @@ class Bar {
   ~Bar() = default;
 
   auto toggle() -> void;
+  auto setVisible(bool) -> void;
   void handleSignal(int);
 
   struct waybar_output *output;

@@ -389,8 +389,8 @@ void waybar::Bar::layerSurfaceHandleClosed(void* data, struct zwlr_layer_surface
   o->modules_right_.clear();
 }
 
-auto waybar::Bar::toggle() -> void {
-  visible = !visible;
+auto waybar::Bar::setVisible(bool nvis) -> void {
+  visible = nvis;
   if (!visible) {
     window.get_style_context()->add_class("hidden");
     window.set_opacity(0);
@@ -402,6 +402,10 @@ auto waybar::Bar::toggle() -> void {
   if (!use_gls_) {
     wl_surface_commit(surface);
   }
+}
+
+auto waybar::Bar::toggle() -> void {
+  return setVisible(!visible);
 }
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
