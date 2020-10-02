@@ -9,6 +9,8 @@ project(
     ],
 )
 
+fs = import('fs')
+
 compiler = meson.get_compiler('cpp')
 
 cpp_args = []
@@ -256,9 +258,20 @@ scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_opti
 if scdoc.found()
     scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
     sh = find_program('sh', native: true)
+
+    main_manpage = configure_file(
+        input: 'man/waybar.5.scd.in',
+        output: 'waybar.5.scd',
+        configuration: {
+            'sysconfdir': join_paths(prefix, sysconfdir)
+        }
+    )
+
+    main_manpage_path = join_paths(meson.build_root(), '@0@'.format(main_manpage))
+
     mandir = get_option('mandir')
     man_files = [
-        'waybar.5.scd',
+        main_manpage_path,
         'waybar-backlight.5.scd',
         'waybar-battery.5.scd',
         'waybar-clock.5.scd',
@@ -281,14 +294,18 @@ if scdoc.found()
         'waybar-bluetooth.5.scd',
     ]
 
-    foreach filename : man_files
-        topic = filename.split('.')[-3].split('/')[-1]
-        section = filename.split('.')[-2]
+    foreach file : man_files
+        path = '@0@'.format(file)
+        basename = fs.name(path)
+
+        topic = basename.split('.')[-3].split('/')[-1]
+        section = basename.split('.')[-2]
         output = '@0@.@1@'.format(topic, section)
 
         custom_target(
             output,
-            input: 'man/@0@'.format(filename),
+            # drops the 'man' if `path` is an absolute path
+            input: join_paths('man', path),
             output: output,
             command: [
                 sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.path(), output)
