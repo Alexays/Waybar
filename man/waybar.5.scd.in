@@ -17,7 +17,9 @@ Valid locations for this file are:
 - *@sysconfdir@/xdg/waybar/config*
 
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
-Also a minimal example configuration can be found on the at the bottom of this man page.
+A minimal example configuration can also be found on the at the bottom of this man page.
+
+Generic module configuration options can be found in *waybar-modules(5)*.
 
 # BAR CONFIGURATION
 
@@ -83,6 +85,7 @@ e.g.
 ```
 "format": "<span style=\"italic\">{}</span>"
 ```
+
 # MULTIPLE INSTANCES OF A MODULE
 
 If you want to have a second instance of a module, you can suffix it by a '#' and a custom name.
@@ -196,8 +199,10 @@ Valid options for the "rotate" property are: 0, 90, 180 and 270.
 - *waybar-mpd(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
+- *waybar-sndio(5)*
 - *waybar-river-tags(5)*
 - *waybar-states(5)*
+- *waybar-sway-language(5)*
 - *waybar-sway-mode(5)*
 - *waybar-sway-window(5)*
 - *waybar-sway-workspaces(5)*
