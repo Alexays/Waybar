@@ -56,42 +56,6 @@ Addressed by *network*
 	Based on the current signal strength, the corresponding icon gets selected. ++
 	The order is *low* to *high*. Or by the state if it is an object.
 
-*rotate*: ++
-	typeof: integer ++
-	Positive value to rotate the text label.
-
-*max-length*: ++
-	typeof: integer ++
-	The maximum length in character the module should display.
-
-*on-click*: ++
-	typeof: string ++
-	Command to execute when clicked on the module.
-
-*on-click-middle*: ++
-	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
-
-*on-click-right*: ++
-	typeof: string ++
-	Command to execute when you right clicked on the module.
-
-*on-update*: ++
-	typeof: string ++
-	Command to execute when the module is updated.
-
-*on-scroll-up*: ++
-	typeof: string ++
-	Command to execute when scrolling up on the module.
-
-*on-scroll-down*: ++
-	typeof: string ++
-	Command to execute when scrolling down on the module.
-
-*smooth-scrolling-threshold*: ++
-	typeof: double ++
-	Threshold to be used when scrolling.
-
 *tooltip*: ++
 	typeof: bool ++
 	default: *true* ++

@@ -46,42 +46,6 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	Based on the current capacity, the corresponding icon gets selected. ++
 	The order is *low* to *high*. Or by the state if it is an object.
 
-*max-length*: ++
-	typeof: integer++
-	The maximum length in character the module should display.
-
-*rotate*: ++
-	typeof: integer++
-	Positive value to rotate the text label.
-
-*on-click*: ++
-	typeof: string ++
-	Command to execute when clicked on the module.
-
-*on-click-middle*: ++
-	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
-
-*on-click-right*: ++
-	typeof: string ++
-	Command to execute when you right clicked on the module.
-
-*on-update*: ++
-	typeof: string ++
-	Command to execute when the module is updated.
-
-*on-scroll-up*: ++
-	typeof: string ++
-	Command to execute when scrolling up on the module.
-
-*on-scroll-down*: ++
-	typeof: string ++
-	Command to execute when scrolling down on the module.
-
-*smooth-scrolling-threshold*: ++
-	typeof: double ++
-	Threshold to be used when scrolling.
-
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
@@ -118,8 +82,6 @@ The *battery* module allows to define custom formats based on up to two factors.
 - Every entry (*state*) consists of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
 	- The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.	Each class gets activated when the current capacity is equal or below the configured *<value>*.
 	- Also each state can have its own *format*. Those con be configured via *format-<name>*. Or if you want to differentiate a bit more even as *format-<status>-<state>*. For more information see *custom-formats*.
-
-
 
 # EXAMPLES
 
