@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <poll.h>
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules {
 
@@ -20,8 +21,25 @@ void onval(void *arg, unsigned int addr, unsigned int val) {
   self->put_val(addr, val);
 }
 
+auto Sndio::connect_to_sndio() -> void {
+  hdl_ = sioctl_open(SIO_DEVANY, SIOCTL_READ | SIOCTL_WRITE, 0);
+  if (hdl_ == nullptr) {
+    throw std::runtime_error("sioctl_open() failed.");
+  }
+
+  if (sioctl_ondesc(hdl_, ondesc, this) == 0) {
+    throw std::runtime_error("sioctl_ondesc() failed.");
+  }
+
+  if (sioctl_onval(hdl_, onval, this) == 0) {
+    throw std::runtime_error("sioctl_onval() failed.");
+  }
+
+  pfds_.reserve(sioctl_nfds(hdl_));
+}
+
 Sndio::Sndio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "sndio", id, "{volume}%"),
+    : ALabel(config, "sndio", id, "{volume}%", 1),
       hdl_(nullptr),
       pfds_(0),
       addr_(0),
@@ -29,18 +47,7 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
       old_volume_(0),
       maxval_(0),
       muted_(false) {
-  hdl_ = sioctl_open(SIO_DEVANY, SIOCTL_READ | SIOCTL_WRITE, 0);
-  if (hdl_ == nullptr) {
-    throw std::runtime_error("sioctl_open() failed.");
-  }
-
-  if(sioctl_ondesc(hdl_, ondesc, this) == 0) {
-    throw std::runtime_error("sioctl_ondesc() failed.");
-  }
-
-  sioctl_onval(hdl_, onval, this);
-
-  pfds_.reserve(sioctl_nfds(hdl_));
+  connect_to_sndio();
 
   event_box_.show();
 
@@ -65,7 +72,28 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
 
     int revents = sioctl_revents(hdl_, pfds_.data());
     if (revents & POLLHUP) {
-      throw std::runtime_error("disconnected!");
+      spdlog::warn("sndio disconnected!");
+      sioctl_close(hdl_);
+      hdl_ = nullptr;
+
+      // reconnection loop
+      while (thread_.isRunning()) {
+        try {
+          connect_to_sndio();
+        } catch(std::runtime_error const& e) {
+          // avoid leaking hdl_
+          if (hdl_) {
+            sioctl_close(hdl_);
+            hdl_ = nullptr;
+          }
+          // rate limiting for the retries
+          thread_.sleep_for(interval_);
+          continue;
+        }
+
+        spdlog::warn("sndio reconnected!");
+        break;
+      }
     }
   };
 }
@@ -116,6 +144,9 @@ bool Sndio::handleScroll(GdkEventScroll *e) {
     return AModule::handleScroll(e);
   }
 
+  // only try to talk to sndio if connected
+  if (hdl_ == nullptr) return true;
+
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
@@ -151,6 +182,9 @@ bool Sndio::handleToggle(GdkEventButton* const& e) {
   if (config_["on-click"].isString()) {
     return AModule::handleToggle(e);
   }
+
+  // only try to talk to sndio if connected
+  if (hdl_ == nullptr) return true;
 
   muted_ = !muted_;
   if (muted_) {

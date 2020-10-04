@@ -18,6 +18,7 @@ class Sndio : public ALabel {
   bool handleToggle(GdkEventButton* const&);
 
  private:
+  auto connect_to_sndio() -> void;
   util::SleeperThread thread_;
   struct sioctl_hdl *hdl_;
   std::vector<struct pollfd> pfds_;
