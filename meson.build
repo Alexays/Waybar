@@ -96,6 +96,19 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+
+libsndio = compiler.find_library('sndio', required: get_option('sndio'))
+if libsndio.found()
+    if not compiler.has_function('sioctl_open', prefix: '#include <sndio.h>', dependencies: libsndio)
+        if get_option('sndio').enabled()
+            error('libsndio is too old, required >=1.7.0')
+        else
+            warning('libsndio is too old, required >=1.7.0')
+            libsndio = dependency('', required: false)
+        endif
+    endif
+endif
+
 gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
@@ -207,6 +220,11 @@ if gtk_layer_shell.found()
     add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
 endif
 
+if libsndio.found()
+    add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
+    src_files += 'src/modules/sndio.cpp'
+endif
+
 if get_option('rfkill').enabled()
     if is_linux
         add_project_arguments('-DWANT_RFKILL', language: 'cpp')
@@ -241,6 +259,7 @@ executable(
         libepoll,
         libmpdclient,
         gtk_layer_shell,
+        libsndio,
         tz_dep
     ],
     include_directories: [include_directories('include')],
@@ -292,6 +311,7 @@ if scdoc.found()
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
         'waybar-bluetooth.5.scd',
+        'waybar-sndio.5.scd',
     ]
 
     foreach file : man_files
