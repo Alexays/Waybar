@@ -293,6 +293,7 @@ if scdoc.found()
     mandir = get_option('mandir')
     man_files = [
         main_manpage_path,
+        'waybar-modules.5.scd',
         'waybar-backlight.5.scd',
         'waybar-battery.5.scd',
         'waybar-clock.5.scd',
