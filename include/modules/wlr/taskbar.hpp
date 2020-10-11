@@ -70,7 +70,7 @@ class Task
 
     std::string title_;
     std::string app_id_;
-    uint32_t state_;
+    uint32_t state_ = 0;
 
    private:
     std::string repr() const;
