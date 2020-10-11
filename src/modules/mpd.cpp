@@ -63,20 +63,22 @@ auto waybar::modules::MPD::update() -> void {
 
 std::thread waybar::modules::MPD::event_listener() {
   return std::thread([this] {
-    try {
-      if (connection_ == nullptr) {
-        // Retry periodically if no connection
-        dp.emit();
-        std::this_thread::sleep_for(interval_);
-      } else {
-        waitForEvent();
-        dp.emit();
-      }
-    } catch (const std::exception& e) {
-      if (strcmp(e.what(), "Connection to MPD closed") == 0) {
-        spdlog::debug("{}: {}", module_name_, e.what());
-      } else {
-        spdlog::warn("{}: {}", module_name_, e.what());
+    while (true) {
+      try {
+        if (connection_ == nullptr) {
+          // Retry periodically if no connection
+          dp.emit();
+          std::this_thread::sleep_for(interval_);
+        } else {
+          waitForEvent();
+          dp.emit();
+        }
+      } catch (const std::exception& e) {
+        if (strcmp(e.what(), "Connection to MPD closed") == 0) {
+          spdlog::debug("{}: {}", module_name_, e.what());
+        } else {
+          spdlog::warn("{}: {}", module_name_, e.what());
+        }
       }
     }
   });
@@ -131,6 +133,7 @@ void waybar::modules::MPD::setLabel() {
   auto format = format_;
 
   std::string          artist, album_artist, album, title, date;
+  int song_pos, queue_length;
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
@@ -159,6 +162,8 @@ void waybar::modules::MPD::setLabel() {
     album = getTag(MPD_TAG_ALBUM);
     title = getTag(MPD_TAG_TITLE);
     date = getTag(MPD_TAG_DATE);
+    song_pos = mpd_status_get_song_pos(status_.get());
+    queue_length = mpd_status_get_queue_length(status_.get());
     elapsedTime = std::chrono::seconds(mpd_status_get_elapsed_time(status_.get()));
     totalTime = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
   }
@@ -182,6 +187,8 @@ void waybar::modules::MPD::setLabel() {
                   fmt::arg("date", Glib::Markup::escape_text(date).raw()),
                   fmt::arg("elapsedTime", elapsedTime),
                   fmt::arg("totalTime", totalTime),
+                  fmt::arg("songPosition", song_pos),
+                  fmt::arg("queueLength", queue_length),
                   fmt::arg("stateIcon", stateIcon),
                   fmt::arg("consumeIcon", consumeIcon),
                   fmt::arg("randomIcon", randomIcon),
@@ -198,6 +205,8 @@ void waybar::modules::MPD::setLabel() {
                                     fmt::arg("album", album),
                                     fmt::arg("title", title),
                                     fmt::arg("date", date),
+                                    fmt::arg("songPosition", song_pos),
+                                    fmt::arg("queueLength", queue_length),
                                     fmt::arg("stateIcon", stateIcon),
                                     fmt::arg("consumeIcon", consumeIcon),
                                     fmt::arg("randomIcon", randomIcon),

@@ -1,6 +1,71 @@
 #include <csignal>
+#include <list>
+#include <mutex>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <spdlog/spdlog.h>
 #include "client.hpp"
+
+std::mutex reap_mtx;
+std::list<pid_t> reap;
+
+void* signalThread(void* args) {
+  int err, signum;
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+
+  while (true) {
+    err = sigwait(&mask, &signum);
+    if (err != 0) {
+      spdlog::error("sigwait failed: {}", strerror(errno));
+      continue;
+    }
+
+    switch (signum) {
+      case SIGCHLD:
+        spdlog::debug("Received SIGCHLD in signalThread");
+        if (!reap.empty()) {
+          reap_mtx.lock();
+          for (auto it = reap.begin(); it != reap.end(); ++it) {
+            if (waitpid(*it, nullptr, WNOHANG) == *it) {
+              spdlog::debug("Reaped child with PID: {}", *it);
+              it = reap.erase(it);
+            }
+          }
+          reap_mtx.unlock();
+        }
+        break;
+      default:
+        spdlog::debug("Received signal with number {}, but not handling",
+                      signum);
+        break;
+    }
+  }
+}
+
+void startSignalThread(void) {
+  int err;
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+
+  // Block SIGCHLD so it can be handled by the signal thread
+  // Any threads created by this one (the main thread) should not
+  // modify their signal mask to unblock SIGCHLD
+  err = pthread_sigmask(SIG_BLOCK, &mask, nullptr);
+  if (err != 0) {
+    spdlog::error("pthread_sigmask failed in startSignalThread: {}", strerror(err));
+    exit(1);
+  }
+
+  pthread_t thread_id;
+  err = pthread_create(&thread_id, nullptr, signalThread, nullptr);
+  if (err != 0) {
+    spdlog::error("pthread_create failed in startSignalThread: {}", strerror(err));
+    exit(1);
+  }
+}
 
 int main(int argc, char* argv[]) {
   try {
@@ -18,6 +83,7 @@ int main(int argc, char* argv[]) {
         }
       });
     }
+    startSignalThread();
 
     auto ret = client->main(argc, argv);
     delete client;

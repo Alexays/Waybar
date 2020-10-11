@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.2',
+    version: '0.9.4',
     license: 'MIT',
     default_options : [
         'cpp_std=c++17',
@@ -8,6 +8,8 @@ project(
         'default_library=static'
     ],
 )
+
+fs = import('fs')
 
 compiler = meson.get_compiler('cpp')
 
@@ -94,6 +96,19 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+
+libsndio = compiler.find_library('sndio', required: get_option('sndio'))
+if libsndio.found()
+    if not compiler.has_function('sioctl_open', prefix: '#include <sndio.h>', dependencies: libsndio)
+        if get_option('sndio').enabled()
+            error('libsndio is too old, required >=1.7.0')
+        else
+            warning('libsndio is too old, required >=1.7.0')
+            libsndio = dependency('', required: false)
+        endif
+    endif
+endif
+
 gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
@@ -137,12 +152,10 @@ if is_linux
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
-        'src/modules/bluetooth.cpp',
         'src/modules/cpu/common.cpp',
         'src/modules/cpu/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
-        'src/util/rfkill.cpp'
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
@@ -207,6 +220,21 @@ if gtk_layer_shell.found()
     add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
 endif
 
+if libsndio.found()
+    add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
+    src_files += 'src/modules/sndio.cpp'
+endif
+
+if get_option('rfkill').enabled()
+    if is_linux
+        add_project_arguments('-DWANT_RFKILL', language: 'cpp')
+        src_files += files(
+            'src/modules/bluetooth.cpp',
+            'src/util/rfkill.cpp'
+        )
+    endif
+endif
+
 subdir('protocol')
 
 executable(
@@ -231,6 +259,7 @@ executable(
         libepoll,
         libmpdclient,
         gtk_layer_shell,
+        libsndio,
         tz_dep
     ],
     include_directories: [include_directories('include')],
@@ -248,9 +277,20 @@ scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_opti
 if scdoc.found()
     scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
     sh = find_program('sh', native: true)
+
+    main_manpage = configure_file(
+        input: 'man/waybar.5.scd.in',
+        output: 'waybar.5.scd',
+        configuration: {
+            'sysconfdir': join_paths(prefix, sysconfdir)
+        }
+    )
+
+    main_manpage_path = join_paths(meson.build_root(), '@0@'.format(main_manpage))
+
     mandir = get_option('mandir')
     man_files = [
-        'waybar.5.scd',
+        main_manpage_path,
         'waybar-backlight.5.scd',
         'waybar-battery.5.scd',
         'waybar-clock.5.scd',
@@ -271,16 +311,21 @@ if scdoc.found()
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
         'waybar-bluetooth.5.scd',
+        'waybar-sndio.5.scd',
     ]
 
-    foreach filename : man_files
-        topic = filename.split('.')[-3].split('/')[-1]
-        section = filename.split('.')[-2]
+    foreach file : man_files
+        path = '@0@'.format(file)
+        basename = fs.name(path)
+
+        topic = basename.split('.')[-3].split('/')[-1]
+        section = basename.split('.')[-2]
         output = '@0@.@1@'.format(topic, section)
 
         custom_target(
             output,
-            input: 'man/@0@'.format(filename),
+            # drops the 'man' if `path` is an absolute path
+            input: join_paths('man', path),
             output: output,
             command: [
                 sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.path(), output)

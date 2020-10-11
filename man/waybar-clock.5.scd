@@ -26,10 +26,20 @@ The *clock* module displays the current date and time.
 	default: inferred local timezone ++
 	The timezone to display the time in, e.g. America/New_York.
 
+*timezones*: ++
+	typeof: list of strings ++
+	A list of timezones to use for time display, changed using the scroll wheel. ++
+	Use "" to represent the system's local timezone.  Using %Z in the format or tooltip format is useful to track which time zone is currently displayed.
+
 *locale*: ++
 	typeof: string ++
 	default: inferred from current locale ++
 	A locale to be used to display the time. Intended to render times in custom timezones with the proper language and format.
+
+*today-format*: ++
+	typeof: string ++
+	default: <b><u>{}</u></b> ++
+	The format of today's date in the calendar.
 
 *max-length*: ++
 	typeof: integer ++

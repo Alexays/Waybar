@@ -39,11 +39,16 @@
 #ifdef HAVE_LIBMPDCLIENT
 #include "modules/mpd.hpp"
 #endif
+#ifdef HAVE_LIBSNDIO
+#include "modules/sndio.hpp"
+#endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
 #if defined(__linux__)
-#include "modules/bluetooth.hpp"
+#  ifdef WANT_RFKILL
+#    include "modules/bluetooth.hpp"
+#  endif
 #endif
 
 namespace waybar {

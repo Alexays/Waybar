@@ -23,7 +23,7 @@ namespace fmt {
         constexpr auto parse(ParseContext& ctx) -> decltype (ctx.begin()) {
           auto it = ctx.begin(), end = ctx.end();
           if (it != end && *it == ':') ++it;
-          if (*it == '>' || *it == '<' || *it == '=') {
+          if (it && (*it == '>' || *it == '<' || *it == '=')) {
             spec = *it;
             ++it;
           }

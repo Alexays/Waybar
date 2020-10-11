@@ -460,38 +460,51 @@ bool Task::operator!=(const Task &o) const
 
 void Task::update()
 {
+    bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
+    std::string title = title_;
+    std::string app_id = app_id_;
+    if (markup) {
+        title = Glib::Markup::escape_text(title);
+        app_id = Glib::Markup::escape_text(app_id);
+    }
     if (!format_before_.empty()) {
-        text_before_.set_label(
-                fmt::format(format_before_,
-                    fmt::arg("title", title_),
-                    fmt::arg("app_id", app_id_),
+        auto txt = fmt::format(format_before_,
+                    fmt::arg("title", title),
+                    fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
-                )
-        );
+                );
+        if (markup) 
+            text_before_.set_markup(txt);
+        else
+            text_before_.set_label(txt);
         text_before_.show();
     }
     if (!format_after_.empty()) {
-        text_after_.set_label(
-                fmt::format(format_after_,
-                    fmt::arg("title", title_),
-                    fmt::arg("app_id", app_id_),
+        auto txt = fmt::format(format_after_,
+                    fmt::arg("title", title),
+                    fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
-                )
-        );
+                );
+        if (markup) 
+            text_after_.set_markup(txt);
+        else
+            text_after_.set_label(txt);
         text_after_.show();
     }
 
     if (!format_tooltip_.empty()) {
-        button_.set_tooltip_markup(
-                fmt::format(format_tooltip_,
-                    fmt::arg("title", title_),
-                    fmt::arg("app_id", app_id_),
+        auto txt = fmt::format(format_tooltip_,
+                    fmt::arg("title", title),
+                    fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
-                )
-        );
+                );
+        if (markup) 
+            button_.set_tooltip_markup(txt);
+        else
+            button_.set_tooltip_text(txt);
     }
 }
 
@@ -709,7 +722,7 @@ bool Taskbar::show_output(struct wl_output *output) const
 
 bool Taskbar::all_outputs() const
 {
-    return config_["all_outputs"].isBool() && config_["all_outputs"].asBool();
+    return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
 }
 
 std::vector<Glib::RefPtr<Gtk::IconTheme>> Taskbar::icon_themes() const

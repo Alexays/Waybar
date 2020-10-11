@@ -162,6 +162,7 @@ std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
                                           "$XDG_CONFIG_HOME/waybar/config",
                                           "$HOME/.config/waybar/config",
                                           "$HOME/waybar/config",
+                                          "/etc/xdg/waybar/config",
                                           SYSCONFDIR "/xdg/waybar/config",
                                           "./resources/config",
                                       })
@@ -170,6 +171,7 @@ std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
                                       "$XDG_CONFIG_HOME/waybar/style.css",
                                       "$HOME/.config/waybar/style.css",
                                       "$HOME/waybar/style.css",
+                                      "/etc/xdg/waybar/style.css",
                                       SYSCONFDIR "/xdg/waybar/style.css",
                                       "./resources/style.css",
                                   })

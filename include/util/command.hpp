@@ -7,6 +7,9 @@
 
 #include <array>
 
+extern std::mutex reap_mtx;
+extern std::list<pid_t> reap;
+
 namespace waybar::util::command {
 
 struct res {
@@ -32,10 +35,11 @@ inline std::string read(FILE* fp) {
 
 inline int close(FILE* fp, pid_t pid) {
   int stat = -1;
+  pid_t ret;
 
   fclose(fp);
   do {
-    waitpid(pid, &stat, WCONTINUED | WUNTRACED);
+    ret = waitpid(pid, &stat, WCONTINUED | WUNTRACED);
 
     if (WIFEXITED(stat)) {
       spdlog::debug("Cmd exited with code {}", WEXITSTATUS(stat));
@@ -45,6 +49,8 @@ inline int close(FILE* fp, pid_t pid) {
       spdlog::debug("Cmd stopped by {}", WSTOPSIG(stat));
     } else if (WIFCONTINUED(stat)) {
       spdlog::debug("Cmd continued");
+    } else if (ret == -1) {
+      spdlog::debug("waitpid failed: {}", strerror(errno));
     } else {
       break;
     }
@@ -65,6 +71,12 @@ inline FILE* open(const std::string& cmd, int& pid) {
   }
 
   if (!child_pid) {
+    int err;
+    sigset_t mask;
+    sigfillset(&mask);
+    // Reset sigmask
+    err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
+    if (err != 0) spdlog::error("pthread_sigmask in open failed: {}", strerror(err));
     ::close(fd[0]);
     dup2(fd[1], 1);
     setpgid(child_pid, child_pid);
@@ -97,7 +109,7 @@ inline struct res execNoRead(const std::string& cmd) {
 inline int32_t forkExec(const std::string& cmd) {
   if (cmd == "") return -1;
 
-  int32_t pid = fork();
+  pid_t pid = fork();
 
   if (pid < 0) {
     spdlog::error("Unable to exec cmd {}, error {}", cmd.c_str(), strerror(errno));
@@ -106,12 +118,20 @@ inline int32_t forkExec(const std::string& cmd) {
 
   // Child executes the command
   if (!pid) {
+    int err;
+    sigset_t mask;
+    sigfillset(&mask);
+    // Reset sigmask
+    err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
+    if (err != 0) spdlog::error("pthread_sigmask in forkExec failed: {}", strerror(err));
     setpgid(pid, pid);
-    signal(SIGCHLD, SIG_DFL);
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
-    signal(SIGCHLD, SIG_IGN);
+    reap_mtx.lock();
+    reap.push_back(pid);
+    reap_mtx.unlock();
+    spdlog::debug("Added child to reap list: {}", pid);
   }
 
   return pid;

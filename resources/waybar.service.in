@@ -1,13 +1,11 @@
 [Unit]
 Description=Highly customizable Wayland bar for Sway and Wlroots based compositors.
 Documentation=https://github.com/Alexays/Waybar/wiki/
-PartOf=wayland-session.target
-After=wayland-session.target
+PartOf=graphical-session.target
+After=graphical-session.target
 
 [Service]
-Type=dbus
-BusName=fr.arouillard.waybar
 ExecStart=@prefix@/bin/waybar
 
 [Install]
-WantedBy=wayland-session.target
+WantedBy=graphical-session.target

@@ -31,6 +31,11 @@ Addressed by *sway/workspaces*
     default: false ++
     If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
 
+*disable-click*: ++
+    typeof: bool ++
+    default: false ++
+    If set to false, you can click to change workspace. If set to true this behaviour is disabled.
+
 *smooth-scrolling-threshold*: ++
     typeof: double ++
     Threshold to be used when scrolling.
@@ -134,3 +139,4 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.urgent*
 - *#workspaces button.persistent*
 - *#workspaces button.current_output*
+- *#workspaces button#sway-workspace-${name}*
