@@ -50,7 +50,6 @@ void waybar::modules::Custom::continuousWorker() {
   thread_ = [this, cmd] {
     char*  buff = nullptr;
     size_t len = 0;
-    bool   restart = false;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
       if (fp_) {
@@ -63,8 +62,8 @@ void waybar::modules::Custom::continuousWorker() {
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
       if (config_["restart-interval"].isUInt()) {
-        restart = true;
         pid_ = -1;
+        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
         fp_ = util::command::open(cmd, pid_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
@@ -83,9 +82,6 @@ void waybar::modules::Custom::continuousWorker() {
       output_ = {0, output};
       dp.emit();
     }
-    if (restart) {
-      thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
-    }
   };
 }
 
@@ -95,15 +91,21 @@ void waybar::modules::Custom::refresh(int sig) {
   }
 }
 
+void waybar::modules::Custom::handleEvent() {
+  if (!config_["exec-on-event"].isBool() || config_["exec-on-event"].asBool()) {
+    thread_.wake_up();
+  }
+}
+
 bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
   auto ret = ALabel::handleScroll(e);
-  thread_.wake_up();
+  handleEvent();
   return ret;
 }
 
 bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
   auto ret = ALabel::handleToggle(e);
-  thread_.wake_up();
+  handleEvent();
   return ret;
 }
 

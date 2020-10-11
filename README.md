@@ -67,6 +67,7 @@ libnl [Network module]
 libappindicator-gtk3 [Tray module]
 libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
+libsndio [sndio module]
 ```
 
 **Build dependencies**

@@ -8,3 +8,4 @@ option('man-pages', type: 'feature', value: 'auto', description: 'Generate and i
 option('mpd', type: 'feature', value: 'auto', description: 'Enable support for the Music Player Daemon')
 option('gtk-layer-shell', type: 'feature', value: 'auto', description: 'Use gtk-layer-shell library for popups support')
 option('rfkill', type: 'feature', value: 'auto', description: 'Enable support for RFKILL')
+option('sndio', type: 'feature', value: 'auto', description: 'Enable support for sndio')

@@ -31,6 +31,10 @@ Addressed by *disk*
 	typeof: integer ++
 	Positive value to rotate the text label.
 
+*states*: ++
+	typeof: array ++
+	A number of disk utilization states which get activated on certain percentage thresholds (percentage_used). See *waybar-states(5)*.
+
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
