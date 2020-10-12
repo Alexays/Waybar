@@ -24,6 +24,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
   window.get_style_context()->add_class(config["position"].asString());
+  left_.get_style_context()->add_class("modules-left");
+  center_.get_style_context()->add_class("modules-center");
+  right_.get_style_context()->add_class("modules-right");
 
   if (config["position"] == "right" || config["position"] == "left") {
     height_ = 0;
