@@ -363,6 +363,23 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
+bool waybar::Bar::is_module_area(int x) const {
+  if (x < left_.get_allocation().get_width()) {
+    // in the left box
+    return true;
+  }
+  if (x > (int)width_ - right_.get_allocation().get_width()) {
+    // in the right box
+    return true;
+  }
+  const int half_center_width = center_.get_allocation().get_width() / 2;
+  if (x > (int)width_ / 2 - half_center_width && x < (int)width_ / 2 + half_center_width) {
+    // in the center box
+    return true;
+  }
+  return false;
+}
+
 void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surface_v1* surface,
                                               uint32_t serial, uint32_t width, uint32_t height) {
   auto o = static_cast<waybar::Bar*>(data);

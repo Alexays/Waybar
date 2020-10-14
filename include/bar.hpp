@@ -31,6 +31,7 @@ class Bar {
 
   auto toggle() -> void;
   void handleSignal(int);
+  bool is_module_area(int x) const;
 
   struct waybar_output *output;
   Json::Value           config;

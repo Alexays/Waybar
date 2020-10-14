@@ -34,6 +34,7 @@ class Workspaces : public AModule, public sigc::trackable {
   uint16_t          getWorkspaceIndex(const std::string& name) const;
   std::string       trimWorkspaceName(std::string);
   bool              handleScroll(GdkEventScroll*);
+  bool              handleWindowScroll(GdkEventScroll*);
 
   const Bar&                                   bar_;
   std::vector<Json::Value>                     workspaces_;
