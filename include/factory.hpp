@@ -37,7 +37,7 @@
 #include "modules/pulseaudio.hpp"
 #endif
 #ifdef HAVE_LIBMPDCLIENT
-#include "modules/mpd/mpd.hpp"
+#include "modules/mpd.hpp"
 #endif
 #ifdef HAVE_LIBSNDIO
 #include "modules/sndio.hpp"
