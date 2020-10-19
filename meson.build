@@ -213,7 +213,8 @@ endif
 
 if libmpdclient.found()
     add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
-    src_files += 'src/modules/mpd.cpp'
+    src_files += 'src/modules/mpd/mpd.cpp'
+    src_files += 'src/modules/mpd/state.cpp'
 endif
 
 if gtk_layer_shell.found()
