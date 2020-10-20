@@ -82,12 +82,23 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
 void BarIpcClient::onConfigUpdate(const swaybar_config& config) {
   spdlog::info("config update: {} {} {}", config.id, config.mode, config.position);
   bar_config_ = config;
-  bar_.setMode(bar_config_.mode);
+  update();
 }
 
 void BarIpcClient::onVisibilityUpdate(bool visible_by_modifier) {
   spdlog::trace("visiblity update: {}", visible_by_modifier);
-  // TODO: pass visibility to bars
+  visible_by_modifier_ = visible_by_modifier;
+  update();
+}
+
+void BarIpcClient::update() {
+  bool visible = visible_by_modifier_;
+  if (bar_config_.mode == "invisible") {
+    visible = false;
+  } else if (bar_config_.mode != "hide" || bar_config_.hidden_state != "hide") {
+    visible = true;
+  }
+  bar_.setMode(visible ? bar_config_.mode : Bar::MODE_INVISIBLE);
 }
 
 }  // namespace waybar::modules::sway
