@@ -283,6 +283,8 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
+    } else if (config_["format-icons"][trimWorkspaceName(key)].isString()) {
+      return config_["format-icons"][trimWorkspaceName(key)].asString();
     }
   }
   return name;
