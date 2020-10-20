@@ -8,6 +8,7 @@
 #include <queue>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace waybar {
 
@@ -36,24 +37,26 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
 
  protected:
   using signal_t = sigc::signal<void(std::decay_t<Args>...)>;
+  using slot_t = decltype(std::declval<signal_t>().make_slot());
   using arg_tuple_t = std::tuple<std::decay_t<Args>...>;
   // ensure that unwrapped methods are not accessible
   using signal_t::emit_reverse;
   using signal_t::make_slot;
 
   void handle_event() {
-    auto fn = signal_t::make_slot();
     for (std::unique_lock lock(mutex_); !queue_.empty(); lock.lock()) {
       auto args = queue_.front();
       queue_.pop();
       lock.unlock();
-      std::apply(fn, args);
+      std::apply(cached_fn_, args);
     }
   }
 
   Glib::Dispatcher        dp_;
   std::mutex              mutex_;
   std::queue<arg_tuple_t> queue_;
+  // cache functor for signal emission to avoid recreating it on each event
+  const slot_t cached_fn_ = make_slot();
 };
 
 }  // namespace waybar
