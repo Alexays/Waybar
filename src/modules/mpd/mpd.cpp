@@ -15,6 +15,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
       module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
       port_(config_["port"].isUInt() ? config["port"].asUInt() : 0),
+      password_(config_["password"].empty() ? "" : config_["password"].asString()),
       timeout_(config_["timeout"].isUInt() ? config_["timeout"].asUInt() * 1'000 : 30'000),
       connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
@@ -238,6 +239,16 @@ void waybar::modules::MPD::tryConnect() {
   try {
     checkErrors(connection_.get());
     spdlog::debug("{}: Connected to MPD", module_name_);
+
+    if (!password_.empty()) {
+      bool res = mpd_run_password(connection_.get(), password_.c_str());
+      if (!res) {
+        spdlog::error("{}: Wrong MPD password", module_name_);
+        connection_.reset();
+        return;
+      }
+      checkErrors(connection_.get());
+    }
   } catch (std::runtime_error& e) {
     spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
     connection_.reset();

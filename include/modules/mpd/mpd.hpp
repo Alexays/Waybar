@@ -1,7 +1,7 @@
 #pragma once
 
-#include <mpd/client.h>
 #include <fmt/format.h>
+#include <mpd/client.h>
 #include <spdlog/spdlog.h>
 
 #include <condition_variable>
@@ -22,8 +22,9 @@ class MPD : public ALabel {
 
   // Not using unique_ptr since we don't manage the pointer
   // (It's either nullptr, or from the config)
-  const char*    server_;
-  const unsigned port_;
+  const char*       server_;
+  const unsigned    port_;
+  const std::string password_;
 
   unsigned timeout_;
 
