@@ -177,6 +177,7 @@ endif
 add_project_arguments('-DHAVE_SWAY', language: 'cpp')
 src_files += [
     'src/modules/sway/ipc/client.cpp',
+    'src/modules/sway/bar.cpp',
     'src/modules/sway/mode.cpp',
     'src/modules/sway/language.cpp',
     'src/modules/sway/window.cpp',

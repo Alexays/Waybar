@@ -11,6 +11,10 @@
 #include "factory.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
+#ifdef HAVE_SWAY
+#include "modules/sway/bar.hpp"
+#endif
+
 namespace waybar {
 static constexpr const char* MIN_HEIGHT_MSG =
     "Requested height: {} is less than the minimum height: {} required by the modules";
@@ -546,6 +550,16 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
+#if HAVE_SWAY
+  if (auto ipc = config["ipc"]; ipc.isBool() && ipc.asBool()) {
+    bar_id = Client::inst()->bar_id;
+    if (auto id = config["id"]; id.isString()) {
+      bar_id = id.asString();
+    }
+    _ipc_client = std::make_unique<BarIpcClient>(*this);
+  }
+#endif
+
   setupWidgets();
   window.show_all();
 
@@ -559,6 +573,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     g_free(gtk_tree);
   }
 }
+
+/* Need to define it here because of forward declared members */
+waybar::Bar::~Bar() = default;
 
 void waybar::Bar::setMode(const std::string_view& mode) {
   using namespace std::literals::string_literals;

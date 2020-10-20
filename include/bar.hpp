@@ -8,6 +8,9 @@
 #include <gtkmm/window.h>
 #include <json/json.h>
 
+#include <memory>
+#include <vector>
+
 #include "AModule.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
@@ -43,6 +46,12 @@ struct bar_mode {
   bool      visible;
 };
 
+#ifdef HAVE_SWAY
+namespace modules::sway {
+class BarIpcClient;
+}
+#endif  // HAVE_SWAY
+
 class BarSurface {
  protected:
   BarSurface() = default;
@@ -68,7 +77,7 @@ class Bar {
 
   Bar(struct waybar_output *w_output, const Json::Value &);
   Bar(const Bar &) = delete;
-  ~Bar() = default;
+  ~Bar();
 
   void setMode(const std::string_view &);
   void setVisible(bool visible);
@@ -81,6 +90,10 @@ class Bar {
   bool                  visible = true;
   bool                  vertical = false;
   Gtk::Window           window;
+
+#ifdef HAVE_SWAY
+  std::string bar_id;
+#endif
 
  private:
   void onMap(GdkEventAny *);
@@ -102,6 +115,10 @@ class Bar {
   std::vector<std::unique_ptr<waybar::AModule>> modules_left_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_center_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_right_;
+#ifdef HAVE_SWAY
+  using BarIpcClient = modules::sway::BarIpcClient;
+  std::unique_ptr<BarIpcClient> _ipc_client;
+#endif
 };
 
 }  // namespace waybar
