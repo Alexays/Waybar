@@ -50,6 +50,11 @@ Addressed by *temperature*
 	typeof: array ++
 	Based on the current temperature (Celsius) and *critical-threshold* if available, the corresponding icon gets selected. The order is *low* to *high*.
 
+*tooltip-format*: ++
+	typeof: string  ++
+	default: {temperatureC}°C ++
+	The format for the tooltip
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
