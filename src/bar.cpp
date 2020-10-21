@@ -2,10 +2,11 @@
 #include <gtk-layer-shell.h>
 #endif
 
+#include <spdlog/spdlog.h>
+
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
-#include <spdlog/spdlog.h>
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
@@ -134,33 +135,32 @@ void waybar::Bar::initGtkLayerShell() {
   gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
   gtk_layer_set_namespace(gtk_window, "waybar");
 
-  gtk_layer_set_anchor(
-      gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT);
-  gtk_layer_set_anchor(
-      gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
-  gtk_layer_set_anchor(
-      gtk_window, GTK_LAYER_SHELL_EDGE_TOP, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP);
-  gtk_layer_set_anchor(
-      gtk_window, GTK_LAYER_SHELL_EDGE_BOTTOM, anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM);
+  gtk_layer_set_anchor(gtk_window,
+                       GTK_LAYER_SHELL_EDGE_LEFT,
+                       (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) ? TRUE : FALSE);
+  gtk_layer_set_anchor(gtk_window,
+                       GTK_LAYER_SHELL_EDGE_RIGHT,
+                       (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT) ? TRUE : FALSE);
+  gtk_layer_set_anchor(gtk_window,
+                       GTK_LAYER_SHELL_EDGE_TOP,
+                       (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) ? TRUE : FALSE);
+  gtk_layer_set_anchor(gtk_window,
+                       GTK_LAYER_SHELL_EDGE_BOTTOM,
+                       (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM) ? TRUE : FALSE);
 
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_TOP, margins_.top);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_BOTTOM, margins_.bottom);
 
-  if (width_ > 1 && height_ > 1) {
-    /* configure events are not emitted if the bar is using initial size */
-    setExclusiveZone(width_, height_);
-  }
+  setExclusiveZone(width_, height_);
 }
 
 void waybar::Bar::onConfigureGLS(GdkEventConfigure* ev) {
   /*
    * GTK wants new size for the window.
-   * Actual resizing is done within the gtk-layer-shell code; the only remaining action is to apply
-   * exclusive zone.
-   * gtk_layer_auto_exclusive_zone_enable() could handle even that, but at the cost of ignoring
-   * margins on unanchored edge.
+   * Actual resizing and management of the exclusve zone is handled within the gtk-layer-shell code.
+   * This event handler only updates stored size of the window and prints some warnings.
    *
    * Note: forced resizing to a window smaller than required by GTK would not work with
    * gtk-layer-shell.
@@ -170,14 +170,13 @@ void waybar::Bar::onConfigureGLS(GdkEventConfigure* ev) {
       spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
     }
   } else {
-    if (!vertical && height_ > 1 && ev->height > static_cast<int>(height_)) {
+    if (height_ > 1 && ev->height > static_cast<int>(height_)) {
       spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
     }
   }
   width_ = ev->width;
   height_ = ev->height;
   spdlog::info(BAR_SIZE_MSG, width_, height_, output->name);
-  setExclusiveZone(width_, height_);
 }
 
 void waybar::Bar::onMapGLS(GdkEventAny* ev) {
@@ -262,26 +261,31 @@ void waybar::Bar::onMap(GdkEventAny* ev) {
 }
 
 void waybar::Bar::setExclusiveZone(uint32_t width, uint32_t height) {
-  auto zone = 0;
-  if (visible) {
-    // exclusive zone already includes margin for anchored edge,
-    // only opposite margin should be added
-    if (vertical) {
-      zone += width;
-      zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) ? margins_.right : margins_.left;
-    } else {
-      zone += height;
-      zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) ? margins_.bottom : margins_.top;
-    }
-  }
-  spdlog::debug("Set exclusive zone {} for output {}", zone, output->name);
-
 #ifdef HAVE_GTK_LAYER_SHELL
   if (use_gls_) {
-    gtk_layer_set_exclusive_zone(window.gobj(), zone);
+    if (visible) {
+      spdlog::debug("Enable auto exclusive zone for output {}", output->name);
+      gtk_layer_auto_exclusive_zone_enable(window.gobj());
+    } else {
+      spdlog::debug("Disable exclusive zone for output {}", output->name);
+      gtk_layer_set_exclusive_zone(window.gobj(), 0);
+    }
   } else
 #endif
   {
+    auto zone = 0;
+    if (visible) {
+      // exclusive zone already includes margin for anchored edge,
+      // only opposite margin should be added
+      if (vertical) {
+        zone += width;
+        zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) ? margins_.right : margins_.left;
+      } else {
+        zone += height;
+        zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) ? margins_.bottom : margins_.top;
+      }
+    }
+    spdlog::debug("Set exclusive zone {} for output {}", zone, output->name);
     zwlr_layer_surface_v1_set_exclusive_zone(layer_surface_, zone);
   }
 }
