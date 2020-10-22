@@ -6,6 +6,9 @@
 #include "util/clara.hpp"
 #include "util/json.hpp"
 
+#include "idle-inhibit-unstable-v1-client-protocol.h"
+#include "wlr-layer-shell-unstable-v1-client-protocol.h"
+
 waybar::Client *waybar::Client::inst() {
   static auto c = new Client();
   return c;

@@ -9,8 +9,6 @@
 #include <json/json.h>
 
 #include "AModule.hpp"
-#include "idle-inhibit-unstable-v1-client-protocol.h"
-#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {

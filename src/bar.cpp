@@ -7,6 +7,7 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
+#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 namespace waybar {
 static constexpr const char* MIN_HEIGHT_MSG =
