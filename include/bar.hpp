@@ -39,6 +39,7 @@ class BarSurface {
   virtual void setMargins(const struct bar_margins &margins) = 0;
   virtual void setPosition(const std::string_view &position) = 0;
   virtual void setSize(uint32_t width, uint32_t height) = 0;
+  virtual void commit(){};
 
   virtual ~BarSurface() = default;
 };

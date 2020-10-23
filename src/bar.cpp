@@ -165,7 +165,6 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
       if (zwlr_layer_surface_v1_get_version(layer_surface_) >=
           ZWLR_LAYER_SURFACE_V1_SET_LAYER_SINCE_VERSION) {
         zwlr_layer_surface_v1_set_layer(layer_surface_, layer_);
-        commit();
       } else {
         spdlog::warn("Unable to set layer: layer-shell interface version is too old");
       }
@@ -178,7 +177,6 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     if (layer_surface_) {
       zwlr_layer_surface_v1_set_margin(
           layer_surface_, margins_.top, margins_.right, margins_.bottom, margins_.left);
-      commit();
     }
   }
 
@@ -195,7 +193,6 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     // updating already mapped window
     if (layer_surface_) {
       zwlr_layer_surface_v1_set_anchor(layer_surface_, anchor_);
-      commit();
     }
   }
 
@@ -205,6 +202,12 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     // layer_shell.configure handler should update exclusive zone if size changes
     window_.set_size_request(width, height);
   };
+
+  void commit() override {
+    if (surface_) {
+      wl_surface_commit(surface_);
+    }
+  }
 
  private:
   constexpr static uint8_t VERTICAL_ANCHOR =
@@ -231,6 +234,10 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
   }
 
   void onMap(GdkEventAny* ev) {
+    static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
+        .configure = onSurfaceConfigure,
+        .closed = onSurfaceClosed,
+    };
     auto client = Client::inst();
     auto gdk_window = window_.get_window()->gobj();
     surface_ = gdk_wayland_window_get_wl_surface(gdk_window);
@@ -238,21 +245,16 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     layer_surface_ = zwlr_layer_shell_v1_get_layer_surface(
         client->layer_shell, surface_, output_, layer_, "waybar");
 
+    zwlr_layer_surface_v1_add_listener(layer_surface_, &layer_surface_listener, this);
     zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface_, false);
-
     zwlr_layer_surface_v1_set_anchor(layer_surface_, anchor_);
     zwlr_layer_surface_v1_set_margin(
         layer_surface_, margins_.top, margins_.right, margins_.bottom, margins_.left);
+
     setSurfaceSize(width_, height_);
     setExclusiveZone(exclusive_zone_);
 
-    static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
-        .configure = onSurfaceConfigure,
-        .closed = onSurfaceClosed,
-    };
-    zwlr_layer_surface_v1_add_listener(layer_surface_, &layer_surface_listener, this);
-
-    wl_surface_commit(surface_);
+    commit();
     wl_display_roundtrip(client->wl_display);
   }
 
@@ -290,12 +292,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     }
     if (tmp_width != width_ || tmp_height != height_) {
       setSurfaceSize(tmp_width, tmp_height);
-    }
-  }
-
-  void commit() {
-    if (window_.get_mapped()) {
-      wl_surface_commit(surface_);
+      commit();
     }
   }
 
@@ -329,7 +326,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
                    o->width_ == 1 ? "auto" : std::to_string(o->width_),
                    o->height_ == 1 ? "auto" : std::to_string(o->height_),
                    o->output_name_);
-      wl_surface_commit(o->surface_);
+      o->commit();
     }
     zwlr_layer_surface_v1_ack_configure(surface, serial);
   }
@@ -467,6 +464,7 @@ void waybar::Bar::setVisible(bool value) {
     window.set_opacity(1);
   }
   surface_impl_->setExclusiveZone(visible);
+  surface_impl_->commit();
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
