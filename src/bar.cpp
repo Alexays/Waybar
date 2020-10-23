@@ -4,6 +4,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <type_traits>
+
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
@@ -149,7 +151,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
         }
       }
       spdlog::debug("Set exclusive zone {} for output {}", zone, output_name_);
-      zwlr_layer_surface_v1_set_exclusive_zone(layer_surface_, zone);
+      zwlr_layer_surface_v1_set_exclusive_zone(layer_surface_.get(), zone);
     }
   }
 
@@ -162,9 +164,9 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     }
     // updating already mapped window
     if (layer_surface_) {
-      if (zwlr_layer_surface_v1_get_version(layer_surface_) >=
+      if (zwlr_layer_surface_v1_get_version(layer_surface_.get()) >=
           ZWLR_LAYER_SURFACE_V1_SET_LAYER_SINCE_VERSION) {
-        zwlr_layer_surface_v1_set_layer(layer_surface_, layer_);
+        zwlr_layer_surface_v1_set_layer(layer_surface_.get(), layer_);
       } else {
         spdlog::warn("Unable to set layer: layer-shell interface version is too old");
       }
@@ -176,7 +178,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     // updating already mapped window
     if (layer_surface_) {
       zwlr_layer_surface_v1_set_margin(
-          layer_surface_, margins_.top, margins_.right, margins_.bottom, margins_.left);
+          layer_surface_.get(), margins_.top, margins_.right, margins_.bottom, margins_.left);
     }
   }
 
@@ -192,7 +194,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
 
     // updating already mapped window
     if (layer_surface_) {
-      zwlr_layer_surface_v1_set_anchor(layer_surface_, anchor_);
+      zwlr_layer_surface_v1_set_anchor(layer_surface_.get(), anchor_);
     }
   }
 
@@ -215,6 +217,11 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
   constexpr static uint8_t HORIZONTAL_ANCHOR =
       ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
 
+  template <auto fn>
+  using deleter_fn = std::integral_constant<decltype(fn), fn>;
+  using layer_surface_ptr =
+      std::unique_ptr<zwlr_layer_surface_v1, deleter_fn<zwlr_layer_surface_v1_destroy>>;
+
   Gtk::Window&       window_;
   std::string        output_name_;
   uint32_t           width_;
@@ -223,10 +230,10 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
   bool               exclusive_zone_ = true;
   struct bar_margins margins_;
 
-  zwlr_layer_shell_v1_layer     layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-  struct wl_output*             output_ = nullptr;
-  struct wl_surface*            surface_ = nullptr;
-  struct zwlr_layer_surface_v1* layer_surface_ = nullptr;
+  zwlr_layer_shell_v1_layer layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
+  struct wl_output*         output_ = nullptr;   // owned by GTK
+  struct wl_surface*        surface_ = nullptr;  // owned by GTK
+  layer_surface_ptr         layer_surface_;
 
   void onRealize() {
     auto gdk_window = window_.get_window()->gobj();
@@ -242,14 +249,14 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     auto gdk_window = window_.get_window()->gobj();
     surface_ = gdk_wayland_window_get_wl_surface(gdk_window);
 
-    layer_surface_ = zwlr_layer_shell_v1_get_layer_surface(
-        client->layer_shell, surface_, output_, layer_, "waybar");
+    layer_surface_.reset(zwlr_layer_shell_v1_get_layer_surface(
+        client->layer_shell, surface_, output_, layer_, "waybar"));
 
-    zwlr_layer_surface_v1_add_listener(layer_surface_, &layer_surface_listener, this);
-    zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface_, false);
-    zwlr_layer_surface_v1_set_anchor(layer_surface_, anchor_);
+    zwlr_layer_surface_v1_add_listener(layer_surface_.get(), &layer_surface_listener, this);
+    zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface_.get(), false);
+    zwlr_layer_surface_v1_set_anchor(layer_surface_.get(), anchor_);
     zwlr_layer_surface_v1_set_margin(
-        layer_surface_, margins_.top, margins_.right, margins_.bottom, margins_.left);
+        layer_surface_.get(), margins_.top, margins_.right, margins_.bottom, margins_.left);
 
     setSurfaceSize(width_, height_);
     setExclusiveZone(exclusive_zone_);
@@ -310,7 +317,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
       width += margins_.right + margins_.left;
     }
     spdlog::debug("Set surface size {}x{} for output {}", width, height, output_name_);
-    zwlr_layer_surface_v1_set_size(layer_surface_, width, height);
+    zwlr_layer_surface_v1_set_size(layer_surface_.get(), width, height);
   }
 
   static void onSurfaceConfigure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial,
@@ -333,10 +340,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
 
   static void onSurfaceClosed(void* data, struct zwlr_layer_surface_v1* /* surface */) {
     auto o = static_cast<RawSurfaceImpl*>(data);
-    if (o->layer_surface_) {
-      zwlr_layer_surface_v1_destroy(o->layer_surface_);
-      o->layer_surface_ = nullptr;
-    }
+    o->layer_surface_.reset();
   }
 };
 
