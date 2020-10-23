@@ -22,6 +22,12 @@ struct waybar_output {
       nullptr, &zxdg_output_v1_destroy};
 };
 
+enum class bar_layer : uint8_t {
+  BOTTOM,
+  TOP,
+  OVERLAY,
+};
+
 struct bar_margins {
   int top = 0;
   int right = 0;
@@ -35,7 +41,7 @@ class BarSurface {
 
  public:
   virtual void setExclusiveZone(bool enable) = 0;
-  virtual void setLayer(const std::string_view &layer) = 0;
+  virtual void setLayer(bar_layer layer) = 0;
   virtual void setMargins(const struct bar_margins &margins) = 0;
   virtual void setPosition(const std::string_view &position) = 0;
   virtual void setSize(uint32_t width, uint32_t height) = 0;
@@ -71,6 +77,7 @@ class Bar {
   std::unique_ptr<BarSurface>                   surface_impl_;
   uint32_t                                      width_ = 0;
   uint32_t                                      height_ = 1;
+  bar_layer                                     layer_;
   Gtk::Box                                      left_;
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;

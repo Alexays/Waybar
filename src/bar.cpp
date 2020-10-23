@@ -52,11 +52,11 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
     gtk_layer_set_margin(window_.gobj(), GTK_LAYER_SHELL_EDGE_BOTTOM, margins.bottom);
   }
 
-  void setLayer(const std::string_view& value) override {
+  void setLayer(bar_layer value) override {
     auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
-    if (value == "top") {
+    if (value == bar_layer::TOP) {
       layer = GTK_LAYER_SHELL_LAYER_TOP;
-    } else if (value == "overlay") {
+    } else if (value == bar_layer::OVERLAY) {
       layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
     }
     gtk_layer_set_layer(window_.gobj(), layer);
@@ -155,11 +155,11 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     }
   }
 
-  void setLayer(const std::string_view& layer) override {
+  void setLayer(bar_layer layer) override {
     layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-    if (layer == "top") {
+    if (layer == bar_layer::TOP) {
       layer_ = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
-    } else if (layer == "overlay") {
+    } else if (layer == bar_layer::OVERLAY) {
       layer_ = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
     }
     // updating already mapped window
@@ -168,7 +168,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
           ZWLR_LAYER_SURFACE_V1_SET_LAYER_SINCE_VERSION) {
         zwlr_layer_surface_v1_set_layer(layer_surface_.get(), layer_);
       } else {
-        spdlog::warn("Unable to set layer: layer-shell interface version is too old");
+        spdlog::warn("Unable to change layer: layer-shell implementation is too old");
       }
     }
   }
@@ -350,6 +350,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      layer_{bar_layer::BOTTOM},
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -363,6 +364,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   left_.get_style_context()->add_class("modules-left");
   center_.get_style_context()->add_class("modules-center");
   right_.get_style_context()->add_class("modules-right");
+
+  if (config["layer"] == "top") {
+    layer_ = bar_layer::TOP;
+  } else if (config["layer"] == "overlay") {
+    layer_ = bar_layer::OVERLAY;
+  }
 
   auto position = config["position"].asString();
 
@@ -436,9 +443,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
   }
 
-  if (config["layer"].isString()) {
-    surface_impl_->setLayer(config["layer"].asString());
-  }
+  surface_impl_->setLayer(layer_);
   surface_impl_->setExclusiveZone(true);
   surface_impl_->setMargins(margins_);
   surface_impl_->setPosition(position);
@@ -463,9 +468,11 @@ void waybar::Bar::setVisible(bool value) {
   if (!visible) {
     window.get_style_context()->add_class("hidden");
     window.set_opacity(0);
+    surface_impl_->setLayer(bar_layer::BOTTOM);
   } else {
     window.get_style_context()->remove_class("hidden");
     window.set_opacity(1);
+    surface_impl_->setLayer(layer_);
   }
   surface_impl_->setExclusiveZone(visible);
   surface_impl_->commit();
