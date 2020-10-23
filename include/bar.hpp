@@ -75,8 +75,6 @@ class Bar {
   void setupAltFormatKeyForModuleList(const char *module_list_name);
 
   std::unique_ptr<BarSurface>                   surface_impl_;
-  uint32_t                                      width_ = 0;
-  uint32_t                                      height_ = 1;
   bar_layer                                     layer_;
   Gtk::Box                                      left_;
   Gtk::Box                                      center_;

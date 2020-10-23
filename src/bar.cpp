@@ -199,8 +199,8 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
   }
 
   void setSize(uint32_t width, uint32_t height) override {
-    width_ = width;
-    height_ = height;
+    configured_width_ = width_ = width;
+    configured_height_ = height_ = height;
     // layer_shell.configure handler should update exclusive zone if size changes
     window_.set_size_request(width, height);
   };
@@ -224,8 +224,10 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
 
   Gtk::Window&       window_;
   std::string        output_name_;
-  uint32_t           width_;
-  uint32_t           height_;
+  uint32_t           configured_width_ = 0;
+  uint32_t           configured_height_ = 0;
+  uint32_t           width_ = 0;
+  uint32_t           height_ = 0;
   uint8_t            anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
   bool               exclusive_zone_ = true;
   struct bar_margins margins_;
@@ -280,22 +282,22 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
       if (height_ > 1) {
         spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
       }
-      /*
-      if (config["height"].isUInt()) {
+      if (configured_height_ > 1) {
         spdlog::info(SIZE_DEFINED, "Height");
-      } else */
-      tmp_height = ev->height;
+      } else {
+        tmp_height = ev->height;
+      }
     }
     if (ev->width > static_cast<int>(width_)) {
       // Default minimal value
       if (width_ > 1) {
         spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
       }
-      /*
-      if (config["width"].isUInt()) {
+      if (configured_width_ > 1) {
         spdlog::info(SIZE_DEFINED, "Width");
-      } else */
-      tmp_width = ev->width;
+      } else {
+        tmp_width = ev->width;
+      }
     }
     if (tmp_width != width_ || tmp_height != height_) {
       setSurfaceSize(tmp_width, tmp_height);
@@ -308,13 +310,20 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
      * size without margins for the axis.
      * layer_surface.set_size, however, expects size with margins for the anchored axis.
      * This is not specified by wlr-layer-shell and based on actual behavior of sway.
+     *
+     * If the size for unanchored axis is not set (0), change request to 1 to avoid automatic
+     * assignment by the compositor.
      */
-    bool vertical = (anchor_ & VERTICAL_ANCHOR) == VERTICAL_ANCHOR;
-    if (vertical && height > 1) {
-      height += margins_.top + margins_.bottom;
-    }
-    if (!vertical && width > 1) {
-      width += margins_.right + margins_.left;
+    if ((anchor_ & VERTICAL_ANCHOR) == VERTICAL_ANCHOR) {
+      width = width > 0 ? width : 1;
+      if (height > 1) {
+        height += margins_.top + margins_.bottom;
+      }
+    } else {
+      height = height > 0 ? height : 1;
+      if (width > 1) {
+        width += margins_.right + margins_.left;
+      }
     }
     spdlog::debug("Set surface size {}x{} for output {}", width, height, output_name_);
     zwlr_layer_surface_v1_set_size(layer_surface_.get(), width, height);
@@ -379,12 +388,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     right_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
     box_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
     vertical = true;
-
-    height_ = 0;
-    width_ = 1;
   }
-  height_ = config["height"].isUInt() ? config["height"].asUInt() : height_;
-  width_ = config["width"].isUInt() ? config["width"].asUInt() : width_;
+
+  uint32_t height = config["height"].isUInt() ? config["height"].asUInt() : 0;
+  uint32_t width = config["width"].isUInt() ? config["width"].asUInt() : 0;
 
   struct bar_margins margins_;
 
@@ -447,7 +454,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   surface_impl_->setExclusiveZone(true);
   surface_impl_->setMargins(margins_);
   surface_impl_->setPosition(position);
-  surface_impl_->setSize(width_, height_);
+  surface_impl_->setSize(width, height);
 
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
