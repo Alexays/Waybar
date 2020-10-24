@@ -341,6 +341,7 @@ void Disconnected::disarm_timer() noexcept {
 }
 
 void Disconnected::entry() noexcept {
+  ctx_->emit();
   arm_timer(1'000);
 }
 
