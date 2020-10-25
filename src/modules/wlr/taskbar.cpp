@@ -653,9 +653,11 @@ void Taskbar::register_manager(struct wl_registry *registry, uint32_t name, uint
         spdlog::warn("Register foreign toplevel manager again although already existing!");
         return;
     }
-    if (version != 2) {
+    if (version < ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN_SINCE_VERSION) {
         spdlog::warn("Using different foreign toplevel manager protocol version: {}", version);
     }
+    // limit version to a highest supported by the client protocol file
+    version = std::min<uint32_t>(version, zwlr_foreign_toplevel_manager_v1_interface.version);
 
     manager_ = static_cast<struct zwlr_foreign_toplevel_manager_v1 *>(wl_registry_bind(registry, name,
             &zwlr_foreign_toplevel_manager_v1_interface, version));
@@ -672,6 +674,7 @@ void Taskbar::register_seat(struct wl_registry *registry, uint32_t name, uint32_
         spdlog::warn("Register seat again although already existing!");
         return;
     }
+    version = std::min<uint32_t>(version, wl_seat_interface.version);
 
     seat_ = static_cast<wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
 }

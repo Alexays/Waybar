@@ -32,6 +32,8 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
                                   const char *interface, uint32_t version) {
   auto client = static_cast<Client *>(data);
   if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
+    // limit version to a highest supported by the client protocol file
+    version = std::min<uint32_t>(version, zwlr_layer_shell_v1_interface.version);
     client->layer_shell = static_cast<struct zwlr_layer_shell_v1 *>(
         wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version));
   } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
