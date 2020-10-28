@@ -42,7 +42,7 @@ namespace fmt {
 
       template<class FormatContext>
         auto format(const pow_format& s, FormatContext &ctx) -> decltype (ctx.out()) {
-          const char* units[] = { "", "k",  "M",  "G",  "T",  "P",  nullptr};
+          const char* units[] = { "", "K",  "M",  "G",  "T",  "P",  nullptr};
 
           auto base = s.binary_ ? 1024ull : 1000ll;
           auto fraction = (double) s.val_;
