@@ -36,11 +36,11 @@ class BarSurface {
   BarSurface() = default;
 
  public:
-  virtual void set_exclusive_zone(bool enable) = 0;
-  virtual void set_layer(const std::string_view &layer) = 0;
-  virtual void set_margins(const struct bar_margins &margins) = 0;
-  virtual void set_position(const std::string_view &position) = 0;
-  virtual void set_size(uint32_t width, uint32_t height) = 0;
+  virtual void setExclusiveZone(bool enable) = 0;
+  virtual void setLayer(const std::string_view &layer) = 0;
+  virtual void setMargins(const struct bar_margins &margins) = 0;
+  virtual void setPosition(const std::string_view &position) = 0;
+  virtual void setSize(uint32_t width, uint32_t height) = 0;
 
   virtual ~BarSurface() = default;
 };
