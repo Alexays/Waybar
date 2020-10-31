@@ -6,7 +6,6 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
     : ALabel(config, "idle_inhibitor", id, "{status}"),
       bar_(bar),
       status_("deactivated"),
-      idle_inhibitor_(nullptr),
       pid_(-1) {
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
@@ -15,9 +14,9 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
 }
 
 waybar::modules::IdleInhibitor::~IdleInhibitor() {
-  if (idle_inhibitor_ != nullptr) {
-    zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
-    idle_inhibitor_ = nullptr;
+  if (waybar::Client::inst()->idle_inhibitor != nullptr) {
+    zwp_idle_inhibitor_v1_destroy(waybar::Client::inst()->idle_inhibitor);
+    waybar::Client::inst()->idle_inhibitor = nullptr;
   }
   if (pid_ != -1) {
     kill(-pid_, 9);
@@ -26,6 +25,13 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
 }
 
 auto waybar::modules::IdleInhibitor::update() -> void {
+  // Check status
+  if (waybar::Client::inst()->idle_inhibitor != nullptr) {
+    status_ = "activated";
+  } else {
+    status_ = "deactivated";
+  }
+
   label_.set_markup(
       fmt::format(format_, fmt::arg("status", status_), fmt::arg("icon", getIcon(0, status_))));
   label_.get_style_context()->add_class(status_);
@@ -39,17 +45,23 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
     label_.get_style_context()->remove_class(status_);
-    if (idle_inhibitor_ != nullptr) {
-      zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
-      idle_inhibitor_ = nullptr;
+    if (waybar::Client::inst()->idle_inhibitor != nullptr) {
+      zwp_idle_inhibitor_v1_destroy(waybar::Client::inst()->idle_inhibitor);
+      waybar::Client::inst()->idle_inhibitor = nullptr;
       status_ = "deactivated";
     } else {
-      idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
-          waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
+      waybar::Client::inst()->idle_inhibitor = zwp_idle_inhibit_manager_v1_create_inhibitor(
+        waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
       status_ = "activated";
     }
     click_param = status_;
   }
+
+  // Make all modules update
+  for (auto const& bar : waybar::Client::inst()->bars) {
+    bar->updateAll();
+  }
+
   ALabel::handleToggle(e);
   return true;
 }
