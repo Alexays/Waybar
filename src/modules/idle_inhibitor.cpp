@@ -10,6 +10,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
+  waybar::Client::inst()->idle_inhibitor_modules.push_back(this);
   dp.emit();
 }
 
@@ -57,9 +58,11 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
     click_param = status_;
   }
 
-  // Make all modules update
-  for (auto const& bar : waybar::Client::inst()->bars) {
-    bar->updateAll();
+  // Make all other idle inhibitor modules update
+  for (auto const& module : waybar::Client::inst()->idle_inhibitor_modules) {
+    if (module != this) {
+      module->update();
+    }
   }
 
   ALabel::handleToggle(e);

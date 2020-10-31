@@ -31,7 +31,6 @@ class Bar {
 
   auto toggle() -> void;
   void handleSignal(int);
-  void updateAll();
 
   struct waybar_output *output;
   Json::Value           config;

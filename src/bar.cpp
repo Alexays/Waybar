@@ -461,15 +461,3 @@ auto waybar::Bar::setupWidgets() -> void {
     right_.pack_end(*module, false, false);
   }
 }
-
-void waybar::Bar::updateAll() {
-  for (auto const& module : modules_left_) {
-    module->update();
-  }
-  for (auto const& module : modules_center_) {
-    module->update();
-  }
-  for (auto const& module : modules_right_) {
-    module->update();
-  }
-}
