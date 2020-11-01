@@ -1,8 +1,8 @@
 #include "modules/idle_inhibitor.hpp"
 #include "util/command.hpp"
 
-std::list<waybar::AModule*> waybar::modules::IdleInhibitor::idle_inhibitor_modules;
-std::string                 waybar::modules::IdleInhibitor::idle_inhibitor_status = "deactivated";
+std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
+std::string                 waybar::modules::IdleInhibitor::status = "deactivated";
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
@@ -14,8 +14,8 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
 
-  // Add this to the Client's idle_inhibitor_modules
-  waybar::modules::IdleInhibitor::idle_inhibitor_modules.push_back(this);
+  // Add this to the modules list
+  waybar::modules::IdleInhibitor::modules.push_back(this);
 
   dp.emit();
 }
@@ -26,8 +26,8 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
     idle_inhibitor_ = nullptr;
   }
 
-  // Remove this from the Client's idle_inhibitor_modules
-  waybar::modules::IdleInhibitor::idle_inhibitor_modules.remove(this);
+  // Remove this from the modules list
+  waybar::modules::IdleInhibitor::modules.remove(this);
 
   if (pid_ != -1) {
     kill(-pid_, 9);
@@ -37,7 +37,7 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
 
 auto waybar::modules::IdleInhibitor::update() -> void {
   // Check status
-  std::string status = waybar::modules::IdleInhibitor::idle_inhibitor_status;
+  std::string status = waybar::modules::IdleInhibitor::status;
   if (status == "activated") {
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
@@ -62,18 +62,18 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
-    std::string status = waybar::modules::IdleInhibitor::idle_inhibitor_status;
+    std::string status = waybar::modules::IdleInhibitor::status;
     label_.get_style_context()->remove_class(status);
     if (status == "activated") {
       status = "deactivated";
     } else {
       status = "activated";
     }
-    waybar::modules::IdleInhibitor::idle_inhibitor_status = status;
+    waybar::modules::IdleInhibitor::status = status;
   }
 
   // Make all other idle inhibitor modules update
-  for (auto const& module : waybar::modules::IdleInhibitor::idle_inhibitor_modules) {
+  for (auto const& module : waybar::modules::IdleInhibitor::modules) {
     if (module != this) {
       module->update();
     }
