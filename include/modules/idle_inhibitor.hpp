@@ -12,8 +12,8 @@ class IdleInhibitor : public ALabel {
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~IdleInhibitor();
   auto update() -> void;
-  static std::list<waybar::AModule*>         modules;
-  static std::string                         status;
+  static std::list<waybar::AModule*> modules;
+  static bool                        status;
 
  private:
   bool handleToggle(GdkEventButton* const& e);

@@ -2,7 +2,7 @@
 #include "util/command.hpp"
 
 std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
-std::string                 waybar::modules::IdleInhibitor::status = "deactivated";
+bool                        waybar::modules::IdleInhibitor::status = false;
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
@@ -37,7 +37,7 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
 
 auto waybar::modules::IdleInhibitor::update() -> void {
   // Check status
-  if (status == "activated") {
+  if (status) {
     label_.get_style_context()->remove_class("deactivated");
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
@@ -51,11 +51,12 @@ auto waybar::modules::IdleInhibitor::update() -> void {
     }
   }
 
+  std::string status_text = status ? "activated" : "deactivated";
   label_.set_markup(
-      fmt::format(format_, fmt::arg("status", status), fmt::arg("icon", getIcon(0, status))));
-  label_.get_style_context()->add_class(status);
+      fmt::format(format_, fmt::arg("status", status_text), fmt::arg("icon", getIcon(0, status_text))));
+  label_.get_style_context()->add_class(status_text);
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(status);
+    label_.set_tooltip_text(status_text);
   }
   // Call parent update
   ALabel::update();
@@ -63,17 +64,13 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
-    if (status == "activated") {
-      status = "deactivated";
-    } else {
-      status = "activated";
-    }
-  }
+    status = !status;
 
-  // Make all other idle inhibitor modules update
-  for (auto const& module : waybar::modules::IdleInhibitor::modules) {
-    if (module != this) {
-      module->update();
+    // Make all other idle inhibitor modules update
+    for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+      if (module != this) {
+        module->update();
+      }
     }
   }
 
