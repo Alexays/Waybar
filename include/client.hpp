@@ -23,8 +23,6 @@ class Client {
   struct zxdg_output_manager_v1 *     xdg_output_manager = nullptr;
 
   struct zwp_idle_inhibit_manager_v1 *idle_inhibit_manager = nullptr;
-  std::list<waybar::AModule*>         idle_inhibitor_modules;
-  std::string                         idle_inhibitor_status = "deactivated";
 
   std::vector<std::unique_ptr<Bar>>   bars;
 
