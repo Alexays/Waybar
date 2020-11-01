@@ -67,7 +67,6 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
       status = "activated";
     }
     waybar::Client::inst()->idle_inhibitor_status = status;
-    click_param = status;
   }
 
   // Make all other idle inhibitor modules update
