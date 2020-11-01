@@ -37,13 +37,14 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
 
 auto waybar::modules::IdleInhibitor::update() -> void {
   // Check status
-  std::string status = waybar::modules::IdleInhibitor::status;
   if (status == "activated") {
+    label_.get_style_context()->remove_class("deactivated");
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
         waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
   } else {
+    label_.get_style_context()->remove_class("activated");
     if (idle_inhibitor_ != nullptr) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
@@ -62,14 +63,11 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
-    std::string status = waybar::modules::IdleInhibitor::status;
-    label_.get_style_context()->remove_class(status);
     if (status == "activated") {
       status = "deactivated";
     } else {
       status = "activated";
     }
-    waybar::modules::IdleInhibitor::status = status;
   }
 
   // Make all other idle inhibitor modules update
