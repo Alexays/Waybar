@@ -5,6 +5,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
                                               const Json::Value& config)
     : ALabel(config, "idle_inhibitor", id, "{status}"),
       bar_(bar),
+      idle_inhibitor_(nullptr),
       pid_(-1) {
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
