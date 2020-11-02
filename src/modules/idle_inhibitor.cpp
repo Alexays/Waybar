@@ -1,4 +1,6 @@
 #include "modules/idle_inhibitor.hpp"
+
+#include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/command.hpp"
 
 std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
