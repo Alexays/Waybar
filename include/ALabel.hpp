@@ -19,7 +19,6 @@ class ALabel : public AModule {
  protected:
   Gtk::Label                 label_;
   std::string                format_;
-  std::string                click_param;
   const std::chrono::seconds interval_;
   bool                       alt_ = false;
   std::string                default_format_;
