@@ -436,6 +436,14 @@ bool Task::handle_clicked(GdkEventButton *bt)
         activate();
     else if (action == "minimize")
         minimize(!minimized());
+    else if (action == "minimize-raise"){
+        if (minimized())
+            minimize(false);
+        else if (active())
+            minimize(true);
+        else
+            activate();
+    }
     else if (action == "maximize")
         maximize(!maximized());
     else if (action == "fullscreen")
