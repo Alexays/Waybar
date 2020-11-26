@@ -80,18 +80,15 @@ void waybar::modules::Battery::getBatteries() {
 
 const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() const {
   try {
-    uint16_t    total = 0;
     uint32_t    total_power = 0;   // μW
     uint32_t    total_energy = 0;  // μWh
     uint32_t    total_energy_full = 0;
     std::string status = "Unknown";
     for (auto const& bat : batteries_) {
-      uint16_t    capacity;
       uint32_t    power_now;
       uint32_t    energy_full;
       uint32_t    energy_now;
       std::string _status;
-      std::ifstream(bat / "capacity") >> capacity;
       std::ifstream(bat / "status") >> _status;
       auto rate_path = fs::exists(bat / "current_now") ? "current_now" : "power_now";
       std::ifstream(bat / rate_path) >> power_now;
@@ -102,7 +99,6 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       if (_status != "Unknown") {
         status = _status;
       }
-      total += capacity;
       total_power += power_now;
       total_energy += energy_now;
       total_energy_full += energy_full;
@@ -120,7 +116,7 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     } else if (status == "Charging" && total_power != 0) {
       time_remaining = -(float)(total_energy_full - total_energy) / total_power;
     }
-    uint16_t capacity = total / batteries_.size();
+    float capacity = ((float)total_energy * 100.0f / (float) total_energy_full);
     // Handle full-at
     if (config_["full-at"].isUInt()) {
       auto full_at = config_["full-at"].asUInt();
