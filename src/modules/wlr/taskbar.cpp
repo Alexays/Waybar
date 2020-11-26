@@ -95,7 +95,7 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
                 if (!app_info)
                     app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
 
-    if (app_info && app_info->get_icon() != nullptr)
+    if (app_info && app_info->get_icon())
         return app_info->get_icon()->to_string();
 
     return "";
