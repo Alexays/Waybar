@@ -115,6 +115,11 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       time_remaining = (float)total_energy / total_power;
     } else if (status == "Charging" && total_power != 0) {
       time_remaining = -(float)(total_energy_full - total_energy) / total_power;
+      if (time_remaining > 0.0f) {
+        // If we've turned positive it means the battery is past 100% and so
+        // just report that as no time remaining
+        time_remaining = 0.0f;
+      }
     }
     float capacity = ((float)total_energy * 100.0f / (float) total_energy_full);
     // Handle full-at
@@ -126,6 +131,12 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
           capacity = full_at;
         }
       }
+    }
+    if (capacity > 100.f) {
+      // This can happen when the battery is calibrating and goes above 100%
+      // Handle it gracefully by clamping at 100% and presenting it as full
+      capacity = 100.f;
+      status = "Full";
     }
     return {capacity, time_remaining, status};
   } catch (const std::exception& e) {
