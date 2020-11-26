@@ -138,7 +138,7 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       capacity = 100.f;
       status = "Full";
     }
-    return {capacity, time_remaining, status};
+    return {round(capacity), time_remaining, status};
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
     return {0, 0, "Unknown"};
