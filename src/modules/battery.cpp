@@ -134,11 +134,17 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     }
     if (capacity > 100.f) {
       // This can happen when the battery is calibrating and goes above 100%
-      // Handle it gracefully by clamping at 100% and presenting it as full
+      // Handle it gracefully by clamping at 100%
       capacity = 100.f;
+    }
+    uint8_t cap = round(capacity);
+    if (cap == 100) {
+      // If we've reached 100% just mark as full as some batteries can stay
+      // stuck reporting they're still charging but not yet done
       status = "Full";
     }
-    return {round(capacity), time_remaining, status};
+
+    return {cap, time_remaining, status};
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
     return {0, 0, "Unknown"};
