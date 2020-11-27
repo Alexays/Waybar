@@ -31,16 +31,16 @@ class Battery : public ALabel {
  private:
   static inline const fs::path data_dir_ = "/sys/class/power_supply/";
 
-  void                                          getBatteries();
+  void                                          refreshBatteries();
   void                                          worker();
   const std::string                             getAdapterStatus(uint8_t capacity) const;
   const std::tuple<uint8_t, float, std::string> getInfos() const;
   const std::string                             formatTimeRemaining(float hoursRemaining);
 
-  std::vector<fs::path> batteries_;
+  int                   global_watch;
+  std::map<fs::path,int> batteries_;
   fs::path              adapter_;
   int                   fd_;
-  std::vector<int>      wds_;
   std::string           old_status_;
 
   util::SleeperThread   thread_;
