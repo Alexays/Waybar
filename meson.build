@@ -2,14 +2,13 @@ project(
     'waybar', 'cpp', 'c',
     version: '0.9.4',
     license: 'MIT',
+    meson_version: '>= 0.49.0',
     default_options : [
         'cpp_std=c++17',
         'buildtype=release',
         'default_library=static'
     ],
 )
-
-fs = import('fs')
 
 compiler = meson.get_compiler('cpp')
 
@@ -318,9 +317,9 @@ if scdoc.found()
 
     foreach file : man_files
         path = '@0@'.format(file)
-        basename = fs.name(path)
+        basename = path.split('/')[-1]
 
-        topic = basename.split('.')[-3].split('/')[-1]
+        topic = basename.split('.')[-3]
         section = basename.split('.')[-2]
         output = '@0@.@1@'.format(topic, section)
 

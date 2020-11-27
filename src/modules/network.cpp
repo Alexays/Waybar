@@ -3,6 +3,7 @@
 #include <sys/eventfd.h>
 #include <fstream>
 #include <cassert>
+#include <optional>
 #include "util/format.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
