@@ -29,7 +29,7 @@ class Clock : public ALabel {
   const date::time_zone* time_zone_;
   bool fixed_time_zone_;
   int time_zone_idx_;
-  date::year_month_day cached_calendar_ymd_;
+  date::year_month_day cached_calendar_ymd_ = date::January/1/0;
   std::string cached_calendar_text_;
 
   bool handleScroll(GdkEventScroll* e);
