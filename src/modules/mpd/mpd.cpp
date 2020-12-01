@@ -100,7 +100,7 @@ void waybar::modules::MPD::setLabel() {
   auto format = format_;
 
   std::string          artist, album_artist, album, title, date;
-  int                  song_pos, queue_length;
+  int                  song_pos = 0, queue_length = 0;
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";

@@ -85,13 +85,11 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
     return true;
   }
   auto nr_zones = config_["timezones"].size();
-  int new_idx = time_zone_idx_ + ((dir == SCROLL_DIR::UP) ? 1 : -1);
-  if (new_idx < 0) {
-    time_zone_idx_ = nr_zones - 1;
-  } else if (new_idx >= nr_zones) {
-    time_zone_idx_ = 0;
+  if (dir == SCROLL_DIR::UP) {
+    size_t new_idx = time_zone_idx_ + 1;
+    time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
   } else {
-    time_zone_idx_ = new_idx;
+    time_zone_idx_ = time_zone_idx_ == 0 ? nr_zones - 1 : time_zone_idx_ - 1;
   }
   auto zone_name = config_["timezones"][time_zone_idx_];
   if (!zone_name.isString() || zone_name.empty()) {
