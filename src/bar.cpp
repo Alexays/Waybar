@@ -562,7 +562,7 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
-bool waybar::Bar::is_module_area(int x) const {
+bool waybar::Bar::isModuleArea(int x) const {
   if (x < left_.get_allocation().get_width()) {
     // in the left box
     return true;

@@ -60,7 +60,7 @@ class Bar {
   void setVisible(bool visible);
   void toggle();
   void handleSignal(int);
-  bool is_module_area(int x) const;
+  bool isModuleArea(int x) const;
 
   struct waybar_output *output;
   Json::Value           config;

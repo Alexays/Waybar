@@ -294,7 +294,7 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
 }
 
 bool Workspaces::handleWindowScroll(GdkEventScroll *e) {
-  if (this->bar_.is_module_area(e->x)) {
+  if (this->bar_.isModuleArea(e->x)) {
     return true;
   }
   return this->handleScroll(e);
