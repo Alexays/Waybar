@@ -131,9 +131,13 @@ auto waybar::modules::Custom::update() -> void {
       label_.set_markup(str);
       if (tooltipEnabled()) {
         if (text_ == tooltip_) {
-          label_.set_tooltip_markup(str);
+          if (label_.get_tooltip_markup() != str) {
+            label_.set_tooltip_markup(str);
+          }
         } else {
-          label_.set_tooltip_markup(tooltip_);
+          if (label_.get_tooltip_markup() != tooltip_) {
+            label_.set_tooltip_markup(tooltip_);
+          }
         }
       }
       auto classes = label_.get_style_context()->list_classes();

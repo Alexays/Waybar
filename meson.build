@@ -2,14 +2,13 @@ project(
     'waybar', 'cpp', 'c',
     version: '0.9.4',
     license: 'MIT',
+    meson_version: '>= 0.49.0',
     default_options : [
         'cpp_std=c++17',
         'buildtype=release',
         'default_library=static'
     ],
 )
-
-fs = import('fs')
 
 compiler = meson.get_compiler('cpp')
 
@@ -81,7 +80,7 @@ is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdlog_dep'])
+spdlog = dependency('spdlog', version : ['>=1.8.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=true'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -172,6 +171,7 @@ add_project_arguments('-DHAVE_SWAY', language: 'cpp')
 src_files += [
     'src/modules/sway/ipc/client.cpp',
     'src/modules/sway/mode.cpp',
+    'src/modules/sway/language.cpp',
     'src/modules/sway/window.cpp',
     'src/modules/sway/workspaces.cpp'
 ]
@@ -213,7 +213,8 @@ endif
 
 if libmpdclient.found()
     add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
-    src_files += 'src/modules/mpd.cpp'
+    src_files += 'src/modules/mpd/mpd.cpp'
+    src_files += 'src/modules/mpd/state.cpp'
 endif
 
 if gtk_layer_shell.found()
@@ -316,9 +317,9 @@ if scdoc.found()
 
     foreach file : man_files
         path = '@0@'.format(file)
-        basename = fs.name(path)
+        basename = path.split('/')[-1]
 
-        topic = basename.split('.')[-3].split('/')[-1]
+        topic = basename.split('.')[-3]
         section = basename.split('.')[-2]
         output = '@0@.@1@'.format(topic, section)
 

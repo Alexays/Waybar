@@ -6,6 +6,7 @@
 #include "modules/sway/mode.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
+#include "modules/sway/language.hpp"
 #endif
 #ifdef HAVE_WLR
 #include "modules/wlr/taskbar.hpp"
@@ -37,7 +38,7 @@
 #include "modules/pulseaudio.hpp"
 #endif
 #ifdef HAVE_LIBMPDCLIENT
-#include "modules/mpd.hpp"
+#include "modules/mpd/mpd.hpp"
 #endif
 #ifdef HAVE_LIBSNDIO
 #include "modules/sndio.hpp"

@@ -95,7 +95,7 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
                 if (!app_info)
                     app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
 
-    if (app_info)
+    if (app_info && app_info->get_icon())
         return app_info->get_icon()->to_string();
 
     return "";
@@ -436,6 +436,14 @@ bool Task::handle_clicked(GdkEventButton *bt)
         activate();
     else if (action == "minimize")
         minimize(!minimized());
+    else if (action == "minimize-raise"){
+        if (minimized())
+            minimize(false);
+        else if (active())
+            minimize(true);
+        else
+            activate();
+    }
     else if (action == "maximize")
         maximize(!maximized());
     else if (action == "fullscreen")
@@ -653,9 +661,11 @@ void Taskbar::register_manager(struct wl_registry *registry, uint32_t name, uint
         spdlog::warn("Register foreign toplevel manager again although already existing!");
         return;
     }
-    if (version != 2) {
+    if (version < ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN_SINCE_VERSION) {
         spdlog::warn("Using different foreign toplevel manager protocol version: {}", version);
     }
+    // limit version to a highest supported by the client protocol file
+    version = std::min<uint32_t>(version, zwlr_foreign_toplevel_manager_v1_interface.version);
 
     manager_ = static_cast<struct zwlr_foreign_toplevel_manager_v1 *>(wl_registry_bind(registry, name,
             &zwlr_foreign_toplevel_manager_v1_interface, version));
@@ -672,6 +682,7 @@ void Taskbar::register_seat(struct wl_registry *registry, uint32_t name, uint32_
         spdlog::warn("Register seat again although already existing!");
         return;
     }
+    version = std::min<uint32_t>(version, wl_seat_interface.version);
 
     seat_ = static_cast<wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
 }

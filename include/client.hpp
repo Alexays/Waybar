@@ -8,6 +8,10 @@
 #include <wordexp.h>
 #include "bar.hpp"
 
+struct zwlr_layer_shell_v1;
+struct zwp_idle_inhibitor_v1;
+struct zwp_idle_inhibit_manager_v1;
+
 namespace waybar {
 
 class Client {
