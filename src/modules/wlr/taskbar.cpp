@@ -187,6 +187,12 @@ static void tl_handle_done(void *data, struct zwlr_foreign_toplevel_handle_v1 *h
     return static_cast<Task*>(data)->handle_done();
 }
 
+static void tl_handle_parent(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+        struct zwlr_foreign_toplevel_handle_v1 *parent)
+{
+    /* This is explicitly left blank */
+}
+
 static void tl_handle_closed(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle)
 {
     return static_cast<Task*>(data)->handle_closed();
@@ -200,6 +206,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
     .state = tl_handle_state,
     .done = tl_handle_done,
     .closed = tl_handle_closed,
+    .parent = tl_handle_parent,
 };
 
 Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
@@ -661,9 +668,11 @@ void Taskbar::register_manager(struct wl_registry *registry, uint32_t name, uint
         spdlog::warn("Register foreign toplevel manager again although already existing!");
         return;
     }
-    if (version < ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN_SINCE_VERSION) {
-        spdlog::warn("Using different foreign toplevel manager protocol version: {}", version);
+    if (version < ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_SET_FULLSCREEN_SINCE_VERSION) {
+        spdlog::warn("Foreign toplevel manager server does not have the appropriate version."
+                " To be able to use all features, you need at least version 2, but server is version {}", version);
     }
+
     // limit version to a highest supported by the client protocol file
     version = std::min<uint32_t>(version, zwlr_foreign_toplevel_manager_v1_interface.version);
 
