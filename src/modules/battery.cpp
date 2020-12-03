@@ -4,13 +4,18 @@
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60) {
-  fd_ = inotify_init1(IN_CLOEXEC);
-  if (fd_ == -1) {
+  battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
+  if (battery_watch_fd_ == -1) {
+    throw std::runtime_error("Unable to listen batteries.");
+  }
+
+  global_watch_fd_ = inotify_init1(IN_CLOEXEC);
+  if (global_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
   }
 
   // Watch the directory for any added or removed batteries
-  global_watch = inotify_add_watch(fd_, data_dir_.c_str(), IN_CREATE | IN_DELETE);
+  global_watch = inotify_add_watch(global_watch_fd_, data_dir_.c_str(), IN_CREATE | IN_DELETE);
   if (global_watch < 0) {
     throw std::runtime_error("Could not watch for battery plug/unplug");
   }
@@ -20,38 +25,55 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
 }
 
 waybar::modules::Battery::~Battery() {
+  std::lock_guard<std::mutex> guard(battery_list_mutex_);
+
   if (global_watch >= 0) {
-    inotify_rm_watch(fd_, global_watch);
+    inotify_rm_watch(global_watch_fd_, global_watch);
   }
+  close(global_watch_fd_);
+
   for (auto it = batteries_.cbegin(); it != batteries_.cend(); it++) {
     auto watch_id = (*it).second;
     if (watch_id >= 0) {
-      inotify_rm_watch(fd_, watch_id);
+      inotify_rm_watch(battery_watch_fd_, watch_id);
     }
     batteries_.erase(it);
   }
-  close(fd_);
+  close(battery_watch_fd_);
 }
 
 void waybar::modules::Battery::worker() {
   thread_timer_ = [this] {
+    // Make sure we eventually update the list of batteries even if we miss an
+    // inotify event for some reason
+    refreshBatteries();
     dp.emit();
     thread_timer_.sleep_for(interval_);
   };
   thread_ = [this] {
     struct inotify_event event = {0};
-    int                  nbytes = read(fd_, &event, sizeof(event));
+    int                  nbytes = read(battery_watch_fd_, &event, sizeof(event));
     if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
       thread_.stop();
       return;
     }
-    // TODO: don't stop timer for now since there is some bugs :?
-    // thread_timer_.stop();
+    dp.emit();
+  };
+  thread_battery_update_ = [this] {
+    struct inotify_event event = {0};
+    int                  nbytes = read(global_watch_fd_, &event, sizeof(event));
+    if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
+      thread_.stop();
+      return;
+    }
+    refreshBatteries();
     dp.emit();
   };
 }
 
 void waybar::modules::Battery::refreshBatteries() {
+  std::lock_guard<std::mutex> guard(battery_list_mutex_);
+
   // Mark existing list of batteries as not necessarily found
   std::map<fs::path, bool> check_map;
   for (auto const& bat : batteries_) {
@@ -77,7 +99,7 @@ void waybar::modules::Battery::refreshBatteries() {
           if (search == batteries_.end()) {
             // We've found a new battery save it and start listening for events
             auto event_path = (node.path() / "uevent");
-            auto wd = inotify_add_watch(fd_, event_path.c_str(), IN_ACCESS);
+            auto wd = inotify_add_watch(battery_watch_fd_, event_path.c_str(), IN_ACCESS);
             if (wd < 0) {
               throw std::runtime_error("Could not watch events for " + node.path().string());
             }
@@ -106,14 +128,16 @@ void waybar::modules::Battery::refreshBatteries() {
     if (!check.second) {
       auto watch_id = batteries_[check.first];
       if (watch_id >= 0) {
-        inotify_rm_watch(fd_, watch_id);
+        inotify_rm_watch(battery_watch_fd_, watch_id);
       }
       batteries_.erase(check.first);
     }
   }
 }
 
-const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() const {
+const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() {
+  std::lock_guard<std::mutex> guard(battery_list_mutex_);
+
   try {
     uint32_t    total_power = 0;   // μW
     uint32_t    total_energy = 0;  // μWh
@@ -215,11 +239,6 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 }
 
 auto waybar::modules::Battery::update() -> void {
-  // Make sure we have the correct set of batteries, in case of hotplug
-  // TODO: split the global watch into it's own event and only run the refresh
-  //       when there's been a CREATE/DELETE event
-  refreshBatteries();
-
   auto [capacity, time_remaining, status] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
