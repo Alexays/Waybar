@@ -546,6 +546,11 @@ void Task::activate()
 
 void Task::fullscreen(bool set)
 {
+    if (zwlr_foreign_toplevel_handle_v1_get_version(handle_) < ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_SET_FULLSCREEN_SINCE_VERSION) {
+        spdlog::warn("Foreign toplevel manager server does not support for set/unset fullscreen.");
+        return;
+    }
+
     if (set)
         zwlr_foreign_toplevel_handle_v1_set_fullscreen(handle_, nullptr);
     else
