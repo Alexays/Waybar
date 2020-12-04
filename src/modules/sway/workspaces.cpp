@@ -291,6 +291,12 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {
+  if (gdk_event_get_pointer_emulated((GdkEvent *)e)) {
+    /**
+     * Ignore emulated scroll events on window
+     */
+    return false;
+  }
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
