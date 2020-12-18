@@ -64,34 +64,61 @@ auto Window::update() -> void {
   ALabel::update();
 }
 
-std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
-    const Json::Value& nodes, std::string& output) {
-  for (auto const& node : nodes) {
+int leafNodesInWorkspace(const Json::Value& node) {
+  auto const& nodes = node["nodes"];
+  if(nodes.empty()) {
+    if(node["type"] == "workspace")
+      return 0;
+    else
+      return 1;
+  }
+  int sum = 0;
+  for(auto const& node : nodes)
+    sum += leafNodesInWorkspace(node);
+  return sum;
+}
+
+std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
+    const Json::Value& nodes, std::string& output, const Json::Value& config_,
+    const Bar& bar_, Json::Value& parentWorkspace) {
+  for(auto const& node : nodes) {
     if (node["output"].isString()) {
       output = node["output"].asString();
     }
+    // found node
     if (node["focused"].asBool() && (node["type"] == "con" || node["type"] == "floating_con")) {
       if ((!config_["all-outputs"].asBool() && output == bar_.output->name) ||
           config_["all-outputs"].asBool()) {
         auto app_id = node["app_id"].isString() ? node["app_id"].asString()
-                                                : node["window_properties"]["instance"].asString();
-        return {nodes.size(),
-                node["id"].asInt(),
-                Glib::Markup::escape_text(node["name"].asString()),
-                app_id};
+                      : node["window_properties"]["instance"].asString();
+        int nb = node.size();
+        if(parentWorkspace != 0)
+          nb = leafNodesInWorkspace(parentWorkspace);
+        return {nb,
+          node["id"].asInt(),
+          Glib::Markup::escape_text(node["name"].asString()),
+          app_id};
       }
     }
-    auto [nb, id, name, app_id] = getFocusedNode(node["nodes"], output);
+    // iterate
+    if(node["type"] == "workspace")
+      parentWorkspace = node;
+    auto [nb, id, name, app_id] = gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }
     // Search for floating node
-    std::tie(nb, id, name, app_id) = getFocusedNode(node["floating_nodes"], output);
+    std::tie(nb, id, name, app_id) = gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }
   }
   return {0, -1, "", ""};
+}
+
+std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
+    const Json::Value& nodes, std::string& output) {
+  return gfnWithWorkspace(nodes, output, config_, bar_, placeholder);
 }
 
 void Window::getTree() {
