@@ -118,6 +118,7 @@ std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
 
 std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
     const Json::Value& nodes, std::string& output) {
+  Json::Value placeholder = 0;
   return gfnWithWorkspace(nodes, output, config_, bar_, placeholder);
 }
 
