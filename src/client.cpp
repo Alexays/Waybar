@@ -60,8 +60,8 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
       .logical_position = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
       .logical_size = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
-      .done = [](void *, struct zxdg_output_v1 *) {},
-      .name = [](void *, struct zxdg_output_v1 *, const char *) {},
+      .done = &handleOutputDone,
+      .name = &handleOutputName,
       .description = &handleOutputDescription,
   };
   // owned by output->monitor; no need to destroy
@@ -75,7 +75,6 @@ bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_outp
     for (auto const &output_conf : config["output"]) {
       if (output_conf.isString() &&
           (output_conf.asString() == output.name || output_conf.asString() == output.identifier)) {
-        std::cout << output_conf.asString() << std::endl;
         return true;
       }
     }
@@ -84,7 +83,7 @@ bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_outp
     auto config_output = config["output"].asString();
     if (!config_output.empty()) {
       if (config_output.substr(0, 1) == "!") {
-        return config_output.substr(1) != output.name ||
+        return config_output.substr(1) != output.name &&
                config_output.substr(1) != output.identifier;
       }
       return config_output == output.name || config_output == output.identifier;
@@ -117,20 +116,12 @@ std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &
   return configs;
 }
 
-void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 * /*xdg_output*/,
-                                             const char *description) {
+void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_output*/) {
   auto client = waybar::Client::inst();
   try {
-    auto &      output = client->getOutput(data);
-    const char *open_paren = strrchr(description, '(');
-    const char *close_paren = strrchr(description, ')');
+    auto &output = client->getOutput(data);
+    spdlog::debug("Output detection done: {} ({})", output.name, output.identifier);
 
-    // Description format: "identifier (name)"
-    size_t identifier_length = open_paren - description;
-    output.identifier = std::string(description, identifier_length - 1);
-    output.name = std::string(description + identifier_length + 1, close_paren - open_paren - 1);
-
-    spdlog::debug("Output detected: {}", description);
     auto configs = client->getOutputConfigs(output);
     if (configs.empty()) {
       output.xdg_output.reset();
@@ -143,6 +134,36 @@ void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 *
             screen, client->css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
       }
     }
+  } catch (const std::exception &e) {
+    std::cerr << e.what() << std::endl;
+  }
+}
+
+void waybar::Client::handleOutputName(void *      data, struct zxdg_output_v1 * /*xdg_output*/,
+                                      const char *name) {
+  auto client = waybar::Client::inst();
+  try {
+    auto &output = client->getOutput(data);
+    spdlog::debug("Output detected with name: {} ({} {})",
+                  name,
+                  output.monitor->get_manufacturer(),
+                  output.monitor->get_model());
+    output.name = name;
+  } catch (const std::exception &e) {
+    std::cerr << e.what() << std::endl;
+  }
+}
+
+void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 * /*xdg_output*/,
+                                             const char *description) {
+  auto client = waybar::Client::inst();
+  try {
+    auto &      output = client->getOutput(data);
+    const char *open_paren = strrchr(description, '(');
+
+    // Description format: "identifier (name)"
+    size_t identifier_length = open_paren - description;
+    output.identifier = std::string(description, identifier_length - 1);
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
