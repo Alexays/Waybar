@@ -1,12 +1,14 @@
 #include "client.hpp"
+
 #include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
+
 #include <fstream>
 #include <iostream>
-#include "util/clara.hpp"
-#include "util/json.hpp"
 
 #include "idle-inhibit-unstable-v1-client-protocol.h"
+#include "util/clara.hpp"
+#include "util/json.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 waybar::Client *waybar::Client::inst() {
@@ -59,8 +61,8 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
       .logical_position = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
       .logical_size = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
       .done = [](void *, struct zxdg_output_v1 *) {},
-      .name = &handleOutputName,
-      .description = [](void *, struct zxdg_output_v1 *, const char *) {},
+      .name = [](void *, struct zxdg_output_v1 *, const char *) {},
+      .description = &handleOutputDescription,
   };
   // owned by output->monitor; no need to destroy
   auto wl_output = gdk_wayland_monitor_get_wl_output(output.monitor->gobj());
@@ -71,18 +73,21 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
 bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_output &output) {
   if (config["output"].isArray()) {
     for (auto const &output_conf : config["output"]) {
-      if (output_conf.isString() && output_conf.asString() == output.name) {
+      if (output_conf.isString() &&
+          (output_conf.asString() == output.name || output_conf.asString() == output.identifier)) {
+        std::cout << output_conf.asString() << std::endl;
         return true;
       }
     }
     return false;
   } else if (config["output"].isString()) {
-    auto config_output_name = config["output"].asString();
-    if (!config_output_name.empty()) {
-      if (config_output_name.substr(0, 1) == "!") {
-          return config_output_name.substr(1) != output.name;
+    auto config_output = config["output"].asString();
+    if (!config_output.empty()) {
+      if (config_output.substr(0, 1) == "!") {
+        return config_output.substr(1) != output.name ||
+               config_output.substr(1) != output.identifier;
       }
-      return config_output_name == output.name;
+      return config_output == output.name || config_output == output.identifier;
     }
   }
 
@@ -112,16 +117,20 @@ std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &
   return configs;
 }
 
-void waybar::Client::handleOutputName(void *      data, struct zxdg_output_v1 * /*xdg_output*/,
-                                      const char *name) {
+void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 * /*xdg_output*/,
+                                             const char *description) {
   auto client = waybar::Client::inst();
   try {
-    auto &output = client->getOutput(data);
-    output.name = name;
-    spdlog::debug("Output detected: {} ({} {})",
-                  name,
-                  output.monitor->get_manufacturer(),
-                  output.monitor->get_model());
+    auto &      output = client->getOutput(data);
+    const char *open_paren = strrchr(description, '(');
+    const char *close_paren = strrchr(description, ')');
+
+    // Description format: "identifier (name)"
+    size_t identifier_length = open_paren - description;
+    output.identifier = std::string(description, identifier_length - 1);
+    output.name = std::string(description + identifier_length + 1, close_paren - open_paren - 1);
+
+    spdlog::debug("Output detected: {}", description);
     auto configs = client->getOutputConfigs(output);
     if (configs.empty()) {
       output.xdg_output.reset();
@@ -260,7 +269,8 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar", Gio::APPLICATION_HANDLES_COMMAND_LINE);
+  gtk_app = Gtk::Application::create(
+      argc, argv, "fr.arouillard.waybar", Gio::APPLICATION_HANDLES_COMMAND_LINE);
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
     throw std::runtime_error("Can't find display");
