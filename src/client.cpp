@@ -144,10 +144,6 @@ void waybar::Client::handleOutputName(void *      data, struct zxdg_output_v1 * 
   auto client = waybar::Client::inst();
   try {
     auto &output = client->getOutput(data);
-    spdlog::debug("Output detected with name: {} ({} {})",
-                  name,
-                  output.monitor->get_manufacturer(),
-                  output.monitor->get_model());
     output.name = name;
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
