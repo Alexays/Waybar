@@ -178,8 +178,8 @@ void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_ser
   pa->default_sink_name_ = i->default_sink_name;
   pa->default_source_name_ = i->default_source_name;
 
-  pa_context_get_sink_info_by_name(context, "@DEFAULT_SINK@", sinkInfoCb, data);
-  pa_context_get_source_info_by_name(context, "@DEFAULT_SOURCE@", sourceInfoCb, data);
+  pa_context_get_sink_info_by_name(context, i->default_sink_name, sinkInfoCb, data);
+  pa_context_get_source_info_by_name(context, i->default_source_name, sourceInfoCb, data);
 }
 
 static const std::array<std::string, 9> ports = {
