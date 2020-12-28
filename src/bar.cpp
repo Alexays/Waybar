@@ -387,6 +387,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     center_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
     right_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
     box_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
+    left_.get_style_context()->add_class("modules-left");
+    center_.get_style_context()->add_class("modules-center");
+    right_.get_style_context()->add_class("modules-right");
     vertical = true;
   }
 
