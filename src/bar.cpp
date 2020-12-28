@@ -370,9 +370,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
   window.get_style_context()->add_class(config["position"].asString());
-  left_.get_style_context()->add_class("modules-left");
-  center_.get_style_context()->add_class("modules-center");
-  right_.get_style_context()->add_class("modules-right");
 
   if (config["layer"] == "top") {
     layer_ = bar_layer::TOP;
@@ -387,11 +384,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     center_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
     right_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
     box_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
-    left_.get_style_context()->add_class("modules-left");
-    center_.get_style_context()->add_class("modules-center");
-    right_.get_style_context()->add_class("modules-right");
     vertical = true;
   }
+  
+  left_.get_style_context()->add_class("modules-left");
+  center_.get_style_context()->add_class("modules-center");
+  right_.get_style_context()->add_class("modules-right");
 
   uint32_t height = config["height"].isUInt() ? config["height"].asUInt() : 0;
   uint32_t width = config["width"].isUInt() ? config["width"].asUInt() : 0;
