@@ -6,6 +6,7 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <thread>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -23,11 +24,22 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
 
   template <typename... EmitArgs>
   void emit(EmitArgs&&... args) {
-    {
-      std::unique_lock lock(mutex_);
-      queue_.emplace(std::forward<EmitArgs>(args)...);
+    if (main_tid_ == std::this_thread::get_id()) {
+      /*
+       * Bypass the queue if the method is called the main thread.
+       * Ensures that events emitted from the main thread are processed synchronously and saves a
+       * few CPU cycles on locking/queuing.
+       * As a downside, this makes main thread events prioritized over the other threads and
+       * disrupts chronological order.
+       */
+      signal_t::emit(std::forward<EmitArgs>(args)...);
+    } else {
+      {
+        std::unique_lock lock(mutex_);
+        queue_.emplace(std::forward<EmitArgs>(args)...);
+      }
+      dp_.emit();
     }
-    dp_.emit();
   }
 
   template <typename... EmitArgs>
@@ -55,6 +67,7 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
   Glib::Dispatcher        dp_;
   std::mutex              mutex_;
   std::queue<arg_tuple_t> queue_;
+  const std::thread::id   main_tid_ = std::this_thread::get_id();
   // cache functor for signal emission to avoid recreating it on each event
   const slot_t cached_fn_ = make_slot();
 };
