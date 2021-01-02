@@ -1,0 +1,22 @@
+name: freebsd
+
+on: [ push, pull_request ]
+
+jobs:
+  clang:
+    runs-on: macos-latest # until https://github.com/actions/runner/issues/385
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test in FreeBSD VM
+      uses: vmactions/freebsd-vm@v0.0.9 # aka FreeBSD 12.2
+      with:
+        usesh: true
+        prepare: |
+          export CPPFLAGS=-isystem/usr/local/include LDFLAGS=-L/usr/local/lib # sndio
+          sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+          pkg install -y git #  subprojects/date
+          pkg install -y gtk-layer-shell gtkmm30 jsoncpp libdbusmenu sndio \
+               libfmt libmpdclient libudev-devd meson pkgconf pulseaudio scdoc spdlog
+        run: |
+          meson build -Dman-pages=enabled
+          ninja -C build
