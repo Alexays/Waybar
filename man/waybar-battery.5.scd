@@ -22,6 +22,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: integer ++
 	Define the max percentage of the battery, for when you've set the battery to stop charging at a lower level to save it. For example, if you've set the battery to stop at 80% that will become the new 100%.
 
+*design-capacity*: ++
+    typeof: bool ++
+    default: false ++
+    Option to use the battery design capacity instead of it's current maximal capacity.
+
 *interval*: ++
 	typeof: integer ++
 	default: 60 ++

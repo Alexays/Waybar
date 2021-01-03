@@ -142,12 +142,14 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     uint32_t    total_power = 0;   // μW
     uint32_t    total_energy = 0;  // μWh
     uint32_t    total_energy_full = 0;
+    uint32_t    total_energy_full_design = 0;
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
       auto bat = item.first;
       uint32_t    power_now;
       uint32_t    energy_full;
       uint32_t    energy_now;
+      uint32_t    energy_full_design;
       std::string _status;
       std::ifstream(bat / "status") >> _status;
       auto rate_path = fs::exists(bat / "current_now") ? "current_now" : "power_now";
@@ -156,17 +158,20 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       std::ifstream(bat / now_path) >> energy_now;
       auto full_path = fs::exists(bat / "charge_full") ? "charge_full" : "energy_full";
       std::ifstream(bat / full_path) >> energy_full;
+      auto full_design_path = fs::exists(bat / "charge_full_design") ? "charge_full_design" : "energy_full_design";
+      std::ifstream(bat / full_design_path) >> energy_full_design;
       if (_status != "Unknown") {
         status = _status;
       }
       total_power += power_now;
       total_energy += energy_now;
       total_energy_full += energy_full;
+      total_energy_full_design += energy_full_design;
     }
     if (!adapter_.empty() && status == "Discharging") {
       bool online;
       std::ifstream(adapter_ / "online") >> online;
-      if (online) {
+      if (online) { 
         status = "Plugged";
       }
     }
@@ -182,6 +187,10 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       }
     }
     float capacity = ((float)total_energy * 100.0f / (float) total_energy_full);
+    // Handle design-capacity
+    if (config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) {
+        capacity = ((float)total_energy * 100.0f / (float) total_energy_full_design);
+    }
     // Handle full-at
     if (config_["full-at"].isUInt()) {
       auto full_at = config_["full-at"].asUInt();
