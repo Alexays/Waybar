@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <wayland-client.h>
 #include <wordexp.h>
+
 #include "bar.hpp"
 
 struct zwlr_layer_shell_v1;
@@ -33,18 +34,20 @@ class Client {
   std::tuple<const std::string, const std::string> getConfigs(const std::string &config,
                                                               const std::string &style) const;
   void                                             bindInterfaces();
-  const std::string getValidPath(const std::vector<std::string> &paths) const;
-  void              handleOutput(struct waybar_output &output);
-  bool isValidOutput(const Json::Value &config, struct waybar_output &output);
-  auto setupConfig(const std::string &config_file) -> void;
-  auto setupCss(const std::string &css_file) -> void;
-  struct waybar_output &getOutput(void *);
+  const std::string        getValidPath(const std::vector<std::string> &paths) const;
+  void                     handleOutput(struct waybar_output &output);
+  bool                     isValidOutput(const Json::Value &config, struct waybar_output &output);
+  auto                     setupConfig(const std::string &config_file) -> void;
+  auto                     setupCss(const std::string &css_file) -> void;
+  struct waybar_output &   getOutput(void *);
   std::vector<Json::Value> getOutputConfigs(struct waybar_output &output);
 
   static void handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                            const char *interface, uint32_t version);
   static void handleGlobalRemove(void *data, struct wl_registry *registry, uint32_t name);
+  static void handleOutputDone(void *, struct zxdg_output_v1 *);
   static void handleOutputName(void *, struct zxdg_output_v1 *, const char *);
+  static void handleOutputDescription(void *, struct zxdg_output_v1 *, const char *);
   void        handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor);
   void        handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
 
