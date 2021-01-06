@@ -367,16 +367,16 @@ void Task::handle_output_leave(struct wl_output *output)
 void Task::handle_state(struct wl_array *state)
 {
     state_ = 0;
-    for (auto* entry = static_cast<uint32_t*>(state->data);
-         entry < static_cast<uint32_t*>(state->data) + state->size;
-         entry++) {
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
+    size_t size = state->size / sizeof(uint32_t);
+    for (size_t i = 0; i < size; ++i) {
+        auto entry = static_cast<uint32_t*>(state->data)[i];
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
             state_ |= MAXIMIZED;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED)
             state_ |= MINIMIZED;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED)
             state_ |= ACTIVE;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN)
             state_ |= FULLSCREEN;
     }
 }
