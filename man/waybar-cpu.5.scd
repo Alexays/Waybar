@@ -20,45 +20,9 @@ The *cpu* module displays the current cpu utilization.
 	default: {usage}% ++
 	The format, how information should be displayed. On {} data gets inserted.
 
-*max-length*: ++
-	typeof: integer ++
-	The maximum length in character the module should display.
-
-*rotate*: ++
-	typeof: integer ++
-	Positive value to rotate the text label.
-
 *states*: ++
 	typeof: array ++
 	A number of cpu usage states which get activated on certain usage levels. See *waybar-states(5)*.
-
-*on-click*: ++
-	typeof: string  ++
-	Command to execute when clicked on the module.
-
-*on-click-middle*: ++
-	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
-
-*on-click-right*: ++
-	typeof: string ++
-	Command to execute when you right clicked on the module.
-
-*on-update*: ++
-	typeof: string ++
-	Command to execute when the module is updated.
-
-*on-scroll-up*: ++
-	typeof: string ++
-	Command to execute when scrolling up on the module.
-
-*on-scroll-down*: ++
-	typeof: string ++
-	Command to execute when scrolling down on the module.
-
-*smooth-scrolling-threshold*: ++
-	typeof: double ++
-	Threshold to be used when scrolling.
 
 *tooltip*: ++
 	typeof: bool ++

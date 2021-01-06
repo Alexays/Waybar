@@ -38,38 +38,14 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	typeof: array ++
 	Based on the current port-name and volume, the corresponding icon gets selected. The order is *low* to *high*. See *Icons*.
 
-*rotate*: ++
-	typeof: integer ++
-	Positive value to rotate the text label.
-
 *states*: ++
 	typeof: array ++
 	A number of volume states which get activated on certain volume levels. See *waybar-states(5)*
-
-*max-length*: ++
-	typeof: integer ++
-	The maximum length in character the module should display.
 
 *scroll-step*: ++
 	typeof: float ++
 	default: 1.0 ++
 	The speed in which to change the volume when scrolling.
-
-*on-click*: ++
-	typeof: string ++
-	Command to execute when clicked on the module.
-
-*on-click-middle*: ++
-	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
-
-*on-click-right*: ++
-	typeof: string ++
-	Command to execute when you right clicked on the module.
-
-*on-update*: ++
-	typeof: string ++
-	Command to execute when the module is updated.
 
 *on-scroll-up*: ++
 	typeof: string ++

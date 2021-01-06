@@ -18,14 +18,6 @@ cursor is over the module, and clicking on the module toggles mute.
 	default: {volume}% ++
 	The format for how information should be displayed.
 
-*rotate*: ++
-	typeof: integer ++
-	Positive value to rotate the text label.
-
-*max-length*: ++
-	typeof: integer ++
-	The maximum length in character the module should display.
-
 *scroll-step*: ++
 	typeof: int ++
 	default: 5 ++

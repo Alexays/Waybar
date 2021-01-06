@@ -63,7 +63,7 @@ Addressed by *sway/workspaces*
 *persistent_workspaces*: ++
     typeof: json (see below) ++
     default: empty ++
-    Lists workspaces that should always be shown, even when non existent
+    Lists workspaces that should always be shown, even when non existent.
 
 *on-update*: ++
 	typeof: string ++
