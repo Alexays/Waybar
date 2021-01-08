@@ -637,8 +637,20 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
 Taskbar::~Taskbar()
 {
     if (manager_) {
-        zwlr_foreign_toplevel_manager_v1_destroy(manager_);
-        manager_ = nullptr;
+        struct wl_display *display = Client::inst()->wl_display;
+        /*
+         * Send `stop` request and wait for one roundtrip.
+         * This is not quite correct as the protocol encourages us to wait for the .finished event,
+         * but it should work with wlroots foreign toplevel manager implementation.
+         */
+        zwlr_foreign_toplevel_manager_v1_stop(manager_);
+        wl_display_roundtrip(display);
+
+        if (manager_) {
+            spdlog::warn("Foreign toplevel manager destroyed before .finished event");
+            zwlr_foreign_toplevel_manager_v1_destroy(manager_);
+            manager_ = nullptr;
+        }
     }
 }
 
