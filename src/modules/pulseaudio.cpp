@@ -207,6 +207,7 @@ const std::string waybar::modules::Pulseaudio::getPortIcon() const {
 
 auto waybar::modules::Pulseaudio::update() -> void {
   auto format = format_;
+  std::string                 tooltip_format;
   if (!alt_) {
     std::string format_name = "format";
     if (monitor_.find("a2dp_sink") != std::string::npos) {
@@ -222,28 +223,53 @@ auto waybar::modules::Pulseaudio::update() -> void {
       }
       format_name = format_name + "-muted";
       label_.get_style_context()->add_class("muted");
+      label_.get_style_context()->add_class("sink-muted");
     } else {
       label_.get_style_context()->remove_class("muted");
+      label_.get_style_context()->remove_class("sink-muted");
     }
     format =
       config_[format_name].isString() ? config_[format_name].asString() : format;
   }
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
-  if (source_muted_ && config_["format-source-muted"].isString()) {
-    format_source = config_["format-source-muted"].asString();
-  } else if (!source_muted_ && config_["format-source"].isString()) {
-    format_source = config_["format-source"].asString();
+  if (source_muted_) {
+    label_.get_style_context()->add_class("source-muted");
+    if (config_["format-source-muted"].isString()) {
+      format_source = config_["format-source-muted"].asString();
+    }
+  } else {
+    label_.get_style_context()->remove_class("source-muted");
+    if (config_["format-source-muted"].isString()) {
+      format_source = config_["format-source"].asString();
+    }
   }
   format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
   label_.set_markup(fmt::format(format,
                                 fmt::arg("desc", desc_),
                                 fmt::arg("volume", volume_),
                                 fmt::arg("format_source", format_source),
+                                fmt::arg("source_volume", source_volume_),
+                                fmt::arg("source_desc", source_desc_),
                                 fmt::arg("icon", getIcon(volume_, getPortIcon()))));
   getState(volume_);
+  
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(desc_);
+    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    if (!tooltip_format.empty()) {
+      label_.set_tooltip_text(fmt::format(
+        tooltip_format,
+        fmt::arg("desc", desc_),
+        fmt::arg("volume", volume_),
+        fmt::arg("format_source", format_source),
+        fmt::arg("source_volume", source_volume_),
+        fmt::arg("source_desc", source_desc_),
+        fmt::arg("icon", getIcon(volume_, getPortIcon())));
+    } else {
+      label_.set_tooltip_text(desc_);
+    }
   }
 
   // Call parent update
