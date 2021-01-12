@@ -266,7 +266,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
         fmt::arg("format_source", format_source),
         fmt::arg("source_volume", source_volume_),
         fmt::arg("source_desc", source_desc_),
-        fmt::arg("icon", getIcon(volume_, getPortIcon())));
+        fmt::arg("icon", getIcon(volume_, getPortIcon()))));
     } else {
       label_.set_tooltip_text(desc_);
     }
