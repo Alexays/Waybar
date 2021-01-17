@@ -65,6 +65,7 @@ class Bar {
   struct waybar_output *output;
   Json::Value           config;
   struct wl_surface *   surface;
+  bool                  exclusive = true;
   bool                  visible = true;
   bool                  vertical = false;
   Gtk::Window           window;

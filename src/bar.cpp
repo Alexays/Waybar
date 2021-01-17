@@ -409,6 +409,13 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     layer_ = bar_layer::OVERLAY;
   }
 
+  if (config["exclusive"].isBool()) {
+    exclusive = config["exclusive"].asBool();
+  } else if (layer_ == bar_layer::OVERLAY) {
+    // swaybar defaults: overlay mode does not reserve an exclusive zone
+    exclusive = false;
+  }
+
   bool passthrough = false;
   if (config["passthrough"].isBool()) {
     passthrough = config["passthrough"].asBool();
@@ -492,7 +499,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   surface_impl_->setLayer(layer_);
-  surface_impl_->setExclusiveZone(true);
+  surface_impl_->setExclusiveZone(exclusive);
   surface_impl_->setMargins(margins_);
   surface_impl_->setPassThrough(passthrough);
   surface_impl_->setPosition(position);
@@ -533,7 +540,7 @@ void waybar::Bar::setVisible(bool value) {
     window.set_opacity(1);
     surface_impl_->setLayer(layer_);
   }
-  surface_impl_->setExclusiveZone(visible);
+  surface_impl_->setExclusiveZone(exclusive && visible);
   surface_impl_->commit();
 }
 
