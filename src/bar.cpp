@@ -33,6 +33,7 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
     gtk_layer_set_monitor(window_.gobj(), output.monitor->gobj());
     gtk_layer_set_namespace(window_.gobj(), "waybar");
 
+    window.signal_map_event().connect_notify(sigc::mem_fun(*this, &GLSSurfaceImpl::onMap));
     window.signal_configure_event().connect_notify(
         sigc::mem_fun(*this, &GLSSurfaceImpl::onConfigure));
   }
@@ -60,6 +61,18 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
       layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
     }
     gtk_layer_set_layer(window_.gobj(), layer);
+  }
+
+  void setPassThrough(bool enable) override {
+    passthrough_ = enable;
+    auto gdk_window = window_.get_window();
+    if (gdk_window) {
+      Cairo::RefPtr<Cairo::Region> region;
+      if (enable) {
+        region = Cairo::Region::create();
+      }
+      gdk_window->input_shape_combine_region(region, 0, 0);
+    }
   }
 
   void setPosition(const std::string_view& position) override {
@@ -93,7 +106,10 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
   std::string  output_name_;
   uint32_t     width_;
   uint32_t     height_;
+  bool         passthrough_ = false;
   bool         vertical_ = false;
+
+  void onMap(GdkEventAny* ev) { setPassThrough(passthrough_); }
 
   void onConfigure(GdkEventConfigure* ev) {
     /*
@@ -182,6 +198,20 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     }
   }
 
+  void setPassThrough(bool enable) override {
+    passthrough_ = enable;
+    /* GTK overwrites any region changes applied directly to the wl_surface,
+     * thus the same GTK region API as in the GLS impl has to be used. */
+    auto gdk_window = window_.get_window();
+    if (gdk_window) {
+      Cairo::RefPtr<Cairo::Region> region;
+      if (enable) {
+        region = Cairo::Region::create();
+      }
+      gdk_window->input_shape_combine_region(region, 0, 0);
+    }
+  }
+
   void setPosition(const std::string_view& position) override {
     anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
     if (position == "bottom") {
@@ -230,6 +260,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
   uint32_t           height_ = 0;
   uint8_t            anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
   bool               exclusive_zone_ = true;
+  bool               passthrough_ = false;
   struct bar_margins margins_;
 
   zwlr_layer_shell_v1_layer layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
@@ -262,6 +293,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
 
     setSurfaceSize(width_, height_);
     setExclusiveZone(exclusive_zone_);
+    setPassThrough(passthrough_);
 
     commit();
     wl_display_roundtrip(client->wl_display);
@@ -377,6 +409,14 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     layer_ = bar_layer::OVERLAY;
   }
 
+  bool passthrough = false;
+  if (config["passthrough"].isBool()) {
+    passthrough = config["passthrough"].asBool();
+  } else if (layer_ == bar_layer::OVERLAY) {
+    // swaybar defaults: overlay mode does not accept pointer events.
+    passthrough = true;
+  }
+
   auto position = config["position"].asString();
 
   if (position == "right" || position == "left") {
@@ -386,7 +426,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     box_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
     vertical = true;
   }
-  
+
   left_.get_style_context()->add_class("modules-left");
   center_.get_style_context()->add_class("modules-center");
   right_.get_style_context()->add_class("modules-right");
@@ -454,6 +494,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   surface_impl_->setLayer(layer_);
   surface_impl_->setExclusiveZone(true);
   surface_impl_->setMargins(margins_);
+  surface_impl_->setPassThrough(passthrough);
   surface_impl_->setPosition(position);
   surface_impl_->setSize(width, height);
 

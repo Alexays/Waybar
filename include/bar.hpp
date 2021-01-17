@@ -44,6 +44,7 @@ class BarSurface {
   virtual void setExclusiveZone(bool enable) = 0;
   virtual void setLayer(bar_layer layer) = 0;
   virtual void setMargins(const struct bar_margins &margins) = 0;
+  virtual void setPassThrough(bool enable) = 0;
   virtual void setPosition(const std::string_view &position) = 0;
   virtual void setSize(uint32_t width, uint32_t height) = 0;
   virtual void commit(){};
