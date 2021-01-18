@@ -171,7 +171,7 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     if (!adapter_.empty() && status == "Discharging") {
       bool online;
       std::ifstream(adapter_ / "online") >> online;
-      if (online) { 
+      if (online) {
         status = "Plugged";
       }
     }
