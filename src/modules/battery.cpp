@@ -253,7 +253,7 @@ auto waybar::modules::Battery::update() -> void {
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
   if (tooltipEnabled()) {
     std::string tooltip_text_default;
-    std::string tooltip_format = "{autoTooltip}";
+    std::string tooltip_format = "{timeTo}";
     if (time_remaining != 0) {
       std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
       tooltip_text_default = time_to + ": " + time_remaining_formatted;
@@ -270,7 +270,7 @@ auto waybar::modules::Battery::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     label_.set_tooltip_text(fmt::format(tooltip_format,
-                                        fmt::arg("autoTooltip", tooltip_text_default),
+                                        fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("capacity", capacity),
                                         fmt::arg("time", time_remaining_formatted)));
   }
