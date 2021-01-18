@@ -3,6 +3,8 @@
 #include <spdlog/spdlog.h>
 #include <wayland-client.h>
 
+#include <algorithm>
+
 #include "client.hpp"
 #include "modules/river/tags.hpp"
 #include "river-status-unstable-v1-client-protocol.h"
@@ -64,8 +66,20 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
 
   // Default to 9 tags
   const uint32_t num_tags = config["num-tags"].isUInt() ? config_["num-tags"].asUInt() : 9;
-  for (uint32_t tag = 1; tag <= num_tags; ++tag) {
-    Gtk::Button &button = buttons_.emplace_back(std::to_string(tag));
+
+  std::vector<std::string> tag_labels(num_tags);
+  for (uint32_t tag = 0; tag < num_tags; ++tag) {
+    tag_labels[tag] = std::to_string(tag+1);
+  }
+  const Json::Value custom_labels = config["tag-labels"];
+  if (custom_labels.isArray() && !custom_labels.empty()) {
+    for (uint32_t tag = 0; tag < std::min(num_tags, custom_labels.size()); ++tag) {
+      tag_labels[tag] = custom_labels[tag].asString();
+    }
+  }
+
+  for (const auto &tag_label : tag_labels) {
+    Gtk::Button &button = buttons_.emplace_back(tag_label);
     button.set_relief(Gtk::RELIEF_NONE);
     box_.pack_start(button, false, false, 0);
     button.show();
