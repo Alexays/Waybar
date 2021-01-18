@@ -28,17 +28,37 @@ auto waybar::modules::Memory::update() -> void {
     auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
     auto available_ram_gigabytes = memfree / std::pow(1024, 2);
 
-    getState(used_ram_percentage);
-    label_.set_markup(fmt::format(format_,
-                                  used_ram_percentage,
-                                  fmt::arg("total", total_ram_gigabytes),
-                                  fmt::arg("percentage", used_ram_percentage),
-                                  fmt::arg("used", used_ram_gigabytes),
-                                  fmt::arg("avail", available_ram_gigabytes)));
-    if (tooltipEnabled()) {
-      label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
+    auto format = format_;
+    auto state = getState(used_ram_percentage);
+    if (!state.empty() && config_["format-" + state].isString()) {
+      format = config_["format-" + state].asString();
     }
-    event_box_.show();
+
+    if (format.empty()) {
+      event_box_.hide();
+    } else {
+      event_box_.show();
+      label_.set_markup(fmt::format(format,
+                                    used_ram_percentage,
+                                    fmt::arg("total", total_ram_gigabytes),
+                                    fmt::arg("percentage", used_ram_percentage),
+                                    fmt::arg("used", used_ram_gigabytes),
+                                    fmt::arg("avail", available_ram_gigabytes)));
+    }
+
+    if (tooltipEnabled()) {
+      if (config_["tooltip-format"].isString()) {
+        auto tooltip_format = config_["tooltip-format"].asString();
+        label_.set_tooltip_text(fmt::format(tooltip_format,
+                                            used_ram_percentage,
+                                            fmt::arg("total", total_ram_gigabytes),
+                                            fmt::arg("percentage", used_ram_percentage),
+                                            fmt::arg("used", used_ram_gigabytes),
+                                            fmt::arg("avail", available_ram_gigabytes)));
+      } else {
+        label_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
+      }
+    }
   } else {
     event_box_.hide();
   }

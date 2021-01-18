@@ -13,7 +13,7 @@ apply a class when the value matches the declared state value.
 	  Each class gets activated when the current capacity is equal or below the configured *<value>*.
 
 	- Also each state can have its own *format*.
-	  Those con be configured via *format-<name>*.
+	  Those can be configured via *format-<name>*.
 	  Or if you want to differentiate a bit more even as *format-<status>-<state>*.
 
 # EXAMPLE

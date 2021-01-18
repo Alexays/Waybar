@@ -20,6 +20,10 @@ Addressed by *mpd*
 	typeof: integer ++
 	The port MPD listens to. If empty, use the default port.
 
+*password*: ++
+	typeof: string ++
+	The password required to connect to the MPD server. If empty, no password is sent to MPD.
+
 *interval*: ++
 	typeof: integer++
 	default: 5 ++
@@ -147,6 +151,10 @@ Addressed by *mpd*
 *{elapsedTime}*: The current position of the current song. To format as a date/time (see example configuration)
 
 *{totalTime}*: The length of the current song. To format as a date/time (see example configuration)
+
+*{songPosition}*: The position of the current song.
+
+*{queueLength}*: The length of the current queue.
 
 *{stateIcon}*: The icon corresponding the playing or paused status of the player (see *state-icons* option)
 

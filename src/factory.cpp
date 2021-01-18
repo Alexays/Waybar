@@ -22,6 +22,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "sway/window") {
       return new waybar::modules::sway::Window(id, bar_, config_[name]);
     }
+    if (ref == "sway/language") {
+        return new waybar::modules::sway::Language(id, config_[name]);
+    }
 #endif
 #ifdef HAVE_WLR
     if (ref == "wlr/taskbar") {
@@ -75,6 +78,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_LIBMPDCLIENT
     if (ref == "mpd") {
       return new waybar::modules::MPD(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_LIBSNDIO
+    if (ref == "sndio") {
+      return new waybar::modules::Sndio(id, config_[name]);
     }
 #endif
     if (ref == "temperature") {

@@ -32,6 +32,11 @@ Addressed by *wlr/taskbar*
 	default: 16 ++
 	The size of the icon.
 
+*markup*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, pango markup will be accepted in format and tooltip-format.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
@@ -78,9 +83,10 @@ Addressed by *wlr/taskbar*
 # CLICK ACTIONS
 
 *activate*: Bring the application into foreground.
-*minimize*: Minimize the application.
-*maximize*: Maximize the application.
-*fullscreen*: Set the application to fullscreen.
+*minimize*: Toggle application's minimized state.
+*minimize-raise*: Bring the application into foreground or toggle its minimized state.
+*maximize*: Toggle application's maximized state.
+*fullscreen*: Toggle application's fullscreen state.
 *close*: Close the application.
 
 # EXAMPLES

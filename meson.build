@@ -1,7 +1,8 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.3',
+    version: '0.9.5',
     license: 'MIT',
+    meson_version: '>= 0.49.0',
     default_options : [
         'cpp_std=c++17',
         'buildtype=release',
@@ -79,7 +80,7 @@ is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.3.1'], fallback : ['spdlog', 'spdlog_dep'])
+spdlog = dependency('spdlog', version : ['>=1.8.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=true'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -94,11 +95,28 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+
+libsndio = compiler.find_library('sndio', required: get_option('sndio'))
+if libsndio.found()
+    if not compiler.has_function('sioctl_open', prefix: '#include <sndio.h>', dependencies: libsndio)
+        if get_option('sndio').enabled()
+            error('libsndio is too old, required >=1.7.0')
+        else
+            warning('libsndio is too old, required >=1.7.0')
+            libsndio = dependency('', required: false)
+        endif
+    endif
+endif
+
 gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
 systemd = dependency('systemd', required: get_option('systemd'))
-tz_dep = dependency('date', default_options : [ 'use_system_tzdb=true' ], modules : [ 'date::date', 'date::date-tz' ], fallback: [ 'date', 'tz_dep' ])
+tz_dep = dependency('date',
+    required: false,
+    default_options : [ 'use_system_tzdb=true' ],
+    modules : [ 'date::date', 'date::date-tz' ],
+    fallback: [ 'date', 'tz_dep' ])
 
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
@@ -122,7 +140,6 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
-    'src/modules/clock.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
@@ -157,6 +174,7 @@ add_project_arguments('-DHAVE_SWAY', language: 'cpp')
 src_files += [
     'src/modules/sway/ipc/client.cpp',
     'src/modules/sway/mode.cpp',
+    'src/modules/sway/language.cpp',
     'src/modules/sway/window.cpp',
     'src/modules/sway/workspaces.cpp'
 ]
@@ -198,11 +216,17 @@ endif
 
 if libmpdclient.found()
     add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
-    src_files += 'src/modules/mpd.cpp'
+    src_files += 'src/modules/mpd/mpd.cpp'
+    src_files += 'src/modules/mpd/state.cpp'
 endif
 
 if gtk_layer_shell.found()
     add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
+endif
+
+if libsndio.found()
+    add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
+    src_files += 'src/modules/sndio.cpp'
 endif
 
 if get_option('rfkill').enabled()
@@ -213,6 +237,13 @@ if get_option('rfkill').enabled()
             'src/util/rfkill.cpp'
         )
     endif
+endif
+
+if tz_dep.found()
+    add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
+    src_files += 'src/modules/clock.cpp'
+else
+    src_files += 'src/modules/simpleclock.cpp'
 endif
 
 subdir('protocol')
@@ -239,6 +270,7 @@ executable(
         libepoll,
         libmpdclient,
         gtk_layer_shell,
+        libsndio,
         tz_dep
     ],
     include_directories: [include_directories('include')],
@@ -256,9 +288,20 @@ scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_opti
 if scdoc.found()
     scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
     sh = find_program('sh', native: true)
+
+    main_manpage = configure_file(
+        input: 'man/waybar.5.scd.in',
+        output: 'waybar.5.scd',
+        configuration: {
+            'sysconfdir': join_paths(prefix, sysconfdir)
+        }
+    )
+
+    main_manpage_path = join_paths(meson.build_root(), '@0@'.format(main_manpage))
+
     mandir = get_option('mandir')
     man_files = [
-        'waybar.5.scd',
+        main_manpage_path,
         'waybar-backlight.5.scd',
         'waybar-battery.5.scd',
         'waybar-clock.5.scd',
@@ -279,16 +322,21 @@ if scdoc.found()
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
         'waybar-bluetooth.5.scd',
+        'waybar-sndio.5.scd',
     ]
 
-    foreach filename : man_files
-        topic = filename.split('.')[-3].split('/')[-1]
-        section = filename.split('.')[-2]
+    foreach file : man_files
+        path = '@0@'.format(file)
+        basename = path.split('/')[-1]
+
+        topic = basename.split('.')[-3]
+        section = basename.split('.')[-2]
         output = '@0@.@1@'.format(topic, section)
 
         custom_target(
             output,
-            input: 'man/@0@'.format(filename),
+            # drops the 'man' if `path` is an absolute path
+            input: join_paths('man', path),
             output: output,
             command: [
                 sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.path(), output)
