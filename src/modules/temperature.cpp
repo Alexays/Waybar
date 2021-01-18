@@ -40,6 +40,16 @@ auto waybar::modules::Temperature::update() -> void {
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+  if (tooltipEnabled()) {
+    std::string tooltip_format = "{temperatureC}°C";
+    if (config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    label_.set_tooltip_text(fmt::format(tooltip_format,
+                                fmt::arg("temperatureC", temperature_c),
+                                fmt::arg("temperatureF", temperature_f),
+                                fmt::arg("temperatureK", temperature_k)));
+  }
   // Call parent update
   ALabel::update();
 }
