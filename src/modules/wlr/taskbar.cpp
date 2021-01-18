@@ -367,16 +367,16 @@ void Task::handle_output_leave(struct wl_output *output)
 void Task::handle_state(struct wl_array *state)
 {
     state_ = 0;
-    for (auto* entry = static_cast<uint32_t*>(state->data);
-         entry < static_cast<uint32_t*>(state->data) + state->size;
-         entry++) {
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
+    size_t size = state->size / sizeof(uint32_t);
+    for (size_t i = 0; i < size; ++i) {
+        auto entry = static_cast<uint32_t*>(state->data)[i];
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
             state_ |= MAXIMIZED;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED)
             state_ |= MINIMIZED;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED)
             state_ |= ACTIVE;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN)
             state_ |= FULLSCREEN;
     }
 }
@@ -637,8 +637,20 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
 Taskbar::~Taskbar()
 {
     if (manager_) {
-        zwlr_foreign_toplevel_manager_v1_destroy(manager_);
-        manager_ = nullptr;
+        struct wl_display *display = Client::inst()->wl_display;
+        /*
+         * Send `stop` request and wait for one roundtrip.
+         * This is not quite correct as the protocol encourages us to wait for the .finished event,
+         * but it should work with wlroots foreign toplevel manager implementation.
+         */
+        zwlr_foreign_toplevel_manager_v1_stop(manager_);
+        wl_display_roundtrip(display);
+
+        if (manager_) {
+            spdlog::warn("Foreign toplevel manager destroyed before .finished event");
+            zwlr_foreign_toplevel_manager_v1_destroy(manager_);
+            manager_ = nullptr;
+        }
     }
 }
 
