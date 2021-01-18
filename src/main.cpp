@@ -8,6 +8,7 @@
 
 std::mutex reap_mtx;
 std::list<pid_t> reap;
+volatile bool reload;
 
 void* signalThread(void* args) {
   int err, signum;
@@ -70,10 +71,17 @@ void startSignalThread(void) {
 int main(int argc, char* argv[]) {
   try {
     auto client = waybar::Client::inst();
+
     std::signal(SIGUSR1, [](int /*signal*/) {
       for (auto& bar : waybar::Client::inst()->bars) {
         bar->toggle();
       }
+    });
+
+    std::signal(SIGUSR2, [](int /*signal*/) {
+        spdlog::info("Reloading...");
+        reload = true;
+        waybar::Client::inst()->reset();
     });
 
     for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
@@ -85,7 +93,12 @@ int main(int argc, char* argv[]) {
     }
     startSignalThread();
 
-    auto ret = client->main(argc, argv);
+    auto ret = 0;
+    do {
+      reload = false;
+      ret = client->main(argc, argv);
+    } while (reload);
+
     delete client;
     return ret;
   } catch (const std::exception& e) {

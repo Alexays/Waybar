@@ -1,7 +1,11 @@
 #pragma once
 
 #include <json/json.h>
+#ifdef HAVE_LIBDATE
 #include "modules/clock.hpp"
+#else
+#include "modules/simpleclock.hpp"
+#endif
 #ifdef HAVE_SWAY
 #include "modules/sway/mode.hpp"
 #include "modules/sway/window.hpp"

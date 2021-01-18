@@ -17,6 +17,10 @@ Addressed by *river/tags*
     default: 9 ++
     The number of tags that should be displayed.
 
+*tag-labels*: ++
+    typeof: array ++
+    The label to display for each tag.
+
 # EXAMPLE
 
 ```

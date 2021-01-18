@@ -15,8 +15,19 @@ auto waybar::modules::Cpu::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
-  getState(cpu_usage);
+  auto format = format_;
+  auto state = getState(cpu_usage);
+  if (!state.empty() && config_["format-" + state].isString()) {
+    format = config_["format-" + state].asString();
+  }
+
+  if (format.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+    label_.set_markup(fmt::format(format, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
+  }
+
   // Call parent update
   ALabel::update();
 }

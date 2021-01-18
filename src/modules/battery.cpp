@@ -142,12 +142,14 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
     uint32_t    total_power = 0;   // μW
     uint32_t    total_energy = 0;  // μWh
     uint32_t    total_energy_full = 0;
+    uint32_t    total_energy_full_design = 0;
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
       auto bat = item.first;
       uint32_t    power_now;
       uint32_t    energy_full;
       uint32_t    energy_now;
+      uint32_t    energy_full_design;
       std::string _status;
       std::ifstream(bat / "status") >> _status;
       auto rate_path = fs::exists(bat / "current_now") ? "current_now" : "power_now";
@@ -156,12 +158,15 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       std::ifstream(bat / now_path) >> energy_now;
       auto full_path = fs::exists(bat / "charge_full") ? "charge_full" : "energy_full";
       std::ifstream(bat / full_path) >> energy_full;
+      auto full_design_path = fs::exists(bat / "charge_full_design") ? "charge_full_design" : "energy_full_design";
+      std::ifstream(bat / full_design_path) >> energy_full_design;
       if (_status != "Unknown") {
         status = _status;
       }
       total_power += power_now;
       total_energy += energy_now;
       total_energy_full += energy_full;
+      total_energy_full_design += energy_full_design;
     }
     if (!adapter_.empty() && status == "Discharging") {
       bool online;
@@ -182,6 +187,10 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       }
     }
     float capacity = ((float)total_energy * 100.0f / (float) total_energy_full);
+    // Handle design-capacity
+    if (config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) {
+        capacity = ((float)total_energy * 100.0f / (float) total_energy_full_design);
+    }
     // Handle full-at
     if (config_["full-at"].isUInt()) {
       auto full_at = config_["full-at"].asUInt();
@@ -243,22 +252,37 @@ auto waybar::modules::Battery::update() -> void {
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
-  if (tooltipEnabled()) {
-    std::string tooltip_text;
-    if (time_remaining != 0) {
-      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text = time_to + ": " + formatTimeRemaining(time_remaining);
-    } else {
-      tooltip_text = status;
-    }
-    label_.set_tooltip_text(tooltip_text);
-  }
+  auto status_pretty = status;
   // Transform to lowercase  and replace space with dash
   std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
     return ch == ' ' ? '-' : std::tolower(ch);
   });
   auto format = format_;
   auto state = getState(capacity, true);
+  auto time_remaining_formatted = formatTimeRemaining(time_remaining);
+  if (tooltipEnabled()) {
+    std::string tooltip_text_default;
+    std::string tooltip_format = "{timeTo}";
+    if (time_remaining != 0) {
+      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
+      tooltip_text_default = time_to + ": " + time_remaining_formatted;
+    } else {
+      tooltip_text_default = status_pretty;
+    }
+    if (!state.empty() && config_["tooltip-format-" + status + "-" + state].isString()) {
+      tooltip_format = config_["tooltip-format-" + status + "-" + state].asString();
+    } else if (config_["tooltip-format-" + status].isString()) {
+      tooltip_format = config_["tooltip-format-" + status].asString();
+    } else if (!state.empty() && config_["tooltip-format-" + state].isString()) {
+      tooltip_format = config_["tooltip-format-" + state].asString();
+    } else if (config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    label_.set_tooltip_text(fmt::format(tooltip_format,
+                                        fmt::arg("timeTo", tooltip_text_default),
+                                        fmt::arg("capacity", capacity),
+                                        fmt::arg("time", time_remaining_formatted)));
+  }
   if (!old_status_.empty()) {
     label_.get_style_context()->remove_class(old_status_);
   }
@@ -279,7 +303,7 @@ auto waybar::modules::Battery::update() -> void {
     label_.set_markup(fmt::format(format,
                                   fmt::arg("capacity", capacity),
                                   fmt::arg("icon", getIcon(capacity, icons)),
-                                  fmt::arg("time", formatTimeRemaining(time_remaining))));
+                                  fmt::arg("time", time_remaining_formatted)));
   }
   // Call parent update
   ALabel::update();
