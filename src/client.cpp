@@ -123,14 +123,14 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
     spdlog::debug("Output detection done: {} ({})", output.name, output.identifier);
 
     auto configs = client->getOutputConfigs(output);
-    if (configs.empty()) {
-      output.xdg_output.reset();
-    } else {
+    if (!configs.empty()) {
       wl_display_roundtrip(client->wl_display);
       for (const auto &config : configs) {
         client->bars.emplace_back(std::make_unique<Bar>(&output, config));
       }
     }
+    // unsubscribe
+    output.xdg_output.reset();
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
