@@ -53,11 +53,21 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
   }
 }
 
+std::string Language::getIcon(const std::string& key) {
+  auto format_icons = config_["format-icons"];
+  if (format_icons.isObject() && format_icons[key].isString()) {
+    return format_icons[key].asString();
+  }
+  return "";
+}
+
 auto Language::update() -> void {
   if (lang_.empty()) {
     event_box_.hide();
   } else {
-    label_.set_markup(fmt::format(format_, lang_));
+    label_.set_markup(fmt::format(format_,
+                                  lang_,
+                                  fmt::arg("icon", getIcon(lang_))));
     if (tooltipEnabled()) {
       label_.set_tooltip_text(lang_);
     }
