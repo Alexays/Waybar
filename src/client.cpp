@@ -241,7 +241,24 @@ auto waybar::Client::setupConfig(const std::string &config_file) -> void {
   }
   std::string      str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   util::JsonParser parser;
-  config_ = parser.parse(str);
+  Json::Value tmp_config_ = parser.parse(str);
+  if (tmp_config_["include"].isArray()) {
+    for (const auto& include : tmp_config_["include"]) {
+      spdlog::info("Including resource file: {}", include.asString());
+      setupConfig(getValidPath({include.asString()}));
+    }
+  }
+  mergeConfig(config_, tmp_config_);
+}
+
+auto waybar::Client::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) -> void {
+  for (const auto& key : b_config_.getMemberNames()) {
+    if (a_config_[key].type() == Json::objectValue && b_config_[key].type() == Json::objectValue) {
+      mergeConfig(a_config_[key], b_config_[key]);
+    } else {
+      a_config_[key] = b_config_[key];
+    }
+  }
 }
 
 auto waybar::Client::setupCss(const std::string &css_file) -> void {
