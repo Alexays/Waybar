@@ -96,6 +96,8 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *{capacity}*: Capacity in percentage
 
+*{power}*: Power in watts
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{time}*: Estimate of time until full or empty. Note that this is based on the power draw at the last refresh time, not an average.

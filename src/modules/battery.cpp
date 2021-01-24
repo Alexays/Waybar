@@ -135,7 +135,7 @@ void waybar::modules::Battery::refreshBatteries() {
   }
 }
 
-const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos() {
+const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
@@ -210,10 +210,10 @@ const std::tuple<uint8_t, float, std::string> waybar::modules::Battery::getInfos
       status = "Full";
     }
 
-    return {cap, time_remaining, status};
+    return {cap, time_remaining, status, total_power / 1e6};
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
-    return {0, 0, "Unknown"};
+    return {0, 0, "Unknown", 0};
   }
 }
 
@@ -248,7 +248,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 }
 
 auto waybar::modules::Battery::update() -> void {
-  auto [capacity, time_remaining, status] = getInfos();
+  auto [capacity, time_remaining, status, power] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
@@ -302,6 +302,7 @@ auto waybar::modules::Battery::update() -> void {
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(format,
                                   fmt::arg("capacity", capacity),
+                                  fmt::arg("power", power),
                                   fmt::arg("icon", getIcon(capacity, icons)),
                                   fmt::arg("time", time_remaining_formatted)));
   }
