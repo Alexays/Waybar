@@ -123,17 +123,14 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
     spdlog::debug("Output detection done: {} ({})", output.name, output.identifier);
 
     auto configs = client->getOutputConfigs(output);
-    if (configs.empty()) {
-      output.xdg_output.reset();
-    } else {
+    if (!configs.empty()) {
       wl_display_roundtrip(client->wl_display);
       for (const auto &config : configs) {
         client->bars.emplace_back(std::make_unique<Bar>(&output, config));
-        Glib::RefPtr<Gdk::Screen> screen = client->bars.back()->window.get_screen();
-        client->style_context_->add_provider_for_screen(
-            screen, client->css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
       }
     }
+    // unsubscribe
+    output.xdg_output.reset();
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
@@ -232,6 +229,9 @@ auto waybar::Client::setupCss(const std::string &css_file) -> void {
   if (!css_provider_->load_from_path(css_file)) {
     throw std::runtime_error("Can't open style file");
   }
+  // there's always only one screen
+  style_context_->add_provider_for_screen(
+      Gdk::Screen::get_default(), css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void waybar::Client::bindInterfaces() {
