@@ -28,6 +28,15 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     label_.set_single_line_mode(true);
   }
 
+  if (config_["fixed-length"].isUInt()) {
+    label_.set_width_chars(config_["fixed-length"].asUInt());
+  }
+
+  if (config_["align"].isDouble()) {
+    auto align = config_["align"].asFloat();
+    label_.set_xalign(align);
+  }
+
   if (config_["rotate"].isUInt()) {
     label_.set_angle(config["rotate"].asUInt());
   }
