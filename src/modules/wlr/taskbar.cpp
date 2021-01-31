@@ -26,19 +26,19 @@ const std::string WHITESPACE = " \n\r\t\f\v";
 
 static std::string ltrim(const std::string& s)
 {
-	size_t start = s.find_first_not_of(WHITESPACE);
-	return (start == std::string::npos) ? "" : s.substr(start);
+    size_t start = s.find_first_not_of(WHITESPACE);
+    return (start == std::string::npos) ? "" : s.substr(start);
 }
 
 static std::string rtrim(const std::string& s)
 {
-	size_t end = s.find_last_not_of(WHITESPACE);
-	return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+    size_t end = s.find_last_not_of(WHITESPACE);
+    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
 }
 
 static std::string trim(const std::string& s)
 {
-	return rtrim(ltrim(s));
+    return rtrim(ltrim(s));
 }
 
 
@@ -103,8 +103,8 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
 
 /* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
 static std::string get_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
-        const std::string &app_id) {
-
+        const std::string &app_id)
+{
     if (icon_theme->lookup_icon(app_id, 24))
         return app_id;
 
@@ -122,6 +122,10 @@ static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme
      * send a single app-id, but in any case this works fine */
     while (stream >> app_id)
     {
+        size_t start = 0, end = app_id.size();
+        start = app_id.rfind(".", end);
+        std::string app_name = app_id.substr(start+1, app_id.size());
+
         auto lower_app_id = app_id;
         std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
                 [](char c){ return std::tolower(c); });
@@ -131,9 +135,13 @@ static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme
         if (icon_name.empty())
             icon_name = get_from_icon_theme(icon_theme, lower_app_id);
         if (icon_name.empty())
+            icon_name = get_from_icon_theme(icon_theme, app_name);
+        if (icon_name.empty())
             icon_name = get_from_desktop_app_info(app_id);
         if (icon_name.empty())
             icon_name = get_from_desktop_app_info(lower_app_id);
+        if (icon_name.empty())
+            icon_name = get_from_desktop_app_info(app_name);
 
         if (icon_name.empty())
             continue;
@@ -489,7 +497,7 @@ void Task::update()
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
                 );
-        if (markup) 
+        if (markup)
             text_before_.set_markup(txt);
         else
             text_before_.set_label(txt);
@@ -502,7 +510,7 @@ void Task::update()
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
                 );
-        if (markup) 
+        if (markup)
             text_after_.set_markup(txt);
         else
             text_after_.set_label(txt);
@@ -516,7 +524,7 @@ void Task::update()
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
                 );
-        if (markup) 
+        if (markup)
             button_.set_tooltip_markup(txt);
         else
             button_.set_tooltip_text(txt);
@@ -584,7 +592,7 @@ static const wl_registry_listener registry_listener_impl = {
     .global_remove = handle_global_remove
 };
 
-Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config) 
+Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
     : waybar::AModule(config, "taskbar", id, false, false),
       bar_(bar),
       box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
