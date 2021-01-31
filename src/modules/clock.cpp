@@ -157,13 +157,11 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
     Glib::ustring wd_ustring(date::format(locale_, "%a", wd));
     auto clen = ustring_clen(wd_ustring);
     auto wd_len = wd_ustring.length();
-    fmt::print("{} {}\n", clen, wd_len);
     while (clen > 2) {
       wd_ustring = wd_ustring.substr(0, wd_len-1);
       wd_len--;
       clen = ustring_clen(wd_ustring);
     }
-    fmt::print("{} {}", clen, wd_len);
     const std::string pad(2 - clen, ' ');
     os << pad << wd_ustring;
   } while (++wd != first_dow);
