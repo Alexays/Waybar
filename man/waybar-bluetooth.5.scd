@@ -85,7 +85,7 @@ Addressed by *bluetooth*
 		"enabled": "",
 		"disabled": ""
 	},
-	"tooltip-format": "{status}"
+	"tooltip-format": "{}"
 }
 ```
 
