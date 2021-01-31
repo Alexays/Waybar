@@ -73,6 +73,22 @@ Addressed by *mpd*
 	default: "MPD (disconnected)" ++
 	Tooltip information displayed when the MPD server can't be reached.
 
+*artist-len*: ++
+    typeof: integer ++
+    Maximum length of the Artist tag.
+
+*album-len*: ++
+    typeof: integer ++
+    Maximum length of the Album tag.
+
+*album-artist-len*: ++
+    typeof: integer ++
+    Maximum length of the Album Artist tag.
+
+*title-len*: ++
+    typeof: integer ++
+    Maximum length of the Title tag.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
