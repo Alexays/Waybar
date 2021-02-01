@@ -45,6 +45,14 @@ The *clock* module displays the current date and time.
 	typeof: integer ++
 	The maximum length in character the module should display.
 
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.

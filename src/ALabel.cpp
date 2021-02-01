@@ -20,7 +20,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
   event_box_.add(label_);
   if (config_["max-length"].isUInt()) {
-    label_.set_max_width_chars(config_["max-length"].asUInt());
+    label_.set_max_width_chars(config_["max-length"].asInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
     label_.set_single_line_mode(true);
   } else if (ellipsize && label_.get_max_width_chars() == -1) {
@@ -28,9 +28,28 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     label_.set_single_line_mode(true);
   }
 
-  if (config_["rotate"].isUInt()) {
-    label_.set_angle(config["rotate"].asUInt());
+  if (config_["min-length"].isUInt()) {
+    label_.set_width_chars(config_["min-length"].asUInt());
   }
+
+  uint rotate = 0;
+
+  if (config_["rotate"].isUInt()) {
+    rotate = config["rotate"].asUInt();
+    label_.set_angle(rotate);
+  }
+
+  if (config_["align"].isDouble()) {
+    auto align = config_["align"].asFloat();
+    if (rotate == 90 || rotate == 270) {
+      label_.set_yalign(align);
+    } else {
+      label_.set_xalign(align);
+    }
+
+  }
+
+
 }
 
 auto ALabel::update() -> void {
