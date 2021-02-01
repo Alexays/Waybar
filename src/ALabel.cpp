@@ -32,14 +32,24 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     label_.set_width_chars(config_["min-length"].asUInt());
   }
 
-  if (config_["align"].isDouble()) {
-    auto align = config_["align"].asFloat();
-    label_.set_xalign(align);
-  }
+  uint rotate = 0;
 
   if (config_["rotate"].isUInt()) {
-    label_.set_angle(config["rotate"].asUInt());
+    rotate = config["rotate"].asUInt();
+    label_.set_angle(rotate);
   }
+
+  if (config_["align"].isDouble()) {
+    auto align = config_["align"].asFloat();
+    if (rotate == 90 || rotate == 270) {
+      label_.set_yalign(align);
+    } else {
+      label_.set_xalign(align);
+    }
+
+  }
+
+
 }
 
 auto ALabel::update() -> void {
