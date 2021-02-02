@@ -61,7 +61,7 @@ void waybar::util::Rfkill::waitForEvent() {
       break;
     }
 
-    if (len != RFKILL_EVENT_SIZE_V1) {
+    if (len < RFKILL_EVENT_SIZE_V1) {
       throw std::runtime_error("Wrong size of RFKILL event");
       continue;
     }
