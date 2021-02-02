@@ -95,3 +95,7 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
   free(cp_time);
   return cpuinfo;
 }
+
+std::vector<float> waybar::modules::Cpu::parseCpuFrequencies() {
+  throw std::runtime_error("Cpu frequency is not implemented on BSD.");
+}

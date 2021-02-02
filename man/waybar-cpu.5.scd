@@ -79,6 +79,12 @@ The *cpu* module displays the current cpu utilization.
 
 *{usage}*: Current cpu usage.
 
+*{avg_frequency}*: Current cpu average frequency (based on all cores) in GHz.
+
+*{max_frequency}*: Current cpu max frequency (based on the core with the highest frequency) in GHz.
+
+*{min_frequency}*: Current cpu min frequency (based on the core with the lowest frequency) in GHz.
+
 # EXAMPLE
 
 ```
