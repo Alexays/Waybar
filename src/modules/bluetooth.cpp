@@ -1,9 +1,9 @@
 #include "modules/bluetooth.hpp"
 
+#include <fmt/format.h>
+
 waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
-    : ALabel(config, "bluetooth", id, "{icon}", 10),
-      status_("disabled"),
-      rfkill_{RFKILL_TYPE_BLUETOOTH} {
+    : ALabel(config, "bluetooth", id, "{icon}", 10), rfkill_{RFKILL_TYPE_BLUETOOTH} {
   rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Bluetooth::update)));
   thread_ = [this] {
     auto now = std::chrono::system_clock::now();
@@ -15,25 +15,18 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
 }
 
 auto waybar::modules::Bluetooth::update() -> void {
-  if (rfkill_.getState()) {
-    status_ = "disabled";
-  } else {
-    status_ = "enabled";
-  }
+  std::string status = rfkill_.getState() ? "disabled" : "enabled";
 
   label_.set_markup(
-      fmt::format(
-        format_,
-        fmt::arg("status", status_),
-        fmt::arg("icon", getIcon(0, status_))));
+      fmt::format(format_, fmt::arg("status", status), fmt::arg("icon", getIcon(0, status))));
 
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
       auto tooltip_format = config_["tooltip-format"].asString();
-      auto tooltip_text = fmt::format(tooltip_format, status_);
+      auto tooltip_text = fmt::format(tooltip_format, status);
       label_.set_tooltip_text(tooltip_text);
     } else {
-      label_.set_tooltip_text(status_);
+      label_.set_tooltip_text(status);
     }
   }
 }

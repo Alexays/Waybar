@@ -1,8 +1,5 @@
 #pragma once
 
-#include <fmt/chrono.h>
-#include <fmt/format.h>
-
 #include "ALabel.hpp"
 #include "util/rfkill.hpp"
 #include "util/sleeper_thread.hpp"
@@ -16,7 +13,6 @@ class Bluetooth : public ALabel {
   auto update() -> void;
 
  private:
-  std::string         status_;
   util::SleeperThread thread_;
   util::Rfkill        rfkill_;
 };
