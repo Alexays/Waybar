@@ -213,11 +213,11 @@ void waybar::modules::Network::worker() {
   };
 #ifdef WANT_RFKILL
   rfkill_.on_update.connect([this](auto &) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (ifid_ > 0) {
-      getInfo();
-      dp.emit();
-    }
+    /* If we are here, it's likely that the network thread already holds the mutex and will be
+     * holding it for a next few seconds.
+     * Let's delegate the update to the timer thread instead of blocking the main thread.
+     */
+    thread_timer_.wake_up();
   });
 #else
   spdlog::warn("Waybar has been built without rfkill support.");
