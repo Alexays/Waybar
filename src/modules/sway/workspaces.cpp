@@ -257,11 +257,19 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
           ipc_.sendCmd(
               IPC_COMMAND,
               fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
+                          "--no-auto-back-and-forth",
                           node["name"].asString(),
                           node["target_output"].asString(),
+                          "--no-auto-back-and-forth",
                           node["name"].asString()));
         } else {
-          ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, node["name"].asString()));
+          ipc_.sendCmd(
+              IPC_COMMAND,
+              fmt::format("workspace {} \"{}\"",
+                          config_["disable-auto-back-and-forth"].asBool()
+                            ? "--no-auto-back-and-forth"
+                            : "",
+                          node["name"].asString()));
         }
       } catch (const std::exception &e) {
         spdlog::error("Workspaces: {}", e.what());
@@ -322,7 +330,9 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
   }
   try {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, name));
+    ipc_.sendCmd(
+        IPC_COMMAND,
+        fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }
