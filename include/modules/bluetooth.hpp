@@ -2,7 +2,6 @@
 
 #include "ALabel.hpp"
 #include "util/rfkill.hpp"
-#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
@@ -13,8 +12,7 @@ class Bluetooth : public ALabel {
   auto update() -> void;
 
  private:
-  util::SleeperThread thread_;
-  util::Rfkill        rfkill_;
+  util::Rfkill rfkill_;
 };
 
 }  // namespace waybar::modules

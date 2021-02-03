@@ -12,11 +12,6 @@ The *bluetooth* module displays information about the status of the device's blu
 
 Addressed by *bluetooth*
 
-*interval*: ++
-	typeof: integer ++
-	default: 60 ++
-	The interval in which the bluetooth state gets updated.
-
 *format*: ++
 	typeof: string  ++
 	default: *{icon}* ++
@@ -88,7 +83,6 @@ Addressed by *bluetooth*
 "bluetooth": {
 	"format": "{icon}",
 	"format-alt": "bluetooth: {status}",
-	"interval": 30,
 	"format-icons": {
 		"enabled": "",
 		"disabled": ""
