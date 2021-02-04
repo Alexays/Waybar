@@ -81,8 +81,6 @@ static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int 
     try {
         auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
         return pb;
-    } catch(Glib::Error&) {
-        return {};
     } catch(...) {
         return {};
     }
