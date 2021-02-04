@@ -76,7 +76,7 @@ static std::vector<std::string> search_prefix()
     return prefixes;
 }
 
-Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int size)
+static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int size)
 {
     try {
         auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
