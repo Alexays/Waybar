@@ -1,5 +1,7 @@
 #include "modules/wlr/taskbar.hpp"
 
+#include "glibmm/error.h"
+#include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
 
@@ -72,6 +74,16 @@ static std::vector<std::string> search_prefix()
         spdlog::debug("Using 'desktop' search path prefix: {}", p);
 
     return prefixes;
+}
+
+static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int size)
+{
+    try {
+        auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
+        return pb;
+    } catch(...) {
+        return {};
+    }
 }
 
 /* Method 1 - get the correct icon name from the desktop file */
@@ -172,7 +184,17 @@ static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme
         if (icon_name.empty())
             icon_name = "unknown";
 
-        auto pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+        Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+
+        try {
+            pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+        } catch(...) {
+            if (Glib::file_test(icon_name, Glib::FILE_TEST_EXISTS))
+                pixbuf = load_icon_from_file(icon_name, size);
+            else
+                pixbuf = {};
+        }
+
         if (pixbuf) {
             image.set(pixbuf);
             found = true;
