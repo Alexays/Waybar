@@ -137,8 +137,13 @@ static std::string get_from_desktop_app_info_search(const std::string &app_id)
         for (size_t i=0; desktop_list[0][i]; i++) {
             if(desktop_file == "") {
                 desktop_file = desktop_list[0][i];
+            } else {
+                auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
+                auto startup_class = tmp_info->get_startup_wm_class();
+
+                if (startup_class == app_id)
+                    desktop_file = desktop_list[0][i];
             }
-            break;
         }
         g_strfreev(desktop_list[0]);
     }
