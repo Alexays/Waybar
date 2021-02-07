@@ -70,6 +70,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Backlight(id, config_[name]);
     }
 #endif
+#ifdef HAVE_LIBEVDEV
+    if (ref == "keyboard_state") {
+      return new waybar::modules::KeyboardState(id, config_[name]);
+    }
+#endif
 #ifdef HAVE_LIBPULSE
     if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(id, config_[name]);
