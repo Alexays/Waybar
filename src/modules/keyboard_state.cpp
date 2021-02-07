@@ -99,19 +99,28 @@ auto waybar::modules::KeyboardState::update() -> void {
   int capsl = libevdev_get_event_value(dev_, EV_LED, LED_CAPSL);
   int scrolll = libevdev_get_event_value(dev_, EV_LED, LED_SCROLLL);
 
-  std::string text;
-  text = fmt::format(numlock_format_,
-                     fmt::arg("icon", numl ? icon_locked_ : icon_unlocked_),
-                     fmt::arg("name", "Num"));
-  numlock_label_.set_markup(text);
-  text = fmt::format(capslock_format_,
-                     fmt::arg("icon", capsl ? icon_locked_ : icon_unlocked_),
-                     fmt::arg("name", "Caps"));
-  capslock_label_.set_markup(text);
-  text = fmt::format(scrolllock_format_,
-                     fmt::arg("icon", scrolll ? icon_locked_ : icon_unlocked_),
-                     fmt::arg("name", "Scroll"));
-  scrolllock_label_.set_markup(text);
+  struct {
+    bool state;
+    Gtk::Label& label;
+    const std::string& format;
+    const char* name;
+  } label_states[] = {
+    {(bool) numl, numlock_label_, numlock_format_, "Num"},
+    {(bool) capsl, capslock_label_, capslock_format_, "Caps"},
+    {(bool) scrolll, scrolllock_label_, scrolllock_format_, "Scroll"},
+  };
+  for (auto& label_state : label_states) {
+    std::string text;
+    text = fmt::format(label_state.format,
+                       fmt::arg("icon", label_state.state ? icon_locked_ : icon_unlocked_),
+                       fmt::arg("name", label_state.name));
+    label_state.label.set_markup(text);
+    if (label_state.state) {
+      label_state.label.get_style_context()->add_class("locked");
+    } else {
+      label_state.label.get_style_context()->remove_class("locked");
+    }
+  }
 
   AModule::update();
 }
