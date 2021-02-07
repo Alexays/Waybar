@@ -7,8 +7,44 @@ extern "C" {
 #include <fcntl.h>
 }
 
-waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Json::Value& config)
-    : ALabel(config, "keyboard_state", id, "{temperatureC}", 1) {
+waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::Value& config)
+    : AModule(config, "keyboard_state", id, false, !config["disable-scroll"].asBool()),
+      bar_(bar),
+      box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
+      numlock_label_(""),
+      capslock_label_(""),
+      numlock_format_(config_["format"].isString() ? config_["format"].asString()
+                      : config_["format"]["numlock"].isString() ? config_["format"]["numlock"].asString()
+                      : "{name} {icon}"),
+      capslock_format_(config_["format"].isString() ? config_["format"].asString()
+                       : config_["format"]["capslock"].isString() ? config_["format"]["capslock"].asString()
+                       : "{name} {icon}"),
+      scrolllock_format_(config_["format"].isString() ? config_["format"].asString()
+                         : config_["format"]["scrolllock"].isString() ? config_["format"]["scrolllock"].asString()
+                         : "{name} {icon}"),
+      interval_(std::chrono::seconds(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1)),
+      icon_locked_(config_["format-icons"]["locked"].isString()
+                   ? config_["format-icons"]["locked"].asString()
+                   : "locked"),
+      icon_unlocked_(config_["format-icons"]["unlocked"].isString()
+                     ? config_["format-icons"]["unlocked"].asString()
+                     : "unlocked")
+ {
+  box_.set_name("keyboard_state");
+  if (config_["numlock"].asBool()) {
+    box_.pack_end(numlock_label_, false, false, 0);
+  }
+  if (config_["capslock"].asBool()) {
+    box_.pack_end(capslock_label_, false, false, 0);
+  }
+  if (config_["scrolllock"].asBool()) {
+    box_.pack_end(scrolllock_label_, false, false, 0);
+  }
+  if (!id.empty()) {
+    box_.get_style_context()->add_class(id);
+  }
+  event_box_.add(box_);
+
   if (config_["device-path"].isString()) {
     dev_path_ = config_["device-path"].asString();
   } else {
@@ -26,8 +62,10 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Json:
   if (!libevdev_has_event_type(dev_, EV_LED)) {
     throw std::runtime_error("Device doesn't support LED events");
   }
-  if (!libevdev_has_event_code(dev_, EV_LED, LED_NUML) || !libevdev_has_event_code(dev_, EV_LED, LED_CAPSL)) {
-    throw std::runtime_error("Device doesn't support num lock or caps lock events");
+  if (!libevdev_has_event_code(dev_, EV_LED, LED_NUML)
+      || !libevdev_has_event_code(dev_, EV_LED, LED_CAPSL)
+      || !libevdev_has_event_code(dev_, EV_LED, LED_SCROLLL)) {
+    throw std::runtime_error("Device doesn't support num lock, caps lock, or scroll lock events");
   }
 
   thread_ = [this] {
@@ -58,16 +96,22 @@ auto waybar::modules::KeyboardState::update() -> void {
   }
 
   int numl = libevdev_get_event_value(dev_, EV_LED, LED_NUML);
-  //int capsl = libevdev_get_event_value(dev_, EV_LED, LED_CAPSL);
+  int capsl = libevdev_get_event_value(dev_, EV_LED, LED_CAPSL);
+  int scrolll = libevdev_get_event_value(dev_, EV_LED, LED_SCROLLL);
 
   std::string text;
-  if (numl) {
-    text = fmt::format(format_, "num lock enabled");
-    label_.set_markup(text);
-  } else {
-    text = fmt::format(format_, "num lock disabled");
-    label_.set_markup(text);
-  }
+  text = fmt::format(numlock_format_,
+                     fmt::arg("icon", numl ? icon_locked_ : icon_unlocked_),
+                     fmt::arg("name", "Num"));
+  numlock_label_.set_markup(text);
+  text = fmt::format(capslock_format_,
+                     fmt::arg("icon", capsl ? icon_locked_ : icon_unlocked_),
+                     fmt::arg("name", "Caps"));
+  capslock_label_.set_markup(text);
+  text = fmt::format(scrolllock_format_,
+                     fmt::arg("icon", scrolll ? icon_locked_ : icon_unlocked_),
+                     fmt::arg("name", "Scroll"));
+  scrolllock_label_.set_markup(text);
 
-  ALabel::update();
+  AModule::update();
 }

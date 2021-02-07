@@ -72,7 +72,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #endif
 #ifdef HAVE_LIBEVDEV
     if (ref == "keyboard_state") {
-      return new waybar::modules::KeyboardState(id, config_[name]);
+      return new waybar::modules::KeyboardState(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_LIBPULSE
