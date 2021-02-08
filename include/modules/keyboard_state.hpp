@@ -24,6 +24,8 @@ class KeyboardState : public AModule {
   auto update() -> void;
 
  private:
+  static auto openDevice(const std::string&) -> std::pair<int, libevdev*>;
+
   const Bar&  bar_;
   Gtk::Box    box_;
   Gtk::Label  numlock_label_;
@@ -37,7 +39,6 @@ class KeyboardState : public AModule {
   std::string icon_locked_;
   std::string icon_unlocked_;
 
-  std::string dev_path_;
   int         fd_;
   libevdev*   dev_;
 

@@ -25,13 +25,12 @@
     // },
     "keyboard_state": {
         "numlock": true,
+        "capslock": true,
         "format": "{name} {icon}",
         "format-icons": {
             "locked": "",
             "unlocked": ""
-        },
-        "capslock": true,
-        "device-path": "/dev/input/by-path/platform-i8042-serio-0-event-kbd"
+        }
     },
     "sway/mode": {
         "format": "<span style=\"italic\">{}</span>"

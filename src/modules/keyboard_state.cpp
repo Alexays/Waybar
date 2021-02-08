@@ -1,5 +1,6 @@
 #include "modules/keyboard_state.hpp"
 #include <filesystem>
+#include <spdlog/spdlog.h>
 
 extern "C" {
 #include <sys/types.h>
@@ -28,8 +29,9 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
                    : "locked"),
       icon_unlocked_(config_["format-icons"]["unlocked"].isString()
                      ? config_["format-icons"]["unlocked"].asString()
-                     : "unlocked")
- {
+                     : "unlocked"),
+      fd_(0),
+      dev_(nullptr) {
   box_.set_name("keyboard_state");
   if (config_["numlock"].asBool()) {
     box_.pack_end(numlock_label_, false, false, 0);
@@ -46,26 +48,28 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   event_box_.add(box_);
 
   if (config_["device-path"].isString()) {
-    dev_path_ = config_["device-path"].asString();
+    std::string dev_path = config_["device-path"].asString();
+    std::tie(fd_, dev_) = openDevice(dev_path);
   } else {
-    dev_path_ = "";
-  }
-
-  fd_ = open(dev_path_.c_str(), O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-  if (fd_ < 0) {
-    throw std::runtime_error("Can't open " + dev_path_);
-  }
-  int err = libevdev_new_from_fd(fd_, &dev_);
-  if (err < 0) {
-    throw std::runtime_error("Can't create libevdev device");
-  }
-  if (!libevdev_has_event_type(dev_, EV_LED)) {
-    throw std::runtime_error("Device doesn't support LED events");
-  }
-  if (!libevdev_has_event_code(dev_, EV_LED, LED_NUML)
-      || !libevdev_has_event_code(dev_, EV_LED, LED_CAPSL)
-      || !libevdev_has_event_code(dev_, EV_LED, LED_SCROLLL)) {
-    throw std::runtime_error("Device doesn't support num lock, caps lock, or scroll lock events");
+    DIR* dev_dir = opendir("/dev/input");
+    if (dev_dir == nullptr) {
+      throw std::runtime_error("Failed to open /dev/input");
+    }
+    dirent *ep;
+    while ((ep = readdir(dev_dir))) {
+      if (ep->d_type != DT_CHR) continue;
+      std::string dev_path = std::string("/dev/input/") + ep->d_name;
+      try {
+        std::tie(fd_, dev_) = openDevice(dev_path);
+        spdlog::info("Found device {} at '{}'", libevdev_get_name(dev_),  dev_path);
+        break;
+      } catch (const std::runtime_error& e) {
+        continue;
+      }
+    }
+    if (dev_ == nullptr) {
+      throw std::runtime_error("Failed to find keyboard device");
+    }
   }
 
   thread_ = [this] {
@@ -80,6 +84,29 @@ waybar::modules::KeyboardState::~KeyboardState() {
   if (err < 0) {
     // Not much we can do, so ignore it.
   }
+}
+
+auto waybar::modules::KeyboardState::openDevice(const std::string& path) -> std::pair<int, libevdev*> {
+    int fd = open(path.c_str(), O_NONBLOCK | O_CLOEXEC | O_RDONLY);
+    if (fd < 0) {
+      throw std::runtime_error("Can't open " + path);
+    }
+
+    libevdev* dev;
+    int err = libevdev_new_from_fd(fd, &dev);
+    if (err < 0) {
+      throw std::runtime_error("Can't create libevdev device");
+    }
+    if (!libevdev_has_event_type(dev, EV_LED)) {
+      throw std::runtime_error("Device doesn't support LED events");
+    }
+    if (!libevdev_has_event_code(dev, EV_LED, LED_NUML)
+        || !libevdev_has_event_code(dev, EV_LED, LED_CAPSL)
+        || !libevdev_has_event_code(dev, EV_LED, LED_SCROLLL)) {
+      throw std::runtime_error("Device doesn't support num lock, caps lock, or scroll lock events");
+    }
+
+    return std::make_pair(fd, dev);
 }
 
 auto waybar::modules::KeyboardState::update() -> void {
