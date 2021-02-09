@@ -124,7 +124,6 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
 
     auto configs = client->getOutputConfigs(output);
     if (!configs.empty()) {
-      wl_display_roundtrip(client->wl_display);
       for (const auto &config : configs) {
         client->bars.emplace_back(std::make_unique<Bar>(&output, config));
       }
