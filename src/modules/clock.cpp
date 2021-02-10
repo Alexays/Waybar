@@ -5,6 +5,7 @@
 
 #include <sstream>
 #include <type_traits>
+#include "util/ustring_clen.hpp"
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>
 #include <locale.h>
@@ -154,12 +155,14 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
   do {
     if (wd != first_dow) os << ' ';
     Glib::ustring wd_ustring(date::format(locale_, "%a", wd));
-    auto          wd_len = wd_ustring.length();
-    if (wd_len > 2) {
-      wd_ustring = wd_ustring.substr(0, 2);
-      wd_len = 2;
+    auto clen = ustring_clen(wd_ustring);
+    auto wd_len = wd_ustring.length();
+    while (clen > 2) {
+      wd_ustring = wd_ustring.substr(0, wd_len-1);
+      wd_len--;
+      clen = ustring_clen(wd_ustring);
     }
-    const std::string pad(2 - wd_len, ' ');
+    const std::string pad(2 - clen, ' ');
     os << pad << wd_ustring;
   } while (++wd != first_dow);
   os << "\n";

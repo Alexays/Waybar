@@ -1,5 +1,7 @@
 #include "modules/wlr/taskbar.hpp"
 
+#include "glibmm/error.h"
+#include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
 
@@ -15,6 +17,7 @@
 #include <gtkmm/icontheme.h>
 
 #include <giomm/desktopappinfo.h>
+#include <gio/gdesktopappinfo.h>
 
 #include <spdlog/spdlog.h>
 
@@ -64,10 +67,23 @@ static std::vector<std::string> search_prefix()
         } while(end != std::string::npos);
     }
 
+    std::string home_dir = std::getenv("HOME");
+    prefixes.push_back(home_dir + "/.local/share/");
+
     for (auto& p : prefixes)
         spdlog::debug("Using 'desktop' search path prefix: {}", p);
 
     return prefixes;
+}
+
+static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int size)
+{
+    try {
+        auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
+        return pb;
+    } catch(...) {
+        return {};
+    }
 }
 
 /* Method 1 - get the correct icon name from the desktop file */
@@ -111,6 +127,33 @@ static std::string get_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_
     return "";
 }
 
+/* Method 3 - as last resort perform a search for most appropriate desktop info file */
+static std::string get_from_desktop_app_info_search(const std::string &app_id)
+{
+    std::string desktop_file = "";
+
+    gchar*** desktop_list = g_desktop_app_info_search(app_id.c_str());
+    if (desktop_list != nullptr && desktop_list[0] != nullptr) {
+        for (size_t i=0; desktop_list[0][i]; i++) {
+            if (desktop_file == "") {
+                desktop_file = desktop_list[0][i];
+            } else {
+                auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
+                auto startup_class = tmp_info->get_startup_wm_class();
+
+                if (startup_class == app_id) {
+                    desktop_file = desktop_list[0][i];
+                    break;
+                }
+            }
+        }
+        g_strfreev(desktop_list[0]);
+    }
+    g_free(desktop_list);
+
+    return get_from_desktop_app_info(desktop_file);
+}
+
 static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
         const std::string &app_id_list, int size)
 {
@@ -142,11 +185,23 @@ static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme
             icon_name = get_from_desktop_app_info(lower_app_id);
         if (icon_name.empty())
             icon_name = get_from_desktop_app_info(app_name);
+        if (icon_name.empty())
+            icon_name = get_from_desktop_app_info_search(app_id);
 
         if (icon_name.empty())
-            continue;
+            icon_name = "unknown";
 
-        auto pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+        Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+
+        try {
+            pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+        } catch(...) {
+            if (Glib::file_test(icon_name, Glib::FILE_TEST_EXISTS))
+                pixbuf = load_icon_from_file(icon_name, size);
+            else
+                pixbuf = {};
+        }
+
         if (pixbuf) {
             image.set(pixbuf);
             found = true;
