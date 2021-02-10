@@ -56,14 +56,15 @@ bool waybar::util::Rfkill::on_event(Glib::IOCondition cond) {
 
     len = read(fd_, &event, sizeof(event));
     if (len < 0) {
+      if (errno == EAGAIN) {
+        return true;
+      }
       spdlog::error("Reading of RFKILL events failed: {}", errno);
       return false;
     }
 
     if (len < RFKILL_EVENT_SIZE_V1) {
-      if (errno != EAGAIN) {
-        spdlog::error("Wrong size of RFKILL event: {}", len);
-      }
+      spdlog::error("Wrong size of RFKILL event: {} < {}", len, RFKILL_EVENT_SIZE_V1);
       return true;
     }
 
