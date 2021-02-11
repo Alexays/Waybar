@@ -75,8 +75,6 @@ class Network : public ALabel {
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;
 #ifdef WANT_RFKILL
-  util::SleeperThread thread_rfkill_;
-
   util::Rfkill rfkill_;
 #endif
 };
