@@ -5,6 +5,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#ifdef __linux__
+#include <sys/prctl.h>
+#endif
+#ifdef __FreeBSD__
+#include <sys/procctl.h>
+#endif
+
 #include <array>
 
 extern std::mutex reap_mtx;
@@ -77,6 +84,18 @@ inline FILE* open(const std::string& cmd, int& pid) {
     // Reset sigmask
     err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
     if (err != 0) spdlog::error("pthread_sigmask in open failed: {}", strerror(err));
+    // Kill child if Waybar exits
+    int deathsig = SIGTERM;
+#ifdef __linux__
+    if (prctl(PR_SET_PDEATHSIG, deathsig) != 0) {
+      spdlog::error("prctl(PR_SET_PDEATHSIG) in open failed: {}", strerror(errno));
+    }
+#endif
+#ifdef __FreeBSD__
+    if (procctl(P_PID, 0, PROC_PDEATHSIG_CTL, reinterpret_cast<void*>(&deathsig)) == -1) {
+      spdlog::error("procctl(PROC_PDEATHSIG_CTL) in open failed: {}", strerror(errno));
+    }
+#endif
     ::close(fd[0]);
     dup2(fd[1], 1);
     setpgid(child_pid, child_pid);
