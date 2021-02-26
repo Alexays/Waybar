@@ -143,26 +143,18 @@ void waybar::modules::MPD::setLabel() {
   std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
   bool        singleActivated = mpd_status_get_single(status_.get());
   std::string singleIcon = getOptionIcon("single", singleActivated);
-
-  auto artistLen = config_["artist-len"].isInt() ?
-                        config_["artist-len"].asInt() : artist.size();
-
-  auto albumArtistLen = config_["album-artist-len"].isInt() ?
-                             config_["album-artist-len"].asInt() : album_artist.size();
-
-  auto albumLen = config_["album-len"].isInt() ?
-                        config_["album-len"].asInt() : album.size();
-
-  auto titleLen = config_["title-len"].isInt() ?
-                        config_["title-len"].asInt() : title.size();
+  if (config_["artist-len"].isInt()) artist = artist.substr(0, config_["artist-len"].asInt());
+  if (config_["album-artist-len"].isInt()) album_artist = album_artist.substr(0, config_["album-artist-len"].asInt());
+  if (config_["album-len"].isInt()) album = album.substr(0, config_["album-len"].asInt());
+  if (config_["title-len"].isInt()) title = title.substr(0,config_["title-len"].asInt());
 
   try {
     label_.set_markup(
         fmt::format(format,
-                    fmt::arg("artist", Glib::Markup::escape_text(artist.substr(0, artistLen)).raw()),
-                    fmt::arg("albumArtist", Glib::Markup::escape_text(album_artist.substr(0, albumArtistLen)).raw()),
-                    fmt::arg("album", Glib::Markup::escape_text(album.substr(0, albumLen)).raw()),
-                    fmt::arg("title", Glib::Markup::escape_text(title.substr(0, titleLen)).raw()),
+                    fmt::arg("artist", Glib::Markup::escape_text(artist).raw()),
+                    fmt::arg("albumArtist", Glib::Markup::escape_text(album_artist).raw()),
+                    fmt::arg("album", Glib::Markup::escape_text(album).raw()),
+                    fmt::arg("title", Glib::Markup::escape_text(title).raw()),
                     fmt::arg("date", Glib::Markup::escape_text(date).raw()),
                     fmt::arg("elapsedTime", elapsedTime),
                     fmt::arg("totalTime", totalTime),
@@ -183,10 +175,10 @@ void waybar::modules::MPD::setLabel() {
                                                           : "MPD (connected)";
     try {
       auto tooltip_text = fmt::format(tooltip_format,
-                                      fmt::arg("artist", artist.substr(0, artistLen).raw()),
-                                      fmt::arg("albumArtist", album_artist.substr(0, albumArtistLen).raw()),
-                                      fmt::arg("album", album.substr(0, albumLen).raw()),
-                                      fmt::arg("title", title.substr(0, titleLen).raw()),
+                                      fmt::arg("artist", artist.raw()),
+                                      fmt::arg("albumArtist", album_artist.raw()),
+                                      fmt::arg("album", album.raw()),
+                                      fmt::arg("title", title.raw()),
                                       fmt::arg("date", date),
                                       fmt::arg("elapsedTime", elapsedTime),
                                       fmt::arg("totalTime", totalTime),
