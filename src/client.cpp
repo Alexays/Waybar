@@ -179,6 +179,16 @@ void waybar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
 
 void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
   spdlog::debug("Output removed: {} {}", monitor->get_manufacturer(), monitor->get_model());
+  /* This event can be triggered from wl_display_roundtrip called by GTK or our code.
+   * Defer destruction of bars for the output to the next iteration of the event loop to avoid
+   * deleting objects referenced by currently executed code.
+   */
+  Glib::signal_idle().connect_once(
+      sigc::bind(sigc::mem_fun(*this, &Client::handleDeferredMonitorRemoval), monitor),
+      Glib::PRIORITY_HIGH_IDLE);
+}
+
+void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor) {
   for (auto it = bars.begin(); it != bars.end();) {
     if ((*it)->output->monitor == monitor) {
       auto output_name = (*it)->output->name;

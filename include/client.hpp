@@ -51,6 +51,7 @@ class Client {
   static void handleOutputDescription(void *, struct zxdg_output_v1 *, const char *);
   void        handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor);
   void        handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
+  void        handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor);
 
   Json::Value                     config_;
   Glib::RefPtr<Gtk::StyleContext> style_context_;
