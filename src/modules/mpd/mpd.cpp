@@ -2,7 +2,7 @@
 
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
-
+#include <glibmm/ustring.h>
 #include "modules/mpd/state.hpp"
 #if defined(MPD_NOINLINE)
 namespace waybar::modules {
@@ -98,8 +98,8 @@ void waybar::modules::MPD::setLabel() {
   }
 
   auto format = format_;
-
-  std::string          artist, album_artist, album, title, date;
+  Glib::ustring        artist, album_artist, album, title;
+  std::string          date;
   int                  song_pos = 0, queue_length = 0;
   std::chrono::seconds elapsedTime, totalTime;
 
@@ -143,6 +143,10 @@ void waybar::modules::MPD::setLabel() {
   std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
   bool        singleActivated = mpd_status_get_single(status_.get());
   std::string singleIcon = getOptionIcon("single", singleActivated);
+  if (config_["artist-len"].isInt()) artist = artist.substr(0, config_["artist-len"].asInt());
+  if (config_["album-artist-len"].isInt()) album_artist = album_artist.substr(0, config_["album-artist-len"].asInt());
+  if (config_["album-len"].isInt()) album = album.substr(0, config_["album-len"].asInt());
+  if (config_["title-len"].isInt()) title = title.substr(0,config_["title-len"].asInt());
 
   try {
     label_.set_markup(
@@ -171,10 +175,10 @@ void waybar::modules::MPD::setLabel() {
                                                           : "MPD (connected)";
     try {
       auto tooltip_text = fmt::format(tooltip_format,
-                                      fmt::arg("artist", artist),
-                                      fmt::arg("albumArtist", album_artist),
-                                      fmt::arg("album", album),
-                                      fmt::arg("title", title),
+                                      fmt::arg("artist", artist.raw()),
+                                      fmt::arg("albumArtist", album_artist.raw()),
+                                      fmt::arg("album", album.raw()),
+                                      fmt::arg("title", title.raw()),
                                       fmt::arg("date", date),
                                       fmt::arg("elapsedTime", elapsedTime),
                                       fmt::arg("totalTime", totalTime),
