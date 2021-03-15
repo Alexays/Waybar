@@ -32,10 +32,10 @@ auto waybar::modules::Cpu::update() -> void {
   ALabel::update();
 }
 
-uint16_t waybar::modules::Cpu::getCpuLoad() {
+double waybar::modules::Cpu::getCpuLoad() {
   double load[1];
   if (getloadavg(load, 1) != -1) {
-    return load[0] * 100 / sysconf(_SC_NPROCESSORS_ONLN);
+    return load[0];
   }
   throw std::runtime_error("Can't get Cpu load");
 }
