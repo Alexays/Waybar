@@ -1,5 +1,6 @@
 #include "modules/sway/window.hpp"
 #include <spdlog/spdlog.h>
+#include <regex>
 
 namespace waybar::modules::sway {
 
@@ -56,7 +57,7 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("title", window_),
+  label_.set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
                                 fmt::arg("app_id", app_id_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
@@ -129,6 +130,25 @@ void Window::getTree() {
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
   }
+}
+
+std::string Window::rewriteTitle(const std::string& title)
+{
+  const auto& rules = config_["rewrite"];
+  if (!rules.isObject()) {
+    return title;
+  }
+
+  for (auto it = rules.begin(); it != rules.end(); ++it) {
+    if (it.key().isString() && it->isString()) {
+      const std::regex rule{it.key().asString()};
+      if (std::regex_match(title, rule)) {
+        return std::regex_replace(title, rule, it->asString());
+      }
+    }
+  }
+
+  return title;
 }
 
 }  // namespace waybar::modules::sway
