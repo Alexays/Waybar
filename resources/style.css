@@ -69,6 +69,7 @@ window#waybar.chromium {
 #battery,
 #cpu,
 #memory,
+#disk,
 #temperature,
 #backlight,
 #network,
@@ -140,6 +141,10 @@ label:focus {
 
 #memory {
     background-color: #9b59b6;
+}
+
+#disk {
+    background-color: #964B00;
 }
 
 #backlight {
