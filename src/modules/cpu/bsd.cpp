@@ -2,8 +2,10 @@
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#include <spdlog/spdlog.h>
 #include <cstdlib>            // malloc
 #include <unistd.h>           // sysconf
+#include <cmath>              // NAN
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #  include <sys/sched.h>
@@ -94,4 +96,13 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
   }
   free(cp_time);
   return cpuinfo;
+}
+
+std::vector<float> waybar::modules::Cpu::parseCpuFrequencies() {
+  static std::vector<float> frequencies;
+  if (frequencies.empty()) {
+    spdlog::warn("cpu/bsd: parseCpuFrequencies is not implemented, expect garbage in {*_frequency}");
+    frequencies.push_back(NAN);
+  }
+  return frequencies;
 }

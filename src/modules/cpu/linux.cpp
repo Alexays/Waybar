@@ -27,3 +27,24 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
   }
   return cpuinfo;
 }
+
+std::vector<float> waybar::modules::Cpu::parseCpuFrequencies() {
+  const std::string file_path_ = "/proc/cpuinfo";
+  std::ifstream info(file_path_);
+  if (!info.is_open()) {
+    throw std::runtime_error("Can't open " + file_path_);
+  }
+  std::vector<float> frequencies;
+  std::string line;
+  while (getline(info, line)) {
+    if (line.substr(0, 7).compare("cpu MHz") != 0) {
+      continue;
+    }
+
+    std::string frequency_str = line.substr(line.find(":") + 2);
+    float frequency = std::strtol(frequency_str.c_str(), nullptr, 10);
+    frequencies.push_back(frequency);
+  }
+  info.close();
+  return frequencies;
+}
