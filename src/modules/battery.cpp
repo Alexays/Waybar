@@ -135,6 +135,16 @@ void waybar::modules::Battery::refreshBatteries() {
   }
 }
 
+// Unknown > Full > Not charging > Discharging > Charging
+static bool status_gt(const std::string& a, const std::string& b) {
+  if (a == b) return false;
+  else if (a == "Unknown") return true;
+  else if (a == "Full" && b != "Unknown") return true;
+  else if (a == "Not charging" && b != "Unknown" && b != "Full") return true;
+  else if (a == "Discharging" && b != "Unknown" && b != "Full" && b != "Not charging") return true;
+  return false;
+}
+
 const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
@@ -160,7 +170,9 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       std::ifstream(bat / full_path) >> energy_full;
       auto full_design_path = fs::exists(bat / "charge_full_design") ? "charge_full_design" : "energy_full_design";
       std::ifstream(bat / full_design_path) >> energy_full_design;
-      if (_status != "Unknown") {
+
+      // Show the "smallest" status among all batteries
+      if (status_gt(status, _status)) {
         status = _status;
       }
       total_power += power_now;
