@@ -317,6 +317,7 @@ if scdoc.found()
         'waybar-custom.5.scd',
         'waybar-disk.5.scd',
         'waybar-idle-inhibitor.5.scd',
+        'waybar-keyboard-state.5.scd',
         'waybar-memory.5.scd',
         'waybar-mpd.5.scd',
         'waybar-network.5.scd',
