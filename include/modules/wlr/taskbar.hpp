@@ -139,9 +139,6 @@ class Taskbar : public waybar::AModule
     struct zwlr_foreign_toplevel_manager_v1 *manager_;
     struct wl_seat *seat_;
 
-   protected:
-
-
    public:
     /* Callbacks for global registration */
     void register_manager(struct wl_registry*, uint32_t name, uint32_t version);
