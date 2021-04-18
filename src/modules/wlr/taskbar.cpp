@@ -277,7 +277,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
     bar_{bar}, config_{config}, tbar_{tbar}, handle_{tl_handle}, seat_{seat},
     id_{global_id++},
     content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
-    button_visible_{false}
+    button_visible_{false}, ignored_{false}
 {
     zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
@@ -383,6 +383,21 @@ void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
 
+    if (tbar_->ignore_list().count(app_id)) {
+        ignored_ = true;
+        if (button_visible_) {
+          auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+          handle_output_leave(output);
+        }
+    } else {
+        bool is_was_ignored = ignored_;
+        ignored_ = false;
+        if (is_was_ignored) {
+          auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+          handle_output_enter(output);
+        }
+    }
+
     if (!with_icon_)
         return;
 
@@ -404,6 +419,11 @@ void Task::handle_app_id(const char *app_id)
 void Task::handle_output_enter(struct wl_output *output)
 {
     spdlog::debug("{} entered output {}", repr(), (void*)output);
+
+    if (ignored_) {
+      spdlog::debug("{} is ignored", repr());
+      return;
+    }
 
     if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
         /* The task entered the output of the current bar make the button visible */
@@ -694,6 +714,14 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
 
         icon_themes_.push_back(it);
     }
+
+    // Load ignore-list
+    if (config_["ignore-list"].isArray()) {
+        for (auto& app_name : config_["ignore-list"]) {
+          ignore_list_.emplace(app_name.asString());
+        }
+    }
+
     icon_themes_.push_back(Gtk::IconTheme::get_default());
 }
 
@@ -829,5 +857,6 @@ std::vector<Glib::RefPtr<Gtk::IconTheme>> Taskbar::icon_themes() const
 {
     return icon_themes_;
 }
+const std::unordered_set<std::string> &Taskbar::ignore_list() const { return ignore_list_; }
 
 } /* namespace waybar::modules::wlr */

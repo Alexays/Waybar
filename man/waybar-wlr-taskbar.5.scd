@@ -68,6 +68,10 @@ Addressed by *wlr/taskbar*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*ignore-list*: ++
+	typeof: array ++
+	List of app_id to be invisible.
+
 # FORMAT REPLACEMENTS
 
 *{icon}*: The icon of the application.
@@ -98,7 +102,10 @@ Addressed by *wlr/taskbar*
 	"icon-theme": "Numix-Circle",
 	"tooltip-format": "{title}",
 	"on-click": "activate",
-	"on-click-middle": "close"
+	"on-click-middle": "close",
+	"ignore-list": [
+	    "Alacritty"
+	]
 }
 ```
 

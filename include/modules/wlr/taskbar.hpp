@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include <gdk/gdk.h>
 
@@ -61,6 +62,7 @@ class Task
     Gtk::Label text_before_;
     Gtk::Label text_after_;
     bool button_visible_;
+    bool ignored_;
 
     bool with_icon_;
     std::string format_before_;
@@ -132,9 +134,13 @@ class Taskbar : public waybar::AModule
     std::vector<TaskPtr> tasks_;
 
     std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
+    std::unordered_set<std::string> ignore_list_;
 
     struct zwlr_foreign_toplevel_manager_v1 *manager_;
     struct wl_seat *seat_;
+
+   protected:
+
 
    public:
     /* Callbacks for global registration */
@@ -155,6 +161,7 @@ class Taskbar : public waybar::AModule
     bool all_outputs() const;
 
     std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes() const;
+    const std::unordered_set<std::string>& ignore_list() const;
 };
 
 } /* namespace waybar::modules::wlr */
