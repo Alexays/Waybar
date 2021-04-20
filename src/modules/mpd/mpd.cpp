@@ -100,7 +100,7 @@ void waybar::modules::MPD::setLabel() {
   auto format = format_;
   Glib::ustring        artist, album_artist, album, title;
   std::string          date;
-  int                  song_pos = 0, queue_length = 0;
+  int                  song_pos = 0, queue_length = 0, volume = 0;
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
@@ -130,6 +130,7 @@ void waybar::modules::MPD::setLabel() {
     title = getTag(MPD_TAG_TITLE);
     date = getTag(MPD_TAG_DATE);
     song_pos = mpd_status_get_song_pos(status_.get());
+    volume = mpd_status_get_volume(status_.get());
     queue_length = mpd_status_get_queue_length(status_.get());
     elapsedTime = std::chrono::seconds(mpd_status_get_elapsed_time(status_.get()));
     totalTime = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
@@ -156,6 +157,7 @@ void waybar::modules::MPD::setLabel() {
                     fmt::arg("album", Glib::Markup::escape_text(album).raw()),
                     fmt::arg("title", Glib::Markup::escape_text(title).raw()),
                     fmt::arg("date", Glib::Markup::escape_text(date).raw()),
+                    fmt::arg("volume", volume),
                     fmt::arg("elapsedTime", elapsedTime),
                     fmt::arg("totalTime", totalTime),
                     fmt::arg("songPosition", song_pos),
@@ -180,6 +182,7 @@ void waybar::modules::MPD::setLabel() {
                                       fmt::arg("album", album.raw()),
                                       fmt::arg("title", title.raw()),
                                       fmt::arg("date", date),
+                                      fmt::arg("volume", volume),
                                       fmt::arg("elapsedTime", elapsedTime),
                                       fmt::arg("totalTime", totalTime),
                                       fmt::arg("songPosition", song_pos),
