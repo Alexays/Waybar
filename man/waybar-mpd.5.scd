@@ -172,6 +172,8 @@ Addressed by *mpd*
 
 *{date}*: The date of the current song
 
+*{volume}*: The current volume in percent
+
 *{elapsedTime}*: The current position of the current song. To format as a date/time (see example configuration)
 
 *{totalTime}*: The length of the current song. To format as a date/time (see example configuration)
