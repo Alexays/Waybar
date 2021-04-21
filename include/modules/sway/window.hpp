@@ -22,6 +22,7 @@ class Window : public ALabel, public sigc::trackable {
   std::tuple<std::size_t, int, std::string, std::string> getFocusedNode(const Json::Value& nodes,
                                                                         std::string&       output);
   void                                                   getTree();
+  std::string                                            rewriteTitle(const std::string& title);
 
   const Bar&       bar_;
   std::string      window_;
