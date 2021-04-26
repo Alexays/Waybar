@@ -216,7 +216,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       capacity = 100.f;
     }
     uint8_t cap = round(capacity);
-    if (cap == 100) {
+    if (cap == 100 && status == "Charging") {
       // If we've reached 100% just mark as full as some batteries can stay
       // stuck reporting they're still charging but not yet done
       status = "Full";
