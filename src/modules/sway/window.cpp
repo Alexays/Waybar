@@ -132,12 +132,13 @@ void Window::getTree() {
   }
 }
 
-std::string Window::rewriteTitle(const std::string& title)
-{
+std::string Window::rewriteTitle(const std::string& title) {
   const auto& rules = config_["rewrite"];
   if (!rules.isObject()) {
     return title;
   }
+
+  std::string res = title;
 
   for (auto it = rules.begin(); it != rules.end(); ++it) {
     if (it.key().isString() && it->isString()) {
@@ -146,7 +147,7 @@ std::string Window::rewriteTitle(const std::string& title)
         // in this case, log error and try the next rule.
         const std::regex rule{it.key().asString()};
         if (std::regex_match(title, rule)) {
-          return std::regex_replace(title, rule, it->asString());
+          res = std::regex_replace(res, rule, it->asString());
         }
       } catch (const std::regex_error& e) {
         spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
@@ -154,7 +155,7 @@ std::string Window::rewriteTitle(const std::string& title)
     }
   }
 
-  return title;
+  return res;
 }
 
 }  // namespace waybar::modules::sway
