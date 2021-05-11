@@ -164,12 +164,24 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       std::ifstream(bat / "status") >> _status;
       auto rate_path = fs::exists(bat / "current_now") ? "current_now" : "power_now";
       std::ifstream(bat / rate_path) >> power_now;
-      auto now_path = fs::exists(bat / "charge_now") ? "charge_now" : "energy_now";
+
+      std::string now_path;
+      if (fs::exists(bat / "charge_now")) {
+        now_path = "charge_now";
+      } else if (fs::exists(bat / "energy_now")) {
+        now_path = "energy_now";
+      } else {
+        now_path = "capacity";
+      }
       std::ifstream(bat / now_path) >> energy_now;
       auto full_path = fs::exists(bat / "charge_full") ? "charge_full" : "energy_full";
       std::ifstream(bat / full_path) >> energy_full;
       auto full_design_path = fs::exists(bat / "charge_full_design") ? "charge_full_design" : "energy_full_design";
       std::ifstream(bat / full_design_path) >> energy_full_design;
+
+      if (now_path == "capacity") {
+        energy_now = energy_now * energy_full / 100;
+      }
 
       // Show the "smallest" status among all batteries
       if (status_gt(status, _status)) {
@@ -245,7 +257,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
 }
 
 const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemaining) {
-  hoursRemaining = std::fabs(hoursRemaining); 
+  hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
   auto     format = std::string("{H} h {M} min");
