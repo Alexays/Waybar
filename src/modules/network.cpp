@@ -93,6 +93,13 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       rfkill_{RFKILL_TYPE_WLAN},
 #endif
       frequency_(0) {
+
+  // Start with some "text" in the module's label_, update() will then
+  // update it. Since the text should be different, update() will be able
+  // to show or hide the event_box_. This is to work around the case where
+  // the module start with no text, but the the event_box_ is shown.
+  label_.set_markup("<s></s>");
+
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
   if (down_octets) {
