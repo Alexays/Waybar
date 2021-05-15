@@ -3,7 +3,6 @@
 #include <arpa/inet.h>
 #include <fmt/format.h>
 #include <linux/nl80211.h>
-#include <net/if.h>
 #include <netlink/genl/ctrl.h>
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
@@ -35,17 +34,12 @@ class Network : public ALabel {
   void              worker();
   void              createInfoSocket();
   void              createEventSocket();
-  int               getExternalInterface(int skip_idx = -1) const;
-  int               netlinkRequest(void*, uint32_t, uint32_t groups = 0) const;
-  int               netlinkResponse(void*, uint32_t, uint32_t groups = 0) const;
   void              parseEssid(struct nlattr**);
   void              parseSignal(struct nlattr**);
   void              parseFreq(struct nlattr**);
   bool              associatedOrJoined(struct nlattr**);
-  bool              checkInterface(struct ifinfomsg* rtif, std::string name);
-  int               getPreferredIface(int skip_idx = -1, bool wait = true) const;
+  bool              checkInterface(std::string name);
   auto              getInfo() -> void;
-  void              checkNewInterface(struct ifinfomsg* rtif);
   const std::string getNetworkState() const;
   void              clearIface();
   bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
@@ -60,6 +54,7 @@ class Network : public ALabel {
   int                nl80211_id_;
   std::mutex         mutex_;
 
+  bool               want_route_dump_;
   bool               want_link_dump_;
   bool               want_addr_dump_;
   bool               dump_in_progress_;
