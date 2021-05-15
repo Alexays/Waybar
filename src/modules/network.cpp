@@ -86,6 +86,8 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
+      want_link_dump_(false),
+      dump_in_progress_(false),
       cidr_(0),
       signal_strength_dbm_(0),
       signal_strength_(0),
@@ -114,6 +116,11 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     bandwidth_up_total_ = 0;
   }
 
+  if (config_["interface"].isString()) {
+    // Look for an interface that match "interface"
+    want_link_dump_ = true;
+  }
+
   createEventSocket();
   createInfoSocket();
   auto default_iface = getPreferredIface(-1, false);
@@ -125,6 +132,10 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     getInterfaceAddress();
   }
   dp.emit();
+  // Ask for a dump of interfaces and then addresses to populate our
+  // information. First the interface dump, and once done, the callback
+  // will be called again which will ask for addresses dump.
+  askForStateDump();
   worker();
 }
 
@@ -155,6 +166,7 @@ void waybar::modules::Network::createEventSocket() {
   ev_sock_ = nl_socket_alloc();
   nl_socket_disable_seq_check(ev_sock_);
   nl_socket_modify_cb(ev_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
+  nl_socket_modify_cb(ev_sock_, NL_CB_FINISH, NL_CB_CUSTOM, handleEventsDone, this);
   auto groups = RTMGRP_LINK | (family_ == AF_INET ? RTMGRP_IPV4_IFADDR : RTMGRP_IPV6_IFADDR);
   nl_join_groups(ev_sock_, groups);  // Deprecated
   if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
@@ -590,28 +602,8 @@ bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::strin
 int waybar::modules::Network::getPreferredIface(int skip_idx, bool wait) const {
   int ifid = -1;
   if (config_["interface"].isString()) {
-    ifid = if_nametoindex(config_["interface"].asCString());
-    if (ifid > 0) {
-      return ifid;
-    } else {
-      // Try with wildcard
-      struct ifaddrs *ifaddr, *ifa;
-      int             success = getifaddrs(&ifaddr);
-      if (success != 0) {
-        return -1;
-      }
-      ifa = ifaddr;
-      ifid = -1;
-      while (ifa != nullptr) {
-        if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
-          ifid = if_nametoindex(ifa->ifa_name);
-          break;
-        }
-        ifa = ifa->ifa_next;
-      }
-      freeifaddrs(ifaddr);
-      return ifid;
-    }
+    // Using link dump instead
+    return -1;
   }
   // getExternalInterface may need some delay to detect external interface
   for (uint8_t tries = 0; tries < MAX_RETRY; tries += 1) {
@@ -656,6 +648,55 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   std::lock_guard<std::mutex> lock(net->mutex_);
   auto                        nh = nlmsg_hdr(msg);
   auto                        ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+  bool                        is_del_event = false;
+
+  switch (nh->nlmsg_type) {
+  case RTM_DELLINK:
+    is_del_event = true;
+  case RTM_NEWLINK: {
+    struct ifinfomsg *ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+    ssize_t attrlen = IFLA_PAYLOAD(nh);
+    struct rtattr *ifla = IFLA_RTA(ifi);
+    const char *ifname = NULL;
+    size_t ifname_len = 0;
+
+    if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
+      return NL_OK;
+    }
+
+    for (; RTA_OK(ifla, attrlen); ifla = RTA_NEXT(ifla, attrlen)) {
+      switch (ifla->rta_type) {
+      case IFLA_IFNAME:
+        ifname = static_cast<const char *>(RTA_DATA(ifla));
+        ifname_len = RTA_PAYLOAD(ifla) - 1; // minus \0
+        break;
+      }
+    }
+
+    if (!is_del_event && net->ifid_ == -1) {
+      // Checking if it's an interface we care about.
+      std::string new_ifname (ifname, ifname_len);
+      if (net->checkInterface(ifi, new_ifname)) {
+        spdlog::debug("network: selecting new interface {}/{}", new_ifname, ifi->ifi_index);
+
+        net->ifname_ = new_ifname;
+        net->ifid_ = ifi->ifi_index;
+        net->getInterfaceAddress();
+        net->thread_timer_.wake_up();
+      }
+    } else if (is_del_event && net->ifid_ >= 0) {
+      // Our interface has been deleted, start looking/waiting for one we care.
+      spdlog::debug("network: interface {}/{} deleted", net->ifname_, net->ifid_);
+
+      net->clearIface();
+      // Check for a new interface and get info
+      net->checkNewInterface(ifi);
+      net->dp.emit();
+    }
+    return NL_OK;
+  }
+  }
+
   if (nh->nlmsg_type == RTM_DELADDR) {
     // Check for valid interface
     if (ifi->ifi_index == net->ifid_) {
@@ -669,25 +710,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       } else {
         net->dp.emit();
       }
-      return NL_OK;
-    }
-  } else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK) {
-    char ifname[IF_NAMESIZE];
-    if_indextoname(ifi->ifi_index, ifname);
-    // Check for valid interface
-    if (ifi->ifi_index != net->ifid_ && net->checkInterface(ifi, ifname)) {
-      net->ifname_ = ifname;
-      net->ifid_ = ifi->ifi_index;
-      // Get Iface and WIFI info
-      net->getInterfaceAddress();
-      net->thread_timer_.wake_up();
-      return NL_OK;
-    } else if (ifi->ifi_index == net->ifid_ &&
-               (!(ifi->ifi_flags & IFF_RUNNING) || !(ifi->ifi_flags & IFF_UP) ||
-                !net->checkInterface(ifi, ifname))) {
-      net->clearIface();
-      // Check for a new interface and get info
-      net->checkNewInterface(ifi);
       return NL_OK;
     }
   } else {
@@ -711,6 +733,32 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     }
   }
   return NL_SKIP;
+}
+
+void waybar::modules::Network::askForStateDump(void) {
+  /* We need to wait until the current dump is done before sending new
+   * messages. handleEventsDone() is called when a dump is done. */
+  if (dump_in_progress_)
+    return;
+
+  struct rtgenmsg rt_hdr = {
+    .rtgen_family = AF_UNSPEC,
+  };
+
+  if (want_link_dump_) {
+    nl_send_simple(ev_sock_, RTM_GETLINK, NLM_F_DUMP,
+                   &rt_hdr, sizeof (rt_hdr));
+    want_link_dump_ = false;
+    dump_in_progress_ = true;
+
+  }
+}
+
+int waybar::modules::Network::handleEventsDone(struct nl_msg *msg, void *data) {
+  auto net = static_cast<waybar::modules::Network *>(data);
+  net->dump_in_progress_ = false;
+  net->askForStateDump();
+  return NL_OK;
 }
 
 int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {

@@ -28,7 +28,10 @@ class Network : public ALabel {
   static const uint8_t EPOLL_MAX = 200;
 
   static int handleEvents(struct nl_msg*, void*);
+  static int handleEventsDone(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);
+
+  void askForStateDump(void);
 
   void              worker();
   void              createInfoSocket();
@@ -58,6 +61,9 @@ class Network : public ALabel {
   int                ev_fd_;
   int                nl80211_id_;
   std::mutex         mutex_;
+
+  bool               want_link_dump_;
+  bool               dump_in_progress_;
 
   unsigned long long bandwidth_down_total_;
   unsigned long long bandwidth_up_total_;
