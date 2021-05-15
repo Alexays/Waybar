@@ -2,7 +2,6 @@
 
 #include <arpa/inet.h>
 #include <fmt/format.h>
-#include <ifaddrs.h>
 #include <linux/nl80211.h>
 #include <net/if.h>
 #include <netlink/genl/ctrl.h>
@@ -37,7 +36,6 @@ class Network : public ALabel {
   void              createInfoSocket();
   void              createEventSocket();
   int               getExternalInterface(int skip_idx = -1) const;
-  void              getInterfaceAddress();
   int               netlinkRequest(void*, uint32_t, uint32_t groups = 0) const;
   int               netlinkResponse(void*, uint32_t, uint32_t groups = 0) const;
   void              parseEssid(struct nlattr**);
@@ -63,6 +61,7 @@ class Network : public ALabel {
   std::mutex         mutex_;
 
   bool               want_link_dump_;
+  bool               want_addr_dump_;
   bool               dump_in_progress_;
 
   unsigned long long bandwidth_down_total_;

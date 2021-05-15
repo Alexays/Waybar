@@ -87,6 +87,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       efd_(-1),
       ev_fd_(-1),
       want_link_dump_(false),
+      want_addr_dump_(false),
       dump_in_progress_(false),
       cidr_(0),
       signal_strength_dbm_(0),
@@ -118,7 +119,9 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 
   if (config_["interface"].isString()) {
     // Look for an interface that match "interface"
+    // and then find the address associated with it.
     want_link_dump_ = true;
+    want_addr_dump_ = true;
   }
 
   createEventSocket();
@@ -129,7 +132,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     char ifname[IF_NAMESIZE];
     if_indextoname(default_iface, ifname);
     ifname_ = ifname;
-    getInterfaceAddress();
+    want_addr_dump_ = true;
   }
   dp.emit();
   // Ask for a dump of interfaces and then addresses to populate our
@@ -502,55 +505,6 @@ out:
   return ifidx;
 }
 
-void waybar::modules::Network::getInterfaceAddress() {
-  struct ifaddrs *ifaddr, *ifa;
-  cidr_ = 0;
-  int success = getifaddrs(&ifaddr);
-  if (success != 0) {
-    return;
-  }
-  ifa = ifaddr;
-  while (ifa != nullptr) {
-    if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
-        ifa->ifa_name == ifname_) {
-      char ipaddr[INET6_ADDRSTRLEN];
-      char netmask[INET6_ADDRSTRLEN];
-      unsigned int cidr = 0;
-      if (family_ == AF_INET) {
-        ipaddr_ = inet_ntop(AF_INET,
-                            &reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr)->sin_addr,
-                            ipaddr,
-                            INET_ADDRSTRLEN);
-        auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
-        netmask_ = inet_ntop(AF_INET, &net_addr->sin_addr, netmask, INET_ADDRSTRLEN);
-        unsigned int cidrRaw = net_addr->sin_addr.s_addr;
-        while (cidrRaw) {
-          cidr += cidrRaw & 1;
-          cidrRaw >>= 1;
-        }
-      } else {
-        ipaddr_ = inet_ntop(AF_INET6,
-                            &reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_addr)->sin6_addr,
-                            ipaddr,
-                            INET6_ADDRSTRLEN);
-        auto net_addr = reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_netmask);
-        netmask_ = inet_ntop(AF_INET6, &net_addr->sin6_addr, netmask, INET6_ADDRSTRLEN);
-        for (size_t i = 0; i < sizeof(net_addr->sin6_addr.s6_addr); ++i) {
-          unsigned char cidrRaw = net_addr->sin6_addr.s6_addr[i];
-          while (cidrRaw) {
-            cidr += cidrRaw & 1;
-            cidrRaw >>= 1;
-          }
-        }
-      }
-      cidr_ = cidr;
-      break;
-    }
-    ifa = ifa->ifa_next;
-  }
-  freeifaddrs(ifaddr);
-}
-
 int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) const {
   struct sockaddr_nl sa = {};
   sa.nl_family = AF_NETLINK;
@@ -635,7 +589,8 @@ void waybar::modules::Network::checkNewInterface(struct ifinfomsg *rtif) {
     char ifname[IF_NAMESIZE];
     if_indextoname(new_iface, ifname);
     ifname_ = ifname;
-    getInterfaceAddress();
+    want_addr_dump_ = true;
+    askForStateDump();
     thread_timer_.wake_up();
   } else {
     ifid_ = -1;
@@ -647,7 +602,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   auto                        net = static_cast<waybar::modules::Network *>(data);
   std::lock_guard<std::mutex> lock(net->mutex_);
   auto                        nh = nlmsg_hdr(msg);
-  auto                        ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
   bool                        is_del_event = false;
 
   switch (nh->nlmsg_type) {
@@ -681,8 +635,12 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
         net->ifname_ = new_ifname;
         net->ifid_ = ifi->ifi_index;
-        net->getInterfaceAddress();
         net->thread_timer_.wake_up();
+        /* An address for this new interface should be received via an
+         * RTM_NEWADDR event either because we ask for a dump of both links
+         * and addrs, or because this interface has just been created and
+         * the addr will be sent after the RTM_NEWLINK event.
+         * So we don't need to do anything. */
       }
     } else if (is_del_event && net->ifid_ >= 0) {
       // Our interface has been deleted, start looking/waiting for one we care.
@@ -693,46 +651,78 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       net->checkNewInterface(ifi);
       net->dp.emit();
     }
-    return NL_OK;
+    break;
+  }
+
+  case RTM_DELADDR:
+    is_del_event = true;
+  case RTM_NEWADDR: {
+    struct ifaddrmsg *ifa = static_cast<struct ifaddrmsg *>(NLMSG_DATA(nh));
+    ssize_t attrlen = IFA_PAYLOAD(nh);
+    struct rtattr *ifa_rta = IFA_RTA(ifa);
+
+    if ((int)ifa->ifa_index != net->ifid_) {
+      return NL_OK;
+    }
+
+    if (ifa->ifa_family != net->family_) {
+      return NL_OK;
+    }
+
+    // We ignore address mark as scope for the link or host,
+    // which should leave scope global addresses.
+    if (ifa->ifa_scope >= RT_SCOPE_LINK) {
+      return NL_OK;
+    }
+
+    for (; RTA_OK(ifa_rta, attrlen); ifa_rta = RTA_NEXT(ifa_rta, attrlen)) {
+      switch (ifa_rta->rta_type) {
+      case IFA_ADDRESS: {
+        char ipaddr[INET6_ADDRSTRLEN];
+        if (!is_del_event) {
+          net->ipaddr_ = inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta),
+                                   ipaddr, sizeof (ipaddr));
+          net->cidr_ = ifa->ifa_prefixlen;
+          switch (ifa->ifa_family) {
+          case AF_INET: {
+            struct in_addr netmask;
+            netmask.s_addr = htonl(~0 << (32 - ifa->ifa_prefixlen));
+            net->netmask_ = inet_ntop(ifa->ifa_family, &netmask,
+                                      ipaddr, sizeof (ipaddr));
+          }
+          case AF_INET6: {
+            struct in6_addr netmask;
+            for (int i = 0; i < 16; i++) {
+              int v = (i + 1) * 8 - ifa->ifa_prefixlen;
+              if (v < 0) v = 0;
+              if (v > 8) v = 8;
+              netmask.s6_addr[i] = ~0 << v;
+            }
+            net->netmask_ = inet_ntop(ifa->ifa_family, &netmask,
+                                      ipaddr, sizeof (ipaddr));
+          }
+          }
+          spdlog::debug("network: {}, new addr {}/{}", net->ifname_, net->ipaddr_, net->cidr_);
+        } else {
+          net->ipaddr_.clear();
+          net->cidr_ = 0;
+          net->netmask_.clear();
+          spdlog::debug("network: {} addr deleted {}/{}",
+                        net->ifname_,
+                        inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta),
+                                  ipaddr, sizeof (ipaddr)),
+                        ifa->ifa_prefixlen);
+        }
+        net->dp.emit();
+        break;
+      }
+      }
+    }
+    break;
   }
   }
 
-  if (nh->nlmsg_type == RTM_DELADDR) {
-    // Check for valid interface
-    if (ifi->ifi_index == net->ifid_) {
-      net->ipaddr_.clear();
-      net->netmask_.clear();
-      net->cidr_ = 0;
-      if (!(ifi->ifi_flags & IFF_RUNNING)) {
-        net->clearIface();
-        // Check for a new interface and get info
-        net->checkNewInterface(ifi);
-      } else {
-        net->dp.emit();
-      }
-      return NL_OK;
-    }
-  } else {
-    char ifname[IF_NAMESIZE];
-    if_indextoname(ifi->ifi_index, ifname);
-    // Auto detected network can also be assigned here
-    if (ifi->ifi_index != net->ifid_ && net->checkInterface(ifi, ifname)) {
-      // If iface is different, clear data
-      if (ifi->ifi_index != net->ifid_) {
-        net->clearIface();
-      }
-      net->ifname_ = ifname;
-      net->ifid_ = ifi->ifi_index;
-    }
-    // Check for valid interface
-    if (ifi->ifi_index == net->ifid_) {
-      // Get Iface and WIFI info
-      net->getInterfaceAddress();
-      net->thread_timer_.wake_up();
-      return NL_OK;
-    }
-  }
-  return NL_SKIP;
+  return NL_OK;
 }
 
 void waybar::modules::Network::askForStateDump(void) {
@@ -751,6 +741,12 @@ void waybar::modules::Network::askForStateDump(void) {
     want_link_dump_ = false;
     dump_in_progress_ = true;
 
+  } else if (want_addr_dump_) {
+    rt_hdr.rtgen_family = family_;
+    nl_send_simple(ev_sock_, RTM_GETADDR, NLM_F_DUMP,
+                   &rt_hdr, sizeof (rt_hdr));
+    want_addr_dump_ = false;
+    dump_in_progress_ = true;
   }
 }
 
