@@ -64,6 +64,7 @@ class Network : public ALabel {
 
   std::string state_;
   std::string essid_;
+  bool        carrier_;
   std::string ifname_;
   std::string ipaddr_;
   std::string netmask_;

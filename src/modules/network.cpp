@@ -292,6 +292,7 @@ const std::string waybar::modules::Network::getNetworkState() const {
 #endif
     return "disconnected";
   }
+  if (!carrier_) return "disconnected";
   if (ipaddr_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";
@@ -402,6 +403,7 @@ void waybar::modules::Network::clearIface() {
   essid_.clear();
   ipaddr_.clear();
   netmask_.clear();
+  carrier_ = false;
   cidr_ = 0;
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
@@ -423,6 +425,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     struct rtattr *ifla = IFLA_RTA(ifi);
     const char *ifname = NULL;
     size_t ifname_len = 0;
+    bool carrier = false;
 
     if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
       return NL_OK;
@@ -434,6 +437,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         ifname = static_cast<const char *>(RTA_DATA(ifla));
         ifname_len = RTA_PAYLOAD(ifla) - 1; // minus \0
         break;
+      case IFLA_CARRIER: {
+        carrier = *(char*)RTA_DATA(ifla) == 1;
+        break;
+      }
       }
     }
 
@@ -443,6 +450,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         std::string new_ifname (ifname, ifname_len);
         net->ifname_ = new_ifname;
       }
+      net->carrier_ = carrier;
     } else if (!is_del_event && net->ifid_ == -1) {
       // Checking if it's an interface we care about.
       std::string new_ifname (ifname, ifname_len);
@@ -451,6 +459,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
         net->ifname_ = new_ifname;
         net->ifid_ = ifi->ifi_index;
+        net->carrier_ = carrier;
         net->thread_timer_.wake_up();
         /* An address for this new interface should be received via an
          * RTM_NEWADDR event either because we ask for a dump of both links
