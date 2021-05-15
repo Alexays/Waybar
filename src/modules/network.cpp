@@ -160,6 +160,9 @@ void waybar::modules::Network::createEventSocket() {
   if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
     throw std::runtime_error("Can't connect network socket");
   }
+  if (nl_socket_set_nonblocking(ev_sock_)) {
+    throw std::runtime_error("Can't set non-blocking on network socket");
+  }
   nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
   if (family_ == AF_INET) {
     nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_IFADDR);
@@ -235,7 +238,23 @@ void waybar::modules::Network::worker() {
     int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
-        if (events[i].data.fd != nl_socket_get_fd(ev_sock_) || nl_recvmsgs_default(ev_sock_) < 0) {
+        if (events[i].data.fd == nl_socket_get_fd(ev_sock_)) {
+          int rc = 0;
+          // Read as many message as possible, until the socket blocks
+          while (true) {
+            errno = 0;
+            rc = nl_recvmsgs_default(ev_sock_);
+            if (rc == -NLE_AGAIN || errno == EAGAIN) {
+              rc = 0;
+              break;
+            }
+          }
+          if (rc < 0) {
+            spdlog::error("nl_recvmsgs_default error: {}", nl_geterror(-rc));
+            thread_.stop();
+            break;
+          }
+        } else {
           thread_.stop();
           break;
         }
