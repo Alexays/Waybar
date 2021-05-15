@@ -86,7 +86,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
-      cidr_(-1),
+      cidr_(0),
       signal_strength_dbm_(0),
       signal_strength_(0),
 #ifdef WANT_RFKILL
