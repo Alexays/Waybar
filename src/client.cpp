@@ -207,9 +207,13 @@ std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
     const std::string &config, const std::string &style) const {
   auto config_file = config.empty() ? getValidPath({
                                           "$XDG_CONFIG_HOME/waybar/config",
+                                          "$XDG_CONFIG_HOME/waybar/config.json",
                                           "$HOME/.config/waybar/config",
+                                          "$HOME/.config/waybar/config.json",
                                           "$HOME/waybar/config",
+                                          "$HOME/waybar/config.json",
                                           "/etc/xdg/waybar/config",
+                                          "/etc/xdg/waybar/config.json",
                                           SYSCONFDIR "/xdg/waybar/config",
                                           "./resources/config",
                                       })
