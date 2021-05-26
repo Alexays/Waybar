@@ -425,7 +425,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     struct rtattr *ifla = IFLA_RTA(ifi);
     const char *ifname = NULL;
     size_t ifname_len = 0;
-    bool carrier = false;
+    std::optional<bool> carrier;
 
     if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
       return NL_OK;
@@ -446,11 +446,13 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
     if (!is_del_event && ifi->ifi_index == net->ifid_) {
       // Update inferface information
-      if (net->ifname_.empty()) {
+      if (net->ifname_.empty() && ifname != NULL) {
         std::string new_ifname (ifname, ifname_len);
         net->ifname_ = new_ifname;
       }
-      net->carrier_ = carrier;
+      if (carrier.has_value()) {
+        net->carrier_ = carrier.value();
+      }
     } else if (!is_del_event && net->ifid_ == -1) {
       // Checking if it's an interface we care about.
       std::string new_ifname (ifname, ifname_len);
@@ -459,7 +461,9 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
         net->ifname_ = new_ifname;
         net->ifid_ = ifi->ifi_index;
-        net->carrier_ = carrier;
+        if (carrier.has_value()) {
+          net->carrier_ = carrier.value();
+        }
         net->thread_timer_.wake_up();
         /* An address for this new interface should be received via an
          * RTM_NEWADDR event either because we ask for a dump of both links
