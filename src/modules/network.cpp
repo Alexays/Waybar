@@ -451,6 +451,18 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         net->ifname_ = new_ifname;
       }
       if (carrier.has_value()) {
+        if (net->carrier_ != *carrier) {
+          if (*carrier) {
+            // Ask for WiFi information
+            net->thread_timer_.wake_up();
+          } else {
+            // clear state related to WiFi connection
+            net->essid_.clear();
+            net->signal_strength_dbm_ = 0;
+            net->signal_strength_ = 0;
+            net->frequency_ = 0;
+          }
+        }
         net->carrier_ = carrier.value();
       }
     } else if (!is_del_event && net->ifid_ == -1) {
