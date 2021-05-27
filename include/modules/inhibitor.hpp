@@ -4,12 +4,12 @@
 
 #include <memory>
 
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "bar.hpp"
 
 namespace waybar::modules {
 
-class Inhibitor : public ALabel {
+class Inhibitor : public AButton {
  public:
   Inhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Inhibitor() override;

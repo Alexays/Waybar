@@ -143,6 +143,7 @@ endif
 src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
+    'src/AButton.cpp',
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/modules/custom.cpp',

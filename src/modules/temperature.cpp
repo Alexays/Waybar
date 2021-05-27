@@ -10,8 +10,7 @@
 #endif
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
-    : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
-
+    : AButton(config, "temperature", id, "{temperatureC}°C", 10) {
 #if defined(__FreeBSD__)
 // try to read sysctl?
 #else
@@ -46,9 +45,9 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    label_.get_style_context()->add_class("critical");
+    label_->get_style_context()->add_class("critical");
   } else {
-    label_.get_style_context()->remove_class("critical");
+    label_->get_style_context()->remove_class("critical");
   }
 
   if (format.empty()) {
@@ -59,21 +58,21 @@ auto waybar::modules::Temperature::update() -> void {
   }
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_.set_markup(fmt::format(format, fmt::arg("temperatureC", temperature_c),
-                                fmt::arg("temperatureF", temperature_f),
-                                fmt::arg("temperatureK", temperature_k),
-                                fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+  label_->set_markup(fmt::format(format, fmt::arg("temperatureC", temperature_c),
+                                 fmt::arg("temperatureF", temperature_f),
+                                 fmt::arg("temperatureK", temperature_k),
+                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
   if (tooltipEnabled()) {
     std::string tooltip_format = "{temperatureC}°C";
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("temperatureC", temperature_c),
-                                        fmt::arg("temperatureF", temperature_f),
-                                        fmt::arg("temperatureK", temperature_k)));
+    label_->set_tooltip_text(fmt::format(tooltip_format, fmt::arg("temperatureC", temperature_c),
+                                         fmt::arg("temperatureF", temperature_f),
+                                         fmt::arg("temperatureK", temperature_k)));
   }
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 float waybar::modules::Temperature::getTemperature() {
@@ -82,12 +81,13 @@ float waybar::modules::Temperature::getTemperature() {
   size_t size = sizeof temp;
 
   if (sysctlbyname("hw.acpi.thermal.tz0.temperature", &temp, &size, NULL, 0) != 0) {
-    throw std::runtime_error("sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
+    throw std::runtime_error(
+        "sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
   }
-  auto temperature_c = ((float)temp-2732)/10;  
+  auto temperature_c = ((float)temp - 2732) / 10;
   return temperature_c;
 
-#else // Linux
+#else  // Linux
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);

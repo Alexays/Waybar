@@ -98,7 +98,7 @@ auto getInhibitors(const Json::Value& config) -> std::string {
 namespace waybar::modules {
 
 Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "inhibitor", id, "{status}", true),
+    : AButton(config, "inhibitor", id, "{status}", true),
       dbus_(::dbus()),
       inhibitors_(::getInhibitors(config)) {
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
@@ -117,16 +117,16 @@ auto Inhibitor::activated() -> bool { return handle_ != -1; }
 auto Inhibitor::update() -> void {
   std::string status_text = activated() ? "activated" : "deactivated";
 
-  label_.get_style_context()->remove_class(activated() ? "deactivated" : "activated");
-  label_.set_markup(fmt::format(format_, fmt::arg("status", status_text),
-                                fmt::arg("icon", getIcon(0, status_text))));
-  label_.get_style_context()->add_class(status_text);
+  label_->get_style_context()->remove_class(activated() ? "deactivated" : "activated");
+  label_->set_markup(fmt::format(format_, fmt::arg("status", status_text),
+                                 fmt::arg("icon", getIcon(0, status_text))));
+  label_->get_style_context()->add_class(status_text);
 
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(status_text);
+    label_->set_tooltip_text(status_text);
   }
 
-  return ALabel::update();
+  return AButton::update();
 }
 
 auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
@@ -142,7 +142,7 @@ auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
     }
   }
 
-  return ALabel::handleToggle(e);
+  return AButton::handleToggle(e);
 }
 
 }  // namespace waybar::modules
