@@ -14,7 +14,7 @@
 using waybar::modules::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true), fixed_time_zone_(false) {
+    : AButton(config, "clock", id, "{:%H:%M}", 60, false, false, true), fixed_time_zone_(false) {
   if (config_["timezone"].isString()) {
     spdlog::warn("As using a timezone, some format args may be missing as the date library havn't got a release since 2018.");
     time_zone_ = date::locate_zone(config_["timezone"].asString());
@@ -52,10 +52,10 @@ auto waybar::modules::Clock::update() -> void {
     tzset();
     auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
     text = fmt::format(format_, localtime);
-    label_.set_markup(text);
+    label_->set_markup(text);
   } else {
     text = fmt::format(format_, wtime);
-    label_.set_markup(text);
+    label_->set_markup(text);
   }
 
   if (tooltipEnabled()) {
@@ -63,13 +63,13 @@ auto waybar::modules::Clock::update() -> void {
       const auto calendar = calendar_text(wtime);
       auto       tooltip_format = config_["tooltip-format"].asString();
       auto       tooltip_text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendar));
-      label_.set_tooltip_markup(tooltip_text);
+      label_->set_tooltip_markup(tooltip_text);
     } else {
-      label_.set_tooltip_markup(text);
+      label_->set_tooltip_markup(text);
     }
   }
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {

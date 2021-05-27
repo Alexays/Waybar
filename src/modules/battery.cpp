@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60) {
+    : AButton(config, "battery", id, "{capacity}%", 60) {
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
@@ -302,15 +302,15 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format,
+    label_->set_tooltip_text(fmt::format(tooltip_format,
                                         fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("capacity", capacity),
                                         fmt::arg("time", time_remaining_formatted)));
   }
   if (!old_status_.empty()) {
-    label_.get_style_context()->remove_class(old_status_);
+    label_->get_style_context()->remove_class(old_status_);
   }
-  label_.get_style_context()->add_class(status);
+  label_->get_style_context()->add_class(status);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
@@ -324,12 +324,12 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    label_.set_markup(fmt::format(format,
+    label_->set_markup(fmt::format(format,
                                   fmt::arg("capacity", capacity),
                                   fmt::arg("power", power),
                                   fmt::arg("icon", getIcon(capacity, icons)),
                                   fmt::arg("time", time_remaining_formatted)));
   }
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }

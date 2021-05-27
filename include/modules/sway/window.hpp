@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 #include <tuple>
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
@@ -10,7 +10,7 @@
 
 namespace waybar::modules::sway {
 
-class Window : public ALabel, public sigc::trackable {
+class Window : public AButton, public sigc::trackable {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;

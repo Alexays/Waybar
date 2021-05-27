@@ -6,12 +6,12 @@
 #else
 #include <fmt/chrono.h>
 #endif
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Clock : public ALabel {
+class Clock : public AButton {
  public:
   Clock(const std::string&, const Json::Value&);
   ~Clock() = default;

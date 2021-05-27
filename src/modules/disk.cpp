@@ -3,7 +3,7 @@
 using namespace waybar::util;
 
 waybar::modules::Disk::Disk(const std::string& id, const Json::Value& config)
-    : ALabel(config, "disk", id, "{}%", 30)
+    : AButton(config, "disk", id, "{}%", 30)
     , path_("/")
 {
   thread_ = [this] {
@@ -59,7 +59,7 @@ auto waybar::modules::Disk::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    label_.set_markup(fmt::format(format
+    label_->set_markup(fmt::format(format
         , stats.f_bavail * 100 / stats.f_blocks
         , fmt::arg("free", free)
         , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
@@ -75,7 +75,7 @@ auto waybar::modules::Disk::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format
+    label_->set_tooltip_text(fmt::format(tooltip_format
       , stats.f_bavail * 100 / stats.f_blocks
       , fmt::arg("free", free)
       , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
@@ -86,5 +86,5 @@ auto waybar::modules::Disk::update() -> void {
       ));
   }
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }

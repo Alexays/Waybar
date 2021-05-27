@@ -7,7 +7,7 @@
 #include <condition_variable>
 #include <thread>
 
-#include "ALabel.hpp"
+#include "AButton.hpp"
 
 namespace waybar::modules {
 class MPD;
