@@ -140,7 +140,6 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/AButton.cpp',
-    'src/ALabel.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
