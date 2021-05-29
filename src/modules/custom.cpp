@@ -143,14 +143,16 @@ auto waybar::modules::Custom::update() -> void {
           }
         }
       }
-      auto classes = label_->get_style_context()->list_classes();
+      auto classes = button_.get_style_context()->list_classes();
       for (auto const& c : classes) {
         if (c == id_) continue;
-        label_->get_style_context()->remove_class(c);
+        button_.get_style_context()->remove_class(c);
       }
       for (auto const& c : class_) {
-        label_->get_style_context()->add_class(c);
+        button_.get_style_context()->add_class(c);
       }
+      button_.get_style_context()->add_class("flat");
+      button_.get_style_context()->add_class("text-button");
       event_box_.show();
     }
   }

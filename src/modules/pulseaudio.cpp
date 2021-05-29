@@ -240,9 +240,9 @@ auto waybar::modules::Pulseaudio::update() -> void {
     if (monitor_.find("a2dp_sink") != std::string::npos ||  // PulseAudio
         monitor_.find("a2dp-sink") != std::string::npos) {  // PipeWire
       format_name = format_name + "-bluetooth";
-      label_->get_style_context()->add_class("bluetooth");
+      button_.get_style_context()->add_class("bluetooth");
     } else {
-      label_->get_style_context()->remove_class("bluetooth");
+      button_.get_style_context()->remove_class("bluetooth");
     }
     if (muted_) {
       // Check muted bluetooth format exist, otherwise fallback to default muted format
@@ -250,23 +250,23 @@ auto waybar::modules::Pulseaudio::update() -> void {
         format_name = "format";
       }
       format_name = format_name + "-muted";
-      label_->get_style_context()->add_class("muted");
-      label_->get_style_context()->add_class("sink-muted");
+      button_.get_style_context()->add_class("muted");
+      button_.get_style_context()->add_class("sink-muted");
     } else {
-      label_->get_style_context()->remove_class("muted");
-      label_->get_style_context()->remove_class("sink-muted");
+      button_.get_style_context()->remove_class("muted");
+      button_.get_style_context()->remove_class("sink-muted");
     }
     format = config_[format_name].isString() ? config_[format_name].asString() : format;
   }
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
   if (source_muted_) {
-    label_->get_style_context()->add_class("source-muted");
+    button_.get_style_context()->add_class("source-muted");
     if (config_["format-source-muted"].isString()) {
       format_source = config_["format-source-muted"].asString();
     }
   } else {
-    label_->get_style_context()->remove_class("source-muted");
+    button_.get_style_context()->remove_class("source-muted");
     if (config_["format-source-muted"].isString()) {
       format_source = config_["format-source"].asString();
     }

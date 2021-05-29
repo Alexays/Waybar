@@ -45,9 +45,9 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    label_->get_style_context()->add_class("critical");
+    button_.get_style_context()->add_class("critical");
   } else {
-    label_->get_style_context()->remove_class("critical");
+    button_.get_style_context()->remove_class("critical");
   }
 
   if (format.empty()) {

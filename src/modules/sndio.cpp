@@ -105,9 +105,9 @@ auto Sndio::update() -> void {
   unsigned int vol = 100. * static_cast<double>(volume_) / static_cast<double>(maxval_);
 
   if (volume_ == 0) {
-    label_->get_style_context()->add_class("muted");
+    button_.get_style_context()->add_class("muted");
   } else {
-    label_->get_style_context()->remove_class("muted");
+    button_.get_style_context()->remove_class("muted");
   }
 
   label_->set_markup(fmt::format(format, fmt::arg("volume", vol), fmt::arg("raw_value", volume_)));

@@ -142,10 +142,10 @@ std::string AButton::getState(uint8_t value, bool lesser) {
   std::string valid_state;
   for (auto const& state : states) {
     if ((lesser ? value <= state.second : value >= state.second) && valid_state.empty()) {
-      label_->get_style_context()->add_class(state.first);
+      button_.get_style_context()->add_class(state.first);
       valid_state = state.first;
     } else {
-      label_->get_style_context()->remove_class(state.first);
+      button_.get_style_context()->remove_class(state.first);
     }
   }
   return valid_state;

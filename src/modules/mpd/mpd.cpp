@@ -85,10 +85,10 @@ std::string waybar::modules::MPD::getFilename() const {
 
 void waybar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
-    label_->get_style_context()->add_class("disconnected");
-    label_->get_style_context()->remove_class("stopped");
-    label_->get_style_context()->remove_class("playing");
-    label_->get_style_context()->remove_class("paused");
+    button_.get_style_context()->add_class("disconnected");
+    button_.get_style_context()->remove_class("stopped");
+    button_.get_style_context()->remove_class("playing");
+    button_.get_style_context()->remove_class("paused");
 
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
@@ -105,7 +105,7 @@ void waybar::modules::MPD::setLabel() {
     }
     return;
   } else {
-    label_->get_style_context()->remove_class("disconnected");
+    button_.get_style_context()->remove_class("disconnected");
   }
 
   auto format = format_;
@@ -118,19 +118,19 @@ void waybar::modules::MPD::setLabel() {
   if (stopped()) {
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
-    label_->get_style_context()->add_class("stopped");
-    label_->get_style_context()->remove_class("playing");
-    label_->get_style_context()->remove_class("paused");
+    button_.get_style_context()->add_class("stopped");
+    button_.get_style_context()->remove_class("playing");
+    button_.get_style_context()->remove_class("paused");
   } else {
-    label_->get_style_context()->remove_class("stopped");
+    button_.get_style_context()->remove_class("stopped");
     if (playing()) {
-      label_->get_style_context()->add_class("playing");
-      label_->get_style_context()->remove_class("paused");
+      button_.get_style_context()->add_class("playing");
+      button_.get_style_context()->remove_class("paused");
     } else if (paused()) {
       format = config_["format-paused"].isString() ? config_["format-paused"].asString()
                                                    : config_["format"].asString();
-      label_->get_style_context()->add_class("paused");
-      label_->get_style_context()->remove_class("playing");
+      button_.get_style_context()->add_class("paused");
+      button_.get_style_context()->remove_class("playing");
     }
 
     stateIcon = getStateIcon();
