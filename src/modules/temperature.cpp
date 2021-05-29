@@ -30,9 +30,9 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    label_->get_style_context()->add_class("critical");
+    button_.get_style_context()->add_class("critical");
   } else {
-    label_->get_style_context()->remove_class("critical");
+    button_.get_style_context()->remove_class("critical");
   }
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
   label_->set_markup(fmt::format(format,
