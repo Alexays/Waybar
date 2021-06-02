@@ -1,6 +1,7 @@
 #include "modules/network.hpp"
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
+#include <linux/if.h>
 #include <fstream>
 #include <cassert>
 #include <optional>
@@ -429,6 +430,20 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     std::optional<bool> carrier;
 
     if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
+      return NL_OK;
+    }
+
+    // Check if the interface goes "down" and if we want to detect the
+    // external interface.
+    if (net->ifid_ != -1 && !(ifi->ifi_flags & IFF_UP)
+        && !net->config_["interface"].isString()) {
+      // The current interface is now down, all the routes associated with
+      // it have been deleted, so start looking for a new default route.
+      spdlog::debug("network: if{} down", net->ifid_);
+      net->clearIface();
+      net->dp.emit();
+      net->want_route_dump_ = true;
+      net->askForStateDump();
       return NL_OK;
     }
 
