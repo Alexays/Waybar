@@ -573,11 +573,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     bool           has_gateway = false;
     bool           has_destination = false;
     int            temp_idx = -1;
-
-    /* If we found the correct answer, skip parsing the attributes. */
-    if (!is_del_event && net->ifid_ != -1) {
-      return NL_OK;
-    }
+    uint32_t       priority = 0;
 
     /* Find the message(s) concerting the main routing table, each message
      * corresponds to a single routing table entry.
@@ -621,6 +617,9 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         /* The output interface index. */
         temp_idx = *static_cast<int *>(RTA_DATA(attr));
         break;
+      case RTA_PRIORITY:
+        priority = *(uint32_t*)RTA_DATA(attr);
+        break;
       default:
         break;
       }
@@ -628,10 +627,16 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
     // Check if we have a default route.
     if (has_gateway && !has_destination && temp_idx != -1) {
-      if (!is_del_event) {
+      // Check if this is the first default route we see, or if this new
+      // route have a higher priority.
+      if (!is_del_event && ((net->ifid_ == -1) || (priority < net->route_priority))) {
+        // Clear if's state for the case were there is a higher priority
+        // route on a different interface.
+        net->clearIface();
         net->ifid_ = temp_idx;
+        net->route_priority = priority;
 
-        spdlog::debug("network: new default route via if{}", temp_idx);
+        spdlog::debug("network: new default route via if{} metric {}", temp_idx, priority);
 
         /* Ask ifname associated with temp_idx as well as carrier status */
         struct ifinfomsg ifinfo_hdr = {
@@ -653,9 +658,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         net->want_addr_dump_ = true;
         net->askForStateDump();
         net->thread_timer_.wake_up();
-      } else if (is_del_event && temp_idx == net->ifid_) {
-        spdlog::debug("network: default route deleted {}/if{}",
-                      net->ifname_, temp_idx);
+      } else if (is_del_event && temp_idx == net->ifid_
+                 && net->route_priority == priority) {
+        spdlog::debug("network: default route deleted {}/if{} metric {}",
+                      net->ifname_, temp_idx, priority);
 
         net->clearIface();
         net->dp.emit();
