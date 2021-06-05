@@ -400,6 +400,7 @@ bool waybar::modules::Network::checkInterface(std::string name) {
 
 void waybar::modules::Network::clearIface() {
   ifid_ = -1;
+  ifname_.clear();
   essid_.clear();
   ipaddr_.clear();
   netmask_.clear();
@@ -656,7 +657,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         spdlog::debug("network: default route deleted {}/if{}",
                       net->ifname_, temp_idx);
 
-        net->ifname_.clear();
         net->clearIface();
         net->dp.emit();
         /* Ask for a dump of all routes in case another one is already
