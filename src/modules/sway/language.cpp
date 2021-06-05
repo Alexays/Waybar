@@ -45,7 +45,9 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
     auto payload = parser_.parse(res.payload)["input"];
     if (payload["type"].asString() == "keyboard") {
         auto layout_name = payload["xkb_active_layout_name"].asString().substr(0,2);
-        lang_ = Glib::Markup::escape_text(layout_name);
+        if (!layout_name.empty()) {
+            lang_ = Glib::Markup::escape_text(layout_name);
+        }
     }
     dp.emit();
   } catch (const std::exception& e) {
