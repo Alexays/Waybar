@@ -72,6 +72,7 @@ class Network : public ALabel {
   int32_t     signal_strength_dbm_;
   uint8_t     signal_strength_;
   uint32_t    frequency_;
+  uint32_t    route_priority;
 
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;

@@ -1,6 +1,7 @@
 #include "modules/network.hpp"
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
+#include <linux/if.h>
 #include <fstream>
 #include <cassert>
 #include <optional>
@@ -400,6 +401,7 @@ bool waybar::modules::Network::checkInterface(std::string name) {
 
 void waybar::modules::Network::clearIface() {
   ifid_ = -1;
+  ifname_.clear();
   essid_.clear();
   ipaddr_.clear();
   netmask_.clear();
@@ -428,6 +430,20 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     std::optional<bool> carrier;
 
     if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
+      return NL_OK;
+    }
+
+    // Check if the interface goes "down" and if we want to detect the
+    // external interface.
+    if (net->ifid_ != -1 && !(ifi->ifi_flags & IFF_UP)
+        && !net->config_["interface"].isString()) {
+      // The current interface is now down, all the routes associated with
+      // it have been deleted, so start looking for a new default route.
+      spdlog::debug("network: if{} down", net->ifid_);
+      net->clearIface();
+      net->dp.emit();
+      net->want_route_dump_ = true;
+      net->askForStateDump();
       return NL_OK;
     }
 
@@ -572,11 +588,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     bool           has_gateway = false;
     bool           has_destination = false;
     int            temp_idx = -1;
-
-    /* If we found the correct answer, skip parsing the attributes. */
-    if (!is_del_event && net->ifid_ != -1) {
-      return NL_OK;
-    }
+    uint32_t       priority = 0;
 
     /* Find the message(s) concerting the main routing table, each message
      * corresponds to a single routing table entry.
@@ -620,52 +632,59 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         /* The output interface index. */
         temp_idx = *static_cast<int *>(RTA_DATA(attr));
         break;
+      case RTA_PRIORITY:
+        priority = *(uint32_t*)RTA_DATA(attr);
+        break;
       default:
         break;
       }
+    }
 
-      /* If this is the default route, and we know the interface index,
-       * we can stop parsing this message.
-       */
-      if (has_gateway && !has_destination && temp_idx != -1) {
-        if (!is_del_event) {
-          net->ifid_ = temp_idx;
+    // Check if we have a default route.
+    if (has_gateway && !has_destination && temp_idx != -1) {
+      // Check if this is the first default route we see, or if this new
+      // route have a higher priority.
+      if (!is_del_event && ((net->ifid_ == -1) || (priority < net->route_priority))) {
+        // Clear if's state for the case were there is a higher priority
+        // route on a different interface.
+        net->clearIface();
+        net->ifid_ = temp_idx;
+        net->route_priority = priority;
 
-          spdlog::debug("network: new default route via if{}", temp_idx);
+        spdlog::debug("network: new default route via if{} metric {}", temp_idx, priority);
 
-          /* Ask ifname associated with temp_idx as well as carrier status */
-          struct ifinfomsg ifinfo_hdr = {
-            .ifi_family = AF_UNSPEC,
-            .ifi_index = temp_idx,
-          };
-          int err;
-          err = nl_send_simple(net->ev_sock_, RTM_GETLINK, NLM_F_REQUEST,
-                               &ifinfo_hdr, sizeof (ifinfo_hdr));
-          if (err < 0) {
-            spdlog::error("network: failed to ask link info: {}", err);
-            /* Ask for a dump of all links instead */
-            net->want_link_dump_ = true;
-          }
-
-          /* Also ask for the address. Asking for a addresses of a specific
-           * interface doesn't seems to work so ask for a dump of all
-           * addresses. */
-          net->want_addr_dump_ = true;
-          net->askForStateDump();
-          net->thread_timer_.wake_up();
-        } else if (is_del_event && temp_idx == net->ifid_) {
-          spdlog::debug("network: default route deleted {}/if{}",
-                        net->ifname_, temp_idx);
-
-          net->ifname_.clear();
-          net->clearIface();
-          net->dp.emit();
-          /* Ask for a dump of all routes in case another one is already
-           * setup. If there's none, there'll be an event with new one
-           * later. */
-          net->want_route_dump_ = true;
-          net->askForStateDump();
+        /* Ask ifname associated with temp_idx as well as carrier status */
+        struct ifinfomsg ifinfo_hdr = {
+          .ifi_family = AF_UNSPEC,
+          .ifi_index = temp_idx,
+        };
+        int err;
+        err = nl_send_simple(net->ev_sock_, RTM_GETLINK, NLM_F_REQUEST,
+                             &ifinfo_hdr, sizeof (ifinfo_hdr));
+        if (err < 0) {
+          spdlog::error("network: failed to ask link info: {}", err);
+          /* Ask for a dump of all links instead */
+          net->want_link_dump_ = true;
         }
+
+        /* Also ask for the address. Asking for a addresses of a specific
+         * interface doesn't seems to work so ask for a dump of all
+         * addresses. */
+        net->want_addr_dump_ = true;
+        net->askForStateDump();
+        net->thread_timer_.wake_up();
+      } else if (is_del_event && temp_idx == net->ifid_
+                 && net->route_priority == priority) {
+        spdlog::debug("network: default route deleted {}/if{} metric {}",
+                      net->ifname_, temp_idx, priority);
+
+        net->clearIface();
+        net->dp.emit();
+        /* Ask for a dump of all routes in case another one is already
+         * setup. If there's none, there'll be an event with new one
+         * later. */
+        net->want_route_dump_ = true;
+        net->askForStateDump();
       }
     }
     break;
