@@ -19,6 +19,7 @@ constexpr const char *NETSTAT_FILE =
 constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
 constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
 constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
+constexpr const char *DEFAULT_FORMAT = "{ifname}";
 
 std::ifstream                     netstat(NETSTAT_FILE);
 std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
@@ -82,7 +83,7 @@ std::optional<unsigned long long> read_netstat(std::string_view category, std::s
 }  // namespace
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, "{ifname}", 60),
+    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
       ifid_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
@@ -323,6 +324,10 @@ auto waybar::modules::Network::update() -> void {
     }
     if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
+    } else if (config_["format"].isString()) {
+      default_format_ = config_["format"].asString();
+    } else {
+      default_format_ = DEFAULT_FORMAT;
     }
     if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
