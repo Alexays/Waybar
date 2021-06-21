@@ -234,7 +234,10 @@ std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
   return {config_file, css_file};
 }
 
-auto waybar::Client::setupConfig(const std::string &config_file) -> void {
+auto waybar::Client::setupConfig(const std::string &config_file, int depth) -> void {
+  if (depth > 100) {
+    throw std::runtime_error("Aborting due to likely recursive include in config files");
+  }
   std::ifstream file(config_file);
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
@@ -245,7 +248,7 @@ auto waybar::Client::setupConfig(const std::string &config_file) -> void {
   if (tmp_config_["include"].isArray()) {
     for (const auto &include : tmp_config_["include"]) {
       spdlog::info("Including resource file: {}", include.asString());
-      setupConfig(getValidPath({include.asString()}));
+      setupConfig(getValidPath({include.asString()}), ++depth);
     }
   }
   mergeConfig(config_, tmp_config_);
@@ -337,7 +340,7 @@ int waybar::Client::main(int argc, char *argv[]) {
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   auto [config_file, css_file] = getConfigs(config, style);
-  setupConfig(config_file);
+  setupConfig(config_file, 0);
   setupCss(css_file);
   bindInterfaces();
   gtk_app->hold();
