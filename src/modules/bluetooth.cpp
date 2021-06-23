@@ -17,9 +17,9 @@ auto waybar::modules::Bluetooth::update() -> void {
     if (config_["tooltip-format"].isString()) {
       auto tooltip_format = config_["tooltip-format"].asString();
       auto tooltip_text = fmt::format(tooltip_format, status, fmt::arg("status", status));
-      label_->set_tooltip_text(tooltip_text);
+      button_.set_tooltip_text(tooltip_text);
     } else {
-      label_->set_tooltip_text(status);
+      button_.set_tooltip_text(status);
     }
   }
 }

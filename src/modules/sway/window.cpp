@@ -60,7 +60,7 @@ auto Window::update() -> void {
   label_->set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
                                 fmt::arg("app_id", app_id_)));
   if (tooltipEnabled()) {
-    label_->set_tooltip_text(window_);
+    button_.set_tooltip_text(window_);
   }
   // Call parent update
   AButton::update();

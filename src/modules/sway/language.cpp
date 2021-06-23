@@ -61,7 +61,7 @@ auto Language::update() -> void {
   } else {
     label_->set_markup(fmt::format(format_, lang_));
     if (tooltipEnabled()) {
-      label_->set_tooltip_text(lang_);
+      button_.set_tooltip_text(lang_);
     }
     event_box_.show();
   }

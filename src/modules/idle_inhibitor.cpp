@@ -62,7 +62,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
       fmt::format(format_, fmt::arg("status", status_text), fmt::arg("icon", getIcon(0, status_text))));
   button_.get_style_context()->add_class(status_text);
   if (tooltipEnabled()) {
-    label_->set_tooltip_text(status_text);
+    button_.set_tooltip_text(status_text);
   }
   // Call parent update
   AButton::update();

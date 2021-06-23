@@ -43,7 +43,7 @@ auto Mode::update() -> void {
   } else {
     label_->set_markup(fmt::format(format_, mode_));
     if (tooltipEnabled()) {
-      label_->set_tooltip_text(mode_);
+      button_.set_tooltip_text(mode_);
     }
     event_box_.show();
   }
