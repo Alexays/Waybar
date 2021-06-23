@@ -11,6 +11,9 @@
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #include <sigc++/trackable.h>
 
+#include <set>
+#include <string_view>
+
 namespace waybar::modules::SNI {
 
 class Item : public sigc::trackable {
@@ -64,7 +67,7 @@ class Item : public sigc::trackable {
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
-  bool                           update_pending_;
+  std::set<std::string_view>     update_pending_;
 };
 
 }  // namespace waybar::modules::SNI

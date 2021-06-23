@@ -1,8 +1,11 @@
 #include "modules/sni/item.hpp"
+
 #include <gdkmm/general.h>
 #include <glibmm/main.h>
 #include <spdlog/spdlog.h>
+
 #include <fstream>
+#include <map>
 
 template <>
 struct fmt::formatter<Glib::ustring> : formatter<std::string> {
@@ -40,8 +43,7 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()),
-      update_pending_(false) {
+      icon_theme(Gtk::IconTheme::create()) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -148,8 +150,6 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 }
 
 void Item::getUpdatedProperties() {
-  update_pending_ = false;
-
   auto params = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<Glib::ustring>::create(SNI_INTERFACE_NAME)});
   proxy_->call("org.freedesktop.DBus.Properties.GetAll",
@@ -166,10 +166,7 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     auto properties = properties_variant.get();
 
     for (const auto& [name, value] : properties) {
-      Glib::VariantBase old_value;
-      proxy_->get_cached_property(old_value, name);
-      if (!old_value || !value.equal(old_value)) {
-        proxy_->set_cached_property(name, value);
+      if (update_pending_.count(name.raw())) {
         setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
     }
@@ -181,18 +178,37 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
   } catch (const std::exception& err) {
     spdlog::warn("Failed to update properties: {}", err.what());
   }
+  update_pending_.clear();
 }
+
+/**
+ * Mapping from a signal name to a set of possibly changed properties.
+ * Commented signals are not handled by the tray module at the moment.
+ */
+static const std::map<std::string_view, std::set<std::string_view>> signal2props = {
+    {"NewTitle", {"Title"}},
+    {"NewIcon", {"IconName", "IconPixmap"}},
+    // {"NewAttentionIcon", {"AttentionIconName", "AttentionIconPixmap", "AttentionMovieName"}},
+    // {"NewOverlayIcon", {"OverlayIconName", "OverlayIconPixmap"}},
+    {"NewIconThemePath", {"IconThemePath"}},
+    {"NewToolTip", {"ToolTip"}},
+    {"NewStatus", {"Status"}},
+    // {"XAyatanaNewLabel", {"XAyatanaLabel"}},
+};
 
 void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                     const Glib::VariantContainerBase& arguments) {
   spdlog::trace("Tray item '{}' got signal {}", id, signal_name);
-  if (!update_pending_ && signal_name.compare(0, 3, "New") == 0) {
-    /* Debounce signals and schedule update of all properties.
-     * Based on behavior of Plasma dataengine for StatusNotifierItem.
-     */
-    update_pending_ = true;
-    Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &Item::getUpdatedProperties),
-                                        UPDATE_DEBOUNCE_TIME);
+  auto changed = signal2props.find(signal_name.raw());
+  if (changed != signal2props.end()) {
+    if (update_pending_.empty()) {
+      /* Debounce signals and schedule update of all properties.
+       * Based on behavior of Plasma dataengine for StatusNotifierItem.
+       */
+      Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &Item::getUpdatedProperties),
+                                          UPDATE_DEBOUNCE_TIME);
+    }
+    update_pending_.insert(changed->second.begin(), changed->second.end());
   }
 }
 
