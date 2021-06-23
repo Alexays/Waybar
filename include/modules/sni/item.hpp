@@ -30,7 +30,6 @@ class Item : public sigc::trackable {
   std::string   status;
 
   std::string                  title;
-  int32_t                      window_id;
   std::string                  icon_name;
   Glib::RefPtr<Gdk::Pixbuf>    icon_pixmap;
   Glib::RefPtr<Gtk::IconTheme> icon_theme;

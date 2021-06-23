@@ -105,8 +105,6 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       title = get_variant<std::string>(value);
     } else if (name == "Status") {
       status = get_variant<std::string>(value);
-    } else if (name == "WindowId") {
-      window_id = get_variant<int32_t>(value);
     } else if (name == "IconName") {
       icon_name = get_variant<std::string>(value);
     } else if (name == "IconPixmap") {
