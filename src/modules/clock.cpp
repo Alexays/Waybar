@@ -119,7 +119,7 @@ auto waybar::modules::Clock::update() -> void {
       text =
           fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines),
                       fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
-      label_->set_tooltip_markup(text);
+      button_.set_tooltip_markup(text);
     }
   }
 

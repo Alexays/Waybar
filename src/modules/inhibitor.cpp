@@ -123,7 +123,7 @@ auto Inhibitor::update() -> void {
   button_.get_style_context()->add_class(status_text);
 
   if (tooltipEnabled()) {
-    label_->set_tooltip_text(status_text);
+    button_.set_tooltip_text(status_text);
   }
 
   return AButton::update();

@@ -66,7 +66,7 @@ auto waybar::modules::Memory::update() -> void {
     if (tooltipEnabled()) {
       if (config_["tooltip-format"].isString()) {
         auto tooltip_format = config_["tooltip-format"].asString();
-        label_->set_tooltip_text(fmt::format(
+        button_.set_tooltip_text(fmt::format(
             tooltip_format, used_ram_percentage, fmt::arg("total", total_ram_gigabytes),
             fmt::arg("swapTotal", total_swap_gigabytes),
             fmt::arg("percentage", used_ram_percentage),
@@ -74,7 +74,7 @@ auto waybar::modules::Memory::update() -> void {
             fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
             fmt::arg("swapAvail", available_swap_gigabytes)));
       } else {
-        label_->set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
+        button_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
       }
     }
   } else {

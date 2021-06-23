@@ -382,11 +382,11 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
                    pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
-      if (label_->get_tooltip_text() != tooltip_text) {
-        label_->set_tooltip_markup(tooltip_text);
+      if (button_.get_tooltip_text() != tooltip_text) {
+        button_.set_tooltip_markup(tooltip_text);
       }
-    } else if (label_->get_tooltip_text() != text) {
-      label_->set_tooltip_markup(text);
+    } else if (button_.get_tooltip_text() != text) {
+      button_.set_tooltip_markup(text);
     }
   }
 

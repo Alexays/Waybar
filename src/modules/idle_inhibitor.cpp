@@ -62,7 +62,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
                                  fmt::arg("icon", getIcon(0, status_text))));
   button_.get_style_context()->add_class(status_text);
   if (tooltipEnabled()) {
-    label_->set_tooltip_markup(
+    button_.set_tooltip_markup(
         status ? fmt::format(config_["tooltip-format-activated"].isString()
                                  ? config_["tooltip-format-activated"].asString()
                                  : "{status}",

@@ -134,12 +134,12 @@ auto waybar::modules::Custom::update() -> void {
       label_->set_markup(str);
       if (tooltipEnabled()) {
         if (text_ == tooltip_) {
-          if (label_->get_tooltip_markup() != str) {
-            label_->set_tooltip_markup(str);
+          if (button_.get_tooltip_markup() != str) {
+            button_.set_tooltip_markup(str);
           }
         } else {
-          if (label_->get_tooltip_markup() != tooltip_) {
-            label_->set_tooltip_markup(tooltip_);
+          if (button_.get_tooltip_markup() != tooltip_) {
+            button_.set_tooltip_markup(tooltip_);
           }
         }
       }

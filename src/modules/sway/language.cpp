@@ -107,9 +107,9 @@ auto Language::update() -> void {
                       fmt::arg("shortDescription", layout_.short_description),
                       fmt::arg("long", layout_.full_name), fmt::arg("variant", layout_.variant),
                       fmt::arg("flag", layout_.country_flag())));
-      label_->set_tooltip_markup(tooltip_display_layout);
+      button_.set_tooltip_markup(tooltip_display_layout);
     } else {
-      label_->set_tooltip_markup(display_layout);
+      button_.set_tooltip_markup(display_layout);
     }
   }
 

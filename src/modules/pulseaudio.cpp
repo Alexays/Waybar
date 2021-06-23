@@ -283,13 +283,13 @@ auto waybar::modules::Pulseaudio::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      label_->set_tooltip_text(fmt::format(
+      button_.set_tooltip_text(fmt::format(
           tooltip_format, fmt::arg("desc", desc_), fmt::arg("volume", volume_),
           fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume_),
           fmt::arg("source_desc", source_desc_),
           fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
     } else {
-      label_->set_tooltip_text(desc_);
+      button_.set_tooltip_text(desc_);
     }
   }
 
