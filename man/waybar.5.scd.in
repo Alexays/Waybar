@@ -85,6 +85,10 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Option to disable the use of gtk-layer-shell for popups.
 	Only functional if compiled with gtk-layer-shell support.
 
+*include* ++
+	typeof: array ++
+	Paths to additional configuration files. In case of duplicate options, the including file's value takes precedence. Make sure to avoid circular imports.
+
 # MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
