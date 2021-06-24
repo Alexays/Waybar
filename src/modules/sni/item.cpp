@@ -2,6 +2,7 @@
 
 #include <gdkmm/general.h>
 #include <glibmm/main.h>
+#include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
 #include <fstream>
@@ -81,7 +82,6 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
       return;
     }
     this->updateImage();
-    // this->event_box.set_tooltip_text(this->title);
 
   } catch (const Glib::Error& err) {
     spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
@@ -91,8 +91,22 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
 }
 
 template <typename T>
-T get_variant(Glib::VariantBase& value) {
+T get_variant(const Glib::VariantBase& value) {
   return Glib::VariantBase::cast_dynamic<Glib::Variant<T>>(value).get();
+}
+
+template <>
+ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
+  ToolTip result;
+  // Unwrap (sa(iiay)ss)
+  auto container = value.cast_dynamic<Glib::VariantContainerBase>(value);
+  result.icon_name = get_variant<Glib::ustring>(container.get_child(0));
+  result.text = get_variant<Glib::ustring>(container.get_child(2));
+  auto description = get_variant<Glib::ustring>(container.get_child(3));
+  if (!description.empty()) {
+    result.text = fmt::format("<b>{}</b>\n{}", result.text, description);
+  }
+  return result;
 }
 
 void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
@@ -122,7 +136,10 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "AttentionMovieName") {
       attention_movie_name = get_variant<std::string>(value);
     } else if (name == "ToolTip") {
-      // TODO: tooltip
+      tooltip = get_variant<ToolTip>(value);
+      if (!tooltip.text.empty()) {
+        event_box.set_tooltip_markup(tooltip.text);
+      }
     } else if (name == "IconThemePath") {
       icon_theme_path = get_variant<std::string>(value);
       if (!icon_theme_path.empty()) {
@@ -172,7 +189,6 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     }
 
     this->updateImage();
-    // this->event_box.set_tooltip_text(this->title);
   } catch (const Glib::Error& err) {
     spdlog::warn("Failed to update properties: {}", err.what());
   } catch (const std::exception& err) {

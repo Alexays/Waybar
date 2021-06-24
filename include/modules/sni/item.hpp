@@ -16,6 +16,11 @@
 
 namespace waybar::modules::SNI {
 
+struct ToolTip {
+  Glib::ustring icon_name;
+  Glib::ustring text;
+};
+
 class Item : public sigc::trackable {
  public:
   Item(const std::string&, const std::string&, const Json::Value&);
@@ -41,6 +46,7 @@ class Item : public sigc::trackable {
   std::string                  attention_movie_name;
   std::string                  icon_theme_path;
   std::string                  menu;
+  ToolTip                      tooltip;
   DbusmenuGtkMenu*             dbus_menu = nullptr;
   Gtk::Menu*                   gtk_menu = nullptr;
   /**
