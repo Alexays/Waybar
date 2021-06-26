@@ -16,6 +16,10 @@ Addressed by *tray*
     typeof: integer ++
     Defines the size of the tray icons.
 
+*smooth-scrolling-threshold*: ++
+	typeof: double ++
+	Threshold to be used when scrolling.
+
 *spacing*: ++
     typeof: integer ++
     Defines the spacing between the tray icons.
