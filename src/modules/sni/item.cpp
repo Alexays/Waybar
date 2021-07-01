@@ -119,6 +119,9 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       id = get_variant<std::string>(value);
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
+      if (tooltip.text.empty()) {
+        event_box.set_tooltip_markup(title);
+      }
     } else if (name == "Status") {
       status = get_variant<std::string>(value);
     } else if (name == "IconName") {
