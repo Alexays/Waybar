@@ -35,7 +35,11 @@ namespace fmt {
             // The rationale for ignoring it is that the only reason to specify
             // an alignment and a with is to get a fixed width bar, and ">" is
             // sufficient in this implementation.
+#if FMT_VERSION < 80000
             width = parse_nonnegative_int(it, end, ctx);
+#else
+            width = detail::parse_nonnegative_int(it, end, -1);
+#endif
           }
           return it;
         }
