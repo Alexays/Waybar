@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Test in FreeBSD VM
-      uses: vmactions/freebsd-vm@v0.0.9 # aka FreeBSD 12.2
+      uses: vmactions/freebsd-vm@v0.1.4 # aka FreeBSD 12.2
       with:
         usesh: true
         prepare: |
