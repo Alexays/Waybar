@@ -51,10 +51,15 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   if (config["smooth-scrolling-threshold"].isNumeric()) {
     scroll_threshold_ = config["smooth-scrolling-threshold"].asDouble();
   }
+  if (config["show-passive-items"].isBool()) {
+    show_passive_ = config["show-passive-items"].asBool();
+  }
   event_box.add(image);
   event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
   event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
+  // initial visibility
+  event_box.set_visible(show_passive_);
 
   cancellable_ = Gio::Cancellable::create();
 
@@ -81,7 +86,7 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
 
     this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
 
-    if (this->id.empty() || this->category.empty() || this->status.empty()) {
+    if (this->id.empty() || this->category.empty()) {
       spdlog::error("Invalid Status Notifier Item: {}, {}", bus_name, object_path);
       return;
     }
@@ -127,7 +132,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
         event_box.set_tooltip_markup(title);
       }
     } else if (name == "Status") {
-      status = get_variant<std::string>(value);
+      setStatus(get_variant<Glib::ustring>(value));
     } else if (name == "IconName") {
       icon_name = get_variant<std::string>(value);
     } else if (name == "IconPixmap") {
@@ -171,6 +176,21 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
                  value,
                  err.what());
   }
+}
+
+void Item::setStatus(const Glib::ustring& value) {
+  Glib::ustring lower = value.lowercase();
+  event_box.set_visible(show_passive_ || lower.compare("passive") != 0);
+
+  auto style = event_box.get_style_context();
+  for (const auto& class_name : style->list_classes()) {
+    style->remove_class(class_name);
+  }
+  if (lower.compare("needsattention") == 0) {
+    // convert status to dash-case for CSS
+    lower = "needs-attention";
+  }
+  style->add_class(lower);
 }
 
 void Item::getUpdatedProperties() {

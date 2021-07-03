@@ -35,7 +35,6 @@ class Item : public sigc::trackable {
   Gtk::EventBox event_box;
   std::string   category;
   std::string   id;
-  std::string   status;
 
   std::string                  title;
   std::string                  icon_name;
@@ -59,6 +58,7 @@ class Item : public sigc::trackable {
  private:
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
+  void setStatus(const Glib::ustring& value);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
   void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
@@ -76,6 +76,8 @@ class Item : public sigc::trackable {
   gdouble scroll_threshold_ = 0;
   gdouble distance_scrolled_x_ = 0;
   gdouble distance_scrolled_y_ = 0;
+  // visibility of items with Status == Passive
+  bool show_passive_ = false;
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
