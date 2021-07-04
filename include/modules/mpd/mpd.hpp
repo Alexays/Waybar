@@ -7,12 +7,12 @@
 #include <condition_variable>
 #include <thread>
 
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "modules/mpd/state.hpp"
 
 namespace waybar::modules {
 
-class MPD : public ALabel {
+class MPD : public AButton {
   friend class detail::Context;
 
   // State machine

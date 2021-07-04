@@ -7,7 +7,7 @@
 #include <fmt/chrono.h>
 #endif
 #include <date/tz.h>
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
@@ -17,7 +17,7 @@ struct waybar_time {
   date::zoned_seconds ztime;
 };
 
-class Clock : public ALabel {
+class Clock : public AButton {
  public:
   Clock(const std::string&, const Json::Value&);
   ~Clock() = default;

@@ -2,22 +2,24 @@
 
 #include <glibmm/markup.h>
 #include <gtkmm/label.h>
+#include <gtkmm/button.h>
 #include <json/json.h>
 #include "AModule.hpp"
 
 namespace waybar {
 
-class ALabel : public AModule {
+class AButton : public AModule {
  public:
-  ALabel(const Json::Value &, const std::string &, const std::string &, const std::string &format,
+  AButton(const Json::Value &, const std::string &, const std::string &, const std::string &format,
          uint16_t interval = 0, bool ellipsize = false, bool enable_click = false, bool enable_scroll = false);
-  virtual ~ALabel() = default;
+  virtual ~AButton() = default;
   virtual auto        update() -> void;
   virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
   virtual std::string getIcon(uint16_t, std::vector<std::string> &alts, uint16_t max = 0);
 
  protected:
-  Gtk::Label                 label_;
+  Gtk::Button                button_ = Gtk::Button(name_);
+  Gtk::Label                 *label_ = (Gtk::Label*)button_.get_child();
   std::string                format_;
   const std::chrono::seconds interval_;
   bool                       alt_ = false;

@@ -83,7 +83,7 @@ std::optional<unsigned long long> read_netstat(std::string_view category, std::s
 }  // namespace
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
+    : AButton(config, "network", id, DEFAULT_FORMAT, 60),
       ifid_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
@@ -100,11 +100,11 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 #endif
       frequency_(0) {
 
-  // Start with some "text" in the module's label_, update() will then
+  // Start with some "text" in the module's label_-> update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
   // the module start with no text, but the the event_box_ is shown.
-  label_.set_markup("<s></s>");
+  label_->set_markup("<s></s>");
 
   auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
   auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
@@ -319,8 +319,8 @@ auto waybar::modules::Network::update() -> void {
   }
   if (!alt_) {
     auto state = getNetworkState();
-    if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
-      label_.get_style_context()->remove_class(state_);
+    if (!state_.empty() && button_.get_style_context()->has_class(state_)) {
+      button_.get_style_context()->remove_class(state_);
     }
     if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
@@ -332,8 +332,8 @@ auto waybar::modules::Network::update() -> void {
     if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
     }
-    if (!label_.get_style_context()->has_class(state)) {
-      label_.get_style_context()->add_class(state);
+    if (!button_.get_style_context()->has_class(state)) {
+      button_.get_style_context()->add_class(state);
     }
     format_ = default_format_;
     state_ = state;
@@ -355,8 +355,8 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
       fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
-  if (text.compare(label_.get_label()) != 0) {
-    label_.set_markup(text);
+  if (text.compare(label_->get_label()) != 0) {
+    label_->set_markup(text);
     if (text.empty()) {
       event_box_.hide();
     } else {
@@ -384,16 +384,16 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
           fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
           fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
-      if (label_.get_tooltip_text() != tooltip_text) {
-        label_.set_tooltip_text(tooltip_text);
+      if (button_.get_tooltip_text() != tooltip_text) {
+        button_.set_tooltip_text(tooltip_text);
       }
-    } else if (label_.get_tooltip_text() != text) {
-      label_.set_tooltip_text(text);
+    } else if (button_.get_tooltip_text() != text) {
+      button_.set_tooltip_text(text);
     }
   }
 
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 bool waybar::modules::Network::checkInterface(std::string name) {

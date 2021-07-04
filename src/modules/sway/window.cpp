@@ -5,7 +5,7 @@
 namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
+    : AButton(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
@@ -57,13 +57,13 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
+  label_->set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
                                 fmt::arg("app_id", app_id_)));
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(window_);
+    button_.set_tooltip_text(window_);
   }
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 int leafNodesInWorkspace(const Json::Value& node) {

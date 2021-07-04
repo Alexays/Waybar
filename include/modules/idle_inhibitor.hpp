@@ -1,13 +1,13 @@
 #pragma once
 
 #include <fmt/format.h>
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 
 namespace waybar::modules {
 
-class IdleInhibitor : public ALabel {
+class IdleInhibitor : public AButton {
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~IdleInhibitor();

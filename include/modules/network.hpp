@@ -7,7 +7,7 @@
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
 #include <sys/epoll.h>
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "util/sleeper_thread.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
@@ -15,7 +15,7 @@
 
 namespace waybar::modules {
 
-class Network : public ALabel {
+class Network : public AButton {
  public:
   Network(const std::string&, const Json::Value&);
   ~Network();

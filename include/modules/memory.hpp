@@ -3,12 +3,12 @@
 #include <fmt/format.h>
 #include <fstream>
 #include <unordered_map>
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Memory : public ALabel {
+class Memory : public AButton {
  public:
   Memory(const std::string&, const Json::Value&);
   ~Memory() = default;

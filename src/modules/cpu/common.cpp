@@ -1,7 +1,7 @@
 #include "modules/cpu.hpp"
 
 waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
-    : ALabel(config, "cpu", id, "{usage}%", 10) {
+    : AButton(config, "cpu", id, "{usage}%", 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -14,7 +14,7 @@ auto waybar::modules::Cpu::update() -> void {
   auto [cpu_usage, tooltip] = getCpuUsage();
   auto [max_frequency, min_frequency, avg_frequency] = getCpuFrequency();
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(tooltip);
+    button_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto state = getState(cpu_usage);
@@ -26,7 +26,7 @@ auto waybar::modules::Cpu::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    label_.set_markup(fmt::format(format,
+    label_->set_markup(fmt::format(format,
                                   fmt::arg("load", cpu_load),
                                   fmt::arg("usage", cpu_usage),
                                   fmt::arg("max_frequency", max_frequency),
@@ -35,7 +35,7 @@ auto waybar::modules::Cpu::update() -> void {
   }
 
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 double waybar::modules::Cpu::getCpuLoad() {

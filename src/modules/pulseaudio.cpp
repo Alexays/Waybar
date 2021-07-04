@@ -1,7 +1,7 @@
 #include "modules/pulseaudio.hpp"
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "pulseaudio", id, "{volume}%"),
+    : AButton(config, "pulseaudio", id, "{volume}%"),
       mainloop_(nullptr),
       mainloop_api_(nullptr),
       context_(nullptr),
@@ -213,9 +213,9 @@ auto waybar::modules::Pulseaudio::update() -> void {
     if (monitor_.find("a2dp_sink") != std::string::npos || // PulseAudio
         monitor_.find("a2dp-sink") != std::string::npos) { // PipeWire
       format_name = format_name + "-bluetooth";
-      label_.get_style_context()->add_class("bluetooth");
+      button_.get_style_context()->add_class("bluetooth");
     } else {
-      label_.get_style_context()->remove_class("bluetooth");
+      button_.get_style_context()->remove_class("bluetooth");
     }
     if (muted_) {
       // Check muted bluetooth format exist, otherwise fallback to default muted format
@@ -223,11 +223,11 @@ auto waybar::modules::Pulseaudio::update() -> void {
         format_name = "format";
       }
       format_name = format_name + "-muted";
-      label_.get_style_context()->add_class("muted");
-      label_.get_style_context()->add_class("sink-muted");
+      button_.get_style_context()->add_class("muted");
+      button_.get_style_context()->add_class("sink-muted");
     } else {
-      label_.get_style_context()->remove_class("muted");
-      label_.get_style_context()->remove_class("sink-muted");
+      button_.get_style_context()->remove_class("muted");
+      button_.get_style_context()->remove_class("sink-muted");
     }
     format =
       config_[format_name].isString() ? config_[format_name].asString() : format;
@@ -235,18 +235,18 @@ auto waybar::modules::Pulseaudio::update() -> void {
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
   if (source_muted_) {
-    label_.get_style_context()->add_class("source-muted");
+    button_.get_style_context()->add_class("source-muted");
     if (config_["format-source-muted"].isString()) {
       format_source = config_["format-source-muted"].asString();
     }
   } else {
-    label_.get_style_context()->remove_class("source-muted");
+    button_.get_style_context()->remove_class("source-muted");
     if (config_["format-source-muted"].isString()) {
       format_source = config_["format-source"].asString();
     }
   }
   format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
-  label_.set_markup(fmt::format(format,
+  label_->set_markup(fmt::format(format,
                                 fmt::arg("desc", desc_),
                                 fmt::arg("volume", volume_),
                                 fmt::arg("format_source", format_source),
@@ -260,7 +260,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_text(fmt::format(
+      button_.set_tooltip_text(fmt::format(
         tooltip_format,
         fmt::arg("desc", desc_),
         fmt::arg("volume", volume_),
@@ -269,10 +269,10 @@ auto waybar::modules::Pulseaudio::update() -> void {
         fmt::arg("source_desc", source_desc_),
         fmt::arg("icon", getIcon(volume_, getPortIcon()))));
     } else {
-      label_.set_tooltip_text(desc_);
+      button_.set_tooltip_text(desc_);
     }
   }
 
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
