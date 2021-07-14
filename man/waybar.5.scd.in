@@ -86,8 +86,9 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Only functional if compiled with gtk-layer-shell support.
 
 *include* ++
-	typeof: array ++
+	typeof: string|array ++
 	Paths to additional configuration files. In case of duplicate options, the including file's value takes precedence. Make sure to avoid circular imports.
+	For a multi-bar config, specify at least an empty object for each bar also in every file being included.
 
 # MODULE FORMAT
 

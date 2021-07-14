@@ -39,6 +39,7 @@ class Client {
   void                     handleOutput(struct waybar_output &output);
   bool                     isValidOutput(const Json::Value &config, struct waybar_output &output);
   auto                     setupConfig(const std::string &config_file, int depth) -> void;
+  auto                     resolveConfigIncludes(Json::Value &config, int depth) -> void;
   auto                     mergeConfig(Json::Value &a_config_, Json::Value &b_config_) -> void;
   auto                     setupCss(const std::string &css_file) -> void;
   struct waybar_output &   getOutput(void *);
