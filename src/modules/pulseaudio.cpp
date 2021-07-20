@@ -194,15 +194,17 @@ static const std::array<std::string, 9> ports = {
     "phone",
 };
 
-const std::string waybar::modules::Pulseaudio::getPortIcon() const {
+const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
+  std::vector<std::string> res = {default_sink_name_};
   std::string nameLC = port_name_ + form_factor_;
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
     if (nameLC.find(port) != std::string::npos) {
-      return port;
+      res.push_back(port);
+      return res;
     }
   }
-  return port_name_;
+  return res;
 }
 
 auto waybar::modules::Pulseaudio::update() -> void {
@@ -252,7 +254,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
                                 fmt::arg("format_source", format_source),
                                 fmt::arg("source_volume", source_volume_),
                                 fmt::arg("source_desc", source_desc_),
-                                fmt::arg("icon", getIcon(volume_, getPortIcon()))));
+                                fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
   getState(volume_);
   
   if (tooltipEnabled()) {
@@ -267,7 +269,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
         fmt::arg("format_source", format_source),
         fmt::arg("source_volume", source_volume_),
         fmt::arg("source_desc", source_desc_),
-        fmt::arg("icon", getIcon(volume_, getPortIcon()))));
+        fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
     } else {
       label_.set_tooltip_text(desc_);
     }

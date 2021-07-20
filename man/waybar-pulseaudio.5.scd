@@ -109,6 +109,9 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 # ICONS:
 
 The following strings for *format-icons* are supported.
+
+- the device name
+
 If they are found in the current PulseAudio port name, the corresponding icons will be selected.
 
 - *default* (Shown, when no other port is found)
@@ -131,6 +134,7 @@ If they are found in the current PulseAudio port name, the corresponding icons w
 	"format-bluetooth": "{volume}% {icon}",
 	"format-muted": "",
 	"format-icons": {
+		"alsa_output.pci-0000_00_1f.3.analog-stereo": "",
 		"headphones": "",
 		"handsfree": "",
 		"headset": "",
