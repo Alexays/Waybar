@@ -211,7 +211,7 @@ static const std::array<std::string, 9> ports = {
 };
 
 const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
-  std::vector<std::string> res = {default_sink_name_};
+  std::vector<std::string> res = {default_source_name_};
   std::string nameLC = port_name_ + form_factor_;
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
