@@ -151,8 +151,24 @@ void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const p
  */
 void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i,
                                              int /*eol*/, void *data) {
+  if (i == nullptr)
+    return;
+
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
-  if (i != nullptr && pa->default_sink_name_ == i->name) {
+  if (pa->current_sink_name_ == i->name) {
+    if (i->state != PA_SINK_RUNNING) {
+      pa->current_sink_running_ = false;
+    } else {
+      pa->current_sink_running_ = true;
+    }
+  }
+
+  if (!pa->current_sink_running_ && i->state == PA_SINK_RUNNING) {
+    pa->current_sink_name_ = i->name;
+    pa->current_sink_running_ = true;
+  }
+
+  if (pa->current_sink_name_ == i->name) {
     pa->pa_volume_ = i->volume;
     float volume = static_cast<float>(pa_cvolume_avg(&(pa->pa_volume_))) / float{PA_VOLUME_NORM};
     pa->sink_idx_ = i->index;
@@ -175,11 +191,11 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
 void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_server_info *i,
                                                void *data) {
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
-  pa->default_sink_name_ = i->default_sink_name;
+  pa->current_sink_name_ = i->default_sink_name;
   pa->default_source_name_ = i->default_source_name;
 
-  pa_context_get_sink_info_by_name(context, i->default_sink_name, sinkInfoCb, data);
-  pa_context_get_source_info_by_name(context, i->default_source_name, sourceInfoCb, data);
+  pa_context_get_sink_info_list(context, sinkInfoCb, data);
+  pa_context_get_source_info_list(context, sourceInfoCb, data);
 }
 
 static const std::array<std::string, 9> ports = {
