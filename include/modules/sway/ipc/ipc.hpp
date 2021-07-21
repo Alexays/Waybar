@@ -29,4 +29,8 @@ enum ipc_command_type {
   IPC_EVENT_BINDING = ((1 << 31) | 5),
   IPC_EVENT_SHUTDOWN = ((1 << 31) | 6),
   IPC_EVENT_TICK = ((1 << 31) | 7),
+
+	// sway-specific event types
+	IPC_EVENT_BAR_STATE_UPDATE = ((1<<31) | 20),
+	IPC_EVENT_INPUT = ((1<<31) | 21),
 };

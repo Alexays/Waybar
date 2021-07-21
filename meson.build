@@ -95,6 +95,7 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+xkbregistry = dependency('xkbregistry')
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -272,7 +273,8 @@ executable(
         libmpdclient,
         gtk_layer_shell,
         libsndio,
-        tz_dep
+        tz_dep,
+				xkbregistry 
     ],
     include_directories: [include_directories('include')],
     install: true,
