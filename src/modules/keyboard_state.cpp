@@ -10,7 +10,6 @@ extern "C" {
 
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "keyboard_state", id, false, !config["disable-scroll"].asBool()),
-      bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
       numlock_label_(""),
       capslock_label_(""),
