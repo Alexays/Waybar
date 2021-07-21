@@ -24,7 +24,7 @@ class Pulseaudio : public ALabel {
   static void volumeModifyCb(pa_context*, int, void*);
 
   bool              handleScroll(GdkEventScroll* e);
-  const std::string getPortIcon() const;
+  const std::vector<std::string> getPulseIcon() const;
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api*      mainloop_api_;
@@ -38,7 +38,8 @@ class Pulseaudio : public ALabel {
   std::string form_factor_;
   std::string desc_;
   std::string monitor_;
-  std::string default_sink_name_;
+  std::string current_sink_name_;
+  bool        current_sink_running_;
   // SOURCE
   uint32_t    source_idx_{0};
   uint16_t    source_volume_;
