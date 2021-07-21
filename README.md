@@ -68,6 +68,7 @@ libappindicator-gtk3 [Tray module]
 libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
 libsndio [sndio module]
+libevdev [KeyboardState module]
 ```
 
 **Build dependencies**
@@ -86,6 +87,7 @@ sudo apt install \
   clang-tidy \
   gobject-introspection \
   libdbusmenu-gtk3-dev \
+  libevdev-dev \
   libfmt-dev \
   libgirepository1.0-dev \
   libgtk-3-dev \

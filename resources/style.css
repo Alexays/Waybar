@@ -228,3 +228,19 @@ label:focus {
     margin: 0 5px;
     min-width: 16px;
 }
+
+#keyboard_state {
+    background: #97e1ad;
+    color: #000000;
+    padding: 0 0px;
+    margin: 0 5px;
+    min-width: 16px;
+}
+
+#keyboard_state > label {
+    padding: 0 5px;
+}
+
+#keyboard_state > label.locked {
+    background: rgba(0, 0, 0, 0.2);
+}
