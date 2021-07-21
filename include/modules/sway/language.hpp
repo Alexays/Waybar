@@ -18,6 +18,7 @@ class Language : public ALabel, public sigc::trackable {
  private:
   void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
+  std::string getIcon(const std::string& key);
   
   std::string      lang_;
   util::JsonParser parser_;
