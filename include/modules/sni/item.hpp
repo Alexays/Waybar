@@ -11,7 +11,15 @@
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #include <sigc++/trackable.h>
 
+#include <set>
+#include <string_view>
+
 namespace waybar::modules::SNI {
+
+struct ToolTip {
+  Glib::ustring icon_name;
+  Glib::ustring text;
+};
 
 class Item : public sigc::trackable {
  public:
@@ -27,10 +35,8 @@ class Item : public sigc::trackable {
   Gtk::EventBox event_box;
   std::string   category;
   std::string   id;
-  std::string   status;
 
   std::string                  title;
-  int32_t                      window_id;
   std::string                  icon_name;
   Glib::RefPtr<Gdk::Pixbuf>    icon_pixmap;
   Glib::RefPtr<Gtk::IconTheme> icon_theme;
@@ -39,6 +45,7 @@ class Item : public sigc::trackable {
   std::string                  attention_movie_name;
   std::string                  icon_theme_path;
   std::string                  menu;
+  ToolTip                      tooltip;
   DbusmenuGtkMenu*             dbus_menu = nullptr;
   Gtk::Menu*                   gtk_menu = nullptr;
   /**
@@ -51,6 +58,7 @@ class Item : public sigc::trackable {
  private:
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
+  void setStatus(const Glib::ustring& value);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
   void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
@@ -62,10 +70,18 @@ class Item : public sigc::trackable {
   static void               onMenuDestroyed(Item* self, GObject* old_menu_pointer);
   void                      makeMenu();
   bool                      handleClick(GdkEventButton* const& /*ev*/);
+  bool                      handleScroll(GdkEventScroll* const&);
+
+  // smooth scrolling threshold
+  gdouble scroll_threshold_ = 0;
+  gdouble distance_scrolled_x_ = 0;
+  gdouble distance_scrolled_y_ = 0;
+  // visibility of items with Status == Passive
+  bool show_passive_ = false;
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
-  bool                           update_pending_;
+  std::set<std::string_view>     update_pending_;
 };
 
 }  // namespace waybar::modules::SNI

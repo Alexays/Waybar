@@ -16,6 +16,15 @@ Addressed by *tray*
     typeof: integer ++
     Defines the size of the tray icons.
 
+*show-passive-items*: ++
+    typeof: bool ++
+    default: false ++
+    Defines visibility of the tray icons with *Passive* status.
+
+*smooth-scrolling-threshold*: ++
+	typeof: double ++
+	Threshold to be used when scrolling.
+
 *spacing*: ++
     typeof: integer ++
     Defines the spacing between the tray icons.
@@ -37,3 +46,6 @@ Addressed by *tray*
 # STYLE
 
 - *#tray*
+- *#tray > .passive*
+- *#tray > .active*
+- *#tray > .needs-attention*
