@@ -94,6 +94,7 @@ libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
+libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
 
@@ -216,6 +217,11 @@ if libudev.found() and (is_linux or libepoll.found())
     src_files += 'src/modules/backlight.cpp'
 endif
 
+if libevdev.found() and (is_linux or libepoll.found())
+    add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
+    src_files += 'src/modules/keyboard_state.cpp'
+endif
+
 if libmpdclient.found()
     add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
     src_files += 'src/modules/mpd/mpd.cpp'
@@ -271,6 +277,7 @@ executable(
         libudev,
         libepoll,
         libmpdclient,
+        libevdev,
         gtk_layer_shell,
         libsndio,
         tz_dep,
@@ -312,6 +319,7 @@ if scdoc.found()
         'waybar-custom.5.scd',
         'waybar-disk.5.scd',
         'waybar-idle-inhibitor.5.scd',
+        'waybar-keyboard-state.5.scd',
         'waybar-memory.5.scd',
         'waybar-mpd.5.scd',
         'waybar-network.5.scd',
