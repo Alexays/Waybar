@@ -9,7 +9,7 @@ extern "C" {
 }
 
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AModule(config, "keyboard_state", id, false, !config["disable-scroll"].asBool()),
+    : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
       numlock_label_(""),
       capslock_label_(""),
@@ -31,7 +31,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
                      : "unlocked"),
       fd_(0),
       dev_(nullptr) {
-  box_.set_name("keyboard_state");
+  box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
     box_.pack_end(numlock_label_, false, false, 0);
   }

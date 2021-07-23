@@ -2,11 +2,11 @@ waybar-keyboard-state(5)
 
 # NAME
 
-waybar - keyboard_state module
+waybar - keyboard-state module
 
 # DESCRIPTION
 
-The *keyboard_state* module displays the state of number lock, caps lock, and scroll lock.
+The *keyboard-state* module displays the state of number lock, caps lock, and scroll lock.
 
 # CONFIGURATION
 
@@ -61,7 +61,7 @@ The following *format-icons* can be set.
 # EXAMPLE:
 
 ```
-"keyboard_state": {
+"keyboard-state": {
     "numlock": true,
     "capslock": true,
     "format": "{name} {icon}",
@@ -74,7 +74,7 @@ The following *format-icons* can be set.
 
 # STYLE
 
-- *#keyboard_state*
-- *#keyboard_state label*
-- *#keyboard_state label.locked*
+- *#keyboard-state*
+- *#keyboard-state label*
+- *#keyboard-state label.locked*
 
