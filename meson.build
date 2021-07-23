@@ -96,6 +96,7 @@ libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+xkbregistry = dependency('xkbregistry')
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -279,7 +280,8 @@ executable(
         libevdev,
         gtk_layer_shell,
         libsndio,
-        tz_dep
+        tz_dep,
+				xkbregistry 
     ],
     include_directories: [include_directories('include')],
     install: true,
