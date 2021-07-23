@@ -1,7 +1,12 @@
 #include "modules/sni/item.hpp"
+
+#include <gdkmm/general.h>
 #include <glibmm/main.h>
+#include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
+
 #include <fstream>
+#include <map>
 
 template <>
 struct fmt::formatter<Glib::ustring> : formatter<std::string> {
@@ -39,14 +44,22 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()),
-      update_pending_(false) {
+      icon_theme(Gtk::IconTheme::create()) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
+  if (config["smooth-scrolling-threshold"].isNumeric()) {
+    scroll_threshold_ = config["smooth-scrolling-threshold"].asDouble();
+  }
+  if (config["show-passive-items"].isBool()) {
+    show_passive_ = config["show-passive-items"].asBool();
+  }
   event_box.add(image);
-  event_box.add_events(Gdk::BUTTON_PRESS_MASK);
+  event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
+  event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
+  // initial visibility
+  event_box.set_visible(show_passive_);
 
   cancellable_ = Gio::Cancellable::create();
 
@@ -73,12 +86,11 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
 
     this->proxy_->signal_signal().connect(sigc::mem_fun(*this, &Item::onSignal));
 
-    if (this->id.empty() || this->category.empty() || this->status.empty()) {
+    if (this->id.empty() || this->category.empty()) {
       spdlog::error("Invalid Status Notifier Item: {}, {}", bus_name, object_path);
       return;
     }
     this->updateImage();
-    // this->event_box.set_tooltip_text(this->title);
 
   } catch (const Glib::Error& err) {
     spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
@@ -88,8 +100,22 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
 }
 
 template <typename T>
-T get_variant(Glib::VariantBase& value) {
+T get_variant(const Glib::VariantBase& value) {
   return Glib::VariantBase::cast_dynamic<Glib::Variant<T>>(value).get();
+}
+
+template <>
+ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
+  ToolTip result;
+  // Unwrap (sa(iiay)ss)
+  auto container = value.cast_dynamic<Glib::VariantContainerBase>(value);
+  result.icon_name = get_variant<Glib::ustring>(container.get_child(0));
+  result.text = get_variant<Glib::ustring>(container.get_child(2));
+  auto description = get_variant<Glib::ustring>(container.get_child(3));
+  if (!description.empty()) {
+    result.text = fmt::format("<b>{}</b>\n{}", result.text, description);
+  }
+  return result;
 }
 
 void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
@@ -102,10 +128,11 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       id = get_variant<std::string>(value);
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
+      if (tooltip.text.empty()) {
+        event_box.set_tooltip_markup(title);
+      }
     } else if (name == "Status") {
-      status = get_variant<std::string>(value);
-    } else if (name == "WindowId") {
-      window_id = get_variant<int32_t>(value);
+      setStatus(get_variant<Glib::ustring>(value));
     } else if (name == "IconName") {
       icon_name = get_variant<std::string>(value);
     } else if (name == "IconPixmap") {
@@ -121,7 +148,10 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "AttentionMovieName") {
       attention_movie_name = get_variant<std::string>(value);
     } else if (name == "ToolTip") {
-      // TODO: tooltip
+      tooltip = get_variant<ToolTip>(value);
+      if (!tooltip.text.empty()) {
+        event_box.set_tooltip_markup(tooltip.text);
+      }
     } else if (name == "IconThemePath") {
       icon_theme_path = get_variant<std::string>(value);
       if (!icon_theme_path.empty()) {
@@ -148,9 +178,22 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
   }
 }
 
-void Item::getUpdatedProperties() {
-  update_pending_ = false;
+void Item::setStatus(const Glib::ustring& value) {
+  Glib::ustring lower = value.lowercase();
+  event_box.set_visible(show_passive_ || lower.compare("passive") != 0);
 
+  auto style = event_box.get_style_context();
+  for (const auto& class_name : style->list_classes()) {
+    style->remove_class(class_name);
+  }
+  if (lower.compare("needsattention") == 0) {
+    // convert status to dash-case for CSS
+    lower = "needs-attention";
+  }
+  style->add_class(lower);
+}
+
+void Item::getUpdatedProperties() {
   auto params = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<Glib::ustring>::create(SNI_INTERFACE_NAME)});
   proxy_->call("org.freedesktop.DBus.Properties.GetAll",
@@ -167,33 +210,48 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     auto properties = properties_variant.get();
 
     for (const auto& [name, value] : properties) {
-      Glib::VariantBase old_value;
-      proxy_->get_cached_property(old_value, name);
-      if (!old_value || !value.equal(old_value)) {
-        proxy_->set_cached_property(name, value);
+      if (update_pending_.count(name.raw())) {
         setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
     }
 
     this->updateImage();
-    // this->event_box.set_tooltip_text(this->title);
   } catch (const Glib::Error& err) {
     spdlog::warn("Failed to update properties: {}", err.what());
   } catch (const std::exception& err) {
     spdlog::warn("Failed to update properties: {}", err.what());
   }
+  update_pending_.clear();
 }
+
+/**
+ * Mapping from a signal name to a set of possibly changed properties.
+ * Commented signals are not handled by the tray module at the moment.
+ */
+static const std::map<std::string_view, std::set<std::string_view>> signal2props = {
+    {"NewTitle", {"Title"}},
+    {"NewIcon", {"IconName", "IconPixmap"}},
+    // {"NewAttentionIcon", {"AttentionIconName", "AttentionIconPixmap", "AttentionMovieName"}},
+    // {"NewOverlayIcon", {"OverlayIconName", "OverlayIconPixmap"}},
+    {"NewIconThemePath", {"IconThemePath"}},
+    {"NewToolTip", {"ToolTip"}},
+    {"NewStatus", {"Status"}},
+    // {"XAyatanaNewLabel", {"XAyatanaLabel"}},
+};
 
 void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                     const Glib::VariantContainerBase& arguments) {
   spdlog::trace("Tray item '{}' got signal {}", id, signal_name);
-  if (!update_pending_ && signal_name.compare(0, 3, "New") == 0) {
-    /* Debounce signals and schedule update of all properties.
-     * Based on behavior of Plasma dataengine for StatusNotifierItem.
-     */
-    update_pending_ = true;
-    Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &Item::getUpdatedProperties),
-                                        UPDATE_DEBOUNCE_TIME);
+  auto changed = signal2props.find(signal_name.raw());
+  if (changed != signal2props.end()) {
+    if (update_pending_.empty()) {
+      /* Debounce signals and schedule update of all properties.
+       * Based on behavior of Plasma dataengine for StatusNotifierItem.
+       */
+      Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &Item::getUpdatedProperties),
+                                          UPDATE_DEBOUNCE_TIME);
+    }
+    update_pending_.insert(changed->second.begin(), changed->second.end());
   }
 }
 
@@ -252,33 +310,42 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
 }
 
 void Item::updateImage() {
+  auto scale_factor = image.get_scale_factor();
+  auto scaled_icon_size = icon_size * scale_factor;
+
   image.set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
-  image.set_pixel_size(icon_size);
+  image.set_pixel_size(scaled_icon_size);
   if (!icon_name.empty()) {
     try {
       // Try to find icons specified by path and filename
       std::ifstream temp(icon_name);
       if (temp.is_open()) {
         auto pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
+
         if (pixbuf->gobj() != nullptr) {
           // An icon specified by path and filename may be the wrong size for
           // the tray
-          // Keep the aspect ratio and scale to make the height equal to icon_size
+          // Keep the aspect ratio and scale to make the height equal to scaled_icon_size
           // If people have non square icons, assume they want it to grow in width not height
-          int width = icon_size * pixbuf->get_width() / pixbuf->get_height();
+          int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
 
-          pixbuf = pixbuf->scale_simple(width, icon_size, Gdk::InterpType::INTERP_BILINEAR);
-          image.set(pixbuf);
+          pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+
+          auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, 0, image.get_window());
+          image.set(surface);
         }
       } else {
-        image.set(getIconByName(icon_name, icon_size));
+        auto icon_by_name = getIconByName(icon_name, scaled_icon_size);
+        auto surface = Gdk::Cairo::create_surface_from_pixbuf(icon_by_name, 0, image.get_window());
+        image.set(surface);
       }
     } catch (Glib::Error& e) {
       spdlog::error("Item '{}': {}", id, static_cast<std::string>(e.what()));
     }
   } else if (icon_pixmap) {
     // An icon extracted may be the wrong size for the tray
-    icon_pixmap = icon_pixmap->scale_simple(icon_size, icon_size, Gdk::InterpType::INTERP_BILINEAR);
+    icon_pixmap = icon_pixmap->scale_simple(icon_size, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+    auto surface = Gdk::Cairo::create_surface_from_pixbuf(icon_pixmap, 0, image.get_window());
     image.set(icon_pixmap);
   }
 }
@@ -358,6 +425,54 @@ bool Item::handleClick(GdkEventButton* const& ev) {
     return true;
   }
   return false;
+}
+
+bool Item::handleScroll(GdkEventScroll* const& ev) {
+  int dx = 0, dy = 0;
+  switch (ev->direction) {
+    case GDK_SCROLL_UP:
+      dy = -1;
+      break;
+    case GDK_SCROLL_DOWN:
+      dy = 1;
+      break;
+    case GDK_SCROLL_LEFT:
+      dx = -1;
+      break;
+    case GDK_SCROLL_RIGHT:
+      dx = 1;
+      break;
+    case GDK_SCROLL_SMOOTH:
+      distance_scrolled_x_ += ev->delta_x;
+      distance_scrolled_y_ += ev->delta_y;
+      // check against the configured threshold and ensure that the absolute value >= 1
+      if (distance_scrolled_x_ > scroll_threshold_) {
+        dx = (int)lround(std::max(distance_scrolled_x_, 1.0));
+        distance_scrolled_x_ = 0;
+      } else if (distance_scrolled_x_ < -scroll_threshold_) {
+        dx = (int)lround(std::min(distance_scrolled_x_, -1.0));
+        distance_scrolled_x_ = 0;
+      }
+      if (distance_scrolled_y_ > scroll_threshold_) {
+        dy = (int)lround(std::max(distance_scrolled_y_, 1.0));
+        distance_scrolled_y_ = 0;
+      } else if (distance_scrolled_y_ < -scroll_threshold_) {
+        dy = (int)lround(std::min(distance_scrolled_y_, -1.0));
+        distance_scrolled_y_ = 0;
+      }
+      break;
+  }
+  if (dx != 0) {
+    auto parameters = Glib::VariantContainerBase::create_tuple(
+        {Glib::Variant<int>::create(dx), Glib::Variant<Glib::ustring>::create("horizontal")});
+    proxy_->call("Scroll", parameters);
+  }
+  if (dy != 0) {
+    auto parameters = Glib::VariantContainerBase::create_tuple(
+        {Glib::Variant<int>::create(dy), Glib::Variant<Glib::ustring>::create("vertical")});
+    proxy_->call("Scroll", parameters);
+  }
+  return true;
 }
 
 }  // namespace waybar::modules::SNI
