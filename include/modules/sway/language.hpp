@@ -48,6 +48,7 @@ class Language : public ALabel, public sigc::trackable {
   const static std::string XKB_ACTIVE_LAYOUT_NAME_KEY;
   
   Layout                        layout_;
+  std::string tooltip_format_ = "";
   std::map<std::string, Layout> layouts_map_;
   XKBContext xkb_context_;
   bool is_variant_displayed;
