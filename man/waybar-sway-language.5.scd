@@ -17,7 +17,7 @@ Addressed by *sway/language*
 	default: {} ++
 	The format, how layout should be displayed.
 
-*format-tooltip*: ++
+*tooltip-format*: ++
 	typeof: string ++
 	default: {} ++
 	The format, how layout should be displayed in tooltip.
