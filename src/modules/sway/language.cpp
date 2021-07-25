@@ -1,6 +1,7 @@
 #include "modules/sway/language.hpp"
 
 #include <fmt/core.h>
+#include <json/json.h>
 #include <spdlog/spdlog.h>
 #include <xkbcommon/xkbregistry.h>
 
@@ -19,6 +20,9 @@ const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
+	if (config.isMember("tooltip-format")) {
+		tooltip_format_ = config["tooltip-format"].asString();
+	}
   ipc_.subscribe(R"(["input"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Language::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Language::onCmd));
@@ -90,7 +94,16 @@ auto Language::update() -> void {
                                          fmt::arg("variant", layout_.variant)));
   label_.set_markup(display_layout);
   if (tooltipEnabled()) {
-    label_.set_tooltip_markup(display_layout);
+		if (tooltip_format_ != "") {
+			auto tooltip_display_layout = trim(fmt::format(tooltip_format_,
+																						 fmt::arg("short", layout_.short_name),
+																						 fmt::arg("long", layout_.full_name),
+																						 fmt::arg("variant", layout_.variant)));
+			label_.set_tooltip_markup(tooltip_display_layout);
+
+		} else {
+			label_.set_tooltip_markup(display_layout);
+		}
   }
 
   event_box_.show();
