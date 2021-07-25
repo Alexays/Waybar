@@ -234,14 +234,62 @@ std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
   return {config_file, css_file};
 }
 
-auto waybar::Client::setupConfig(const std::string &config_file) -> void {
+auto waybar::Client::setupConfig(const std::string &config_file, int depth) -> void {
+  if (depth > 100) {
+    throw std::runtime_error("Aborting due to likely recursive include in config files");
+  }
   std::ifstream file(config_file);
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
   }
   std::string      str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   util::JsonParser parser;
-  config_ = parser.parse(str);
+  Json::Value      tmp_config_ = parser.parse(str);
+  if (tmp_config_.isArray()) {
+    for (auto &config_part : tmp_config_) {
+      resolveConfigIncludes(config_part, depth);
+    }
+  } else {
+    resolveConfigIncludes(tmp_config_, depth);
+  }
+  mergeConfig(config_, tmp_config_);
+}
+
+auto waybar::Client::resolveConfigIncludes(Json::Value &config, int depth) -> void {
+  Json::Value includes = config["include"];
+  if (includes.isArray()) {
+    for (const auto &include : includes) {
+      spdlog::info("Including resource file: {}", include.asString());
+      setupConfig(getValidPath({include.asString()}), ++depth);
+    }
+  } else if (includes.isString()) {
+    spdlog::info("Including resource file: {}", includes.asString());
+    setupConfig(getValidPath({includes.asString()}), ++depth);
+  }
+}
+
+auto waybar::Client::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) -> void {
+  if (!a_config_) {
+    // For the first config
+    a_config_ = b_config_;
+  } else if (a_config_.isObject() && b_config_.isObject()) {
+    for (const auto &key : b_config_.getMemberNames()) {
+      if (a_config_[key].isObject() && b_config_[key].isObject()) {
+        mergeConfig(a_config_[key], b_config_[key]);
+      } else {
+        a_config_[key] = b_config_[key];
+      }
+    }
+  } else if (a_config_.isArray() && b_config_.isArray()) {
+    // This can happen only on the top-level array of a multi-bar config
+    for (Json::Value::ArrayIndex i = 0; i < b_config_.size(); i++) {
+      if (a_config_[i].isObject() && b_config_[i].isObject()) {
+        mergeConfig(a_config_[i], b_config_[i]);
+      }
+    }
+  } else {
+    spdlog::error("Cannot merge config, conflicting or invalid JSON types");
+  }
 }
 
 auto waybar::Client::setupCss(const std::string &css_file) -> void {
@@ -320,7 +368,7 @@ int waybar::Client::main(int argc, char *argv[]) {
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   auto [config_file, css_file] = getConfigs(config, style);
-  setupConfig(config_file);
+  setupConfig(config_file, 0);
   setupCss(css_file);
   bindInterfaces();
   gtk_app->hold();
