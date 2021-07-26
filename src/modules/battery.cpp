@@ -162,36 +162,25 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       uint32_t    energy_full_design;
       std::string _status;
       std::ifstream(bat / "status") >> _status;
+      auto rate_path = fs::exists(bat / "current_now") ? "current_now" : "power_now";
+      std::ifstream(bat / rate_path) >> power_now;
 
-      // Some battery will report current and charge in μA/μAh.
-      // Scale these by the voltage to get μW/μWh.
-      if (fs::exists(bat / "current_now")) {
-        uint32_t voltage_now;
-        uint32_t current_now;
-        uint32_t charge_now;
-        uint32_t charge_full;
-        uint32_t charge_full_design;
-        std::ifstream(bat / "voltage_now") >> voltage_now;
-        std::ifstream(bat / "current_now") >> current_now;
-        std::ifstream(bat / "charge_full") >> charge_full;
-        std::ifstream(bat / "charge_full_design") >> charge_full_design;
-        if (fs::exists(bat / "charge_now"))
-          std::ifstream(bat / "charge_now") >> charge_now;
-        else {
-          // charge_now is missing on some systems, estimate using capacity.
-          uint32_t capacity;
-          std::ifstream(bat / "capacity") >> capacity;
-          charge_now = (capacity * charge_full) / 100;
-        }
-        power_now = ((uint64_t)current_now * (uint64_t)voltage_now) / 1000000;
-        energy_now = ((uint64_t)charge_now * (uint64_t)voltage_now) / 1000000;
-        energy_full = ((uint64_t)charge_full * (uint64_t)voltage_now) / 1000000;
-        energy_full_design = ((uint64_t)charge_full_design * (uint64_t)voltage_now) / 1000000;
+      std::string now_path;
+      if (fs::exists(bat / "charge_now")) {
+        now_path = "charge_now";
+      } else if (fs::exists(bat / "energy_now")) {
+        now_path = "energy_now";
       } else {
-        std::ifstream(bat / "power_now") >> power_now;
-        std::ifstream(bat / "energy_now") >> energy_now;
-        std::ifstream(bat / "energy_full") >> energy_full;
-        std::ifstream(bat / "energy_full_design") >> energy_full_design;
+        now_path = "capacity";
+      }
+      std::ifstream(bat / now_path) >> energy_now;
+      auto full_path = fs::exists(bat / "charge_full") ? "charge_full" : "energy_full";
+      std::ifstream(bat / full_path) >> energy_full;
+      auto full_design_path = fs::exists(bat / "charge_full_design") ? "charge_full_design" : "energy_full_design";
+      std::ifstream(bat / full_design_path) >> energy_full_design;
+
+      if (now_path == "capacity") {
+        energy_now = energy_now * energy_full / 100;
       }
 
       // Show the "smallest" status among all batteries
