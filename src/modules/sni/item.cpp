@@ -310,44 +310,41 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
 }
 
 void Item::updateImage() {
-  auto scale_factor = image.get_scale_factor();
-  auto scaled_icon_size = icon_size * scale_factor;
+  auto pixbuf = getIconPixbuf();
+  auto scaled_icon_size = getScaledIconSize();
+ 
+  if (!pixbuf) {
+    pixbuf = getIconByName("image-missing", getScaledIconSize());
+  }
 
-  image.set_from_icon_name("image-missing", Gtk::ICON_SIZE_MENU);
-  image.set_pixel_size(scaled_icon_size);
-  if (!icon_name.empty()) {
-    try {
-      // Try to find icons specified by path and filename
+  // If the loaded icon is not square, assume that the icon height should match the
+  // requested icon size, but the width is allowed to be different. As such, if the
+  // height of the image does not match the requested icon size, resize the icon such that
+  // the aspect ratio is maintained, but the height matches the requested icon size.
+  if (pixbuf->get_height() != scaled_icon_size) {
+    int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+    pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+  }
+
+  auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, 0, image.get_window());
+  image.set(surface);
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
+  try {
+    if (!icon_name.empty()) {
       std::ifstream temp(icon_name);
       if (temp.is_open()) {
-        auto pixbuf = Gdk::Pixbuf::create_from_file(icon_name);
-
-        if (pixbuf->gobj() != nullptr) {
-          // An icon specified by path and filename may be the wrong size for
-          // the tray
-          // Keep the aspect ratio and scale to make the height equal to scaled_icon_size
-          // If people have non square icons, assume they want it to grow in width not height
-          int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
-
-          pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
-
-          auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, 0, image.get_window());
-          image.set(surface);
-        }
-      } else {
-        auto icon_by_name = getIconByName(icon_name, scaled_icon_size);
-        auto surface = Gdk::Cairo::create_surface_from_pixbuf(icon_by_name, 0, image.get_window());
-        image.set(surface);
+        return Gdk::Pixbuf::create_from_file(icon_name);
       }
-    } catch (Glib::Error& e) {
-      spdlog::error("Item '{}': {}", id, static_cast<std::string>(e.what()));
+      return getIconByName(icon_name, getScaledIconSize());
+    } else if (icon_pixmap) {
+      return icon_pixmap;
     }
-  } else if (icon_pixmap) {
-    // An icon extracted may be the wrong size for the tray
-    icon_pixmap = icon_pixmap->scale_simple(icon_size, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
-    auto surface = Gdk::Cairo::create_surface_from_pixbuf(icon_pixmap, 0, image.get_window());
-    image.set(icon_pixmap);
-  }
+  } catch (Glib::Error& e) {
+    spdlog::error("Item '{}': {}", id, static_cast<std::string>(e.what()));
+  } 
+  return getIconByName("image-missing", getScaledIconSize());
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
@@ -380,6 +377,11 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int reque
   default_theme->rescan_if_needed();
   return default_theme->load_icon(
       name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+}
+
+double Item::getScaledIconSize() {
+  // apply the scale factor from the Gtk window to the requested icon size
+  return icon_size * image.get_scale_factor();
 }
 
 void Item::onMenuDestroyed(Item* self, GObject* old_menu_pointer) {

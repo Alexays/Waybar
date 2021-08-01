@@ -66,7 +66,9 @@ class Item : public sigc::trackable {
 
   void                      updateImage();
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
+  Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
+  double                    getScaledIconSize();
   static void               onMenuDestroyed(Item* self, GObject* old_menu_pointer);
   void                      makeMenu();
   bool                      handleClick(GdkEventButton* const& /*ev*/);
