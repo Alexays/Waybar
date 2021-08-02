@@ -20,9 +20,9 @@ const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
-	if (config.isMember("tooltip-format")) {
-		tooltip_format_ = config["tooltip-format"].asString();
-	}
+  if (config.isMember("tooltip-format")) {
+    tooltip_format_ = config["tooltip-format"].asString();
+  }
   ipc_.subscribe(R"(["input"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Language::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Language::onCmd));
@@ -47,8 +47,8 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto                        payload = parser_.parse(res.payload);
     std::vector<std::string>    used_layouts;
-    // Display current layout of a device with a maximum count of layouts, expecting that all will
-    // be OK
+    // Display current layout of a device with a maximum count of layouts,
+    // expecting that all will be OK
     Json::ArrayIndex max_id = 0, max = 0;
     for (Json::ArrayIndex i = 0; i < payload.size(); i++) {
       auto size = payload[i][XKB_LAYOUT_NAMES_KEY].size();
@@ -94,16 +94,16 @@ auto Language::update() -> void {
                                          fmt::arg("variant", layout_.variant)));
   label_.set_markup(display_layout);
   if (tooltipEnabled()) {
-		if (tooltip_format_ != "") {
-			auto tooltip_display_layout = trim(fmt::format(tooltip_format_,
-																						 fmt::arg("short", layout_.short_name),
-																						 fmt::arg("long", layout_.full_name),
-																						 fmt::arg("variant", layout_.variant)));
-			label_.set_tooltip_markup(tooltip_display_layout);
+    if (tooltip_format_ != "") {
+      auto tooltip_display_layout = trim(fmt::format(tooltip_format_,
+                                                     fmt::arg("short", layout_.short_name),
+                                                     fmt::arg("long", layout_.full_name),
+                                                     fmt::arg("variant", layout_.variant)));
+      label_.set_tooltip_markup(tooltip_display_layout);
 
-		} else {
-			label_.set_tooltip_markup(display_layout);
-		}
+    } else {
+      label_.set_tooltip_markup(display_layout);
+    }
   }
 
   event_box_.show();
@@ -145,7 +145,7 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
   for (const auto& used_layout_name : used_layouts) {
     auto used_layout = &layouts_map_.find(used_layout_name)->second;
     auto layouts_with_same_name_list = found_by_short_names[used_layout->short_name];
-		spdlog::info("SIZE: " + std::to_string(layouts_with_same_name_list.size()));
+    spdlog::info("SIZE: " + std::to_string(layouts_with_same_name_list.size()));
     if (layouts_with_same_name_list.size() < 2) {
       continue;
     }
