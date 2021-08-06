@@ -19,13 +19,15 @@ const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name
 
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
-  is_variant_displayed = format_.find("{variant}") != std::string::npos;
-	if (config.isMember("tooltip-format")) {
-		tooltip_format_ = config["tooltip-format"].asString();
-	}
-  ipc_.subscribe(R"(["input"])");
-  ipc_.signal_event.connect(sigc::mem_fun(*this, &Language::onEvent));
-  ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Language::onCmd));
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (config.isMember("tooltip-format")) {
+      tooltip_format_ = config["tooltip-format"].asString();
+    }
+    ipc_.subscribe(R"(["input"])");
+    ipc_.signal_event.connect(sigc::mem_fun(*this, &Language::onEvent));
+    ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Language::onCmd));
+  }
   ipc_.sendCmd(IPC_GET_INPUTS);
   // Launch worker
   ipc_.setWorker([this] {
@@ -45,25 +47,46 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
 
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto                        payload = parser_.parse(res.payload);
-    std::vector<std::string>    used_layouts;
-    // Display current layout of a device with a maximum count of layouts, expecting that all will
-    // be OK
-    Json::ArrayIndex max_id = 0, max = 0;
+    const auto                  payload = parser_.parse(res.payload);
+    init_layouts_map();
+    bool found = false;
+    Json::ArrayIndex max_index = 0, max_size = 0;
     for (Json::ArrayIndex i = 0; i < payload.size(); i++) {
-      auto size = payload[i][XKB_LAYOUT_NAMES_KEY].size();
-      if (size > max) {
-        max = size;
-        max_id = i;
+      const auto element = payload[i];
+      if (element["type"].asString() != "keyboard") {
+        continue;
+      }
+      const auto full_name = element[XKB_ACTIVE_LAYOUT_NAME_KEY].asString();
+      const auto identifier_name = element["identifier"].asString();
+      auto& identifier_record = identifiers_map_[identifier_name];
+      if (identifier_record.full_name != full_name) {
+        identifier_record.full_name = full_name;
+        ++identifier_record.event_count;
+      }
+      const auto size = element[XKB_LAYOUT_NAMES_KEY].size();
+      if (size > max_size) {
+        max_size = size;
+        max_index = i;
+        found = true;
       }
     }
 
-    for (const auto& layout : payload[max_id][XKB_LAYOUT_NAMES_KEY]) {
-      used_layouts.push_back(layout.asString());
+    if (found) {
+      const auto element = payload[max_index];
+      chosen_identifier_ = element["identifier"].asString();
+      spdlog::info("sway/language: initial chosen identifier \"{}\"", chosen_identifier_);
+
+      const auto full_name = element[XKB_ACTIVE_LAYOUT_NAME_KEY].asString();
+      const auto layout_iter = layouts_map_.find(full_name);
+      if (layout_iter != layouts_map_.end()) {
+        layout_ = layout_iter->second;
+      } else {
+        spdlog::error("sway/language: no layout map entry \"{}\"", full_name);
+      }
+    } else {
+      spdlog::error("sway/language: no keyboard devices with layouts found");
     }
 
-    init_layouts_map(used_layouts);
-    set_current_layout(payload[max_id][XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Language: {}", e.what());
@@ -77,9 +100,30 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto                        payload = parser_.parse(res.payload)["input"];
-    if (payload["type"].asString() == "keyboard") {
-      set_current_layout(payload[XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
+    const auto                  payload = parser_.parse(res.payload);
+    const auto                  element = payload["input"];
+    if (element["type"].asString() == "keyboard") {
+      const auto identifier_name = element["identifier"].asString();
+      const auto full_name = element[XKB_ACTIVE_LAYOUT_NAME_KEY].asString();
+      // Update the record counting the full_name transitions,
+      // and only trigger off events for the chosen identifier with the most transitions.
+      auto& identifier_record = identifiers_map_[identifier_name];
+      if (identifier_record.full_name != full_name) {
+        identifier_record.full_name = full_name;
+        ++identifier_record.event_count;
+      }
+      auto& chosen_identifier_record = identifiers_map_[chosen_identifier_];
+      if (identifier_record.event_count > chosen_identifier_record.event_count) {
+        chosen_identifier_ = identifier_name;
+      }
+      if (identifier_name == chosen_identifier_) {
+        const auto layout_iter = layouts_map_.find(full_name);
+        if (layout_iter != layouts_map_.end()) {
+          layout_ = layout_iter->second;
+        } else {
+          spdlog::error("sway/language: no layout map entry \"{}\"", full_name);
+        }
+      }
     }
     dp.emit();
   } catch (const std::exception& e) {
@@ -88,6 +132,7 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 }
 
 auto Language::update() -> void {
+  std::lock_guard<std::mutex> lock(mutex_);
   auto display_layout = trim(fmt::format(format_,
                                          fmt::arg("short", layout_.short_name),
                                          fmt::arg("long", layout_.full_name),
@@ -112,78 +157,61 @@ auto Language::update() -> void {
   ALabel::update();
 }
 
-auto Language::set_current_layout(std::string current_layout) -> void {
-  layout_ = layouts_map_[current_layout];
-}
-
-auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {
-  std::map<std::string, std::vector<Layout*>> found_by_short_names;
-  auto                                        layout = xkb_context_.next_layout();
-  for (; layout != nullptr; layout = xkb_context_.next_layout()) {
-    if (std::find(used_layouts.begin(), used_layouts.end(), layout->full_name) ==
-        used_layouts.end()) {
-      continue;
-    }
-
-    if (!is_variant_displayed) {
-      auto short_name = layout->short_name;
-      if (found_by_short_names.count(short_name) > 0) {
-        found_by_short_names[short_name].push_back(layout);
-      } else {
-        found_by_short_names[short_name] = {layout};
-      }
-    }
-
-    layouts_map_.emplace(layout->full_name, *layout);
-  }
-
-  if (is_variant_displayed || found_by_short_names.size() == 0) {
-    return;
-  }
-
-  std::map<std::string, int> short_name_to_number_map;
-  for (const auto& used_layout_name : used_layouts) {
-    auto used_layout = &layouts_map_.find(used_layout_name)->second;
-    auto layouts_with_same_name_list = found_by_short_names[used_layout->short_name];
-		spdlog::info("SIZE: " + std::to_string(layouts_with_same_name_list.size()));
-    if (layouts_with_same_name_list.size() < 2) {
-      continue;
-    }
-
-    if (short_name_to_number_map.count(used_layout->short_name) == 0) {
-      short_name_to_number_map[used_layout->short_name] = 1;
-    }
-
-    used_layout->short_name =
-        used_layout->short_name + std::to_string(short_name_to_number_map[used_layout->short_name]++);
+auto Language::init_layouts_map() -> void {
+  layouts_map_.clear();
+  bool has_layout = xkb_context_.first();
+  while (has_layout) {
+    const auto full_name = xkb_context_.full_name();
+    layouts_map_.emplace(full_name, Layout{full_name, xkb_context_.short_name(), xkb_context_.variant()});
+    has_layout = xkb_context_.next();
   }
 }
 
 Language::XKBContext::XKBContext() {
   context_ = rxkb_context_new(RXKB_CONTEXT_NO_DEFAULT_INCLUDES);
   rxkb_context_include_path_append_default(context_);
-  rxkb_context_parse_default_ruleset(context_);
+  if (!rxkb_context_parse_default_ruleset(context_)) {
+    rxkb_context_unref(context_);
+    context_ = nullptr;
+    spdlog::error("sway/language: parsing xkb default ruleset failed, no layout info available");
+  }
 }
 
-auto Language::XKBContext::next_layout() -> Layout* {
-  if (xkb_layout_ == nullptr) {
-    xkb_layout_ = rxkb_layout_first(context_);
-  } else {
-    xkb_layout_ = rxkb_layout_next(xkb_layout_);
+bool Language::XKBContext::first() {
+  if (context_ == nullptr) {
+    return false;
   }
-
-  if (xkb_layout_ == nullptr) {
-    return nullptr;
-  }
-
-  auto        description = std::string(rxkb_layout_get_description(xkb_layout_));
-  auto        name = std::string(rxkb_layout_get_name(xkb_layout_));
-  auto        variant_ = rxkb_layout_get_variant(xkb_layout_);
-  std::string variant = variant_ == nullptr ? "" : std::string(variant_);
-
-  layout_ = new Layout{description, name, variant};
-  return layout_;
+  xkb_layout_ = rxkb_layout_first(context_);
+  return xkb_layout_ != nullptr;
 }
 
-Language::XKBContext::~XKBContext() { rxkb_context_unref(context_); }
+bool Language::XKBContext::next() {
+  if (xkb_layout_ == nullptr) {
+    return false;
+  }
+  xkb_layout_ = rxkb_layout_next(xkb_layout_);
+  return xkb_layout_ != nullptr;
+}
+
+static inline std::string or_empty_str(const char* s) {
+  return s ? std::string(s) : std::string();
+}
+
+std::string Language::XKBContext::full_name() {
+  return or_empty_str(xkb_layout_ ? rxkb_layout_get_description(xkb_layout_) : nullptr);
+}
+
+std::string Language::XKBContext::short_name() {
+  return or_empty_str(xkb_layout_ ? rxkb_layout_get_name(xkb_layout_) : nullptr);
+}
+
+std::string Language::XKBContext::variant() {
+  return or_empty_str(xkb_layout_ ? rxkb_layout_get_variant(xkb_layout_) : nullptr);
+}
+
+Language::XKBContext::~XKBContext() {
+  if (context_ != nullptr) {
+    rxkb_context_unref(context_);
+  }
+}
 }  // namespace waybar::modules::sway

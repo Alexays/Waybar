@@ -5,6 +5,7 @@
 
 #include <map>
 #include <string>
+#include <unordered_map>
 
 #include "ALabel.hpp"
 #include "bar.hpp"
@@ -30,28 +31,38 @@ class Language : public ALabel, public sigc::trackable {
   class XKBContext {
    public:
 	   XKBContext();
+	   XKBContext(const XKBContext&) = delete;
+	   XKBContext(XKBContext&&) = delete;
 	   ~XKBContext();
-	   auto next_layout() -> Layout*;
+	   bool first();
+	   bool next();
+	   std::string full_name();
+	   std::string short_name();
+	   std::string variant();
    private:
 	rxkb_context* context_ = nullptr;
 	rxkb_layout* xkb_layout_ = nullptr;
-	Layout* layout_ = nullptr;
+  };
+
+  struct Identifier {
+    std::string full_name;
+    unsigned event_count = 0U;
   };
 
   void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
 
-  auto set_current_layout(std::string current_layout) -> void;
-  auto init_layouts_map(const std::vector<std::string>& used_layouts) -> void;
+  auto init_layouts_map() -> void;
 
   const static std::string XKB_LAYOUT_NAMES_KEY;
   const static std::string XKB_ACTIVE_LAYOUT_NAME_KEY;
-  
+
   Layout                        layout_;
-  std::string tooltip_format_ = "";
+  std::string chosen_identifier_;
+  std::string tooltip_format_;
   std::map<std::string, Layout> layouts_map_;
+  std::unordered_map<std::string, Identifier> identifiers_map_;
   XKBContext xkb_context_;
-  bool is_variant_displayed;
 
   util::JsonParser         parser_;
   std::mutex               mutex_;
