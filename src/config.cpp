@@ -33,16 +33,6 @@ std::optional<std::string> tryExpandPath(const std::string &path) {
   return std::nullopt;
 }
 
-const std::string getValidPath(const std::vector<std::string> &paths) {
-  for (const std::string &path : paths) {
-    if (auto res = tryExpandPath(path); res) {
-      return res.value();
-    }
-  }
-
-  return std::string();
-}
-
 std::optional<std::string> Config::findConfigPath(const std::vector<std::string> &names,
                                                   const std::vector<std::string> &dirs) {
   std::vector<std::string> paths;
@@ -82,11 +72,11 @@ void Config::resolveConfigIncludes(Json::Value &config, int depth) {
   if (includes.isArray()) {
     for (const auto &include : includes) {
       spdlog::info("Including resource file: {}", include.asString());
-      setupConfig(getValidPath({include.asString()}), ++depth);
+      setupConfig(tryExpandPath(include.asString()).value_or(""), ++depth);
     }
   } else if (includes.isString()) {
     spdlog::info("Including resource file: {}", includes.asString());
-    setupConfig(getValidPath({includes.asString()}), ++depth);
+    setupConfig(tryExpandPath(includes.asString()).value_or(""), ++depth);
   }
 }
 
