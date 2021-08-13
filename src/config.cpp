@@ -9,58 +9,51 @@
 
 #include "util/json.hpp"
 
-#ifndef SYSCONFDIR
-#define SYSCONFDIR "/etc"
-#endif
-
 namespace waybar {
 
-const std::string getValidPath(const std::vector<std::string> &paths) {
-  wordexp_t p;
+const std::vector<std::string> Config::CONFIG_DIRS = {
+    "$XDG_CONFIG_HOME/waybar/",
+    "$HOME/.config/waybar/",
+    "$HOME/waybar/",
+    "/etc/xdg/waybar/",
+    SYSCONFDIR "/xdg/waybar/",
+    "./resources/",
+};
 
-  for (const std::string &path : paths) {
-    if (wordexp(path.c_str(), &p, 0) == 0) {
-      if (access(*p.we_wordv, F_OK) == 0) {
-        std::string result = *p.we_wordv;
-        wordfree(&p);
-        return result;
-      }
+std::optional<std::string> tryExpandPath(const std::string &path) {
+  wordexp_t p;
+  if (wordexp(path.c_str(), &p, 0) == 0) {
+    if (access(*p.we_wordv, F_OK) == 0) {
+      std::string result = *p.we_wordv;
       wordfree(&p);
+      return result;
+    }
+    wordfree(&p);
+  }
+  return std::nullopt;
+}
+
+const std::string getValidPath(const std::vector<std::string> &paths) {
+  for (const std::string &path : paths) {
+    if (auto res = tryExpandPath(path); res) {
+      return res.value();
     }
   }
 
   return std::string();
 }
 
-std::tuple<const std::string, const std::string> getConfigs(const std::string &config,
-                                                            const std::string &style) {
-  auto config_file = config.empty() ? getValidPath({
-                                          "$XDG_CONFIG_HOME/waybar/config",
-                                          "$XDG_CONFIG_HOME/waybar/config.jsonc",
-                                          "$HOME/.config/waybar/config",
-                                          "$HOME/.config/waybar/config.jsonc",
-                                          "$HOME/waybar/config",
-                                          "$HOME/waybar/config.jsonc",
-                                          "/etc/xdg/waybar/config",
-                                          "/etc/xdg/waybar/config.jsonc",
-                                          SYSCONFDIR "/xdg/waybar/config",
-                                          "./resources/config",
-                                      })
-                                    : config;
-  auto css_file = style.empty() ? getValidPath({
-                                      "$XDG_CONFIG_HOME/waybar/style.css",
-                                      "$HOME/.config/waybar/style.css",
-                                      "$HOME/waybar/style.css",
-                                      "/etc/xdg/waybar/style.css",
-                                      SYSCONFDIR "/xdg/waybar/style.css",
-                                      "./resources/style.css",
-                                  })
-                                : style;
-  if (css_file.empty() || config_file.empty()) {
-    throw std::runtime_error("Missing required resources files");
+std::optional<std::string> Config::findConfigPath(const std::vector<std::string> &names,
+                                                  const std::vector<std::string> &dirs) {
+  std::vector<std::string> paths;
+  for (const auto &dir : dirs) {
+    for (const auto &name : names) {
+      if (auto res = tryExpandPath(dir + name); res) {
+        return res;
+      }
+    }
   }
-  spdlog::info("Resources files: {}, {}", config_file, css_file);
-  return {config_file, css_file};
+  return std::nullopt;
 }
 
 void Config::setupConfig(const std::string &config_file, int depth) {
@@ -143,8 +136,13 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
   return true;
 }
 
-void Config::load(const std::string &config, const std::string &style) {
-  std::tie(config_file_, css_file_) = getConfigs(config, style);
+void Config::load(const std::string &config) {
+  auto file = config.empty() ? findConfigPath({"config", "config.jsonc"}) : config;
+  if (!file) {
+    throw std::runtime_error("Missing required resource files");
+  }
+  config_file_ = file.value();
+  spdlog::info("Using configuration file {}", config_file_);
   setupConfig(config_file_, 0);
 }
 

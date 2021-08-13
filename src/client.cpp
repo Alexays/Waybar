@@ -151,6 +151,15 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
   outputs_.remove_if([&monitor](const auto &output) { return output.monitor == monitor; });
 }
 
+const std::string waybar::Client::getStyle(const std::string &style) {
+  auto css_file = style.empty() ? Config::findConfigPath({"style.css"}) : style;
+  if (!css_file) {
+    throw std::runtime_error("Missing required resource files");
+  }
+  spdlog::info("Using CSS file {}", css_file.value());
+  return css_file.value();
+};
+
 auto waybar::Client::setupCss(const std::string &css_file) -> void {
   css_provider_ = Gtk::CssProvider::create();
   style_context_ = Gtk::StyleContext::create();
@@ -226,8 +235,9 @@ int waybar::Client::main(int argc, char *argv[]) {
     throw std::runtime_error("Bar need to run under Wayland");
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
-  config.load(config_opt, style_opt);
-  setupCss(config.getStyle());
+  config.load(config_opt);
+  auto css_file = getStyle(style_opt);
+  setupCss(css_file);
   bindInterfaces();
   gtk_app->hold();
   gtk_app->run();

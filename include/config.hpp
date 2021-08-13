@@ -2,17 +2,26 @@
 
 #include <json/json.h>
 
+#include <optional>
 #include <string>
+
+#ifndef SYSCONFDIR
+#define SYSCONFDIR "/etc"
+#endif
 
 namespace waybar {
 
 class Config {
  public:
+  static const std::vector<std::string> CONFIG_DIRS;
+
+  /* Try to find any of provided names in the supported set of config directories */
+  static std::optional<std::string> findConfigPath(
+      const std::vector<std::string> &names, const std::vector<std::string> &dirs = CONFIG_DIRS);
+
   Config() = default;
 
-  void load(const std::string &config, const std::string &style);
-
-  const std::string &getStyle() { return css_file_; }
+  void load(const std::string &config);
 
   Json::Value &getConfig() { return config_; }
 
@@ -24,7 +33,6 @@ class Config {
   void mergeConfig(Json::Value &a_config_, Json::Value &b_config_);
 
   std::string config_file_;
-  std::string css_file_;
 
   Json::Value config_;
 };
