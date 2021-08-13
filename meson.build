@@ -149,6 +149,7 @@ src_files = files(
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
+    'src/config.cpp',
     'src/util/ustring_clen.cpp'
 )
 

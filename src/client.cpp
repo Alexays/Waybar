@@ -3,34 +3,15 @@
 #include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 
-#include <fstream>
 #include <iostream>
 
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
-#include "util/json.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 waybar::Client *waybar::Client::inst() {
   static auto c = new Client();
   return c;
-}
-
-const std::string waybar::Client::getValidPath(const std::vector<std::string> &paths) const {
-  wordexp_t p;
-
-  for (const std::string &path : paths) {
-    if (wordexp(path.c_str(), &p, 0) == 0) {
-      if (access(*p.we_wordv, F_OK) == 0) {
-        std::string result = *p.we_wordv;
-        wordfree(&p);
-        return result;
-      }
-      wordfree(&p);
-    }
-  }
-
-  return std::string();
 }
 
 void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
@@ -70,29 +51,6 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
   zxdg_output_v1_add_listener(output.xdg_output.get(), &xdgOutputListener, &output);
 }
 
-bool waybar::Client::isValidOutput(const Json::Value &config, struct waybar_output &output) {
-  if (config["output"].isArray()) {
-    for (auto const &output_conf : config["output"]) {
-      if (output_conf.isString() &&
-          (output_conf.asString() == output.name || output_conf.asString() == output.identifier)) {
-        return true;
-      }
-    }
-    return false;
-  } else if (config["output"].isString()) {
-    auto config_output = config["output"].asString();
-    if (!config_output.empty()) {
-      if (config_output.substr(0, 1) == "!") {
-        return config_output.substr(1) != output.name &&
-               config_output.substr(1) != output.identifier;
-      }
-      return config_output == output.name || config_output == output.identifier;
-    }
-  }
-
-  return true;
-}
-
 struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
   auto it = std::find_if(
       outputs_.begin(), outputs_.end(), [&addr](const auto &output) { return &output == addr; });
@@ -103,17 +61,7 @@ struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
 }
 
 std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &output) {
-  std::vector<Json::Value> configs;
-  if (config_.isArray()) {
-    for (auto const &config : config_) {
-      if (config.isObject() && isValidOutput(config, output)) {
-        configs.push_back(config);
-      }
-    }
-  } else if (isValidOutput(config_, output)) {
-    configs.push_back(config_);
-  }
-  return configs;
+  return config_.getOutputConfigs(output.name, output.identifier);
 }
 
 void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_output*/) {
@@ -203,95 +151,6 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
   outputs_.remove_if([&monitor](const auto &output) { return output.monitor == monitor; });
 }
 
-std::tuple<const std::string, const std::string> waybar::Client::getConfigs(
-    const std::string &config, const std::string &style) const {
-  auto config_file = config.empty() ? getValidPath({
-                                          "$XDG_CONFIG_HOME/waybar/config",
-                                          "$XDG_CONFIG_HOME/waybar/config.jsonc",
-                                          "$HOME/.config/waybar/config",
-                                          "$HOME/.config/waybar/config.jsonc",
-                                          "$HOME/waybar/config",
-                                          "$HOME/waybar/config.jsonc",
-                                          "/etc/xdg/waybar/config",
-                                          "/etc/xdg/waybar/config.jsonc",
-                                          SYSCONFDIR "/xdg/waybar/config",
-                                          "./resources/config",
-                                      })
-                                    : config;
-  auto css_file = style.empty() ? getValidPath({
-                                      "$XDG_CONFIG_HOME/waybar/style.css",
-                                      "$HOME/.config/waybar/style.css",
-                                      "$HOME/waybar/style.css",
-                                      "/etc/xdg/waybar/style.css",
-                                      SYSCONFDIR "/xdg/waybar/style.css",
-                                      "./resources/style.css",
-                                  })
-                                : style;
-  if (css_file.empty() || config_file.empty()) {
-    throw std::runtime_error("Missing required resources files");
-  }
-  spdlog::info("Resources files: {}, {}", config_file, css_file);
-  return {config_file, css_file};
-}
-
-auto waybar::Client::setupConfig(const std::string &config_file, int depth) -> void {
-  if (depth > 100) {
-    throw std::runtime_error("Aborting due to likely recursive include in config files");
-  }
-  std::ifstream file(config_file);
-  if (!file.is_open()) {
-    throw std::runtime_error("Can't open config file");
-  }
-  std::string      str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-  util::JsonParser parser;
-  Json::Value      tmp_config_ = parser.parse(str);
-  if (tmp_config_.isArray()) {
-    for (auto &config_part : tmp_config_) {
-      resolveConfigIncludes(config_part, depth);
-    }
-  } else {
-    resolveConfigIncludes(tmp_config_, depth);
-  }
-  mergeConfig(config_, tmp_config_);
-}
-
-auto waybar::Client::resolveConfigIncludes(Json::Value &config, int depth) -> void {
-  Json::Value includes = config["include"];
-  if (includes.isArray()) {
-    for (const auto &include : includes) {
-      spdlog::info("Including resource file: {}", include.asString());
-      setupConfig(getValidPath({include.asString()}), ++depth);
-    }
-  } else if (includes.isString()) {
-    spdlog::info("Including resource file: {}", includes.asString());
-    setupConfig(getValidPath({includes.asString()}), ++depth);
-  }
-}
-
-auto waybar::Client::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) -> void {
-  if (!a_config_) {
-    // For the first config
-    a_config_ = b_config_;
-  } else if (a_config_.isObject() && b_config_.isObject()) {
-    for (const auto &key : b_config_.getMemberNames()) {
-      if (a_config_[key].isObject() && b_config_[key].isObject()) {
-        mergeConfig(a_config_[key], b_config_[key]);
-      } else {
-        a_config_[key] = b_config_[key];
-      }
-    }
-  } else if (a_config_.isArray() && b_config_.isArray()) {
-    // This can happen only on the top-level array of a multi-bar config
-    for (Json::Value::ArrayIndex i = 0; i < b_config_.size(); i++) {
-      if (a_config_[i].isObject() && b_config_[i].isObject()) {
-        mergeConfig(a_config_[i], b_config_[i]);
-      }
-    }
-  } else {
-    spdlog::error("Cannot merge config, conflicting or invalid JSON types");
-  }
-}
-
 auto waybar::Client::setupCss(const std::string &css_file) -> void {
   css_provider_ = Gtk::CssProvider::create();
   style_context_ = Gtk::StyleContext::create();
@@ -367,9 +226,8 @@ int waybar::Client::main(int argc, char *argv[]) {
     throw std::runtime_error("Bar need to run under Wayland");
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
-  auto [config_file, css_file] = getConfigs(config, style);
-  setupConfig(config_file, 0);
-  setupCss(css_file);
+  config_.load(config, style);
+  setupCss(config_.getStyle());
   bindInterfaces();
   gtk_app->hold();
   gtk_app->run();
