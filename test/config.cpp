@@ -2,3 +2,77 @@
 #include "config.hpp"
 
 #include <catch2/catch.hpp>
+
+TEST_CASE("Load simple config", "[config]") {
+  waybar::Config conf;
+  conf.load("test/config/simple.json");
+
+  SECTION("validate the config data") {
+    auto& data = conf.getConfig();
+    REQUIRE(data["layer"].asString() == "top");
+    REQUIRE(data["height"].asInt() == 30);
+  }
+  SECTION("select configs for configured output") {
+    auto configs = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");
+    REQUIRE(configs.size() == 1);
+  }
+  SECTION("select configs for missing output") {
+    auto configs = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1");
+    REQUIRE(configs.empty());
+  }
+}
+
+TEST_CASE("Load config with multiple bars", "[config]") {
+  waybar::Config conf;
+  conf.load("test/config/multi.json");
+
+  SECTION("select multiple configs #1") {
+    auto data = conf.getOutputConfigs("DP-0", "Fake DisplayPort output #0");
+    REQUIRE(data.size() == 3);
+    REQUIRE(data[0]["layer"].asString() == "bottom");
+    REQUIRE(data[0]["height"].asInt() == 20);
+    REQUIRE(data[1]["layer"].asString() == "top");
+    REQUIRE(data[1]["position"].asString() == "bottom");
+    REQUIRE(data[1]["height"].asInt() == 21);
+    REQUIRE(data[2]["layer"].asString() == "overlay");
+    REQUIRE(data[2]["position"].asString() == "right");
+    REQUIRE(data[2]["height"].asInt() == 23);
+  }
+  SECTION("select multiple configs #2") {
+    auto data = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");
+    REQUIRE(data.size() == 2);
+    REQUIRE(data[0]["layer"].asString() == "bottom");
+    REQUIRE(data[0]["height"].asInt() == 20);
+    REQUIRE(data[1]["layer"].asString() == "overlay");
+    REQUIRE(data[1]["position"].asString() == "right");
+    REQUIRE(data[1]["height"].asInt() == 23);
+  }
+  SECTION("select single config by output description") {
+    auto data = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1");
+    REQUIRE(data.size() == 1);
+    REQUIRE(data[0]["layer"].asString() == "overlay");
+    REQUIRE(data[0]["position"].asString() == "left");
+    REQUIRE(data[0]["height"].asInt() == 22);
+  }
+}
+
+TEST_CASE("Load simple config with include", "[config]") {
+  waybar::Config conf;
+  conf.load("test/config/include.json");
+
+  SECTION("validate the config data") {
+    auto& data = conf.getConfig();
+    REQUIRE(data["layer"].asString() == "bottom");
+    REQUIRE(data["height"].asInt() == 30);
+    // config override behavior: preserve value from the top config
+    REQUIRE(data["position"].asString() == "top");
+  }
+  SECTION("select configs for configured output") {
+    auto configs = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");
+    REQUIRE(configs.size() == 1);
+  }
+  SECTION("select configs for missing output") {
+    auto configs = conf.getOutputConfigs("HDMI-1", "Fake HDMI output #1");
+    REQUIRE(configs.empty());
+  }
+}

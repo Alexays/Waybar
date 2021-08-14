@@ -1,0 +1,4 @@
+{
+  "include": ["test/config/include-1.json", "test/config/include-2.json"],
+  "position": "top"
+}
