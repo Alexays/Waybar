@@ -76,3 +76,37 @@ TEST_CASE("Load simple config with include", "[config]") {
     REQUIRE(configs.empty());
   }
 }
+
+TEST_CASE("Load multiple bar config with include", "[config]") {
+  waybar::Config conf;
+  conf.load("test/config/include-multi.json");
+
+  SECTION("bar config with sole include") {
+    auto data = conf.getOutputConfigs("OUT-0", "Fake ouptut #0");
+    REQUIRE(data.size() == 1);
+    REQUIRE(data[0]["height"].asInt() == 20);
+  }
+
+  SECTION("bar config with output and include") {
+    auto data = conf.getOutputConfigs("OUT-1", "Fake output #1");
+    REQUIRE(data.size() == 1);
+    REQUIRE(data[0]["height"].asInt() == 21);
+  }
+
+  SECTION("bar config with output override") {
+    auto data = conf.getOutputConfigs("OUT-2", "Fake output #2");
+    REQUIRE(data.size() == 1);
+    REQUIRE(data[0]["height"].asInt() == 22);
+  }
+
+  SECTION("multiple levels of include") {
+    auto data = conf.getOutputConfigs("OUT-3", "Fake output #3");
+    REQUIRE(data.size() == 1);
+    REQUIRE(data[0]["height"].asInt() == 23);
+  }
+
+  auto& data = conf.getConfig();
+  REQUIRE(data.isArray());
+  REQUIRE(data.size() == 4);
+  REQUIRE(data[0]["output"].asString() == "OUT-0");
+}
