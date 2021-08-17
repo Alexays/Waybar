@@ -3,6 +3,7 @@
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "client.hpp"
+#include "giomm/desktopappinfo.h"
 #include "util/json.hpp"
 
 #include <memory>
@@ -61,6 +62,7 @@ class Task
     Gtk::Image icon_;
     Gtk::Label text_before_;
     Gtk::Label text_after_;
+    Glib::RefPtr<Gio::DesktopAppInfo> app_info_;
     bool button_visible_;
     bool ignored_;
 
@@ -70,6 +72,7 @@ class Task
 
     std::string format_tooltip_;
 
+    std::string name_;
     std::string title_;
     std::string app_id_;
     uint32_t state_ = 0;
@@ -77,6 +80,7 @@ class Task
    private:
     std::string repr() const;
     std::string state_string(bool = false) const;
+	void set_desktop_app_info(const std::string &app_id);
 
    public:
     /* Getter functions */

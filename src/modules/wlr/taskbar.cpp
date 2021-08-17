@@ -86,8 +86,7 @@ static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int 
     }
 }
 
-/* Method 1 - get the correct icon name from the desktop file */
-static std::string get_from_desktop_app_info(const std::string &app_id)
+static Glib::RefPtr<GDesktopAppInfo> get_app_info_by_name(const std::string& app_id)
 {
     static std::vector<std::string> prefixes = search_prefix();
 
@@ -103,33 +102,30 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
         ".desktop"
     };
 
-    Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+	for (auto& prefix : prefixes) {
+		for (auto& folder : app_folders) {
+			for (auto& suffix : suffixes) {
+                    auto app_info_ = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
+					if (!app_info_) {
+						continue;
+					}
 
-    for (auto& prefix : prefixes)
-        for (auto& folder : app_folders)
-            for (auto& suffix : suffixes)
-                if (!app_info)
-                    app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
+					return app_info_;
+			}
+		}
+	}
 
-    if (app_info && app_info->get_icon())
-        return app_info->get_icon()->to_string();
-
-    return "";
+	return {};
 }
 
-/* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
-static std::string get_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
-        const std::string &app_id)
+void Task::set_desktop_app_info(const std::string &app_id)
 {
-    if (icon_theme->lookup_icon(app_id, 24))
-        return app_id;
+	auto app_info = get_app_info_by_name(app_id);
+	if (app_info) {
+		app_info_ =  app_info;
+		return;
+	}
 
-    return "";
-}
-
-/* Method 3 - as last resort perform a search for most appropriate desktop info file */
-static std::string get_from_desktop_app_info_search(const std::string &app_id)
-{
     std::string desktop_file = "";
 
     gchar*** desktop_list = g_desktop_app_info_search(app_id.c_str());
@@ -137,6 +133,7 @@ static std::string get_from_desktop_app_info_search(const std::string &app_id)
         for (size_t i=0; desktop_list[0][i]; i++) {
             if (desktop_file == "") {
                 desktop_file = desktop_list[0][i];
+				// TODO: debug. Possible error
             } else {
                 auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
                 auto startup_class = tmp_info->get_startup_wm_class();
@@ -151,7 +148,18 @@ static std::string get_from_desktop_app_info_search(const std::string &app_id)
     }
     g_free(desktop_list);
 
-    return get_from_desktop_app_info(desktop_file);
+    app_info = get_app_info_by_name(desktop_file);
+	app_info_ = app_info;
+}
+
+/* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
+static std::string get_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+        const std::string &app_id)
+{
+    if (icon_theme->lookup_icon(app_id, 24))
+        return app_id;
+
+    return "";
 }
 
 static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
@@ -560,14 +568,17 @@ void Task::update()
 {
     bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
     std::string title = title_;
+    std::string name = name_;
     std::string app_id = app_id_;
     if (markup) {
         title = Glib::Markup::escape_text(title);
+        name = Glib::Markup::escape_text(name);
         app_id = Glib::Markup::escape_text(app_id);
     }
     if (!format_before_.empty()) {
         auto txt = fmt::format(format_before_,
                     fmt::arg("title", title),
+                    fmt::arg("name", name),
                     fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
@@ -581,6 +592,7 @@ void Task::update()
     if (!format_after_.empty()) {
         auto txt = fmt::format(format_after_,
                     fmt::arg("title", title),
+                    fmt::arg("name", name),
                     fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
@@ -595,6 +607,7 @@ void Task::update()
     if (!format_tooltip_.empty()) {
         auto txt = fmt::format(format_tooltip_,
                     fmt::arg("title", title),
+                    fmt::arg("name", name),
                     fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
