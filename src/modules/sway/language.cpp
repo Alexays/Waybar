@@ -90,6 +90,7 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 auto Language::update() -> void {
   auto display_layout = trim(fmt::format(format_,
                                          fmt::arg("short", layout_.short_name),
+                                         fmt::arg("shortDescription", layout_.short_description),
                                          fmt::arg("long", layout_.full_name),
                                          fmt::arg("variant", layout_.variant)));
   label_.set_markup(display_layout);
@@ -97,10 +98,10 @@ auto Language::update() -> void {
 		if (tooltip_format_ != "") {
 			auto tooltip_display_layout = trim(fmt::format(tooltip_format_,
 																						 fmt::arg("short", layout_.short_name),
+																						 fmt::arg("shortDescription", layout_.short_description),
 																						 fmt::arg("long", layout_.full_name),
 																						 fmt::arg("variant", layout_.variant)));
 			label_.set_tooltip_markup(tooltip_display_layout);
-
 		} else {
 			label_.set_tooltip_markup(display_layout);
 		}
@@ -118,8 +119,9 @@ auto Language::set_current_layout(std::string current_layout) -> void {
 
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {
   std::map<std::string, std::vector<Layout*>> found_by_short_names;
-  auto                                        layout = xkb_context_.next_layout();
-  for (; layout != nullptr; layout = xkb_context_.next_layout()) {
+	XKBContext* xkb_context_ = new XKBContext();
+  auto                                        layout = xkb_context_->next_layout();
+  for (; layout != nullptr; layout = xkb_context_->next_layout()) {
     if (std::find(used_layouts.begin(), used_layouts.end(), layout->full_name) ==
         used_layouts.end()) {
       continue;
@@ -136,6 +138,7 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
 
     layouts_map_.emplace(layout->full_name, *layout);
   }
+	//delete xkb_context_;
 
   if (is_variant_displayed || found_by_short_names.size() == 0) {
     return;
@@ -145,7 +148,6 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
   for (const auto& used_layout_name : used_layouts) {
     auto used_layout = &layouts_map_.find(used_layout_name)->second;
     auto layouts_with_same_name_list = found_by_short_names[used_layout->short_name];
-		spdlog::info("SIZE: " + std::to_string(layouts_with_same_name_list.size()));
     if (layouts_with_same_name_list.size() < 2) {
       continue;
     }
@@ -180,8 +182,17 @@ auto Language::XKBContext::next_layout() -> Layout* {
   auto        name = std::string(rxkb_layout_get_name(xkb_layout_));
   auto        variant_ = rxkb_layout_get_variant(xkb_layout_);
   std::string variant = variant_ == nullptr ? "" : std::string(variant_);
+  auto        short_description_ = rxkb_layout_get_brief(xkb_layout_);
+	std::string short_description;
+	if (short_description_ != nullptr) {
+			short_description = std::string(short_description_);
+			base_layouts_by_name_.emplace(name, xkb_layout_);
+	} else {
+			auto base_layout = base_layouts_by_name_[name];
+			short_description = base_layout == nullptr ? "" : std::string(rxkb_layout_get_brief(base_layout));
+	}
 
-  layout_ = new Layout{description, name, variant};
+  layout_ = new Layout{description, name, variant, short_description};
   return layout_;
 }
 
