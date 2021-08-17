@@ -29,11 +29,13 @@ Addressed by *sway/language*
 
 # FORMAT REPLACEMENTS
 
-*{short}*: Short name of layout (e.g. "en"). Equals to {}.
+*{short}*: Short name of layout (e.g. "us"). Equals to {}.
+
+*{shortDescription}*: Short description of layout (e.g. "en").
 
 *{long}*: Long name of layout (e.g. "English (Dvorak)").
 
-*{variant}*: Variant of layout (e.g. "Dvorak").
+*{variant}*: Variant of layout (e.g. "dvorak").
 
 # EXAMPLES
 
