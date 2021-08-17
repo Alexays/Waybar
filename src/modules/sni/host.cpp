@@ -4,7 +4,7 @@
 
 namespace waybar::modules::SNI {
 
-Host::Host(const std::size_t id, const Json::Value& config,
+Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
            const std::function<void(std::unique_ptr<Item>&)>& on_remove)
     : bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-" +
@@ -13,6 +13,7 @@ Host::Host(const std::size_t id, const Json::Value& config,
       bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name_,
                                        sigc::mem_fun(*this, &Host::busAcquired))),
       config_(config),
+      bar_(bar),
       on_add_(on_add),
       on_remove_(on_remove) {}
 
@@ -136,7 +137,7 @@ void Host::addRegisteredItem(std::string service) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
   if (it == items_.end()) {
-    items_.emplace_back(new Item(bus_name, object_path, config_));
+    items_.emplace_back(new Item(bus_name, object_path, config_, bar_));
     on_add_(items_.back());
   }
 }

@@ -14,6 +14,8 @@
 #include <set>
 #include <string_view>
 
+#include "bar.hpp"
+
 namespace waybar::modules::SNI {
 
 struct ToolTip {
@@ -23,7 +25,7 @@ struct ToolTip {
 
 class Item : public sigc::trackable {
  public:
-  Item(const std::string&, const std::string&, const Json::Value&);
+  Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
   ~Item() = default;
 
   std::string bus_name;
@@ -56,6 +58,7 @@ class Item : public sigc::trackable {
   bool item_is_menu = true;
 
  private:
+  void onConfigure(GdkEventConfigure* ev);
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
