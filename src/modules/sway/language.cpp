@@ -138,7 +138,7 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
 
     layouts_map_.emplace(layout->full_name, *layout);
   }
-	//delete xkb_context_;
+	delete xkb_context_;
 
   if (is_variant_displayed || found_by_short_names.size() == 0) {
     return;
