@@ -21,6 +21,12 @@ class Language : public ALabel, public sigc::trackable {
   auto update() -> void;
 
  private:
+  enum class DispayedShortFlag {
+	  None = 0,
+	  ShortName = 1,
+	  ShortDescription = 1 << 1
+  };
+
   struct Layout {
     std::string full_name;
     std::string short_name;
@@ -53,6 +59,7 @@ class Language : public ALabel, public sigc::trackable {
   std::string tooltip_format_ = "";
   std::map<std::string, Layout> layouts_map_;
   bool is_variant_displayed;
+  std::byte displayed_short_flag = static_cast<std::byte>(DispayedShortFlag::None);
 
   util::JsonParser         parser_;
   std::mutex               mutex_;

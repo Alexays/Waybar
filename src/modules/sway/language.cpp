@@ -20,6 +20,12 @@ const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
+	if (format_.find("{}") != std::string::npos || format_.find("{short}") != std::string::npos) {
+		displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortName);
+	}
+	if (format_.find("{shortDescription}") != std::string::npos) {
+		displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortDescription);
+	}
 	if (config.isMember("tooltip-format")) {
 		tooltip_format_ = config["tooltip-format"].asString();
 	}
@@ -155,9 +161,15 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
     if (short_name_to_number_map.count(used_layout->short_name) == 0) {
       short_name_to_number_map[used_layout->short_name] = 1;
     }
-
-    used_layout->short_name =
-        used_layout->short_name + std::to_string(short_name_to_number_map[used_layout->short_name]++);
+		
+		if (displayed_short_flag != static_cast<std::byte>(0)) {
+			int& number = short_name_to_number_map[used_layout->short_name];
+			used_layout->short_name =
+					used_layout->short_name + std::to_string(number);
+			used_layout->short_description =
+					used_layout->short_description + std::to_string(number);
+			++number;
+		}
   }
 }
 
