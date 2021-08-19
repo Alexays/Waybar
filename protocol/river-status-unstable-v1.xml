@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <protocol name="river_status_unstable_v1">
   <copyright>
-    Copyright 2020 Isaac Freund
+    Copyright 2020 The River Developers
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose with or without fee is hereby granted, provided that the above
@@ -16,7 +16,7 @@
     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
   </copyright>
 
-  <interface name="zriver_status_manager_v1" version="1">
+  <interface name="zriver_status_manager_v1" version="2">
     <description summary="manage river status objects">
       A global factory for objects that receive status information specific
       to river. It could be used to implement, for example, a status bar.
@@ -47,7 +47,7 @@
     </request>
   </interface>
 
-  <interface name="zriver_output_status_v1" version="1">
+  <interface name="zriver_output_status_v1" version="2">
     <description summary="track output tags and focus">
       This interface allows clients to receive information about the current
       windowing state of an output.
@@ -75,12 +75,21 @@
       </description>
       <arg name="tags" type="array" summary="array of 32-bit bitfields"/>
     </event>
+
+    <event name="urgent_tags" since="2">
+      <description summary="tags of the output with an urgent view">
+        Sent once on binding the interface and again whenever the set of
+        tags with at least one urgent view changes.
+      </description>
+      <arg name="tags" type="uint" summary="32-bit bitfield"/>
+    </event>
   </interface>
 
   <interface name="zriver_seat_status_v1" version="1">
     <description summary="track seat focus">
       This interface allows clients to receive information about the current
-      focus of a seat.
+      focus of a seat. Note that (un)focused_output events will only be sent
+      if the client has bound the relevant wl_output globals.
     </description>
 
     <request name="destroy" type="destructor">
