@@ -5,13 +5,15 @@
 #include <glibmm/refptr.h>
 #include <json/json.h>
 #include <tuple>
+#include "bar.hpp"
 #include "modules/sni/item.hpp"
 
 namespace waybar::modules::SNI {
 
 class Host {
  public:
-  Host(const std::size_t id, const Json::Value&, const std::function<void(std::unique_ptr<Item>&)>&,
+  Host(const std::size_t id, const Json::Value&, const Bar&,
+       const std::function<void(std::unique_ptr<Item>&)>&,
        const std::function<void(std::unique_ptr<Item>&)>&);
   ~Host();
 
@@ -36,6 +38,7 @@ class Host {
   GCancellable*                                     cancellable_ = nullptr;
   SnWatcher*                                        watcher_ = nullptr;
   const Json::Value&                                config_;
+  const Bar&                                        bar_;
   const std::function<void(std::unique_ptr<Item>&)> on_add_;
   const std::function<void(std::unique_ptr<Item>&)> on_remove_;
 };

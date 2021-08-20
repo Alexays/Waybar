@@ -39,7 +39,7 @@ namespace waybar::modules::SNI {
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned      UPDATE_DEBOUNCE_TIME = 10;
 
-Item::Item(const std::string& bn, const std::string& op, const Json::Value& config)
+Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
@@ -54,6 +54,9 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   if (config["show-passive-items"].isBool()) {
     show_passive_ = config["show-passive-items"].asBool();
   }
+
+  auto &window = const_cast<Bar &>(bar).window;
+  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Item::onConfigure));
   event_box.add(image);
   event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
@@ -71,6 +74,10 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
                                    sigc::mem_fun(*this, &Item::proxyReady),
                                    cancellable_,
                                    interface);
+}
+
+void Item::onConfigure(GdkEventConfigure* ev) {
+  this->updateImage();
 }
 
 void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
