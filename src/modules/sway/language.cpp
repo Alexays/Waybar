@@ -94,6 +94,7 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 }
 
 auto Language::update() -> void {
+  std::lock_guard<std::mutex> lock(mutex_);
   auto display_layout = trim(fmt::format(format_,
                                          fmt::arg("short", layout_.short_name),
                                          fmt::arg("shortDescription", layout_.short_description),
@@ -125,9 +126,9 @@ auto Language::set_current_layout(std::string current_layout) -> void {
 
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {
   std::map<std::string, std::vector<Layout*>> found_by_short_names;
-	XKBContext* xkb_context_ = new XKBContext();
-  auto                                        layout = xkb_context_->next_layout();
-  for (; layout != nullptr; layout = xkb_context_->next_layout()) {
+	XKBContext xkb_context;
+  auto                                        layout = xkb_context.next_layout();
+  for (; layout != nullptr; layout = xkb_context.next_layout()) {
     if (std::find(used_layouts.begin(), used_layouts.end(), layout->full_name) ==
         used_layouts.end()) {
       continue;
@@ -144,7 +145,6 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
 
     layouts_map_.emplace(layout->full_name, *layout);
   }
-	delete xkb_context_;
 
   if (is_variant_displayed || found_by_short_names.size() == 0) {
     return;
@@ -203,10 +203,13 @@ auto Language::XKBContext::next_layout() -> Layout* {
 			auto base_layout = base_layouts_by_name_[name];
 			short_description = base_layout == nullptr ? "" : std::string(rxkb_layout_get_brief(base_layout));
 	}
-
+  delete layout_;
   layout_ = new Layout{description, name, variant, short_description};
   return layout_;
 }
 
-Language::XKBContext::~XKBContext() { rxkb_context_unref(context_); }
+Language::XKBContext::~XKBContext() {
+  rxkb_context_unref(context_);
+  delete layout_;
+}
 }  // namespace waybar::modules::sway
