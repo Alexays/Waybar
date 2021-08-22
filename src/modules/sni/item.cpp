@@ -287,7 +287,7 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
           if (array != nullptr) {
             g_free(array);
           }
-          array = static_cast<guchar*>(g_memdup(data, size));
+          array = static_cast<guchar*>(g_memdup2(data, size));
           lwidth = width;
           lheight = height;
         }
