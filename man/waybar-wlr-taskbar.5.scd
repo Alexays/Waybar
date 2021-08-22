@@ -74,7 +74,7 @@ Addressed by *wlr/taskbar*
 
 *app_ids-mapping*: ++
 	typeof: object ++
-	Directory of app_id to be replaced with
+	Dictionary of app_id to be replaced with
 
 # FORMAT REPLACEMENTS
 
