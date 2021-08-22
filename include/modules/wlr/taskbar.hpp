@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 #include <unordered_set>
 
 #include <gdk/gdk.h>
@@ -66,7 +67,8 @@ class Task
     bool button_visible_;
     bool ignored_;
 
-    bool with_icon_;
+    bool with_icon_ = false;
+    bool with_name_ = false;
     std::string format_before_;
     std::string format_after_;
 
@@ -80,7 +82,8 @@ class Task
    private:
     std::string repr() const;
     std::string state_string(bool = false) const;
-	void set_desktop_app_info(const std::string &app_id);
+	void set_app_info_from_app_id_list(const std::string& app_id_list);
+	bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme, Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size);
 
    public:
     /* Getter functions */
@@ -139,6 +142,7 @@ class Taskbar : public waybar::AModule
 
     std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
     std::unordered_set<std::string> ignore_list_;
+	std::map<std::string, std::string> app_ids_replace_map_;
 
     struct zwlr_foreign_toplevel_manager_v1 *manager_;
     struct wl_seat *seat_;
@@ -161,8 +165,9 @@ class Taskbar : public waybar::AModule
     bool show_output(struct wl_output *) const;
     bool all_outputs() const;
 
-    std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes() const;
+    const std::vector<Glib::RefPtr<Gtk::IconTheme>>& icon_themes() const;
     const std::unordered_set<std::string>& ignore_list() const;
+    const std::map<std::string, std::string>& app_ids_replace_map() const;
 };
 
 } /* namespace waybar::modules::wlr */
