@@ -20,6 +20,11 @@ The *cpu* module displays the current cpu utilization.
 	default: {usage}% ++
 	The format, how information should be displayed. On {} data gets inserted.
 
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current usage, the corresponding icon gets selected. ++
+	The order is *low* to *high*. Or by the state if it is an object.
+
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.

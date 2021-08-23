@@ -26,9 +26,11 @@ auto waybar::modules::Cpu::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
+    auto icons = std::vector<std::string>{state};
     label_.set_markup(fmt::format(format,
                                   fmt::arg("load", cpu_load),
                                   fmt::arg("usage", cpu_usage),
+                                  fmt::arg("icon", getIcon(cpu_usage, icons)),
                                   fmt::arg("max_frequency", max_frequency),
                                   fmt::arg("min_frequency", min_frequency),
                                   fmt::arg("avg_frequency", avg_frequency)));
