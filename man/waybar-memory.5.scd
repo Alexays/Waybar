@@ -22,6 +22,11 @@ Addressed by *memory*
 	default: {percentage}% ++
 	The format, how information should be displayed.
 
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current percentage, the corresponding icon gets selected. ++
+	The order is *low* to *high*. Or by the state if it is an object.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
