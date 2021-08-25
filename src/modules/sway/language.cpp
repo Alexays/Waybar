@@ -213,4 +213,11 @@ Language::XKBContext::~XKBContext() {
   rxkb_context_unref(context_);
   delete layout_;
 }
+
+std::string Language::Layout::country_flag() const {
+  static std::string result = "\xf0\x9f\x87\xff\xf0\x9f\x87\xff";
+  result[3] = short_name[0] - 0xbb;
+  result[7] = short_name[1] - 0xbb;
+  return result;
+}
 }  // namespace waybar::modules::sway
