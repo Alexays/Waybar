@@ -18,6 +18,7 @@ class Tags : public waybar::AModule {
   // Handlers for wayland events
   void handle_focused_tags(uint32_t tags);
   void handle_view_tags(struct wl_array *tags);
+  void handle_urgent_tags(uint32_t tags);
 
   struct zriver_status_manager_v1 *status_manager_;
 

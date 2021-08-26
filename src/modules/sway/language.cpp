@@ -20,6 +20,12 @@ const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
+	if (format_.find("{}") != std::string::npos || format_.find("{short}") != std::string::npos) {
+		displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortName);
+	}
+	if (format_.find("{shortDescription}") != std::string::npos) {
+		displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortDescription);
+	}
 	if (config.isMember("tooltip-format")) {
 		tooltip_format_ = config["tooltip-format"].asString();
 	}
@@ -88,8 +94,10 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 }
 
 auto Language::update() -> void {
+  std::lock_guard<std::mutex> lock(mutex_);
   auto display_layout = trim(fmt::format(format_,
                                          fmt::arg("short", layout_.short_name),
+                                         fmt::arg("shortDescription", layout_.short_description),
                                          fmt::arg("long", layout_.full_name),
                                          fmt::arg("variant", layout_.variant)));
   label_.set_markup(display_layout);
@@ -97,10 +105,10 @@ auto Language::update() -> void {
 		if (tooltip_format_ != "") {
 			auto tooltip_display_layout = trim(fmt::format(tooltip_format_,
 																						 fmt::arg("short", layout_.short_name),
+																						 fmt::arg("shortDescription", layout_.short_description),
 																						 fmt::arg("long", layout_.full_name),
 																						 fmt::arg("variant", layout_.variant)));
 			label_.set_tooltip_markup(tooltip_display_layout);
-
 		} else {
 			label_.set_tooltip_markup(display_layout);
 		}
@@ -118,8 +126,9 @@ auto Language::set_current_layout(std::string current_layout) -> void {
 
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {
   std::map<std::string, std::vector<Layout*>> found_by_short_names;
-  auto                                        layout = xkb_context_.next_layout();
-  for (; layout != nullptr; layout = xkb_context_.next_layout()) {
+	XKBContext xkb_context;
+  auto                                        layout = xkb_context.next_layout();
+  for (; layout != nullptr; layout = xkb_context.next_layout()) {
     if (std::find(used_layouts.begin(), used_layouts.end(), layout->full_name) ==
         used_layouts.end()) {
       continue;
@@ -145,7 +154,6 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
   for (const auto& used_layout_name : used_layouts) {
     auto used_layout = &layouts_map_.find(used_layout_name)->second;
     auto layouts_with_same_name_list = found_by_short_names[used_layout->short_name];
-		spdlog::info("SIZE: " + std::to_string(layouts_with_same_name_list.size()));
     if (layouts_with_same_name_list.size() < 2) {
       continue;
     }
@@ -153,9 +161,15 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
     if (short_name_to_number_map.count(used_layout->short_name) == 0) {
       short_name_to_number_map[used_layout->short_name] = 1;
     }
-
-    used_layout->short_name =
-        used_layout->short_name + std::to_string(short_name_to_number_map[used_layout->short_name]++);
+		
+		if (displayed_short_flag != static_cast<std::byte>(0)) {
+			int& number = short_name_to_number_map[used_layout->short_name];
+			used_layout->short_name =
+					used_layout->short_name + std::to_string(number);
+			used_layout->short_description =
+					used_layout->short_description + std::to_string(number);
+			++number;
+		}
   }
 }
 
@@ -180,10 +194,22 @@ auto Language::XKBContext::next_layout() -> Layout* {
   auto        name = std::string(rxkb_layout_get_name(xkb_layout_));
   auto        variant_ = rxkb_layout_get_variant(xkb_layout_);
   std::string variant = variant_ == nullptr ? "" : std::string(variant_);
-
-  layout_ = new Layout{description, name, variant};
+  auto        short_description_ = rxkb_layout_get_brief(xkb_layout_);
+	std::string short_description;
+	if (short_description_ != nullptr) {
+			short_description = std::string(short_description_);
+			base_layouts_by_name_.emplace(name, xkb_layout_);
+	} else {
+			auto base_layout = base_layouts_by_name_[name];
+			short_description = base_layout == nullptr ? "" : std::string(rxkb_layout_get_brief(base_layout));
+	}
+  delete layout_;
+  layout_ = new Layout{description, name, variant, short_description};
   return layout_;
 }
 
-Language::XKBContext::~XKBContext() { rxkb_context_unref(context_); }
+Language::XKBContext::~XKBContext() {
+  rxkb_context_unref(context_);
+  delete layout_;
+}
 }  // namespace waybar::modules::sway

@@ -21,10 +21,17 @@ class Language : public ALabel, public sigc::trackable {
   auto update() -> void;
 
  private:
+  enum class DispayedShortFlag {
+	  None = 0,
+	  ShortName = 1,
+	  ShortDescription = 1 << 1
+  };
+
   struct Layout {
     std::string full_name;
     std::string short_name;
     std::string variant;
+    std::string short_description;
   };
 
   class XKBContext {
@@ -36,6 +43,7 @@ class Language : public ALabel, public sigc::trackable {
 	rxkb_context* context_ = nullptr;
 	rxkb_layout* xkb_layout_ = nullptr;
 	Layout* layout_ = nullptr;
+	std::map<std::string, rxkb_layout*> base_layouts_by_name_;
   };
 
   void onEvent(const struct Ipc::ipc_response&);
@@ -50,8 +58,8 @@ class Language : public ALabel, public sigc::trackable {
   Layout                        layout_;
   std::string tooltip_format_ = "";
   std::map<std::string, Layout> layouts_map_;
-  XKBContext xkb_context_;
   bool is_variant_displayed;
+  std::byte displayed_short_flag = static_cast<std::byte>(DispayedShortFlag::None);
 
   util::JsonParser         parser_;
   std::mutex               mutex_;

@@ -38,8 +38,10 @@ auto waybar::modules::Memory::update() -> void {
       event_box_.hide();
     } else {
       event_box_.show();
+      auto icons = std::vector<std::string>{state};
       label_.set_markup(fmt::format(format,
                                     used_ram_percentage,
+                                    fmt::arg("icon", getIcon(used_ram_percentage, icons)),
                                     fmt::arg("total", total_ram_gigabytes),
                                     fmt::arg("percentage", used_ram_percentage),
                                     fmt::arg("used", used_ram_gigabytes),
