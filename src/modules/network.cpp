@@ -28,18 +28,14 @@ waybar::modules::Network::readBandwidthUsage() {
     return {};
   }
 
-  // skip the headers
   std::string line;
+  // skip the headers (first two lines)
   std::getline(netdev, line);
   std::getline(netdev, line);
-  if (!netdev) {
-    spdlog::warn("Unexpectedly short netdev file {}", NETDEV_FILE);
-    return {};
-  }
 
   unsigned long long receivedBytes = 0ull;
   unsigned long long transmittedBytes = 0ull;
-  for (std::getline(netdev, line); netdev; std::getline(netdev, line)) {
+  while (std::getline(netdev, line)) {
     std::istringstream iss(line);
 
     std::string ifacename;
@@ -50,8 +46,11 @@ waybar::modules::Network::readBandwidthUsage() {
     }
 
     // The rest of the line consists of whitespace separated counts divided
-    // into two groups (receive and transmit). The first column in each group
-    // is bytes, which is the only one we care about.
+    // into two groups (receive and transmit). Each group has the following
+    // columns: bytes, packets, errs, drop, fifo, frame, compressed, multicast
+    //
+    // We only care about the bytes count, so we'll just ignore the 7 other
+    // columns.
     unsigned long long r = 0ull;
     unsigned long long t = 0ull;
     // Read received bytes
@@ -65,7 +64,6 @@ waybar::modules::Network::readBandwidthUsage() {
     }
     // Read transmit bytes
     iss >> t;
-    spdlog::trace("read r={}, t={}, iface={}", r, t, ifacename);
 
     receivedBytes += r;
     transmittedBytes += t;
