@@ -12,7 +12,15 @@ auto waybar::modules::Memory::update() -> void {
   parseMeminfo();
 
   unsigned long memtotal = meminfo_["MemTotal"];
+  unsigned long swaptotal = 0;
+  if (meminfo_.count("SwapTotal")) {
+    swaptotal = meminfo_["SwapTotal"];
+  }
   unsigned long memfree;
+  unsigned long swapfree = 0;
+  if (meminfo_.count("SwapFree")) {
+    swapfree = meminfo_["SwapFree"];
+  }
   if (meminfo_.count("MemAvailable")) {
     // New kernels (3.4+) have an accurate available memory field.
     memfree = meminfo_["MemAvailable"];
@@ -24,9 +32,16 @@ auto waybar::modules::Memory::update() -> void {
 
   if (memtotal > 0 && memfree >= 0) {
     auto total_ram_gigabytes = memtotal / std::pow(1024, 2);
+    auto total_swap_gigabytes = swaptotal / std::pow(1024, 2);
     int  used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
+    int  used_swap_percentage = 0;
+    if (swaptotal && swapfree) {
+      used_swap_percentage = 100 * (swaptotal - swapfree) / swaptotal;
+    }
     auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
+    auto used_swap_gigabytes = (swaptotal - swapfree) / std::pow(1024, 2);
     auto available_ram_gigabytes = memfree / std::pow(1024, 2);
+    auto available_swap_gigabytes = swapfree / std::pow(1024, 2);
 
     auto format = format_;
     auto state = getState(used_ram_percentage);
@@ -43,9 +58,13 @@ auto waybar::modules::Memory::update() -> void {
                                     used_ram_percentage,
                                     fmt::arg("icon", getIcon(used_ram_percentage, icons)),
                                     fmt::arg("total", total_ram_gigabytes),
+                                    fmt::arg("swapTotal", total_swap_gigabytes),
                                     fmt::arg("percentage", used_ram_percentage),
+                                    fmt::arg("swapPercentage", used_swap_percentage),
                                     fmt::arg("used", used_ram_gigabytes),
-                                    fmt::arg("avail", available_ram_gigabytes)));
+                                    fmt::arg("swapUsed", used_swap_gigabytes),
+                                    fmt::arg("avail", available_ram_gigabytes),
+                                    fmt::arg("swapAvail", available_swap_gigabytes)));
     }
 
     if (tooltipEnabled()) {
@@ -54,9 +73,13 @@ auto waybar::modules::Memory::update() -> void {
         label_.set_tooltip_text(fmt::format(tooltip_format,
                                             used_ram_percentage,
                                             fmt::arg("total", total_ram_gigabytes),
+                                            fmt::arg("swapTotal", total_swap_gigabytes),
                                             fmt::arg("percentage", used_ram_percentage),
+                                            fmt::arg("swapPercentage", used_swap_percentage),
                                             fmt::arg("used", used_ram_gigabytes),
-                                            fmt::arg("avail", available_ram_gigabytes)));
+                                            fmt::arg("swapUsed", used_swap_gigabytes),
+                                            fmt::arg("avail", available_ram_gigabytes),
+                                            fmt::arg("swapAvail", available_swap_gigabytes)));
       } else {
         label_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
       }
