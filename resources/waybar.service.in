@@ -4,6 +4,8 @@ Documentation=https://github.com/Alexays/Waybar/wiki/
 PartOf=graphical-session.target
 After=graphical-session.target
 Requisite=graphical-session.target
+# ConditionEnvironment requires systemd v247 to work correctly
+ConditionEnvironment=WAYLAND_DISPLAY
 
 [Service]
 ExecStart=@prefix@/bin/waybar
