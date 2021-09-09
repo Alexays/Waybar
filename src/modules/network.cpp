@@ -348,6 +348,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_),
       fmt::arg("ipaddr", ipaddr_),
+      fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_),
       fmt::arg("frequency", frequency_),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
@@ -376,6 +377,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_),
           fmt::arg("ipaddr", ipaddr_),
+          fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_),
           fmt::arg("frequency", frequency_),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
@@ -409,6 +411,7 @@ void waybar::modules::Network::clearIface() {
   ifname_.clear();
   essid_.clear();
   ipaddr_.clear();
+  gwaddr_.clear();
   netmask_.clear();
   carrier_ = false;
   cidr_ = 0;
@@ -581,6 +584,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     break;
   }
 
+    char	temp_gw_addr[INET6_ADDRSTRLEN];
   case RTM_DELROUTE:
     is_del_event = true;
   case RTM_NEWROUTE: {
@@ -594,6 +598,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     bool           has_destination = false;
     int            temp_idx = -1;
     uint32_t       priority = 0;
+
 
     /* Find the message(s) concerting the main routing table, each message
      * corresponds to a single routing table entry.
@@ -612,9 +617,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       case RTA_GATEWAY:
         /* The gateway of the route.
          *
-         * If someone every needs to figure out the gateway address as well,
+         * If someone ever needs to figure out the gateway address as well,
          * it's here as the attribute payload.
          */
+	inet_ntop(net->family_, RTA_DATA(attr), temp_gw_addr, sizeof(temp_gw_addr));
         has_gateway = true;
         break;
       case RTA_DST: {
@@ -655,6 +661,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         net->clearIface();
         net->ifid_ = temp_idx;
         net->route_priority = priority;
+	net->gwaddr_ = temp_gw_addr;
+	spdlog::debug("netwok: gateway {}", net->gwaddr_);
 
         spdlog::debug("network: new default route via if{} metric {}", temp_idx, priority);
 
