@@ -80,6 +80,8 @@ Addressed by *wlr/taskbar*
 
 *{app_id}*: The app_id (== application name) of the application.
 
+*{name}*: The name of the application.
+
 *{state}*: The state (minimized, maximized, active, fullscreen) of the application.
 
 *{short_state}*: The state (minimize == m, maximized == M, active == A, fullscreen == F) represented as one character of the application.
