@@ -45,7 +45,6 @@ static std::string trim(const std::string& s)
 }
 
 
-/* Icon loading functions */
 static std::vector<std::string> search_prefix()
 {
     std::vector<std::string> prefixes = {""};
@@ -76,18 +75,7 @@ static std::vector<std::string> search_prefix()
     return prefixes;
 }
 
-static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int size)
-{
-    try {
-        auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
-        return pb;
-    } catch(...) {
-        return {};
-    }
-}
-
-/* Method 1 - get the correct icon name from the desktop file */
-static std::string get_from_desktop_app_info(const std::string &app_id)
+Glib::RefPtr<Gio::DesktopAppInfo> gen_app_info(const std::string app_id)
 {
     static std::vector<std::string> prefixes = search_prefix();
 
@@ -110,6 +98,25 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
             for (auto& suffix : suffixes)
                 if (!app_info)
                     app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
+
+    return app_info;
+}
+
+/* Icon loading functions */
+static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int size)
+{
+    try {
+        auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
+        return pb;
+    } catch(...) {
+        return {};
+    }
+}
+
+/* Method 1 - get the correct icon name from the desktop file */
+static std::string get_from_desktop_app_info(const std::string &app_id)
+{
+    Glib::RefPtr<Gio::DesktopAppInfo> app_info = gen_app_info(app_id);
 
     if (app_info && app_info->get_icon())
         return app_info->get_icon()->to_string();
@@ -383,6 +390,15 @@ void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
 
+    Glib::RefPtr<Gio::DesktopAppInfo> app_info = gen_app_info(app_id);
+
+    if(app_info) {
+        name_ = app_info->get_display_name();
+    }
+    else {
+        name_ = app_id;
+    }
+
     if (tbar_->ignore_list().count(app_id)) {
         ignored_ = true;
         if (button_visible_) {
@@ -561,14 +577,17 @@ void Task::update()
     bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
     std::string title = title_;
     std::string app_id = app_id_;
+    std::string name = name_;
     if (markup) {
         title = Glib::Markup::escape_text(title);
         app_id = Glib::Markup::escape_text(app_id);
+        name = Glib::Markup::escape_text(name);
     }
     if (!format_before_.empty()) {
         auto txt = fmt::format(format_before_,
                     fmt::arg("title", title),
                     fmt::arg("app_id", app_id),
+                    fmt::arg("name", name),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
                 );
@@ -582,6 +601,7 @@ void Task::update()
         auto txt = fmt::format(format_after_,
                     fmt::arg("title", title),
                     fmt::arg("app_id", app_id),
+                    fmt::arg("name", name),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
                 );
@@ -596,6 +616,7 @@ void Task::update()
         auto txt = fmt::format(format_tooltip_,
                     fmt::arg("title", title),
                     fmt::arg("app_id", app_id),
+                    fmt::arg("name", name),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
                 );

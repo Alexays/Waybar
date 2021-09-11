@@ -72,6 +72,7 @@ class Task
 
     std::string title_;
     std::string app_id_;
+    std::string name_;
     uint32_t state_ = 0;
 
    private:
@@ -83,6 +84,7 @@ class Task
     uint32_t id() const { return id_; }
     std::string title() const { return title_; }
     std::string app_id() const { return app_id_; }
+    std::string name() const { return name_; }
     uint32_t state() const { return state_; }
     bool maximized() const { return state_ & MAXIMIZED; }
     bool minimized() const { return state_ & MINIMIZED; }
