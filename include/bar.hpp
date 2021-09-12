@@ -58,8 +58,8 @@ class Bar {
   Bar(const Bar &) = delete;
   ~Bar() = default;
 
-  void setVisible(bool visible);
-  void toggle();
+  auto setVisible(bool nvis) -> void;
+  auto toggle() -> void;
   void handleSignal(int);
 
   struct waybar_output *output;

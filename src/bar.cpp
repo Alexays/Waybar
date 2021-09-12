@@ -594,8 +594,10 @@ auto waybar::Bar::setVisible(bool nvis) -> void {
   visible = nvis;
   if (!visible) {
     window.get_style_context()->add_class("hidden");
+    surface_impl_->setLayer(bar_layer::BOTTOM);
   } else {
     window.get_style_context()->remove_class("hidden");
+    surface_impl_->setLayer(bar_layer::TOP);
   }
   wl_surface_commit(surface);
 }
