@@ -602,6 +602,10 @@ auto waybar::Bar::setVisible(bool nvis) -> void {
   wl_surface_commit(surface);
 }
 
+auto waybar::Bar::removeExclusiveZone() const -> void {
+  surface_impl_->setExclusiveZone(false);
+}
+
 auto waybar::Bar::toggle() -> void {
   return setVisible(!visible);
 }
