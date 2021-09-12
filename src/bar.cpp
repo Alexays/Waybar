@@ -594,15 +594,10 @@ auto waybar::Bar::setVisible(bool nvis) -> void {
   visible = nvis;
   if (!visible) {
     window.get_style_context()->add_class("hidden");
-    window.set_opacity(0);
   } else {
     window.get_style_context()->remove_class("hidden");
-    window.set_opacity(1);
   }
-  setExclusiveZone(width_, height_);
-  if (!use_gls_) {
-    wl_surface_commit(surface);
-  }
+  wl_surface_commit(surface);
 }
 
 auto waybar::Bar::toggle() -> void {
