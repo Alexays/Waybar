@@ -529,23 +529,6 @@ void waybar::Bar::onMap(GdkEventAny*) {
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
 }
 
-void waybar::Bar::setVisible(bool value) {
-  visible = value;
-  if (!visible) {
-    window.get_style_context()->add_class("hidden");
-    window.set_opacity(0);
-    surface_impl_->setLayer(bar_layer::BOTTOM);
-  } else {
-    window.get_style_context()->remove_class("hidden");
-    window.set_opacity(1);
-    surface_impl_->setLayer(layer_);
-  }
-  surface_impl_->setExclusiveZone(exclusive && visible);
-  surface_impl_->commit();
-}
-
-void waybar::Bar::toggle() { setVisible(!visible); }
-
 // Converting string to button code rn as to avoid doing it later
 void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
   if (config.isMember(module_name)) {
@@ -605,35 +588,6 @@ void waybar::Bar::handleSignal(int signal) {
       custom->refresh(signal);
     }
   }
-}
-
-void waybar::Bar::layerSurfaceHandleConfigure(void* data, struct zwlr_layer_surface_v1* surface,
-                                              uint32_t serial, uint32_t width, uint32_t height) {
-  auto o = static_cast<waybar::Bar*>(data);
-  if (width != o->width_ || height != o->height_) {
-    o->width_ = width;
-    o->height_ = height;
-    o->window.set_size_request(o->width_, o->height_);
-    o->window.resize(o->width_, o->height_);
-    o->setExclusiveZone(width, height);
-    spdlog::info(BAR_SIZE_MSG,
-                 o->width_ == 1 ? "auto" : std::to_string(o->width_),
-                 o->height_ == 1 ? "auto" : std::to_string(o->height_),
-                 o->output->name);
-    wl_surface_commit(o->surface);
-  }
-  zwlr_layer_surface_v1_ack_configure(surface, serial);
-}
-
-void waybar::Bar::layerSurfaceHandleClosed(void* data, struct zwlr_layer_surface_v1* /*surface*/) {
-  auto o = static_cast<waybar::Bar*>(data);
-  if (o->layer_surface_) {
-    zwlr_layer_surface_v1_destroy(o->layer_surface_);
-    o->layer_surface_ = nullptr;
-  }
-  o->modules_left_.clear();
-  o->modules_center_.clear();
-  o->modules_right_.clear();
 }
 
 auto waybar::Bar::setVisible(bool nvis) -> void {
