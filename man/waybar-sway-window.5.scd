@@ -25,6 +25,14 @@ Addressed by *sway/window*
 	typeof: integer ++
 	The maximum length in character the module should display.
 
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
 *on-click*: ++
 	typeof: string ++
 	Command to execute when clicked on the module.
@@ -58,12 +66,32 @@ Addressed by *sway/window*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*rewrite*: ++
+	typeof: object ++
+	Rules to rewrite window title. See *rewrite rules*.
+
+# REWRITE RULES
+
+*rewrite* is an object where keys are regular expressions and values are
+rewrite rules if the expression matches. Rules may contain references to
+captures of the expression.
+
+Regular expression and replacement follow ECMA-script rules.
+
+If no expression matches, the title is left unchanged.
+
+Invalid expressions (e.g., mismatched parentheses) are skipped.
+
 # EXAMPLES
 
 ```
 "sway/window": {
     "format": "{}",
-    "max-length": 50
+    "max-length": 50,
+    "rewrite": {
+      "(.*) - Mozilla Firefox": "🌎 $1",
+      "(.*) - zsh": "> [$1]"
+    }
 }
 ```
 

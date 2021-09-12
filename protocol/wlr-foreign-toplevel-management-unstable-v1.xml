@@ -25,7 +25,7 @@
     THIS SOFTWARE.
   </copyright>
 
-  <interface name="zwlr_foreign_toplevel_manager_v1" version="2">
+  <interface name="zwlr_foreign_toplevel_manager_v1" version="3">
     <description summary="list and control opened apps">
       The purpose of this protocol is to enable the creation of taskbars
       and docks by providing them with a list of opened applications and
@@ -68,7 +68,7 @@
     </event>
   </interface>
 
-  <interface name="zwlr_foreign_toplevel_handle_v1" version="2">
+  <interface name="zwlr_foreign_toplevel_handle_v1" version="3">
     <description summary="an opened toplevel">
       A zwlr_foreign_toplevel_handle_v1 object represents an opened toplevel
       window. Each app may have multiple opened toplevels.
@@ -255,5 +255,16 @@
         actually changes, this will be indicated by the state event.
       </description>
     </request>
+
+    <!-- Version 3 additions -->
+
+    <event name="parent" since="3">
+      <description summary="parent change">
+        This event is emitted whenever the parent of the toplevel changes.
+
+        No event is emitted when the parent handle is destroyed by the client.
+      </description>
+      <arg name="parent" type="object" interface="zwlr_foreign_toplevel_handle_v1" allow-null="true"/>
+    </event>
   </interface>
 </protocol>

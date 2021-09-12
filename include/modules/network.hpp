@@ -2,9 +2,7 @@
 
 #include <arpa/inet.h>
 #include <fmt/format.h>
-#include <ifaddrs.h>
 #include <linux/nl80211.h>
-#include <net/if.h>
 #include <netlink/genl/ctrl.h>
 #include <netlink/genl/genl.h>
 #include <netlink/netlink.h>
@@ -28,23 +26,20 @@ class Network : public ALabel {
   static const uint8_t EPOLL_MAX = 200;
 
   static int handleEvents(struct nl_msg*, void*);
+  static int handleEventsDone(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);
+
+  void askForStateDump(void);
 
   void              worker();
   void              createInfoSocket();
   void              createEventSocket();
-  int               getExternalInterface(int skip_idx = -1) const;
-  void              getInterfaceAddress();
-  int               netlinkRequest(void*, uint32_t, uint32_t groups = 0) const;
-  int               netlinkResponse(void*, uint32_t, uint32_t groups = 0) const;
   void              parseEssid(struct nlattr**);
   void              parseSignal(struct nlattr**);
   void              parseFreq(struct nlattr**);
   bool              associatedOrJoined(struct nlattr**);
-  bool              checkInterface(struct ifinfomsg* rtif, std::string name);
-  int               getPreferredIface(int skip_idx = -1, bool wait = true) const;
+  bool              checkInterface(std::string name);
   auto              getInfo() -> void;
-  void              checkNewInterface(struct ifinfomsg* rtif);
   const std::string getNetworkState() const;
   void              clearIface();
   bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
@@ -59,11 +54,17 @@ class Network : public ALabel {
   int                nl80211_id_;
   std::mutex         mutex_;
 
+  bool               want_route_dump_;
+  bool               want_link_dump_;
+  bool               want_addr_dump_;
+  bool               dump_in_progress_;
+
   unsigned long long bandwidth_down_total_;
   unsigned long long bandwidth_up_total_;
 
   std::string state_;
   std::string essid_;
+  bool        carrier_;
   std::string ifname_;
   std::string ipaddr_;
   std::string netmask_;
@@ -71,12 +72,11 @@ class Network : public ALabel {
   int32_t     signal_strength_dbm_;
   uint8_t     signal_strength_;
   uint32_t    frequency_;
+  uint32_t    route_priority;
 
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;
 #ifdef WANT_RFKILL
-  util::SleeperThread thread_rfkill_;
-
   util::Rfkill rfkill_;
 #endif
 };

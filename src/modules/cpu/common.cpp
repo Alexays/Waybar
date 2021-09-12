@@ -12,19 +12,38 @@ auto waybar::modules::Cpu::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto cpu_load = getCpuLoad();
   auto [cpu_usage, tooltip] = getCpuUsage();
+  auto [max_frequency, min_frequency, avg_frequency] = getCpuFrequency();
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("load", cpu_load), fmt::arg("usage", cpu_usage)));
-  getState(cpu_usage);
+  auto format = format_;
+  auto state = getState(cpu_usage);
+  if (!state.empty() && config_["format-" + state].isString()) {
+    format = config_["format-" + state].asString();
+  }
+
+  if (format.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+    auto icons = std::vector<std::string>{state};
+    label_.set_markup(fmt::format(format,
+                                  fmt::arg("load", cpu_load),
+                                  fmt::arg("usage", cpu_usage),
+                                  fmt::arg("icon", getIcon(cpu_usage, icons)),
+                                  fmt::arg("max_frequency", max_frequency),
+                                  fmt::arg("min_frequency", min_frequency),
+                                  fmt::arg("avg_frequency", avg_frequency)));
+  }
+
   // Call parent update
   ALabel::update();
 }
 
-uint16_t waybar::modules::Cpu::getCpuLoad() {
+double waybar::modules::Cpu::getCpuLoad() {
   double load[1];
   if (getloadavg(load, 1) != -1) {
-    return load[0] * 100 / sysconf(_SC_NPROCESSORS_ONLN);
+    return load[0];
   }
   throw std::runtime_error("Can't get Cpu load");
 }
@@ -52,4 +71,17 @@ std::tuple<uint16_t, std::string> waybar::modules::Cpu::getCpuUsage() {
   }
   prev_times_ = curr_times;
   return {usage, tooltip};
+}
+
+std::tuple<float, float, float> waybar::modules::Cpu::getCpuFrequency() {
+  std::vector<float> frequencies = parseCpuFrequencies();
+  auto [min, max] = std::minmax_element(std::begin(frequencies), std::end(frequencies));
+  float avg_frequency = std::accumulate(std::begin(frequencies), std::end(frequencies), 0.0) / frequencies.size();
+
+  // Round frequencies with double decimal precision to get GHz
+  float max_frequency = std::ceil(*max / 10.0) / 100.0;
+  float min_frequency = std::ceil(*min / 10.0) / 100.0;
+  avg_frequency = std::ceil(avg_frequency / 10.0) / 100.0;
+
+  return { max_frequency, min_frequency, avg_frequency };
 }

@@ -1,4 +1,4 @@
-# Waybar [![Travis](https://travis-ci.org/Alexays/Waybar.svg?branch=master)](https://travis-ci.org/Alexays/Waybar) [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
+# Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
 > Available in Arch [community](https://www.archlinux.org/packages/community/x86_64/waybar/) or
@@ -67,6 +67,8 @@ libnl [Network module]
 libappindicator-gtk3 [Tray module]
 libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
+libsndio [sndio module]
+libevdev [KeyboardState module]
 ```
 
 **Build dependencies**
@@ -85,6 +87,7 @@ sudo apt install \
   clang-tidy \
   gobject-introspection \
   libdbusmenu-gtk3-dev \
+  libevdev-dev \
   libfmt-dev \
   libgirepository1.0-dev \
   libgtk-3-dev \

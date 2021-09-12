@@ -5,6 +5,7 @@
 
 #include <sstream>
 #include <type_traits>
+#include "util/ustring_clen.hpp"
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>
 #include <locale.h>
@@ -85,13 +86,11 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
     return true;
   }
   auto nr_zones = config_["timezones"].size();
-  int new_idx = time_zone_idx_ + ((dir == SCROLL_DIR::UP) ? 1 : -1);
-  if (new_idx < 0) {
-    time_zone_idx_ = nr_zones - 1;
-  } else if (new_idx >= nr_zones) {
-    time_zone_idx_ = 0;
+  if (dir == SCROLL_DIR::UP) {
+    size_t new_idx = time_zone_idx_ + 1;
+    time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
   } else {
-    time_zone_idx_ = new_idx;
+    time_zone_idx_ = time_zone_idx_ == 0 ? nr_zones - 1 : time_zone_idx_ - 1;
   }
   auto zone_name = config_["timezones"][time_zone_idx_];
   if (!zone_name.isString() || zone_name.empty()) {
@@ -156,12 +155,14 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
   do {
     if (wd != first_dow) os << ' ';
     Glib::ustring wd_ustring(date::format(locale_, "%a", wd));
-    auto          wd_len = wd_ustring.length();
-    if (wd_len > 2) {
-      wd_ustring = wd_ustring.substr(0, 2);
-      wd_len = 2;
+    auto clen = ustring_clen(wd_ustring);
+    auto wd_len = wd_ustring.length();
+    while (clen > 2) {
+      wd_ustring = wd_ustring.substr(0, wd_len-1);
+      wd_len--;
+      clen = ustring_clen(wd_ustring);
     }
-    const std::string pad(2 - wd_len, ' ');
+    const std::string pad(2 - clen, ' ');
     os << pad << wd_ustring;
   } while (++wd != first_dow);
   os << "\n";
@@ -195,6 +196,9 @@ template <>
 struct fmt::formatter<waybar_time> : fmt::formatter<std::tm> {
   template <typename FormatContext>
   auto format(const waybar_time& t, FormatContext& ctx) {
+#if FMT_VERSION >= 80000
+	auto& tm_format = specs;
+#endif
     return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
   }
 };

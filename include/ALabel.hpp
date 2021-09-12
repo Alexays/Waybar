@@ -14,12 +14,11 @@ class ALabel : public AModule {
   virtual ~ALabel() = default;
   virtual auto        update() -> void;
   virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
-  virtual std::string getIcon(uint16_t, std::vector<std::string> &alts, uint16_t max = 0);
+  virtual std::string getIcon(uint16_t, const std::vector<std::string> &alts, uint16_t max = 0);
 
  protected:
   Gtk::Label                 label_;
   std::string                format_;
-  std::string                click_param;
   const std::chrono::seconds interval_;
   bool                       alt_ = false;
   std::string                default_format_;

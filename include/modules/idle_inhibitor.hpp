@@ -12,12 +12,13 @@ class IdleInhibitor : public ALabel {
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~IdleInhibitor();
   auto update() -> void;
+  static std::list<waybar::AModule*> modules;
+  static bool                        status;
 
  private:
   bool handleToggle(GdkEventButton* const& e);
 
   const Bar&                    bar_;
-  std::string                   status_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
   int                           pid_;
 };

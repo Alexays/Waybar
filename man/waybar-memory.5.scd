@@ -22,6 +22,11 @@ Addressed by *memory*
 	default: {percentage}% ++
 	The format, how information should be displayed.
 
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current percentage, the corresponding icon gets selected. ++
+	The order is *low* to *high*. Or by the state if it is an object.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
@@ -33,6 +38,14 @@ Addressed by *memory*
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++
