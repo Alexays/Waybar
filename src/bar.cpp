@@ -606,6 +606,10 @@ auto waybar::Bar::removeExclusiveZone() const -> void {
   surface_impl_->setExclusiveZone(false);
 }
 
+auto waybar::Bar::enableExclusiveZone() const -> void {
+  surface_impl_->setExclusiveZone(true);
+}
+
 auto waybar::Bar::toggle() -> void {
   return setVisible(!visible);
 }
