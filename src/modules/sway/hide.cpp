@@ -23,14 +23,22 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
     auto mode = payload["mode"].asString();
     if (mode == "hide") {
       // Hide the bars when configuring the "hide" bar
+      spdlog::info("sway/hide: hiding bar(s)");
       for (auto& bar : waybar::Client::inst()->bars) {
         bar->setVisible(false);
+        bar->removeExclusiveZone();
       }
-    }
+    } else if (mode == "dock") {
+      spdlog::info("sway/hide: showing bar(s)");
+      for (auto& bar : waybar::Client::inst()->bars) {
+        bar->setVisible(true);
+        bar->enableExclusiveZone();
+      }
+	}
   } else if (payload.isMember("visible_by_modifier")) {
     // bar_state_update: get visible_by_modifier
     visible_by_modifier_ = payload["visible_by_modifier"].asBool();
-    spdlog::info("WayBar Shown: {}", visible_by_modifier_);
+    spdlog::debug("sway/hide: visible by modifier: {}", visible_by_modifier_);
     for (auto& bar : waybar::Client::inst()->bars) {
       bar->setVisible(visible_by_modifier_);
     }
