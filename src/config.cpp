@@ -46,7 +46,7 @@ std::optional<std::string> Config::findConfigPath(const std::vector<std::string>
   return std::nullopt;
 }
 
-void Config::setupConfig(const std::string &config_file, int depth) {
+void Config::setupConfig(Json::Value &dst, const std::string &config_file, int depth) {
   if (depth > 100) {
     throw std::runtime_error("Aborting due to likely recursive include in config files");
   }
@@ -64,7 +64,7 @@ void Config::setupConfig(const std::string &config_file, int depth) {
   } else {
     resolveConfigIncludes(tmp_config, depth);
   }
-  mergeConfig(config_, tmp_config);
+  mergeConfig(dst, tmp_config);
 }
 
 void Config::resolveConfigIncludes(Json::Value &config, int depth) {
@@ -72,11 +72,11 @@ void Config::resolveConfigIncludes(Json::Value &config, int depth) {
   if (includes.isArray()) {
     for (const auto &include : includes) {
       spdlog::info("Including resource file: {}", include.asString());
-      setupConfig(tryExpandPath(include.asString()).value_or(""), ++depth);
+      setupConfig(config, tryExpandPath(include.asString()).value_or(""), ++depth);
     }
   } else if (includes.isString()) {
     spdlog::info("Including resource file: {}", includes.asString());
-    setupConfig(tryExpandPath(includes.asString()).value_or(""), ++depth);
+    setupConfig(config, tryExpandPath(includes.asString()).value_or(""), ++depth);
   }
 }
 
@@ -88,15 +88,9 @@ void Config::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) {
     for (const auto &key : b_config_.getMemberNames()) {
       if (a_config_[key].isObject() && b_config_[key].isObject()) {
         mergeConfig(a_config_[key], b_config_[key]);
-      } else {
+      } else if (a_config_[key].isNull()) {
+        // do not allow overriding value set by top or previously included config
         a_config_[key] = b_config_[key];
-      }
-    }
-  } else if (a_config_.isArray() && b_config_.isArray()) {
-    // This can happen only on the top-level array of a multi-bar config
-    for (Json::Value::ArrayIndex i = 0; i < b_config_.size(); i++) {
-      if (a_config_[i].isObject() && b_config_[i].isObject()) {
-        mergeConfig(a_config_[i], b_config_[i]);
       }
     }
   } else {
@@ -133,7 +127,7 @@ void Config::load(const std::string &config) {
   }
   config_file_ = file.value();
   spdlog::info("Using configuration file {}", config_file_);
-  setupConfig(config_file_, 0);
+  setupConfig(config_, config_file_, 0);
 }
 
 std::vector<Json::Value> Config::getOutputConfigs(const std::string &name,

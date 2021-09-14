@@ -1,9 +1,4 @@
-[
-  {
-    "output": "OUT-0",
-    "height": 20
-  },
-  {},
-  {},
-  {}
-]
+{
+  "output": "OUT-0",
+  "height": 20
+}

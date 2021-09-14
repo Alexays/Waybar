@@ -62,7 +62,8 @@ TEST_CASE("Load simple config with include", "[config]") {
 
   SECTION("validate the config data") {
     auto& data = conf.getConfig();
-    REQUIRE(data["layer"].asString() == "bottom");
+    // config override behavior: preserve first included value
+    REQUIRE(data["layer"].asString() == "top");
     REQUIRE(data["height"].asInt() == 30);
     // config override behavior: preserve value from the top config
     REQUIRE(data["position"].asString() == "top");
