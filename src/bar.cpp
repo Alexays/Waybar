@@ -598,7 +598,7 @@ void waybar::Bar::setVisible(bool visible) {
     window.get_style_context()->remove_class("hidden");
     surface_impl_->setLayer(bar_layer::TOP);
   }
-  wl_surface_commit(surface);
+  surface_impl_->commit();
 }
 
 auto waybar::Bar::removeExclusiveZone() const -> void {
