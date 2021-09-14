@@ -605,12 +605,12 @@ void waybar::Bar::setVisible(bool value) {
   surface_impl_->commit();
 }
 
-auto waybar::Bar::removeExclusiveZone() const -> void {
-  surface_impl_->setExclusiveZone(false);
 }
 
-auto waybar::Bar::enableExclusiveZone() const -> void {
-  surface_impl_->setExclusiveZone(true);
+void waybar::Bar::setExclusive(bool value) {
+  exclusive = value;
+  surface_impl_->setExclusiveZone(exclusive && visible);
+  surface_impl_->commit();
 }
 
 void waybar::Bar::toggle() {

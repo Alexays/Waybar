@@ -9,8 +9,6 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "hide", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["bar_state_update","barconfig_update"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Hide::onEvent));
-  // Do not reserve space for the bar anymore
-  bar.removeExclusiveZone();
   // Launch worker
   worker();
 }
@@ -19,20 +17,19 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
   auto payload = parser_.parse(res.payload);
   std::lock_guard<std::mutex> lock(mutex_);
   if (payload.isMember("mode")) {
-    // barconfig_update: get mode
     auto mode = payload["mode"].asString();
     if (mode == "hide") {
       // Hide the bars when configuring the "hide" bar
-      spdlog::info("sway/hide: hiding bar(s)");
+      spdlog::debug("sway/hide: hiding bar(s)");
       for (auto& bar : waybar::Client::inst()->bars) {
         bar->setVisible(false);
-        bar->removeExclusiveZone();
+        bar->setExclusive(false);
       }
     } else if (mode == "dock") {
       spdlog::info("sway/hide: showing bar(s)");
       for (auto& bar : waybar::Client::inst()->bars) {
         bar->setVisible(true);
-        bar->enableExclusiveZone();
+        bar->setExclusive(true);
       }
 	}
   } else if (payload.isMember("visible_by_modifier")) {

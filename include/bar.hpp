@@ -60,8 +60,7 @@ class Bar {
 
   void setVisible(bool visible);
   void toggle();
-  auto removeExclusiveZone() const -> void;
-  auto enableExclusiveZone() const -> void;
+  void setExclusive(bool value);
   void handleSignal(int);
 
   struct waybar_output *output;
