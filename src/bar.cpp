@@ -590,8 +590,7 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
-auto waybar::Bar::setVisible(bool nvis) -> void {
-  visible = nvis;
+void waybar::Bar::setVisible(bool visible) {
   if (!visible) {
     window.get_style_context()->add_class("hidden");
     surface_impl_->setLayer(bar_layer::BOTTOM);
@@ -606,7 +605,7 @@ auto waybar::Bar::removeExclusiveZone() const -> void {
   surface_impl_->setExclusiveZone(false);
 }
 
-auto waybar::Bar::toggle() -> void {
+void waybar::Bar::toggle() {
   return setVisible(!visible);
 }
 

@@ -58,8 +58,8 @@ class Bar {
   Bar(const Bar &) = delete;
   ~Bar() = default;
 
-  auto setVisible(bool nvis) -> void;
-  auto toggle() -> void;
+  void setVisible(bool visible);
+  void toggle();
   auto removeExclusiveZone() const -> void;
   void handleSignal(int);
 
