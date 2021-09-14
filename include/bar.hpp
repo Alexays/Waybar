@@ -59,6 +59,9 @@ class Bar {
   ~Bar() = default;
 
   void setVisible(bool visible);
+  void setHiddenClass(bool value);
+  void moveToTopLayer();
+  void moveToBottomLayer();
   void toggle();
   void setExclusive(bool value);
   void handleSignal(int);

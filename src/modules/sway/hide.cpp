@@ -31,13 +31,19 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
         bar->setVisible(true);
         bar->setExclusive(true);
       }
-	}
+    }
   } else if (payload.isMember("visible_by_modifier")) {
-    // bar_state_update: get visible_by_modifier
     visible_by_modifier_ = payload["visible_by_modifier"].asBool();
     spdlog::debug("sway/hide: visible by modifier: {}", visible_by_modifier_);
     for (auto& bar : waybar::Client::inst()->bars) {
-      bar->setVisible(visible_by_modifier_);
+        if (visible_by_modifier_) {
+            bar->setHiddenClass(false);
+            bar->moveToTopLayer();
+        } else {
+            bar->setHiddenClass(true);
+            bar->moveToBottomLayer();
+            bar->setExclusive(false);
+        }
     }
   }
 }

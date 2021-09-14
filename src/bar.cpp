@@ -605,6 +605,22 @@ void waybar::Bar::setVisible(bool value) {
   surface_impl_->commit();
 }
 
+void waybar::Bar::setHiddenClass(bool value) {
+  if (value) {
+    window.get_style_context()->add_class("hidden");
+  } else {
+    window.get_style_context()->remove_class("hidden");
+  }
+}
+
+void waybar::Bar::moveToTopLayer() {
+  surface_impl_->setLayer(bar_layer::TOP);
+  surface_impl_->commit();
+}
+
+void waybar::Bar::moveToBottomLayer() {
+  surface_impl_->setLayer(bar_layer::BOTTOM);
+  surface_impl_->commit();
 }
 
 void waybar::Bar::setExclusive(bool value) {
