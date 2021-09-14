@@ -590,14 +590,18 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
-void waybar::Bar::setVisible(bool visible) {
+void waybar::Bar::setVisible(bool value) {
+  visible = value;
   if (!visible) {
     window.get_style_context()->add_class("hidden");
+    window.set_opacity(0);
     surface_impl_->setLayer(bar_layer::BOTTOM);
   } else {
     window.get_style_context()->remove_class("hidden");
-    surface_impl_->setLayer(bar_layer::TOP);
+    window.set_opacity(1);
+    surface_impl_->setLayer(layer_);
   }
+  surface_impl_->setExclusiveZone(exclusive && visible);
   surface_impl_->commit();
 }
 
