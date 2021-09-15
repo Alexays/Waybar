@@ -28,6 +28,7 @@ class Client {
   struct zxdg_output_manager_v1 *     xdg_output_manager = nullptr;
   struct zwp_idle_inhibit_manager_v1 *idle_inhibit_manager = nullptr;
   std::vector<std::unique_ptr<Bar>>   bars;
+  Config                              config;
 
  private:
   Client() = default;
@@ -47,7 +48,6 @@ class Client {
   void        handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
   void        handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor);
 
-  Config                          config_;
   Glib::RefPtr<Gtk::StyleContext> style_context_;
   Glib::RefPtr<Gtk::CssProvider>  css_provider_;
   std::list<struct waybar_output> outputs_;
