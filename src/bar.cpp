@@ -605,7 +605,7 @@ void waybar::Bar::setVisible(bool value) {
   surface_impl_->commit();
 }
 
-void waybar::Bar::setHiddenClass(bool value) {
+void waybar::Bar::setHiddenClass(bool value) const {
   if (value) {
     window.get_style_context()->add_class("hidden");
   } else {
@@ -613,13 +613,13 @@ void waybar::Bar::setHiddenClass(bool value) {
   }
 }
 
-void waybar::Bar::moveToTopLayer() {
+void waybar::Bar::moveToTopLayer() const {
   surface_impl_->setLayer(bar_layer::TOP);
   surface_impl_->commit();
 }
 
-void waybar::Bar::moveToBottomLayer() {
-  surface_impl_->setLayer(bar_layer::BOTTOM);
+void waybar::Bar::moveToConfiguredLayer() const {
+  surface_impl_->setLayer(layer_);
   surface_impl_->commit();
 }
 

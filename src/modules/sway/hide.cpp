@@ -15,37 +15,33 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
 
 void Hide::onEvent(const struct Ipc::ipc_response& res) {
   auto payload = parser_.parse(res.payload);
-  std::lock_guard<std::mutex> lock(mutex_);
+  mutex_.lock();
+  auto &bar = const_cast<Bar &>(bar_);
   if (payload.isMember("mode")) {
     auto mode = payload["mode"].asString();
     if (mode == "hide") {
       // Hide the bars when configuring the "hide" bar
       spdlog::debug("sway/hide: hiding bar(s)");
-      for (auto& bar : waybar::Client::inst()->bars) {
-        bar->setVisible(false);
-        bar->setExclusive(false);
-      }
+      bar.setVisible(false);
+      bar.setExclusive(false);
     } else if (mode == "dock") {
-      spdlog::info("sway/hide: showing bar(s)");
-      for (auto& bar : waybar::Client::inst()->bars) {
-        bar->setVisible(true);
-        bar->setExclusive(true);
-      }
+      spdlog::debug("sway/hide: showing bar(s)");
+      bar.setVisible(true);
+      bar.setExclusive(true);
     }
   } else if (payload.isMember("visible_by_modifier")) {
     visible_by_modifier_ = payload["visible_by_modifier"].asBool();
     spdlog::debug("sway/hide: visible by modifier: {}", visible_by_modifier_);
-    for (auto& bar : waybar::Client::inst()->bars) {
-        if (visible_by_modifier_) {
-            bar->setHiddenClass(false);
-            bar->moveToTopLayer();
-        } else {
-            bar->setHiddenClass(true);
-            bar->moveToBottomLayer();
-            bar->setExclusive(false);
-        }
+    if (visible_by_modifier_) {
+        bar.setHiddenClass(false);
+        bar.moveToTopLayer();
+    } else {
+        bar.setHiddenClass(true);
+        bar.moveToConfiguredLayer();
+        bar.setExclusive(false);
     }
   }
+  mutex_.unlock();
 }
 
 void Hide::worker() {
