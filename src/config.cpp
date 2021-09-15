@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
 #include <wordexp.h>
@@ -86,11 +87,15 @@ void Config::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) {
     a_config_ = b_config_;
   } else if (a_config_.isObject() && b_config_.isObject()) {
     for (const auto &key : b_config_.getMemberNames()) {
-      if (a_config_[key].isObject() && b_config_[key].isObject()) {
+      // [] creates key with default value. Use `get` to avoid that.
+      if (a_config_.get(key, Json::Value::nullSingleton()).isObject() &&
+          b_config_[key].isObject()) {
         mergeConfig(a_config_[key], b_config_[key]);
-      } else if (a_config_[key].isNull()) {
+      } else if (!a_config_.isMember(key)) {
         // do not allow overriding value set by top or previously included config
         a_config_[key] = b_config_[key];
+      } else {
+        spdlog::trace("Option {} is already set; ignoring value {}", key, b_config_[key]);
       }
     }
   } else {

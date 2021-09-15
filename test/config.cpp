@@ -67,6 +67,8 @@ TEST_CASE("Load simple config with include", "[config]") {
     REQUIRE(data["height"].asInt() == 30);
     // config override behavior: preserve value from the top config
     REQUIRE(data["position"].asString() == "top");
+    // config override behavior: explicit null is still a value and should be preserved
+    REQUIRE((data.isMember("nullOption") && data["nullOption"].isNull()));
   }
   SECTION("select configs for configured output") {
     auto configs = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");
