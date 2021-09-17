@@ -1,0 +1,25 @@
+[
+  {
+    "layer": "bottom",
+    "height": 20,
+    "output": ["HDMI-0", "DP-0"]
+  },
+  {
+    "position": "bottom",
+    "layer": "top",
+    "height": 21,
+    "output": ["DP-0"]
+  },
+  {
+    "position": "left",
+    "layer": "overlay",
+    "height": 22,
+    "output": "Fake HDMI output #1"
+  },
+  {
+    "position": "right",
+    "layer": "overlay",
+    "height": 23,
+    "output": "!HDMI-1"
+  }
+]
