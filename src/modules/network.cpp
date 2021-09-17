@@ -661,9 +661,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         net->clearIface();
         net->ifid_ = temp_idx;
         net->route_priority = priority;
-	net->gwaddr_ = temp_gw_addr;
-	spdlog::debug("netwok: gateway {}", net->gwaddr_);
-
+        net->gwaddr_ = temp_gw_addr;
         spdlog::debug("network: new default route via if{} metric {}", temp_idx, priority);
 
         /* Ask ifname associated with temp_idx as well as carrier status */
