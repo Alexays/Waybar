@@ -82,7 +82,9 @@ The *cpu* module displays the current cpu utilization.
 
 *{load}*: Current cpu load.
 
-*{usage}*: Current cpu usage.
+*{usage}*: Current overall cpu usage.
+
+*{usage*{n}*}*: Current cpu core n usage. Cores are numbered from zero, so first core will be {usage0} and 4th will be {usage3}.
 
 *{avg_frequency}*: Current cpu average frequency (based on all cores) in GHz.
 
@@ -90,7 +92,13 @@ The *cpu* module displays the current cpu utilization.
 
 *{min_frequency}*: Current cpu min frequency (based on the core with the lowest frequency) in GHz.
 
-# EXAMPLE
+*{icon}*: Icon for overall cpu usage.
+
+*{icon*{n}*}*: Icon for cpu core n usage. Use like {icon0}.
+
+# EXAMPLES
+
+Basic configuration:
 
 ```
 "cpu": {
@@ -98,6 +106,16 @@ The *cpu* module displays the current cpu utilization.
 	"format": "{}% ",
 	"max-length": 10
 }
+```
+
+Cpu usage per core rendered as icons:
+
+```
+"cpu": {
+	"interval": 1,
+	"format": "{icon0}{icon1}{icon2}{icon3} {usage:>2}% ",
+	"format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
+},
 ```
 
 # STYLE
