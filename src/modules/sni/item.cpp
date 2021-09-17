@@ -287,7 +287,11 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
           if (array != nullptr) {
             g_free(array);
           }
+#if GLIB_MAJOR_VERSION >= 2 && GLIB_MINOR_VERSION >= 68
+          array = static_cast<guchar*>(g_memdup2(data, size));
+#else
           array = static_cast<guchar*>(g_memdup(data, size));
+#endif
           lwidth = width;
           lheight = height;
         }
