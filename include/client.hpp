@@ -3,11 +3,10 @@
 #include <fmt/format.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkwayland.h>
-#include <unistd.h>
 #include <wayland-client.h>
-#include <wordexp.h>
 
 #include "bar.hpp"
+#include "config.hpp"
 
 struct zwlr_layer_shell_v1;
 struct zwp_idle_inhibitor_v1;
@@ -29,18 +28,13 @@ class Client {
   struct zxdg_output_manager_v1 *     xdg_output_manager = nullptr;
   struct zwp_idle_inhibit_manager_v1 *idle_inhibit_manager = nullptr;
   std::vector<std::unique_ptr<Bar>>   bars;
+  Config                              config;
 
  private:
   Client() = default;
-  std::tuple<const std::string, const std::string> getConfigs(const std::string &config,
-                                                              const std::string &style) const;
-  void                                             bindInterfaces();
-  const std::string        getValidPath(const std::vector<std::string> &paths) const;
+  const std::string        getStyle(const std::string &style);
+  void                     bindInterfaces();
   void                     handleOutput(struct waybar_output &output);
-  bool                     isValidOutput(const Json::Value &config, struct waybar_output &output);
-  auto                     setupConfig(const std::string &config_file, int depth) -> void;
-  auto                     resolveConfigIncludes(Json::Value &config, int depth) -> void;
-  auto                     mergeConfig(Json::Value &a_config_, Json::Value &b_config_) -> void;
   auto                     setupCss(const std::string &css_file) -> void;
   struct waybar_output &   getOutput(void *);
   std::vector<Json::Value> getOutputConfigs(struct waybar_output &output);
@@ -55,7 +49,6 @@ class Client {
   void        handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
   void        handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor);
 
-  Json::Value                     config_;
   Glib::RefPtr<Gtk::StyleContext> style_context_;
   Glib::RefPtr<Gtk::CssProvider>  css_provider_;
   std::list<struct waybar_output> outputs_;

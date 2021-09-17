@@ -87,8 +87,9 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *include* ++
 	typeof: string|array ++
-	Paths to additional configuration files. In case of duplicate options, the including file's value takes precedence. Make sure to avoid circular imports.
-	For a multi-bar config, specify at least an empty object for each bar also in every file being included.
+	Paths to additional configuration files.
+	Each file can contain a single object with any of the bar configuration options. In case of duplicate options, the first defined value takes precedence, i.e. including file -> first included file -> etc. Nested includes are permitted, but make sure to avoid circular imports.
+	For a multi-bar config, the include directive affects only current bar configuration object.
 
 # MODULE FORMAT
 
