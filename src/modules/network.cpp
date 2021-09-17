@@ -662,7 +662,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         net->ifid_ = temp_idx;
         net->route_priority = priority;
         net->gwaddr_ = temp_gw_addr;
-        spdlog::debug("network: new default route via if{} metric {}", temp_idx, priority);
+        spdlog::debug("network: new default route via {} on if{} metric {}", temp_gw_addr, temp_idx, priority);
 
         /* Ask ifname associated with temp_idx as well as carrier status */
         struct ifinfomsg ifinfo_hdr = {
