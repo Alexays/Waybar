@@ -67,6 +67,7 @@ class Network : public ALabel {
   bool        carrier_;
   std::string ifname_;
   std::string ipaddr_;
+  std::string gwaddr_;
   std::string netmask_;
   int         cidr_;
   int32_t     signal_strength_dbm_;
