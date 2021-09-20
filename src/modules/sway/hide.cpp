@@ -9,6 +9,11 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "hide", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["bar_state_update","barconfig_update"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Hide::onEvent));
+
+  // override mode to "hide"
+  auto &bar_local = const_cast<Bar &>(bar_);
+  bar_local.config["mode"] = "hide";
+
   // Launch worker
   worker();
 }
