@@ -1,11 +1,11 @@
 [wrap-file]
-directory = Catch2-2.13.3
-source_url = https://github.com/catchorg/Catch2/archive/v2.13.3.zip
-source_filename = Catch2-2.13.3.zip
-source_hash = 1804feb72bc15c0856b4a43aa586c661af9c3685a75973b6a8fc0b950c7cfd13
-patch_url = https://github.com/mesonbuild/catch2/releases/download/2.13.3-2/catch2.zip
-patch_filename = catch2-2.13.3-2-wrap.zip
-patch_hash = 21b590ab8c65b593ad5ee8f8e5b822bf9877b2c2672f97fbb52459751053eadf
+directory = Catch2-2.13.7
+source_url = https://github.com/catchorg/Catch2/archive/v2.13.7.zip
+source_filename = Catch2-2.13.7.zip
+source_hash = 3f3ccd90ad3a8fbb1beeb15e6db440ccdcbebe378dfd125d07a1f9a587a927e9
+patch_filename = catch2_2.13.7-1_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/catch2_2.13.7-1/get_patch
+patch_hash = 2f7369645d747e5bd866317ac1dd4c3d04dc97d3aad4fc6b864bdf75d3b57158
 
 [provide]
 catch2 = catch2_dep
