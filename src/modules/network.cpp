@@ -469,7 +469,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     }
 
     if (!is_del_event && ifi->ifi_index == net->ifid_) {
-      // Update inferface information
+      // Update interface information
       if (net->ifname_.empty() && ifname != NULL) {
         std::string new_ifname (ifname, ifname_len);
         net->ifname_ = new_ifname;
