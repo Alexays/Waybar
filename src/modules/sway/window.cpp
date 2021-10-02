@@ -68,15 +68,22 @@ auto Window::update() -> void {
 
 int leafNodesInWorkspace(const Json::Value& node) {
   auto const& nodes = node["nodes"];
-  if(nodes.empty()) {
+  auto const& floating_nodes = node["floating_nodes"];
+  if(nodes.empty() && floating_nodes.empty()) {
     if(node["type"] == "workspace")
       return 0;
     else
       return 1;
   }
   int sum = 0;
-  for(auto const& node : nodes)
-    sum += leafNodesInWorkspace(node);
+  if (!nodes.empty()) {
+    for(auto const& node : nodes)
+      sum += leafNodesInWorkspace(node);
+  }
+  if (!floating_nodes.empty()) {
+    for(auto const& node : floating_nodes)
+      sum += leafNodesInWorkspace(node);
+  }
   return sum;
 }
 
