@@ -85,7 +85,7 @@ TEST_CASE("Load multiple bar config with include", "[config]") {
   conf.load("test/config/include-multi.json");
 
   SECTION("bar config with sole include") {
-    auto data = conf.getOutputConfigs("OUT-0", "Fake ouptut #0");
+    auto data = conf.getOutputConfigs("OUT-0", "Fake output #0");
     REQUIRE(data.size() == 1);
     REQUIRE(data[0]["height"].asInt() == 20);
   }
