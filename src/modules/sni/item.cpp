@@ -62,6 +62,7 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
   event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
   // initial visibility
+  event_box.show_all();
   event_box.set_visible(show_passive_);
 
   cancellable_ = Gio::Cancellable::create();
