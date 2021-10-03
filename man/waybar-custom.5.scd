@@ -9,6 +9,9 @@ waybar - custom module
 The *custom* module displays either the output of a script or static text.
 To display static text, specify only the *format* field.
 
+For sharing a subprocess between several custom modules, see the *custom-execs*
+field in waybar(5).
+
 # CONFIGURATION
 
 Addressed by *custom/<name>*
