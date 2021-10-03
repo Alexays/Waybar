@@ -24,7 +24,8 @@ The *clock* module displays the current date and time.
 *timezone*: ++
 	typeof: string ++
 	default: inferred local timezone ++
-	The timezone to display the time in, e.g. America/New_York.
+	The timezone to display the time in, e.g. America/New_York. ++
+	This field will be ignored if *timezones* field is set and have at least one value.
 
 *timezones*: ++
 	typeof: list of strings ++

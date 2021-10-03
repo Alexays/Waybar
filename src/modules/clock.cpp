@@ -15,10 +15,14 @@ using waybar::modules::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true), fixed_time_zone_(false) {
-  if (config_["timezone"].isString()) {
+  if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
+    time_zone_idx_ = 0;
+    setTimeZone(config_["timezones"][time_zone_idx_]);
+  } else {
+    setTimeZone(config_["timezone"]);
+  }
+  if (fixed_time_zone_) {
     spdlog::warn("As using a timezone, some format args may be missing as the date library haven't got a release since 2018.");
-    time_zone_ = date::locate_zone(config_["timezone"].asString());
-    fixed_time_zone_ = true;
   }
 
   if (config_["locale"].isString()) {
@@ -72,6 +76,17 @@ auto waybar::modules::Clock::update() -> void {
   ALabel::update();
 }
 
+bool waybar::modules::Clock::setTimeZone(Json::Value zone_name) {
+  if (!zone_name.isString() || zone_name.asString().empty()) {
+      fixed_time_zone_ = false;
+      return false;
+  }
+
+  time_zone_ = date::locate_zone(zone_name.asString());
+  fixed_time_zone_ = true;
+  return true;
+}
+
 bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
   // defer to user commands if set
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -92,14 +107,7 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
   } else {
     time_zone_idx_ = time_zone_idx_ == 0 ? nr_zones - 1 : time_zone_idx_ - 1;
   }
-  auto zone_name = config_["timezones"][time_zone_idx_];
-  if (!zone_name.isString() || zone_name.empty()) {
-    fixed_time_zone_ = false;
-  } else {
-    time_zone_ = date::locate_zone(zone_name.asString());
-    fixed_time_zone_ = true;
-  }
-
+  setTimeZone(config_["timezones"][time_zone_idx_]);
   update();
   return true;
 }
