@@ -14,15 +14,49 @@
 using waybar::modules::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true), fixed_time_zone_(false) {
+    : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
+      current_time_zone_idx_(0),
+      is_calendar_in_tooltip_(false)
+{
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
-    time_zone_idx_ = 0;
-    setTimeZone(config_["timezones"][time_zone_idx_]);
+    for (const auto& zone_name: config_["timezones"]) {
+      if (!zone_name.isString() || zone_name.asString().empty()) {
+        time_zones_.push_back(nullptr);
+        continue;
+      }
+      time_zones_.push_back(
+        date::locate_zone(
+          zone_name.asString()
+        )
+      );
+
+    }
+    // If we parse all timezones and no one is good, add nullptr to the tmezones vector, to mark that we need to show localtime
+    if (!time_zones_.size()) {
+      time_zones_.push_back(nullptr);
+    }
   } else {
-    setTimeZone(config_["timezone"]);
+    time_zones_.push_back(
+        date::locate_zone(
+          config_["timezone"].asString()
+        )
+      );
   }
-  if (fixed_time_zone_) {
+
+  if (!is_timezone_fixed()) {
     spdlog::warn("As using a timezone, some format args may be missing as the date library haven't got a release since 2018.");
+  }
+
+  // Check if we have to particular placeholder in tooltip format, to know what to calculate on update
+  if (config_["tooltip-format"].isString()) {
+    std::string trimmedFormat = config_["tooltip-format"].asString();
+    trimmedFormat.erase(std::remove_if(trimmedFormat.begin(),
+                              trimmedFormat.end(),
+                              [](unsigned char x){return std::isspace(x);}),
+               trimmedFormat.end());
+    if (trimmedFormat.find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
+      is_calendar_in_tooltip_ = true;
+    }
   }
 
   if (config_["locale"].isString()) {
@@ -40,51 +74,44 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   };
 }
 
+const date::time_zone* waybar::modules::Clock::current_timezone() {
+  return time_zones_[current_time_zone_idx_] ? time_zones_[current_time_zone_idx_] : date::current_zone();
+}
+
+bool waybar::modules::Clock::is_timezone_fixed() {
+  return time_zones_[current_time_zone_idx_] != nullptr;
+}
+
 auto waybar::modules::Clock::update() -> void {
-  if (!fixed_time_zone_) {
-    // Time zone can change. Be sure to pick that.
-    time_zone_ = date::current_zone();
-  }
-
-  auto        now = std::chrono::system_clock::now();
+  auto time_zone = current_timezone();
+  auto now = std::chrono::system_clock::now();
   waybar_time wtime = {locale_,
-                       date::make_zoned(time_zone_, date::floor<std::chrono::seconds>(now))};
-
-  std::string text;
-  if (!fixed_time_zone_) {
+                       date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now))};
+  std::string text = "";
+  if (!is_timezone_fixed()) {
     // As date dep is not fully compatible, prefer fmt
     tzset();
     auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
     text = fmt::format(format_, localtime);
-    label_.set_markup(text);
   } else {
     text = fmt::format(format_, wtime);
-    label_.set_markup(text);
   }
+  label_.set_markup(text);
 
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
-      const auto calendar = calendar_text(wtime);
-      auto       tooltip_format = config_["tooltip-format"].asString();
-      auto       tooltip_text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendar));
-      label_.set_tooltip_markup(tooltip_text);
-    } else {
-      label_.set_tooltip_markup(text);
+      std::string calendarText = "";
+      if (is_calendar_in_tooltip_) {
+        calendarText = calendar_text(wtime);
+      }
+      auto tooltip_format = config_["tooltip-format"].asString();
+      text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendarText));
     }
   }
+
+  label_.set_tooltip_markup(text);
   // Call parent update
   ALabel::update();
-}
-
-bool waybar::modules::Clock::setTimeZone(Json::Value zone_name) {
-  if (!zone_name.isString() || zone_name.asString().empty()) {
-      fixed_time_zone_ = false;
-      return false;
-  }
-
-  time_zone_ = date::locate_zone(zone_name.asString());
-  fixed_time_zone_ = true;
-  return true;
 }
 
 bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
@@ -97,17 +124,18 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
   if (dir != SCROLL_DIR::UP && dir != SCROLL_DIR::DOWN) {
     return true;
   }
-  if (!config_["timezones"].isArray() || config_["timezones"].empty()) {
+  if (time_zones_.size() == 1) {
     return true;
   }
-  auto nr_zones = config_["timezones"].size();
+
+  auto nr_zones = time_zones_.size();
   if (dir == SCROLL_DIR::UP) {
-    size_t new_idx = time_zone_idx_ + 1;
-    time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
+    size_t new_idx = current_time_zone_idx_ + 1;
+    current_time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
   } else {
-    time_zone_idx_ = time_zone_idx_ == 0 ? nr_zones - 1 : time_zone_idx_ - 1;
+    current_time_zone_idx_ = current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
   }
-  setTimeZone(config_["timezones"][time_zone_idx_]);
+
   update();
   return true;
 }
