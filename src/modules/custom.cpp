@@ -4,85 +4,22 @@
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config)
-    : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
+    : ALabel(config, "custom-" + name, id, "{}"),
+      name_(name),
+      thread_(
+          config, [this](std::string output) { workerOutputCallback(std::move(output)); },
+          [this](int exit_code) { workerExitCallback(exit_code); }) {
   dp.emit();
-  if (interval_.count() > 0) {
-    delayWorker();
-  } else if (config_["exec"].isString()) {
-    continuousWorker();
-  }
 }
 
-waybar::modules::Custom::~Custom() {
-  if (pid_ != -1) {
-    killpg(pid_, SIGTERM);
-    pid_ = -1;
-  }
+void waybar::modules::Custom::workerExitCallback(int exit_code) {
+  output_ = {exit_code, ""};
+  dp.emit();
 }
 
-void waybar::modules::Custom::delayWorker() {
-  thread_ = [this] {
-    bool can_update = true;
-    if (config_["exec-if"].isString()) {
-      output_ = util::command::execNoRead(config_["exec-if"].asString());
-      if (output_.exit_code != 0) {
-        can_update = false;
-        dp.emit();
-      }
-    }
-    if (can_update) {
-      if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString());
-      }
-      dp.emit();
-    }
-    thread_.sleep_for(interval_);
-  };
-}
-
-void waybar::modules::Custom::continuousWorker() {
-  auto cmd = config_["exec"].asString();
-  pid_ = -1;
-  fp_ = util::command::open(cmd, pid_);
-  if (!fp_) {
-    throw std::runtime_error("Unable to open " + cmd);
-  }
-  thread_ = [this, cmd] {
-    char*  buff = nullptr;
-    size_t len = 0;
-    if (getline(&buff, &len, fp_) == -1) {
-      int exit_code = 1;
-      if (fp_) {
-        exit_code = WEXITSTATUS(util::command::close(fp_, pid_));
-        fp_ = nullptr;
-      }
-      if (exit_code != 0) {
-        output_ = {exit_code, ""};
-        dp.emit();
-        spdlog::error("{} stopped unexpectedly, is it endless?", name_);
-      }
-      if (config_["restart-interval"].isUInt()) {
-        pid_ = -1;
-        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
-        fp_ = util::command::open(cmd, pid_);
-        if (!fp_) {
-          throw std::runtime_error("Unable to open " + cmd);
-        }
-      } else {
-        thread_.stop();
-        return;
-      }
-    } else {
-      std::string output = buff;
-
-      // Remove last newline
-      if (!output.empty() && output[output.length() - 1] == '\n') {
-        output.erase(output.length() - 1);
-      }
-      output_ = {0, output};
-      dp.emit();
-    }
-  };
+void waybar::modules::Custom::workerOutputCallback(std::string output) {
+  output_ = {0, std::move(output)};
+  dp.emit();
 }
 
 void waybar::modules::Custom::refresh(int sig) {
@@ -116,9 +53,9 @@ auto waybar::modules::Custom::update() -> void {
     event_box_.hide();
   } else {
     if (config_["return-type"].asString() == "json") {
-      parseOutputJson();
+      parseOutputJson(output_.out);
     } else {
-      parseOutputRaw();
+      parseOutputRaw(output_.out);
     }
     auto str = fmt::format(format_,
                            text_,
@@ -154,8 +91,8 @@ auto waybar::modules::Custom::update() -> void {
   ALabel::update();
 }
 
-void waybar::modules::Custom::parseOutputRaw() {
-  std::istringstream output(output_.out);
+void waybar::modules::Custom::parseOutputRaw(const std::string& output_str) {
+  std::istringstream output(output_str);
   std::string        line;
   int                i = 0;
   while (getline(output, line)) {
@@ -178,8 +115,8 @@ void waybar::modules::Custom::parseOutputRaw() {
   }
 }
 
-void waybar::modules::Custom::parseOutputJson() {
-  std::istringstream output(output_.out);
+void waybar::modules::Custom::parseOutputJson(const std::string& output_str) {
+  std::istringstream output(output_str);
   std::string        line;
   class_.clear();
   while (getline(output, line)) {
