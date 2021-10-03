@@ -508,6 +508,20 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
   setupWidgets();
+
+  if (config["custom-execs"].isArray()) {
+    Json::ArrayIndex size = config["custom-execs"].size();
+    for (Json::ArrayIndex i = 0; i < size; i++) {
+      custom_threads_.push_back(std::make_unique<waybar::util::WorkerThread>(
+          config["custom-execs"][i],
+          [this](std::string output) { customExecOutputCallback(output); },
+          [this](int exit_code) {
+            // Do nothing. We don't know which modules this was meant for.
+            spdlog::debug("Custom exec exited with code {}", exit_code);
+          }));
+    }
+  }
+
   window.show_all();
 
   if (spdlog::should_log(spdlog::level::debug)) {
@@ -518,6 +532,19 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
                                     GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE));
     spdlog::debug("GTK widget tree:\n{}", gtk_tree);
     g_free(gtk_tree);
+  }
+}
+
+void waybar::Bar::customExecOutputCallback(std::string output) {
+  // parsed is an object with module names as keys and output (string or object) as values.
+  auto parsed = parser_.parse(output);
+  auto end = parsed.end();
+  for (Json::Value::const_iterator module_it = parsed.begin(); module_it != end; ++module_it) {
+    auto it = custom_modules_.find(module_it.name());
+    if (it != custom_modules_.end()) {
+      it->second->injectOutput(*module_it);
+    } else {
+    }
   }
 }
 
@@ -612,6 +639,10 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
     for (const auto& name : config[pos]) {
       try {
         auto module = factory.makeModule(name.asString());
+        auto custom = dynamic_cast<waybar::modules::Custom*>(module);
+        if (custom != nullptr) {
+          custom_modules_[name.asString()] = custom;
+        }
         if (pos == "modules-left") {
           modules_left_.emplace_back(module);
         }

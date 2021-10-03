@@ -13,12 +13,26 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
 }
 
 void waybar::modules::Custom::workerExitCallback(int exit_code) {
-  output_ = {exit_code, ""};
+  {
+    std::lock_guard<std::mutex> guard(output_mutex_);
+    output_ = exit_code;
+  }
   dp.emit();
 }
 
 void waybar::modules::Custom::workerOutputCallback(std::string output) {
-  output_ = {0, std::move(output)};
+  {
+    std::lock_guard<std::mutex> guard(output_mutex_);
+    output_ = std::move(output);
+  }
+  dp.emit();
+}
+
+void waybar::modules::Custom::injectOutput(Json::Value output) {
+  {
+    std::lock_guard<std::mutex> guard(output_mutex_);
+    output_ = std::move(output);
+  }
   dp.emit();
 }
 
@@ -47,23 +61,52 @@ bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
 }
 
 auto waybar::modules::Custom::update() -> void {
+  std::variant<std::monostate, int, std::string, Json::Value> output;
+  {
+    std::lock_guard<std::mutex> guard(output_mutex_);
+    output = std::move(output_);
+    output_ = std::monostate();
+  }
+
   // Hide label if output is empty
-  if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
-      (output_.out.empty() || output_.exit_code != 0)) {
-    event_box_.hide();
-  } else {
-    if (config_["return-type"].asString() == "json") {
-      parseOutputJson(output_.out);
-    } else {
-      parseOutputRaw(output_.out);
+  bool hide = config_["exec"].isString() || config_["exec-if"].isString();
+
+  if (std::holds_alternative<std::monostate>(output)) {
+    if (hide) {
+      // No changes since the last update, do nothing.
+      ALabel::update();
+      return;
     }
+  } else if (std::holds_alternative<int>(output)) {
+    // The exit code is non-zero if we get here, so do nothing to hide the label.
+  } else if (std::holds_alternative<std::string>(output)) {
+    const std::string& s = std::get<std::string>(output);
+    if (!s.empty()) {
+      hide = false;
+      if (config_["return-type"].asString() == "json") {
+        parseOutputJson(s);
+      } else {
+        parseOutputRaw(s);
+      }
+    }
+  } else {
+    hide = false;
+    const Json::Value& value = std::get<Json::Value>(output);
+    if (value.isString()) {
+      parseOutputRaw(value.asString());
+    } else {
+      handleOutputJson(value);
+    }
+  }
+
+  if (!hide) {
     auto str = fmt::format(format_,
                            text_,
                            fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
     if (str.empty()) {
-      event_box_.hide();
+      hide = true;
     } else {
       label_.set_markup(str);
       if (tooltipEnabled()) {
@@ -87,6 +130,11 @@ auto waybar::modules::Custom::update() -> void {
       event_box_.show();
     }
   }
+
+  if (hide) {
+    event_box_.hide();
+  }
+
   // Call parent update
   ALabel::update();
 }
@@ -121,29 +169,33 @@ void waybar::modules::Custom::parseOutputJson(const std::string& output_str) {
   class_.clear();
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      text_ = Glib::Markup::escape_text(parsed["text"].asString());
-    } else {
-      text_ = parsed["text"].asString();
-    }
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
-    } else {
-      alt_ = parsed["alt"].asString();
-    }
-    tooltip_ = parsed["tooltip"].asString();
-    if (parsed["class"].isString()) {
-      class_.push_back(parsed["class"].asString());
-    } else if (parsed["class"].isArray()) {
-      for (auto const& c : parsed["class"]) {
-        class_.push_back(c.asString());
-      }
-    }
-    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
-      percentage_ = parsed["percentage"].asUInt();
-    } else {
-      percentage_ = 0;
-    }
+    handleOutputJson(parsed);
     break;
+  }
+}
+
+void waybar::modules::Custom::handleOutputJson(const Json::Value& value) {
+  if (config_["escape"].isBool() && config_["escape"].asBool()) {
+    text_ = Glib::Markup::escape_text(value["text"].asString());
+  } else {
+    text_ = value["text"].asString();
+  }
+  if (config_["escape"].isBool() && config_["escape"].asBool()) {
+    alt_ = Glib::Markup::escape_text(value["alt"].asString());
+  } else {
+    alt_ = value["alt"].asString();
+  }
+  tooltip_ = value["tooltip"].asString();
+  if (value["class"].isString()) {
+    class_.push_back(value["class"].asString());
+  } else if (value["class"].isArray()) {
+    for (auto const& c : value["class"]) {
+      class_.push_back(c.asString());
+    }
+  }
+  if (!value["percentage"].asString().empty() && value["percentage"].isUInt()) {
+    percentage_ = value["percentage"].asUInt();
+  } else {
+    percentage_ = 0;
   }
 }
