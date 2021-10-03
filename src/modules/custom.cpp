@@ -36,11 +36,7 @@ void waybar::modules::Custom::injectOutput(Json::Value output) {
   dp.emit();
 }
 
-void waybar::modules::Custom::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
-    thread_.wake_up();
-  }
-}
+void waybar::modules::Custom::refresh(int sig) { thread_.refresh(sig); }
 
 void waybar::modules::Custom::handleEvent() {
   if (!config_["exec-on-event"].isBool() || config_["exec-on-event"].asBool()) {

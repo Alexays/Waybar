@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <csignal>
 #include <optional>
 #include <string>
 
@@ -36,6 +37,9 @@ class WorkerThread {
     if (config["restart-interval"].isUInt()) {
       restart_interval_ = std::chrono::seconds(config["restart-interval"].asUInt());
     }
+    if (config["signal"].isInt()) {
+      signal_ = SIGRTMIN + config["signal"].asInt();
+    }
 
     if (interval_.count() > 0) {
       thread_ = [this] { delay_worker(); };
@@ -51,7 +55,13 @@ class WorkerThread {
     }
   }
 
-  auto wake_up() { return thread_.wake_up(); }
+  void refresh(int signal) {
+    if (signal_.has_value() && *signal_ == signal) {
+      wake_up();
+    }
+  }
+
+  void wake_up() { thread_.wake_up(); }
 
  private:
   void delay_worker() {
@@ -123,6 +133,7 @@ class WorkerThread {
   std::string                         exec_if_;
   std::chrono::seconds                interval_;
   std::optional<std::chrono::seconds> restart_interval_;
+  std::optional<int>                  signal_;
   std::function<void(std::string)>    output_callback_;
   std::function<void(int)>            exit_callback_;
   int                                 pid_;

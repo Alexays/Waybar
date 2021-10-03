@@ -632,6 +632,9 @@ void waybar::Bar::handleSignal(int signal) {
       custom->refresh(signal);
     }
   }
+  for (auto& thread : custom_threads_) {
+    thread->refresh(signal);
+  }
 }
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {

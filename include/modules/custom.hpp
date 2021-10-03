@@ -2,7 +2,6 @@
 
 #include <fmt/format.h>
 
-#include <csignal>
 #include <mutex>
 #include <string>
 #include <variant>
