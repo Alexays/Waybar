@@ -29,18 +29,18 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
           zone_name.asString()
         )
       );
-
     }
-    // If all timezones are parsed and no one is good, add nullptr to the timezones vector, to mark that local time should be shown.
-    if (!time_zones_.size()) {
-      time_zones_.push_back(nullptr);
-    }
-  } else {
+  } else if (config_["timezone"].isString() && !config_["timezone"].asString().empty()) {
     time_zones_.push_back(
         date::locate_zone(
           config_["timezone"].asString()
         )
       );
+  }
+
+  // If all timezones are parsed and no one is good, add nullptr to the timezones vector, to mark that local time should be shown.
+  if (!time_zones_.size()) {
+    time_zones_.push_back(nullptr);
   }
 
   if (!is_timezone_fixed()) {
@@ -105,7 +105,7 @@ auto waybar::modules::Clock::update() -> void {
         calendar_lines = calendar_text(wtime);
       }
       auto tooltip_format = config_["tooltip-format"].asString();
-      text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendar_lines));
+      text = fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines));
     }
   }
 
