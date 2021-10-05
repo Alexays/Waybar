@@ -31,7 +31,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       );
 
     }
-    // If we parse all timezones and no one is good, add nullptr to the tmezones vector, to mark that we need to show localtime
+    // If all timezones are parsed and no one is good, add nullptr to the timezones vector, to mark that local time should be shown.
     if (!time_zones_.size()) {
       time_zones_.push_back(nullptr);
     }
@@ -47,14 +47,14 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     spdlog::warn("As using a timezone, some format args may be missing as the date library haven't got a release since 2018.");
   }
 
-  // Check if we have to particular placeholder in tooltip format, to know what to calculate on update
+  // Check if a particular placeholder is present in the tooltip format, to know what to calculate on update.
   if (config_["tooltip-format"].isString()) {
-    std::string trimmedFormat = config_["tooltip-format"].asString();
-    trimmedFormat.erase(std::remove_if(trimmedFormat.begin(),
-                              trimmedFormat.end(),
+    std::string trimmed_format = config_["tooltip-format"].asString();
+    trimmed_format.erase(std::remove_if(trimmed_format.begin(),
+                              trimmed_format.end(),
                               [](unsigned char x){return std::isspace(x);}),
-               trimmedFormat.end());
-    if (trimmedFormat.find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
+               trimmed_format.end());
+    if (trimmed_format.find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
       is_calendar_in_tooltip_ = true;
     }
   }
@@ -100,12 +100,12 @@ auto waybar::modules::Clock::update() -> void {
 
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
-      std::string calendarText = "";
+      std::string calendar_lines = "";
       if (is_calendar_in_tooltip_) {
-        calendarText = calendar_text(wtime);
+        calendar_lines = calendar_text(wtime);
       }
       auto tooltip_format = config_["tooltip-format"].asString();
-      text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendarText));
+      text = fmt::format(tooltip_format, wtime, fmt::arg("calendar", calendar_lines));
     }
   }
 
