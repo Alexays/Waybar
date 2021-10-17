@@ -1,11 +1,20 @@
 #include "modules/sway/window.hpp"
+
+#include <gdkmm/pixbuf.h>
+#include <glibmm/fileutils.h>
+#include <glibmm/keyfile.h>
+#include <glibmm/miscutils.h>
+#include <gtkmm/enums.h>
 #include <spdlog/spdlog.h>
+
+#include <filesystem>
 #include <regex>
+#include <string>
 
 namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
+    : AIconLabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
@@ -29,10 +38,58 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     auto payload = parser_.parse(res.payload);
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
     std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload["nodes"], output);
+    updateAppIcon();
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
   }
+}
+
+std::optional<std::string> getDesktopFilePath(const std::string& app_id) {
+  const auto data_dirs = Glib::get_system_data_dirs();
+  for (const auto& data_dir : data_dirs) {
+    const auto desktop_file_path = data_dir + "applications/" + app_id + ".desktop";
+    if (std::filesystem::exists(desktop_file_path)) {
+      return desktop_file_path;
+    }
+  }
+  return {};
+}
+
+std::optional<Glib::ustring> getIconName(const std::string& app_id) {
+  const auto desktop_file_path = getDesktopFilePath(app_id);
+  if (!desktop_file_path.has_value()) {
+    return {};
+  }
+  try {
+    Glib::KeyFile desktop_file;
+    desktop_file.load_from_file(desktop_file_path.value());
+    const auto icon_name = desktop_file.get_string("Desktop Entry", "Icon");
+    if (icon_name.empty()) {
+      return {};
+    }
+    return icon_name;
+  } catch (Glib::FileError& error) {
+    spdlog::warn(
+        "Error while loading desktop file {}: {}", desktop_file_path.value(), error.what().c_str());
+  } catch (Glib::KeyFileError& error) {
+    spdlog::warn(
+        "Error while loading desktop file {}: {}", desktop_file_path.value(), error.what().c_str());
+  }
+  return {};
+}
+
+void Window::updateAppIcon() {
+  if (!iconEnabled()) {
+    return;
+  }
+  const auto icon_name = getIconName(app_id_);
+  if (icon_name.has_value()) {
+    image_.set_from_icon_name(icon_name.value(), Gtk::ICON_SIZE_LARGE_TOOLBAR);
+    image_.set_visible(true);
+    return;
+  }
+  image_.set_visible(false);
 }
 
 auto Window::update() -> void {
@@ -63,7 +120,7 @@ auto Window::update() -> void {
     label_.set_tooltip_text(window_);
   }
   // Call parent update
-  ALabel::update();
+  AIconLabel::update();
 }
 
 int leafNodesInWorkspace(const Json::Value& node) {
