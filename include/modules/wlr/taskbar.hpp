@@ -77,6 +77,7 @@ class Task
    private:
     std::string repr() const;
     std::string state_string(bool = false) const;
+	void hide_if_ignored();
 
    public:
     /* Getter functions */
