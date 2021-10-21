@@ -131,6 +131,8 @@ Addressed by *network*
 
 *{ipaddr}*: The first IP of the interface.
 
+*{gwaddr}*: The default gateway for the interface
+
 *{netmask}*: The subnetmask corresponding to the IP.
 
 *{cidr}*: The subnetmask corresponding to the IP in CIDR notation.

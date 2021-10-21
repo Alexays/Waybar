@@ -16,5 +16,8 @@ install: build
 run: build
 	./build/waybar
 
+debug-run: build-debug
+	./build/waybar --log-level debug
+
 clean:
 	rm -rf build

@@ -173,7 +173,7 @@ auto waybar::modules::Backlight::update() -> void {
       return;
     }
 
-    const auto percent = best->get_max() == 0 ? 100 : best->get_actual() * 100 / best->get_max();
+    const uint8_t percent = best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
     label_.set_markup(fmt::format(
         format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
     getState(percent);
