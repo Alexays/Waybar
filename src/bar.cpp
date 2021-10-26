@@ -438,6 +438,13 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   center_.get_style_context()->add_class("modules-center");
   right_.get_style_context()->add_class("modules-right");
 
+  if (config["spacing"].isInt()) {
+    int spacing = config["spacing"].asInt();
+    left_.set_spacing(spacing);
+    center_.set_spacing(spacing);
+    right_.set_spacing(spacing);
+  }
+
   uint32_t height = config["height"].isUInt() ? config["height"].asUInt() : 0;
   uint32_t width = config["width"].isUInt() ? config["width"].asUInt() : 0;
 
