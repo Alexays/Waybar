@@ -62,6 +62,7 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
   event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
   // initial visibility
+  event_box.show_all();
   event_box.set_visible(show_passive_);
 
   cancellable_ = Gio::Cancellable::create();
@@ -287,7 +288,11 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
           if (array != nullptr) {
             g_free(array);
           }
+#if GLIB_MAJOR_VERSION >= 2 && GLIB_MINOR_VERSION >= 68
+          array = static_cast<guchar*>(g_memdup2(data, size));
+#else
           array = static_cast<guchar*>(g_memdup(data, size));
+#endif
           lwidth = width;
           lheight = height;
         }

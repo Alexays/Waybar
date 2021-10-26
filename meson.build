@@ -149,6 +149,7 @@ src_files = files(
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
+    'src/config.cpp',
     'src/util/ustring_clen.cpp'
 )
 
@@ -358,6 +359,15 @@ if scdoc.found()
             install_dir: '@0@/man@1@'.format(mandir, section)
         )
     endforeach
+endif
+
+catch2 = dependency(
+    'catch2',
+    fallback: ['catch2', 'catch2_dep'],
+    required: get_option('tests'),
+)
+if catch2.found()
+    subdir('test')
 endif
 
 clangtidy = find_program('clang-tidy', required: false)

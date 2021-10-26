@@ -1,0 +1,16 @@
+[
+  {
+    "include": "test/config/include-multi-0.json"
+  },
+  {
+    "output": "OUT-1",
+    "include": "test/config/include-multi-1.json"
+  },
+  {
+    "output": "OUT-2",
+    "include": "test/config/include-multi-2.json"
+  },
+  {
+    "include": "test/config/include-multi-3.json"
+  }
+]

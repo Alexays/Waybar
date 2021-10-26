@@ -37,6 +37,7 @@ class Clock : public ALabel {
   auto calendar_text(const waybar_time& wtime) -> std::string;
   auto weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void;
   auto first_day_of_week() -> date::weekday;
+  bool setTimeZone(Json::Value zone_name);
 };
 
 }  // namespace waybar::modules

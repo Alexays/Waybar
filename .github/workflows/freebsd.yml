@@ -15,9 +15,10 @@ jobs:
           export CPPFLAGS=-isystem/usr/local/include LDFLAGS=-L/usr/local/lib # sndio
           sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
           pkg install -y git #  subprojects/date
-          pkg install -y evdev-proto gtk-layer-shell gtkmm30 jsoncpp libdbusmenu \
-            libevdev libfmt libmpdclient libudev-devd meson pkgconf pulseaudio \
-            scdoc sndio spdlog
+          pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
+            libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
+            pkgconf pulseaudio scdoc sndio spdlog
         run: |
           meson build -Dman-pages=enabled
           ninja -C build
+          meson test -C build --no-rebuild --print-errorlogs --suite waybar
