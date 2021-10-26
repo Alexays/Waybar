@@ -19,8 +19,8 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
 }
 
 void Hide::onEvent(const struct Ipc::ipc_response& res) {
+  std::lock_guard<std::mutex> lock(mutex_);
   auto payload = parser_.parse(res.payload);
-  mutex_.lock();
   auto &bar = const_cast<Bar &>(bar_);
   if (payload.isMember("mode")) {
     auto mode = payload["mode"].asString();
@@ -29,7 +29,7 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
       spdlog::debug("sway/hide: hiding bar(s)");
       bar.setVisible(false);
       bar.setExclusive(false);
-    } else if (mode == "dock") {
+    } else if (mode == "dock") { // enables toggling the bar using killall -USR2 waybar
       spdlog::debug("sway/hide: showing bar(s)");
       bar.setVisible(true);
       bar.setExclusive(true);
@@ -46,7 +46,6 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
         bar.setExclusive(false);
     }
   }
-  mutex_.unlock();
 }
 
 void Hide::worker() {
@@ -61,4 +60,5 @@ void Hide::worker() {
 
 auto Hide::update() -> void {
 }
+
 }  // namespace waybar::modules::sway
