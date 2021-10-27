@@ -14,6 +14,13 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
   auto &bar_local = const_cast<Bar &>(bar_);
   bar_local.config["mode"] = "hide";
 
+  if (config_["hide-on-startup"].asBool()) {
+        spdlog::debug("sway/hide: Hiding on startup enabled!");
+        bar_local.setHiddenClass(true);
+        bar_local.moveToConfiguredLayer();
+        bar_local.setExclusive(false);
+  }
+
   // Launch worker
   worker();
 }
