@@ -67,8 +67,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
-    format_icons = format_icons[idx];
+    if (size) {
+      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+      format_icons = format_icons[idx];
+    }
   }
   if (format_icons.isString()) {
     return format_icons.asString();
@@ -90,8 +92,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
-    format_icons = format_icons[idx];
+    if (size) {
+      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+      format_icons = format_icons[idx];
+    }
   }
   if (format_icons.isString()) {
     return format_icons.asString();
