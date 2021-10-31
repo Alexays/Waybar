@@ -9,6 +9,7 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "factory.hpp"
+#include "group.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 namespace waybar {
@@ -594,19 +595,7 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
 }
 
 void waybar::Bar::handleSignal(int signal) {
-  for (auto& module : modules_left_) {
-    auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
-    if (custom != nullptr) {
-      custom->refresh(signal);
-    }
-  }
-  for (auto& module : modules_center_) {
-    auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
-    if (custom != nullptr) {
-      custom->refresh(signal);
-    }
-  }
-  for (auto& module : modules_right_) {
+  for (auto& module : modules_all_) {
     auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
     if (custom != nullptr) {
       custom->refresh(signal);
@@ -614,19 +603,35 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
-void waybar::Bar::getModules(const Factory& factory, const std::string& pos) {
-  if (config[pos].isArray()) {
-    for (const auto& name : config[pos]) {
+void waybar::Bar::getModules(const Factory& factory, const std::string& pos, Gtk::Box* group = nullptr) {
+  auto module_list = group ? config[pos]["modules"] : config[pos];
+  if (module_list.isArray()) {
+    for (const auto& name : module_list) {
       try {
-        auto module = factory.makeModule(name.asString());
-        if (pos == "modules-left") {
-          modules_left_.emplace_back(module);
+        auto ref = name.asString();
+        AModule* module;
+
+        if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
+          auto group_module = new waybar::Group(ref, *this, config[ref]);
+          getModules(factory, ref, &group_module->box);
+          module = group_module;
+        } else {
+          module = factory.makeModule(ref);
         }
-        if (pos == "modules-center") {
-          modules_center_.emplace_back(module);
-        }
-        if (pos == "modules-right") {
-          modules_right_.emplace_back(module);
+
+        modules_all_.emplace_back(module);
+        if (group) {
+          group->pack_start(*module, false, false);
+        } else {
+          if (pos == "modules-left") {
+            modules_left_.emplace_back(module);
+          }
+          if (pos == "modules-center") {
+            modules_center_.emplace_back(module);
+          }
+          if (pos == "modules-right") {
+            modules_right_.emplace_back(module);
+          }
         }
         module->dp.connect([module, &name] {
           try {
