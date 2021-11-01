@@ -266,6 +266,7 @@ A module group is defined by specifying a module named "group/some-group-name". 
 - *waybar-keyboard-state(5)*
 - *waybar-memory(5)*
 - *waybar-mpd(5)*
+- *waybar-mpris(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
 - *waybar-river-mode(5)*
