@@ -58,7 +58,8 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
       return;
     }
 
-    if (config_["hide-to-bottom-layer"].asBool()) {
+    bool hide_to_bottom_layer_ = config_["hide-to-bottom-layer"].asBool();
+    if (hide_to_bottom_layer_) {
       spdlog::debug("sway/hide: Moving bar to bottom layer instead of hiding.");
       bar.setBottomLayerClass(true);
       bar.moveToBottomLayer();
