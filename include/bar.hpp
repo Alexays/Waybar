@@ -60,7 +60,9 @@ class Bar {
 
   void setVisible(bool visible);
   void setHiddenClass(bool value) const;
+  void setBottomLayerClass(bool value) const;
   void moveToTopLayer() const;
+  void moveToBottomLayer() const;
   void moveToConfiguredLayer() const;
   void toggle();
   void setExclusive(bool value);

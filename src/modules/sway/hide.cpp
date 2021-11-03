@@ -13,12 +13,14 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
   // override mode to "hide"
   auto &bar_local = const_cast<Bar &>(bar_);
   bar_local.config["mode"] = "hide";
+  bar_local.setExclusive(false);
 
   if (config_["hide-on-startup"].asBool()) {
-        spdlog::debug("sway/hide: Hiding on startup enabled!");
-        bar_local.setHiddenClass(true);
-        bar_local.moveToConfiguredLayer();
-        bar_local.setExclusive(false);
+    spdlog::debug("sway/hide: Hiding on startup enabled!");
+    bar_local.setHiddenClass(true);
+    bar_local.moveToConfiguredLayer();
+  } else {
+    bar_local.moveToTopLayer();
   }
 
   // Launch worker
@@ -29,6 +31,7 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
   std::lock_guard<std::mutex> lock(mutex_);
   auto payload = parser_.parse(res.payload);
   auto &bar = const_cast<Bar &>(bar_);
+
   if (payload.isMember("mode")) {
     auto mode = payload["mode"].asString();
     if (mode == "hide") {
@@ -41,17 +44,30 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
       bar.setVisible(true);
       bar.setExclusive(true);
     }
-  } else if (payload.isMember("visible_by_modifier")) {
+    return;
+  }
+
+  if (payload.isMember("visible_by_modifier")) {
     visible_by_modifier_ = payload["visible_by_modifier"].asBool();
     spdlog::debug("sway/hide: visible by modifier: {}", visible_by_modifier_);
+
     if (visible_by_modifier_) {
-        bar.setHiddenClass(false);
-        bar.moveToTopLayer();
-    } else {
-        bar.setHiddenClass(true);
-        bar.moveToConfiguredLayer();
-        bar.setExclusive(false);
+      bar.setHiddenClass(false);
+      bar.setBottomLayerClass(false);
+      bar.moveToTopLayer();
+      return;
     }
+
+    if (config_["hide-to-bottom-layer"].asBool()) {
+      spdlog::debug("sway/hide: Moving bar to bottom layer instead of hiding.");
+      bar.setBottomLayerClass(true);
+      bar.moveToBottomLayer();
+      return;
+    }
+
+    bar.setBottomLayerClass(false);
+    bar.setHiddenClass(true);
+    bar.moveToConfiguredLayer();
   }
 }
 

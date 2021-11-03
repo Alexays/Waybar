@@ -620,8 +620,21 @@ void waybar::Bar::setHiddenClass(bool value) const {
   }
 }
 
+void waybar::Bar::setBottomLayerClass(bool value) const {
+  if (value) {
+    window.get_style_context()->add_class("bottom-layer");
+  } else {
+    window.get_style_context()->remove_class("bottom-layer");
+  }
+}
+
 void waybar::Bar::moveToTopLayer() const {
   surface_impl_->setLayer(bar_layer::TOP);
+  surface_impl_->commit();
+}
+
+void waybar::Bar::moveToBottomLayer() const {
+  surface_impl_->setLayer(bar_layer::BOTTOM);
   surface_impl_->commit();
 }
 
