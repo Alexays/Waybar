@@ -14,12 +14,16 @@ Ipc::~Ipc() {
 
   if (fd_ > 0) {
     // To fail the IPC header
-    write(fd_, "close-sway-ipc", 14);
+    if (write(fd_, "close-sway-ipc", 14) == -1) {
+       std::runtime_error("Couldn't close Sway IPC through fd");
+    }
     close(fd_);
     fd_ = -1;
   }
   if (fd_event_ > 0) {
-    write(fd_event_, "close-sway-ipc", 14);
+    if (write(fd_event_, "close-sway-ipc", 14) == -1) {
+        std::runtime_error("Couldn't close Sway IPC through fd_event");
+    }
     close(fd_event_);
     fd_event_ = -1;
   }

@@ -68,7 +68,9 @@ inline int close(FILE* fp, pid_t pid) {
 inline FILE* open(const std::string& cmd, int& pid) {
   if (cmd == "") return nullptr;
   int fd[2];
-  pipe(fd);
+  if (pipe(fd) != 0){
+    throw std::runtime_error("Couldn't open a file descriptor");
+  }
 
   pid_t child_pid = fork();
 
