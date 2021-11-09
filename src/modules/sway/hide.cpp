@@ -23,8 +23,13 @@ Hide::Hide(const std::string& id, const Bar& bar, const Json::Value& config)
     bar_local.moveToTopLayer();
   }
 
-  // Launch worker
-  worker();
+  ipc_.setWorker([this] {
+    try {
+      ipc_.handleEvent();
+    } catch (const std::exception& e) {
+      spdlog::error("Hide: {}", e.what());
+    }
+  });
 }
 
 void Hide::onEvent(const struct Ipc::ipc_response& res) {
@@ -70,16 +75,6 @@ void Hide::onEvent(const struct Ipc::ipc_response& res) {
     bar.setHiddenClass(true);
     bar.moveToConfiguredLayer();
   }
-}
-
-void Hide::worker() {
-  thread_ = [this] {
-    try {
-      ipc_.handleEvent();
-    } catch (const std::exception& e) {
-      spdlog::error("Hide: {}", e.what());
-    }
-  };
 }
 
 auto Hide::update() -> void {
