@@ -131,6 +131,9 @@ void waybar::modules::MPD::setLabel() {
     date = getTag(MPD_TAG_DATE);
     song_pos = mpd_status_get_song_pos(status_.get());
     volume = mpd_status_get_volume(status_.get());
+    if (volume < 0) {
+      volume = 0;
+    }
     queue_length = mpd_status_get_queue_length(status_.get());
     elapsedTime = std::chrono::seconds(mpd_status_get_elapsed_time(status_.get()));
     totalTime = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
