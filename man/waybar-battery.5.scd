@@ -120,7 +120,7 @@ The two arguments are:
 
 # CUSTOM FORMATS
 
-The *battery* module allows to define custom formats based on up to two factors. The best fitting format will be selected.
+The *battery* module allows one to define custom formats based on up to two factors. The best fitting format will be selected.
 
 *format-<state>*: With *states*, a custom format can be set depending on the capacity of your battery.
 
