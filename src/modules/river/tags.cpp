@@ -7,7 +7,6 @@
 
 #include "client.hpp"
 #include "modules/river/tags.hpp"
-#include "river-status-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar::modules::river {
@@ -33,6 +32,23 @@ static const zriver_output_status_v1_listener output_status_listener_impl{
     .urgent_tags = listen_urgent_tags,
 };
 
+static void listen_command_success(void *data,
+                                   struct zriver_command_callback_v1 *zriver_command_callback_v1,
+                                   const char *output) {
+  // Do nothing but keep listener to avoid crashing when command was successful
+}
+
+static void listen_command_failure(void *data,
+                                   struct zriver_command_callback_v1 *zriver_command_callback_v1,
+                                   const char *output) {
+  spdlog::error("failure when selecting/toggling tags {}", output);
+}
+
+static const zriver_command_callback_v1_listener command_callback_listener_impl {
+    .success = listen_command_success,
+    .failure = listen_command_failure,
+};
+
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
                           const char *interface, uint32_t version) {
   if (std::strcmp(interface, zriver_status_manager_v1_interface.name) == 0) {
@@ -43,11 +59,24 @@ static void handle_global(void *data, struct wl_registry *registry, uint32_t nam
     static_cast<Tags *>(data)->status_manager_ = static_cast<struct zriver_status_manager_v1 *>(
         wl_registry_bind(registry, name, &zriver_status_manager_v1_interface, version));
   }
+
+  if (std::strcmp(interface, zriver_control_v1_interface.name) == 0) {
+    version = std::min<uint32_t>(version, 1);
+    static_cast<Tags *>(data)->control_ = static_cast<struct zriver_control_v1 *>(
+        wl_registry_bind(registry, name, &zriver_control_v1_interface, version));
+  }
+
+  if (std::strcmp(interface, wl_seat_interface.name) == 0) {
+    version = std::min<uint32_t>(version, 1);
+    static_cast<Tags *>(data)->seat_ = static_cast<struct wl_seat *>(
+        wl_registry_bind(registry, name, &wl_seat_interface, version));
+  }
 }
 
 static void handle_global_remove(void *data, struct wl_registry *registry, uint32_t name) {
   /* Ignore event */
 }
+
 
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
@@ -55,6 +84,8 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
 Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
     : waybar::AModule(config, "tags", id, false, false),
       status_manager_{nullptr},
+      control_{nullptr},
+      seat_{nullptr},
       bar_(bar),
       box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       output_status_{nullptr} {
@@ -66,6 +97,14 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   if (!status_manager_) {
     spdlog::error("river_status_manager_v1 not advertised");
     return;
+  }
+
+  if (!control_) {
+    spdlog::error("river_control_v1 not advertised");
+  }
+
+  if (!seat_) {
+    spdlog::error("wl_seat not advertised");
   }
 
   box_.set_name("tags");
@@ -89,11 +128,17 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     }
   }
 
+  uint32_t i = 1;
   for (const auto &tag_label : tag_labels) {
     Gtk::Button &button = buttons_.emplace_back(tag_label);
     button.set_relief(Gtk::RELIEF_NONE);
     box_.pack_start(button, false, false, 0);
+    if (!config_["disable-click"].asBool()) {
+      button.signal_clicked().connect(sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), i));
+      button.signal_button_press_event().connect(sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
+    }
     button.show();
+    i <<= 1;
   }
 
   struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
@@ -107,6 +152,31 @@ Tags::~Tags() {
   if (output_status_) {
     zriver_output_status_v1_destroy(output_status_);
   }
+
+  if (control_) {
+    zriver_control_v1_destroy(control_);
+  }
+}
+
+void Tags::handle_primary_clicked(uint32_t tag) {
+  // Send river command to select tag on left mouse click
+  zriver_command_callback_v1 *callback;
+  zriver_control_v1_add_argument(control_, "set-focused-tags");
+  zriver_control_v1_add_argument(control_, std::to_string(tag).c_str());
+  callback = zriver_control_v1_run_command(control_, seat_);
+  zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
+}
+
+bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
+  if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
+    // Send river command to toggle tag on right mouse click
+    zriver_command_callback_v1 *callback;
+    zriver_control_v1_add_argument(control_, "toggle-focused-tags");
+    zriver_control_v1_add_argument(control_, std::to_string(tag).c_str());
+    callback = zriver_control_v1_run_command(control_, seat_);
+    zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
+  }
+  return true;
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {
