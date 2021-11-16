@@ -20,7 +20,7 @@ class Workspaces : public AModule, public sigc::trackable {
   auto update() -> void;
 
  private:
-  static inline const std::string workspace_switch_cmd_ = "workspace --no-auto-back-and-forth \"{}\"";
+  static inline const std::string workspace_switch_cmd_ = "workspace {} \"{}\"";
 
   static int convertWorkspaceNameToNum(std::string name);
 

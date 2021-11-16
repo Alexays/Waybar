@@ -1,11 +1,11 @@
-# Waybar [![Travis](https://travis-ci.org/Alexays/Waybar.svg?branch=master)](https://travis-ci.org/Alexays/Waybar) [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
+# Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
 > Available in Arch [community](https://www.archlinux.org/packages/community/x86_64/waybar/) or
 [AUR](https://aur.archlinux.org/packages/waybar-git/), [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar), and [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=waybar)<br>
 > *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
 
-**Current features**
+#### Current features
 - Sway (Workspaces, Binding mode, Focused window name)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
@@ -22,11 +22,21 @@
 - Multiple output configuration
 - And much more customizations
 
-**Configuration and Styling**
+#### Configuration and Styling
 
 [See the wiki for more details](https://github.com/Alexays/Waybar/wiki).
 
-**How to build**
+### Installation
+
+Waybar is available from a number of Linux distributions:
+
+[![Packaging status](https://repology.org/badge/vertical-allrepos/waybar.svg)](https://repology.org/project/waybar/versions)
+
+An Ubuntu PPA with more recent versions is available
+[here](https://launchpad.net/~nschloe/+archive/ubuntu/waybar).
+
+
+#### Building from source
 
 ```bash
 $ git clone https://github.com/Alexays/Waybar
@@ -57,6 +67,8 @@ libnl [Network module]
 libappindicator-gtk3 [Tray module]
 libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
+libsndio [sndio module]
+libevdev [KeyboardState module]
 ```
 
 **Build dependencies**
@@ -75,6 +87,7 @@ sudo apt install \
   clang-tidy \
   gobject-introspection \
   libdbusmenu-gtk3-dev \
+  libevdev-dev \
   libfmt-dev \
   libgirepository1.0-dev \
   libgtk-3-dev \

@@ -1,5 +1,6 @@
 #include "modules/sway/window.hpp"
 #include <spdlog/spdlog.h>
+#include <regex>
 
 namespace waybar::modules::sway {
 
@@ -56,7 +57,8 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, window_));
+  label_.set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
+                                fmt::arg("app_id", app_id_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
@@ -64,34 +66,69 @@ auto Window::update() -> void {
   ALabel::update();
 }
 
-std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
-    const Json::Value& nodes, std::string& output) {
-  for (auto const& node : nodes) {
+int leafNodesInWorkspace(const Json::Value& node) {
+  auto const& nodes = node["nodes"];
+  auto const& floating_nodes = node["floating_nodes"];
+  if(nodes.empty() && floating_nodes.empty()) {
+    if(node["type"] == "workspace")
+      return 0;
+    else
+      return 1;
+  }
+  int sum = 0;
+  if (!nodes.empty()) {
+    for(auto const& node : nodes)
+      sum += leafNodesInWorkspace(node);
+  }
+  if (!floating_nodes.empty()) {
+    for(auto const& node : floating_nodes)
+      sum += leafNodesInWorkspace(node);
+  }
+  return sum;
+}
+
+std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
+    const Json::Value& nodes, std::string& output, const Json::Value& config_,
+    const Bar& bar_, Json::Value& parentWorkspace) {
+  for(auto const& node : nodes) {
     if (node["output"].isString()) {
       output = node["output"].asString();
     }
+    // found node
     if (node["focused"].asBool() && (node["type"] == "con" || node["type"] == "floating_con")) {
       if ((!config_["all-outputs"].asBool() && output == bar_.output->name) ||
           config_["all-outputs"].asBool()) {
         auto app_id = node["app_id"].isString() ? node["app_id"].asString()
-                                                : node["window_properties"]["instance"].asString();
-        return {nodes.size(),
-                node["id"].asInt(),
-                Glib::Markup::escape_text(node["name"].asString()),
-                app_id};
+                      : node["window_properties"]["instance"].asString();
+        int nb = node.size();
+        if(parentWorkspace != 0)
+          nb = leafNodesInWorkspace(parentWorkspace);
+        return {nb,
+          node["id"].asInt(),
+          Glib::Markup::escape_text(node["name"].asString()),
+          app_id};
       }
     }
-    auto [nb, id, name, app_id] = getFocusedNode(node["nodes"], output);
+    // iterate
+    if(node["type"] == "workspace")
+      parentWorkspace = node;
+    auto [nb, id, name, app_id] = gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }
     // Search for floating node
-    std::tie(nb, id, name, app_id) = getFocusedNode(node["floating_nodes"], output);
+    std::tie(nb, id, name, app_id) = gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }
   }
   return {0, -1, "", ""};
+}
+
+std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
+    const Json::Value& nodes, std::string& output) {
+  Json::Value placeholder = 0;
+  return gfnWithWorkspace(nodes, output, config_, bar_, placeholder);
 }
 
 void Window::getTree() {
@@ -100,6 +137,32 @@ void Window::getTree() {
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
   }
+}
+
+std::string Window::rewriteTitle(const std::string& title) {
+  const auto& rules = config_["rewrite"];
+  if (!rules.isObject()) {
+    return title;
+  }
+
+  std::string res = title;
+
+  for (auto it = rules.begin(); it != rules.end(); ++it) {
+    if (it.key().isString() && it->isString()) {
+      try {
+        // malformated regexes will cause an exception.
+        // in this case, log error and try the next rule.
+        const std::regex rule{it.key().asString()};
+        if (std::regex_match(title, rule)) {
+          res = std::regex_replace(res, rule, it->asString());
+        }
+      } catch (const std::regex_error& e) {
+        spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
+      }
+    }
+  }
+
+  return res;
 }
 
 }  // namespace waybar::modules::sway

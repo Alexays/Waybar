@@ -3,6 +3,8 @@
 #include <spdlog/spdlog.h>
 #include <wayland-client.h>
 
+#include <algorithm>
+
 #include "client.hpp"
 #include "modules/river/tags.hpp"
 #include "river-status-unstable-v1-client-protocol.h"
@@ -20,14 +22,24 @@ static void listen_view_tags(void *data, struct zriver_output_status_v1 *zriver_
   static_cast<Tags *>(data)->handle_view_tags(tags);
 }
 
+static void listen_urgent_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
+                               uint32_t tags) {
+  static_cast<Tags *>(data)->handle_urgent_tags(tags);
+}
+
 static const zriver_output_status_v1_listener output_status_listener_impl{
     .focused_tags = listen_focused_tags,
     .view_tags = listen_view_tags,
+    .urgent_tags = listen_urgent_tags,
 };
 
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
                           const char *interface, uint32_t version) {
   if (std::strcmp(interface, zriver_status_manager_v1_interface.name) == 0) {
+    version = std::min<uint32_t>(version, 2);
+    if (version < ZRIVER_OUTPUT_STATUS_V1_URGENT_TAGS_SINCE_VERSION) {
+      spdlog::warn("river server does not support urgent tags");
+    }
     static_cast<Tags *>(data)->status_manager_ = static_cast<struct zriver_status_manager_v1 *>(
         wl_registry_bind(registry, name, &zriver_status_manager_v1_interface, version));
   }
@@ -62,10 +74,23 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   }
   event_box_.add(box_);
 
-  // Default to 9 tags
-  const uint32_t num_tags = config["num-tags"].isUInt() ? config_["num-tags"].asUInt() : 9;
-  for (uint32_t tag = 1; tag <= num_tags; ++tag) {
-    Gtk::Button &button = buttons_.emplace_back(std::to_string(tag));
+  // Default to 9 tags, cap at 32
+  const uint32_t num_tags =
+      config["num-tags"].isUInt() ? std::min<uint32_t>(32, config_["num-tags"].asUInt()) : 9;
+
+  std::vector<std::string> tag_labels(num_tags);
+  for (uint32_t tag = 0; tag < num_tags; ++tag) {
+    tag_labels[tag] = std::to_string(tag+1);
+  }
+  const Json::Value custom_labels = config["tag-labels"];
+  if (custom_labels.isArray() && !custom_labels.empty()) {
+    for (uint32_t tag = 0; tag < std::min(num_tags, custom_labels.size()); ++tag) {
+      tag_labels[tag] = custom_labels[tag].asString();
+    }
+  }
+
+  for (const auto &tag_label : tag_labels) {
+    Gtk::Button &button = buttons_.emplace_back(tag_label);
     button.set_relief(Gtk::RELIEF_NONE);
     box_.pack_start(button, false, false, 0);
     button.show();
@@ -112,6 +137,18 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
       }
       ++i;
     }
+  }
+}
+
+void Tags::handle_urgent_tags(uint32_t tags) {
+  uint32_t i = 0;
+  for (auto &button : buttons_) {
+    if ((1 << i) & tags) {
+      button.get_style_context()->add_class("urgent");
+    } else {
+      button.get_style_context()->remove_class("urgent");
+    }
+    ++i;
   }
 }
 

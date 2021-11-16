@@ -248,23 +248,34 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   auto   pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
+  button.set_name("sway-workspace-" + node["name"].asString());
   button.set_relief(Gtk::RELIEF_NONE);
-  button.signal_clicked().connect([this, node] {
-    try {
-      if (node["target_output"].isString()) {
-        ipc_.sendCmd(
-            IPC_COMMAND,
-            fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
-                        node["name"].asString(),
-                        node["target_output"].asString(),
-                        node["name"].asString()));
-      } else {
-        ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, node["name"].asString()));
+  if (!config_["disable-click"].asBool()) {
+    button.signal_pressed().connect([this, node] {
+      try {
+        if (node["target_output"].isString()) {
+          ipc_.sendCmd(
+              IPC_COMMAND,
+              fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
+                          "--no-auto-back-and-forth",
+                          node["name"].asString(),
+                          node["target_output"].asString(),
+                          "--no-auto-back-and-forth",
+                          node["name"].asString()));
+        } else {
+          ipc_.sendCmd(
+              IPC_COMMAND,
+              fmt::format("workspace {} \"{}\"",
+                          config_["disable-auto-back-and-forth"].asBool()
+                            ? "--no-auto-back-and-forth"
+                            : "",
+                          node["name"].asString()));
+        }
+      } catch (const std::exception &e) {
+        spdlog::error("Workspaces: {}", e.what());
       }
-    } catch (const std::exception &e) {
-      spdlog::error("Workspaces: {}", e.what());
-    }
-  });
+    });
+  }
   return button;
 }
 
@@ -280,12 +291,20 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
+    } else if (config_["format-icons"][trimWorkspaceName(key)].isString()) {
+      return config_["format-icons"][trimWorkspaceName(key)].asString();
     }
   }
   return name;
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {
+  if (gdk_event_get_pointer_emulated((GdkEvent *)e)) {
+    /**
+     * Ignore emulated scroll events on window
+     */
+    return false;
+  }
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
@@ -311,7 +330,9 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
   }
   try {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, name));
+    ipc_.sendCmd(
+        IPC_COMMAND,
+        fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }

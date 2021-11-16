@@ -12,11 +12,6 @@ The *bluetooth* module displays information about the status of the device's blu
 
 Addressed by *bluetooth*
 
-*interval*: ++
-	typeof: integer ++
-	default: 60 ++
-	The interval in which the bluetooth state gets updated.
-
 *format*: ++
 	typeof: string  ++
 	default: *{icon}* ++
@@ -34,6 +29,14 @@ Addressed by *bluetooth*
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++
@@ -80,12 +83,11 @@ Addressed by *bluetooth*
 "bluetooth": {
 	"format": "{icon}",
 	"format-alt": "bluetooth: {status}",
-	"interval": 30,
 	"format-icons": {
 		"enabled": "",
 		"disabled": ""
 	},
-	"tooltip-format": "{status}"
+	"tooltip-format": "{}"
 }
 ```
 

@@ -15,7 +15,11 @@ Addressed by *river/tags*
 *num-tags*: ++
     typeof: uint ++
     default: 9 ++
-    The number of tags that should be displayed.
+    The number of tags that should be displayed. Max 32.
+
+*tag-labels*: ++
+    typeof: array ++
+    The label to display for each tag.
 
 # EXAMPLE
 
@@ -30,8 +34,10 @@ Addressed by *river/tags*
 - *#tags button*
 - *#tags button.occupied*
 - *#tags button.focused*
+- *#tags button.urgent*
 
-Note that a tag can be both occupied and focused at the same time.
+Note that occupied/focused/urgent status may overlap. That is, a tag may be
+both occupied and focused at the same time.
 
 # SEE ALSO
 

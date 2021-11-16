@@ -47,16 +47,29 @@ auto waybar::modules::Disk::update() -> void {
   auto free = pow_format(stats.f_bavail * stats.f_frsize, "B", true);
   auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_frsize, "B", true);
   auto total = pow_format(stats.f_blocks * stats.f_frsize, "B", true);
+  auto percentage_used = (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks;
 
-  label_.set_markup(fmt::format(format_
-      , stats.f_bavail * 100 / stats.f_blocks
-      , fmt::arg("free", free)
-      , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
-      , fmt::arg("used", used)
-      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks)
-      , fmt::arg("total", total)
-      , fmt::arg("path", path_)
-      ));
+  auto format = format_;
+  auto state = getState(percentage_used);
+  if (!state.empty() && config_["format-" + state].isString()) {
+    format = config_["format-" + state].asString();
+  }
+
+  if (format.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+    label_.set_markup(fmt::format(format
+        , stats.f_bavail * 100 / stats.f_blocks
+        , fmt::arg("free", free)
+        , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
+        , fmt::arg("used", used)
+        , fmt::arg("percentage_used", percentage_used)
+        , fmt::arg("total", total)
+        , fmt::arg("path", path_)
+        ));
+  }
+
   if (tooltipEnabled()) {
     std::string tooltip_format = "{used} used out of {total} on {path} ({percentage_used}%)";
     if (config_["tooltip-format"].isString()) {
@@ -67,12 +80,11 @@ auto waybar::modules::Disk::update() -> void {
       , fmt::arg("free", free)
       , fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks)
       , fmt::arg("used", used)
-      , fmt::arg("percentage_used", (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks)
+      , fmt::arg("percentage_used", percentage_used)
       , fmt::arg("total", total)
       , fmt::arg("path", path_)
       ));
   }
-  event_box_.show();
   // Call parent update
   ALabel::update();
 }

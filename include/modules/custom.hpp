@@ -22,6 +22,7 @@ class Custom : public ALabel {
   void continuousWorker();
   void parseOutputRaw();
   void parseOutputJson();
+  void handleEvent();
   bool handleScroll(GdkEventScroll* e);
   bool handleToggle(GdkEventButton* const& e);
 

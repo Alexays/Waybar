@@ -50,6 +50,11 @@ Addressed by *temperature*
 	typeof: array ++
 	Based on the current temperature (Celsius) and *critical-threshold* if available, the corresponding icon gets selected. The order is *low* to *high*.
 
+*tooltip-format*: ++
+	typeof: string  ++
+	default: {temperatureC}°C ++
+	The format for the tooltip
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
@@ -57,6 +62,14 @@ Addressed by *temperature*
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in characters the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++

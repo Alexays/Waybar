@@ -7,7 +7,7 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "tray", id),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
       watcher_(SNI::Watcher::getInstance()),
-      host_(nb_hosts_, config, std::bind(&Tray::onAdd, this, std::placeholders::_1),
+      host_(nb_hosts_, config, bar, std::bind(&Tray::onAdd, this, std::placeholders::_1),
             std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
   spdlog::warn(
       "For a functional tray you must have libappindicator-* installed and export "
@@ -35,11 +35,8 @@ void Tray::onRemove(std::unique_ptr<Item>& item) {
 }
 
 auto Tray::update() -> void {
-  if (box_.get_children().empty()) {
-    box_.hide();
-  } else {
-    box_.show_all();
-  }
+  // Show tray only when items are available
+  box_.set_visible(!box_.get_children().empty());
   // Call parent update
   AModule::update();
 }

@@ -1,5 +1,7 @@
 #include "modules/wlr/taskbar.hpp"
 
+#include "glibmm/error.h"
+#include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
 
@@ -15,6 +17,7 @@
 #include <gtkmm/icontheme.h>
 
 #include <giomm/desktopappinfo.h>
+#include <gio/gdesktopappinfo.h>
 
 #include <spdlog/spdlog.h>
 
@@ -26,19 +29,19 @@ const std::string WHITESPACE = " \n\r\t\f\v";
 
 static std::string ltrim(const std::string& s)
 {
-	size_t start = s.find_first_not_of(WHITESPACE);
-	return (start == std::string::npos) ? "" : s.substr(start);
+    size_t start = s.find_first_not_of(WHITESPACE);
+    return (start == std::string::npos) ? "" : s.substr(start);
 }
 
 static std::string rtrim(const std::string& s)
 {
-	size_t end = s.find_last_not_of(WHITESPACE);
-	return (end == std::string::npos) ? "" : s.substr(0, end + 1);
+    size_t end = s.find_last_not_of(WHITESPACE);
+    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
 }
 
 static std::string trim(const std::string& s)
 {
-	return rtrim(ltrim(s));
+    return rtrim(ltrim(s));
 }
 
 
@@ -49,8 +52,8 @@ static std::vector<std::string> search_prefix()
 
     auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
     if (!xdg_data_dirs) {
-        prefixes.push_back("/usr/share/");
-        prefixes.push_back("/usr/local/share/");
+        prefixes.emplace_back("/usr/share/");
+        prefixes.emplace_back("/usr/local/share/");
     } else {
         std::string xdg_data_dirs_str(xdg_data_dirs);
         size_t start = 0, end = 0;
@@ -64,10 +67,23 @@ static std::vector<std::string> search_prefix()
         } while(end != std::string::npos);
     }
 
+    std::string home_dir = std::getenv("HOME");
+    prefixes.push_back(home_dir + "/.local/share/");
+
     for (auto& p : prefixes)
         spdlog::debug("Using 'desktop' search path prefix: {}", p);
 
     return prefixes;
+}
+
+static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int size)
+{
+    try {
+        auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
+        return pb;
+    } catch(...) {
+        return {};
+    }
 }
 
 /* Method 1 - get the correct icon name from the desktop file */
@@ -95,23 +111,50 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
                 if (!app_info)
                     app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
 
-    if (app_info)
+    if (app_info && app_info->get_icon())
         return app_info->get_icon()->to_string();
 
     return "";
 }
 
 /* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
-static std::string get_from_icon_theme(Glib::RefPtr<Gtk::IconTheme> icon_theme,
-        const std::string &app_id) {
-
+static std::string get_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+        const std::string &app_id)
+{
     if (icon_theme->lookup_icon(app_id, 24))
         return app_id;
 
     return "";
 }
 
-static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon_theme,
+/* Method 3 - as last resort perform a search for most appropriate desktop info file */
+static std::string get_from_desktop_app_info_search(const std::string &app_id)
+{
+    std::string desktop_file = "";
+
+    gchar*** desktop_list = g_desktop_app_info_search(app_id.c_str());
+    if (desktop_list != nullptr && desktop_list[0] != nullptr) {
+        for (size_t i=0; desktop_list[0][i]; i++) {
+            if (desktop_file == "") {
+                desktop_file = desktop_list[0][i];
+            } else {
+                auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
+                auto startup_class = tmp_info->get_startup_wm_class();
+
+                if (startup_class == app_id) {
+                    desktop_file = desktop_list[0][i];
+                    break;
+                }
+            }
+        }
+        g_strfreev(desktop_list[0]);
+    }
+    g_free(desktop_list);
+
+    return get_from_desktop_app_info(desktop_file);
+}
+
+static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
         const std::string &app_id_list, int size)
 {
     std::string app_id;
@@ -122,6 +165,10 @@ static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon
      * send a single app-id, but in any case this works fine */
     while (stream >> app_id)
     {
+        size_t start = 0, end = app_id.size();
+        start = app_id.rfind(".", end);
+        std::string app_name = app_id.substr(start+1, app_id.size());
+
         auto lower_app_id = app_id;
         std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
                 [](char c){ return std::tolower(c); });
@@ -131,14 +178,30 @@ static bool image_load_icon(Gtk::Image& image, Glib::RefPtr<Gtk::IconTheme> icon
         if (icon_name.empty())
             icon_name = get_from_icon_theme(icon_theme, lower_app_id);
         if (icon_name.empty())
+            icon_name = get_from_icon_theme(icon_theme, app_name);
+        if (icon_name.empty())
             icon_name = get_from_desktop_app_info(app_id);
         if (icon_name.empty())
             icon_name = get_from_desktop_app_info(lower_app_id);
+        if (icon_name.empty())
+            icon_name = get_from_desktop_app_info(app_name);
+        if (icon_name.empty())
+            icon_name = get_from_desktop_app_info_search(app_id);
 
         if (icon_name.empty())
-            continue;
+            icon_name = "unknown";
 
-        auto pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+        Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+
+        try {
+            pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+        } catch(...) {
+            if (Glib::file_test(icon_name, Glib::FILE_TEST_EXISTS))
+                pixbuf = load_icon_from_file(icon_name, size);
+            else
+                pixbuf = {};
+        }
+
         if (pixbuf) {
             image.set(pixbuf);
             found = true;
@@ -187,6 +250,12 @@ static void tl_handle_done(void *data, struct zwlr_foreign_toplevel_handle_v1 *h
     return static_cast<Task*>(data)->handle_done();
 }
 
+static void tl_handle_parent(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+        struct zwlr_foreign_toplevel_handle_v1 *parent)
+{
+    /* This is explicitly left blank */
+}
+
 static void tl_handle_closed(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle)
 {
     return static_cast<Task*>(data)->handle_closed();
@@ -200,6 +269,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
     .state = tl_handle_state,
     .done = tl_handle_done,
     .closed = tl_handle_closed,
+    .parent = tl_handle_parent,
 };
 
 Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
@@ -207,7 +277,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
     bar_{bar}, config_{config}, tbar_{tbar}, handle_{tl_handle}, seat_{seat},
     id_{global_id++},
     content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
-    button_visible_{false}
+    button_visible_{false}, ignored_{false}
 {
     zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
@@ -231,13 +301,13 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
         auto icon_pos = format.find("{icon}");
         if (icon_pos == 0) {
             with_icon_ = true;
-            format_after_ = trim(format.substr(6));
+            format_after_ = format.substr(6);
         } else if (icon_pos == std::string::npos) {
             format_before_ = format;
         } else {
             with_icon_ = true;
-            format_before_ = trim(format.substr(0, icon_pos));
-            format_after_ = trim(format.substr(icon_pos + 6));
+            format_before_ = format.substr(0, icon_pos);
+            format_after_ = format.substr(icon_pos + 6);
         }
     } else {
         /* The default is to only show the icon */
@@ -313,6 +383,21 @@ void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
 
+    if (tbar_->ignore_list().count(app_id)) {
+        ignored_ = true;
+        if (button_visible_) {
+          auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+          handle_output_leave(output);
+        }
+    } else {
+        bool is_was_ignored = ignored_;
+        ignored_ = false;
+        if (is_was_ignored) {
+          auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+          handle_output_enter(output);
+        }
+    }
+
     if (!with_icon_)
         return;
 
@@ -334,6 +419,11 @@ void Task::handle_app_id(const char *app_id)
 void Task::handle_output_enter(struct wl_output *output)
 {
     spdlog::debug("{} entered output {}", repr(), (void*)output);
+
+    if (ignored_) {
+      spdlog::debug("{} is ignored", repr());
+      return;
+    }
 
     if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
         /* The task entered the output of the current bar make the button visible */
@@ -360,16 +450,16 @@ void Task::handle_output_leave(struct wl_output *output)
 void Task::handle_state(struct wl_array *state)
 {
     state_ = 0;
-    for (uint32_t* entry = static_cast<uint32_t*>(state->data);
-         entry < static_cast<uint32_t*>(state->data) + state->size;
-         entry++) {
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
+    size_t size = state->size / sizeof(uint32_t);
+    for (size_t i = 0; i < size; ++i) {
+        auto entry = static_cast<uint32_t*>(state->data)[i];
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED)
             state_ |= MAXIMIZED;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED)
             state_ |= MINIMIZED;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED)
             state_ |= ACTIVE;
-        if (*entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN)
+        if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN)
             state_ |= FULLSCREEN;
     }
 }
@@ -436,6 +526,14 @@ bool Task::handle_clicked(GdkEventButton *bt)
         activate();
     else if (action == "minimize")
         minimize(!minimized());
+    else if (action == "minimize-raise"){
+        if (minimized())
+            minimize(false);
+        else if (active())
+            minimize(true);
+        else
+            activate();
+    }
     else if (action == "maximize")
         maximize(!maximized());
     else if (action == "fullscreen")
@@ -460,38 +558,51 @@ bool Task::operator!=(const Task &o) const
 
 void Task::update()
 {
+    bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
+    std::string title = title_;
+    std::string app_id = app_id_;
+    if (markup) {
+        title = Glib::Markup::escape_text(title);
+        app_id = Glib::Markup::escape_text(app_id);
+    }
     if (!format_before_.empty()) {
-        text_before_.set_label(
-                fmt::format(format_before_,
-                    fmt::arg("title", title_),
-                    fmt::arg("app_id", app_id_),
+        auto txt = fmt::format(format_before_,
+                    fmt::arg("title", title),
+                    fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
-                )
-        );
+                );
+        if (markup)
+            text_before_.set_markup(txt);
+        else
+            text_before_.set_label(txt);
         text_before_.show();
     }
     if (!format_after_.empty()) {
-        text_after_.set_label(
-                fmt::format(format_after_,
-                    fmt::arg("title", title_),
-                    fmt::arg("app_id", app_id_),
+        auto txt = fmt::format(format_after_,
+                    fmt::arg("title", title),
+                    fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
-                )
-        );
+                );
+        if (markup)
+            text_after_.set_markup(txt);
+        else
+            text_after_.set_label(txt);
         text_after_.show();
     }
 
     if (!format_tooltip_.empty()) {
-        button_.set_tooltip_markup(
-                fmt::format(format_tooltip_,
-                    fmt::arg("title", title_),
-                    fmt::arg("app_id", app_id_),
+        auto txt = fmt::format(format_tooltip_,
+                    fmt::arg("title", title),
+                    fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
-                )
-        );
+                );
+        if (markup)
+            button_.set_tooltip_markup(txt);
+        else
+            button_.set_tooltip_text(txt);
     }
 }
 
@@ -518,6 +629,11 @@ void Task::activate()
 
 void Task::fullscreen(bool set)
 {
+    if (zwlr_foreign_toplevel_handle_v1_get_version(handle_) < ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_SET_FULLSCREEN_SINCE_VERSION) {
+        spdlog::warn("Foreign toplevel manager server does not support for set/unset fullscreen.");
+        return;
+    }
+
     if (set)
         zwlr_foreign_toplevel_handle_v1_set_fullscreen(handle_, nullptr);
     else
@@ -551,7 +667,7 @@ static const wl_registry_listener registry_listener_impl = {
     .global_remove = handle_global_remove
 };
 
-Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config) 
+Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
     : waybar::AModule(config, "taskbar", id, false, false),
       bar_(bar),
       box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
@@ -598,14 +714,34 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
 
         icon_themes_.push_back(it);
     }
+
+    // Load ignore-list
+    if (config_["ignore-list"].isArray()) {
+        for (auto& app_name : config_["ignore-list"]) {
+          ignore_list_.emplace(app_name.asString());
+        }
+    }
+
     icon_themes_.push_back(Gtk::IconTheme::get_default());
 }
 
 Taskbar::~Taskbar()
 {
     if (manager_) {
-        zwlr_foreign_toplevel_manager_v1_destroy(manager_);
-        manager_ = nullptr;
+        struct wl_display *display = Client::inst()->wl_display;
+        /*
+         * Send `stop` request and wait for one roundtrip.
+         * This is not quite correct as the protocol encourages us to wait for the .finished event,
+         * but it should work with wlroots foreign toplevel manager implementation.
+         */
+        zwlr_foreign_toplevel_manager_v1_stop(manager_);
+        wl_display_roundtrip(display);
+
+        if (manager_) {
+            spdlog::warn("Foreign toplevel manager destroyed before .finished event");
+            zwlr_foreign_toplevel_manager_v1_destroy(manager_);
+            manager_ = nullptr;
+        }
     }
 }
 
@@ -640,9 +776,13 @@ void Taskbar::register_manager(struct wl_registry *registry, uint32_t name, uint
         spdlog::warn("Register foreign toplevel manager again although already existing!");
         return;
     }
-    if (version != 2) {
-        spdlog::warn("Using different foreign toplevel manager protocol version: {}", version);
+    if (version < ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_SET_FULLSCREEN_SINCE_VERSION) {
+        spdlog::warn("Foreign toplevel manager server does not have the appropriate version."
+                " To be able to use all features, you need at least version 2, but server is version {}", version);
     }
+
+    // limit version to a highest supported by the client protocol file
+    version = std::min<uint32_t>(version, zwlr_foreign_toplevel_manager_v1_interface.version);
 
     manager_ = static_cast<struct zwlr_foreign_toplevel_manager_v1 *>(wl_registry_bind(registry, name,
             &zwlr_foreign_toplevel_manager_v1_interface, version));
@@ -659,6 +799,7 @@ void Taskbar::register_seat(struct wl_registry *registry, uint32_t name, uint32_
         spdlog::warn("Register seat again although already existing!");
         return;
     }
+    version = std::min<uint32_t>(version, wl_seat_interface.version);
 
     seat_ = static_cast<wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
 }
@@ -709,14 +850,13 @@ bool Taskbar::show_output(struct wl_output *output) const
 
 bool Taskbar::all_outputs() const
 {
-    static bool result = config_["all_outputs"].isBool() ? config_["all_outputs"].asBool() : false;
-
-    return result;
+    return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
 }
 
 std::vector<Glib::RefPtr<Gtk::IconTheme>> Taskbar::icon_themes() const
 {
     return icon_themes_;
 }
+const std::unordered_set<std::string> &Taskbar::ignore_list() const { return ignore_list_; }
 
 } /* namespace waybar::modules::wlr */
