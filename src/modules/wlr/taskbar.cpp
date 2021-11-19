@@ -376,7 +376,7 @@ std::string Task::state_string(bool shortened) const
 void Task::handle_title(const char *title)
 {
     title_ = title;
-	hide_if_ignored();
+    hide_if_ignored();
 }
 
 void Task::hide_if_ignored()
@@ -400,7 +400,7 @@ void Task::hide_if_ignored()
 void Task::handle_app_id(const char *app_id)
 {
     app_id_ = app_id;
-	hide_if_ignored();
+    hide_if_ignored();
 
     if (!with_icon_)
         return;
