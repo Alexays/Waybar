@@ -24,6 +24,12 @@ static constexpr const char* SIZE_DEFINED =
     "{} size is defined in the config file so it will stay like that";
 
 const Bar::bar_mode_map Bar::PRESET_MODES = {  //
+    {"default",
+     {// Special mode to hold the global bar configuration
+      .layer = bar_layer::BOTTOM,
+      .exclusive = true,
+      .passthrough = false,
+      .visible = true}},
     {"dock",
      {// Modes supported by the sway config; see man sway-bar(5)
       .layer = bar_layer::BOTTOM,
@@ -49,7 +55,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .passthrough = true,
       .visible = true}}};
 
-const std::string_view Bar::MODE_DEFAULT = "dock";
+const std::string_view Bar::MODE_DEFAULT = "default";
 const std::string_view Bar::MODE_INVISIBLE = "invisible";
 
 #ifdef HAVE_GTK_LAYER_SHELL
@@ -517,33 +523,26 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   surface_impl_->setPosition(position);
   surface_impl_->setSize(width, height);
 
+  /* Init "default" mode from globals */
+  auto& default_mode = configured_modes[MODE_DEFAULT];
+  if (config["layer"] == "top") {
+    default_mode.layer = bar_layer::TOP;
+  } else if (config["layer"] == "overlay") {
+    default_mode.layer = bar_layer::OVERLAY;
+  }
+
+  if (config["exclusive"].isBool()) {
+    default_mode.exclusive = config["exclusive"].asBool();
+  }
+
+  if (config["passthrough"].isBool()) {
+    default_mode.passthrough = config["passthrough"].asBool();
+  }
+
   if (auto mode = config["mode"]; mode.isString()) {
-    setMode(mode.asString());
+    setMode(config["mode"].asString());
   } else {
-    if (config["layer"] == "top") {
-      layer_ = bar_layer::TOP;
-    } else if (config["layer"] == "overlay") {
-      layer_ = bar_layer::OVERLAY;
-    }
-
-    if (config["exclusive"].isBool()) {
-      exclusive = config["exclusive"].asBool();
-    } else if (layer_ == bar_layer::OVERLAY) {
-      // swaybar defaults: overlay mode does not reserve an exclusive zone
-      exclusive = false;
-    }
-
-    bool passthrough = false;
-    if (config["passthrough"].isBool()) {
-      passthrough = config["passthrough"].asBool();
-    } else if (layer_ == bar_layer::OVERLAY) {
-      // swaybar defaults: overlay mode does not accept pointer events.
-      passthrough = true;
-    }
-
-    surface_impl_->setLayer(layer_);
-    surface_impl_->setExclusiveZone(exclusive);
-    surface_impl_->setPassThrough(passthrough);
+    setMode(MODE_DEFAULT);
   }
 
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
