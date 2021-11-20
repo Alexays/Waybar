@@ -23,6 +23,35 @@ static constexpr const char* BAR_SIZE_MSG = "Bar configured (width: {}, height: 
 static constexpr const char* SIZE_DEFINED =
     "{} size is defined in the config file so it will stay like that";
 
+const Bar::bar_mode_map Bar::PRESET_MODES = {  //
+    {"dock",
+     {// Modes supported by the sway config; see man sway-bar(5)
+      .layer = bar_layer::BOTTOM,
+      .exclusive = true,
+      .passthrough = false,
+      .visible = true}},
+    {"hide",
+     {//
+      .layer = bar_layer::TOP,
+      .exclusive = false,
+      .passthrough = false,
+      .visible = true}},
+    {"invisible",
+     {//
+      .layer = bar_layer::BOTTOM,
+      .exclusive = false,
+      .passthrough = true,
+      .visible = false}},
+    {"overlay",
+     {//
+      .layer = bar_layer::TOP,
+      .exclusive = false,
+      .passthrough = true,
+      .visible = true}}};
+
+const std::string_view Bar::MODE_DEFAULT = "dock";
+const std::string_view Bar::MODE_INVISIBLE = "invisible";
+
 #ifdef HAVE_GTK_LAYER_SHELL
 struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
   GLSSurfaceImpl(Gtk::Window& window, struct waybar_output& output) : window_{window} {
@@ -533,28 +562,25 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 }
 
-void waybar::Bar::setMode(const std::string& mode) {
-  bool passthrough = false;
-  visible = true;
-  exclusive = true;
-  layer_ = bar_layer::BOTTOM;
-
-  if (mode == "hide") {
-    exclusive = false;
-    layer_ = bar_layer::TOP;
-    visible = false;
-  } else if (mode == "invisible") {
-    visible = false;
-  } else if (mode == "overlay") {
-    exclusive = false;
-    layer_ = bar_layer::TOP;
-    passthrough = true;
+void waybar::Bar::setMode(const std::string_view& mode) {
+  auto it = configured_modes.find(mode);
+  if (it != configured_modes.end()) {
+    last_mode_ = mode;
+    setMode(it->second);
+  } else {
+    spdlog::warn("Unknown mode \"{}\" requested", mode);
+    last_mode_ = MODE_DEFAULT;
+    setMode(configured_modes.at(MODE_DEFAULT));
   }
+}
 
+void waybar::Bar::setMode(const struct bar_mode& mode) {
+  layer_ = mode.layer;
+  exclusive = mode.exclusive;
   surface_impl_->setLayer(layer_);
   surface_impl_->setExclusiveZone(exclusive);
-  surface_impl_->setPassThrough(passthrough);
-  setVisible(visible);
+  surface_impl_->setPassThrough(mode.passthrough);
+  setVisible(mode.visible);
 }
 
 void waybar::Bar::onMap(GdkEventAny*) {

@@ -36,6 +36,13 @@ struct bar_margins {
   int left = 0;
 };
 
+struct bar_mode {
+  bar_layer layer;
+  bool      exclusive;
+  bool      passthrough;
+  bool      visible;
+};
+
 class BarSurface {
  protected:
   BarSurface() = default;
@@ -54,18 +61,23 @@ class BarSurface {
 
 class Bar {
  public:
+  using bar_mode_map = std::map<std::string_view, struct bar_mode>;
+  static const bar_mode_map     PRESET_MODES;
+  static const std::string_view MODE_DEFAULT;
+  static const std::string_view MODE_INVISIBLE;
+
   Bar(struct waybar_output *w_output, const Json::Value &);
   Bar(const Bar &) = delete;
   ~Bar() = default;
 
-  void setMode(const std::string &);
+  void setMode(const std::string_view &);
   void setVisible(bool visible);
   void toggle();
   void handleSignal(int);
 
   struct waybar_output *output;
   Json::Value           config;
-  struct wl_surface *   surface;
+  struct wl_surface    *surface;
   bool                  exclusive = true;
   bool                  visible = true;
   bool                  vertical = false;
@@ -77,6 +89,11 @@ class Bar {
   void getModules(const Factory &, const std::string &);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
+  void setMode(const bar_mode &);
+
+  /* Copy initial set of modes to allow customization */
+  bar_mode_map configured_modes = PRESET_MODES;
+  std::string  last_mode_{MODE_DEFAULT};
 
   std::unique_ptr<BarSurface>                   surface_impl_;
   bar_layer                                     layer_;
