@@ -562,13 +562,21 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 }
 
 void waybar::Bar::setMode(const std::string_view& mode) {
+  using namespace std::literals::string_literals;
+
+  auto style = window.get_style_context();
+  /* remove styles added by previous setMode calls */
+  style->remove_class("mode-"s + last_mode_);
+
   auto it = configured_modes.find(mode);
   if (it != configured_modes.end()) {
     last_mode_ = mode;
+    style->add_class("mode-"s + last_mode_);
     setMode(it->second);
   } else {
     spdlog::warn("Unknown mode \"{}\" requested", mode);
     last_mode_ = MODE_DEFAULT;
+    style->add_class("mode-"s + last_mode_);
     setMode(configured_modes.at(MODE_DEFAULT));
   }
 }
