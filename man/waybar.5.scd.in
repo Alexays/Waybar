@@ -94,6 +94,16 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Option to disable the use of gtk-layer-shell for popups.
 	Only functional if compiled with gtk-layer-shell support.
 
+*ipc* ++
+	typeof: bool ++
+	default: false ++
+	Option to subscribe to the Sway IPC bar configuration and visibility events and control waybar with *swaymsg bar* commands. ++
+	Requires *bar_id* value from sway configuration to be either passed with the *-b* commandline argument or specified with the *id* option.
+
+*id* ++
+	typeof: string ++
+	*bar_id* for the Sway IPC. Use this if you need to override the value passed with the *-b bar_id* commandline argument for the specific bar instance.
+
 *include* ++
 	typeof: string|array ++
 	Paths to additional configuration files.
