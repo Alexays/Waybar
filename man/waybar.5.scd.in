@@ -72,6 +72,11 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	typeof: string ++
 	Optional name added as a CSS class, for styling multiple waybars.
 
+*mode* ++
+	typeof: string ++
+	Selects one of the preconfigured display modes. This is an equivalent of the sway-bar(5) *mode* command and supports the same values: *dock*, *hide*, *invisible*, *overlay*. ++
+	Note: *hide* and *invisible* modes may be not as useful without Sway IPC.
+
 *exclusive* ++
 	typeof: bool ++
 	default: *true* unless the layer is set to *overlay* ++
