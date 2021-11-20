@@ -29,6 +29,7 @@ class Client {
   struct zwp_idle_inhibit_manager_v1 *idle_inhibit_manager = nullptr;
   std::vector<std::unique_ptr<Bar>>   bars;
   Config                              config;
+  std::string                         bar_id;
 
  private:
   Client() = default;
