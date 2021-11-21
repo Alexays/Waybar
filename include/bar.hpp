@@ -78,7 +78,6 @@ class Bar {
   struct waybar_output *output;
   Json::Value           config;
   struct wl_surface    *surface;
-  bool                  exclusive = true;
   bool                  visible = true;
   bool                  vertical = false;
   Gtk::Window           window;
@@ -96,7 +95,6 @@ class Bar {
   std::string  last_mode_{MODE_DEFAULT};
 
   std::unique_ptr<BarSurface>                   surface_impl_;
-  bar_layer                                     layer_;
   Gtk::Box                                      left_;
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;

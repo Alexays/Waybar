@@ -426,7 +426,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
-      layer_{bar_layer::BOTTOM},
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -582,12 +581,18 @@ void waybar::Bar::setMode(const std::string_view& mode) {
 }
 
 void waybar::Bar::setMode(const struct bar_mode& mode) {
-  layer_ = mode.layer;
-  exclusive = mode.exclusive;
-  surface_impl_->setLayer(layer_);
-  surface_impl_->setExclusiveZone(exclusive);
+  surface_impl_->setLayer(mode.layer);
+  surface_impl_->setExclusiveZone(mode.exclusive);
   surface_impl_->setPassThrough(mode.passthrough);
-  setVisible(mode.visible);
+
+  if (mode.visible) {
+    window.get_style_context()->remove_class("hidden");
+    window.set_opacity(1);
+  } else {
+    window.get_style_context()->add_class("hidden");
+    window.set_opacity(0);
+  }
+  surface_impl_->commit();
 }
 
 void waybar::Bar::onMap(GdkEventAny*) {
@@ -600,17 +605,7 @@ void waybar::Bar::onMap(GdkEventAny*) {
 
 void waybar::Bar::setVisible(bool value) {
   visible = value;
-  if (!visible) {
-    window.get_style_context()->add_class("hidden");
-    window.set_opacity(0);
-    surface_impl_->setLayer(bar_layer::BOTTOM);
-  } else {
-    window.get_style_context()->remove_class("hidden");
-    window.set_opacity(1);
-    surface_impl_->setLayer(layer_);
-  }
-  surface_impl_->setExclusiveZone(exclusive && visible);
-  surface_impl_->commit();
+  setMode(visible ? MODE_DEFAULT : MODE_INVISIBLE);
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
