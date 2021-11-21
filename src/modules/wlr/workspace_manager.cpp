@@ -44,7 +44,7 @@ auto WorkspaceManager::register_manager(wl_registry *registry, uint32_t name, ui
 }
 
 auto WorkspaceManager::handle_workspace_group_create(
-    zwlr_workspace_group_handle_v1 *workspace_group_handle) -> void {
+    zext_workspace_group_handle_v1 *workspace_group_handle) -> void {
   auto new_id = ++group_global_id;
   groups_.push_back(
       std::make_unique<WorkspaceGroup>(bar_, box_, config_, *this, workspace_group_handle, new_id));
@@ -52,7 +52,7 @@ auto WorkspaceManager::handle_workspace_group_create(
 }
 
 auto WorkspaceManager::handle_finished() -> void {
-  zwlr_workspace_manager_v1_destroy(workspace_manager_);
+  zext_workspace_manager_v1_destroy(workspace_manager_);
   workspace_manager_ = nullptr;
 }
 
@@ -75,7 +75,7 @@ WorkspaceManager::~WorkspaceManager() {
     return;
   }
 
-  zwlr_workspace_manager_v1_destroy(workspace_manager_);
+  zext_workspace_manager_v1_destroy(workspace_manager_);
   workspace_manager_ = nullptr;
 }
 
@@ -91,11 +91,11 @@ auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
 
   groups_.erase(it);
 }
-auto WorkspaceManager::commit() -> void { zwlr_workspace_manager_v1_commit(workspace_manager_); }
+auto WorkspaceManager::commit() -> void { zext_workspace_manager_v1_commit(workspace_manager_); }
 
 WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value &config,
                                WorkspaceManager &              manager,
-                               zwlr_workspace_group_handle_v1 *workspace_group_handle, uint32_t id)
+                               zext_workspace_group_handle_v1 *workspace_group_handle, uint32_t id)
     : bar_(bar),
       box_(box),
       config_(config),
@@ -123,18 +123,18 @@ WorkspaceGroup::~WorkspaceGroup() {
     return;
   }
 
-  zwlr_workspace_group_handle_v1_destroy(workspace_group_handle_);
+  zext_workspace_group_handle_v1_destroy(workspace_group_handle_);
   workspace_group_handle_ = nullptr;
 }
 
-auto WorkspaceGroup::handle_workspace_create(zwlr_workspace_handle_v1 *workspace) -> void {
+auto WorkspaceGroup::handle_workspace_create(zext_workspace_handle_v1 *workspace) -> void {
   auto new_id = ++workspace_global_id;
   workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace, new_id));
   spdlog::debug("Workspace {} created", new_id);
 }
 
 auto WorkspaceGroup::handle_remove() -> void {
-  zwlr_workspace_group_handle_v1_destroy(workspace_group_handle_);
+  zext_workspace_group_handle_v1_destroy(workspace_group_handle_);
   workspace_group_handle_ = nullptr;
   workspace_manager_.remove_workspace_group(id_);
 }
@@ -226,7 +226,7 @@ auto WorkspaceGroup::remove_button(Gtk::Button &button) -> void {
 }
 
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-                     zwlr_workspace_handle_v1 *workspace, uint32_t id)
+                     zext_workspace_handle_v1 *workspace, uint32_t id)
     : bar_(bar),
       config_(config),
       workspace_group_(workspace_group),
@@ -267,7 +267,7 @@ Workspace::~Workspace() {
     return;
   }
 
-  zwlr_workspace_handle_v1_destroy(workspace_handle_);
+  zext_workspace_handle_v1_destroy(workspace_handle_);
   workspace_handle_ = nullptr;
 }
 
@@ -280,7 +280,7 @@ auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
   state_ = 0;
   for (auto state_entry : state) {
     switch (state_entry) {
-      case ZWLR_WORKSPACE_HANDLE_V1_STATE_ACTIVE:
+      case ZEXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE:
         state_ |= (uint32_t)State::ACTIVE;
         break;
     }
@@ -288,7 +288,7 @@ auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
 }
 
 auto Workspace::handle_remove() -> void {
-  zwlr_workspace_handle_v1_destroy(workspace_handle_);
+  zext_workspace_handle_v1_destroy(workspace_handle_);
   workspace_handle_ = nullptr;
   workspace_group_.remove_workspace(id_);
 }
@@ -326,7 +326,7 @@ auto Workspace::get_icon() -> std::string {
 
 auto Workspace::handle_clicked() -> void {
   spdlog::debug("Workspace {} clicked", (void *)workspace_handle_);
-  zwlr_workspace_handle_v1_activate(workspace_handle_);
+  zext_workspace_handle_v1_activate(workspace_handle_);
   workspace_group_.commit();
 }
 
