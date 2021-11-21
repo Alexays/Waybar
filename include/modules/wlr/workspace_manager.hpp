@@ -27,6 +27,8 @@ class Workspace {
 
   auto id() const -> uint32_t { return id_; }
   auto is_active() const -> bool { return state_ & static_cast<uint32_t>(State::ACTIVE); }
+  auto is_urgent() const -> bool { return state_ & static_cast<uint32_t>(State::URGENT); }
+  auto is_hidden() const -> bool { return state_ & static_cast<uint32_t>(State::HIDDEN); }
   // wlr stuff
   auto handle_name(const std::string &name) -> void;
   auto handle_coordinates(const std::vector<uint32_t> &coordinates) -> void;
@@ -34,14 +36,19 @@ class Workspace {
   auto handle_remove() -> void;
 
   auto handle_done() -> void;
-  auto handle_clicked() -> void;
+  auto handle_clicked(GdkEventButton *bt) -> bool;
   auto show() -> void { button_.show(); }
   auto hide() -> void { button_.hide(); }
   auto get_button_ref() -> Gtk::Button & { return button_; }
   auto get_name() -> std::string & { return name_; }
   auto get_coords() -> std::vector<uint32_t> & { return coordinates_; }
 
-  enum class State { ACTIVE = 1 << 0 };
+  enum class State
+  {
+      ACTIVE = 1 << 0,
+      URGENT = 1 << 1,
+      HIDDEN = 1 << 2,
+  };
 
  private:
   auto get_icon() -> std::string;
@@ -75,7 +82,7 @@ class WorkspaceGroup {
   auto update() -> void;
 
   auto id() const -> uint32_t { return id_; }
-  auto is_visible() const -> bool { return output_ != nullptr; }
+  auto is_visible() const -> bool;
   auto remove_workspace(uint32_t id_) -> void;
 
   // wlr stuff
@@ -89,6 +96,7 @@ class WorkspaceGroup {
   auto handle_done() -> void;
   auto commit() -> void;
   auto sort_workspaces() -> void;
+  auto set_need_to_sort() -> void { need_to_sort = true; }
 
  private:
   static uint32_t    workspace_global_id;
@@ -105,6 +113,7 @@ class WorkspaceGroup {
   std::vector<std::unique_ptr<Workspace>> workspaces_;
   bool                                    sort_by_name = true;
   bool                                    sort_by_coordinates = true;
+  bool                                    need_to_sort = false;
 };
 
 class WorkspaceManager : public AModule {

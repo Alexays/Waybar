@@ -28,7 +28,7 @@ Addressed by *wlr/workspaces*
 
 *sort-by-coordinates*: ++
 	typeof: bool ++
-	default: false ++
+	default: true ++
 	Should workspaces be sorted by coordinates.
 	Note that if both  *sort-by-name* and *sort-by-coordinates* are true sort by name will be first.
 	If both are false - sort by id will be performed.
@@ -38,6 +38,11 @@ Addressed by *wlr/workspaces*
 *{name}*: Name of workspace assigned by compositor
 
 *{icon}*: Icon, as defined in *format-icons*.
+
+# CLICK ACTIONS
+
+*activate*: Switch to workspace.
+*close*: Close the workspace.
 
 # ICONS
 
@@ -67,4 +72,6 @@ Additional to workspace name matching, the following *format-icons* can be set.
 
 - *#workspaces*
 - *#workspaces button*
-- *#workspaces button.focused*
+- *#workspaces button.active*
+- *#workspaces button.urgent*
+- *#workspaces button.hidden*

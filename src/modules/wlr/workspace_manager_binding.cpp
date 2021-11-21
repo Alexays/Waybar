@@ -112,12 +112,6 @@ void workspace_handle_state(void *data, struct zext_workspace_handle_v1 *workspa
   std::vector<uint32_t> state_vec;
   auto                  states = static_cast<uint32_t *>(state->data);
   for (size_t i = 0; i < state->size; ++i) {
-    // To sync server and pending states
-    if (states[i] == ZEXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE) {
-      zext_workspace_handle_v1_activate(workspace_handle);
-    } else {
-      zext_workspace_handle_v1_deactivate(workspace_handle);
-    }
     state_vec.push_back(states[i]);
   }
 
