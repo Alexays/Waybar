@@ -43,9 +43,6 @@ struct swaybar_config parseConfig(const Json::Value& payload) {
   if (auto hs = payload["hidden_state"]; hs.isString()) {
     conf.hidden_state = hs.asString();
   }
-  if (auto position = payload["position"]; position.isString()) {
-    conf.position = position.asString();
-  }
   return conf;
 }
 
@@ -80,13 +77,17 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
 }
 
 void BarIpcClient::onConfigUpdate(const swaybar_config& config) {
-  spdlog::info("config update: {} {} {}", config.id, config.mode, config.position);
+  spdlog::info("config update for {}: id {}, mode {}, hidden_state {}",
+               bar_.bar_id,
+               config.id,
+               config.mode,
+               config.hidden_state);
   bar_config_ = config;
   update();
 }
 
 void BarIpcClient::onVisibilityUpdate(bool visible_by_modifier) {
-  spdlog::trace("visiblity update: {}", visible_by_modifier);
+  spdlog::debug("visiblity update for {}: {}", bar_.bar_id, visible_by_modifier);
   visible_by_modifier_ = visible_by_modifier;
   update();
 }

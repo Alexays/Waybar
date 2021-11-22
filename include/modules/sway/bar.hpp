@@ -18,7 +18,6 @@ struct swaybar_config {
   std::string id;
   std::string mode;
   std::string hidden_state;
-  std::string position;
 };
 
 /**
