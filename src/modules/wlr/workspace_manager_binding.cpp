@@ -1,6 +1,7 @@
 #include "modules/wlr/workspace_manager_binding.hpp"
 
 #include <spdlog/spdlog.h>
+#include <cstdint>
 
 #include "client.hpp"
 #include "modules/wlr/workspace_manager.hpp"
@@ -100,7 +101,7 @@ void workspace_handle_coordinates(void *data, struct zext_workspace_handle_v1 *_
                                   struct wl_array *coordinates) {
   std::vector<uint32_t> coords_vec;
   auto                  coords = static_cast<uint32_t *>(coordinates->data);
-  for (size_t i = 0; i < coordinates->size; ++i) {
+  for (size_t i = 0; i < coordinates->size / sizeof(uint32_t); ++i) {
     coords_vec.push_back(coords[i]);
   }
 
@@ -111,7 +112,7 @@ void workspace_handle_state(void *data, struct zext_workspace_handle_v1 *workspa
                             struct wl_array *state) {
   std::vector<uint32_t> state_vec;
   auto                  states = static_cast<uint32_t *>(state->data);
-  for (size_t i = 0; i < state->size; ++i) {
+  for (size_t i = 0; i < state->size / sizeof(uint32_t); ++i) {
     state_vec.push_back(states[i]);
   }
 

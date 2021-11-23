@@ -5,7 +5,10 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <iterator>
+#include <vector>
 
+#include "gtkmm/widget.h"
 #include "modules/wlr/workspace_manager_binding.hpp"
 
 namespace waybar::modules::wlr {
@@ -19,6 +22,27 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
     : waybar::AModule(config, "workspaces", id, false, false),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+  auto config_sort_by_name = config_["sort-by-name"];
+  if (config_sort_by_name.isBool()) {
+    sort_by_name_ = config_sort_by_name.asBool();
+  }
+
+  auto config_sort_by_coordinates = config_["sort-by-coordinates"];
+  if (config_sort_by_coordinates.isBool()) {
+    sort_by_coordinates_ = config_sort_by_coordinates.asBool();
+  }
+
+  auto config_all_outputs = config_["all-outputs"];
+  if (config_all_outputs.isBool()) {
+    all_outputs_ = config_all_outputs.asBool();
+  }
+
+  auto config_active_only = config_["active-only"];
+  if (config_active_only.isBool()) {
+    active_only_ = config_active_only.asBool();
+    creation_delayed_ = active_only_;
+  }
+
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
@@ -28,6 +52,54 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
   add_registry_listener(this);
   if (!workspace_manager_) {
     return;
+  }
+}
+
+auto WorkspaceManager::workspace_comparator() const
+    -> std::function<bool(std::unique_ptr<Workspace> &, std::unique_ptr<Workspace> &)> {
+  return [=](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
+    auto is_name_less = lhs->get_name() < rhs->get_name();
+    auto is_name_eq = lhs->get_name() == rhs->get_name();
+    auto is_coords_less = lhs->get_coords() < rhs->get_coords();
+    if (sort_by_name_) {
+      if (sort_by_coordinates_) {
+        return is_name_eq ? is_coords_less : is_name_less;
+      } else {
+        return is_name_less;
+      }
+    }
+
+    if (sort_by_coordinates_) {
+      return is_coords_less;
+    }
+
+    return lhs->id() < rhs->id();
+  };
+}
+
+auto WorkspaceManager::sort_workspaces() -> void {
+  std::vector<std::reference_wrapper<std::unique_ptr<Workspace>>> all_workspaces;
+  for (auto &group : groups_) {
+    auto &group_workspaces = group->workspaces();
+    all_workspaces.reserve(all_workspaces.size() +
+                           std::distance(group_workspaces.begin(), group_workspaces.end()));
+    if (!active_only()) {
+      all_workspaces.insert(all_workspaces.end(), group_workspaces.begin(), group_workspaces.end());
+      continue;
+    }
+
+    for (auto &workspace : group_workspaces) {
+      if (!workspace->is_active()) {
+        continue;
+      }
+
+      all_workspaces.push_back(workspace);
+    }
+  }
+
+  std::sort(all_workspaces.begin(), all_workspaces.end(), workspace_comparator());
+  for (size_t i = 0; i < all_workspaces.size(); ++i) {
+    box_.reorder_child(all_workspaces[i].get()->get_button_ref(), i);
   }
 }
 
@@ -67,6 +139,9 @@ auto WorkspaceManager::update() -> void {
   for (auto &group : groups_) {
     group->update();
   }
+  if (creation_delayed()) {
+    creation_delayed_ = false;
+  }
   AModule::update();
 }
 
@@ -94,7 +169,7 @@ auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
 auto WorkspaceManager::commit() -> void { zext_workspace_manager_v1_commit(workspace_manager_); }
 
 WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value &config,
-                               WorkspaceManager &              manager,
+                               WorkspaceManager               &manager,
                                zext_workspace_group_handle_v1 *workspace_group_handle, uint32_t id)
     : bar_(bar),
       box_(box),
@@ -103,15 +178,11 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value 
       workspace_group_handle_(workspace_group_handle),
       id_(id) {
   add_workspace_group_listener(workspace_group_handle, this);
-  auto config_sort_by_name = config_["sort-by-name"];
-  if (config_sort_by_name.isBool()) {
-    sort_by_name = config_sort_by_name.asBool();
-  }
+}
 
-  auto config_sort_by_coordinates = config_["sort-by-coordinates"];
-  if (config_sort_by_coordinates.isBool()) {
-    sort_by_coordinates = config_sort_by_coordinates.asBool();
-  }
+auto WorkspaceGroup::active_only() const -> bool { return workspace_manager_.active_only(); }
+auto WorkspaceGroup::creation_delayed() const -> bool {
+  return workspace_manager_.creation_delayed();
 }
 
 auto WorkspaceGroup::add_button(Gtk::Button &button) -> void {
@@ -143,8 +214,8 @@ auto WorkspaceGroup::handle_output_enter(wl_output *output) -> void {
   spdlog::debug("Output {} assigned to {} group", (void *)output, id_);
   output_ = output;
 
-  if (!is_visible()) {
-      return;
+  if (!is_visible() || workspace_manager_.creation_delayed()) {
+    return;
   }
 
   for (auto &workspace : workspaces_) {
@@ -153,7 +224,9 @@ auto WorkspaceGroup::handle_output_enter(wl_output *output) -> void {
 }
 
 auto WorkspaceGroup::is_visible() const -> bool {
-  return output_ != nullptr && output_ ==  gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  return output_ != nullptr &&
+         (workspace_manager_.all_outputs() ||
+          output_ == gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj()));
 }
 
 auto WorkspaceGroup::handle_output_leave() -> void {
@@ -171,6 +244,13 @@ auto WorkspaceGroup::handle_output_leave() -> void {
 
 auto WorkspaceGroup::update() -> void {
   for (auto &workspace : workspaces_) {
+    if (workspace_manager_.creation_delayed()) {
+      add_button(workspace->get_button_ref());
+      if (is_visible() && (workspace->is_active() || workspace->is_urgent())) {
+        workspace->show();
+      }
+    }
+
     workspace->update();
   }
 }
@@ -198,41 +278,27 @@ auto WorkspaceGroup::handle_done() -> void {
     workspace->handle_done();
   }
 
-  sort_workspaces();
+  if (creation_delayed()) {
+    return;
+  }
+
+  if (!workspace_manager_.all_outputs()) {
+    //sort_workspaces();
+  } else {
+    workspace_manager_.sort_workspaces();
+  }
 }
 
 auto WorkspaceGroup::commit() -> void { workspace_manager_.commit(); }
 
 auto WorkspaceGroup::sort_workspaces() -> void {
-  auto cmp = [=](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
-    auto is_name_less = lhs->get_name() < rhs->get_name();
-    auto is_name_eq = lhs->get_name() == rhs->get_name();
-    auto is_coords_less = lhs->get_coords() < rhs->get_coords();
-    if (sort_by_name) {
-      if (sort_by_coordinates) {
-        return is_name_eq ? is_coords_less : is_name_less;
-      }
-      else {
-        return is_name_less;
-      }
-    }
-
-    if (sort_by_coordinates) {
-      return is_coords_less;
-    }
-
-    return lhs->id() < rhs->id();
-  };
-
-  std::sort(workspaces_.begin(), workspaces_.end(), cmp);
+  std::sort(workspaces_.begin(), workspaces_.end(), workspace_manager_.workspace_comparator());
   for (size_t i = 0; i < workspaces_.size(); ++i) {
     box_.reorder_child(workspaces_[i]->get_button_ref(), i);
   }
 }
 
-auto WorkspaceGroup::remove_button(Gtk::Button &button) -> void {
-  box_.remove(button);
-}
+auto WorkspaceGroup::remove_button(Gtk::Button &button) -> void { box_.remove(button); }
 
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
                      zext_workspace_handle_v1 *workspace, uint32_t id)
@@ -256,11 +322,11 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
   }
 
   /* Handle click events if configured */
-  if (config_["on-click"].isString() || config_["on-click-middle"].isString()
-        || config_["on-click-right"].isString()) {
+  if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
+      config_["on-click-right"].isString()) {
     button_.add_events(Gdk::BUTTON_PRESS_MASK);
-    button_.signal_button_press_event().connect(
-            sigc::mem_fun(*this, &Workspace::handle_clicked), false);
+    button_.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handle_clicked),
+                                                false);
   }
 
   button_.set_relief(Gtk::RELIEF_NONE);
@@ -272,9 +338,7 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
   }
 
   workspace_group.add_button(button_);
-  button_.show();
-  label_.show();
-  content_.show();
+  button_.show_all();
 }
 
 Workspace::~Workspace() {
@@ -303,7 +367,7 @@ auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
         state_ |= (uint32_t)State::URGENT;
         break;
       case ZEXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN:
-        state_ |= (uint32_t)State::URGENT;
+        state_ |= (uint32_t)State::HIDDEN;
         break;
     }
   }
@@ -315,7 +379,8 @@ auto Workspace::handle_remove() -> void {
   workspace_group_.remove_workspace(id_);
 }
 
-auto add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition, const std::string& class_name) {
+auto add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition,
+                         const std::string &class_name) {
   if (condition) {
     context->add_class(class_name);
   } else {
@@ -329,6 +394,16 @@ auto Workspace::handle_done() -> void {
   add_or_remove_class(style_context, is_active(), "active");
   add_or_remove_class(style_context, is_urgent(), "urgent");
   add_or_remove_class(style_context, is_hidden(), "hidden");
+
+  if (workspace_group_.creation_delayed()) {
+    return;
+  }
+
+  if (workspace_group_.active_only() && (is_active() || is_urgent())) {
+    button_.show_all();
+  } else if (workspace_group_.active_only() && !(is_active() || is_urgent())) {
+    button_.hide();
+  }
 }
 
 auto Workspace::get_icon() -> std::string {
@@ -355,24 +430,20 @@ auto Workspace::get_icon() -> std::string {
 auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
   std::string action;
   if (config_["on-click"].isString() && bt->button == 1) {
-      action = config_["on-click"].asString();
-  }
-  else if (config_["on-click-middle"].isString() && bt->button == 2) {
-      action = config_["on-click-middle"].asString();
-  }
-  else if (config_["on-click-right"].isString() && bt->button == 3) {
-      action = config_["on-click-right"].asString();
+    action = config_["on-click"].asString();
+  } else if (config_["on-click-middle"].isString() && bt->button == 2) {
+    action = config_["on-click-middle"].asString();
+  } else if (config_["on-click-right"].isString() && bt->button == 3) {
+    action = config_["on-click-right"].asString();
   }
 
   if (action.empty())
-      return true;
+    return true;
   else if (action == "activate") {
-      zext_workspace_handle_v1_activate(workspace_handle_);
-  }
-  else if (action == "close") {
-      zext_workspace_handle_v1_remove(workspace_handle_);
-  }
-  else {
+    zext_workspace_handle_v1_activate(workspace_handle_);
+  } else if (action == "close") {
+    zext_workspace_handle_v1_remove(workspace_handle_);
+  } else {
     spdlog::warn("Unknown action {}", action);
   }
 
@@ -381,16 +452,19 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
   return true;
 }
 
+auto Workspace::show() -> void { button_.show_all(); }
+auto Workspace::hide() -> void { button_.hide(); }
+
 auto Workspace::handle_name(const std::string &name) -> void {
   if (name_ != name) {
-      workspace_group_.set_need_to_sort();
+    workspace_group_.set_need_to_sort();
   }
   name_ = name;
 }
 
 auto Workspace::handle_coordinates(const std::vector<uint32_t> &coordinates) -> void {
   if (coordinates_ != coordinates) {
-      workspace_group_.set_need_to_sort();
+    workspace_group_.set_need_to_sort();
   }
   coordinates_ = coordinates;
 }

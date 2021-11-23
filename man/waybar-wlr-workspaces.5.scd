@@ -33,6 +33,16 @@ Addressed by *wlr/workspaces*
 	Note that if both  *sort-by-name* and *sort-by-coordinates* are true sort by name will be first.
 	If both are false - sort by id will be performed.
 
+*all-outputs*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false workspaces group will be shown only in assigned output. Otherwise all workspace groups are shown.
+
+*active-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true only active or urgent workspaces will be shown.
+
 # FORMAT REPLACEMENTS
 
 *{name}*: Name of workspace assigned by compositor
