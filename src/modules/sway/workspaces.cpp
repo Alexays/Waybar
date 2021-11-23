@@ -2,7 +2,26 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cctype>
+#include <string>
+
 namespace waybar::modules::sway {
+
+// Helper function to to assign a number to a workspace, just like sway. In fact
+// this is taken quite verbatim from `sway/ipc-json.c`.
+int Workspaces::convertWorkspaceNameToNum(std::string name) {
+  if (isdigit(name[0])) {
+    errno = 0;
+    char *    endptr = NULL;
+    long long parsed_num = strtoll(name.c_str(), &endptr, 10);
+    if (errno != 0 || parsed_num > INT32_MAX || parsed_num < 0 || endptr == name.c_str()) {
+      return -1;
+    } else {
+      return (int)parsed_num;
+    }
+  }
+  return -1;
+}
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
     : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
@@ -102,13 +121,29 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                     // the "num" property (integer type):
                     // The workspace number or -1 for workspaces that do
                     // not start with a number.
-                    auto l = lhs["num"].asInt();
-                    auto r = rhs["num"].asInt();
+                    // We could rely on sway providing this property:
+                    //
+                    //     auto l = lhs["num"].asInt();
+                    //     auto r = rhs["num"].asInt();
+                    //
+                    // We cannot rely on the "num" property as provided by sway
+                    // via IPC, because persistent workspace might not exist in
+                    // sway's view. However, we need this property also for
+                    // not-yet created persistent workspace. As such, we simply
+                    // duplicate sway's logic of assigning the "num" property
+                    // into waybar (see convertWorkspaceNameToNum). This way the
+                    // sorting should work out even when we include workspaces
+                    // that do not currently exist.
+                    auto lname = lhs["name"].asString();
+                    auto rname = rhs["name"].asString();
+                    int  l = convertWorkspaceNameToNum(lname);
+                    int  r = convertWorkspaceNameToNum(rname);
+
                     if (l == r) {
                       // in case both integers are the same, lexicographical
                       // sort. This also covers the case when both don't have a
                       // number (i.e., l == r == -1).
-                      return lhs["name"].asString() < rhs["name"].asString();
+                      return lname < rname;
                     }
 
                     // one of the workspaces doesn't begin with a number, so
@@ -213,23 +248,34 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   auto   pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
+  button.set_name("sway-workspace-" + node["name"].asString());
   button.set_relief(Gtk::RELIEF_NONE);
-  button.signal_clicked().connect([this, node] {
-    try {
-      if (node["target_output"].isString()) {
-        ipc_.sendCmd(
-            IPC_COMMAND,
-            fmt::format("workspace \"{}\"; move workspace to output \"{}\"; workspace \"{}\"",
-                        node["name"].asString(),
-                        node["target_output"].asString(),
-                        node["name"].asString()));
-      } else {
-        ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", node["name"].asString()));
+  if (!config_["disable-click"].asBool()) {
+    button.signal_pressed().connect([this, node] {
+      try {
+        if (node["target_output"].isString()) {
+          ipc_.sendCmd(
+              IPC_COMMAND,
+              fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
+                          "--no-auto-back-and-forth",
+                          node["name"].asString(),
+                          node["target_output"].asString(),
+                          "--no-auto-back-and-forth",
+                          node["name"].asString()));
+        } else {
+          ipc_.sendCmd(
+              IPC_COMMAND,
+              fmt::format("workspace {} \"{}\"",
+                          config_["disable-auto-back-and-forth"].asBool()
+                            ? "--no-auto-back-and-forth"
+                            : "",
+                          node["name"].asString()));
+        }
+      } catch (const std::exception &e) {
+        spdlog::error("Workspaces: {}", e.what());
       }
-    } catch (const std::exception &e) {
-      spdlog::error("Workspaces: {}", e.what());
-    }
-  });
+    });
+  }
   return button;
 }
 
@@ -245,12 +291,20 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
       return config_["format-icons"][key].asString();
+    } else if (config_["format-icons"][trimWorkspaceName(key)].isString()) {
+      return config_["format-icons"][trimWorkspaceName(key)].asString();
     }
   }
   return name;
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {
+  if (gdk_event_get_pointer_emulated((GdkEvent *)e)) {
+    /**
+     * Ignore emulated scroll events on window
+     */
+    return false;
+  }
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
@@ -276,7 +330,9 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
   }
   try {
-    ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace \"{}\"", name));
+    ipc_.sendCmd(
+        IPC_COMMAND,
+        fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }

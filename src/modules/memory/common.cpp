@@ -15,11 +15,11 @@ auto waybar::modules::Memory::update() -> void {
   unsigned long memfree;
   if (meminfo_.count("MemAvailable")) {
     // New kernels (3.4+) have an accurate available memory field.
-    memfree = meminfo_["MemAvailable"];
+    memfree = meminfo_["MemAvailable"] + meminfo_["zfs_size"];
   } else {
     // Old kernel; give a best-effort approximation of available memory.
     memfree = meminfo_["MemFree"] + meminfo_["Buffers"] + meminfo_["Cached"] +
-              meminfo_["SReclaimable"] - meminfo_["Shmem"];
+              meminfo_["SReclaimable"] - meminfo_["Shmem"] + meminfo_["zfs_size"];
   }
 
   if (memtotal > 0 && memfree >= 0) {
@@ -28,17 +28,39 @@ auto waybar::modules::Memory::update() -> void {
     auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
     auto available_ram_gigabytes = memfree / std::pow(1024, 2);
 
-    getState(used_ram_percentage);
-    label_.set_markup(fmt::format(format_,
-                                  used_ram_percentage,
-                                  fmt::arg("total", total_ram_gigabytes),
-                                  fmt::arg("percentage", used_ram_percentage),
-                                  fmt::arg("used", used_ram_gigabytes),
-                                  fmt::arg("avail", available_ram_gigabytes)));
-    if (tooltipEnabled()) {
-      label_.set_tooltip_text(fmt::format("{:.{}f}Gb used", used_ram_gigabytes, 1));
+    auto format = format_;
+    auto state = getState(used_ram_percentage);
+    if (!state.empty() && config_["format-" + state].isString()) {
+      format = config_["format-" + state].asString();
     }
-    event_box_.show();
+
+    if (format.empty()) {
+      event_box_.hide();
+    } else {
+      event_box_.show();
+      auto icons = std::vector<std::string>{state};
+      label_.set_markup(fmt::format(format,
+                                    used_ram_percentage,
+                                    fmt::arg("icon", getIcon(used_ram_percentage, icons)),
+                                    fmt::arg("total", total_ram_gigabytes),
+                                    fmt::arg("percentage", used_ram_percentage),
+                                    fmt::arg("used", used_ram_gigabytes),
+                                    fmt::arg("avail", available_ram_gigabytes)));
+    }
+
+    if (tooltipEnabled()) {
+      if (config_["tooltip-format"].isString()) {
+        auto tooltip_format = config_["tooltip-format"].asString();
+        label_.set_tooltip_text(fmt::format(tooltip_format,
+                                            used_ram_percentage,
+                                            fmt::arg("total", total_ram_gigabytes),
+                                            fmt::arg("percentage", used_ram_percentage),
+                                            fmt::arg("used", used_ram_gigabytes),
+                                            fmt::arg("avail", available_ram_gigabytes)));
+      } else {
+        label_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
+      }
+    }
   } else {
     event_box_.hide();
   }

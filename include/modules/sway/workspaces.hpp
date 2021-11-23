@@ -20,6 +20,10 @@ class Workspaces : public AModule, public sigc::trackable {
   auto update() -> void;
 
  private:
+  static inline const std::string workspace_switch_cmd_ = "workspace {} \"{}\"";
+
+  static int convertWorkspaceNameToNum(std::string name);
+
   void              onCmd(const struct Ipc::ipc_response&);
   void              onEvent(const struct Ipc::ipc_response&);
   bool              filterButtons();

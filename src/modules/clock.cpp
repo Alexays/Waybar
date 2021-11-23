@@ -5,6 +5,7 @@
 
 #include <sstream>
 #include <type_traits>
+#include "util/ustring_clen.hpp"
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>
 #include <locale.h>
@@ -13,11 +14,15 @@
 using waybar::modules::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "clock", id, "{:%H:%M}", 60), fixed_time_zone_(false) {
-  if (config_["timezone"].isString()) {
-    spdlog::warn("As using a timezone, some format args may be missing as the date library havn't got a release since 2018.");
-    time_zone_ = date::locate_zone(config_["timezone"].asString());
-    fixed_time_zone_ = true;
+    : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true), fixed_time_zone_(false) {
+  if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
+    time_zone_idx_ = 0;
+    setTimeZone(config_["timezones"][time_zone_idx_]);
+  } else {
+    setTimeZone(config_["timezone"]);
+  }
+  if (fixed_time_zone_) {
+    spdlog::warn("As using a timezone, some format args may be missing as the date library haven't got a release since 2018.");
   }
 
   if (config_["locale"].isString()) {
@@ -71,6 +76,42 @@ auto waybar::modules::Clock::update() -> void {
   ALabel::update();
 }
 
+bool waybar::modules::Clock::setTimeZone(Json::Value zone_name) {
+  if (!zone_name.isString() || zone_name.asString().empty()) {
+      fixed_time_zone_ = false;
+      return false;
+  }
+
+  time_zone_ = date::locate_zone(zone_name.asString());
+  fixed_time_zone_ = true;
+  return true;
+}
+
+bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
+  // defer to user commands if set
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+
+  auto dir = AModule::getScrollDir(e);
+  if (dir != SCROLL_DIR::UP && dir != SCROLL_DIR::DOWN) {
+    return true;
+  }
+  if (!config_["timezones"].isArray() || config_["timezones"].empty()) {
+    return true;
+  }
+  auto nr_zones = config_["timezones"].size();
+  if (dir == SCROLL_DIR::UP) {
+    size_t new_idx = time_zone_idx_ + 1;
+    time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
+  } else {
+    time_zone_idx_ = time_zone_idx_ == 0 ? nr_zones - 1 : time_zone_idx_ - 1;
+  }
+  setTimeZone(config_["timezones"][time_zone_idx_]);
+  update();
+  return true;
+}
+
 auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::string {
   const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
   const auto ymd = date::year_month_day(daypoint);
@@ -99,7 +140,12 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       os << '\n';
     }
     if (d == curr_day) {
-      os << "<b><u>" << date::format("%e", d) << "</u></b>";
+      if (config_["today-format"].isString()) {
+        auto today_format = config_["today-format"].asString();
+        os << fmt::format(today_format, date::format("%e", d));
+      } else {
+        os << "<b><u>" << date::format("%e", d) << "</u></b>";
+      }
     } else {
       os << date::format("%e", d);
     }
@@ -117,12 +163,14 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
   do {
     if (wd != first_dow) os << ' ';
     Glib::ustring wd_ustring(date::format(locale_, "%a", wd));
-    auto          wd_len = wd_ustring.length();
-    if (wd_len > 2) {
-      wd_ustring = wd_ustring.substr(0, 2);
-      wd_len = 2;
+    auto clen = ustring_clen(wd_ustring);
+    auto wd_len = wd_ustring.length();
+    while (clen > 2) {
+      wd_ustring = wd_ustring.substr(0, wd_len-1);
+      wd_len--;
+      clen = ustring_clen(wd_ustring);
     }
-    const std::string pad(2 - wd_len, ' ');
+    const std::string pad(2 - clen, ' ');
     os << pad << wd_ustring;
   } while (++wd != first_dow);
   os << "\n";
@@ -156,6 +204,9 @@ template <>
 struct fmt::formatter<waybar_time> : fmt::formatter<std::tm> {
   template <typename FormatContext>
   auto format(const waybar_time& t, FormatContext& ctx) {
+#if FMT_VERSION >= 80000
+	auto& tm_format = specs;
+#endif
     return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
   }
 };

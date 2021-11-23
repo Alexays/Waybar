@@ -20,6 +20,10 @@ Addressed by *mpd*
 	typeof: integer ++
 	The port MPD listens to. If empty, use the default port.
 
+*password*: ++
+	typeof: string ++
+	The password required to connect to the MPD server. If empty, no password is sent to MPD.
+
 *interval*: ++
 	typeof: integer++
 	default: 5 ++
@@ -69,6 +73,22 @@ Addressed by *mpd*
 	default: "MPD (disconnected)" ++
 	Tooltip information displayed when the MPD server can't be reached.
 
+*artist-len*: ++
+    typeof: integer ++
+    Maximum length of the Artist tag.
+
+*album-len*: ++
+    typeof: integer ++
+    Maximum length of the Album tag.
+
+*album-artist-len*: ++
+    typeof: integer ++
+    Maximum length of the Album Artist tag.
+
+*title-len*: ++
+    typeof: integer ++
+    Maximum length of the Title tag.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
@@ -76,6 +96,14 @@ Addressed by *mpd*
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++
@@ -144,9 +172,15 @@ Addressed by *mpd*
 
 *{date}*: The date of the current song
 
+*{volume}*: The current volume in percent
+
 *{elapsedTime}*: The current position of the current song. To format as a date/time (see example configuration)
 
 *{totalTime}*: The length of the current song. To format as a date/time (see example configuration)
+
+*{songPosition}*: The position of the current song.
+
+*{queueLength}*: The length of the current queue.
 
 *{stateIcon}*: The icon corresponding the playing or paused status of the player (see *state-icons* option)
 

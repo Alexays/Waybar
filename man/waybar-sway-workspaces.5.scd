@@ -31,6 +31,11 @@ Addressed by *sway/workspaces*
     default: false ++
     If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
 
+*disable-click*: ++
+    typeof: bool ++
+    default: false ++
+    If set to false, you can click to change workspace. If set to true this behaviour is disabled.
+
 *smooth-scrolling-threshold*: ++
     typeof: double ++
     Threshold to be used when scrolling.
@@ -61,12 +66,16 @@ Addressed by *sway/workspaces*
     Lists workspaces that should always be shown, even when non existent
 
 *on-update*: ++
-	typeof: string ++
-	Command to execute when the module is updated.
+    typeof: string ++
+    Command to execute when the module is updated.
 
 *numeric-first*: ++
-	typeof: bool ++
-	Whether to put workspaces starting with numbers before workspaces that do not start with a number.
+    typeof: bool ++
+    Whether to put workspaces starting with numbers before workspaces that do not start with a number.
+
+*disable-auto-back-and-forth*: ++
+    typeof: bool ++
+    Whether to disable *workspace_auto_back_and_forth* when clicking on workspaces. If this is set to *true*, clicking on a workspace you are already on won't do anything, even if *workspace_auto_back_and_forth* is enabled in the Sway configuration.
 
 # FORMAT REPLACEMENTS
 
@@ -134,3 +143,4 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.urgent*
 - *#workspaces button.persistent*
 - *#workspaces button.current_output*
+- *#workspaces button#sway-workspace-${name}*

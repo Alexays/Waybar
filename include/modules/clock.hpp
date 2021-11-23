@@ -28,12 +28,16 @@ class Clock : public ALabel {
   std::locale locale_;
   const date::time_zone* time_zone_;
   bool fixed_time_zone_;
-  date::year_month_day cached_calendar_ymd_;
+  int time_zone_idx_;
+  date::year_month_day cached_calendar_ymd_ = date::January/1/0;
   std::string cached_calendar_text_;
+
+  bool handleScroll(GdkEventScroll* e);
 
   auto calendar_text(const waybar_time& wtime) -> std::string;
   auto weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void;
   auto first_day_of_week() -> date::weekday;
+  bool setTimeZone(Json::Value zone_name);
 };
 
 }  // namespace waybar::modules

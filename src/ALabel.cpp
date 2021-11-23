@@ -5,8 +5,9 @@
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
-               const std::string& format, uint16_t interval, bool ellipsize)
-    : AModule(config, name, id, config["format-alt"].isString()),
+               const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
+               bool enable_scroll)
+    : AModule(config, name, id, config["format-alt"].isString() || enable_click, enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
                     ? std::chrono::seconds(100000000)
@@ -19,15 +20,36 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
   event_box_.add(label_);
   if (config_["max-length"].isUInt()) {
-    label_.set_max_width_chars(config_["max-length"].asUInt());
+    label_.set_max_width_chars(config_["max-length"].asInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_single_line_mode(true);
   } else if (ellipsize && label_.get_max_width_chars() == -1) {
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_single_line_mode(true);
   }
 
-  if (config_["rotate"].isUInt()) {
-    label_.set_angle(config["rotate"].asUInt());
+  if (config_["min-length"].isUInt()) {
+    label_.set_width_chars(config_["min-length"].asUInt());
   }
+
+  uint rotate = 0;
+
+  if (config_["rotate"].isUInt()) {
+    rotate = config["rotate"].asUInt();
+    label_.set_angle(rotate);
+  }
+
+  if (config_["align"].isDouble()) {
+    auto align = config_["align"].asFloat();
+    if (rotate == 90 || rotate == 270) {
+      label_.set_yalign(align);
+    } else {
+      label_.set_xalign(align);
+    }
+
+  }
+
+
 }
 
 auto ALabel::update() -> void {
@@ -45,8 +67,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
-    format_icons = format_icons[idx];
+    if (size) {
+      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+      format_icons = format_icons[idx];
+    }
   }
   if (format_icons.isString()) {
     return format_icons.asString();
@@ -54,22 +78,24 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   return "";
 }
 
-std::string ALabel::getIcon(uint16_t percentage, std::vector<std::string>& alts, uint16_t max) {
+std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>& alts, uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
+    std::string _alt = "default";
     for (const auto& alt : alts) {
       if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
-        format_icons = format_icons[alt];
+        _alt = alt;
         break;
-      } else {
-        format_icons = format_icons["default"];
       }
     }
+    format_icons = format_icons[_alt];
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
-    format_icons = format_icons[idx];
+    if (size) {
+      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+      format_icons = format_icons[idx];
+    }
   }
   if (format_icons.isString()) {
     return format_icons.asString();

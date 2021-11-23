@@ -33,7 +33,7 @@ Addressed by *network*
 
 *format-ethernet*: ++
 	typeof: string ++
-	This format is used when a ethernet interface is displayed.
+	This format is used when an ethernet interface is displayed.
 
 *format-wifi*: ++
 	typeof: string ++
@@ -63,6 +63,14 @@ Addressed by *network*
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++
@@ -103,7 +111,7 @@ Addressed by *network*
 
 *tooltip-format-ethernet*: ++
 	typeof: string ++
-	This format is used when a ethernet interface is displayed.
+	This format is used when an ethernet interface is displayed.
 
 *tooltip-format-wifi*: ++
 	typeof: string ++
@@ -122,6 +130,8 @@ Addressed by *network*
 *{ifname}*: Name of the network interface.
 
 *{ipaddr}*: The first IP of the interface.
+
+*{gwaddr}*: The default gateway for the interface
 
 *{netmask}*: The subnetmask corresponding to the IP.
 

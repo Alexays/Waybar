@@ -24,16 +24,35 @@ The *clock* module displays the current date and time.
 *timezone*: ++
 	typeof: string ++
 	default: inferred local timezone ++
-	The timezone to display the time in, e.g. America/New_York.
+	The timezone to display the time in, e.g. America/New_York. ++
+	This field will be ignored if *timezones* field is set and have at least one value.
+
+*timezones*: ++
+	typeof: list of strings ++
+	A list of timezones to use for time display, changed using the scroll wheel. ++
+	Use "" to represent the system's local timezone.  Using %Z in the format or tooltip format is useful to track which time zone is currently displayed.
 
 *locale*: ++
 	typeof: string ++
 	default: inferred from current locale ++
 	A locale to be used to display the time. Intended to render times in custom timezones with the proper language and format.
 
+*today-format*: ++
+	typeof: string ++
+	default: <b><u>{}</u></b> ++
+	The format of today's date in the calendar.
+
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *rotate*: ++
 	typeof: integer ++

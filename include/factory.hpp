@@ -1,11 +1,23 @@
 #pragma once
 
 #include <json/json.h>
+#ifdef HAVE_LIBDATE
 #include "modules/clock.hpp"
+#else
+#include "modules/simpleclock.hpp"
+#endif
 #ifdef HAVE_SWAY
 #include "modules/sway/mode.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
+#include "modules/sway/language.hpp"
+#endif
+#ifdef HAVE_WLR
+#include "modules/wlr/taskbar.hpp"
+#include "modules/wlr/workspace_manager.hpp"
+#endif
+#ifdef HAVE_RIVER
+#include "modules/river/tags.hpp"
 #endif
 #if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
@@ -27,17 +39,25 @@
 #ifdef HAVE_LIBUDEV
 #include "modules/backlight.hpp"
 #endif
+#ifdef HAVE_LIBEVDEV
+#include "modules/keyboard_state.hpp"
+#endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
 #ifdef HAVE_LIBMPDCLIENT
-#include "modules/mpd.hpp"
+#include "modules/mpd/mpd.hpp"
+#endif
+#ifdef HAVE_LIBSNDIO
+#include "modules/sndio.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
 #if defined(__linux__)
-#include "modules/bluetooth.hpp"
+#  ifdef WANT_RFKILL
+#    include "modules/bluetooth.hpp"
+#  endif
 #endif
 
 namespace waybar {

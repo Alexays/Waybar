@@ -1,0 +1,27 @@
+name: linux
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        distro:
+          - alpine
+          - archlinux
+          - debian
+          - fedora
+          - opensuse
+
+    runs-on: ubuntu-latest
+    container:
+      image: alexays/waybar:${{ matrix.distro }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: configure
+        run: meson -Dman-pages=enabled build
+      - name: build
+        run: ninja -C build
+      - name: test
+        run: meson test -C build --no-rebuild --print-errorlogs --suite waybar

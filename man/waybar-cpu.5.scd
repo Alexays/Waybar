@@ -20,9 +20,22 @@ The *cpu* module displays the current cpu utilization.
 	default: {usage}% ++
 	The format, how information should be displayed. On {} data gets inserted.
 
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current usage, the corresponding icon gets selected. ++
+	The order is *low* to *high*. Or by the state if it is an object.
+
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *rotate*: ++
 	typeof: integer ++
@@ -69,9 +82,23 @@ The *cpu* module displays the current cpu utilization.
 
 *{load}*: Current cpu load.
 
-*{usage}*: Current cpu usage.
+*{usage}*: Current overall cpu usage.
 
-# EXAMPLE
+*{usage*{n}*}*: Current cpu core n usage. Cores are numbered from zero, so first core will be {usage0} and 4th will be {usage3}.
+
+*{avg_frequency}*: Current cpu average frequency (based on all cores) in GHz.
+
+*{max_frequency}*: Current cpu max frequency (based on the core with the highest frequency) in GHz.
+
+*{min_frequency}*: Current cpu min frequency (based on the core with the lowest frequency) in GHz.
+
+*{icon}*: Icon for overall cpu usage.
+
+*{icon*{n}*}*: Icon for cpu core n usage. Use like {icon0}.
+
+# EXAMPLES
+
+Basic configuration:
 
 ```
 "cpu": {
@@ -79,6 +106,16 @@ The *cpu* module displays the current cpu utilization.
 	"format": "{}% ",
 	"max-length": 10
 }
+```
+
+Cpu usage per core rendered as icons:
+
+```
+"cpu": {
+	"interval": 1,
+	"format": "{icon0}{icon1}{icon2}{icon3} {usage:>2}% ",
+	"format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
+},
 ```
 
 # STYLE

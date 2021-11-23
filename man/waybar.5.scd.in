@@ -14,6 +14,7 @@ Valid locations for this file are:
 - *~/.config/waybar/config*
 - *~/waybar/config*
 - */etc/xdg/waybar/config*
+- *@sysconfdir@/xdg/waybar/config*
 
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
 Also a minimal example configuration can be found on the at the bottom of this man page.
@@ -63,15 +64,36 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	typeof: integer ++
 	Margins value without units.
 
+*spacing* ++
+	typeof: integer ++
+	Size of gaps in between of the different modules.
+
 *name* ++
 	typeof: string ++
 	Optional name added as a CSS class, for styling multiple waybars.
+
+*exclusive* ++
+	typeof: bool ++
+	default: *true* unless the layer is set to *overlay* ++
+	Option to request an exclusive zone from the compositor. Disable this to allow drawing application windows underneath or on top of the bar.
+
+*passthrough* ++
+	typeof: bool ++
+	default: *false* unless the layer is set to *overlay* ++
+	Option to pass any pointer events to the window under the bar.
+	Intended to be used with either *top* or *overlay* layers and without exclusive zone.
 
 *gtk-layer-shell* ++
 	typeof: bool ++
 	default: true ++
 	Option to disable the use of gtk-layer-shell for popups.
 	Only functional if compiled with gtk-layer-shell support.
+
+*include* ++
+	typeof: string|array ++
+	Paths to additional configuration files.
+	Each file can contain a single object with any of the bar configuration options. In case of duplicate options, the first defined value takes precedence, i.e. including file -> first included file -> etc. Nested includes are permitted, but make sure to avoid circular imports.
+	For a multi-bar config, the include directive affects only current bar configuration object.
 
 # MODULE FORMAT
 
@@ -185,16 +207,23 @@ Valid options for the "rotate" property are: 0, 90, 180 and 270.
 
 - *waybar-backlight(5)*
 - *waybar-battery(5)*
+- *waybar-bluetooth(5)*
 - *waybar-clock(5)*
 - *waybar-cpu(5)*
 - *waybar-custom(5)*
+- *waybar-disk(5)*
 - *waybar-idle-inhibitor(5)*
+- *waybar-keyboard-state(5)*
 - *waybar-memory(5)*
-- *waybar-mdp(5)*
+- *waybar-mpd(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
+- *waybar-river-tags(5)*
+- *waybar-states(5)*
 - *waybar-sway-mode(5)*
 - *waybar-sway-window(5)*
 - *waybar-sway-workspaces(5)*
+- *waybar-wlr-taskbar(5)*
+- *waybar-wlr-workspaces(5)*
 - *waybar-temperature(5)*
 - *waybar-tray(5)*

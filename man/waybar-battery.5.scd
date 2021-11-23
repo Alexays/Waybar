@@ -20,7 +20,12 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *full-at*: ++
 	typeof: integer ++
-	Define the max percentage of the battery, usefull for an old battery, e.g. 96
+	Define the max percentage of the battery, for when you've set the battery to stop charging at a lower level to save it. For example, if you've set the battery to stop at 80% that will become the new 100%.
+
+*design-capacity*: ++
+    typeof: bool ++
+    default: false ++
+    Option to use the battery design capacity instead of it's current maximal capacity.
 
 *interval*: ++
 	typeof: integer ++
@@ -49,6 +54,14 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *max-length*: ++
 	typeof: integer++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *rotate*: ++
 	typeof: integer++
@@ -91,6 +104,8 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *{capacity}*: Capacity in percentage
 
+*{power}*: Power in watts
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{time}*: Estimate of time until full or empty. Note that this is based on the power draw at the last refresh time, not an average.
@@ -105,7 +120,7 @@ The two arguments are:
 
 # CUSTOM FORMATS
 
-The *battery* module allows to define custom formats based on up to two factors. The best fitting format will be selected.
+The *battery* module allows one to define custom formats based on up to two factors. The best fitting format will be selected.
 
 *format-<state>*: With *states*, a custom format can be set depending on the capacity of your battery.
 

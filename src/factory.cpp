@@ -22,6 +22,22 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "sway/window") {
       return new waybar::modules::sway::Window(id, bar_, config_[name]);
     }
+    if (ref == "sway/language") {
+        return new waybar::modules::sway::Language(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_WLR
+    if (ref == "wlr/taskbar") {
+      return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
+    }
+    if (ref == "wlr/workspaces") {
+      return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_RIVER
+    if (ref == "river/tags") {
+      return new waybar::modules::river::Tags(id, bar_, config_[name]);
+    }
 #endif
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
@@ -57,6 +73,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Backlight(id, config_[name]);
     }
 #endif
+#ifdef HAVE_LIBEVDEV
+    if (ref == "keyboard-state") {
+      return new waybar::modules::KeyboardState(id, bar_, config_[name]);
+    }
+#endif
 #ifdef HAVE_LIBPULSE
     if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(id, config_[name]);
@@ -67,13 +88,20 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::MPD(id, config_[name]);
     }
 #endif
+#ifdef HAVE_LIBSNDIO
+    if (ref == "sndio") {
+      return new waybar::modules::Sndio(id, config_[name]);
+    }
+#endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }
 #if defined(__linux__)
+#  ifdef WANT_RFKILL
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
     }
+#  endif
 #endif
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name]);

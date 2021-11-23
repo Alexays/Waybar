@@ -6,7 +6,7 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
   } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
-    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())).path().u8string() + "/" + config_["input-filename"].asString();
+    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())).path().string() + "/" + config_["input-filename"].asString();
   } else {
     auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
@@ -40,6 +40,16 @@ auto waybar::modules::Temperature::update() -> void {
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+  if (tooltipEnabled()) {
+    std::string tooltip_format = "{temperatureC}°C";
+    if (config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    label_.set_tooltip_text(fmt::format(tooltip_format,
+                                fmt::arg("temperatureC", temperature_c),
+                                fmt::arg("temperatureF", temperature_f),
+                                fmt::arg("temperatureK", temperature_k)));
+  }
   // Call parent update
   ALabel::update();
 }

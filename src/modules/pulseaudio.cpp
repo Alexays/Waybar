@@ -151,8 +151,24 @@ void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const p
  */
 void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i,
                                              int /*eol*/, void *data) {
+  if (i == nullptr)
+    return;
+
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
-  if (i != nullptr && pa->default_sink_name_ == i->name) {
+  if (pa->current_sink_name_ == i->name) {
+    if (i->state != PA_SINK_RUNNING) {
+      pa->current_sink_running_ = false;
+    } else {
+      pa->current_sink_running_ = true;
+    }
+  }
+
+  if (!pa->current_sink_running_ && i->state == PA_SINK_RUNNING) {
+    pa->current_sink_name_ = i->name;
+    pa->current_sink_running_ = true;
+  }
+
+  if (pa->current_sink_name_ == i->name) {
     pa->pa_volume_ = i->volume;
     float volume = static_cast<float>(pa_cvolume_avg(&(pa->pa_volume_))) / float{PA_VOLUME_NORM};
     pa->sink_idx_ = i->index;
@@ -175,11 +191,11 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
 void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_server_info *i,
                                                void *data) {
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
-  pa->default_sink_name_ = i->default_sink_name;
+  pa->current_sink_name_ = i->default_sink_name;
   pa->default_source_name_ = i->default_source_name;
 
-  pa_context_get_sink_info_by_name(context, i->default_sink_name, sinkInfoCb, data);
-  pa_context_get_source_info_by_name(context, i->default_source_name, sourceInfoCb, data);
+  pa_context_get_sink_info_list(context, sinkInfoCb, data);
+  pa_context_get_source_info_list(context, sourceInfoCb, data);
 }
 
 static const std::array<std::string, 9> ports = {
@@ -194,22 +210,26 @@ static const std::array<std::string, 9> ports = {
     "phone",
 };
 
-const std::string waybar::modules::Pulseaudio::getPortIcon() const {
+const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
+  std::vector<std::string> res = {default_source_name_};
   std::string nameLC = port_name_ + form_factor_;
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
     if (nameLC.find(port) != std::string::npos) {
-      return port;
+      res.push_back(port);
+      return res;
     }
   }
-  return port_name_;
+  return res;
 }
 
 auto waybar::modules::Pulseaudio::update() -> void {
   auto format = format_;
+  std::string                 tooltip_format;
   if (!alt_) {
     std::string format_name = "format";
-    if (monitor_.find("a2dp_sink") != std::string::npos) {
+    if (monitor_.find("a2dp_sink") != std::string::npos || // PulseAudio
+        monitor_.find("a2dp-sink") != std::string::npos) { // PipeWire
       format_name = format_name + "-bluetooth";
       label_.get_style_context()->add_class("bluetooth");
     } else {
@@ -222,28 +242,53 @@ auto waybar::modules::Pulseaudio::update() -> void {
       }
       format_name = format_name + "-muted";
       label_.get_style_context()->add_class("muted");
+      label_.get_style_context()->add_class("sink-muted");
     } else {
       label_.get_style_context()->remove_class("muted");
+      label_.get_style_context()->remove_class("sink-muted");
     }
     format =
       config_[format_name].isString() ? config_[format_name].asString() : format;
   }
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
-  if (source_muted_ && config_["format-source-muted"].isString()) {
-    format_source = config_["format-source-muted"].asString();
-  } else if (!source_muted_ && config_["format-source"].isString()) {
-    format_source = config_["format-source"].asString();
+  if (source_muted_) {
+    label_.get_style_context()->add_class("source-muted");
+    if (config_["format-source-muted"].isString()) {
+      format_source = config_["format-source-muted"].asString();
+    }
+  } else {
+    label_.get_style_context()->remove_class("source-muted");
+    if (config_["format-source-muted"].isString()) {
+      format_source = config_["format-source"].asString();
+    }
   }
   format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
   label_.set_markup(fmt::format(format,
                                 fmt::arg("desc", desc_),
                                 fmt::arg("volume", volume_),
                                 fmt::arg("format_source", format_source),
-                                fmt::arg("icon", getIcon(volume_, getPortIcon()))));
+                                fmt::arg("source_volume", source_volume_),
+                                fmt::arg("source_desc", source_desc_),
+                                fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
   getState(volume_);
+  
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(desc_);
+    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    if (!tooltip_format.empty()) {
+      label_.set_tooltip_text(fmt::format(
+        tooltip_format,
+        fmt::arg("desc", desc_),
+        fmt::arg("volume", volume_),
+        fmt::arg("format_source", format_source),
+        fmt::arg("source_volume", source_volume_),
+        fmt::arg("source_desc", source_desc_),
+        fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
+    } else {
+      label_.set_tooltip_text(desc_);
+    }
   }
 
   // Call parent update

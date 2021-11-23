@@ -22,6 +22,12 @@ Addressed by *custom/<name>*
 	The path to a script, which determines if the script in *exec* should be executed.
 	*exec* will be executed if the exit code of *exec-if* equals 0.
 
+*exec-on-event*: ++
+	typeof: bool ++
+	default: true ++
+	If an event command is set (e.g. *on-click* or *on-scroll-up*) then re-execute the script after
+	executing the event command.
+
 *return-type*: ++
 	typeof: string ++
 	See *return-type*
@@ -60,6 +66,14 @@ Addressed by *custom/<name>*
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
+
+*min-length*: ++
+    typeof: integer ++
+    The minimum length in characters the module should take up.
+
+*align*: ++
+    typeof: float ++
+    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++

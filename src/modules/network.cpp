@@ -1,125 +1,134 @@
-#include "modules/network.hpp"
+#include <linux/if.h>
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
-#include <fstream>
+
 #include <cassert>
+#include <fstream>
+#include <sstream>
+#include <optional>
+
+#include "modules/network.hpp"
 #include "util/format.hpp"
+#ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
+#endif
 
 namespace {
-
 using namespace waybar::util;
-
-constexpr const char *NETSTAT_FILE =
-    "/proc/net/netstat";  // std::ifstream does not take std::string_view as param
-constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
-constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
-constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
-
-std::ifstream                     netstat(NETSTAT_FILE);
-std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
-  if (!netstat) {
-    spdlog::warn("Failed to open netstat file {}", NETSTAT_FILE);
-    return {};
-  }
-  netstat.seekg(std::ios_base::beg);
-
-  // finding corresponding line (category)
-  // looks into the file for the first line starting by the 'category' string
-  auto starts_with = [](const std::string &str, std::string_view start) {
-    return start == std::string_view{str.data(), std::min(str.size(), start.size())};
-  };
-
-  std::string read;
-  while (std::getline(netstat, read) && !starts_with(read, category))
-    ;
-  if (!starts_with(read, category)) {
-    spdlog::warn("Category '{}' not found in netstat file {}", category, NETSTAT_FILE);
-    return {};
-  }
-
-  // finding corresponding column (key)
-  // looks into the fetched line for the first word (space separated) equal to 'key'
-  int  index = 0;
-  auto r_it = read.begin();
-  auto k_it = key.begin();
-  while (k_it != key.end() && r_it != read.end()) {
-    if (*r_it != *k_it) {
-      r_it = std::find(r_it, read.end(), ' ');
-      if (r_it != read.end()) {
-        ++r_it;
-      }
-      k_it = key.begin();
-      ++index;
-    } else {
-      ++r_it;
-      ++k_it;
-    }
-  }
-
-  if (r_it == read.end() && k_it != key.end()) {
-    spdlog::warn(
-        "Key '{}' not found in category '{}' of netstat file {}", key, category, NETSTAT_FILE);
-    return {};
-  }
-
-  // finally accessing value
-  // accesses the line right under the fetched one
-  std::getline(netstat, read);
-  assert(starts_with(read, category));
-  std::istringstream iss(read);
-  while (index--) {
-    std::getline(iss, read, ' ');
-  }
-  unsigned long long value;
-  iss >> value;
-  return value;
-}
+constexpr const char *DEFAULT_FORMAT = "{ifname}";
 }  // namespace
 
+constexpr const char *NETDEV_FILE =
+    "/proc/net/dev";  // std::ifstream does not take std::string_view as param
+std::optional<std::pair<unsigned long long, unsigned long long>>
+waybar::modules::Network::readBandwidthUsage() {
+  std::ifstream netdev(NETDEV_FILE);
+  if (!netdev) {
+    spdlog::warn("Failed to open netdev file {}", NETDEV_FILE);
+    return {};
+  }
+
+  std::string line;
+  // skip the headers (first two lines)
+  std::getline(netdev, line);
+  std::getline(netdev, line);
+
+  unsigned long long receivedBytes = 0ull;
+  unsigned long long transmittedBytes = 0ull;
+  while (std::getline(netdev, line)) {
+    std::istringstream iss(line);
+
+    std::string ifacename;
+    iss >> ifacename;  // ifacename contains "eth0:"
+    ifacename.pop_back();  // remove trailing ':'
+    if (!checkInterface(ifacename)) {
+      continue;
+    }
+
+    // The rest of the line consists of whitespace separated counts divided
+    // into two groups (receive and transmit). Each group has the following
+    // columns: bytes, packets, errs, drop, fifo, frame, compressed, multicast
+    //
+    // We only care about the bytes count, so we'll just ignore the 7 other
+    // columns.
+    unsigned long long r = 0ull;
+    unsigned long long t = 0ull;
+    // Read received bytes
+    iss >> r;
+    // Skip all the other columns in the received group
+    for (int colsToSkip = 7; colsToSkip > 0; colsToSkip--) {
+      // skip whitespace between columns
+      while (iss.peek() == ' ') { iss.ignore(); }
+      // skip the irrelevant column
+      while (iss.peek() != ' ') { iss.ignore(); }
+    }
+    // Read transmit bytes
+    iss >> t;
+
+    receivedBytes += r;
+    transmittedBytes += t;
+  }
+
+  return {{receivedBytes, transmittedBytes}};
+}
+
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, "{ifname}", 60),
+    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
       ifid_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
-      cidr_(-1),
+      want_route_dump_(false),
+      want_link_dump_(false),
+      want_addr_dump_(false),
+      dump_in_progress_(false),
+      cidr_(0),
       signal_strength_dbm_(0),
       signal_strength_(0),
-      frequency_(0),
-      rfkill_{RFKILL_TYPE_WLAN} {
-  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
-  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
-  if (down_octets) {
-    bandwidth_down_total_ = *down_octets;
+#ifdef WANT_RFKILL
+      rfkill_{RFKILL_TYPE_WLAN},
+#endif
+      frequency_(0) {
+
+  // Start with some "text" in the module's label_, update() will then
+  // update it. Since the text should be different, update() will be able
+  // to show or hide the event_box_. This is to work around the case where
+  // the module start with no text, but the the event_box_ is shown.
+  label_.set_markup("<s></s>");
+
+  auto bandwidth = readBandwidthUsage();
+  if (bandwidth.has_value()) {
+    bandwidth_down_total_ = (*bandwidth).first;
+    bandwidth_up_total_ = (*bandwidth).second;
   } else {
     bandwidth_down_total_ = 0;
+    bandwidth_up_total_ = 0;
   }
 
-  if (up_octets) {
-    bandwidth_up_total_ = *up_octets;
+  if (!config_["interface"].isString()) {
+    // "interface" isn't configure, then try to guess the external
+    // interface currently used for internet.
+    want_route_dump_ = true;
   } else {
-    bandwidth_up_total_ = 0;
+    // Look for an interface that match "interface"
+    // and then find the address associated with it.
+    want_link_dump_ = true;
+    want_addr_dump_ = true;
   }
 
   createEventSocket();
   createInfoSocket();
-  auto default_iface = getPreferredIface(-1, false);
-  if (default_iface != -1) {
-    ifid_ = default_iface;
-    char ifname[IF_NAMESIZE];
-    if_indextoname(default_iface, ifname);
-    ifname_ = ifname;
-    getInterfaceAddress();
-  }
+
   dp.emit();
+  // Ask for a dump of interfaces and then addresses to populate our
+  // information. First the interface dump, and once done, the callback
+  // will be called again which will ask for addresses dump.
+  askForStateDump();
   worker();
 }
 
 waybar::modules::Network::~Network() {
   if (ev_fd_ > -1) {
-    eventfd_write(ev_fd_, 1);
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     close(ev_fd_);
   }
   if (efd_ > -1) {
@@ -145,10 +154,14 @@ void waybar::modules::Network::createEventSocket() {
   ev_sock_ = nl_socket_alloc();
   nl_socket_disable_seq_check(ev_sock_);
   nl_socket_modify_cb(ev_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
+  nl_socket_modify_cb(ev_sock_, NL_CB_FINISH, NL_CB_CUSTOM, handleEventsDone, this);
   auto groups = RTMGRP_LINK | (family_ == AF_INET ? RTMGRP_IPV4_IFADDR : RTMGRP_IPV6_IFADDR);
   nl_join_groups(ev_sock_, groups);  // Deprecated
   if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
     throw std::runtime_error("Can't connect network socket");
+  }
+  if (nl_socket_set_nonblocking(ev_sock_)) {
+    throw std::runtime_error("Can't set non-blocking on network socket");
   }
   nl_socket_add_membership(ev_sock_, RTNLGRP_LINK);
   if (family_ == AF_INET) {
@@ -156,6 +169,14 @@ void waybar::modules::Network::createEventSocket() {
   } else {
     nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_IFADDR);
   }
+  if (!config_["interface"].isString()) {
+    if (family_ == AF_INET) {
+      nl_socket_add_membership(ev_sock_, RTNLGRP_IPV4_ROUTE);
+    } else {
+      nl_socket_add_membership(ev_sock_, RTNLGRP_IPV6_ROUTE);
+    }
+  }
+
   efd_ = epoll_create1(EPOLL_CLOEXEC);
   if (efd_ < 0) {
     throw std::runtime_error("Can't create epoll");
@@ -192,7 +213,7 @@ void waybar::modules::Network::createInfoSocket() {
   }
   nl80211_id_ = genl_ctrl_resolve(sock_, "nl80211");
   if (nl80211_id_ < 0) {
-    throw std::runtime_error("Can't resolve nl80211 interface");
+    spdlog::warn("Can't resolve nl80211 interface");
   }
 }
 
@@ -208,23 +229,40 @@ void waybar::modules::Network::worker() {
     }
     thread_timer_.sleep_for(interval_);
   };
-  thread_rfkill_ = [this] {
-    rfkill_.waitForEvent();
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      if (ifid_ > 0) {
-        getInfo();
-        dp.emit();
-      }
-    }
-  };
+#ifdef WANT_RFKILL
+  rfkill_.on_update.connect([this](auto &) {
+    /* If we are here, it's likely that the network thread already holds the mutex and will be
+     * holding it for a next few seconds.
+     * Let's delegate the update to the timer thread instead of blocking the main thread.
+     */
+    thread_timer_.wake_up();
+  });
+#else
+  spdlog::warn("Waybar has been built without rfkill support.");
+#endif
   thread_ = [this] {
     std::array<struct epoll_event, EPOLL_MAX> events{};
 
     int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
     if (ec > 0) {
       for (auto i = 0; i < ec; i++) {
-        if (events[i].data.fd != nl_socket_get_fd(ev_sock_) || nl_recvmsgs_default(ev_sock_) < 0) {
+        if (events[i].data.fd == nl_socket_get_fd(ev_sock_)) {
+          int rc = 0;
+          // Read as many message as possible, until the socket blocks
+          while (true) {
+            errno = 0;
+            rc = nl_recvmsgs_default(ev_sock_);
+            if (rc == -NLE_AGAIN || errno == EAGAIN) {
+              rc = 0;
+              break;
+            }
+          }
+          if (rc < 0) {
+            spdlog::error("nl_recvmsgs_default error: {}", nl_geterror(-rc));
+            thread_.stop();
+            break;
+          }
+        } else {
           thread_.stop();
           break;
         }
@@ -235,10 +273,13 @@ void waybar::modules::Network::worker() {
 
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1) {
+#ifdef WANT_RFKILL
     if (rfkill_.getState())
       return "disabled";
+#endif
     return "disconnected";
   }
+  if (!carrier_) return "disconnected";
   if (ipaddr_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";
@@ -247,20 +288,21 @@ const std::string waybar::modules::Network::getNetworkState() const {
 auto waybar::modules::Network::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string                 tooltip_format;
-  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
-  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
 
-  unsigned long long bandwidth_down = 0;
-  if (down_octets) {
-    bandwidth_down = *down_octets - bandwidth_down_total_;
-    bandwidth_down_total_ = *down_octets;
+  auto bandwidth = readBandwidthUsage();
+  auto bandwidth_down = 0ull;
+  auto bandwidth_up = 0ull;
+  if (bandwidth.has_value()) {
+    auto down_octets = (*bandwidth).first;
+    auto up_octets = (*bandwidth).second;
+
+    bandwidth_down = down_octets - bandwidth_down_total_;
+    bandwidth_down_total_ = down_octets;
+
+    bandwidth_up = up_octets - bandwidth_up_total_;
+    bandwidth_up_total_ = up_octets;
   }
 
-  unsigned long long bandwidth_up = 0;
-  if (up_octets) {
-    bandwidth_up = *up_octets - bandwidth_up_total_;
-    bandwidth_up_total_ = *up_octets;
-  }
   if (!alt_) {
     auto state = getNetworkState();
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
@@ -268,6 +310,10 @@ auto waybar::modules::Network::update() -> void {
     }
     if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
+    } else if (config_["format"].isString()) {
+      default_format_ = config_["format"].asString();
+    } else {
+      default_format_ = DEFAULT_FORMAT;
     }
     if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
@@ -288,6 +334,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_),
       fmt::arg("ipaddr", ipaddr_),
+      fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_),
       fmt::arg("frequency", frequency_),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
@@ -316,6 +363,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_),
           fmt::arg("ipaddr", ipaddr_),
+          fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_),
           fmt::arg("frequency", frequency_),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
@@ -324,7 +372,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
           fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
           fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")));
-      if (label_.get_tooltip_text() != text) {
+      if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_text(tooltip_text);
       }
     } else if (label_.get_tooltip_text() != text) {
@@ -336,349 +384,350 @@ auto waybar::modules::Network::update() -> void {
   ALabel::update();
 }
 
-// Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
-int waybar::modules::Network::getExternalInterface(int skip_idx) const {
-  static const uint32_t route_buffer_size = 8192;
-  struct nlmsghdr *     hdr = nullptr;
-  struct rtmsg *        rt = nullptr;
-  char                  resp[route_buffer_size] = {0};
-  int                   ifidx = -1;
-
-  /* Prepare request. */
-  constexpr uint32_t reqlen = NLMSG_SPACE(sizeof(*rt));
-  char               req[reqlen] = {0};
-
-  /* Build the RTM_GETROUTE request. */
-  hdr = reinterpret_cast<struct nlmsghdr *>(req);
-  hdr->nlmsg_len = NLMSG_LENGTH(sizeof(*rt));
-  hdr->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-  hdr->nlmsg_type = RTM_GETROUTE;
-  rt = static_cast<struct rtmsg *>(NLMSG_DATA(hdr));
-  rt->rtm_family = family_;
-  rt->rtm_table = RT_TABLE_MAIN;
-
-  /* Issue the query. */
-  if (netlinkRequest(req, reqlen) < 0) {
-    goto out;
-  }
-
-  /* Read the response(s).
-   *
-   * WARNING: All the packets generated by the request must be consumed (as in,
-   * consume responses till NLMSG_DONE/NLMSG_ERROR is encountered).
-   */
-  do {
-    auto len = netlinkResponse(resp, route_buffer_size);
-    if (len < 0) {
-      goto out;
-    }
-
-    /* Parse the response payload into netlink messages. */
-    for (hdr = reinterpret_cast<struct nlmsghdr *>(resp); NLMSG_OK(hdr, len);
-         hdr = NLMSG_NEXT(hdr, len)) {
-      if (hdr->nlmsg_type == NLMSG_DONE) {
-        goto out;
-      }
-      if (hdr->nlmsg_type == NLMSG_ERROR) {
-        /* Even if we found the interface index, something is broken with the
-         * netlink socket, so return an error.
-         */
-        ifidx = -1;
-        goto out;
-      }
-
-      /* If we found the correct answer, skip parsing the attributes. */
-      if (ifidx != -1) {
-        continue;
-      }
-
-      /* Find the message(s) concerting the main routing table, each message
-       * corresponds to a single routing table entry.
-       */
-      rt = static_cast<struct rtmsg *>(NLMSG_DATA(hdr));
-      if (rt->rtm_table != RT_TABLE_MAIN) {
-        continue;
-      }
-
-      /* Parse all the attributes for a single routing table entry. */
-      struct rtattr *attr = RTM_RTA(rt);
-      uint64_t       attrlen = RTM_PAYLOAD(hdr);
-      bool           has_gateway = false;
-      bool           has_destination = false;
-      int            temp_idx = -1;
-      for (; RTA_OK(attr, attrlen); attr = RTA_NEXT(attr, attrlen)) {
-        /* Determine if this routing table entry corresponds to the default
-         * route by seeing if it has a gateway, and if a destination addr is
-         * set, that it is all 0s.
-         */
-        switch (attr->rta_type) {
-          case RTA_GATEWAY:
-            /* The gateway of the route.
-             *
-             * If someone every needs to figure out the gateway address as well,
-             * it's here as the attribute payload.
-             */
-            has_gateway = true;
-            break;
-          case RTA_DST: {
-            /* The destination address.
-             * Should be either missing, or maybe all 0s.  Accept both.
-             */
-            const uint32_t nr_zeroes = (family_ == AF_INET) ? 4 : 16;
-            unsigned char  c = 0;
-            size_t         dstlen = RTA_PAYLOAD(attr);
-            if (dstlen != nr_zeroes) {
-              break;
-            }
-            for (uint32_t i = 0; i < dstlen; i += 1) {
-              c |= *((unsigned char *)RTA_DATA(attr) + i);
-            }
-            has_destination = (c == 0);
-            break;
-          }
-          case RTA_OIF:
-            /* The output interface index. */
-            temp_idx = *static_cast<int *>(RTA_DATA(attr));
-            break;
-          default:
-            break;
-        }
-      }
-      /* If this is the default route, and we know the interface index,
-       * we can stop parsing this message.
-       */
-      if (has_gateway && !has_destination && temp_idx != -1 && temp_idx != skip_idx) {
-        ifidx = temp_idx;
-        break;
-      }
-    }
-  } while (true);
-
-out:
-  return ifidx;
-}
-
-void waybar::modules::Network::getInterfaceAddress() {
-  struct ifaddrs *ifaddr, *ifa;
-  cidr_ = 0;
-  int success = getifaddrs(&ifaddr);
-  if (success != 0) {
-    return;
-  }
-  ifa = ifaddr;
-  while (ifa != nullptr) {
-    if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == family_ &&
-        ifa->ifa_name == ifname_) {
-      char ipaddr[INET6_ADDRSTRLEN];
-      char netmask[INET6_ADDRSTRLEN];
-      unsigned int cidr = 0;
-      if (family_ == AF_INET) {
-        ipaddr_ = inet_ntop(AF_INET,
-                            &reinterpret_cast<struct sockaddr_in *>(ifa->ifa_addr)->sin_addr,
-                            ipaddr,
-                            INET_ADDRSTRLEN);
-        auto net_addr = reinterpret_cast<struct sockaddr_in *>(ifa->ifa_netmask);
-        netmask_ = inet_ntop(AF_INET, &net_addr->sin_addr, netmask, INET_ADDRSTRLEN);
-        unsigned int cidrRaw = net_addr->sin_addr.s_addr;
-        while (cidrRaw) {
-          cidr += cidrRaw & 1;
-          cidrRaw >>= 1;
-        }
-      } else {
-        ipaddr_ = inet_ntop(AF_INET6,
-                            &reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_addr)->sin6_addr,
-                            ipaddr,
-                            INET6_ADDRSTRLEN);
-        auto net_addr = reinterpret_cast<struct sockaddr_in6 *>(ifa->ifa_netmask);
-        netmask_ = inet_ntop(AF_INET6, &net_addr->sin6_addr, netmask, INET6_ADDRSTRLEN);
-        for (size_t i = 0; i < sizeof(net_addr->sin6_addr.s6_addr); ++i) {
-          unsigned char cidrRaw = net_addr->sin6_addr.s6_addr[i];
-          while (cidrRaw) {
-            cidr += cidrRaw & 1;
-            cidrRaw >>= 1;
-          }
-        }
-      }
-      cidr_ = cidr;
-      break;
-    }
-    ifa = ifa->ifa_next;
-  }
-  freeifaddrs(ifaddr);
-}
-
-int waybar::modules::Network::netlinkRequest(void *req, uint32_t reqlen, uint32_t groups) const {
-  struct sockaddr_nl sa = {};
-  sa.nl_family = AF_NETLINK;
-  sa.nl_groups = groups;
-  struct iovec  iov = {req, reqlen};
-  struct msghdr msg = {
-      .msg_name = &sa,
-      .msg_namelen = sizeof(sa),
-      .msg_iov = &iov,
-      .msg_iovlen = 1,
-  };
-  return sendmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
-}
-
-int waybar::modules::Network::netlinkResponse(void *resp, uint32_t resplen, uint32_t groups) const {
-  struct sockaddr_nl sa = {};
-  sa.nl_family = AF_NETLINK;
-  sa.nl_groups = groups;
-  struct iovec  iov = {resp, resplen};
-  struct msghdr msg = {
-      .msg_name = &sa,
-      .msg_namelen = sizeof(sa),
-      .msg_iov = &iov,
-      .msg_iovlen = 1,
-  };
-  auto ret = recvmsg(nl_socket_get_fd(ev_sock_), &msg, 0);
-  if (msg.msg_flags & MSG_TRUNC) {
-    return -1;
-  }
-  return ret;
-}
-
-bool waybar::modules::Network::checkInterface(struct ifinfomsg *rtif, std::string name) {
+bool waybar::modules::Network::checkInterface(std::string name) {
   if (config_["interface"].isString()) {
     return config_["interface"].asString() == name ||
            wildcardMatch(config_["interface"].asString(), name);
   }
-  // getExternalInterface may need some delay to detect external interface
-  for (uint8_t tries = 0; tries < MAX_RETRY; tries += 1) {
-    auto external_iface = getExternalInterface();
-    if (external_iface > 0) {
-      return external_iface == rtif->ifi_index;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  }
   return false;
 }
 
-int waybar::modules::Network::getPreferredIface(int skip_idx, bool wait) const {
-  int ifid = -1;
-  if (config_["interface"].isString()) {
-    ifid = if_nametoindex(config_["interface"].asCString());
-    if (ifid > 0) {
-      return ifid;
-    } else {
-      // Try with wildcard
-      struct ifaddrs *ifaddr, *ifa;
-      int             success = getifaddrs(&ifaddr);
-      if (success != 0) {
-        return -1;
-      }
-      ifa = ifaddr;
-      ifid = -1;
-      while (ifa != nullptr) {
-        if (wildcardMatch(config_["interface"].asString(), ifa->ifa_name)) {
-          ifid = if_nametoindex(ifa->ifa_name);
-          break;
-        }
-        ifa = ifa->ifa_next;
-      }
-      freeifaddrs(ifaddr);
-      return ifid;
-    }
-  }
-  // getExternalInterface may need some delay to detect external interface
-  for (uint8_t tries = 0; tries < MAX_RETRY; tries += 1) {
-    ifid = getExternalInterface(skip_idx);
-    if (ifid > 0) {
-      return ifid;
-    }
-    if (wait) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
-  }
-  return -1;
-}
-
 void waybar::modules::Network::clearIface() {
+  ifid_ = -1;
+  ifname_.clear();
   essid_.clear();
   ipaddr_.clear();
+  gwaddr_.clear();
   netmask_.clear();
+  carrier_ = false;
   cidr_ = 0;
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
   frequency_ = 0;
 }
 
-void waybar::modules::Network::checkNewInterface(struct ifinfomsg *rtif) {
-  auto new_iface = getPreferredIface(rtif->ifi_index);
-  if (new_iface != -1) {
-    ifid_ = new_iface;
-    char ifname[IF_NAMESIZE];
-    if_indextoname(new_iface, ifname);
-    ifname_ = ifname;
-    getInterfaceAddress();
-    thread_timer_.wake_up();
-  } else {
-    ifid_ = -1;
-    dp.emit();
-  }
-}
-
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
   auto                        net = static_cast<waybar::modules::Network *>(data);
   std::lock_guard<std::mutex> lock(net->mutex_);
   auto                        nh = nlmsg_hdr(msg);
-  auto                        ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-  if (nh->nlmsg_type == RTM_DELADDR) {
-    // Check for valid interface
-    if (ifi->ifi_index == net->ifid_) {
-      net->ipaddr_.clear();
-      net->netmask_.clear();
-      net->cidr_ = 0;
-      if (!(ifi->ifi_flags & IFF_RUNNING)) {
-        net->clearIface();
-        // Check for a new interface and get info
-        net->checkNewInterface(ifi);
-      } else {
-        net->dp.emit();
-      }
+  bool                        is_del_event = false;
+
+  switch (nh->nlmsg_type) {
+  case RTM_DELLINK:
+    is_del_event = true;
+  case RTM_NEWLINK: {
+    struct ifinfomsg *ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
+    ssize_t attrlen = IFLA_PAYLOAD(nh);
+    struct rtattr *ifla = IFLA_RTA(ifi);
+    const char *ifname = NULL;
+    size_t ifname_len = 0;
+    std::optional<bool> carrier;
+
+    if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
       return NL_OK;
     }
-  } else if (nh->nlmsg_type == RTM_NEWLINK || nh->nlmsg_type == RTM_DELLINK) {
-    char ifname[IF_NAMESIZE];
-    if_indextoname(ifi->ifi_index, ifname);
-    // Check for valid interface
-    if (ifi->ifi_index != net->ifid_ && net->checkInterface(ifi, ifname)) {
-      net->ifname_ = ifname;
-      net->ifid_ = ifi->ifi_index;
-      // Get Iface and WIFI info
-      net->getInterfaceAddress();
-      net->thread_timer_.wake_up();
-      return NL_OK;
-    } else if (ifi->ifi_index == net->ifid_ &&
-               (!(ifi->ifi_flags & IFF_RUNNING) || !(ifi->ifi_flags & IFF_UP) ||
-                !net->checkInterface(ifi, ifname))) {
+
+    // Check if the interface goes "down" and if we want to detect the
+    // external interface.
+    if (net->ifid_ != -1 && !(ifi->ifi_flags & IFF_UP)
+        && !net->config_["interface"].isString()) {
+      // The current interface is now down, all the routes associated with
+      // it have been deleted, so start looking for a new default route.
+      spdlog::debug("network: if{} down", net->ifid_);
       net->clearIface();
-      // Check for a new interface and get info
-      net->checkNewInterface(ifi);
+      net->dp.emit();
+      net->want_route_dump_ = true;
+      net->askForStateDump();
       return NL_OK;
     }
-  } else {
-    char ifname[IF_NAMESIZE];
-    if_indextoname(ifi->ifi_index, ifname);
-    // Auto detected network can also be assigned here
-    if (ifi->ifi_index != net->ifid_ && net->checkInterface(ifi, ifname)) {
-      // If iface is different, clear data
-      if (ifi->ifi_index != net->ifid_) {
-        net->clearIface();
+
+    for (; RTA_OK(ifla, attrlen); ifla = RTA_NEXT(ifla, attrlen)) {
+      switch (ifla->rta_type) {
+      case IFLA_IFNAME:
+        ifname = static_cast<const char *>(RTA_DATA(ifla));
+        ifname_len = RTA_PAYLOAD(ifla) - 1; // minus \0
+        break;
+      case IFLA_CARRIER: {
+        carrier = *(char*)RTA_DATA(ifla) == 1;
+        break;
       }
-      net->ifname_ = ifname;
-      net->ifid_ = ifi->ifi_index;
+      }
     }
-    // Check for valid interface
-    if (ifi->ifi_index == net->ifid_) {
-      // Get Iface and WIFI info
-      net->getInterfaceAddress();
-      net->thread_timer_.wake_up();
+
+    if (!is_del_event && ifi->ifi_index == net->ifid_) {
+      // Update interface information
+      if (net->ifname_.empty() && ifname != NULL) {
+        std::string new_ifname (ifname, ifname_len);
+        net->ifname_ = new_ifname;
+      }
+      if (carrier.has_value()) {
+        if (net->carrier_ != *carrier) {
+          if (*carrier) {
+            // Ask for WiFi information
+            net->thread_timer_.wake_up();
+          } else {
+            // clear state related to WiFi connection
+            net->essid_.clear();
+            net->signal_strength_dbm_ = 0;
+            net->signal_strength_ = 0;
+            net->frequency_ = 0;
+          }
+        }
+        net->carrier_ = carrier.value();
+      }
+    } else if (!is_del_event && net->ifid_ == -1) {
+      // Checking if it's an interface we care about.
+      std::string new_ifname (ifname, ifname_len);
+      if (net->checkInterface(new_ifname)) {
+        spdlog::debug("network: selecting new interface {}/{}", new_ifname, ifi->ifi_index);
+
+        net->ifname_ = new_ifname;
+        net->ifid_ = ifi->ifi_index;
+        if (carrier.has_value()) {
+          net->carrier_ = carrier.value();
+        }
+        net->thread_timer_.wake_up();
+        /* An address for this new interface should be received via an
+         * RTM_NEWADDR event either because we ask for a dump of both links
+         * and addrs, or because this interface has just been created and
+         * the addr will be sent after the RTM_NEWLINK event.
+         * So we don't need to do anything. */
+      }
+    } else if (is_del_event && net->ifid_ >= 0) {
+      // Our interface has been deleted, start looking/waiting for one we care.
+      spdlog::debug("network: interface {}/{} deleted", net->ifname_, net->ifid_);
+
+      net->clearIface();
+      net->dp.emit();
+    }
+    break;
+  }
+
+  case RTM_DELADDR:
+    is_del_event = true;
+  case RTM_NEWADDR: {
+    struct ifaddrmsg *ifa = static_cast<struct ifaddrmsg *>(NLMSG_DATA(nh));
+    ssize_t attrlen = IFA_PAYLOAD(nh);
+    struct rtattr *ifa_rta = IFA_RTA(ifa);
+
+    if ((int)ifa->ifa_index != net->ifid_) {
       return NL_OK;
     }
+
+    if (ifa->ifa_family != net->family_) {
+      return NL_OK;
+    }
+
+    // We ignore address mark as scope for the link or host,
+    // which should leave scope global addresses.
+    if (ifa->ifa_scope >= RT_SCOPE_LINK) {
+      return NL_OK;
+    }
+
+    for (; RTA_OK(ifa_rta, attrlen); ifa_rta = RTA_NEXT(ifa_rta, attrlen)) {
+      switch (ifa_rta->rta_type) {
+      case IFA_ADDRESS: {
+        char ipaddr[INET6_ADDRSTRLEN];
+        if (!is_del_event) {
+          net->ipaddr_ = inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta),
+                                   ipaddr, sizeof (ipaddr));
+          net->cidr_ = ifa->ifa_prefixlen;
+          switch (ifa->ifa_family) {
+          case AF_INET: {
+            struct in_addr netmask;
+            netmask.s_addr = htonl(~0 << (32 - ifa->ifa_prefixlen));
+            net->netmask_ = inet_ntop(ifa->ifa_family, &netmask,
+                                      ipaddr, sizeof (ipaddr));
+          }
+          case AF_INET6: {
+            struct in6_addr netmask;
+            for (int i = 0; i < 16; i++) {
+              int v = (i + 1) * 8 - ifa->ifa_prefixlen;
+              if (v < 0) v = 0;
+              if (v > 8) v = 8;
+              netmask.s6_addr[i] = ~0 << v;
+            }
+            net->netmask_ = inet_ntop(ifa->ifa_family, &netmask,
+                                      ipaddr, sizeof (ipaddr));
+          }
+          }
+          spdlog::debug("network: {}, new addr {}/{}", net->ifname_, net->ipaddr_, net->cidr_);
+        } else {
+          net->ipaddr_.clear();
+          net->cidr_ = 0;
+          net->netmask_.clear();
+          spdlog::debug("network: {} addr deleted {}/{}",
+                        net->ifname_,
+                        inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta),
+                                  ipaddr, sizeof (ipaddr)),
+                        ifa->ifa_prefixlen);
+        }
+        net->dp.emit();
+        break;
+      }
+      }
+    }
+    break;
   }
-  return NL_SKIP;
+
+    char	temp_gw_addr[INET6_ADDRSTRLEN];
+  case RTM_DELROUTE:
+    is_del_event = true;
+  case RTM_NEWROUTE: {
+    // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
+    // to find the interface used to reach the outside world
+
+    struct rtmsg  *rtm = static_cast<struct rtmsg *>(NLMSG_DATA(nh));
+    ssize_t attrlen = RTM_PAYLOAD(nh);
+    struct rtattr *attr = RTM_RTA(rtm);
+    bool           has_gateway = false;
+    bool           has_destination = false;
+    int            temp_idx = -1;
+    uint32_t       priority = 0;
+
+
+    /* Find the message(s) concerting the main routing table, each message
+     * corresponds to a single routing table entry.
+     */
+    if (rtm->rtm_table != RT_TABLE_MAIN) {
+      return NL_OK;
+    }
+
+    /* Parse all the attributes for a single routing table entry. */
+    for (; RTA_OK(attr, attrlen); attr = RTA_NEXT(attr, attrlen)) {
+      /* Determine if this routing table entry corresponds to the default
+       * route by seeing if it has a gateway, and if a destination addr is
+       * set, that it is all 0s.
+       */
+      switch(attr->rta_type) {
+      case RTA_GATEWAY:
+        /* The gateway of the route.
+         *
+         * If someone ever needs to figure out the gateway address as well,
+         * it's here as the attribute payload.
+         */
+	inet_ntop(net->family_, RTA_DATA(attr), temp_gw_addr, sizeof(temp_gw_addr));
+        has_gateway = true;
+        break;
+      case RTA_DST: {
+        /* The destination address.
+         * Should be either missing, or maybe all 0s.  Accept both.
+         */
+        const uint32_t nr_zeroes = (net->family_ == AF_INET) ? 4 : 16;
+        unsigned char  c = 0;
+        size_t         dstlen = RTA_PAYLOAD(attr);
+        if (dstlen != nr_zeroes) {
+          break;
+        }
+        for (uint32_t i = 0; i < dstlen; i += 1) {
+          c |= *((unsigned char *)RTA_DATA(attr) + i);
+        }
+        has_destination = (c == 0);
+        break;
+      }
+      case RTA_OIF:
+        /* The output interface index. */
+        temp_idx = *static_cast<int *>(RTA_DATA(attr));
+        break;
+      case RTA_PRIORITY:
+        priority = *(uint32_t*)RTA_DATA(attr);
+        break;
+      default:
+        break;
+      }
+    }
+
+    // Check if we have a default route.
+    if (has_gateway && !has_destination && temp_idx != -1) {
+      // Check if this is the first default route we see, or if this new
+      // route have a higher priority.
+      if (!is_del_event && ((net->ifid_ == -1) || (priority < net->route_priority))) {
+        // Clear if's state for the case were there is a higher priority
+        // route on a different interface.
+        net->clearIface();
+        net->ifid_ = temp_idx;
+        net->route_priority = priority;
+        net->gwaddr_ = temp_gw_addr;
+        spdlog::debug("network: new default route via {} on if{} metric {}", temp_gw_addr, temp_idx, priority);
+
+        /* Ask ifname associated with temp_idx as well as carrier status */
+        struct ifinfomsg ifinfo_hdr = {
+          .ifi_family = AF_UNSPEC,
+          .ifi_index = temp_idx,
+        };
+        int err;
+        err = nl_send_simple(net->ev_sock_, RTM_GETLINK, NLM_F_REQUEST,
+                             &ifinfo_hdr, sizeof (ifinfo_hdr));
+        if (err < 0) {
+          spdlog::error("network: failed to ask link info: {}", err);
+          /* Ask for a dump of all links instead */
+          net->want_link_dump_ = true;
+        }
+
+        /* Also ask for the address. Asking for a addresses of a specific
+         * interface doesn't seems to work so ask for a dump of all
+         * addresses. */
+        net->want_addr_dump_ = true;
+        net->askForStateDump();
+        net->thread_timer_.wake_up();
+      } else if (is_del_event && temp_idx == net->ifid_
+                 && net->route_priority == priority) {
+        spdlog::debug("network: default route deleted {}/if{} metric {}",
+                      net->ifname_, temp_idx, priority);
+
+        net->clearIface();
+        net->dp.emit();
+        /* Ask for a dump of all routes in case another one is already
+         * setup. If there's none, there'll be an event with new one
+         * later. */
+        net->want_route_dump_ = true;
+        net->askForStateDump();
+      }
+    }
+    break;
+  }
+  }
+
+  return NL_OK;
+}
+
+void waybar::modules::Network::askForStateDump(void) {
+  /* We need to wait until the current dump is done before sending new
+   * messages. handleEventsDone() is called when a dump is done. */
+  if (dump_in_progress_)
+    return;
+
+  struct rtgenmsg rt_hdr = {
+    .rtgen_family = AF_UNSPEC,
+  };
+
+  if (want_route_dump_) {
+    rt_hdr.rtgen_family = family_;
+    nl_send_simple(ev_sock_, RTM_GETROUTE, NLM_F_DUMP,
+                   &rt_hdr, sizeof (rt_hdr));
+    want_route_dump_ = false;
+    dump_in_progress_ = true;
+
+  } else if (want_link_dump_) {
+    nl_send_simple(ev_sock_, RTM_GETLINK, NLM_F_DUMP,
+                   &rt_hdr, sizeof (rt_hdr));
+    want_link_dump_ = false;
+    dump_in_progress_ = true;
+
+  } else if (want_addr_dump_) {
+    rt_hdr.rtgen_family = family_;
+    nl_send_simple(ev_sock_, RTM_GETADDR, NLM_F_DUMP,
+                   &rt_hdr, sizeof (rt_hdr));
+    want_addr_dump_ = false;
+    dump_in_progress_ = true;
+  }
+}
+
+int waybar::modules::Network::handleEventsDone(struct nl_msg *msg, void *data) {
+  auto net = static_cast<waybar::modules::Network *>(data);
+  net->dump_in_progress_ = false;
+  net->askForStateDump();
+  return NL_OK;
 }
 
 int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
