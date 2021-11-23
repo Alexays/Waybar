@@ -3,6 +3,8 @@
 #include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 
+#include <stdexcept>
+
 #include "bar.hpp"
 #include "modules/sway/ipc/ipc.hpp"
 
@@ -47,13 +49,13 @@ struct swaybar_config parseConfig(const Json::Value& payload) {
 }
 
 void BarIpcClient::onInitialConfig(const struct Ipc::ipc_response& res) {
-  try {
-    auto payload = parser_.parse(res.payload);
-    auto config = parseConfig(payload);
-    onConfigUpdate(config);
-  } catch (const std::exception& e) {
-    spdlog::error("BarIpcClient::onInitialConfig {}", e.what());
+  auto payload = parser_.parse(res.payload);
+  if (auto success = payload.get("success", true); !success.asBool()) {
+    auto err = payload.get("error", "Unknown error");
+    throw std::runtime_error(err.asString());
   }
+  auto config = parseConfig(payload);
+  onConfigUpdate(config);
 }
 
 void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {

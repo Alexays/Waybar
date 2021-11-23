@@ -61,6 +61,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
 
 const std::string_view Bar::MODE_DEFAULT = "default";
 const std::string_view Bar::MODE_INVISIBLE = "invisible";
+const std::string_view DEFAULT_BAR_ID = "bar-0";
 
 #ifdef HAVE_GTK_LAYER_SHELL
 struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
@@ -556,7 +557,14 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     if (auto id = config["id"]; id.isString()) {
       bar_id = id.asString();
     }
-    _ipc_client = std::make_unique<BarIpcClient>(*this);
+    if (bar_id.empty()) {
+      bar_id = DEFAULT_BAR_ID;
+    }
+    try {
+      _ipc_client = std::make_unique<BarIpcClient>(*this);
+    } catch (const std::exception& exc) {
+      spdlog::warn("Failed to open bar ipc connection: {}", exc.what());
+    }
   }
 #endif
 
