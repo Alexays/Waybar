@@ -141,6 +141,7 @@ auto WorkspaceManager::update() -> void {
   }
   if (creation_delayed()) {
     creation_delayed_ = false;
+    sort_workspaces();
   }
   AModule::update();
 }
@@ -283,7 +284,7 @@ auto WorkspaceGroup::handle_done() -> void {
   }
 
   if (!workspace_manager_.all_outputs()) {
-    //sort_workspaces();
+    sort_workspaces();
   } else {
     workspace_manager_.sort_workspaces();
   }
