@@ -328,7 +328,7 @@ auto waybar::modules::Network::update() -> void {
 
   auto text = fmt::format(
       format_,
-      fmt::arg("essid", essid_),
+      fmt::arg("essid", Glib::Markup::escape_text(essid_)),
       fmt::arg("signaldBm", signal_strength_dbm_),
       fmt::arg("signalStrength", signal_strength_),
       fmt::arg("ifname", ifname_),
@@ -779,7 +779,7 @@ void waybar::modules::Network::parseEssid(struct nlattr **bss) {
       auto        essid_end = essid_begin + ies[1];
       std::string essid_raw;
       std::copy(essid_begin, essid_end, std::back_inserter(essid_raw));
-      essid_ = Glib::Markup::escape_text(essid_raw);
+      essid_ = essid_raw;
     }
   }
 }
