@@ -4,11 +4,14 @@ on: [ push, pull_request ]
 
 jobs:
   clang:
-    runs-on: macos-latest # until https://github.com/actions/runner/issues/385
+    # Run actions in a FreeBSD vm on the macos-10.15 runner
+    # https://github.com/actions/runner/issues/385 - for FreeBSD runner support
+    # https://github.com/actions/virtual-environments/issues/4060 - for lack of VirtualBox on MacOS 11 runners
+    runs-on: macos-10.15
     steps:
     - uses: actions/checkout@v2
     - name: Test in FreeBSD VM
-      uses: vmactions/freebsd-vm@v0.1.4 # aka FreeBSD 12.2
+      uses: vmactions/freebsd-vm@v0.1.5 # aka FreeBSD 13.0
       with:
         usesh: true
         prepare: |

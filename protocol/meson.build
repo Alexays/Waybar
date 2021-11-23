@@ -29,6 +29,7 @@ client_protocols = [
 	['wlr-foreign-toplevel-management-unstable-v1.xml'],
 	['ext-workspace-unstable-v1.xml'],
 	['river-status-unstable-v1.xml'],
+	['river-control-unstable-v1.xml'],
 ]
 
 client_protos_src = []

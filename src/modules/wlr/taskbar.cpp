@@ -276,8 +276,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
         struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat) :
     bar_{bar}, config_{config}, tbar_{tbar}, handle_{tl_handle}, seat_{seat},
     id_{global_id++},
-    content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
-    button_visible_{false}, ignored_{false}
+    content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0}
 {
     zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
@@ -377,13 +376,12 @@ std::string Task::state_string(bool shortened) const
 void Task::handle_title(const char *title)
 {
     title_ = title;
+    hide_if_ignored();
 }
 
-void Task::handle_app_id(const char *app_id)
+void Task::hide_if_ignored()
 {
-    app_id_ = app_id;
-
-    if (tbar_->ignore_list().count(app_id)) {
+    if (tbar_->ignore_list().count(app_id_) || tbar_->ignore_list().count(title_)) {
         ignored_ = true;
         if (button_visible_) {
           auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
@@ -397,6 +395,12 @@ void Task::handle_app_id(const char *app_id)
           handle_output_enter(output);
         }
     }
+}
+
+void Task::handle_app_id(const char *app_id)
+{
+    app_id_ = app_id;
+    hide_if_ignored();
 
     if (!with_icon_)
         return;
@@ -418,12 +422,12 @@ void Task::handle_app_id(const char *app_id)
 
 void Task::handle_output_enter(struct wl_output *output)
 {
-    spdlog::debug("{} entered output {}", repr(), (void*)output);
-
     if (ignored_) {
       spdlog::debug("{} is ignored", repr());
       return;
     }
+
+    spdlog::debug("{} entered output {}", repr(), (void*)output);
 
     if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
         /* The task entered the output of the current bar make the button visible */

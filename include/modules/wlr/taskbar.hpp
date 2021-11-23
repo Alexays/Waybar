@@ -61,8 +61,8 @@ class Task
     Gtk::Image icon_;
     Gtk::Label text_before_;
     Gtk::Label text_after_;
-    bool button_visible_;
-    bool ignored_;
+    bool button_visible_ = false;
+    bool ignored_ = false;
 
     bool with_icon_;
     std::string format_before_;
@@ -77,6 +77,7 @@ class Task
    private:
     std::string repr() const;
     std::string state_string(bool = false) const;
+    void hide_if_ignored();
 
    public:
     /* Getter functions */
