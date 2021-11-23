@@ -99,7 +99,8 @@ auto Language::update() -> void {
                                          fmt::arg("short", layout_.short_name),
                                          fmt::arg("shortDescription", layout_.short_description),
                                          fmt::arg("long", layout_.full_name),
-                                         fmt::arg("variant", layout_.variant)));
+                                         fmt::arg("variant", layout_.variant),
+                                         fmt::arg("flag", layout_.country_flag())));
   label_.set_markup(display_layout);
   if (tooltipEnabled()) {
     if (tooltip_format_ != "") {

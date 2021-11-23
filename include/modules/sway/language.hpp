@@ -32,6 +32,12 @@ class Language : public ALabel, public sigc::trackable {
     std::string short_name;
     std::string variant;
     std::string short_description;
+    std::string country_flag() const {
+      static std::string result = "\xf0\x9f\x87\xff\xf0\x9f\x87\xff";
+      result[3] = short_name[0] - 0xbb;
+      result[7] = short_name[1] - 0xbb;
+      return result;
+    }
   };
 
   class XKBContext {
@@ -54,7 +60,7 @@ class Language : public ALabel, public sigc::trackable {
 
   const static std::string XKB_LAYOUT_NAMES_KEY;
   const static std::string XKB_ACTIVE_LAYOUT_NAME_KEY;
-  
+
   Layout                        layout_;
   std::string tooltip_format_ = "";
   std::map<std::string, Layout> layouts_map_;
