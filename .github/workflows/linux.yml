@@ -23,3 +23,5 @@ jobs:
         run: meson -Dman-pages=enabled build
       - name: build
         run: ninja -C build
+      - name: test
+        run: meson test -C build --no-rebuild --print-errorlogs --suite waybar

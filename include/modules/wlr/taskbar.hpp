@@ -84,6 +84,7 @@ class Task
     std::string state_string(bool = false) const;
     void set_app_info_from_app_id_list(const std::string& app_id_list);
     bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme, Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size);
+    void hide_if_ignored();
 
    public:
     /* Getter functions */

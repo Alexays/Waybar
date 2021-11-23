@@ -64,6 +64,10 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	typeof: integer ++
 	Margins value without units.
 
+*spacing* ++
+	typeof: integer ++
+	Size of gaps in between of the different modules.
+
 *name* ++
 	typeof: string ++
 	Optional name added as a CSS class, for styling multiple waybars.
@@ -87,8 +91,9 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *include* ++
 	typeof: string|array ++
-	Paths to additional configuration files. In case of duplicate options, the including file's value takes precedence. Make sure to avoid circular imports.
-	For a multi-bar config, specify at least an empty object for each bar also in every file being included.
+	Paths to additional configuration files.
+	Each file can contain a single object with any of the bar configuration options. In case of duplicate options, the first defined value takes precedence, i.e. including file -> first included file -> etc. Nested includes are permitted, but make sure to avoid circular imports.
+	For a multi-bar config, the include directive affects only current bar configuration object.
 
 # MODULE FORMAT
 
@@ -219,5 +224,6 @@ Valid options for the "rotate" property are: 0, 90, 180 and 270.
 - *waybar-sway-window(5)*
 - *waybar-sway-workspaces(5)*
 - *waybar-wlr-taskbar(5)*
+- *waybar-wlr-workspaces(5)*
 - *waybar-temperature(5)*
 - *waybar-tray(5)*

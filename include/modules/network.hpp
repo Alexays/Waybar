@@ -43,6 +43,7 @@ class Network : public ALabel {
   const std::string getNetworkState() const;
   void              clearIface();
   bool              wildcardMatch(const std::string& pattern, const std::string& text) const;
+  std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
 
   int                ifid_;
   sa_family_t        family_;
@@ -67,6 +68,7 @@ class Network : public ALabel {
   bool        carrier_;
   std::string ifname_;
   std::string ipaddr_;
+  std::string gwaddr_;
   std::string netmask_;
   int         cidr_;
   int32_t     signal_strength_dbm_;

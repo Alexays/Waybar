@@ -13,10 +13,10 @@
 
 namespace waybar {
 static constexpr const char* MIN_HEIGHT_MSG =
-    "Requested height: {} exceeds the minimum height: {} required by the modules";
+    "Requested height: {} is less than the minimum height: {} required by the modules";
 
 static constexpr const char* MIN_WIDTH_MSG =
-    "Requested width: {} exceeds the minimum width: {} required by the modules";
+    "Requested width: {} is less than the minimum width: {} required by the modules";
 
 static constexpr const char* BAR_SIZE_MSG = "Bar configured (width: {}, height: {}) for output: {}";
 
@@ -437,6 +437,13 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   left_.get_style_context()->add_class("modules-left");
   center_.get_style_context()->add_class("modules-center");
   right_.get_style_context()->add_class("modules-right");
+
+  if (config["spacing"].isInt()) {
+    int spacing = config["spacing"].asInt();
+    left_.set_spacing(spacing);
+    center_.set_spacing(spacing);
+    right_.set_spacing(spacing);
+  }
 
   uint32_t height = config["height"].isUInt() ? config["height"].asUInt() : 0;
   uint32_t width = config["width"].isUInt() ? config["width"].asUInt() : 0;

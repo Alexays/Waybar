@@ -70,7 +70,7 @@ Addressed by *wlr/taskbar*
 
 *ignore-list*: ++
 	typeof: array ++
-	List of app_id to be invisible.
+	List of app_id/titles to be invisible.
 
 *app_ids-mapping*: ++
 	typeof: object ++

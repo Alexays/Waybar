@@ -149,6 +149,7 @@ src_files = files(
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
+    'src/config.cpp',
     'src/util/ustring_clen.cpp'
 )
 
@@ -185,6 +186,8 @@ src_files += [
 if true
     add_project_arguments('-DHAVE_WLR', language: 'cpp')
     src_files += 'src/modules/wlr/taskbar.cpp'
+    src_files += 'src/modules/wlr/workspace_manager.cpp'
+    src_files += 'src/modules/wlr/workspace_manager_binding.cpp'
 endif
 
 if true
@@ -333,6 +336,7 @@ if scdoc.found()
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
+        'waybar-wlr-workspaces.5.scd',
         'waybar-bluetooth.5.scd',
         'waybar-sndio.5.scd',
     ]
@@ -357,6 +361,15 @@ if scdoc.found()
             install_dir: '@0@/man@1@'.format(mandir, section)
         )
     endforeach
+endif
+
+catch2 = dependency(
+    'catch2',
+    fallback: ['catch2', 'catch2_dep'],
+    required: get_option('tests'),
+)
+if catch2.found()
+    subdir('test')
 endif
 
 clangtidy = find_program('clang-tidy', required: false)

@@ -14,6 +14,7 @@
 #endif
 #ifdef HAVE_WLR
 #include "modules/wlr/taskbar.hpp"
+#include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
 #include "modules/river/tags.hpp"

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="river_control_unstable_v1">
+  <copyright>
+    Copyright 2020 The River Developers
+
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose with or without fee is hereby granted, provided that the above
+    copyright notice and this permission notice appear in all copies.
+
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+    WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+    MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+    ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+    ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  </copyright>
+
+  <interface name="zriver_control_v1" version="1">
+    <description summary="run compositor commands">
+      This interface allows clients to run compositor commands and receive a
+      success/failure response with output or a failure message respectively.
+
+      Each command is built up in a series of add_argument requests and
+      executed with a run_command request. The first argument is the command
+      to be run.
+
+      A complete list of commands should be made available in the man page of
+      the compositor.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the river_control object">
+        This request indicates that the client will not use the
+        river_control object any more. Objects that have been created
+        through this instance are not affected.
+      </description>
+    </request>
+
+    <request name="add_argument">
+      <description summary="add an argument to the current command">
+        Arguments are stored by the server in the order they were sent until
+        the run_command request is made.
+      </description>
+      <arg name="argument" type="string" summary="the argument to add"/>
+    </request>
+
+    <request name="run_command">
+      <description summary="run the current command">
+        Execute the command built up using the add_argument request for the
+        given seat.
+      </description>
+      <arg name="seat" type="object" interface="wl_seat"/>
+      <arg name="callback" type="new_id" interface="zriver_command_callback_v1"
+        summary="callback object"/>
+    </request>
+  </interface>
+
+  <interface name="zriver_command_callback_v1" version="1">
+    <description summary="callback object">
+      This object is created by the run_command request. Exactly one of the
+      success or failure events will be sent. This object will be destroyed
+      by the compositor after one of the events is sent.
+    </description>
+
+    <event name="success">
+      <description summary="command successful">
+        Sent when the command has been successfully received and executed by
+        the compositor. Some commands may produce output, in which case the
+        output argument will be a non-empty string.
+      </description>
+      <arg name="output" type="string" summary="the output of the command"/>
+    </event>
+
+    <event name="failure">
+      <description summary="command failed">
+        Sent when the command could not be carried out. This could be due to
+        sending a non-existent command, no command, not enough arguments, too
+        many arguments, invalid arguments, etc.
+      </description>
+      <arg name="failure_message" type="string"
+        summary="a message explaining why failure occurred"/>
+    </event>
+  </interface>
+</protocol>

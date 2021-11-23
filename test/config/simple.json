@@ -1,0 +1,5 @@
+{
+  "layer": "top",
+  "height": 30,
+  "output": ["HDMI-0", "DP-0"]
+}
