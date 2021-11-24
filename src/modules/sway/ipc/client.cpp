@@ -22,7 +22,6 @@ Ipc::~Ipc() {
   }
   if (fd_event_ > 0) {
     if (write(fd_event_, "close-sway-ipc", 14) == -1) {
-       //std::runtime_error("Couldn't close Sway IPC through fd_event");
     }
     close(fd_event_);
     fd_event_ = -1;
