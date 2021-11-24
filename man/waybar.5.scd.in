@@ -79,12 +79,12 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *exclusive* ++
 	typeof: bool ++
-	default: *true* unless the layer is set to *overlay* ++
+	default: *true* ++
 	Option to request an exclusive zone from the compositor. Disable this to allow drawing application windows underneath or on top of the bar.
 
 *passthrough* ++
 	typeof: bool ++
-	default: *false* unless the layer is set to *overlay* ++
+	default: *false* ++
 	Option to pass any pointer events to the window under the bar.
 	Intended to be used with either *top* or *overlay* layers and without exclusive zone.
 
