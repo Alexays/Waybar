@@ -5,10 +5,15 @@
 
 #include <catch2/catch.hpp>
 #include <thread>
+#include <type_traits>
 
 #include "GlibTestsFixture.hpp"
 
 using namespace waybar;
+
+template <typename T>
+using remove_cvref_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
 /**
  * Basic sanity test for SafeSignal:
  * check that type deduction works, events are delivered and the order is right
@@ -25,7 +30,7 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal basic functionality", "[signal][t
   std::thread producer;
 
   // timeout the test in 500ms
-  Glib::signal_timeout().connect_once([]() { throw std::runtime_error("Test timed out"); }, 500);
+  setTimeout(500);
 
   test_signal.connect([&](auto val, auto str) {
     static_assert(std::is_same<int, decltype(val)>::value);
@@ -50,6 +55,83 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal basic functionality", "[signal][t
     producer = std::thread([&]() {
       for (auto i = 2; i <= NUM_EVENTS; ++i) {
         test_signal.emit(i, "test");
+      }
+    });
+  });
+  producer.join();
+  REQUIRE(count == NUM_EVENTS);
+}
+
+template <typename T>
+struct TestObject {
+  T        value;
+  unsigned copied = 0;
+  unsigned moved = 0;
+
+  TestObject(const T& v) : value(v){};
+  ~TestObject() = default;
+
+  TestObject(const TestObject& other)
+      : value(other.value), copied(other.copied + 1), moved(other.moved) {}
+
+  TestObject(TestObject&& other) noexcept
+      : value(std::move(other.value)),
+        copied(std::exchange(other.copied, 0)),
+        moved(std::exchange(other.moved, 0) + 1) {}
+
+  TestObject& operator=(const TestObject& other) {
+    value = other.value;
+    copied = other.copied + 1;
+    moved = other.moved;
+    return *this;
+  }
+
+  TestObject& operator=(TestObject&& other) noexcept {
+    value = std::move(other.value);
+    copied = std::exchange(other.copied, 0);
+    moved = std::exchange(other.moved, 0) + 1;
+    return *this;
+  }
+
+  bool operator==(T other) const { return value == other; }
+       operator T() const { return value; }
+};
+
+/*
+ * Check the number of copies/moves performed on the object passed through SafeSignal
+ */
+TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal copy/move counter", "[signal][thread][util]") {
+  const int NUM_EVENTS = 3;
+  int       count = 0;
+
+  SafeSignal<TestObject<int>> test_signal;
+
+  std::thread producer;
+
+  // timeout the test in 500ms
+  setTimeout(500);
+
+  test_signal.connect([&](auto& val) {
+    static_assert(std::is_same<TestObject<int>, remove_cvref_t<decltype(val)>>::value);
+
+    /* explicit move in the producer thread */
+    REQUIRE(val.moved <= 1);
+    /* copy within the SafeSignal queuing code */
+    REQUIRE(val.copied <= 1);
+
+    if (++count >= NUM_EVENTS) {
+      this->quit();
+    };
+  });
+
+  run([&]() {
+    test_signal.emit(1);
+    REQUIRE(count == 1);
+    producer = std::thread([&]() {
+      for (auto i = 2; i <= NUM_EVENTS; ++i) {
+        TestObject<int> t{i};
+        // check that signal.emit accepts moved objects
+        test_signal.emit(std::move(t));
       }
     });
   });

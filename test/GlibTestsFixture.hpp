@@ -7,6 +7,11 @@ class GlibTestsFixture : public sigc::trackable {
  public:
   GlibTestsFixture() : main_loop_{Glib::MainLoop::create()} {}
 
+  void setTimeout(int timeout) {
+    Glib::signal_timeout().connect_once([]() { throw std::runtime_error("Test timed out"); },
+                                        timeout);
+  }
+
   void run(std::function<void()> fn) {
     Glib::signal_idle().connect_once(fn);
     main_loop_->run();
