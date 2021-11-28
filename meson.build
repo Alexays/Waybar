@@ -257,6 +257,10 @@ else
     src_files += 'src/modules/simpleclock.cpp'
 endif
 
+if get_option('experimental')
+    add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
+endif
+
 subdir('protocol')
 
 executable(
@@ -383,3 +387,4 @@ if clangtidy.found()
             '-p', meson.build_root()
         ] + src_files)
 endif
+
