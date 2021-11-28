@@ -63,6 +63,48 @@ const std::string_view Bar::MODE_DEFAULT = "default";
 const std::string_view Bar::MODE_INVISIBLE = "invisible";
 const std::string_view DEFAULT_BAR_ID = "bar-0";
 
+/* Deserializer for enum bar_layer */
+void from_json(const Json::Value& j, bar_layer& l) {
+  if (j == "bottom") {
+    l = bar_layer::BOTTOM;
+  } else if (j == "top") {
+    l = bar_layer::TOP;
+  } else if (j == "overlay") {
+    l = bar_layer::OVERLAY;
+  }
+}
+
+/* Deserializer for struct bar_mode */
+void from_json(const Json::Value& j, bar_mode& m) {
+  if (j.isObject()) {
+    if (auto v = j["layer"]; v.isString()) {
+      from_json(v, m.layer);
+    }
+    if (auto v = j["exclusive"]; v.isBool()) {
+      m.exclusive = v.asBool();
+    }
+    if (auto v = j["passthrough"]; v.isBool()) {
+      m.passthrough = v.asBool();
+    }
+    if (auto v = j["visible"]; v.isBool()) {
+      m.visible = v.asBool();
+    }
+  }
+}
+
+/* Deserializer for JSON Object -> map<string compatible type, Value>
+ * Assumes that all the values in the object are deserializable to the same type.
+ */
+template <typename Key, typename Value,
+          typename = std::enable_if_t<std::is_convertible<std::string_view, Key>::value>>
+void from_json(const Json::Value& j, std::map<Key, Value>& m) {
+  if (j.isObject()) {
+    for (auto it = j.begin(); it != j.end(); ++it) {
+      from_json(*it, m[it.key().asString()]);
+    }
+  }
+}
+
 #ifdef HAVE_GTK_LAYER_SHELL
 struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
   GLSSurfaceImpl(Gtk::Window& window, struct waybar_output& output) : window_{window} {
@@ -527,23 +569,15 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   surface_impl_->setPosition(position);
   surface_impl_->setSize(width, height);
 
-  /* Init "default" mode from globals */
-  auto& default_mode = configured_modes[MODE_DEFAULT];
-  if (config["layer"] == "top") {
-    default_mode.layer = bar_layer::TOP;
-  } else if (config["layer"] == "overlay") {
-    default_mode.layer = bar_layer::OVERLAY;
+  /* Read custom modes if available */
+  if (auto modes = config.get("modes", {}); modes.isObject()) {
+    from_json(modes, configured_modes);
   }
 
-  if (config["exclusive"].isBool()) {
-    default_mode.exclusive = config["exclusive"].asBool();
-  }
+  /* Update "default" mode with the global bar options */
+  from_json(config, configured_modes[MODE_DEFAULT]);
 
-  if (config["passthrough"].isBool()) {
-    default_mode.passthrough = config["passthrough"].asBool();
-  }
-
-  if (auto mode = config["mode"]; mode.isString()) {
+  if (auto mode = config.get("mode", {}); mode.isString()) {
     setMode(config["mode"].asString());
   } else {
     setMode(MODE_DEFAULT);
