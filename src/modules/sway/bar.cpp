@@ -71,7 +71,7 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
     } else {
       // configuration update
       auto config = parseConfig(payload);
-      signal_config_(config);
+      signal_config_(std::move(config));
     }
   } catch (const std::exception& e) {
     spdlog::error("BarIpcClient::onEvent {}", e.what());
