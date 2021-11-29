@@ -9,6 +9,9 @@
 #include <json/json.h>
 
 #include "AModule.hpp"
+#include "modules/custom.hpp"
+#include "util/json.hpp"
+#include "util/worker_thread.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {
@@ -76,6 +79,7 @@ class Bar {
   void getModules(const Factory &, const std::string &);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
+  void customExecOutputCallback(std::string output);
 
   std::unique_ptr<BarSurface>                   surface_impl_;
   bar_layer                                     layer_;
@@ -86,6 +90,10 @@ class Bar {
   std::vector<std::unique_ptr<waybar::AModule>> modules_left_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_center_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_right_;
+  waybar::util::JsonParser                      parser_;
+  // Contains pointers to modules in modules_left_, etc.
+  std::map<std::string, waybar::modules::Custom *>         custom_modules_;
+  std::vector<std::unique_ptr<waybar::util::WorkerThread>> custom_threads_;
 };
 
 }  // namespace waybar

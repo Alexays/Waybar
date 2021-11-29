@@ -95,6 +95,11 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Each file can contain a single object with any of the bar configuration options. In case of duplicate options, the first defined value takes precedence, i.e. including file -> first included file -> etc. Nested includes are permitted, but make sure to avoid circular imports.
 	For a multi-bar config, the include directive affects only current bar configuration object.
 
+*custom-execs* ++
+	typeof: array ++
+	Shared execs for custom modules.
+	See the section SHARED EXECS FOR CUSTOM MODULES
+
 # MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
@@ -202,6 +207,89 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 ```
 
 Valid options for the "rotate" property are: 0, 90, 180 and 270.
+
+# SHARED EXECS FOR CUSTOM MODULES
+
+When several custom modules acquire data from the same or similar commands, it
+may be desirable to execute only a single instance of the command to minimize
+CPU usage. For such cases, the "custom-execs" configuration parameter of a bar
+can be used.
+
+"custom-execs" is an array of configuration objects for executed commands. Each
+object may contain the following parameters:
+
+*exec*: ++
+	typeof: string ++
+	The command to execute, passed as an argument to "sh -c".
+
+*exec-if*: ++
+	typeof: string ++
+	The command to execute, which determines if the command in *exec* should be executed.
+	*exec* will be executed if the exit code of *exec-if* equals 0.
+
+*interval*: ++
+	typeof: integer ++
+	The interval (in seconds) in which the information gets polled.
+	Use *once* if you want to execute the module only on startup.
+	You can update it manually with a signal. If no *interval* is defined,
+	it is assumed that the command loops itself.
+
+*restart-interval*: ++
+	typeof: integer ++
+	The restart interval (in seconds).
+	Can't be used with the *interval* option, so only with continuous scripts.
+	Once the script exits, it'll be re-executed after the *restart-interval*.
+
+*signal*: ++
+	typeof: integer ++
+	The signal number used to rerun the command.
+	Can only be used with the *interval* option.
+	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*.
+
+
+Configuration example with two shared subprocesses:
+
+```
+"custom-execs": [
+	{
+		// Executed once, restarted after 5 seconds if it exits.
+		"exec": "my-command arg1 arg2",
+		"restart-interval": 5
+	},
+	{
+		// foo is executed every 2 seconds, or when the signal SIGRTMIN+8 is received.
+		// Each time, if foo exits with code 0, bar is executed.
+		"exec-if": "foo",
+		"exec": "bar",
+		"interval": 2,
+		"signal": 8
+	}
+]
+```
+
+The command specified in *exec* must provide a single line of JSON output.
+If the command is continuous (no *interval*), it should provide a single line
+of JSON output for each update. The JSON should contain an object with module
+names as keys and either strings (for raw output) or objects (for JSON output)
+as values. See waybar-custom(5) for a description of the formats.
+
+Output example (spread over several lines for readability; the actual command
+should print it on one line):
+
+```
+{
+	"custom/xyz#abc": {
+		"text": "some text to show",
+		"alt": "some other text",
+		"tooltip": "tooltip text",
+		"percentage": 5,
+	},
+	"custom/qwerty": "asdf\\nzxcv\\nmyclass\\n"
+}
+```
+
+The output may contain any number of modules. The modules do not have to stay
+constant between output lines. Each module in the output line will be updated.
 
 # SUPPORTED MODULES
 
