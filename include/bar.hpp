@@ -73,7 +73,7 @@ class Bar {
  private:
   void onMap(GdkEventAny *);
   auto setupWidgets() -> void;
-  void getModules(const Factory &, const std::string &);
+  void getModules(const Factory &, const std::string &, Gtk::Box*);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
 
@@ -86,6 +86,7 @@ class Bar {
   std::vector<std::unique_ptr<waybar::AModule>> modules_left_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_center_;
   std::vector<std::unique_ptr<waybar::AModule>> modules_right_;
+  std::vector<std::unique_ptr<waybar::AModule>> modules_all_;
 };
 
 }  // namespace waybar

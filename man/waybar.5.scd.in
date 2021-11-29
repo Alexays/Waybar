@@ -203,6 +203,28 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 
 Valid options for the "rotate" property are: 0, 90, 180 and 270.
 
+## Grouping modules
+
+Module groups allow stacking modules in the direction orthogonal to the bar direction. When the bar is positioned on the top or bottom of the screen, modules in a group are stacked vertically. Likewise, when positioned on the left or right, modules in a group are stacked horizontally.
+
+A module group is defined by specifying a module named "group/some-group-name". The group must also be configured with a list of contained modules. Example:
+
+```
+{
+	"modules-right": ["group/hardware", "clock"],
+
+	"group/hardware": {
+		"modules": [
+			"cpu",
+			"memory",
+			"battery"
+		]
+	},
+
+	...
+}
+```
+
 # SUPPORTED MODULES
 
 - *waybar-backlight(5)*
