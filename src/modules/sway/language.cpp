@@ -99,7 +99,8 @@ auto Language::update() -> void {
                                          fmt::arg("short", layout_.short_name),
                                          fmt::arg("shortDescription", layout_.short_description),
                                          fmt::arg("long", layout_.full_name),
-                                         fmt::arg("variant", layout_.variant)));
+                                         fmt::arg("variant", layout_.variant),
+                                         fmt::arg("flag", layout_.country_flag())));
   label_.set_markup(display_layout);
   if (tooltipEnabled()) {
     if (tooltip_format_ != "") {
@@ -107,7 +108,8 @@ auto Language::update() -> void {
                                                      fmt::arg("short", layout_.short_name),
                                                      fmt::arg("shortDescription", layout_.short_description),
                                                      fmt::arg("long", layout_.full_name),
-                                                     fmt::arg("variant", layout_.variant)));
+                                                     fmt::arg("variant", layout_.variant),
+                                                     fmt::arg("flag", layout_.country_flag())));
       label_.set_tooltip_markup(tooltip_display_layout);
     } else {
       label_.set_tooltip_markup(display_layout);
@@ -211,5 +213,16 @@ auto Language::XKBContext::next_layout() -> Layout* {
 Language::XKBContext::~XKBContext() {
   rxkb_context_unref(context_);
   delete layout_;
+}
+
+std::string Language::Layout::country_flag() const {
+  if (short_name.size() != 2) return "";
+  unsigned char result[] = "\xf0\x9f\x87\x00\xf0\x9f\x87\x00";
+  result[3] = short_name[0] + 0x45;
+  result[7] = short_name[1] + 0x45;
+  // Check if both emojis are in A-Z symbol bounds
+  if (result[3] < 0xa6 || result[3] > 0xbf) return "";
+  if (result[7] < 0xa6 || result[7] > 0xbf) return "";
+  return std::string{reinterpret_cast<char*>(result)};
 }
 }  // namespace waybar::modules::sway

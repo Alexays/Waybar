@@ -12,6 +12,10 @@
 #include "group.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
+#ifdef HAVE_SWAY
+#include "modules/sway/bar.hpp"
+#endif
+
 namespace waybar {
 static constexpr const char* MIN_HEIGHT_MSG =
     "Requested height: {} is less than the minimum height: {} required by the modules";
@@ -23,6 +27,84 @@ static constexpr const char* BAR_SIZE_MSG = "Bar configured (width: {}, height: 
 
 static constexpr const char* SIZE_DEFINED =
     "{} size is defined in the config file so it will stay like that";
+
+const Bar::bar_mode_map Bar::PRESET_MODES = {  //
+    {"default",
+     {// Special mode to hold the global bar configuration
+      .layer = bar_layer::BOTTOM,
+      .exclusive = true,
+      .passthrough = false,
+      .visible = true}},
+    {"dock",
+     {// Modes supported by the sway config; see man sway-bar(5)
+      .layer = bar_layer::BOTTOM,
+      .exclusive = true,
+      .passthrough = false,
+      .visible = true}},
+    {"hide",
+     {//
+      .layer = bar_layer::TOP,
+      .exclusive = false,
+      .passthrough = false,
+      .visible = true}},
+    {"invisible",
+     {//
+      .layer = bar_layer::BOTTOM,
+      .exclusive = false,
+      .passthrough = true,
+      .visible = false}},
+    {"overlay",
+     {//
+      .layer = bar_layer::TOP,
+      .exclusive = false,
+      .passthrough = true,
+      .visible = true}}};
+
+const std::string_view Bar::MODE_DEFAULT = "default";
+const std::string_view Bar::MODE_INVISIBLE = "invisible";
+const std::string_view DEFAULT_BAR_ID = "bar-0";
+
+/* Deserializer for enum bar_layer */
+void from_json(const Json::Value& j, bar_layer& l) {
+  if (j == "bottom") {
+    l = bar_layer::BOTTOM;
+  } else if (j == "top") {
+    l = bar_layer::TOP;
+  } else if (j == "overlay") {
+    l = bar_layer::OVERLAY;
+  }
+}
+
+/* Deserializer for struct bar_mode */
+void from_json(const Json::Value& j, bar_mode& m) {
+  if (j.isObject()) {
+    if (auto v = j["layer"]; v.isString()) {
+      from_json(v, m.layer);
+    }
+    if (auto v = j["exclusive"]; v.isBool()) {
+      m.exclusive = v.asBool();
+    }
+    if (auto v = j["passthrough"]; v.isBool()) {
+      m.passthrough = v.asBool();
+    }
+    if (auto v = j["visible"]; v.isBool()) {
+      m.visible = v.asBool();
+    }
+  }
+}
+
+/* Deserializer for JSON Object -> map<string compatible type, Value>
+ * Assumes that all the values in the object are deserializable to the same type.
+ */
+template <typename Key, typename Value,
+          typename = std::enable_if_t<std::is_convertible<std::string_view, Key>::value>>
+void from_json(const Json::Value& j, std::map<Key, Value>& m) {
+  if (j.isObject()) {
+    for (auto it = j.begin(); it != j.end(); ++it) {
+      from_json(*it, m[it.key().asString()]);
+    }
+  }
+}
 
 #ifdef HAVE_GTK_LAYER_SHELL
 struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
@@ -392,7 +474,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
-      layer_{bar_layer::BOTTOM},
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -403,27 +484,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
   window.get_style_context()->add_class(config["position"].asString());
-
-  if (config["layer"] == "top") {
-    layer_ = bar_layer::TOP;
-  } else if (config["layer"] == "overlay") {
-    layer_ = bar_layer::OVERLAY;
-  }
-
-  if (config["exclusive"].isBool()) {
-    exclusive = config["exclusive"].asBool();
-  } else if (layer_ == bar_layer::OVERLAY) {
-    // swaybar defaults: overlay mode does not reserve an exclusive zone
-    exclusive = false;
-  }
-
-  bool passthrough = false;
-  if (config["passthrough"].isBool()) {
-    passthrough = config["passthrough"].asBool();
-  } else if (layer_ == bar_layer::OVERLAY) {
-    // swaybar defaults: overlay mode does not accept pointer events.
-    passthrough = true;
-  }
 
   auto position = config["position"].asString();
 
@@ -506,14 +566,42 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
   }
 
-  surface_impl_->setLayer(layer_);
-  surface_impl_->setExclusiveZone(exclusive);
   surface_impl_->setMargins(margins_);
-  surface_impl_->setPassThrough(passthrough);
   surface_impl_->setPosition(position);
   surface_impl_->setSize(width, height);
 
+  /* Read custom modes if available */
+  if (auto modes = config.get("modes", {}); modes.isObject()) {
+    from_json(modes, configured_modes);
+  }
+
+  /* Update "default" mode with the global bar options */
+  from_json(config, configured_modes[MODE_DEFAULT]);
+
+  if (auto mode = config.get("mode", {}); mode.isString()) {
+    setMode(config["mode"].asString());
+  } else {
+    setMode(MODE_DEFAULT);
+  }
+
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
+
+#if HAVE_SWAY
+  if (auto ipc = config["ipc"]; ipc.isBool() && ipc.asBool()) {
+    bar_id = Client::inst()->bar_id;
+    if (auto id = config["id"]; id.isString()) {
+      bar_id = id.asString();
+    }
+    if (bar_id.empty()) {
+      bar_id = DEFAULT_BAR_ID;
+    }
+    try {
+      _ipc_client = std::make_unique<BarIpcClient>(*this);
+    } catch (const std::exception& exc) {
+      spdlog::warn("Failed to open bar ipc connection: {}", exc.what());
+    }
+  }
+#endif
 
   setupWidgets();
   window.show_all();
@@ -529,6 +617,44 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 }
 
+/* Need to define it here because of forward declared members */
+waybar::Bar::~Bar() = default;
+
+void waybar::Bar::setMode(const std::string_view& mode) {
+  using namespace std::literals::string_literals;
+
+  auto style = window.get_style_context();
+  /* remove styles added by previous setMode calls */
+  style->remove_class("mode-"s + last_mode_);
+
+  auto it = configured_modes.find(mode);
+  if (it != configured_modes.end()) {
+    last_mode_ = mode;
+    style->add_class("mode-"s + last_mode_);
+    setMode(it->second);
+  } else {
+    spdlog::warn("Unknown mode \"{}\" requested", mode);
+    last_mode_ = MODE_DEFAULT;
+    style->add_class("mode-"s + last_mode_);
+    setMode(configured_modes.at(MODE_DEFAULT));
+  }
+}
+
+void waybar::Bar::setMode(const struct bar_mode& mode) {
+  surface_impl_->setLayer(mode.layer);
+  surface_impl_->setExclusiveZone(mode.exclusive);
+  surface_impl_->setPassThrough(mode.passthrough);
+
+  if (mode.visible) {
+    window.get_style_context()->remove_class("hidden");
+    window.set_opacity(1);
+  } else {
+    window.get_style_context()->add_class("hidden");
+    window.set_opacity(0);
+  }
+  surface_impl_->commit();
+}
+
 void waybar::Bar::onMap(GdkEventAny*) {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
@@ -539,17 +665,7 @@ void waybar::Bar::onMap(GdkEventAny*) {
 
 void waybar::Bar::setVisible(bool value) {
   visible = value;
-  if (!visible) {
-    window.get_style_context()->add_class("hidden");
-    window.set_opacity(0);
-    surface_impl_->setLayer(bar_layer::BOTTOM);
-  } else {
-    window.get_style_context()->remove_class("hidden");
-    window.set_opacity(1);
-    surface_impl_->setLayer(layer_);
-  }
-  surface_impl_->setExclusiveZone(exclusive && visible);
-  surface_impl_->commit();
+  setMode(visible ? MODE_DEFAULT : MODE_INVISIBLE);
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
