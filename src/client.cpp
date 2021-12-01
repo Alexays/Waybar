@@ -199,7 +199,6 @@ int waybar::Client::main(int argc, char *argv[]) {
   bool        show_version = false;
   std::string config_opt;
   std::string style_opt;
-  std::string bar_id;
   std::string log_level;
   auto        cli = clara::detail::Help(show_help) |
              clara::detail::Opt(show_version)["-v"]["--version"]("Show version") |

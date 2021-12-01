@@ -13,6 +13,7 @@ jobs:
     - name: Test in FreeBSD VM
       uses: vmactions/freebsd-vm@v0.1.5 # aka FreeBSD 13.0
       with:
+        mem: 2048
         usesh: true
         prepare: |
           export CPPFLAGS=-isystem/usr/local/include LDFLAGS=-L/usr/local/lib # sndio
