@@ -37,6 +37,8 @@ Addressed by *sway/language*
 
 *{variant}*: Variant of layout (e.g. "dvorak").
 
+*{flag}*: Country flag of layout.
+
 # EXAMPLES
 
 ```
