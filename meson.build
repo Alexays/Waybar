@@ -150,6 +150,7 @@ src_files = files(
     'src/bar.cpp',
     'src/client.cpp',
     'src/config.cpp',
+    'src/group.cpp',
     'src/util/ustring_clen.cpp'
 )
 
