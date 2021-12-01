@@ -43,6 +43,8 @@ def on_metadata(player, metadata, manager):
 
     if player.props.status != 'Playing' and track_info:
         track_info = ' ' + track_info
+
+    track_info = track_info.replace("&", "&amp;")
     write_output(track_info, player)
 
 
