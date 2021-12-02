@@ -789,8 +789,8 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
 
-    // WiFi-hardware usually operates in the range -90 to -20dBm.
-    const int hardwareMax = -20;
+    // WiFi-hardware usually operates in the range -90 to -30dBm.
+    const int hardwareMax = -30;
     const int hardwareMin = -90;
     const int strength =
       ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
