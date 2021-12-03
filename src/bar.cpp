@@ -735,18 +735,19 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos, Gtk
           module = factory.makeModule(ref);
         }
 
-        modules_all_.emplace_back(module);
+        std::shared_ptr<AModule> module_sp(module);
+        modules_all_.emplace_back(module_sp);
         if (group) {
           group->pack_start(*module, false, false);
         } else {
           if (pos == "modules-left") {
-            modules_left_.emplace_back(module);
+            modules_left_.emplace_back(module_sp);
           }
           if (pos == "modules-center") {
-            modules_center_.emplace_back(module);
+            modules_center_.emplace_back(module_sp);
           }
           if (pos == "modules-right") {
-            modules_right_.emplace_back(module);
+            modules_right_.emplace_back(module_sp);
           }
         }
         module->dp.connect([module, &name] {
