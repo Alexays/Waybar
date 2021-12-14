@@ -788,13 +788,16 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
   if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
-
     // WiFi-hardware usually operates in the range -90 to -30dBm.
-    const int hardwareMax = -30;
+
+    // If a signal is too strong, it can overwhelm receiving circuity that is designed
+    // to pick up and process a certain signal level. The following percentage is scaled to
+    // punish signals that are too strong (>= -45dBm) or too weak (<= -45 dBm).
+    const int hardwareOptimum = -45;
     const int hardwareMin = -90;
     const int strength =
-      ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
-    signal_strength_ = std::clamp(strength, 0, 100);
+        100 - ((abs(signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) * 100);
+    signal_strength_ = std::clamp(strength, 0, 100);  
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
     signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
