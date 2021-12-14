@@ -352,6 +352,10 @@ if scdoc.found()
         'waybar-sndio.5.scd',
     ]
 
+    if (giounix.found() and not get_option('logind').disabled())
+        man_files += 'waybar-inhibitor.5.scd'
+    endif
+
     foreach file : man_files
         path = '@0@'.format(file)
         basename = path.split('/')[-1]
