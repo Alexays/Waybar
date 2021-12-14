@@ -45,9 +45,9 @@ auto waybar::modules::Disk::update() -> void {
   }
 
   auto free = pow_format(stats.f_bavail * stats.f_frsize, "B", true);
-  auto used = pow_format((stats.f_blocks - stats.f_bavail) * stats.f_frsize, "B", true);
+  auto used = pow_format((stats.f_blocks - stats.f_bfree) * stats.f_frsize, "B", true);
   auto total = pow_format(stats.f_blocks * stats.f_frsize, "B", true);
-  auto percentage_used = (stats.f_blocks - stats.f_bavail) * 100 / stats.f_blocks;
+  auto percentage_used = (stats.f_blocks - stats.f_bfree) * 100 / stats.f_blocks;
 
   auto format = format_;
   auto state = getState(percentage_used);

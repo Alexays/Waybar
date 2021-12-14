@@ -150,6 +150,7 @@ src_files = files(
     'src/bar.cpp',
     'src/client.cpp',
     'src/config.cpp',
+    'src/group.cpp',
     'src/util/ustring_clen.cpp'
 )
 
@@ -177,6 +178,7 @@ endif
 add_project_arguments('-DHAVE_SWAY', language: 'cpp')
 src_files += [
     'src/modules/sway/ipc/client.cpp',
+    'src/modules/sway/bar.cpp',
     'src/modules/sway/mode.cpp',
     'src/modules/sway/language.cpp',
     'src/modules/sway/window.cpp',
@@ -186,6 +188,8 @@ src_files += [
 if true
     add_project_arguments('-DHAVE_WLR', language: 'cpp')
     src_files += 'src/modules/wlr/taskbar.cpp'
+    src_files += 'src/modules/wlr/workspace_manager.cpp'
+    src_files += 'src/modules/wlr/workspace_manager_binding.cpp'
 endif
 
 if true
@@ -253,6 +257,10 @@ if tz_dep.found()
     src_files += 'src/modules/clock.cpp'
 else
     src_files += 'src/modules/simpleclock.cpp'
+endif
+
+if get_option('experimental')
+    add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
 endif
 
 subdir('protocol')
@@ -334,6 +342,7 @@ if scdoc.found()
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
+        'waybar-wlr-workspaces.5.scd',
         'waybar-bluetooth.5.scd',
         'waybar-sndio.5.scd',
     ]
@@ -380,3 +389,4 @@ if clangtidy.found()
             '-p', meson.build_root()
         ] + src_files)
 endif
+

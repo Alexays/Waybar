@@ -15,11 +15,11 @@ auto waybar::modules::Memory::update() -> void {
   unsigned long memfree;
   if (meminfo_.count("MemAvailable")) {
     // New kernels (3.4+) have an accurate available memory field.
-    memfree = meminfo_["MemAvailable"];
+    memfree = meminfo_["MemAvailable"] + meminfo_["zfs_size"];
   } else {
     // Old kernel; give a best-effort approximation of available memory.
     memfree = meminfo_["MemFree"] + meminfo_["Buffers"] + meminfo_["Cached"] +
-              meminfo_["SReclaimable"] - meminfo_["Shmem"];
+              meminfo_["SReclaimable"] - meminfo_["Shmem"] + meminfo_["zfs_size"];
   }
 
   if (memtotal > 0 && memfree >= 0) {

@@ -1,86 +1,76 @@
-#include "modules/network.hpp"
+#include <linux/if.h>
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
-#include <linux/if.h>
-#include <fstream>
+
 #include <cassert>
+#include <fstream>
+#include <sstream>
 #include <optional>
+
+#include "modules/network.hpp"
 #include "util/format.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
 
 namespace {
-
 using namespace waybar::util;
-
-constexpr const char *NETSTAT_FILE =
-    "/proc/net/netstat";  // std::ifstream does not take std::string_view as param
-constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
-constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
-constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
 constexpr const char *DEFAULT_FORMAT = "{ifname}";
-
-std::ifstream                     netstat(NETSTAT_FILE);
-std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
-  if (!netstat) {
-    spdlog::warn("Failed to open netstat file {}", NETSTAT_FILE);
-    return {};
-  }
-  netstat.seekg(std::ios_base::beg);
-
-  // finding corresponding line (category)
-  // looks into the file for the first line starting by the 'category' string
-  auto starts_with = [](const std::string &str, std::string_view start) {
-    return start == std::string_view{str.data(), std::min(str.size(), start.size())};
-  };
-
-  std::string read;
-  while (std::getline(netstat, read) && !starts_with(read, category))
-    ;
-  if (!starts_with(read, category)) {
-    spdlog::warn("Category '{}' not found in netstat file {}", category, NETSTAT_FILE);
-    return {};
-  }
-
-  // finding corresponding column (key)
-  // looks into the fetched line for the first word (space separated) equal to 'key'
-  int  index = 0;
-  auto r_it = read.begin();
-  auto k_it = key.begin();
-  while (k_it != key.end() && r_it != read.end()) {
-    if (*r_it != *k_it) {
-      r_it = std::find(r_it, read.end(), ' ');
-      if (r_it != read.end()) {
-        ++r_it;
-      }
-      k_it = key.begin();
-      ++index;
-    } else {
-      ++r_it;
-      ++k_it;
-    }
-  }
-
-  if (r_it == read.end() && k_it != key.end()) {
-    spdlog::warn(
-        "Key '{}' not found in category '{}' of netstat file {}", key, category, NETSTAT_FILE);
-    return {};
-  }
-
-  // finally accessing value
-  // accesses the line right under the fetched one
-  std::getline(netstat, read);
-  assert(starts_with(read, category));
-  std::istringstream iss(read);
-  while (index--) {
-    std::getline(iss, read, ' ');
-  }
-  unsigned long long value;
-  iss >> value;
-  return value;
-}
 }  // namespace
+
+constexpr const char *NETDEV_FILE =
+    "/proc/net/dev";  // std::ifstream does not take std::string_view as param
+std::optional<std::pair<unsigned long long, unsigned long long>>
+waybar::modules::Network::readBandwidthUsage() {
+  std::ifstream netdev(NETDEV_FILE);
+  if (!netdev) {
+    spdlog::warn("Failed to open netdev file {}", NETDEV_FILE);
+    return {};
+  }
+
+  std::string line;
+  // skip the headers (first two lines)
+  std::getline(netdev, line);
+  std::getline(netdev, line);
+
+  unsigned long long receivedBytes = 0ull;
+  unsigned long long transmittedBytes = 0ull;
+  while (std::getline(netdev, line)) {
+    std::istringstream iss(line);
+
+    std::string ifacename;
+    iss >> ifacename;  // ifacename contains "eth0:"
+    ifacename.pop_back();  // remove trailing ':'
+    if (!checkInterface(ifacename)) {
+      continue;
+    }
+
+    // The rest of the line consists of whitespace separated counts divided
+    // into two groups (receive and transmit). Each group has the following
+    // columns: bytes, packets, errs, drop, fifo, frame, compressed, multicast
+    //
+    // We only care about the bytes count, so we'll just ignore the 7 other
+    // columns.
+    unsigned long long r = 0ull;
+    unsigned long long t = 0ull;
+    // Read received bytes
+    iss >> r;
+    // Skip all the other columns in the received group
+    for (int colsToSkip = 7; colsToSkip > 0; colsToSkip--) {
+      // skip whitespace between columns
+      while (iss.peek() == ' ') { iss.ignore(); }
+      // skip the irrelevant column
+      while (iss.peek() != ' ') { iss.ignore(); }
+    }
+    // Read transmit bytes
+    iss >> t;
+
+    receivedBytes += r;
+    transmittedBytes += t;
+  }
+
+  return {{receivedBytes, transmittedBytes}};
+}
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
@@ -106,17 +96,12 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   // the module start with no text, but the the event_box_ is shown.
   label_.set_markup("<s></s>");
 
-  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
-  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
-  if (down_octets) {
-    bandwidth_down_total_ = *down_octets;
+  auto bandwidth = readBandwidthUsage();
+  if (bandwidth.has_value()) {
+    bandwidth_down_total_ = (*bandwidth).first;
+    bandwidth_up_total_ = (*bandwidth).second;
   } else {
     bandwidth_down_total_ = 0;
-  }
-
-  if (up_octets) {
-    bandwidth_up_total_ = *up_octets;
-  } else {
     bandwidth_up_total_ = 0;
   }
 
@@ -303,20 +288,21 @@ const std::string waybar::modules::Network::getNetworkState() const {
 auto waybar::modules::Network::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string                 tooltip_format;
-  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
-  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
 
-  unsigned long long bandwidth_down = 0;
-  if (down_octets) {
-    bandwidth_down = *down_octets - bandwidth_down_total_;
-    bandwidth_down_total_ = *down_octets;
+  auto bandwidth = readBandwidthUsage();
+  auto bandwidth_down = 0ull;
+  auto bandwidth_up = 0ull;
+  if (bandwidth.has_value()) {
+    auto down_octets = (*bandwidth).first;
+    auto up_octets = (*bandwidth).second;
+
+    bandwidth_down = down_octets - bandwidth_down_total_;
+    bandwidth_down_total_ = down_octets;
+
+    bandwidth_up = up_octets - bandwidth_up_total_;
+    bandwidth_up_total_ = up_octets;
   }
 
-  unsigned long long bandwidth_up = 0;
-  if (up_octets) {
-    bandwidth_up = *up_octets - bandwidth_up_total_;
-    bandwidth_up_total_ = *up_octets;
-  }
   if (!alt_) {
     auto state = getNetworkState();
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
