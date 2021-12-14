@@ -331,6 +331,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("essid", essid_),
       fmt::arg("signaldBm", signal_strength_dbm_),
       fmt::arg("signalStrength", signal_strength_),
+      fmt::arg("signalStrengthApp", signal_strength_app_),
       fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_),
       fmt::arg("ipaddr", ipaddr_),
@@ -360,6 +361,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("essid", essid_),
           fmt::arg("signaldBm", signal_strength_dbm_),
           fmt::arg("signalStrength", signal_strength_),
+          fmt::arg("signalStrengthApp", signal_strength_app_),
           fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_),
           fmt::arg("ipaddr", ipaddr_),
@@ -403,6 +405,7 @@ void waybar::modules::Network::clearIface() {
   cidr_ = 0;
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
+  signal_strength_app_.clear();
   frequency_ = 0.0;
 }
 
@@ -470,6 +473,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             net->essid_.clear();
             net->signal_strength_dbm_ = 0;
             net->signal_strength_ = 0;
+            net->signal_strength_app_.clear();
             net->frequency_ = 0.0;
           }
         }
@@ -798,6 +802,20 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     const int strength =
         100 - ((abs(signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) * 100);
     signal_strength_ = std::clamp(strength, 0, 100);  
+
+    if (signal_strength_dbm_ >= -50) {
+      signal_strength_app_ = "Great Connectivity";
+    } else if (signal_strength_dbm_ >= -60) {
+      signal_strength_app_ = "Good Connectivity";
+    } else if (signal_strength_dbm_ >= -67) {
+      signal_strength_app_ = "Streaming";
+    } else if (signal_strength_dbm_ >= -70) {
+      signal_strength_app_ = "Web Surfing";
+    } else if (signal_strength_dbm_ >= -80) {
+      signal_strength_app_ = "Basic Connectivity";
+    } else {
+      signal_strength_app_ = "Poor Connectivity";
+    }
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
     signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
