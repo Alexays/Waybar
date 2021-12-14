@@ -95,6 +95,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Sndio(id, config_[name]);
     }
 #endif
+#ifdef HAVE_GIO_UNIX
+    if (ref == "inhibitor") {
+      return new waybar::modules::Inhibitor(id, bar_, config_[name]);
+    }
+#endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }

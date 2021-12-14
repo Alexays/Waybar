@@ -86,7 +86,7 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
-giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
+giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled()))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
@@ -240,6 +240,11 @@ endif
 if libsndio.found()
     add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
     src_files += 'src/modules/sndio.cpp'
+endif
+
+if (giounix.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_GIO_UNIX', language: 'cpp')
+    src_files += 'src/modules/inhibitor.cpp'
 endif
 
 if get_option('rfkill').enabled()
