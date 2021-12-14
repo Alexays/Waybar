@@ -88,7 +88,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_WLAN},
 #endif
-      frequency_(0) {
+      frequency_(0.0) {
 
   // Start with some "text" in the module's label_, update() will then
   // update it. Since the text should be different, update() will be able
@@ -336,7 +336,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("ipaddr", ipaddr_),
       fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_),
-      fmt::arg("frequency", frequency_),
+      fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
       fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
@@ -365,7 +365,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("ipaddr", ipaddr_),
           fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_),
-          fmt::arg("frequency", frequency_),
+          fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
                    pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
@@ -403,7 +403,7 @@ void waybar::modules::Network::clearIface() {
   cidr_ = 0;
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
-  frequency_ = 0;
+  frequency_ = 0.0;
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
@@ -470,7 +470,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             net->essid_.clear();
             net->signal_strength_dbm_ = 0;
             net->signal_strength_ = 0;
-            net->frequency_ = 0;
+            net->frequency_ = 0.0;
           }
         }
         net->carrier_ = carrier.value();
@@ -806,8 +806,8 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
 
 void waybar::modules::Network::parseFreq(struct nlattr **bss) {
   if (bss[NL80211_BSS_FREQUENCY] != nullptr) {
-    // in MHz
-    frequency_ = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+    // in GHz
+    frequency_ = (double) nla_get_u32(bss[NL80211_BSS_FREQUENCY]) / 1000;
   }
 }
 
