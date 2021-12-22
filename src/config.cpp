@@ -174,8 +174,8 @@ void Config::mergeConfig(Json::Value& a_config_, Json::Value& b_config_) {
     spdlog::error("Cannot merge config, conflicting or invalid JSON types");
   }
 }
-bool isValidOutput(const Json::Value& config, const std::string& name,
-                   const std::string& identifier) {
+bool isValidOutput(const Json::Value& config, const std::string& name, const std::string& identifier,
+                   int32_t width, int32_t height) {
   const auto isOutputMatches = [&](const std::string& output) -> bool {
     if (output.substr(0, 1) == "$") {
       auto* const environment_value = std::getenv(output.substr(1).c_str());
@@ -227,6 +227,38 @@ bool isValidOutput(const Json::Value& config, const std::string& name,
     }
   }
 
+  // if "output-dimensions" is a string, make it an array of size 1
+  Json::Value config_output_dimensions = config["output-dimensions"];
+  if (config_output_dimensions.isString()) {
+    Json::Value jsonArray(Json::arrayValue);
+    jsonArray.append(config_output_dimensions);
+    config_output_dimensions = jsonArray;
+  }
+  if (config_output_dimensions.isArray()) {
+    for (auto const &config_output_dimension : config_output_dimensions) {
+      if (!config_output_dimension.isString()) {
+        continue;
+      }
+      std::string str = config_output_dimension.asString();
+      int i = str.find(" ");
+      std::string dimension = str.substr(0, i);
+      str = str.substr(i + 1);
+      i = str.find(" ");
+      std::string comparator = str.substr(0, i);
+      int value = std::stoi(str.substr(i));
+
+      if (dimension == "height" && comparator == "<" && height >= value) {
+        return false;
+      } else if (dimension == "height" && comparator == ">" && height <= value) {
+        return false;
+      }else if (dimension == "width" && comparator == "<" && width >= value) {
+        return false;
+      }else if (dimension == "width" && comparator == ">" && width <= value) {
+        return false;
+      }
+      return true;
+    }
+  }
   return true;
 }
 
@@ -242,15 +274,16 @@ void Config::load(const std::string& config) {
 }
 
 std::vector<Json::Value> Config::getOutputConfigs(const std::string& name,
-                                                  const std::string& identifier) {
+                                                  const std::string& identifier, int32_t width,
+                                                  int32_t height) {
   std::vector<Json::Value> configs;
   if (config_.isArray()) {
     for (auto const& config : config_) {
-      if (config.isObject() && isValidOutput(config, name, identifier)) {
+      if (config.isObject() && isValidOutput(config, name, identifier, width, height)) {
         configs.push_back(config);
       }
     }
-  } else if (isValidOutput(config_, name, identifier)) {
+  } else if (isValidOutput(config_, name, identifier, width, height)) {
     configs.push_back(config_);
   }
   return configs;
