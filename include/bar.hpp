@@ -21,6 +21,8 @@ struct waybar_output {
   Glib::RefPtr<Gdk::Monitor> monitor;
   std::string                name;
   std::string                identifier;
+  int32_t                    width;
+  int32_t                    height;
 
   std::unique_ptr<struct zxdg_output_v1, decltype(&zxdg_output_v1_destroy)> xdg_output = {
       nullptr, &zxdg_output_v1_destroy};

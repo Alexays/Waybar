@@ -25,7 +25,7 @@ class Config {
 
   Json::Value &getConfig() { return config_; }
 
-  std::vector<Json::Value> getOutputConfigs(const std::string &name, const std::string &identifier);
+  std::vector<Json::Value> getOutputConfigs(const std::string &name, const std::string &identifier, int32_t width, int32_t height);
 
  private:
   void setupConfig(Json::Value &dst, const std::string &config_file, int depth);

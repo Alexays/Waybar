@@ -31,6 +31,10 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	typeof: string|array ++
 	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
 
+*output-dimensions* ++
+	typeof: string|array ++
+	If *output* is not specified, allows selecting outputs by dimensions. Format "(width/height) (</>) (value)", e.g. "width > 1080". Multiple conditions can be chained.
+
 *position* ++
 	typeof: string ++
 	default: top ++
@@ -236,6 +240,24 @@ A module group is defined by specifying a module named "group/some-group-name". 
 		]
 	},
 
+	...
+}
+```
+
+## Select outputs by dimensions
+
+```
+{
+	"layer": "top",
+	"output-dimensions": "width > 1080",
+	...
+}
+```
+
+```
+{
+	"layer": "top",
+	"output-dimensions": ["width < 3840", "height < 2160"],
 	...
 }
 ```
