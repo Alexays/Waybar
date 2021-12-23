@@ -16,7 +16,9 @@ def write_output(text, player):
 
     output = {'text': text,
               'class': 'custom-' + player.props.player_name,
-              'alt': player.props.player_name}
+              'alt': player.props.status,
+              'tooltip': player.get_album(),
+              }
 
     sys.stdout.write(json.dumps(output) + '\n')
     sys.stdout.flush()
@@ -41,8 +43,6 @@ def on_metadata(player, metadata, manager):
     else:
         track_info = player.get_title()
 
-    if player.props.status != 'Playing' and track_info:
-        track_info = ' ' + track_info
     write_output(track_info, player)
 
 
