@@ -207,7 +207,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       bool online;
       std::ifstream(adapter_ / "online") >> online;
       if (online) {
-        status = "Plugged";
+        status = "Discharging";
       }
     }
     float time_remaining = 0;
