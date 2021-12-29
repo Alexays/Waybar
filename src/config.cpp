@@ -247,16 +247,19 @@ bool isValidOutput(const Json::Value& config, const std::string& name, const std
       std::string comparator = str.substr(0, i);
       int value = std::stoi(str.substr(i));
 
-      if (dimension == "height" && comparator == "<" && height >= value) {
-        return false;
-      } else if (dimension == "height" && comparator == ">" && height <= value) {
-        return false;
-      }else if (dimension == "width" && comparator == "<" && width >= value) {
-        return false;
-      }else if (dimension == "width" && comparator == ">" && width <= value) {
+      int comparison_value;
+      if (dimension == "height") {
+        comparison_value = height;
+      } else if (dimension == "weight") {
+        comparison_value = weight;
+      } else {
+        continue;
+      }
+
+      if ((comparator == "<" && comparison_value >= value) || 
+          (comparator == ">" && comparison_value <= value)) {
         return false;
       }
-      return true;
     }
   }
   return true;
