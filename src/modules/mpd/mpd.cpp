@@ -147,10 +147,53 @@ void waybar::modules::MPD::setLabel() {
   std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
   bool        singleActivated = mpd_status_get_single(status_.get());
   std::string singleIcon = getOptionIcon("single", singleActivated);
-  if (config_["artist-len"].isInt()) artist = artist.substr(0, config_["artist-len"].asInt());
-  if (config_["album-artist-len"].isInt()) album_artist = album_artist.substr(0, config_["album-artist-len"].asInt());
-  if (config_["album-len"].isInt()) album = album.substr(0, config_["album-len"].asInt());
-  if (config_["title-len"].isInt()) title = title.substr(0,config_["title-len"].asInt());
+  if (config_["artist-len"].isInt()) {
+    if (artist.length() > (config_["artist-len"].asInt() - 3U)) {
+      artist = artist.substr(0, config_["artist-len"].asInt() - 3U);
+      std::size_t found = artist.find_last_not_of(" \t\f\v\n\r");
+      if (found != std::string::npos) {
+        artist = artist.erase(found + 1).append("...");
+      } else
+        artist.clear();
+    } else
+      artist = artist.substr(0, config_["artist-len"].asInt());
+  }
+
+  if (config_["album-artist-len"].isInt()) {
+    if (album_artist.length() > (config_["album-artist-len"].asInt() - 3U)) {
+      album_artist = album_artist.substr(0, config_["album-artist-len"].asInt() - 3U);
+      std::size_t found = album_artist.find_last_not_of(" \t\f\v\n\r");
+      if (found != std::string::npos) {
+        album_artist = album_artist.erase(found + 1).append("...");
+      } else
+        album_artist.clear();
+    } else
+      album_artist = album_artist.substr(0, config_["album-artist-len"].asInt());
+  }
+
+  if (config_["album-len"].isInt()) {
+    if (album.length() > (config_["album-len"].asInt() - 3U)) {
+      album = album.substr(0, config_["album-len"].asInt() - 3U);
+      std::size_t found = album.find_last_not_of(" \t\f\v\n\r");
+      if (found != std::string::npos) {
+        album = album.erase(found + 1).append("...");
+      } else
+        album.clear();
+    } else
+      album = album.substr(0, config_["album-len"].asInt());
+  }
+
+  if (config_["title-len"].isInt()) {
+    if (title.length() > (config_["title-len"].asInt() - 3U)) {
+      title = title.substr(0, config_["title-len"].asInt() - 3U);
+      std::size_t found = title.find_last_not_of(" \t\f\v\n\r");
+      if (found != std::string::npos) {
+        title = title.erase(found + 1).append("...");
+      } else
+        title.clear();
+    } else
+      title = title.substr(0, config_["title-len"].asInt());
+  }
 
   try {
     label_.set_markup(
