@@ -295,7 +295,7 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-				xkbregistry 
+		xkbregistry 
     ],
     include_directories: [include_directories('include')],
     install: true,
