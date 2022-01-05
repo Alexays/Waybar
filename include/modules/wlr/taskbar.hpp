@@ -64,8 +64,8 @@ class Task
     Gtk::Label text_before_;
     Gtk::Label text_after_;
     Glib::RefPtr<Gio::DesktopAppInfo> app_info_;
-    bool button_visible_;
-    bool ignored_;
+    bool button_visible_ = false;
+    bool ignored_ = false;
 
     bool with_icon_ = false;
     bool with_name_ = false;
