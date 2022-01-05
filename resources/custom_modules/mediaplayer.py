@@ -110,6 +110,7 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
     for player in manager.props.player_names:
         if arguments.player is not None and arguments.player != player.name:

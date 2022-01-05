@@ -79,6 +79,13 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
+  if (config_["reverse-scrolling"].asInt() == 1){
+    if (dir == SCROLL_DIR::UP) {
+      dir = SCROLL_DIR::DOWN;
+    } else if (dir == SCROLL_DIR::DOWN) {
+      dir = SCROLL_DIR::UP;
+    }
+  }
   double      volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_volume_t change = volume_tick;
   pa_cvolume  pa_volume = pa_volume_;
@@ -211,7 +218,7 @@ static const std::array<std::string, 9> ports = {
 };
 
 const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
-  std::vector<std::string> res = {default_source_name_};
+  std::vector<std::string> res = {current_sink_name_, default_source_name_};
   std::string nameLC = port_name_ + form_factor_;
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {

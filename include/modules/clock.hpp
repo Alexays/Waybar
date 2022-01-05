@@ -17,6 +17,8 @@ struct waybar_time {
   date::zoned_seconds ztime;
 };
 
+const std::string kCalendarPlaceholder = "calendar";
+
 class Clock : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
@@ -26,18 +28,19 @@ class Clock : public ALabel {
  private:
   util::SleeperThread thread_;
   std::locale locale_;
-  const date::time_zone* time_zone_;
-  bool fixed_time_zone_;
-  int time_zone_idx_;
+  std::vector<const date::time_zone*> time_zones_;
+  int current_time_zone_idx_;
   date::year_month_day cached_calendar_ymd_ = date::January/1/0;
   std::string cached_calendar_text_;
+  bool is_calendar_in_tooltip_;
 
   bool handleScroll(GdkEventScroll* e);
 
   auto calendar_text(const waybar_time& wtime) -> std::string;
   auto weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void;
   auto first_day_of_week() -> date::weekday;
-  bool setTimeZone(Json::Value zone_name);
+  const date::time_zone* current_timezone();
+  bool is_timezone_fixed();
 };
 
 }  // namespace waybar::modules

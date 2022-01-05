@@ -30,9 +30,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "wlr/taskbar") {
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
     }
+#ifdef USE_EXPERIMENTAL
     if (ref == "wlr/workspaces") {
       return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
     }
+#endif
 #endif
 #ifdef HAVE_RIVER
     if (ref == "river/tags") {
@@ -91,6 +93,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_LIBSNDIO
     if (ref == "sndio") {
       return new waybar::modules::Sndio(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_GIO_UNIX
+    if (ref == "inhibitor") {
+      return new waybar::modules::Inhibitor(id, bar_, config_[name]);
     }
 #endif
     if (ref == "temperature") {
