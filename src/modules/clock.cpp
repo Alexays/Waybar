@@ -1,10 +1,16 @@
 #include "modules/clock.hpp"
 
-#include <time.h>
 #include <spdlog/spdlog.h>
+#if FMT_VERSION < 60000
+#include <fmt/time.h>
+#else
+#include <fmt/chrono.h>
+#endif
 
+#include <ctime>
 #include <sstream>
 #include <type_traits>
+
 #include "util/ustring_clen.hpp"
 #include "util/waybar_time.hpp"
 #ifdef HAVE_LANGINFO_1STDAY

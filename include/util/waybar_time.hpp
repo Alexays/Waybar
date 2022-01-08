@@ -1,12 +1,7 @@
 #pragma once
 
-#include <fmt/format.h>
-#if FMT_VERSION < 60000
-#include <fmt/time.h>
-#else
-#include <fmt/chrono.h>
-#endif
 #include <date/tz.h>
+#include <fmt/format.h>
 
 namespace waybar {
 
@@ -18,12 +13,27 @@ struct waybar_time {
 }  // namespace waybar
 
 template <>
-struct fmt::formatter<waybar::waybar_time> : fmt::formatter<std::tm> {
+struct fmt::formatter<waybar::waybar_time> {
+  std::string_view specs;
+
+  template <typename ParseContext>
+  constexpr auto parse(ParseContext& ctx) -> decltype(ctx.begin()) {
+    auto it = ctx.begin();
+    if (it != ctx.end() && *it == ':') {
+      ++it;
+    }
+    auto end = it;
+    while (end != ctx.end() && *end != '}') {
+      ++end;
+    }
+    if (end != it) {
+      specs = {it, std::string_view::size_type(end - it)};
+    }
+    return end;
+  }
+
   template <typename FormatContext>
   auto format(const waybar::waybar_time& t, FormatContext& ctx) {
-#if FMT_VERSION >= 80000
-    auto& tm_format = specs;
-#endif
-    return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
+    return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(specs), t.ztime));
   }
 };
