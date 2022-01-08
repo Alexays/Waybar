@@ -14,6 +14,7 @@
 #endif
 #ifdef HAVE_WLR
 #include "modules/wlr/taskbar.hpp"
+#include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
 #include "modules/river/tags.hpp"
@@ -49,6 +50,9 @@
 #endif
 #ifdef HAVE_LIBSNDIO
 #include "modules/sndio.hpp"
+#endif
+#ifdef HAVE_GIO_UNIX
+#include "modules/inhibitor.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"

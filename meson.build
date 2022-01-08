@@ -86,7 +86,7 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
-giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
+giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled()))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
@@ -150,6 +150,7 @@ src_files = files(
     'src/bar.cpp',
     'src/client.cpp',
     'src/config.cpp',
+    'src/group.cpp',
     'src/util/ustring_clen.cpp'
 )
 
@@ -177,6 +178,7 @@ endif
 add_project_arguments('-DHAVE_SWAY', language: 'cpp')
 src_files += [
     'src/modules/sway/ipc/client.cpp',
+    'src/modules/sway/bar.cpp',
     'src/modules/sway/mode.cpp',
     'src/modules/sway/language.cpp',
     'src/modules/sway/window.cpp',
@@ -186,6 +188,8 @@ src_files += [
 if true
     add_project_arguments('-DHAVE_WLR', language: 'cpp')
     src_files += 'src/modules/wlr/taskbar.cpp'
+    src_files += 'src/modules/wlr/workspace_manager.cpp'
+    src_files += 'src/modules/wlr/workspace_manager_binding.cpp'
 endif
 
 if true
@@ -238,6 +242,11 @@ if libsndio.found()
     src_files += 'src/modules/sndio.cpp'
 endif
 
+if (giounix.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_GIO_UNIX', language: 'cpp')
+    src_files += 'src/modules/inhibitor.cpp'
+endif
+
 if get_option('rfkill').enabled()
     if is_linux
         add_project_arguments('-DWANT_RFKILL', language: 'cpp')
@@ -253,6 +262,10 @@ if tz_dep.found()
     src_files += 'src/modules/clock.cpp'
 else
     src_files += 'src/modules/simpleclock.cpp'
+endif
+
+if get_option('experimental')
+    add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
 endif
 
 subdir('protocol')
@@ -282,7 +295,7 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-				xkbregistry 
+		xkbregistry 
     ],
     include_directories: [include_directories('include')],
     install: true,
@@ -334,9 +347,14 @@ if scdoc.found()
         'waybar-tray.5.scd',
         'waybar-states.5.scd',
         'waybar-wlr-taskbar.5.scd',
+        'waybar-wlr-workspaces.5.scd',
         'waybar-bluetooth.5.scd',
         'waybar-sndio.5.scd',
     ]
+
+    if (giounix.found() and not get_option('logind').disabled())
+        man_files += 'waybar-inhibitor.5.scd'
+    endif
 
     foreach file : man_files
         path = '@0@'.format(file)
@@ -380,3 +398,4 @@ if clangtidy.found()
             '-p', meson.build_root()
         ] + src_files)
 endif
+

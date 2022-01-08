@@ -1,86 +1,76 @@
-#include "modules/network.hpp"
+#include <linux/if.h>
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
-#include <linux/if.h>
-#include <fstream>
+
 #include <cassert>
+#include <fstream>
+#include <sstream>
 #include <optional>
+
+#include "modules/network.hpp"
 #include "util/format.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
 
 namespace {
-
 using namespace waybar::util;
-
-constexpr const char *NETSTAT_FILE =
-    "/proc/net/netstat";  // std::ifstream does not take std::string_view as param
-constexpr std::string_view BANDWIDTH_CATEGORY = "IpExt";
-constexpr std::string_view BANDWIDTH_DOWN_TOTAL_KEY = "InOctets";
-constexpr std::string_view BANDWIDTH_UP_TOTAL_KEY = "OutOctets";
 constexpr const char *DEFAULT_FORMAT = "{ifname}";
-
-std::ifstream                     netstat(NETSTAT_FILE);
-std::optional<unsigned long long> read_netstat(std::string_view category, std::string_view key) {
-  if (!netstat) {
-    spdlog::warn("Failed to open netstat file {}", NETSTAT_FILE);
-    return {};
-  }
-  netstat.seekg(std::ios_base::beg);
-
-  // finding corresponding line (category)
-  // looks into the file for the first line starting by the 'category' string
-  auto starts_with = [](const std::string &str, std::string_view start) {
-    return start == std::string_view{str.data(), std::min(str.size(), start.size())};
-  };
-
-  std::string read;
-  while (std::getline(netstat, read) && !starts_with(read, category))
-    ;
-  if (!starts_with(read, category)) {
-    spdlog::warn("Category '{}' not found in netstat file {}", category, NETSTAT_FILE);
-    return {};
-  }
-
-  // finding corresponding column (key)
-  // looks into the fetched line for the first word (space separated) equal to 'key'
-  int  index = 0;
-  auto r_it = read.begin();
-  auto k_it = key.begin();
-  while (k_it != key.end() && r_it != read.end()) {
-    if (*r_it != *k_it) {
-      r_it = std::find(r_it, read.end(), ' ');
-      if (r_it != read.end()) {
-        ++r_it;
-      }
-      k_it = key.begin();
-      ++index;
-    } else {
-      ++r_it;
-      ++k_it;
-    }
-  }
-
-  if (r_it == read.end() && k_it != key.end()) {
-    spdlog::warn(
-        "Key '{}' not found in category '{}' of netstat file {}", key, category, NETSTAT_FILE);
-    return {};
-  }
-
-  // finally accessing value
-  // accesses the line right under the fetched one
-  std::getline(netstat, read);
-  assert(starts_with(read, category));
-  std::istringstream iss(read);
-  while (index--) {
-    std::getline(iss, read, ' ');
-  }
-  unsigned long long value;
-  iss >> value;
-  return value;
-}
 }  // namespace
+
+constexpr const char *NETDEV_FILE =
+    "/proc/net/dev";  // std::ifstream does not take std::string_view as param
+std::optional<std::pair<unsigned long long, unsigned long long>>
+waybar::modules::Network::readBandwidthUsage() {
+  std::ifstream netdev(NETDEV_FILE);
+  if (!netdev) {
+    spdlog::warn("Failed to open netdev file {}", NETDEV_FILE);
+    return {};
+  }
+
+  std::string line;
+  // skip the headers (first two lines)
+  std::getline(netdev, line);
+  std::getline(netdev, line);
+
+  unsigned long long receivedBytes = 0ull;
+  unsigned long long transmittedBytes = 0ull;
+  while (std::getline(netdev, line)) {
+    std::istringstream iss(line);
+
+    std::string ifacename;
+    iss >> ifacename;  // ifacename contains "eth0:"
+    ifacename.pop_back();  // remove trailing ':'
+    if (!checkInterface(ifacename)) {
+      continue;
+    }
+
+    // The rest of the line consists of whitespace separated counts divided
+    // into two groups (receive and transmit). Each group has the following
+    // columns: bytes, packets, errs, drop, fifo, frame, compressed, multicast
+    //
+    // We only care about the bytes count, so we'll just ignore the 7 other
+    // columns.
+    unsigned long long r = 0ull;
+    unsigned long long t = 0ull;
+    // Read received bytes
+    iss >> r;
+    // Skip all the other columns in the received group
+    for (int colsToSkip = 7; colsToSkip > 0; colsToSkip--) {
+      // skip whitespace between columns
+      while (iss.peek() == ' ') { iss.ignore(); }
+      // skip the irrelevant column
+      while (iss.peek() != ' ') { iss.ignore(); }
+    }
+    // Read transmit bytes
+    iss >> t;
+
+    receivedBytes += r;
+    transmittedBytes += t;
+  }
+
+  return {{receivedBytes, transmittedBytes}};
+}
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
@@ -98,7 +88,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_WLAN},
 #endif
-      frequency_(0) {
+      frequency_(0.0) {
 
   // Start with some "text" in the module's label_, update() will then
   // update it. Since the text should be different, update() will be able
@@ -106,17 +96,12 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   // the module start with no text, but the the event_box_ is shown.
   label_.set_markup("<s></s>");
 
-  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
-  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
-  if (down_octets) {
-    bandwidth_down_total_ = *down_octets;
+  auto bandwidth = readBandwidthUsage();
+  if (bandwidth.has_value()) {
+    bandwidth_down_total_ = (*bandwidth).first;
+    bandwidth_up_total_ = (*bandwidth).second;
   } else {
     bandwidth_down_total_ = 0;
-  }
-
-  if (up_octets) {
-    bandwidth_up_total_ = *up_octets;
-  } else {
     bandwidth_up_total_ = 0;
   }
 
@@ -303,20 +288,21 @@ const std::string waybar::modules::Network::getNetworkState() const {
 auto waybar::modules::Network::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string                 tooltip_format;
-  auto down_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_DOWN_TOTAL_KEY);
-  auto up_octets = read_netstat(BANDWIDTH_CATEGORY, BANDWIDTH_UP_TOTAL_KEY);
 
-  unsigned long long bandwidth_down = 0;
-  if (down_octets) {
-    bandwidth_down = *down_octets - bandwidth_down_total_;
-    bandwidth_down_total_ = *down_octets;
+  auto bandwidth = readBandwidthUsage();
+  auto bandwidth_down = 0ull;
+  auto bandwidth_up = 0ull;
+  if (bandwidth.has_value()) {
+    auto down_octets = (*bandwidth).first;
+    auto up_octets = (*bandwidth).second;
+
+    bandwidth_down = down_octets - bandwidth_down_total_;
+    bandwidth_down_total_ = down_octets;
+
+    bandwidth_up = up_octets - bandwidth_up_total_;
+    bandwidth_up_total_ = up_octets;
   }
 
-  unsigned long long bandwidth_up = 0;
-  if (up_octets) {
-    bandwidth_up = *up_octets - bandwidth_up_total_;
-    bandwidth_up_total_ = *up_octets;
-  }
   if (!alt_) {
     auto state = getNetworkState();
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
@@ -345,12 +331,13 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("essid", essid_),
       fmt::arg("signaldBm", signal_strength_dbm_),
       fmt::arg("signalStrength", signal_strength_),
+      fmt::arg("signalStrengthApp", signal_strength_app_),
       fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_),
       fmt::arg("ipaddr", ipaddr_),
       fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_),
-      fmt::arg("frequency", frequency_),
+      fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
       fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
@@ -374,12 +361,13 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("essid", essid_),
           fmt::arg("signaldBm", signal_strength_dbm_),
           fmt::arg("signalStrength", signal_strength_),
+          fmt::arg("signalStrengthApp", signal_strength_app_),
           fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_),
           fmt::arg("ipaddr", ipaddr_),
           fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_),
-          fmt::arg("frequency", frequency_),
+          fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
                    pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
@@ -417,7 +405,8 @@ void waybar::modules::Network::clearIface() {
   cidr_ = 0;
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
-  frequency_ = 0;
+  signal_strength_app_.clear();
+  frequency_ = 0.0;
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
@@ -484,7 +473,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             net->essid_.clear();
             net->signal_strength_dbm_ = 0;
             net->signal_strength_ = 0;
-            net->frequency_ = 0;
+            net->signal_strength_app_.clear();
+            net->frequency_ = 0.0;
           }
         }
         net->carrier_ = carrier.value();
@@ -802,13 +792,30 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
   if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
+    // WiFi-hardware usually operates in the range -90 to -30dBm.
 
-    // WiFi-hardware usually operates in the range -90 to -20dBm.
-    const int hardwareMax = -20;
+    // If a signal is too strong, it can overwhelm receiving circuity that is designed
+    // to pick up and process a certain signal level. The following percentage is scaled to
+    // punish signals that are too strong (>= -45dBm) or too weak (<= -45 dBm).
+    const int hardwareOptimum = -45;
     const int hardwareMin = -90;
     const int strength =
-      ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
-    signal_strength_ = std::clamp(strength, 0, 100);
+        100 - ((abs(signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) * 100);
+    signal_strength_ = std::clamp(strength, 0, 100);  
+
+    if (signal_strength_dbm_ >= -50) {
+      signal_strength_app_ = "Great Connectivity";
+    } else if (signal_strength_dbm_ >= -60) {
+      signal_strength_app_ = "Good Connectivity";
+    } else if (signal_strength_dbm_ >= -67) {
+      signal_strength_app_ = "Streaming";
+    } else if (signal_strength_dbm_ >= -70) {
+      signal_strength_app_ = "Web Surfing";
+    } else if (signal_strength_dbm_ >= -80) {
+      signal_strength_app_ = "Basic Connectivity";
+    } else {
+      signal_strength_app_ = "Poor Connectivity";
+    }
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
     signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
@@ -817,8 +824,8 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
 
 void waybar::modules::Network::parseFreq(struct nlattr **bss) {
   if (bss[NL80211_BSS_FREQUENCY] != nullptr) {
-    // in MHz
-    frequency_ = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+    // in GHz
+    frequency_ = (double) nla_get_u32(bss[NL80211_BSS_FREQUENCY]) / 1000;
   }
 }
 

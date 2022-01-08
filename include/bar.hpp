@@ -8,6 +8,9 @@
 #include <gtkmm/window.h>
 #include <json/json.h>
 
+#include <memory>
+#include <vector>
+
 #include "AModule.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
@@ -36,6 +39,19 @@ struct bar_margins {
   int left = 0;
 };
 
+struct bar_mode {
+  bar_layer layer;
+  bool      exclusive;
+  bool      passthrough;
+  bool      visible;
+};
+
+#ifdef HAVE_SWAY
+namespace modules::sway {
+class BarIpcClient;
+}
+#endif  // HAVE_SWAY
+
 class BarSurface {
  protected:
   BarSurface() = default;
@@ -54,38 +70,56 @@ class BarSurface {
 
 class Bar {
  public:
+  using bar_mode_map = std::map<std::string_view, struct bar_mode>;
+  static const bar_mode_map     PRESET_MODES;
+  static const std::string_view MODE_DEFAULT;
+  static const std::string_view MODE_INVISIBLE;
+
   Bar(struct waybar_output *w_output, const Json::Value &);
   Bar(const Bar &) = delete;
-  ~Bar() = default;
+  ~Bar();
 
+  void setMode(const std::string_view &);
   void setVisible(bool visible);
   void toggle();
   void handleSignal(int);
 
   struct waybar_output *output;
   Json::Value           config;
-  struct wl_surface *   surface;
-  bool                  exclusive = true;
+  struct wl_surface    *surface;
   bool                  visible = true;
   bool                  vertical = false;
   Gtk::Window           window;
 
+#ifdef HAVE_SWAY
+  std::string bar_id;
+#endif
+
  private:
   void onMap(GdkEventAny *);
   auto setupWidgets() -> void;
-  void getModules(const Factory &, const std::string &);
+  void getModules(const Factory &, const std::string &, Gtk::Box*);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
+  void setMode(const bar_mode &);
+
+  /* Copy initial set of modes to allow customization */
+  bar_mode_map configured_modes = PRESET_MODES;
+  std::string  last_mode_{MODE_DEFAULT};
 
   std::unique_ptr<BarSurface>                   surface_impl_;
-  bar_layer                                     layer_;
   Gtk::Box                                      left_;
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;
   Gtk::Box                                      box_;
-  std::vector<std::unique_ptr<waybar::AModule>> modules_left_;
-  std::vector<std::unique_ptr<waybar::AModule>> modules_center_;
-  std::vector<std::unique_ptr<waybar::AModule>> modules_right_;
+  std::vector<std::shared_ptr<waybar::AModule>> modules_left_;
+  std::vector<std::shared_ptr<waybar::AModule>> modules_center_;
+  std::vector<std::shared_ptr<waybar::AModule>> modules_right_;
+#ifdef HAVE_SWAY
+  using BarIpcClient = modules::sway::BarIpcClient;
+  std::unique_ptr<BarIpcClient> _ipc_client;
+#endif
+  std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
 };
 
 }  // namespace waybar

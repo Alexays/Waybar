@@ -27,7 +27,9 @@ client_protocols = [
 	[wl_protocol_dir, 'unstable/idle-inhibit/idle-inhibit-unstable-v1.xml'],
 	['wlr-layer-shell-unstable-v1.xml'],
 	['wlr-foreign-toplevel-management-unstable-v1.xml'],
+	['ext-workspace-unstable-v1.xml'],
 	['river-status-unstable-v1.xml'],
+	['river-control-unstable-v1.xml'],
 ]
 
 client_protos_src = []

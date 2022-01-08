@@ -70,11 +70,17 @@ Addressed by *wlr/taskbar*
 
 *ignore-list*: ++
 	typeof: array ++
-	List of app_id to be invisible.
+	List of app_id/titles to be invisible.
+
+*app_ids-mapping*: ++
+	typeof: object ++
+	Dictionary of app_id to be replaced with
 
 # FORMAT REPLACEMENTS
 
 *{icon}*: The icon of the application.
+
+*{title}*: The application name as in desktop file if appropriate desktop fils found, otherwise same as {app_id}
 
 *{title}*: The title of the application.
 
@@ -105,7 +111,10 @@ Addressed by *wlr/taskbar*
 	"on-click-middle": "close",
 	"ignore-list": [
 	    "Alacritty"
-	]
+	],
+	"app_ids-mapping": {
+		"firefoxdeveloperedition": "firefox-developer-edition"
+	}
 }
 ```
 
