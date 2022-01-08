@@ -32,6 +32,21 @@ static const zriver_output_status_v1_listener output_status_listener_impl{
     .urgent_tags = listen_urgent_tags,
 };
 
+void listen_focused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                           struct wl_output *output) {
+  static_cast<Tags *>(data)->handle_focused_output();
+}
+
+void listen_unfocused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                             struct wl_output *output) {
+  static_cast<Tags *>(data)->handle_unfocused_output();
+}
+
+static const zriver_seat_status_v1_listener output_seat_listener_impl{
+    .focused_output = listen_focused_output,
+    .unfocused_output = listen_unfocused_output,
+};
+
 static void listen_command_success(void *data,
                                    struct zriver_command_callback_v1 *zriver_command_callback_v1,
                                    const char *output) {
@@ -88,8 +103,9 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       seat_{nullptr},
       bar_(bar),
       box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
-      output_status_{nullptr} {
-  struct wl_display * display = Client::inst()->wl_display;
+      output_status_{nullptr},
+      seat_status_{nullptr} {
+  struct wl_display  *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
@@ -145,12 +161,19 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output);
   zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
 
+  seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
+  zriver_seat_status_v1_add_listener(seat_status_, &output_seat_listener_impl, this);
+
   zriver_status_manager_v1_destroy(status_manager_);
 }
 
 Tags::~Tags() {
   if (output_status_) {
     zriver_output_status_v1_destroy(output_status_);
+  }
+
+  if (seat_status_) {
+    zriver_seat_status_v1_destroy(seat_status_);
   }
 
   if (control_) {
@@ -220,6 +243,14 @@ void Tags::handle_urgent_tags(uint32_t tags) {
     }
     ++i;
   }
+}
+
+void Tags::handle_focused_output() {
+  box_.get_style_context()->add_class("output");
+}
+
+void Tags::handle_unfocused_output() {
+  box_.get_style_context()->remove_class("output");
 }
 
 } /* namespace waybar::modules::river */
