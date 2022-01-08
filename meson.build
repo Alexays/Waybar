@@ -79,7 +79,7 @@ is_netbsd = host_machine.system() == 'netbsd'
 is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
-fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
+fmt = dependency('fmt', version : ['>=7.0.0'], fallback : ['fmt', 'fmt_dep'])
 spdlog = dependency('spdlog', version : ['>=1.8.5'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=true'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
