@@ -1,10 +1,7 @@
 * {
-    border: none;
-    border-radius: 0;
     /* `otf-font-awesome` is required to be installed for icons */
     font-family: Roboto, Helvetica, Arial, sans-serif;
     font-size: 13px;
-    min-height: 0;
 }
 
 window#waybar {
@@ -43,6 +40,9 @@ window#waybar.chromium {
     color: #ffffff;
     /* Use box-shadow instead of border so the text isn't offset */
     box-shadow: inset 0 -3px transparent;
+    /* Avoid rounded borders under each workspace name */
+    border: none;
+    border-radius: 0;
 }
 
 /* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
