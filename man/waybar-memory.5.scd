@@ -84,11 +84,19 @@ Addressed by *memory*
 
 *{percentage}*: Percentage of memory in use.
 
+*{swapPercentage}*: Percentage of swap in use.
+
 *{total}*: Amount of total memory available in GiB.
+
+*{swapTotal}*: Amount of total swap available in GiB.
 
 *{used}*: Amount of used memory in GiB.
 
+*{swapUsed}*: Amount of used swap in GiB.
+
 *{avail}*: Amount of available memory in GiB.
+
+*{swapAvail}*: Amount of available swap in GiB.
 
 # EXAMPLES
 
