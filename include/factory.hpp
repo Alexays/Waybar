@@ -56,6 +56,7 @@
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
+#include "modules/image.hpp"
 #include "modules/temperature.hpp"
 #if defined(__linux__)
 #  ifdef WANT_RFKILL
