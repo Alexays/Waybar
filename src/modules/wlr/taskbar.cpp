@@ -806,13 +806,25 @@ Taskbar::~Taskbar()
 void Taskbar::update()
 {
   if (!order_list_.empty()) {
+    auto begin = order_list_.begin();
+    auto end = order_list.end();
+
+    // first pass - sort ordered tasks
     for (auto& task : tasks_) {
-      auto begin = order_list_.begin();
-      auto itr = std::find(begin, order_list_.end(), task->app_id());
+      auto itr = std::find(begin, end, task->app_id());
 
       if (itr != std::end(order_list_)) {
         auto index = std::distance(begin, itr);
         move_button(task->button_, index);
+      }
+    }
+
+    // second pass - push unordered to end
+    for (auto& task : tasks_) {
+      auto itr = std::find(begin, end, task->app_id());
+
+      if (itr == std::end(order_list_)) {
+        move_button(task->button_, -1);
       }
     }
   }
