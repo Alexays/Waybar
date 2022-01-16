@@ -807,7 +807,7 @@ void Taskbar::update()
 {
   if (!order_list_.empty()) {
     auto begin = order_list_.begin();
-    auto end = order_list.end();
+    auto end = order_list_.end();
 
     // first pass - sort ordered tasks
     for (auto& task : tasks_) {
