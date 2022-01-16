@@ -764,6 +764,13 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
         }
     }
 
+    // Load order-list
+    if (config_["order-list"].isArray()) {
+      for (auto& app_name : config_["order-list"]) {
+        order_list_.push_back(app_name.asString());
+      }
+    }
+
     // Load app_id remappings
     if (config_["app_ids-mapping"].isObject()) {
 		const Json::Value& mapping = config_["app_ids-mapping"];
@@ -798,7 +805,19 @@ Taskbar::~Taskbar()
 
 void Taskbar::update()
 {
-    for (auto& t : tasks_) {
+  if (!order_list_.empty()) {
+    for (auto& task : tasks_) {
+      auto begin = order_list_.begin();
+      auto itr = std::find(begin, order_list_.end(), task->app_id());
+
+      if (itr != std::end(order_list_)) {
+        auto index = std::distance(begin, itr);
+        move_button(task->button_, index);
+      }
+    }
+  }
+
+  for (auto& t : tasks_) {
         t->update();
     }
 
