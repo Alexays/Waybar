@@ -1,21 +1,14 @@
 #pragma once
 
-#include <fmt/format.h>
-#if FMT_VERSION < 60000
-#include <fmt/time.h>
-#else
-#include <fmt/chrono.h>
-#endif
 #include <date/tz.h>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace waybar {
 
-struct waybar_time {
-  std::locale locale;
-  date::zoned_seconds ztime;
-};
+struct waybar_time;
+
+namespace modules {
 
 const std::string kCalendarPlaceholder = "calendar";
 
@@ -43,4 +36,5 @@ class Clock : public ALabel {
   bool is_timezone_fixed();
 };
 
-}  // namespace waybar::modules
+}  // namespace modules
+}  // namespace waybar

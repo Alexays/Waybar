@@ -82,6 +82,12 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	default: *true* ++
 	Option to request an exclusive zone from the compositor. Disable this to allow drawing application windows underneath or on top of the bar.
 
+*fixed-center* ++
+	typeof: bool ++
+	default: *true*
+	Prefer fixed center position for the `modules-center` block. The center block will stay in the middle of the bar whenever possible. It can still be pushed around if other blocks need more space.
+	When false, the center block is centered in the space between the left and right block.
+
 *passthrough* ++
 	typeof: bool ++
 	default: *false* ++

@@ -767,7 +767,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos, Gtk
 auto waybar::Bar::setupWidgets() -> void {
   window.add(box_);
   box_.pack_start(left_, false, false);
-  box_.set_center_widget(center_);
+  if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
+    box_.set_center_widget(center_);
+  } else {
+    box_.pack_start(center_, true, false);
+  }
   box_.pack_end(right_, false, false);
 
   // Convert to button code for every module that is used.

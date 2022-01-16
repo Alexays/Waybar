@@ -52,6 +52,7 @@ Addressed by *wlr/workspaces*
 # CLICK ACTIONS
 
 *activate*: Switch to workspace.
+
 *close*: Close the workspace.
 
 # ICONS

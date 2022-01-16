@@ -69,6 +69,7 @@ libdbusmenu-gtk3 [Tray module]
 libmpdclient [MPD module]
 libsndio [sndio module]
 libevdev [KeyboardState module]
+xkbregistry
 ```
 
 **Build dependencies**
@@ -101,7 +102,8 @@ sudo apt install \
   libsigc++-2.0-dev \
   libspdlog-dev \
   libwayland-dev \
-  scdoc
+  scdoc \
+  libxkbregistry-dev
 ```
 
 

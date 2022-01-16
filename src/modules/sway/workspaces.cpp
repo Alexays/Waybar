@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cctype>
 #include <string>
 
@@ -98,6 +99,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                   Json::Value v;
                   v["name"] = p_w_name;
                   v["target_output"] = bar_.output->name;
+                  v["num"] = convertWorkspaceNameToNum(p_w_name);
                   workspaces_.emplace_back(std::move(v));
                   break;
                 }
@@ -107,57 +109,59 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
               Json::Value v;
               v["name"] = p_w_name;
               v["target_output"] = "";
+              v["num"] = convertWorkspaceNameToNum(p_w_name);
               workspaces_.emplace_back(std::move(v));
             }
           }
         }
 
-        // config option to sort numeric workspace names before others
-        bool config_numeric_first = config_["numeric-first"].asBool();
-
+        // sway has a defined ordering of workspaces that should be preserved in
+        // the representation displayed by waybar to ensure that commands such
+        // as "workspace prev" or "workspace next" make sense when looking at
+        // the workspace representation in the bar.
+        // Due to waybar's own feature of persistent workspaces unknown to sway,
+        // custom sorting logic is necessary to make these workspaces appear
+        // naturally in the list of workspaces without messing up sway's
+        // sorting. For this purpose, a custom numbering property is created
+        // that preserves the order provided by sway while inserting numbered
+        // persistent workspaces at their natural positions.
+        //
+        // All of this code assumes that sway provides numbered workspaces first
+        // and other workspaces are sorted by their creation time.
+        //
+        // In a first pass, the maximum "num" value is computed to enqueue
+        // unnumbered workspaces behind numbered ones when computing the sort
+        // attribute.
+        int max_num = -1;
+        for (auto & workspace : workspaces_) {
+          max_num = std::max(workspace["num"].asInt(), max_num);
+        }
+        for (auto & workspace : workspaces_) {
+          auto workspace_num = workspace["num"].asInt();
+          if (workspace_num > -1) {
+            workspace["sort"] = workspace_num;
+          } else {
+            workspace["sort"] = ++max_num;
+          }
+        }
         std::sort(workspaces_.begin(),
                   workspaces_.end(),
-                  [config_numeric_first](const Json::Value &lhs, const Json::Value &rhs) {
-                    // the "num" property (integer type):
-                    // The workspace number or -1 for workspaces that do
-                    // not start with a number.
-                    // We could rely on sway providing this property:
-                    //
-                    //     auto l = lhs["num"].asInt();
-                    //     auto r = rhs["num"].asInt();
-                    //
-                    // We cannot rely on the "num" property as provided by sway
-                    // via IPC, because persistent workspace might not exist in
-                    // sway's view. However, we need this property also for
-                    // not-yet created persistent workspace. As such, we simply
-                    // duplicate sway's logic of assigning the "num" property
-                    // into waybar (see convertWorkspaceNameToNum). This way the
-                    // sorting should work out even when we include workspaces
-                    // that do not currently exist.
+                  [](const Json::Value &lhs, const Json::Value &rhs) {
                     auto lname = lhs["name"].asString();
                     auto rname = rhs["name"].asString();
-                    int  l = convertWorkspaceNameToNum(lname);
-                    int  r = convertWorkspaceNameToNum(rname);
+                    int  l = lhs["sort"].asInt();
+                    int  r = rhs["sort"].asInt();
 
                     if (l == r) {
-                      // in case both integers are the same, lexicographical
-                      // sort. This also covers the case when both don't have a
-                      // number (i.e., l == r == -1).
+                      // In case both integers are the same, lexicographical
+                      // sort. The code above already ensure that this will only
+                      // happend in case of explicitly numbered workspaces.
                       return lname < rname;
                     }
 
-                    // one of the workspaces doesn't begin with a number, so
-                    // num is -1.
-                    if (l < 0 || r < 0) {
-                      if (config_numeric_first) {
-                        return r < 0;
-                      }
-                      return l < 0;
-                    }
-
-                    // both workspaces have a "num" so let's just compare those
                     return l < r;
                   });
+
       }
       dp.emit();
     } catch (const std::exception &e) {
