@@ -99,7 +99,7 @@ auto waybar::modules::Clock::update() -> void {
     // As date dep is not fully compatible, prefer fmt
     tzset();
     auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
-    text = fmt::format(format_, localtime);
+    text = fmt::format(locale_, format_, localtime);
   } else {
     text = fmt::format(format_, wtime);
   }
