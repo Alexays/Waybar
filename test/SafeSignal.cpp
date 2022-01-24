@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_RUNNER
 #include "util/SafeSignal.hpp"
 
 #include <glibmm.h>
@@ -137,9 +136,4 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal copy/move counter", "[signal][thr
   });
   producer.join();
   REQUIRE(count == NUM_EVENTS);
-}
-
-int main(int argc, char* argv[]) {
-  Glib::init();
-  return Catch::Session().run(argc, argv);
 }

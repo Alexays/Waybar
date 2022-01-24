@@ -93,10 +93,15 @@ Addressed by *wlr/taskbar*
 # CLICK ACTIONS
 
 *activate*: Bring the application into foreground.
+
 *minimize*: Toggle application's minimized state.
+
 *minimize-raise*: Bring the application into foreground or toggle its minimized state.
+
 *maximize*: Toggle application's maximized state.
+
 *fullscreen*: Toggle application's fullscreen state.
+
 *close*: Close the application.
 
 # EXAMPLES
