@@ -233,9 +233,8 @@ struct fmt::formatter<waybar_time> : fmt::formatter<std::tm> {
   template <typename FormatContext>
   auto format(const waybar_time& t, FormatContext& ctx) {
 #if FMT_VERSION >= 80000
-//auto& tm_format = specs;
+  auto& tm_format = specs;
 #endif
-//    return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
-	  return fmt::formatter<std::tm>::format((const std::tm&) t, ctx);
+    return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
   }
 };
