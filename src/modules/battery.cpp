@@ -161,7 +161,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       uint32_t    energy_now;
       uint32_t    energy_full_design;
       std::string _status;
-      std::ifstream(bat / "status") >> _status;
+      std::getline(std::ifstream(bat / "status"), _status);
 
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
