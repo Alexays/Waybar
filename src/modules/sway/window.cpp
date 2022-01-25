@@ -66,10 +66,10 @@ auto Window::update() -> void {
   ALabel::update();
 }
 
-int leafNodesInWorkspace(const Json::Value& node) {
+int leafNodesInWorkspace(const Json::Value& node, bool skip_floating) {
   auto const& nodes = node["nodes"];
   auto const& floating_nodes = node["floating_nodes"];
-  if(nodes.empty() && floating_nodes.empty()) {
+  if(nodes.empty() && (skip_floating || floating_nodes.empty())) {
     if(node["type"] == "workspace")
       return 0;
     else
@@ -78,11 +78,11 @@ int leafNodesInWorkspace(const Json::Value& node) {
   int sum = 0;
   if (!nodes.empty()) {
     for(auto const& node : nodes)
-      sum += leafNodesInWorkspace(node);
+      sum += leafNodesInWorkspace(node, skip_floating);
   }
-  if (!floating_nodes.empty()) {
+  if (!skip_floating && !floating_nodes.empty()) {
     for(auto const& node : floating_nodes)
-      sum += leafNodesInWorkspace(node);
+      sum += leafNodesInWorkspace(node, skip_floating);
   }
   return sum;
 }
@@ -102,7 +102,7 @@ std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
                       : node["window_properties"]["instance"].asString();
         int nb = node.size();
         if(parentWorkspace != 0)
-          nb = leafNodesInWorkspace(parentWorkspace);
+          nb = leafNodesInWorkspace(parentWorkspace, config_["skip-floating-windows"].asBool());
         return {nb,
           node["id"].asInt(),
           Glib::Markup::escape_text(node["name"].asString()),
