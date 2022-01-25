@@ -154,7 +154,10 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
 
   std::map<std::string, int> short_name_to_number_map;
   for (const auto& used_layout_name : used_layouts) {
-    auto used_layout = &layouts_map_.find(used_layout_name)->second;
+    auto found = layouts_map_.find(used_layout_name);
+    if (found == layouts_map_.end())
+      continue;
+    auto used_layout = &found->second;
     auto layouts_with_same_name_list = found_by_short_names[used_layout->short_name];
     if (layouts_with_same_name_list.size() < 2) {
       continue;
