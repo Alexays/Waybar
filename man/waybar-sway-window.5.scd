@@ -70,6 +70,11 @@ Addressed by *sway/window*
 	typeof: object ++
 	Rules to rewrite window title. See *rewrite rules*.
 
+*skip-floating-windows*: ++
+	typeof: bool ++
+	default: false ++
+	Skip floating nodes when counting windows present in the workspace for style classes.
+
 # REWRITE RULES
 
 *rewrite* is an object where keys are regular expressions and values are
