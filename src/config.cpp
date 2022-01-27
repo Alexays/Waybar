@@ -6,6 +6,7 @@
 #include <wordexp.h>
 
 #include <fstream>
+#include <regex>
 #include <stdexcept>
 
 #include "util/json.hpp"
@@ -104,22 +105,10 @@ void Config::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) {
 }
 bool isValidOutput(const Json::Value &config, const std::string &name,
                    const std::string &identifier) {
-  if (config["output"].isArray()) {
-    for (auto const &output_conf : config["output"]) {
-      if (output_conf.isString() &&
-          (output_conf.asString() == name || output_conf.asString() == identifier)) {
-        return true;
-      }
-    }
-    return false;
-  } else if (config["output"].isString()) {
-    auto config_output = config["output"].asString();
-    if (!config_output.empty()) {
-      if (config_output.substr(0, 1) == "!") {
-        return config_output.substr(1) != name && config_output.substr(1) != identifier;
-      }
-      return config_output == name || config_output == identifier;
-    }
+  if (config["output"].isString()) {
+    const std::regex re{config["output"].asString()};
+    auto name_with_identifier = fmt::format("{}/{}", name, identifier);
+    return std::regex_match(name_with_identifier, re);
   }
 
   return true;
