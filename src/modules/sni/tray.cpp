@@ -25,7 +25,11 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
 }
 
 void Tray::onAdd(std::unique_ptr<Item>& item) {
-  box_.pack_end(item->event_box);
+  if (config_["reverse-direction"].isBool() && config_["reverse-direction"].asBool()) {
+    box_.pack_end(item->event_box);
+  } else {
+    box_.pack_start(item->event_box);
+  }
   dp.emit();
 }
 
