@@ -6,7 +6,9 @@ namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
-    : name_(std::move(name)), config_(std::move(config)) {
+    : name_(std::move(name)), config_(std::move(config))
+    , distance_scrolled_y_(0.0)
+    , distance_scrolled_x_(0.0) {
   // configure events' user commands
   if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
       config_["on-click-backward"].isString() || config_["on-click-forward"].isString() ||
