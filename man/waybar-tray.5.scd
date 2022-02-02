@@ -29,6 +29,10 @@ Addressed by *tray*
     typeof: integer ++
     Defines the spacing between the tray icons.
 
+*reverse-direction*: ++
+    typeof: bool ++
+    Defines if new app icons should be added in a reverse order
+
 *on-update*: ++
 	typeof: string ++
 	Command to execute when the module is updated.
