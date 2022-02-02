@@ -113,10 +113,10 @@ auto waybar::modules::Clock::update() -> void {
       }
       auto tooltip_format = config_["tooltip-format"].asString();
       text = fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines));
+      label_.set_tooltip_markup(text);
     }
   }
 
-  label_.set_tooltip_markup(text);
   // Call parent update
   ALabel::update();
 }
