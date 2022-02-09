@@ -67,6 +67,10 @@
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
 
+#ifdef HAVE_LIBJACK
+#include "modules/jack.hpp"
+#endif
+
 namespace waybar {
 
 class Factory {
