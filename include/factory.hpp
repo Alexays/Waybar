@@ -62,6 +62,9 @@
 #    include "modules/bluetooth.hpp"
 #  endif
 #endif
+#ifdef HAVE_LIBJACK
+#include "modules/jack.hpp"
+#endif
 
 namespace waybar {
 

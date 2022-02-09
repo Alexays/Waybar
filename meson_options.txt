@@ -13,3 +13,5 @@ option('sndio', type: 'feature', value: 'auto', description: 'Enable support for
 option('logind', type: 'feature', value: 'auto', description: 'Enable support for logind')
 option('tests', type: 'feature', value: 'auto', description: 'Enable tests')
 option('experimental', type : 'boolean', value : false, description: 'Enable experimental features')
+option('jack', type: 'feature', value: 'auto', description: 'Enable support for JACK DSP load monitoring')
+
