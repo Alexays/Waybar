@@ -1,6 +1,6 @@
 #include "modules/jack.hpp"
 
-extern "C" {
+//extern "C" {
 
   int bufSizeCallback(unsigned int size, void *obj) {
     waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
@@ -17,12 +17,13 @@ extern "C" {
 
   void shutdownCallback(void *obj) {
     waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
+    pthread_cancel(x->jack_thread_);
     x->client_ = NULL;
     x->state_ = "disconnected";
     x->xruns_ = 0;
   }
 
-}
+//}
 
 waybar::modules::JACK::JACK(const std::string& id, const Json::Value& config)
     : ALabel(config, "jack", id, "{load}%", 1) {
@@ -57,8 +58,11 @@ std::string waybar::modules::JACK::JACKState() {
     return "disconnected";
 
   client_ = jack_client_open("waybar", JackNoStartServer, NULL);
-
   if (client_) {
+    jack_thread_ = jack_client_thread_id(client_);
+    if(config_["realtime"].isBool() && !config_["realtime"].asBool())
+      jack_drop_real_time_scheduling(jack_thread_);
+
     bufsize_ = jack_get_buffer_size(client_);
     samplerate_ = jack_get_sample_rate(client_);
     jack_set_buffer_size_callback(client_, bufSizeCallback, this);
