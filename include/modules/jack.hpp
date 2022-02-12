@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 #include <fstream>
 #include <jack/jack.h>
+#include <jack/thread.h>
 #include <proc/readproc.h>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
@@ -18,6 +19,7 @@ class JACK : public ALabel {
   jack_client_t*      client_;
   unsigned int        xruns_;
   std::string         state_;
+  pthread_t           jack_thread_;
 
  private:
   std::string         JACKState();
@@ -27,3 +29,7 @@ class JACK : public ALabel {
 };
 
 }  // namespace waybar::modules
+
+int bufSizeCallback(unsigned int size, void *obj);
+int xrunCallback(void *obj);
+void shutdownCallback(void *obj);
