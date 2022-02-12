@@ -1,30 +1,5 @@
 #include "modules/jack.hpp"
 
-//extern "C" {
-
-  int bufSizeCallback(unsigned int size, void *obj) {
-    waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
-    x->bufsize_ = size;
-    return size;
-  }
-
-  int xrunCallback(void *obj) {
-    waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
-    x->xruns_ += 1;
-    x->state_ = "xrun";
-    return 0;
-  }
-
-  void shutdownCallback(void *obj) {
-    waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
-    pthread_cancel(x->jack_thread_);
-    x->client_ = NULL;
-    x->state_ = "disconnected";
-    x->xruns_ = 0;
-  }
-
-//}
-
 waybar::modules::JACK::JACK(const std::string& id, const Json::Value& config)
     : ALabel(config, "jack", id, "{load}%", 1) {
   xruns_  = 0;
@@ -128,4 +103,25 @@ auto waybar::modules::JACK::update() -> void {
 
   // Call parent update
   ALabel::update();
+}
+
+int bufSizeCallback(unsigned int size, void *obj) {
+  waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
+  x->bufsize_ = size;
+  return size;
+}
+
+int xrunCallback(void *obj) {
+  waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
+  x->xruns_ += 1;
+  x->state_ = "xrun";
+  return 0;
+}
+
+void shutdownCallback(void *obj) {
+  waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
+  pthread_cancel(x->jack_thread_);
+  x->client_ = NULL;
+  x->state_ = "disconnected";
+  x->xruns_ = 0;
 }
