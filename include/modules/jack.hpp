@@ -15,16 +15,20 @@ class JACK : public ALabel {
   JACK(const std::string&, const Json::Value&);
   ~JACK() = default;
   auto update() -> void;
-  jack_nframes_t      bufsize_;
-  jack_client_t*      client_;
-  unsigned int        xruns_;
-  std::string         state_;
-  pthread_t           jack_thread_;
+
+  int                 bufSize(unsigned int size);
+  int                 xrun();
+  void                shutdown();
 
  private:
   std::string         JACKState();
 
+  jack_client_t*      client_;
+  jack_nframes_t      bufsize_;
   jack_nframes_t      samplerate_;
+  unsigned int        xruns_;
+  std::string         state_;
+  pthread_t           jack_thread_;
   util::SleeperThread thread_;
 };
 
