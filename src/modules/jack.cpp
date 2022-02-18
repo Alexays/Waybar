@@ -105,23 +105,32 @@ auto waybar::modules::JACK::update() -> void {
   ALabel::update();
 }
 
-int bufSizeCallback(unsigned int size, void *obj) {
-  waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
-  x->bufsize_ = size;
+int waybar::modules::JACK::bufSize(unsigned int size) {
+  bufsize_ = size;
   return size;
 }
 
-int xrunCallback(void *obj) {
-  waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
-  x->xruns_ += 1;
-  x->state_ = "xrun";
+int waybar::modules::JACK::xrun() {
+  xruns_ += 1;
+  state_ = "xrun";
   return 0;
 }
 
+void waybar::modules::JACK::shutdown() {
+  pthread_cancel(jack_thread_);
+  client_ = NULL;
+  state_ = "disconnected";
+  xruns_ = 0;
+}
+
+int bufSizeCallback(unsigned int size, void *obj) {
+  return static_cast<waybar::modules::JACK*>(obj)->bufSize(size);
+}
+
+int xrunCallback(void *obj) {
+  return static_cast<waybar::modules::JACK*>(obj)->xrun();
+}
+
 void shutdownCallback(void *obj) {
-  waybar::modules::JACK* x = (waybar::modules::JACK*)obj;
-  pthread_cancel(x->jack_thread_);
-  x->client_ = NULL;
-  x->state_ = "disconnected";
-  x->xruns_ = 0;
+  return static_cast<waybar::modules::JACK*>(obj)->shutdown();
 }
