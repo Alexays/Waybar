@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <glibmm/ustring.h>
 
 class pow_format {
   public:
@@ -83,6 +84,16 @@ namespace fmt {
               , fmt::arg("padding", pow ? "" : s.binary_ ? "  " : " ")
             );
         }
+    };
+
+
+    // Glib ustirng support
+    template <>
+    struct formatter<Glib::ustring> : formatter<std::string> {
+      template <typename FormatContext>
+      auto format(const Glib::ustring& value, FormatContext& ctx) {
+        return formatter<std::string>::format(value, ctx);
+      }
     };
 }
 
