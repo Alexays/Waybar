@@ -129,7 +129,7 @@ void waybar::modules::MPD::setLabel() {
     album = getTag(MPD_TAG_ALBUM);
     title = getTag(MPD_TAG_TITLE);
     date = getTag(MPD_TAG_DATE);
-    song_pos = mpd_status_get_song_pos(status_.get());
+    song_pos = mpd_status_get_song_pos(status_.get()) + 1;
     volume = mpd_status_get_volume(status_.get());
     if (volume < 0) {
       volume = 0;
