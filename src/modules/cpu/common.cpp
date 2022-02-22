@@ -62,7 +62,7 @@ auto waybar::modules::Cpu::update() -> void {
 double waybar::modules::Cpu::getCpuLoad() {
   double load[1];
   if (getloadavg(load, 1) != -1) {
-    return load[0];
+    return std::ceil(load[0] * 100.0) / 100.0;
   }
   throw std::runtime_error("Can't get Cpu load");
 }
