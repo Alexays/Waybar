@@ -69,7 +69,7 @@ Addressed by *sway/mode*
 # EXAMPLES
 
 ```
-"sway/window": {
+"sway/mode": {
     "format": " {}",
     "max-length": 50
 }
