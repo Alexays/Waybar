@@ -24,7 +24,8 @@ std::string waybar::modules::JACK::JACKState() {
   proc_t** proctab = readproctab(PROC_FILLSTAT);
   for(int i=0; proctab[i]; i++) {
     procname = proctab[i]->cmd;
-    if(!procname.compare("jackd") || !procname.compare("pipewire"))
+    if(!procname.compare("jackd") || !procname.compare("jackdbus") ||
+       !procname.compare("pipewire"))
       foundJACK = true;
     freeproc(proctab[i]);
   }
@@ -116,8 +117,14 @@ int waybar::modules::JACK::xrun() {
   return 0;
 }
 
+/*
+** problem: pipewire leaves old client threads hanging around after server
+** is killed. was handling this sloppily by calling pthread_cancel() on the
+** JACK thread but since JACK2 cleans up after itself properly, this call
+** led to segfault when using JACK2. probably best course of action is to
+** submit a bug report to pipewire.
+*/
 void waybar::modules::JACK::shutdown() {
-  pthread_cancel(jack_thread_);
   client_ = NULL;
   state_ = "disconnected";
   xruns_ = 0;
