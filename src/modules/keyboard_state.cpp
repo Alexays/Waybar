@@ -21,13 +21,21 @@ class errno_error : public std::runtime_error {
       code(code) {}
  private:
   static auto getErrorMsg(int err, const char* msg) -> std::string {
-    const auto errno_name = strerrorname_np(err);
-    const auto errno_str = strerror(err);
     std::string error_msg{msg};
     error_msg += ": ";
+
+#ifdef _GNU_SOURCE
+    // strerrorname_np gets the error code's name; it's nice to have, but it's a GNU extension
+    const auto errno_name = strerrorname_np(err);
     error_msg += errno_name;
     error_msg += " ";
+#endif
+
+    // strerror(3) man page says 1024 should be a big enough buffer to avoid ERANGE
+    char errno_str[1024] = {};
+    strerror_r(err, errno_str, sizeof errno_str);
     error_msg += errno_str;
+
     return error_msg;
   }
 };
