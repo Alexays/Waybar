@@ -24,9 +24,14 @@ class errno_error : public std::runtime_error {
     std::string error_msg{msg};
     error_msg += ": ";
 
-    // strerror(3) man page says 1024 should be a big enough buffer to avoid ERANGE
-    char errno_str[1024] = {};
-    strerror_r(err, errno_str, sizeof errno_str);
+#if (__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 32)
+    // strerrorname_np gets the error code's name; it's nice to have, but it's a recent GNU extension
+    const auto errno_name = strerrorname_np(err);
+    error_msg += errno_name;
+    error_msg += " ";
+#endif
+
+    const auto errno_str = strerror(err);
     error_msg += errno_str;
 
     return error_msg;
