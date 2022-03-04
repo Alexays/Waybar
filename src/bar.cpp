@@ -750,7 +750,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos, Gtk
             modules_right_.emplace_back(module_sp);
           }
         }
-        module->dp.connect([module, &name] {
+        module->dp.connect([module, name] {
           try {
             module->update();
           } catch (const std::exception& e) {
