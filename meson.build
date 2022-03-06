@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.9',
+    version: '0.9.10',
     license: 'MIT',
     meson_version: '>= 0.49.0',
     default_options : [
