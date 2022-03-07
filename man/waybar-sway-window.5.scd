@@ -70,6 +70,11 @@ Addressed by *sway/window*
 	typeof: object ++
 	Rules to rewrite window title. See *rewrite rules*.
 
+*icon*: ++
+	typeof: bool ++
+	default: true ++
+	Option to hide the application icon.
+
 # REWRITE RULES
 
 *rewrite* is an object where keys are regular expressions and values are
