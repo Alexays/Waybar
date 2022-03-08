@@ -23,7 +23,8 @@ using waybar::waybar_time;
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       current_time_zone_idx_(0),
-      is_calendar_in_tooltip_(false)
+      is_calendar_in_tooltip_(false),
+      is_timezoned_list_in_tooltip_(false)
 {
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
     for (const auto& zone_name: config_["timezones"]) {
@@ -63,6 +64,9 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
                trimmed_format.end());
     if (trimmed_format.find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
       is_calendar_in_tooltip_ = true;
+    }
+    if (trimmed_format.find("{" + KTimezonedTimeListPlaceholder + "}") != std::string::npos) {
+      is_timezoned_list_in_tooltip_ = true;
     }
   }
 
@@ -108,11 +112,15 @@ auto waybar::modules::Clock::update() -> void {
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
       std::string calendar_lines = "";
+      std::string timezoned_time_lines = "";
       if (is_calendar_in_tooltip_) {
         calendar_lines = calendar_text(wtime);
       }
+      if (is_timezoned_list_in_tooltip_) {
+        timezoned_time_lines = timezones_text(&now);
+      }
       auto tooltip_format = config_["tooltip-format"].asString();
-      text = fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines));
+      text = fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines), fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
       label_.set_tooltip_markup(text);
     }
   }
@@ -209,6 +217,26 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
     os << pad << wd_ustring;
   } while (++wd != first_dow);
   os << "\n";
+}
+
+auto waybar::modules::Clock::timezones_text(std::chrono::_V2::system_clock::time_point *now) -> std::string {
+  if (time_zones_.size() == 1) {
+    return "";
+  }
+  std::stringstream os;
+  waybar_time wtime;
+  for (size_t time_zone_idx = 0; time_zone_idx < time_zones_.size(); ++time_zone_idx) {
+    if (static_cast<int>(time_zone_idx) == current_time_zone_idx_) {
+      continue;
+    }
+    const date::time_zone* timezone = time_zones_[time_zone_idx];
+    if (!timezone) {
+      timezone = date::current_zone();
+    }
+    wtime = {locale_, date::make_zoned(timezone, date::floor<std::chrono::seconds>(*now))};
+    os << fmt::format(format_, wtime) << "\n";
+  }
+  return os.str();
 }
 
 #ifdef HAVE_LANGINFO_1STDAY

@@ -96,6 +96,7 @@ View all valid format options in *strftime(3)*.
 # FORMAT REPLACEMENTS
 
 *{calendar}*: Current month calendar
+*{timezoned_time_list}*: List of time in the rest timezones, if more than one timezone is set in the config
 
 # EXAMPLES
 
