@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.8',
+    version: '0.9.10',
     license: 'MIT',
     meson_version: '>= 0.49.0',
     default_options : [
@@ -79,14 +79,14 @@ is_netbsd = host_machine.system() == 'netbsd'
 is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
-fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
+fmt = dependency('fmt', version : ['>=7.0.0'], fallback : ['fmt', 'fmt_dep'])
 spdlog = dependency('spdlog', version : ['>=1.8.5'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=true'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
-giounix = dependency('gio-unix-2.0', required: get_option('dbusmenu-gtk'))
+giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled()))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
@@ -142,6 +142,7 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
+    'src/AIconLabel.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
@@ -242,6 +243,11 @@ if libsndio.found()
     src_files += 'src/modules/sndio.cpp'
 endif
 
+if (giounix.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_GIO_UNIX', language: 'cpp')
+    src_files += 'src/modules/inhibitor.cpp'
+endif
+
 if get_option('rfkill').enabled()
     if is_linux
         add_project_arguments('-DWANT_RFKILL', language: 'cpp')
@@ -290,7 +296,7 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-				xkbregistry 
+		xkbregistry 
     ],
     include_directories: [include_directories('include')],
     install: true,
@@ -346,6 +352,10 @@ if scdoc.found()
         'waybar-bluetooth.5.scd',
         'waybar-sndio.5.scd',
     ]
+
+    if (giounix.found() and not get_option('logind').disabled())
+        man_files += 'waybar-inhibitor.5.scd'
+    endif
 
     foreach file : man_files
         path = '@0@'.format(file)

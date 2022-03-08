@@ -78,7 +78,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
-      want_route_dump_(false),
+      want_route_dump_(true),
       want_link_dump_(false),
       want_addr_dump_(false),
       dump_in_progress_(false),
@@ -88,7 +88,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_WLAN},
 #endif
-      frequency_(0) {
+      frequency_(0.0) {
 
   // Start with some "text" in the module's label_, update() will then
   // update it. Since the text should be different, update() will be able
@@ -106,7 +106,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   }
 
   if (!config_["interface"].isString()) {
-    // "interface" isn't configure, then try to guess the external
+    // "interface" isn't configured, then try to guess the external
     // interface currently used for internet.
     want_route_dump_ = true;
   } else {
@@ -331,12 +331,13 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("essid", essid_),
       fmt::arg("signaldBm", signal_strength_dbm_),
       fmt::arg("signalStrength", signal_strength_),
+      fmt::arg("signalStrengthApp", signal_strength_app_),
       fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_),
       fmt::arg("ipaddr", ipaddr_),
       fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_),
-      fmt::arg("frequency", frequency_),
+      fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
       fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
@@ -360,12 +361,13 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("essid", essid_),
           fmt::arg("signaldBm", signal_strength_dbm_),
           fmt::arg("signalStrength", signal_strength_),
+          fmt::arg("signalStrengthApp", signal_strength_app_),
           fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_),
           fmt::arg("ipaddr", ipaddr_),
           fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_),
-          fmt::arg("frequency", frequency_),
+          fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
                    pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
@@ -403,7 +405,8 @@ void waybar::modules::Network::clearIface() {
   cidr_ = 0;
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
-  frequency_ = 0;
+  signal_strength_app_.clear();
+  frequency_ = 0.0;
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
@@ -470,7 +473,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             net->essid_.clear();
             net->signal_strength_dbm_ = 0;
             net->signal_strength_ = 0;
-            net->frequency_ = 0;
+            net->signal_strength_app_.clear();
+            net->frequency_ = 0.0;
           }
         }
         net->carrier_ = carrier.value();
@@ -788,13 +792,30 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
   if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
+    // WiFi-hardware usually operates in the range -90 to -30dBm.
 
-    // WiFi-hardware usually operates in the range -90 to -20dBm.
-    const int hardwareMax = -20;
+    // If a signal is too strong, it can overwhelm receiving circuity that is designed
+    // to pick up and process a certain signal level. The following percentage is scaled to
+    // punish signals that are too strong (>= -45dBm) or too weak (<= -45 dBm).
+    const int hardwareOptimum = -45;
     const int hardwareMin = -90;
     const int strength =
-      ((signal_strength_dbm_ - hardwareMin) / double{hardwareMax - hardwareMin}) * 100;
-    signal_strength_ = std::clamp(strength, 0, 100);
+        100 - ((abs(signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) * 100);
+    signal_strength_ = std::clamp(strength, 0, 100);  
+
+    if (signal_strength_dbm_ >= -50) {
+      signal_strength_app_ = "Great Connectivity";
+    } else if (signal_strength_dbm_ >= -60) {
+      signal_strength_app_ = "Good Connectivity";
+    } else if (signal_strength_dbm_ >= -67) {
+      signal_strength_app_ = "Streaming";
+    } else if (signal_strength_dbm_ >= -70) {
+      signal_strength_app_ = "Web Surfing";
+    } else if (signal_strength_dbm_ >= -80) {
+      signal_strength_app_ = "Basic Connectivity";
+    } else {
+      signal_strength_app_ = "Poor Connectivity";
+    }
   }
   if (bss[NL80211_BSS_SIGNAL_UNSPEC] != nullptr) {
     signal_strength_ = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
@@ -803,8 +824,8 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
 
 void waybar::modules::Network::parseFreq(struct nlattr **bss) {
   if (bss[NL80211_BSS_FREQUENCY] != nullptr) {
-    // in MHz
-    frequency_ = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+    // in GHz
+    frequency_ = (double) nla_get_u32(bss[NL80211_BSS_FREQUENCY]) / 1000;
   }
 }
 

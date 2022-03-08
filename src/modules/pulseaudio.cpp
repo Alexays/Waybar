@@ -54,7 +54,9 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
           c,
           static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
                                                  static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
-                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE)),
+                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SINK_INPUT) |
+                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE) |
+                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE_OUTPUT)),
           nullptr,
           nullptr);
       break;
@@ -78,6 +80,13 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
+  }
+  if (config_["reverse-scrolling"].asInt() == 1){
+    if (dir == SCROLL_DIR::UP) {
+      dir = SCROLL_DIR::DOWN;
+    } else if (dir == SCROLL_DIR::DOWN) {
+      dir = SCROLL_DIR::UP;
+    }
   }
   double      volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_volume_t change = volume_tick;
@@ -114,8 +123,12 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
     pa_context_get_server_info(context, serverInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
     pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
+  } else if (facility == PA_SUBSCRIPTION_EVENT_SINK_INPUT) {
+    pa_context_get_sink_info_list(context, sinkInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE) {
     pa_context_get_source_info_by_index(context, idx, sourceInfoCb, data);
+  } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT) {
+    pa_context_get_source_info_list(context, sourceInfoCb, data);
   }
 }
 
@@ -272,7 +285,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
                                 fmt::arg("source_desc", source_desc_),
                                 fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
   getState(volume_);
-  
+
   if (tooltipEnabled()) {
     if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();

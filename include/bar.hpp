@@ -112,14 +112,14 @@ class Bar {
   Gtk::Box                                      center_;
   Gtk::Box                                      right_;
   Gtk::Box                                      box_;
-  std::vector<std::unique_ptr<waybar::AModule>> modules_left_;
-  std::vector<std::unique_ptr<waybar::AModule>> modules_center_;
-  std::vector<std::unique_ptr<waybar::AModule>> modules_right_;
+  std::vector<std::shared_ptr<waybar::AModule>> modules_left_;
+  std::vector<std::shared_ptr<waybar::AModule>> modules_center_;
+  std::vector<std::shared_ptr<waybar::AModule>> modules_right_;
 #ifdef HAVE_SWAY
   using BarIpcClient = modules::sway::BarIpcClient;
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
-  std::vector<std::unique_ptr<waybar::AModule>> modules_all_;
+  std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
 };
 
 }  // namespace waybar

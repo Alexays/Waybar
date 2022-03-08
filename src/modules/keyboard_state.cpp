@@ -1,11 +1,76 @@
 #include "modules/keyboard_state.hpp"
+#include <errno.h>
 #include <filesystem>
 #include <spdlog/spdlog.h>
+#include <string.h>
 
 extern "C" {
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+}
+
+class errno_error : public std::runtime_error {
+ public:
+  int code;
+  errno_error(int code, const std::string& msg)
+    : std::runtime_error(getErrorMsg(code, msg.c_str())),
+      code(code) {}
+  errno_error(int code, const char* msg)
+    : std::runtime_error(getErrorMsg(code, msg)),
+      code(code) {}
+ private:
+  static auto getErrorMsg(int err, const char* msg) -> std::string {
+    std::string error_msg{msg};
+    error_msg += ": ";
+
+#if (__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 32)
+    // strerrorname_np gets the error code's name; it's nice to have, but it's a recent GNU extension
+    const auto errno_name = strerrorname_np(err);
+    error_msg += errno_name;
+    error_msg += " ";
+#endif
+
+    const auto errno_str = strerror(err);
+    error_msg += errno_str;
+
+    return error_msg;
+  }
+};
+
+auto openFile(const std::string& path, int flags) -> int {
+  int fd = open(path.c_str(), flags);
+  if (fd < 0) {
+    if (errno == EACCES) {
+      throw errno_error(errno, "Can't open " + path + " (are you in the input group?)");
+    } else {
+      throw errno_error(errno, "Can't open " + path);
+    }
+  }
+  return fd;
+}
+
+auto closeFile(int fd) -> void {
+  int res = close(fd);
+  if (res < 0) {
+    throw errno_error(errno, "Can't close file");
+  }
+}
+
+auto openDevice(int fd) -> libevdev* {
+  libevdev* dev;
+  int err = libevdev_new_from_fd(fd, &dev);
+  if (err < 0) {
+    throw errno_error(-err, "Can't create libevdev device");
+  }
+  return dev;
+}
+
+auto supportsLockStates(const libevdev* dev) -> bool {
+  return libevdev_has_event_type(dev, EV_LED)
+    && libevdev_has_event_code(dev, EV_LED, LED_NUML)
+    && libevdev_has_event_code(dev, EV_LED, LED_CAPSL)
+    && libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
 }
 
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::Value& config)
@@ -48,26 +113,36 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
 
   if (config_["device-path"].isString()) {
     std::string dev_path = config_["device-path"].asString();
-    std::tie(fd_, dev_) = openDevice(dev_path);
+    fd_ = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
+    dev_ = openDevice(fd_);
   } else {
     DIR* dev_dir = opendir("/dev/input");
     if (dev_dir == nullptr) {
-      throw std::runtime_error("Failed to open /dev/input");
+      throw errno_error(errno, "Failed to open /dev/input");
     }
     dirent *ep;
     while ((ep = readdir(dev_dir))) {
       if (ep->d_type != DT_CHR) continue;
       std::string dev_path = std::string("/dev/input/") + ep->d_name;
+      int fd = openFile(dev_path.c_str(), O_NONBLOCK | O_CLOEXEC | O_RDONLY);
       try {
-        std::tie(fd_, dev_) = openDevice(dev_path);
-        spdlog::info("Found device {} at '{}'", libevdev_get_name(dev_),  dev_path);
-        break;
-      } catch (const std::runtime_error& e) {
-        continue;
+        auto dev = openDevice(fd);
+        if (supportsLockStates(dev)) {
+          spdlog::info("Found device {} at '{}'", libevdev_get_name(dev),  dev_path);
+          fd_ = fd;
+          dev_ = dev;
+          break;
+        }
+      } catch (const errno_error& e) {
+        // ENOTTY just means the device isn't an evdev device, skip it
+        if (e.code != ENOTTY) {
+          spdlog::warn(e.what());
+        }
       }
+      closeFile(fd);
     }
     if (dev_ == nullptr) {
-      throw std::runtime_error("Failed to find keyboard device");
+      throw errno_error(errno, "Failed to find keyboard device");
     }
   }
 
@@ -79,33 +154,11 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
 
 waybar::modules::KeyboardState::~KeyboardState() {
   libevdev_free(dev_);
-  int err = close(fd_);
-  if (err < 0) {
-    // Not much we can do, so ignore it.
+  try {
+    closeFile(fd_);
+  } catch (const std::runtime_error& e) {
+    spdlog::warn(e.what());
   }
-}
-
-auto waybar::modules::KeyboardState::openDevice(const std::string& path) -> std::pair<int, libevdev*> {
-    int fd = open(path.c_str(), O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    if (fd < 0) {
-      throw std::runtime_error("Can't open " + path);
-    }
-
-    libevdev* dev;
-    int err = libevdev_new_from_fd(fd, &dev);
-    if (err < 0) {
-      throw std::runtime_error("Can't create libevdev device");
-    }
-    if (!libevdev_has_event_type(dev, EV_LED)) {
-      throw std::runtime_error("Device doesn't support LED events");
-    }
-    if (!libevdev_has_event_code(dev, EV_LED, LED_NUML)
-        || !libevdev_has_event_code(dev, EV_LED, LED_CAPSL)
-        || !libevdev_has_event_code(dev, EV_LED, LED_SCROLLL)) {
-      throw std::runtime_error("Device doesn't support num lock, caps lock, or scroll lock events");
-    }
-
-    return std::make_pair(fd, dev);
 }
 
 auto waybar::modules::KeyboardState::update() -> void {
@@ -117,8 +170,8 @@ auto waybar::modules::KeyboardState::update() -> void {
       err = libevdev_next_event(dev_, LIBEVDEV_READ_FLAG_SYNC, &ev);
     }
   }
-  if (err != -EAGAIN) {
-    throw std::runtime_error("Failed to sync evdev device");
+  if (-err != EAGAIN) {
+    throw errno_error(-err, "Failed to sync evdev device");
   }
 
   int numl = libevdev_get_event_value(dev_, EV_LED, LED_NUML);

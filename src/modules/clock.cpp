@@ -1,17 +1,24 @@
 #include "modules/clock.hpp"
 
-#include <time.h>
 #include <spdlog/spdlog.h>
+#if FMT_VERSION < 60000
+#include <fmt/time.h>
+#else
+#include <fmt/chrono.h>
+#endif
 
+#include <ctime>
 #include <sstream>
 #include <type_traits>
+
 #include "util/ustring_clen.hpp"
+#include "util/waybar_time.hpp"
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>
 #include <locale.h>
 #endif
 
-using waybar::modules::waybar_time;
+using waybar::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
@@ -96,7 +103,7 @@ auto waybar::modules::Clock::update() -> void {
     // As date dep is not fully compatible, prefer fmt
     tzset();
     auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
-    text = fmt::format(format_, localtime);
+    text = fmt::format(locale_, format_, localtime);
   } else {
     text = fmt::format(format_, wtime);
   }
@@ -114,10 +121,10 @@ auto waybar::modules::Clock::update() -> void {
       }
       auto tooltip_format = config_["tooltip-format"].asString();
       text = fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines), fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
+      label_.set_tooltip_markup(text);
     }
   }
 
-  label_.set_tooltip_markup(text);
   // Call parent update
   ALabel::update();
 }
@@ -255,14 +262,3 @@ auto waybar::modules::Clock::first_day_of_week() -> date::weekday {
 #endif
   return date::Sunday;
 }
-
-template <>
-struct fmt::formatter<waybar_time> : fmt::formatter<std::tm> {
-  template <typename FormatContext>
-  auto format(const waybar_time& t, FormatContext& ctx) {
-#if FMT_VERSION >= 80000
-	auto& tm_format = specs;
-#endif
-    return format_to(ctx.out(), "{}", date::format(t.locale, fmt::to_string(tm_format), t.ztime));
-  }
-};

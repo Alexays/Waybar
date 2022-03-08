@@ -4,6 +4,7 @@
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
+#include "util/string.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -11,7 +12,9 @@
 #include <cstring>
 #include <memory>
 #include <sstream>
+#include <utility>
 
+#include <fmt/core.h>
 #include <gdkmm/monitor.h>
 
 #include <gtkmm/icontheme.h>
@@ -23,27 +26,6 @@
 
 
 namespace waybar::modules::wlr {
-
-/* String manipulation methods */
-const std::string WHITESPACE = " \n\r\t\f\v";
-
-static std::string ltrim(const std::string& s)
-{
-    size_t start = s.find_first_not_of(WHITESPACE);
-    return (start == std::string::npos) ? "" : s.substr(start);
-}
-
-static std::string rtrim(const std::string& s)
-{
-    size_t end = s.find_last_not_of(WHITESPACE);
-    return (end == std::string::npos) ? "" : s.substr(0, end + 1);
-}
-
-static std::string trim(const std::string& s)
-{
-    return rtrim(ltrim(s));
-}
-
 
 /* Icon loading functions */
 static std::vector<std::string> search_prefix()
@@ -86,8 +68,7 @@ static Glib::RefPtr<Gdk::Pixbuf> load_icon_from_file(std::string icon_path, int 
     }
 }
 
-/* Method 1 - get the correct icon name from the desktop file */
-static std::string get_from_desktop_app_info(const std::string &app_id)
+static Glib::RefPtr<Gio::DesktopAppInfo> get_app_info_by_name(const std::string& app_id)
 {
     static std::vector<std::string> prefixes = search_prefix();
 
@@ -103,33 +84,29 @@ static std::string get_from_desktop_app_info(const std::string &app_id)
         ".desktop"
     };
 
-    Glib::RefPtr<Gio::DesktopAppInfo> app_info;
+	for (auto& prefix : prefixes) {
+		for (auto& folder : app_folders) {
+			for (auto& suffix : suffixes) {
+                    auto app_info_ = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
+					if (!app_info_) {
+						continue;
+					}
 
-    for (auto& prefix : prefixes)
-        for (auto& folder : app_folders)
-            for (auto& suffix : suffixes)
-                if (!app_info)
-                    app_info = Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
+					return app_info_;
+			}
+		}
+	}
 
-    if (app_info && app_info->get_icon())
-        return app_info->get_icon()->to_string();
-
-    return "";
+	return {};
 }
 
-/* Method 2 - use the app_id and check whether there is an icon with this name in the icon theme */
-static std::string get_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
-        const std::string &app_id)
+Glib::RefPtr<Gio::DesktopAppInfo> get_desktop_app_info(const std::string &app_id)
 {
-    if (icon_theme->lookup_icon(app_id, 24))
-        return app_id;
+	auto app_info = get_app_info_by_name(app_id);
+	if (app_info) {
+		return app_info;
+	}
 
-    return "";
-}
-
-/* Method 3 - as last resort perform a search for most appropriate desktop info file */
-static std::string get_from_desktop_app_info_search(const std::string &app_id)
-{
     std::string desktop_file = "";
 
     gchar*** desktop_list = g_desktop_app_info_search(app_id.c_str());
@@ -151,65 +128,84 @@ static std::string get_from_desktop_app_info_search(const std::string &app_id)
     }
     g_free(desktop_list);
 
-    return get_from_desktop_app_info(desktop_file);
+    return get_app_info_by_name(desktop_file);
 }
 
-static bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
-        const std::string &app_id_list, int size)
-{
+void Task::set_app_info_from_app_id_list(const std::string& app_id_list) {
     std::string app_id;
     std::istringstream stream(app_id_list);
-    bool found = false;
 
     /* Wayfire sends a list of app-id's in space separated format, other compositors
      * send a single app-id, but in any case this works fine */
     while (stream >> app_id)
     {
+        app_info_ = get_desktop_app_info(app_id);
+		if (app_info_) {
+			return;
+		}
+
+		auto lower_app_id = app_id;
+		std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
+				[](char c){ return std::tolower(c); });
+		app_info_ = get_desktop_app_info(lower_app_id);
+		if (app_info_) {
+			return;
+		}
+				
         size_t start = 0, end = app_id.size();
         start = app_id.rfind(".", end);
         std::string app_name = app_id.substr(start+1, app_id.size());
+        app_info_ = get_desktop_app_info(app_name);
+		if (app_info_) {
+			return;
+		}
 
-        auto lower_app_id = app_id;
-        std::transform(lower_app_id.begin(), lower_app_id.end(), lower_app_id.begin(),
-                [](char c){ return std::tolower(c); });
+        start = app_id.find("-");
+        app_name = app_id.substr(0, start);
+        app_info_ = get_desktop_app_info(app_name);
+	}
+}
 
-        std::string icon_name = get_from_icon_theme(icon_theme, app_id);
+static std::string get_icon_name_from_icon_theme(const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+        const std::string &app_id)
+{
+    if (icon_theme->lookup_icon(app_id, 24))
+        return app_id;
 
-        if (icon_name.empty())
-            icon_name = get_from_icon_theme(icon_theme, lower_app_id);
-        if (icon_name.empty())
-            icon_name = get_from_icon_theme(icon_theme, app_name);
-        if (icon_name.empty())
-            icon_name = get_from_desktop_app_info(app_id);
-        if (icon_name.empty())
-            icon_name = get_from_desktop_app_info(lower_app_id);
-        if (icon_name.empty())
-            icon_name = get_from_desktop_app_info(app_name);
-        if (icon_name.empty())
-            icon_name = get_from_desktop_app_info_search(app_id);
+    return "";
+}
 
-        if (icon_name.empty())
-            icon_name = "unknown";
+bool Task::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme, Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size)
+{
+	std::string ret_icon_name = "unknown";
+	if (app_info) {
+		std::string icon_name = get_icon_name_from_icon_theme(icon_theme, app_info->get_startup_wm_class());
+		if (!icon_name.empty()) {
+			ret_icon_name = icon_name;
+		} else {
+			if (app_info->get_icon()) {
+				ret_icon_name = app_info->get_icon()->to_string();
+			}
+		}
+	}
 
-        Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+	Glib::RefPtr<Gdk::Pixbuf> pixbuf;
 
-        try {
-            pixbuf = icon_theme->load_icon(icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
-        } catch(...) {
-            if (Glib::file_test(icon_name, Glib::FILE_TEST_EXISTS))
-                pixbuf = load_icon_from_file(icon_name, size);
-            else
-                pixbuf = {};
-        }
+	try {
+		pixbuf = icon_theme->load_icon(ret_icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+	} catch(...) {
+		if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS))
+			pixbuf = load_icon_from_file(ret_icon_name, size);
+		else
+			pixbuf = {};
+	}
 
-        if (pixbuf) {
-            image.set(pixbuf);
-            found = true;
-            break;
-        }
-    }
+	if (pixbuf) {
+		image.set(pixbuf);
+		return true;
+	}
 
-    return found;
+    return false;
 }
 
 /* Task class implementation */
@@ -289,13 +285,15 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
     content_.show();
     button_.add(content_);
 
-    with_icon_ = false;
     format_before_.clear();
     format_after_.clear();
 
     if (config_["format"].isString()) {
         /* The user defined a format string, use it */
         auto format = config_["format"].asString();
+		if (format.find("{name}") != std::string::npos) {
+			with_name_ = true;
+		}
 
         auto icon_pos = format.find("{icon}");
         if (icon_pos == 0) {
@@ -402,13 +400,28 @@ void Task::handle_app_id(const char *app_id)
     app_id_ = app_id;
     hide_if_ignored();
 
-    if (!with_icon_)
+	auto ids_replace_map = tbar_->app_ids_replace_map();
+	if (ids_replace_map.count(app_id_)) {
+		auto replaced_id = ids_replace_map[app_id_];
+		spdlog::debug(fmt::format("Task ({}) [{}] app_id was replaced with {}", id_, app_id_, replaced_id));
+		app_id_ = replaced_id;
+	}
+
+	if (!with_icon_ && !with_name_) {
         return;
+	}
+
+	set_app_info_from_app_id_list(app_id_);
+	name_ = app_info_ ? app_info_->get_display_name() : app_id;
+
+	if (!with_icon_) {
+		return;
+	}
 
     int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
     bool found = false;
     for (auto& icon_theme : tbar_->icon_themes()) {
-        if (image_load_icon(icon_, icon_theme, app_id_, icon_size)) {
+        if (image_load_icon(icon_, icon_theme, app_info_, icon_size)) {
             found = true;
             break;
         }
@@ -564,14 +577,17 @@ void Task::update()
 {
     bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
     std::string title = title_;
+    std::string name = name_;
     std::string app_id = app_id_;
     if (markup) {
         title = Glib::Markup::escape_text(title);
+        name = Glib::Markup::escape_text(name);
         app_id = Glib::Markup::escape_text(app_id);
     }
     if (!format_before_.empty()) {
         auto txt = fmt::format(format_before_,
                     fmt::arg("title", title),
+                    fmt::arg("name", name),
                     fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
@@ -585,6 +601,7 @@ void Task::update()
     if (!format_after_.empty()) {
         auto txt = fmt::format(format_after_,
                     fmt::arg("title", title),
+                    fmt::arg("name", name),
                     fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
@@ -599,6 +616,7 @@ void Task::update()
     if (!format_tooltip_.empty()) {
         auto txt = fmt::format(format_tooltip_,
                     fmt::arg("title", title),
+                    fmt::arg("name", name),
                     fmt::arg("app_id", app_id),
                     fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true))
@@ -723,6 +741,15 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     if (config_["ignore-list"].isArray()) {
         for (auto& app_name : config_["ignore-list"]) {
           ignore_list_.emplace(app_name.asString());
+        }
+    }
+
+    // Load app_id remappings
+    if (config_["app_ids-mapping"].isObject()) {
+		const Json::Value& mapping = config_["app_ids-mapping"];
+		const std::vector<std::string> app_ids = config_["app_ids-mapping"].getMemberNames();
+        for (auto& app_id : app_ids) {
+          app_ids_replace_map_.emplace(app_id, mapping[app_id].asString());
         }
     }
 
@@ -857,10 +884,10 @@ bool Taskbar::all_outputs() const
     return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
 }
 
-std::vector<Glib::RefPtr<Gtk::IconTheme>> Taskbar::icon_themes() const
-{
-    return icon_themes_;
-}
-const std::unordered_set<std::string> &Taskbar::ignore_list() const { return ignore_list_; }
+const std::vector<Glib::RefPtr<Gtk::IconTheme>>& Taskbar::icon_themes() const { return icon_themes_; }
+
+const std::unordered_set<std::string>& Taskbar::ignore_list() const { return ignore_list_; }
+
+const std::map<std::string, std::string>& Taskbar::app_ids_replace_map() const { return app_ids_replace_map_; }
 
 } /* namespace waybar::modules::wlr */

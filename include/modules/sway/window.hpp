@@ -2,7 +2,8 @@
 
 #include <fmt/format.h>
 #include <tuple>
-#include "ALabel.hpp"
+
+#include "AIconLabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
@@ -10,7 +11,7 @@
 
 namespace waybar::modules::sway {
 
-class Window : public ALabel, public sigc::trackable {
+class Window : public AIconLabel, public sigc::trackable {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;
@@ -23,6 +24,7 @@ class Window : public ALabel, public sigc::trackable {
                                                                         std::string&       output);
   void                                                   getTree();
   std::string                                            rewriteTitle(const std::string& title);
+  void                                                   updateAppIcon();
 
   const Bar&       bar_;
   std::string      window_;

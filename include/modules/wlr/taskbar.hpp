@@ -3,11 +3,13 @@
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "client.hpp"
+#include "giomm/desktopappinfo.h"
 #include "util/json.hpp"
 
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 #include <unordered_set>
 
 #include <gdk/gdk.h>
@@ -61,15 +63,18 @@ class Task
     Gtk::Image icon_;
     Gtk::Label text_before_;
     Gtk::Label text_after_;
+    Glib::RefPtr<Gio::DesktopAppInfo> app_info_;
     bool button_visible_ = false;
     bool ignored_ = false;
 
-    bool with_icon_;
+    bool with_icon_ = false;
+    bool with_name_ = false;
     std::string format_before_;
     std::string format_after_;
 
     std::string format_tooltip_;
 
+    std::string name_;
     std::string title_;
     std::string app_id_;
     uint32_t state_ = 0;
@@ -77,6 +82,8 @@ class Task
    private:
     std::string repr() const;
     std::string state_string(bool = false) const;
+    void set_app_info_from_app_id_list(const std::string& app_id_list);
+    bool image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme, Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size);
     void hide_if_ignored();
 
    public:
@@ -136,6 +143,7 @@ class Taskbar : public waybar::AModule
 
     std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
     std::unordered_set<std::string> ignore_list_;
+    std::map<std::string, std::string> app_ids_replace_map_;
 
     struct zwlr_foreign_toplevel_manager_v1 *manager_;
     struct wl_seat *seat_;
@@ -158,8 +166,9 @@ class Taskbar : public waybar::AModule
     bool show_output(struct wl_output *) const;
     bool all_outputs() const;
 
-    std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes() const;
+    const std::vector<Glib::RefPtr<Gtk::IconTheme>>& icon_themes() const;
     const std::unordered_set<std::string>& ignore_list() const;
+    const std::map<std::string, std::string>& app_ids_replace_map() const;
 };
 
 } /* namespace waybar::modules::wlr */

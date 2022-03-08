@@ -735,21 +735,22 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos, Gtk
           module = factory.makeModule(ref);
         }
 
-        modules_all_.emplace_back(module);
+        std::shared_ptr<AModule> module_sp(module);
+        modules_all_.emplace_back(module_sp);
         if (group) {
           group->pack_start(*module, false, false);
         } else {
           if (pos == "modules-left") {
-            modules_left_.emplace_back(module);
+            modules_left_.emplace_back(module_sp);
           }
           if (pos == "modules-center") {
-            modules_center_.emplace_back(module);
+            modules_center_.emplace_back(module_sp);
           }
           if (pos == "modules-right") {
-            modules_right_.emplace_back(module);
+            modules_right_.emplace_back(module_sp);
           }
         }
-        module->dp.connect([module, &name] {
+        module->dp.connect([module, name] {
           try {
             module->update();
           } catch (const std::exception& e) {
@@ -766,7 +767,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos, Gtk
 auto waybar::Bar::setupWidgets() -> void {
   window.add(box_);
   box_.pack_start(left_, false, false);
-  box_.set_center_widget(center_);
+  if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
+    box_.set_center_widget(center_);
+  } else {
+    box_.pack_start(center_, true, false);
+  }
   box_.pack_end(right_, false, false);
 
   // Convert to button code for every module that is used.

@@ -86,6 +86,11 @@ The *clock* module displays the current date and time.
 	typeof: double ++
 	Threshold to be used when scrolling.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
 View all valid format options in *strftime(3)*.
 
 # FORMAT REPLACEMENTS

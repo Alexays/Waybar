@@ -72,9 +72,15 @@ Addressed by *wlr/taskbar*
 	typeof: array ++
 	List of app_id/titles to be invisible.
 
+*app_ids-mapping*: ++
+	typeof: object ++
+	Dictionary of app_id to be replaced with
+
 # FORMAT REPLACEMENTS
 
 *{icon}*: The icon of the application.
+
+*{title}*: The application name as in desktop file if appropriate desktop fils found, otherwise same as {app_id}
 
 *{title}*: The title of the application.
 
@@ -87,10 +93,15 @@ Addressed by *wlr/taskbar*
 # CLICK ACTIONS
 
 *activate*: Bring the application into foreground.
+
 *minimize*: Toggle application's minimized state.
+
 *minimize-raise*: Bring the application into foreground or toggle its minimized state.
+
 *maximize*: Toggle application's maximized state.
+
 *fullscreen*: Toggle application's fullscreen state.
+
 *close*: Close the application.
 
 # EXAMPLES
@@ -105,7 +116,10 @@ Addressed by *wlr/taskbar*
 	"on-click-middle": "close",
 	"ignore-list": [
 	    "Alacritty"
-	]
+	],
+	"app_ids-mapping": {
+		"firefoxdeveloperedition": "firefox-developer-edition"
+	}
 }
 ```
 

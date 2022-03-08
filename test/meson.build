@@ -6,30 +6,27 @@ test_dep = [
     jsoncpp,
     spdlog,
 ]
-
-config_test = executable(
-    'config_test',
+test_src = files(
+    'main.cpp',
+    'SafeSignal.cpp',
     'config.cpp',
     '../src/config.cpp',
-    dependencies: test_dep,
-    include_directories: test_inc,
 )
 
-safesignal_test = executable(
-    'safesignal_test',
-    'SafeSignal.cpp',
+if tz_dep.found()
+  test_dep += tz_dep
+  test_src += files('waybar_time.cpp')
+endif
+
+waybar_test = executable(
+    'waybar_test',
+    test_src,
     dependencies: test_dep,
     include_directories: test_inc,
 )
 
 test(
-    'Configuration test',
-    config_test,
-    workdir: meson.source_root(),
-)
-
-test(
-    'SafeSignal test',
-    safesignal_test,
+    'waybar',
+    waybar_test,
     workdir: meson.source_root(),
 )

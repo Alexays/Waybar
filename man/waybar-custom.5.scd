@@ -151,7 +151,8 @@ $text\\n$tooltip\\n$class*
 	"max-length": 40,
 	"interval": 30, // Remove this if your script is endless and write in loop
 	"exec": "$HOME/.config/waybar/mediaplayer.sh 2> /dev/null", // Script in resources folder
-	"exec-if": "pgrep spotify"
+	"exec-if": "pgrep spotify",
+	"return-type": "json"
 }
 ```
 

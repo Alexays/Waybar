@@ -68,7 +68,10 @@ inline int close(FILE* fp, pid_t pid) {
 inline FILE* open(const std::string& cmd, int& pid) {
   if (cmd == "") return nullptr;
   int fd[2];
-  pipe(fd);
+  if (pipe(fd) != 0){
+    spdlog::error("Unable to pipe fd");
+    return nullptr;
+  }
 
   pid_t child_pid = fork();
 

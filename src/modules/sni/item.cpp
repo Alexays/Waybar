@@ -8,13 +8,7 @@
 #include <fstream>
 #include <map>
 
-template <>
-struct fmt::formatter<Glib::ustring> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(const Glib::ustring& value, FormatContext& ctx) {
-    return formatter<std::string>::format(value, ctx);
-  }
-};
+#include "util/format.hpp"
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
