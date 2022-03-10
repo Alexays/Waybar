@@ -78,7 +78,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
       ev_fd_(-1),
-      want_route_dump_(true),
+      want_route_dump_(false),
       want_link_dump_(false),
       want_addr_dump_(false),
       dump_in_progress_(false),
