@@ -72,7 +72,7 @@ Addressed by *sway/window*
 
 *icon*: ++
 	typeof: bool ++
-	default: true ++
+	default: false ++
 	Option to hide the application icon.
 
 # REWRITE RULES
