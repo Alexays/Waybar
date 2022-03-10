@@ -36,7 +36,7 @@ class Clock : public ALabel {
   auto first_day_of_week() -> date::weekday;
   const date::time_zone* current_timezone();
   bool is_timezone_fixed();
-  auto timezones_text(std::chrono::_V2::system_clock::time_point *now) -> std::string;
+  auto timezones_text(std::chrono::system_clock::time_point *now) -> std::string;
 };
 
 }  // namespace modules
