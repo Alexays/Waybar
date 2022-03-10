@@ -2,7 +2,7 @@
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
 > Available in Arch [community](https://www.archlinux.org/packages/community/x86_64/waybar/) or
-[AUR](https://aur.archlinux.org/packages/waybar-git/), [Gentoo](https://packages.gentoo.org/packages/gui-apps/waybar), [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar), and [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=waybar)<br>
+[AUR](https://aur.archlinux.org/packages/waybar-git/), [Gentoo](https://packages.gentoo.org/packages/gui-apps/waybar), [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar), and [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=waybar).<br>
 > *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
 
 #### Current features
@@ -20,7 +20,7 @@
 - MPD
 - Custom scripts
 - Multiple output configuration
-- And much more customizations
+- And many more customizations
 
 #### Configuration and Styling
 
@@ -81,7 +81,7 @@ scdoc
 wayland-protocols
 ```
 
-On Ubuntu you can install all the relevant dependencies using this command (tested with 19.10 and 20.04):
+On Ubuntu, you can install all the relevant dependencies using this command (tested with 19.10 and 20.04):
 
 ```
 sudo apt install \
@@ -107,8 +107,9 @@ sudo apt install \
 ```
 
 
-Contributions welcome! - have fun :)<br>
-The style guidelines is [Google's](https://google.github.io/styleguide/cppguide.html)
+Contributions welcome!<br>
+Have fun :)<br>
+The style guidelines are [Google's](https://google.github.io/styleguide/cppguide.html)
 
 ## License
 
