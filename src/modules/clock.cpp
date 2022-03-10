@@ -219,7 +219,7 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
   os << "\n";
 }
 
-auto waybar::modules::Clock::timezones_text(std::chrono::_V2::system_clock::time_point *now) -> std::string {
+auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point *now) -> std::string {
   if (time_zones_.size() == 1) {
     return "";
   }
