@@ -22,7 +22,7 @@ auto AIconLabel::update() -> void {
 }
 
 bool AIconLabel::iconEnabled() const {
-  return config_["icon"].isBool() ? config_["icon"].asBool() : true;
+  return config_["icon"].isBool() ? config_["icon"].asBool() : false;
 }
 
 }  // namespace waybar
