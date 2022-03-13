@@ -179,8 +179,7 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
 }
 
 Language::XKBContext::XKBContext() {
-  context_ = rxkb_context_new(RXKB_CONTEXT_NO_DEFAULT_INCLUDES);
-  rxkb_context_include_path_append_default(context_);
+  context_ = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
   rxkb_context_parse_default_ruleset(context_);
 }
 
