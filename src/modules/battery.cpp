@@ -118,9 +118,10 @@ void waybar::modules::Battery::refreshBatteries() {
   }
   if (batteries_.empty()) {
     if (config_["bat"].isString()) {
-      throw std::runtime_error("No battery named " + config_["bat"].asString());
+      spdlog::warn("No battery named {}", config_["bat"].asString());
+    } else {
+      spdlog::warn("No batteries.");
     }
-    throw std::runtime_error("No batteries.");
   }
 
   // Remove any batteries that are no longer present and unwatch them
@@ -283,6 +284,10 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 }
 
 auto waybar::modules::Battery::update() -> void {
+  if (batteries_.empty()) {
+    event_box_.hide();
+    return;
+  }
   auto [capacity, time_remaining, status, power] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
