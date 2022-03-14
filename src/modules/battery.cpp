@@ -118,9 +118,10 @@ void waybar::modules::Battery::refreshBatteries() {
   }
   if (batteries_.empty()) {
     if (config_["bat"].isString()) {
-      throw std::runtime_error("No battery named " + config_["bat"].asString());
+      spdlog::warn("No battery named {}", config_["bat"].asString());
+    } else {
+      spdlog::warn("No batteries.");
     }
-    throw std::runtime_error("No batteries.");
   }
 
   // Remove any batteries that are no longer present and unwatch them
@@ -153,6 +154,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     uint32_t    total_energy = 0;  // μWh
     uint32_t    total_energy_full = 0;
     uint32_t    total_energy_full_design = 0;
+    uint32_t    total_capacity{0};
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
       auto bat = item.first;
@@ -160,6 +162,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       uint32_t    energy_full;
       uint32_t    energy_now;
       uint32_t    energy_full_design;
+      uint32_t    capacity{0};
       std::string _status;
       std::getline(std::ifstream(bat / "status"), _status);
 
@@ -187,11 +190,18 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
         energy_now = ((uint64_t)charge_now * (uint64_t)voltage_now) / 1000000;
         energy_full = ((uint64_t)charge_full * (uint64_t)voltage_now) / 1000000;
         energy_full_design = ((uint64_t)charge_full_design * (uint64_t)voltage_now) / 1000000;
+      } // Gamepads such as PS Dualshock provide the only capacity
+        else if (fs::exists(bat / "energy_now") && fs::exists(bat / "energy_full")) {
+          std::ifstream(bat / "power_now") >> power_now;
+          std::ifstream(bat / "energy_now") >> energy_now;
+          std::ifstream(bat / "energy_full") >> energy_full;
+          std::ifstream(bat / "energy_full_design") >> energy_full_design;
       } else {
-        std::ifstream(bat / "power_now") >> power_now;
-        std::ifstream(bat / "energy_now") >> energy_now;
-        std::ifstream(bat / "energy_full") >> energy_full;
-        std::ifstream(bat / "energy_full_design") >> energy_full_design;
+        std::ifstream(bat / "capacity") >> capacity;
+        power_now          = 0;
+        energy_now         = 0;
+        energy_full        = 0;
+        energy_full_design = 0;
       }
 
       // Show the "smallest" status among all batteries
@@ -202,6 +212,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       total_energy += energy_now;
       total_energy_full += energy_full;
       total_energy_full_design += energy_full_design;
+      total_capacity += capacity;
     }
     if (!adapter_.empty() && status == "Discharging") {
       bool online;
@@ -221,7 +232,12 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
         time_remaining = 0.0f;
       }
     }
-    float capacity = ((float)total_energy * 100.0f / (float) total_energy_full);
+    float capacity{0.0f};
+    if(total_energy_full > 0.0f) {
+      capacity = ((float)total_energy * 100.0f / (float) total_energy_full);
+    } else {
+      capacity = (float)total_capacity;
+    }
     // Handle design-capacity
     if (config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) {
         capacity = ((float)total_energy * 100.0f / (float) total_energy_full_design);
@@ -283,6 +299,10 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 }
 
 auto waybar::modules::Battery::update() -> void {
+  if (batteries_.empty()) {
+    event_box_.hide();
+    return;
+  }
   auto [capacity, time_remaining, status, power] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
