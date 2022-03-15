@@ -177,7 +177,7 @@ auto UPower::update() -> void {
 
     // Set percentage
     std::string percent_string =
-        displayDeviceValid ? std::to_string(int(percentage) + 0.5) + "%" : "";
+        displayDeviceValid ? std::to_string(int(percentage + 0.5)) + "%" : "";
     label_.set_text(percent_string);
 
     // Set icon
