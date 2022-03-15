@@ -80,6 +80,16 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
 
 std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>& alts, uint16_t max) {
   auto format_icons = config_["format-icons"];
+  for(const auto& iconsSet : alts) {
+    if(!iconsSet.empty()) {
+      std::string idx{"format-icons-" + iconsSet};
+      if((config_[idx].isString() || config_[idx].isArray())) {
+        format_icons = config_[idx];
+        break;
+      }
+    }
+  }
+
   if (format_icons.isObject()) {
     std::string _alt = "default";
     for (const auto& alt : alts) {
