@@ -1,4 +1,4 @@
-#include "modules/upower/upower.hpp"
+#include "modules/upower.hpp"
 
 #include <gio/gio.h>
 
