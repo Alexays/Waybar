@@ -18,7 +18,16 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   box_.pack_start(label_);
   event_box_.add(box_);
 
+  // Icon Size
+  if (config_["icon-size"].isUInt()) {
+    iconSize = config_["icon-size"].asUInt();
+  }
   icon_.set_pixel_size(iconSize);
+
+  // Hide If Empty
+  if (config_["hide-if-empty"].isBool()) {
+    hideIfEmpty = config_["hide-if-empty"].asBool();
+  }
 
   GError* error = NULL;
   client = up_client_new_full(NULL, &error);
