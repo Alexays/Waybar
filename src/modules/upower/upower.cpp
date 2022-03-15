@@ -110,7 +110,7 @@ void UPower::addDevice(UpDevice* device) {
   if (device) {
     const gchar* objectPath = up_device_get_object_path(device);
     devices[objectPath] = device;
-    g_signal_connect(devices[objectPath], "notify", G_CALLBACK(deviceNotify_cb), this);
+    g_signal_connect(device, "notify", G_CALLBACK(deviceNotify_cb), this);
   }
 }
 
