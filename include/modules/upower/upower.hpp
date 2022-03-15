@@ -25,6 +25,10 @@ class UPower : public AModule {
   static void deviceAdded_cb(UpClient *client, UpDevice *device, gpointer data);
   static void deviceRemoved_cb(UpClient *client, const gchar *object_path, gpointer data);
   static void deviceNotify_cb(gpointer data);
+  static void prepareForSleep_cb(GDBusConnection *system_bus, const gchar *sender_name,
+                                 const gchar *object_path, const gchar *interface_name,
+                                 const gchar *signal_name, GVariant *parameters,
+                                 gpointer user_data);
   void        removeDevice(const std::string devicePath);
   void        addDevice(UpDevice *device);
   void        setDisplayDevice();
@@ -41,6 +45,8 @@ class UPower : public AModule {
   UpClient                         *client = NULL;
   UpDevice                         *displayDevice = NULL;
   std::map<std::string, UpDevice *> devices;
+  guint                             login1_id;
+  GDBusConnection                  *login1_connection;
 };
 
 }  // namespace waybar::modules
