@@ -29,11 +29,14 @@ class UPower : public AModule {
   void        addDevice(UpDevice *device);
   void        setDisplayDevice();
   void        resetDevices();
-  static void clicked();
 
   Gtk::Box   box_;
   Gtk::Image icon_;
   Gtk::Label label_;
+
+  // Config
+  bool hideIfEmpty = true;
+  uint iconSize = 32;
 
   UpClient                         *client = NULL;
   UpDevice                         *displayDevice = NULL;
