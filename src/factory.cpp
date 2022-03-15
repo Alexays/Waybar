@@ -12,6 +12,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Battery(id, config_[name]);
     }
 #endif
+#ifdef HAVE_UPOWER
+    if (ref == "upower") {
+      return new waybar::modules::UPower(id, config_[name]);
+    }
+#endif
 #ifdef HAVE_SWAY
     if (ref == "sway/mode") {
       return new waybar::modules::sway::Mode(id, config_[name]);

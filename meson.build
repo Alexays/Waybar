@@ -92,6 +92,7 @@ sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
+upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libevdev = dependency('libevdev', required: get_option('libevdev'))
@@ -203,6 +204,11 @@ if libnl.found() and libnlgen.found()
     src_files += 'src/modules/network.cpp'
 endif
 
+if upower_glib.found()
+    add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
+    src_files += 'src/modules/upower/upower.cpp'
+endif
+
 if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += 'src/modules/pulseaudio.cpp'
@@ -288,6 +294,7 @@ executable(
         giounix,
         libnl,
         libnlgen,
+        upower_glib,
         libpulse,
         libudev,
         libepoll,
@@ -296,7 +303,7 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-		xkbregistry 
+		xkbregistry
     ],
     include_directories: [include_directories('include')],
     install: true,
