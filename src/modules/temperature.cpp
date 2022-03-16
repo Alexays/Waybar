@@ -3,6 +3,11 @@
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
+  if (config_["format"].asString().empty() && config_["format-critical"].asString().empty()) {
+    throw std::runtime_error("Format configuration is not defined");
+  } else if (config_["format"].asString().empty()) {
+    format_.clear();
+  }
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
   } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
@@ -34,6 +39,15 @@ auto waybar::modules::Temperature::update() -> void {
   } else {
     label_.get_style_context()->remove_class("critical");
   }
+
+  if(format.empty())
+  {
+    event_box_.hide();
+    return;
+  } else {
+    event_box_.show();
+  }
+
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
   label_.set_markup(fmt::format(format,
                                 fmt::arg("temperatureC", temperature_c),
