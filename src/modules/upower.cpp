@@ -11,7 +11,7 @@
 
 namespace waybar::modules {
 UPower::UPower(const std::string& id, const Json::Value& config)
-    : AModule(config, "tray", id),
+    : AModule(config, "upower", id),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
       icon_(),
       label_(),
