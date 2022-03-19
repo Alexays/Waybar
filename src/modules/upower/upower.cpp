@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include <cstring>
 #include <string>
 
 #include "gtkmm/icontheme.h"
@@ -312,9 +313,30 @@ auto UPower::update() -> void {
   }
 
   // Label format
-  label_.set_markup(fmt::format(showAltText ? format_alt : format,
-                                fmt::arg("percentage", percentString),
-                                fmt::arg("time", time_format)));
+  std::string time_format = "";
+  switch (state) {
+    case UP_DEVICE_STATE_CHARGING:
+    case UP_DEVICE_STATE_PENDING_CHARGE:
+      time_format = timeToString(time_full);
+      break;
+    case UP_DEVICE_STATE_DISCHARGING:
+    case UP_DEVICE_STATE_PENDING_DISCHARGE:
+      time_format = timeToString(time_empty);
+      break;
+    default:
+      break;
+  }
+  std::string label_format = fmt::format(showAltText ? format_alt : format,
+                                         fmt::arg("percentage", percentString),
+                                         fmt::arg("time", time_format));
+  // Only set the label text if it doesn't only contain spaces
+  bool onlySpaces = true;
+  for (auto& character : label_format) {
+    if (character == ' ') continue;
+    onlySpaces = false;
+    break;
+  }
+  label_.set_markup(onlySpaces ? "" : label_format);
 
   // Set icon
   if (!Gtk::IconTheme::get_default()->has_icon(icon_name)) {
