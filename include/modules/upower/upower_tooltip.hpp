@@ -12,7 +12,7 @@ class UPowerTooltip : public Gtk::Window {
  private:
   typedef std::unordered_map<std::string, UpDevice*> Devices;
 
-  std::string getDeviceIcon(UpDeviceKind& kind);
+  const std::string getDeviceIcon(UpDeviceKind& kind);
 
   Gtk::Box* contentBox;
 

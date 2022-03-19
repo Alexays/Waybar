@@ -96,7 +96,7 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
   return deviceCount;
 }
 
-std::string UPowerTooltip::getDeviceIcon(UpDeviceKind& kind) {
+const std::string UPowerTooltip::getDeviceIcon(UpDeviceKind& kind) {
   switch (kind) {
     case UP_DEVICE_KIND_LINE_POWER:
       return "ac-adapter-symbolic";
