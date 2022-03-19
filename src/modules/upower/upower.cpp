@@ -281,17 +281,15 @@ auto UPower::update() -> void {
 
   uint tooltipCount = 0;
 
-  std::string time_full_format = timeToString(time_full);
-  std::string time_empty_format = timeToString(time_full);
   std::string time_format = "";
   switch (state) {
     case UP_DEVICE_STATE_CHARGING:
     case UP_DEVICE_STATE_PENDING_CHARGE:
-      time_format = time_full_format;
+      time_format = timeToString(time_full);
       break;
     case UP_DEVICE_STATE_DISCHARGING:
     case UP_DEVICE_STATE_PENDING_DISCHARGE:
-      time_format = time_empty_format;
+      time_format = timeToString(time_empty);
       break;
     default:
       break;
