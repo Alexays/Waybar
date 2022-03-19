@@ -14,7 +14,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #endif
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
-      return new waybar::modules::UPower(id, config_[name]);
+      return new waybar::modules::upower::UPower(id, config_[name]);
     }
 #endif
 #ifdef HAVE_SWAY

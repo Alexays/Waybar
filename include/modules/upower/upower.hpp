@@ -10,8 +10,9 @@
 #include "gtkmm/box.h"
 #include "gtkmm/image.h"
 #include "gtkmm/label.h"
+#include "modules/upower/upower_tooltip.hpp"
 
-namespace waybar::modules {
+namespace waybar::modules::upower {
 
 class UPower : public AModule {
  public:
@@ -19,9 +20,9 @@ class UPower : public AModule {
   ~UPower();
   auto update() -> void;
 
+ private:
   typedef std::unordered_map<std::string, UpDevice *> Devices;
 
- private:
   static void deviceAdded_cb(UpClient *client, UpDevice *device, gpointer data);
   static void deviceRemoved_cb(UpClient *client, const gchar *objectPath, gpointer data);
   static void deviceNotify_cb(UpDevice *device, GParamSpec *pspec, gpointer user_data);
@@ -34,6 +35,7 @@ class UPower : public AModule {
   void        setDisplayDevice();
   void        resetDevices();
   void        removeDevices();
+  bool        show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Tooltip> &tooltip);
 
   Gtk::Box   box_;
   Gtk::Image icon_;
@@ -41,6 +43,8 @@ class UPower : public AModule {
 
   // Config
   bool hideIfEmpty = true;
+  bool tooltip_enabled = true;
+  uint tooltip_spacing = 4;
   uint iconSize = 20;
 
   Devices          devices;
@@ -49,6 +53,7 @@ class UPower : public AModule {
   UpDevice        *displayDevice;
   guint            login1_id;
   GDBusConnection *login1_connection;
+  UPowerTooltip   *upower_tooltip;
 };
 
-}  // namespace waybar::modules
+}  // namespace waybar::modules::upower

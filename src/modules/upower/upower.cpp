@@ -1,8 +1,11 @@
 #include "modules/upower/upower.hpp"
 
 #include "gtkmm/icontheme.h"
+#include "gtkmm/label.h"
+#include "gtkmm/tooltip.h"
+#include "modules/upower/upower_tooltip.hpp"
 
-namespace waybar::modules {
+namespace waybar::modules::upower {
 UPower::UPower(const std::string& id, const Json::Value& config)
     : AModule(config, "upower", id),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -24,6 +27,23 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   // Hide If Empty
   if (config_["hide-if-empty"].isBool()) {
     hideIfEmpty = config_["hide-if-empty"].asBool();
+  }
+
+  // Tooltip Spacing
+  if (config_["tooltip-spacing"].isUInt()) {
+    tooltip_spacing = config_["tooltip-spacing"].asUInt();
+  }
+
+  // Tooltip
+  if (config_["tooltip"].isBool()) {
+    tooltip_enabled = config_["tooltip"].asBool();
+  }
+  box_.set_has_tooltip(tooltip_enabled);
+  if (tooltip_enabled) {
+    // Sets the window to use when showing the tooltip
+    upower_tooltip = new UPowerTooltip(iconSize, tooltip_spacing);
+    box_.set_tooltip_window(*upower_tooltip);
+    box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::show_tooltip_callback));
   }
 
   GError* error = NULL;
@@ -174,6 +194,10 @@ void UPower::resetDevices() {
   dp.emit();
 }
 
+bool UPower::show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+  return true;
+}
+
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
 
@@ -204,7 +228,7 @@ auto UPower::update() -> void {
 
   std::string percentString = "";
 
-  std::string tooltip = "";
+  uint tooltipCount = 0;
 
   if (devices.size() == 0 && !displayDeviceValid && hideIfEmpty) {
     event_box_.set_visible(false);
@@ -213,18 +237,12 @@ auto UPower::update() -> void {
 
   event_box_.set_visible(true);
 
-  // TODO: Tooltip
-  if (!devices.empty()) {
-    for (auto& e : devices) {
-      const gchar* objectPath = up_device_get_object_path(e.second);
-      double       percentage;
-      g_object_get(e.second, "percentage", &percentage, NULL);
-      printf("Device: %s, VALID: %f\n", objectPath, percentage);
-    }
-  } else {
-    printf("No devices\n");
+  // Tooltip
+  if (tooltip_enabled) {
+    tooltipCount = upower_tooltip->updateTooltip(devices);
+    // Disable the tooltip if there aren't any devices in the tooltip
+    box_.set_has_tooltip(!devices.empty() && tooltipCount > 0);
   }
-  // box_.set_tooltip
 
   // Set percentage
   if (displayDeviceValid) {
@@ -243,4 +261,4 @@ update:
   AModule::update();
 }
 
-}  // namespace waybar::modules
+}  // namespace waybar::modules::upower
