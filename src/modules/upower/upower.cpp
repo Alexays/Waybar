@@ -277,24 +277,6 @@ auto UPower::update() -> void {
   bool displayDeviceValid =
       kind == UpDeviceKind::UP_DEVICE_KIND_BATTERY || kind == UpDeviceKind::UP_DEVICE_KIND_UPS;
 
-  std::string percentString = "";
-
-  uint tooltipCount = 0;
-
-  std::string time_format = "";
-  switch (state) {
-    case UP_DEVICE_STATE_CHARGING:
-    case UP_DEVICE_STATE_PENDING_CHARGE:
-      time_format = timeToString(time_full);
-      break;
-    case UP_DEVICE_STATE_DISCHARGING:
-    case UP_DEVICE_STATE_PENDING_DISCHARGE:
-      time_format = timeToString(time_empty);
-      break;
-    default:
-      break;
-  }
-
   // CSS status class
   const std::string status = getDeviceStatus(state);
   // Remove last status if it exists
@@ -309,19 +291,22 @@ auto UPower::update() -> void {
 
   if (devices.size() == 0 && !displayDeviceValid && hideIfEmpty) {
     event_box_.set_visible(false);
-    goto update;
+    // Call parent update
+    AModule::update();
+    return;
   }
 
   event_box_.set_visible(true);
 
   // Tooltip
   if (tooltip_enabled) {
-    tooltipCount = upower_tooltip->updateTooltip(devices);
+    uint tooltipCount = upower_tooltip->updateTooltip(devices);
     // Disable the tooltip if there aren't any devices in the tooltip
     box_.set_has_tooltip(!devices.empty() && tooltipCount > 0);
   }
 
   // Set percentage
+  std::string percentString = "";
   if (displayDeviceValid) {
     percentString = std::to_string(int(percentage + 0.5)) + "%";
   }
@@ -337,7 +322,6 @@ auto UPower::update() -> void {
   }
   icon_.set_from_icon_name(icon_name, Gtk::ICON_SIZE_INVALID);
 
-update:
   // Call parent update
   AModule::update();
 }
