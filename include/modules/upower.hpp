@@ -40,7 +40,7 @@ class UPower : public AModule {
 
   // Config
   bool hideIfEmpty = true;
-  uint iconSize = 32;
+  uint iconSize = 20;
 
   Devices          devices;
   std::mutex       m_Mutex;
