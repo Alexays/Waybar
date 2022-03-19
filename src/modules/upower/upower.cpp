@@ -1,5 +1,9 @@
 #include "modules/upower/upower.hpp"
 
+#include <fmt/core.h>
+
+#include <string>
+
 #include "gtkmm/icontheme.h"
 #include "gtkmm/label.h"
 #include "gtkmm/tooltip.h"
@@ -13,7 +17,8 @@ UPower::UPower(const std::string& id, const Json::Value& config)
       label_(),
       devices(),
       m_Mutex(),
-      client() {
+      client(),
+      showAltText(false) {
   box_.pack_start(icon_);
   box_.pack_start(label_);
   event_box_.add(box_);
@@ -27,6 +32,16 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   // Hide If Empty
   if (config_["hide-if-empty"].isBool()) {
     hideIfEmpty = config_["hide-if-empty"].asBool();
+  }
+
+  // Format
+  if (config_["format"].isString()) {
+    format = config_["format"].asString();
+  }
+
+  // Format Alt
+  if (config_["format-alt"].isString()) {
+    format_alt = config_["format-alt"].asString();
   }
 
   // Tooltip Spacing
@@ -68,6 +83,8 @@ UPower::UPower(const std::string& id, const Json::Value& config)
                                                    this,
                                                    NULL);
   }
+
+  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &UPower::handleToggle));
 
   g_signal_connect(client, "device-added", G_CALLBACK(deviceAdded_cb), this);
   g_signal_connect(client, "device-removed", G_CALLBACK(deviceRemoved_cb), this);
@@ -213,14 +230,33 @@ const std::string UPower::getDeviceStatus(UpDeviceState& state) {
   }
 }
 
+bool UPower::handleToggle(GdkEventButton* const& event) {
+  std::lock_guard<std::mutex> guard(m_Mutex);
+  showAltText = !showAltText;
+  dp.emit();
+  return true;
+}
+
+std::string UPower::timeToString(gint64 time) {
+  if (time == 0) return "";
+  float hours = (float)time / 3600;
+  float hours_fixed = static_cast<float>(static_cast<int>(hours * 10)) / 10;
+  float minutes = static_cast<float>(static_cast<int>(hours * 60 * 10)) / 10;
+  if (hours_fixed >= 1) {
+    return fmt::format("{H} h", fmt::arg("H", hours_fixed));
+  } else {
+    return fmt::format("{M} min", fmt::arg("M", minutes));
+  }
+}
+
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
 
   UpDeviceKind  kind;
   UpDeviceState state;
   double        percentage;
-  gboolean      is_power_supply;
-  gboolean      is_present;
+  gint64        time_empty;
+  gint64        time_full;
   gchar*        icon_name;
 
   g_object_get(displayDevice,
@@ -228,14 +264,14 @@ auto UPower::update() -> void {
                &kind,
                "state",
                &state,
-               "is-present",
-               &is_present,
-               "power-supply",
-               &is_power_supply,
                "percentage",
                &percentage,
                "icon-name",
                &icon_name,
+               "time-to-empty",
+               &time_empty,
+               "time-to-full",
+               &time_full,
                NULL);
 
   bool displayDeviceValid =
@@ -244,6 +280,22 @@ auto UPower::update() -> void {
   std::string percentString = "";
 
   uint tooltipCount = 0;
+
+  std::string time_full_format = timeToString(time_full);
+  std::string time_empty_format = timeToString(time_full);
+  std::string time_format = "";
+  switch (state) {
+    case UP_DEVICE_STATE_CHARGING:
+    case UP_DEVICE_STATE_PENDING_CHARGE:
+      time_format = time_full_format;
+      break;
+    case UP_DEVICE_STATE_DISCHARGING:
+    case UP_DEVICE_STATE_PENDING_DISCHARGE:
+      time_format = time_empty_format;
+      break;
+    default:
+      break;
+  }
 
   // CSS status class
   const std::string status = getDeviceStatus(state);
@@ -275,7 +327,11 @@ auto UPower::update() -> void {
   if (displayDeviceValid) {
     percentString = std::to_string(int(percentage + 0.5)) + "%";
   }
-  label_.set_text(percentString);
+
+  // Label format
+  label_.set_markup(fmt::format(showAltText ? format_alt : format,
+                                fmt::arg("percentage", percentString),
+                                fmt::arg("time", time_format)));
 
   // Set icon
   if (!Gtk::IconTheme::get_default()->has_icon(icon_name)) {

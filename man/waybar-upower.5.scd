@@ -16,6 +16,16 @@ compatible devices in the tooltip.
 	default: 20 ++
 	Defines the size of the icons.
 
+*format*: ++
+	typeof: string ++
+	default: {percentage} ++
+	The text format.
+
+*format-alt*: ++
+	typeof: string ++
+	default: {percentage} {time} ++
+	The text format when toggled.
+
 *hide-if-empty*: ++
 	typeof: bool ++
 	default: true ++
@@ -31,6 +41,13 @@ compatible devices in the tooltip.
 	default: 4 ++
 	Defines the spacing between the tooltip device name and device battery ++
 	status.
+
+# FORMAT REPLACEMENTS
+
+*{percentage}*: The battery capacity in percentage
+
+*{time}*: An estimated time either until empty or until fully charged ++
+depending on the charging state.
 
 # EXAMPLES
 

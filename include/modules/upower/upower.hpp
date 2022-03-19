@@ -7,6 +7,7 @@
 #include <string>
 
 #include "ALabel.hpp"
+#include "glibconfig.h"
 #include "gtkmm/box.h"
 #include "gtkmm/image.h"
 #include "gtkmm/label.h"
@@ -23,6 +24,9 @@ class UPower : public AModule {
  private:
   typedef std::unordered_map<std::string, UpDevice *> Devices;
 
+  const std::string DEFAULT_FORMAT = "{percentage}";
+  const std::string DEFAULT_FORMAT_ALT = "{percentage} {time}";
+
   static void deviceAdded_cb(UpClient *client, UpDevice *device, gpointer data);
   static void deviceRemoved_cb(UpClient *client, const gchar *objectPath, gpointer data);
   static void deviceNotify_cb(UpDevice *device, GParamSpec *pspec, gpointer user_data);
@@ -36,6 +40,8 @@ class UPower : public AModule {
   void        resetDevices();
   void        removeDevices();
   bool        show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Tooltip> &tooltip);
+  bool        handleToggle(GdkEventButton *const &);
+  std::string timeToString(gint64 time);
 
   const std::string getDeviceStatus(UpDeviceState &state);
 
@@ -44,10 +50,12 @@ class UPower : public AModule {
   Gtk::Label label_;
 
   // Config
-  bool hideIfEmpty = true;
-  bool tooltip_enabled = true;
-  uint tooltip_spacing = 4;
-  uint iconSize = 20;
+  bool        hideIfEmpty = true;
+  bool        tooltip_enabled = true;
+  uint        tooltip_spacing = 4;
+  uint        iconSize = 20;
+  std::string format = DEFAULT_FORMAT;
+  std::string format_alt = DEFAULT_FORMAT_ALT;
 
   Devices          devices;
   std::mutex       m_Mutex;
@@ -57,6 +65,7 @@ class UPower : public AModule {
   GDBusConnection *login1_connection;
   UPowerTooltip   *upower_tooltip;
   std::string      lastStatus;
+  bool             showAltText;
 };
 
 }  // namespace waybar::modules::upower
