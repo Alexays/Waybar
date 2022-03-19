@@ -2,11 +2,9 @@
 
 #include <libupower-glib/upower.h>
 
-#include <algorithm>
 #include <iostream>
 #include <map>
 #include <string>
-#include <vector>
 
 #include "ALabel.hpp"
 #include "gtkmm/box.h"
@@ -22,14 +20,16 @@ class UPower : public AModule {
   auto update() -> void;
 
  private:
+  typedef std::unordered_map<std::string, UpDevice *> Devices;
+
   static void deviceAdded_cb(UpClient *client, UpDevice *device, gpointer data);
-  static void deviceRemoved_cb(UpClient *client, const gchar *object_path, gpointer data);
-  static void deviceNotify_cb(gpointer data);
+  static void deviceRemoved_cb(UpClient *client, const gchar *objectPath, gpointer data);
+  static void deviceNotify_cb(UpDevice *device, GParamSpec *pspec, gpointer user_data);
   static void prepareForSleep_cb(GDBusConnection *system_bus, const gchar *sender_name,
                                  const gchar *object_path, const gchar *interface_name,
                                  const gchar *signal_name, GVariant *parameters,
                                  gpointer user_data);
-  void        removeDevice(const std::string devicePath);
+  void        removeDevice(const gchar *objectPath);
   void        addDevice(UpDevice *device);
   void        setDisplayDevice();
   void        resetDevices();
@@ -42,11 +42,12 @@ class UPower : public AModule {
   bool hideIfEmpty = true;
   uint iconSize = 32;
 
-  UpClient                         *client = NULL;
-  UpDevice                         *displayDevice = NULL;
-  std::map<std::string, UpDevice *> devices;
-  guint                             login1_id;
-  GDBusConnection                  *login1_connection;
+  Devices          devices;
+  std::mutex       m_Mutex;
+  UpClient        *client;
+  UpDevice        *displayDevice;
+  guint            login1_id;
+  GDBusConnection *login1_connection;
 };
 
 }  // namespace waybar::modules

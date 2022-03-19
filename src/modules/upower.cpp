@@ -1,12 +1,5 @@
 #include "modules/upower.hpp"
 
-#include <gio/gio.h>
-
-#include <iostream>
-#include <map>
-#include <string>
-
-#include "gtkmm/enums.h"
 #include "gtkmm/icontheme.h"
 
 namespace waybar::modules {
@@ -15,7 +8,9 @@ UPower::UPower(const std::string& id, const Json::Value& config)
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
       icon_(),
       label_(),
-      devices() {
+      devices(),
+      m_Mutex(),
+      client() {
   box_.pack_start(icon_);
   box_.pack_start(label_);
   event_box_.add(box_);
@@ -56,11 +51,8 @@ UPower::UPower(const std::string& id, const Json::Value& config)
 
   g_signal_connect(client, "device-added", G_CALLBACK(deviceAdded_cb), this);
   g_signal_connect(client, "device-removed", G_CALLBACK(deviceRemoved_cb), this);
-  g_signal_connect(client, "notify", G_CALLBACK(deviceNotify_cb), this);
 
   resetDevices();
-
-  dp.emit();
 }
 
 UPower::~UPower() {
@@ -78,14 +70,14 @@ void UPower::deviceAdded_cb(UpClient* client, UpDevice* device, gpointer data) {
   // Update the widget
   up->dp.emit();
 }
-void UPower::deviceRemoved_cb(UpClient* client, const gchar* object_path, gpointer data) {
+void UPower::deviceRemoved_cb(UpClient* client, const gchar* objectPath, gpointer data) {
   UPower* up = static_cast<UPower*>(data);
-  up->removeDevice(object_path);
+  up->removeDevice(objectPath);
   up->setDisplayDevice();
   // Update the widget
   up->dp.emit();
 }
-void UPower::deviceNotify_cb(gpointer data) {
+void UPower::deviceNotify_cb(UpDevice* device, GParamSpec* pspec, gpointer data) {
   UPower* up = static_cast<UPower*>(data);
   // Update the widget
   up->dp.emit();
@@ -104,17 +96,47 @@ void UPower::prepareForSleep_cb(GDBusConnection* system_bus, const gchar* sender
   }
 }
 
-void UPower::removeDevice(const std::string devicePath) { devices.erase(devicePath); }
+void UPower::removeDevice(const gchar* objectPath) {
+  std::lock_guard<std::mutex> guard(m_Mutex);
+  if (devices.find(objectPath) != devices.end()) {
+    UpDevice* device = devices[objectPath];
+    if (G_IS_OBJECT(device)) {
+      g_object_unref(device);
+    }
+    devices.erase(objectPath);
+  }
+}
 
 void UPower::addDevice(UpDevice* device) {
-  if (device) {
+  if (G_IS_OBJECT(device)) {
     const gchar* objectPath = up_device_get_object_path(device);
-    devices[objectPath] = device;
+
+    // Due to the device getting cleared after this event is fired, we
+    // create a new object pointing to its objectPath
+    gboolean ret;
+    device = up_device_new();
+    ret = up_device_set_object_path_sync(device, objectPath, NULL, NULL);
+    if (!ret) {
+      g_object_unref(G_OBJECT(device));
+      return;
+    }
+
+    std::lock_guard<std::mutex> guard(m_Mutex);
+    if (devices.find(objectPath) != devices.end()) {
+      UpDevice* device = devices[objectPath];
+      if (G_IS_OBJECT(device)) {
+        g_object_unref(device);
+      }
+      devices.erase(objectPath);
+    }
+
     g_signal_connect(device, "notify", G_CALLBACK(deviceNotify_cb), this);
+    devices.emplace(Devices::value_type(objectPath, device));
   }
 }
 
 void UPower::setDisplayDevice() {
+  std::lock_guard<std::mutex> guard(m_Mutex);
   displayDevice = up_client_get_display_device(client);
   g_signal_connect(displayDevice, "notify", G_CALLBACK(deviceNotify_cb), this);
 }
@@ -122,9 +144,12 @@ void UPower::setDisplayDevice() {
 /** Removes all devices and adds the current devices */
 void UPower::resetDevices() {
   // Removes all devices
-  if (devices.size() > 0) {
+  if (!devices.empty()) {
     auto it = devices.cbegin();
     while (it != devices.cend()) {
+      if (G_IS_OBJECT(it->second)) {
+        g_object_unref(it->second);
+      }
       devices.erase(it++);
     }
   }
@@ -143,10 +168,11 @@ void UPower::resetDevices() {
 }
 
 auto UPower::update() -> void {
+  std::lock_guard<std::mutex> guard(m_Mutex);
   if (devices.size() == 0 && hideIfEmpty) {
-    box_.set_visible(false);
+    event_box_.set_visible(false);
   } else {
-    box_.set_visible(true);
+    event_box_.set_visible(true);
 
     UpDeviceKind  kind;
     UpDeviceState state;
