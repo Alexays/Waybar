@@ -62,6 +62,7 @@ UPower::~UPower() {
     g_dbus_connection_signal_unsubscribe(login1_connection, login1_id);
     login1_id = 0;
   }
+  removeDevices();
 }
 
 void UPower::deviceAdded_cb(UpClient* client, UpDevice* device, gpointer data) {
