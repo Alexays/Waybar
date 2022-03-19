@@ -53,6 +53,7 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   g_signal_connect(client, "device-removed", G_CALLBACK(deviceRemoved_cb), this);
 
   resetDevices();
+  setDisplayDevice();
 }
 
 UPower::~UPower() {
@@ -92,6 +93,7 @@ void UPower::prepareForSleep_cb(GDBusConnection* system_bus, const gchar* sender
     if (!sleeping) {
       UPower* up = static_cast<UPower*>(data);
       up->resetDevices();
+      up->setDisplayDevice();
     }
   }
 }
@@ -107,7 +109,7 @@ void UPower::removeDevice(const gchar* objectPath) {
   }
 }
 
-void UPower::addDevice(UpDevice* device) {
+void UPower::addDevice(UpDevice* device, bool lockMutex) {
   if (G_IS_OBJECT(device)) {
     const gchar* objectPath = up_device_get_object_path(device);
 
@@ -121,7 +123,8 @@ void UPower::addDevice(UpDevice* device) {
       return;
     }
 
-    std::lock_guard<std::mutex> guard(m_Mutex);
+    if (lockMutex) std::lock_guard<std::mutex> guard(m_Mutex);
+
     if (devices.find(objectPath) != devices.end()) {
       UpDevice* device = devices[objectPath];
       if (G_IS_OBJECT(device)) {
@@ -143,6 +146,7 @@ void UPower::setDisplayDevice() {
 
 /** Removes all devices and adds the current devices */
 void UPower::resetDevices() {
+  std::lock_guard<std::mutex> guard(m_Mutex);
   // Removes all devices
   if (!devices.empty()) {
     auto it = devices.cbegin();
@@ -158,10 +162,8 @@ void UPower::resetDevices() {
   GPtrArray* newDevices = up_client_get_devices2(client);
   for (guint i = 0; i < newDevices->len; i++) {
     UpDevice* device = (UpDevice*)g_ptr_array_index(newDevices, i);
-    if (device) addDevice(device);
+    if (device) addDevice(device, false);
   }
-
-  setDisplayDevice();
 
   // Update the widget
   dp.emit();

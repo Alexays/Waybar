@@ -30,7 +30,7 @@ class UPower : public AModule {
                                  const gchar *signal_name, GVariant *parameters,
                                  gpointer user_data);
   void        removeDevice(const gchar *objectPath);
-  void        addDevice(UpDevice *device);
+  void        addDevice(UpDevice *device, bool lockMutex = true);
   void        setDisplayDevice();
   void        resetDevices();
 
