@@ -171,50 +171,58 @@ void UPower::resetDevices() {
 
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
-  if (devices.size() == 0 && hideIfEmpty) {
+
+  UpDeviceKind  kind;
+  UpDeviceState state;
+  double        percentage;
+  gboolean      is_power_supply;
+  gboolean      is_present;
+  gchar*        icon_name;
+
+  g_object_get(displayDevice,
+               "kind",
+               &kind,
+               "state",
+               &state,
+               "is-present",
+               &is_present,
+               "power-supply",
+               &is_power_supply,
+               "percentage",
+               &percentage,
+               "icon-name",
+               &icon_name,
+               NULL);
+
+  bool displayDeviceValid =
+      kind == UpDeviceKind::UP_DEVICE_KIND_BATTERY || kind == UpDeviceKind::UP_DEVICE_KIND_UPS;
+
+  std::string percentString = "";
+
+  std::string tooltip = "";
+
+  if (devices.size() == 0 && !displayDeviceValid && hideIfEmpty) {
     event_box_.set_visible(false);
-  } else {
-    event_box_.set_visible(true);
-
-    UpDeviceKind  kind;
-    UpDeviceState state;
-    double        percentage;
-    gboolean      is_power_supply;
-    gboolean      is_present;
-    gchar*        icon_name;
-
-    g_object_get(displayDevice,
-                 "kind",
-                 &kind,
-                 "state",
-                 &state,
-                 "is-present",
-                 &is_present,
-                 "power-supply",
-                 &is_power_supply,
-                 "percentage",
-                 &percentage,
-                 "icon-name",
-                 &icon_name,
-                 NULL);
-
-    bool displayDeviceValid =
-        kind == UpDeviceKind::UP_DEVICE_KIND_BATTERY || kind == UpDeviceKind::UP_DEVICE_KIND_UPS;
-
-    // TODO: Tooltip
-
-    // Set percentage
-    std::string percent_string =
-        displayDeviceValid ? std::to_string(int(percentage + 0.5)) + "%" : "";
-    label_.set_text(percent_string);
-
-    // Set icon
-    if (!Gtk::IconTheme::get_default()->has_icon(icon_name)) {
-      icon_name = (char*)"battery-missing-symbolic";
-    }
-    icon_.set_from_icon_name(icon_name, Gtk::ICON_SIZE_INVALID);
+    goto update;
   }
 
+  event_box_.set_visible(true);
+
+  // TODO: Tooltip
+
+  // Set percentage
+  if (displayDeviceValid) {
+    percentString = std::to_string(int(percentage + 0.5)) + "%";
+  }
+  label_.set_text(percentString);
+
+  // Set icon
+  if (!Gtk::IconTheme::get_default()->has_icon(icon_name)) {
+    icon_name = (char*)"battery-missing-symbolic";
+  }
+  icon_.set_from_icon_name(icon_name, Gtk::ICON_SIZE_INVALID);
+
+update:
   // Call parent update
   AModule::update();
 }
