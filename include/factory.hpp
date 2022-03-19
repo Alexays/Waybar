@@ -43,7 +43,7 @@
 #include "modules/keyboard_state.hpp"
 #endif
 #ifdef HAVE_UPOWER
-#include "modules/upower.hpp"
+#include "modules/upower/upower.hpp"
 #endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"

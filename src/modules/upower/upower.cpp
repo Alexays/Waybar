@@ -1,4 +1,4 @@
-#include "modules/upower.hpp"
+#include "modules/upower/upower.hpp"
 
 #include "gtkmm/icontheme.h"
 
@@ -109,7 +109,7 @@ void UPower::removeDevice(const gchar* objectPath) {
   }
 }
 
-void UPower::addDevice(UpDevice* device, bool lockMutex) {
+void UPower::addDevice(UpDevice* device) {
   if (G_IS_OBJECT(device)) {
     const gchar* objectPath = up_device_get_object_path(device);
 
@@ -123,7 +123,7 @@ void UPower::addDevice(UpDevice* device, bool lockMutex) {
       return;
     }
 
-    if (lockMutex) std::lock_guard<std::mutex> guard(m_Mutex);
+    std::lock_guard<std::mutex> guard(m_Mutex);
 
     if (devices.find(objectPath) != devices.end()) {
       UpDevice* device = devices[objectPath];
@@ -144,10 +144,8 @@ void UPower::setDisplayDevice() {
   g_signal_connect(displayDevice, "notify", G_CALLBACK(deviceNotify_cb), this);
 }
 
-/** Removes all devices and adds the current devices */
-void UPower::resetDevices() {
+void UPower::removeDevices() {
   std::lock_guard<std::mutex> guard(m_Mutex);
-  // Removes all devices
   if (!devices.empty()) {
     auto it = devices.cbegin();
     while (it != devices.cend()) {
@@ -157,12 +155,18 @@ void UPower::resetDevices() {
       devices.erase(it++);
     }
   }
+}
+
+/** Removes all devices and adds the current devices */
+void UPower::resetDevices() {
+  // Removes all devices
+  removeDevices();
 
   // Adds all devices
   GPtrArray* newDevices = up_client_get_devices2(client);
   for (guint i = 0; i < newDevices->len; i++) {
     UpDevice* device = (UpDevice*)g_ptr_array_index(newDevices, i);
-    if (device) addDevice(device, false);
+    if (device && G_IS_OBJECT(device)) addDevice(device);
   }
 
   // Update the widget
@@ -209,6 +213,17 @@ auto UPower::update() -> void {
   event_box_.set_visible(true);
 
   // TODO: Tooltip
+  if (!devices.empty()) {
+    for (auto& e : devices) {
+      const gchar* objectPath = up_device_get_object_path(e.second);
+      double       percentage;
+      g_object_get(e.second, "percentage", &percentage, NULL);
+      printf("Device: %s, VALID: %f\n", objectPath, percentage);
+    }
+  } else {
+    printf("No devices\n");
+  }
+  // box_.set_tooltip
 
   // Set percentage
   if (displayDeviceValid) {

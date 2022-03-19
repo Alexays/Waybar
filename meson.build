@@ -206,7 +206,7 @@ endif
 
 if (upower_glib.found() and giounix.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
-    src_files += 'src/modules/upower.cpp'
+    src_files += 'src/modules/upower/upower.cpp'
 endif
 
 if libpulse.found()

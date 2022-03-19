@@ -19,9 +19,9 @@ class UPower : public AModule {
   ~UPower();
   auto update() -> void;
 
- private:
   typedef std::unordered_map<std::string, UpDevice *> Devices;
 
+ private:
   static void deviceAdded_cb(UpClient *client, UpDevice *device, gpointer data);
   static void deviceRemoved_cb(UpClient *client, const gchar *objectPath, gpointer data);
   static void deviceNotify_cb(UpDevice *device, GParamSpec *pspec, gpointer user_data);
@@ -30,9 +30,10 @@ class UPower : public AModule {
                                  const gchar *signal_name, GVariant *parameters,
                                  gpointer user_data);
   void        removeDevice(const gchar *objectPath);
-  void        addDevice(UpDevice *device, bool lockMutex = true);
+  void        addDevice(UpDevice *device);
   void        setDisplayDevice();
   void        resetDevices();
+  void        removeDevices();
 
   Gtk::Box   box_;
   Gtk::Image icon_;
