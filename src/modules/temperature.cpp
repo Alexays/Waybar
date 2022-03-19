@@ -34,6 +34,14 @@ auto waybar::modules::Temperature::update() -> void {
   } else {
     label_.get_style_context()->remove_class("critical");
   }
+
+  if(format.empty()) {
+    event_box_.hide();
+    return;
+  } else {
+    event_box_.show();
+  }
+
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
   label_.set_markup(fmt::format(format,
                                 fmt::arg("temperatureC", temperature_c),
