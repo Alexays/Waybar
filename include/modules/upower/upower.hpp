@@ -37,6 +37,8 @@ class UPower : public AModule {
   void        removeDevices();
   bool        show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Tooltip> &tooltip);
 
+  const std::string getDeviceStatus(UpDeviceState &state);
+
   Gtk::Box   box_;
   Gtk::Image icon_;
   Gtk::Label label_;
@@ -54,6 +56,7 @@ class UPower : public AModule {
   guint            login1_id;
   GDBusConnection *login1_connection;
   UPowerTooltip   *upower_tooltip;
+  std::string      lastStatus;
 };
 
 }  // namespace waybar::modules::upower

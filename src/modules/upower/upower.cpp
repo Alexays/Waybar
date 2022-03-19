@@ -198,6 +198,21 @@ bool UPower::show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Toolt
   return true;
 }
 
+const std::string UPower::getDeviceStatus(UpDeviceState& state) {
+  switch (state) {
+    case UP_DEVICE_STATE_CHARGING:
+    case UP_DEVICE_STATE_PENDING_CHARGE:
+      return "charging";
+    case UP_DEVICE_STATE_EMPTY:
+    case UP_DEVICE_STATE_FULLY_CHARGED:
+    case UP_DEVICE_STATE_DISCHARGING:
+    case UP_DEVICE_STATE_PENDING_DISCHARGE:
+      return "discharging";
+    default:
+      return "unknown-status";
+  }
+}
+
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
 
@@ -229,6 +244,18 @@ auto UPower::update() -> void {
   std::string percentString = "";
 
   uint tooltipCount = 0;
+
+  // CSS status class
+  const std::string status = getDeviceStatus(state);
+  // Remove last status if it exists
+  if (!lastStatus.empty() && box_.get_style_context()->has_class(lastStatus)) {
+    box_.get_style_context()->remove_class(lastStatus);
+  }
+  // Add the new status class to the Box
+  if (!box_.get_style_context()->has_class(status)) {
+    box_.get_style_context()->add_class(status);
+  }
+  lastStatus = status;
 
   if (devices.size() == 0 && !displayDeviceValid && hideIfEmpty) {
     event_box_.set_visible(false);

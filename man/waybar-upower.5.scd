@@ -43,3 +43,10 @@ compatible devices in the tooltip.
 }
 
 ```
+
+# STYLE
+
+- *#upower*
+- *#upower.charging*
+- *#upower.discharging*
+- *#upower.unknown-status*
