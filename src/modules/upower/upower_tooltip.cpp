@@ -7,9 +7,19 @@
 #include "gtkmm/label.h"
 
 namespace waybar::modules::upower {
-UPowerTooltip::UPowerTooltip(uint iconSize_, uint tooltipSpacing_)
-    : Gtk::Window(), iconSize(iconSize_), tooltipSpacing(tooltipSpacing_) {
+UPowerTooltip::UPowerTooltip(uint iconSize_, uint tooltipSpacing_, uint tooltipPadding_)
+    : Gtk::Window(),
+      iconSize(iconSize_),
+      tooltipSpacing(tooltipSpacing_),
+      tooltipPadding(tooltipPadding_) {
   contentBox = new Gtk::Box(Gtk::ORIENTATION_VERTICAL);
+
+  // Sets the Tooltip Padding
+  contentBox->set_margin_top(tooltipPadding);
+  contentBox->set_margin_bottom(tooltipPadding);
+  contentBox->set_margin_left(tooltipPadding);
+  contentBox->set_margin_right(tooltipPadding);
+
   add(*contentBox);
   contentBox->show();
 }

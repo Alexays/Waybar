@@ -53,6 +53,7 @@ class UPower : public AModule {
   bool        hideIfEmpty = true;
   bool        tooltip_enabled = true;
   uint        tooltip_spacing = 4;
+  uint        tooltip_padding = 4;
   uint        iconSize = 20;
   std::string format = DEFAULT_FORMAT;
   std::string format_alt = DEFAULT_FORMAT_ALT;

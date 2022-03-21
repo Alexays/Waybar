@@ -18,9 +18,10 @@ class UPowerTooltip : public Gtk::Window {
 
   uint iconSize;
   uint tooltipSpacing;
+  uint tooltipPadding;
 
  public:
-  UPowerTooltip(uint iconSize, uint tooltipSpacing);
+  UPowerTooltip(uint iconSize, uint tooltipSpacing, uint tooltipPadding);
   ~UPowerTooltip();
 
   uint updateTooltip(Devices& devices);

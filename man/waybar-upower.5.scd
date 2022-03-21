@@ -42,6 +42,11 @@ compatible devices in the tooltip.
 	Defines the spacing between the tooltip device name and device battery ++
 	status.
 
+*tooltip-padding*: ++
+	typeof: integer ++
+	default: 4 ++
+	Defines the spacing between the tooltip window edge and the tooltip content.
+
 # FORMAT REPLACEMENTS
 
 *{percentage}*: The battery capacity in percentage

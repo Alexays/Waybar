@@ -50,6 +50,11 @@ UPower::UPower(const std::string& id, const Json::Value& config)
     tooltip_spacing = config_["tooltip-spacing"].asUInt();
   }
 
+  // Tooltip Padding
+  if (config_["tooltip-padding"].isUInt()) {
+    tooltip_padding = config_["tooltip-padding"].asUInt();
+  }
+
   // Tooltip
   if (config_["tooltip"].isBool()) {
     tooltip_enabled = config_["tooltip"].asBool();
@@ -57,7 +62,7 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   box_.set_has_tooltip(tooltip_enabled);
   if (tooltip_enabled) {
     // Sets the window to use when showing the tooltip
-    upower_tooltip = new UPowerTooltip(iconSize, tooltip_spacing);
+    upower_tooltip = new UPowerTooltip(iconSize, tooltip_spacing, tooltip_padding);
     box_.set_tooltip_window(*upower_tooltip);
     box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::show_tooltip_callback));
   }
