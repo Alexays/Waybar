@@ -72,6 +72,10 @@ Addressed by *wlr/taskbar*
 	typeof: array ++
 	List of app_id/titles to be invisible.
 
+*ignore-list*: ++
+	typeof: array ++
+	List of app_ids in the order they should appear.
+
 *app_ids-mapping*: ++
 	typeof: object ++
 	Dictionary of app_id to be replaced with

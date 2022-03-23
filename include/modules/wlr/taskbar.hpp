@@ -46,6 +46,8 @@ class Task
         INVALID = (1 << 4)
     };
 
+    Gtk::Button button_;
+
    private:
     static uint32_t global_id;
 
@@ -58,7 +60,7 @@ class Task
 
     uint32_t id_;
 
-    Gtk::Button button_;
+
     Gtk::Box content_;
     Gtk::Image icon_;
     Gtk::Label text_before_;
@@ -143,6 +145,7 @@ class Taskbar : public waybar::AModule
 
     std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
     std::unordered_set<std::string> ignore_list_;
+    std::vector<std::string> order_list_;
     std::map<std::string, std::string> app_ids_replace_map_;
 
     struct zwlr_foreign_toplevel_manager_v1 *manager_;
