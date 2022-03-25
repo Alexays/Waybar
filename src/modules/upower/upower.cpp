@@ -347,7 +347,7 @@ auto UPower::update() -> void {
   label_.set_markup(onlySpaces ? "" : label_format);
 
   // Set icon
-  if (!Gtk::IconTheme::get_default()->has_icon(icon_name)) {
+  if (icon_name == NULL || !Gtk::IconTheme::get_default()->has_icon(icon_name)) {
     icon_name = (char*)"battery-missing-symbolic";
   }
   icon_.set_from_icon_name(icon_name, Gtk::ICON_SIZE_INVALID);
