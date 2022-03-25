@@ -68,6 +68,14 @@ UPower::UPower(const std::string& id, const Json::Value& config)
     box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::show_tooltip_callback));
   }
 
+  upowerWatcher_id = g_bus_watch_name(G_BUS_TYPE_SYSTEM,
+                                      "org.freedesktop.UPower",
+                                      G_BUS_NAME_WATCHER_FLAGS_AUTO_START,
+                                      upowerAppear,
+                                      upowerDisappear,
+                                      this,
+                                      NULL);
+
   GError* error = NULL;
   client = up_client_new_full(NULL, &error);
   if (client == NULL) {
@@ -106,6 +114,7 @@ UPower::~UPower() {
     g_dbus_connection_signal_unsubscribe(login1_connection, login1_id);
     login1_id = 0;
   }
+  g_bus_unwatch_name(upowerWatcher_id);
   removeDevices();
 }
 
@@ -141,6 +150,17 @@ void UPower::prepareForSleep_cb(GDBusConnection* system_bus, const gchar* sender
       up->setDisplayDevice();
     }
   }
+}
+void UPower::upowerAppear(GDBusConnection* conn, const gchar* name, const gchar* name_owner,
+                          gpointer data) {
+  UPower* up = static_cast<UPower*>(data);
+  up->upowerRunning = true;
+  up->dp.emit();
+}
+void UPower::upowerDisappear(GDBusConnection* conn, const gchar* name, gpointer data) {
+  UPower* up = static_cast<UPower*>(data);
+  up->upowerRunning = false;
+  up->dp.emit();
 }
 
 void UPower::removeDevice(const gchar* objectPath) {
@@ -260,6 +280,14 @@ std::string UPower::timeToString(gint64 time) {
 
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
+
+  // Hide everything if the UPower service is not running
+  if (!upowerRunning) {
+    event_box_.set_visible(false);
+    // Call parent update
+    AModule::update();
+    return;
+  }
 
   UpDeviceKind  kind;
   UpDeviceState state;
