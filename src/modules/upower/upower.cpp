@@ -22,6 +22,7 @@ UPower::UPower(const std::string& id, const Json::Value& config)
       showAltText(false) {
   box_.pack_start(icon_);
   box_.pack_start(label_);
+  box_.set_name(name_);
   event_box_.add(box_);
 
   // Icon Size
