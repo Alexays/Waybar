@@ -227,11 +227,13 @@ const std::string UPower::getDeviceStatus(UpDeviceState& state) {
     case UP_DEVICE_STATE_CHARGING:
     case UP_DEVICE_STATE_PENDING_CHARGE:
       return "charging";
-    case UP_DEVICE_STATE_EMPTY:
-    case UP_DEVICE_STATE_FULLY_CHARGED:
     case UP_DEVICE_STATE_DISCHARGING:
     case UP_DEVICE_STATE_PENDING_DISCHARGE:
       return "discharging";
+    case UP_DEVICE_STATE_FULLY_CHARGED:
+      return "full";
+    case UP_DEVICE_STATE_EMPTY:
+      return "empty";
     default:
       return "unknown-status";
   }

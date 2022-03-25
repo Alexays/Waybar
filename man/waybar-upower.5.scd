@@ -71,4 +71,6 @@ depending on the charging state.
 - *#upower*
 - *#upower.charging*
 - *#upower.discharging*
+- *#upower.full*
+- *#upower.empty*
 - *#upower.unknown-status*
