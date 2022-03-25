@@ -155,12 +155,12 @@ void UPower::upowerAppear(GDBusConnection* conn, const gchar* name, const gchar*
                           gpointer data) {
   UPower* up = static_cast<UPower*>(data);
   up->upowerRunning = true;
-  up->dp.emit();
+  up->event_box_.set_visible(true);
 }
 void UPower::upowerDisappear(GDBusConnection* conn, const gchar* name, gpointer data) {
   UPower* up = static_cast<UPower*>(data);
   up->upowerRunning = false;
-  up->dp.emit();
+  up->event_box_.set_visible(false);
 }
 
 void UPower::removeDevice(const gchar* objectPath) {
@@ -281,13 +281,8 @@ std::string UPower::timeToString(gint64 time) {
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
 
-  // Hide everything if the UPower service is not running
-  if (!upowerRunning) {
-    event_box_.set_visible(false);
-    // Call parent update
-    AModule::update();
-    return;
-  }
+  // Don't update widget if the UPower service isn't running
+  if (!upowerRunning) return;
 
   UpDeviceKind  kind;
   UpDeviceState state;
