@@ -171,6 +171,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   int ws{0};    // weeks-pos: side(1 - left, 2 - right)
   int wn{0};    // weeknumber
   if (config_["week-pos"].isString()) {
+    wn = (date::sys_days{date::year_month_day{ym / 1}} - date::sys_days{date::year_month_day{ymd.year() / 1 / 1}}).count() / 7 + 1;
     if (config_["week-pos"].asString() == "left") {
       ws = 1;
       // Add paddings before the header
@@ -179,21 +180,17 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       ws = 2;
     }
   }
-  if (ws > 0){
-    wn = (date::sys_days{date::year_month_day{ym / 1}} - date::sys_days{date::year_month_day{ymd.year() / 1 / 1}}).count() / 7 + 1;
-  }
-
   weekdays_header(first_dow, os);
-
+  /* Print weeknumber on the left for the first row*/
+  if (ws == 1) {
+    print_iso_weeknum(os, wn);
+    os << ' ';
+    ++wn;
+  }
   // First week prefixed with spaces if needed.
   auto wd = date::weekday(ym / 1);
   auto empty_days = (wd - first_dow).count();
   if (empty_days > 0) {
-    if (ws == 1) {
-      print_iso_weeknum(os, wn);
-      os << ' ';
-      ++wn;
-    }
     os << std::string(empty_days * 3 - 1, ' ');
   }
   auto last_day = (ym / date::literals::last).day();
