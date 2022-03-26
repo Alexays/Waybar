@@ -88,8 +88,9 @@ void waybar::modules::Battery::refreshBatteries() {
       auto dir_name = node.path().filename();
       auto bat_defined = config_["bat"].isString();
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
-          fs::exists(node.path() / "capacity") && fs::exists(node.path() / "uevent") &&
-          fs::exists(node.path() / "status") && fs::exists(node.path() / "type")) {
+          (fs::exists(node.path() / "capacity") || fs::exists(node.path() / "charge_now")) &&
+          fs::exists(node.path() / "uevent") && fs::exists(node.path() / "status") &&
+          fs::exists(node.path() / "type")) {
         std::string type;
         std::ifstream(node.path() / "type") >> type;
 
@@ -168,14 +169,21 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
-      if (fs::exists(bat / "current_now")) {
+      if (fs::exists(bat / "current_now") || fs::exists(bat / "current_avg")) {
         uint32_t voltage_now;
         uint32_t current_now;
         uint32_t charge_now;
         uint32_t charge_full;
         uint32_t charge_full_design;
-        std::ifstream(bat / "voltage_now") >> voltage_now;
-        std::ifstream(bat / "current_now") >> current_now;
+        // Some batteries have only *_avg, not *_now
+        if (fs::exists(bat / "voltage_now"))
+          std::ifstream(bat / "voltage_now") >> voltage_now;
+        else
+          std::ifstream(bat / "voltage_avg") >> voltage_now;
+        if (fs::exists(bat / "current_now"))
+          std::ifstream(bat / "current_now") >> current_now;
+        else
+          std::ifstream(bat / "current_avg") >> current_now;
         std::ifstream(bat / "charge_full") >> charge_full;
         std::ifstream(bat / "charge_full_design") >> charge_full_design;
         if (fs::exists(bat / "charge_now"))
