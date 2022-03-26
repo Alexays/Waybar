@@ -170,13 +170,13 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   const auto        first_dow = first_day_of_week();
   int ws{0};    // weeks-pos: side(1 - left, 2 - right)
   int wn{0};    // weeknumber
-  if (config_["week-pos"].isString()) {
+  if (config_["calendar-weeks-pos"].isString()) {
     wn = (date::sys_days{date::year_month_day{ym / 1}} - date::sys_days{date::year_month_day{ymd.year() / 1 / 1}}).count() / 7 + 1;
-    if (config_["week-pos"].asString() == "left") {
+    if (config_["calendar-weeks-pos"].asString() == "left") {
       ws = 1;
       // Add paddings before the header
       os << std::string(4, ' ');
-    } else if (config_["week-pos"].asString() == "right") {
+    } else if (config_["calendar-weeks-pos"].asString() == "right") {
       ws = 2;
     }
   }
@@ -219,9 +219,9 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       } else {
         os << "<b><u>" << date::format("%e", d) << "</u></b>";
       }
-    } else {
-      os << date::format("%e", d);
-    }
+    } else if (config_["format-calendar"].isString()) {
+      os << fmt::format(config_["format-calendar"].asString(), date::format("%e", d));
+    } else os << date::format("%e", d);
     /*Print weeks on the right when the endings with spaces*/
     if (ws == 2 && d == last_day && wd.c_encoding() < 6) {
       empty_days = 6 - wd.c_encoding();
@@ -238,9 +238,10 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
 auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std::ostream& os)
     -> void {
+  std::stringstream res;
   auto wd = first_dow;
   do {
-    if (wd != first_dow) os << ' ';
+    if (wd != first_dow) res << ' ';
     Glib::ustring wd_ustring(date::format(locale_, "%a", wd));
     auto clen = ustring_clen(wd_ustring);
     auto wd_len = wd_ustring.length();
@@ -250,9 +251,13 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
       clen = ustring_clen(wd_ustring);
     }
     const std::string pad(2 - clen, ' ');
-    os << pad << wd_ustring;
+    res << pad << wd_ustring;
   } while (++wd != first_dow);
-  os << "\n";
+  res << "\n";
+
+  if (config_["format-calendar-weekdays"].isString()) {
+    os << fmt::format(config_["format-calendar-weekdays"].asString(), res.str());
+  } else os << res.str();
 }
 
 auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point *now) -> std::string {
@@ -280,9 +285,8 @@ auto waybar::modules::Clock::print_iso_weeknum(std::ostream& os,
   std::stringstream res;
   res << 'W' << std::setfill('0') << std::setw(2) << weeknum;
 
-  if (config_["week-format"].isString()) {
-    auto week_format = config_["week-format"].asString();
-    os << fmt::format(week_format, res.str());
+  if (config_["format-calendar-weeks"].isString()) {
+    os << fmt::format(config_["format-calendar-weeks"].asString(), res.str());
   } else os << res.str();
 }
 
