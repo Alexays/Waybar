@@ -103,7 +103,7 @@ void Config::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) {
   }
 }
 bool isValidOutput(const Json::Value &config, const std::string &name,
-                   const std::string &identifier) {
+                   const std::string &identifier, int32_t width, int32_t height) {
   if (config["output"].isArray()) {
     for (auto const &output_conf : config["output"]) {
       if (output_conf.isString() &&
@@ -122,6 +122,41 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
     }
   }
 
+  // if "output-dimensions" is a string, make it an array of size 1
+  Json::Value config_output_dimensions = config["output-dimensions"];
+  if (config_output_dimensions.isString()) {
+    Json::Value jsonArray(Json::arrayValue);
+    jsonArray.append(config_output_dimensions);
+    config_output_dimensions = jsonArray;
+  }
+  if (config_output_dimensions.isArray()) {
+    for (auto const &config_output_dimension : config_output_dimensions) {
+      if (!config_output_dimension.isString()) {
+        continue;
+      }
+      std::string str = config_output_dimension.asString();
+      int i = str.find(" ");
+      std::string dimension = str.substr(0, i);
+      str = str.substr(i + 1);
+      i = str.find(" ");
+      std::string comparator = str.substr(0, i);
+      int value = std::stoi(str.substr(i));
+
+      int comparison_value;
+      if (dimension == "height") {
+        comparison_value = height;
+      } else if (dimension == "weight") {
+        comparison_value = weight;
+      } else {
+        continue;
+      }
+
+      if ((comparator == "<" && comparison_value >= value) || 
+          (comparator == ">" && comparison_value <= value)) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -136,15 +171,16 @@ void Config::load(const std::string &config) {
 }
 
 std::vector<Json::Value> Config::getOutputConfigs(const std::string &name,
-                                                  const std::string &identifier) {
+                                                  const std::string &identifier,
+                                                  int32_t width, int32_t height) {
   std::vector<Json::Value> configs;
   if (config_.isArray()) {
     for (auto const &config : config_) {
-      if (config.isObject() && isValidOutput(config, name, identifier)) {
+      if (config.isObject() && isValidOutput(config, name, identifier, width, height)) {
         configs.push_back(config);
       }
     }
-  } else if (isValidOutput(config_, name, identifier)) {
+  } else if (isValidOutput(config_, name, identifier, width, height)) {
     configs.push_back(config_);
   }
   return configs;

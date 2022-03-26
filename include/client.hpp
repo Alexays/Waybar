@@ -43,6 +43,7 @@ class Client {
   static void handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                            const char *interface, uint32_t version);
   static void handleGlobalRemove(void *data, struct wl_registry *registry, uint32_t name);
+  static void handleOutputLogicalSize(void *, struct zxdg_output_v1 *, int32_t, int32_t);
   static void handleOutputDone(void *, struct zxdg_output_v1 *);
   static void handleOutputName(void *, struct zxdg_output_v1 *, const char *);
   static void handleOutputDescription(void *, struct zxdg_output_v1 *, const char *);

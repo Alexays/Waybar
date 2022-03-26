@@ -40,7 +40,7 @@ void waybar::Client::handleGlobalRemove(void *   data, struct wl_registry * /*re
 void waybar::Client::handleOutput(struct waybar_output &output) {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
       .logical_position = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
-      .logical_size = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
+      .logical_size = &handleOutputLogicalSize,
       .done = &handleOutputDone,
       .name = &handleOutputName,
       .description = &handleOutputDescription,
@@ -61,7 +61,19 @@ struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
 }
 
 std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &output) {
-  return config.getOutputConfigs(output.name, output.identifier);
+  return config.getOutputConfigs(output.name, output.identifier, output.width, output.height);
+}
+
+void waybar::Client::handleOutputLogicalSize(void *data, struct zxdg_output_v1 *object,
+                                             int32_t width, int32_t height) {
+  auto client = waybar::Client::inst();
+  try {
+    auto &output = client->getOutput(data);
+    output.width = width;
+    output.height = height;
+  } catch (const std::exception &e) {
+    std::cerr << e.what() << std::endl;
+  }
 }
 
 void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_output*/) {
