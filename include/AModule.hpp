@@ -7,8 +7,6 @@
 
 #include "IModule.hpp"
 
-#include <map>
-
 namespace waybar {
 
 class AModule : public IModule {
