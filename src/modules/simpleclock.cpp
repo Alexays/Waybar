@@ -6,7 +6,11 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60) {
   thread_ = [this] {
     dp.emit();
-    thread_.sleep_for(interval_);
+    auto now = std::chrono::system_clock::now();
+    /* difference with projected wakeup time */
+    auto diff = now.time_since_epoch() % interval_;
+    /* sleep until the next projected time */
+    thread_.sleep_for(interval_ - diff);
   };
 }
 
