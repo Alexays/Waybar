@@ -6,10 +6,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60) {
   thread_ = [this] {
     dp.emit();
-    auto now = std::chrono::system_clock::now();
-    auto timeout = std::chrono::floor<std::chrono::seconds>(now + interval_);
-    auto diff = std::chrono::seconds(timeout.time_since_epoch().count() % interval_.count());
-    thread_.sleep_until(timeout - diff);
+    thread_.sleep_for(interval_);
   };
 }
 
