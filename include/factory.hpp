@@ -1,5 +1,7 @@
 #pragma once
 
+#define HAVE_HYPR
+
 #include <json/json.h>
 #ifdef HAVE_LIBDATE
 #include "modules/clock.hpp"
@@ -18,6 +20,9 @@
 #endif
 #ifdef HAVE_RIVER
 #include "modules/river/tags.hpp"
+#endif
+#ifdef HAVE_HYPR
+#include "modules/hypr/window.hpp"
 #endif
 #if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
