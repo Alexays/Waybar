@@ -22,6 +22,7 @@ UPower::UPower(const std::string& id, const Json::Value& config)
       showAltText(false) {
   box_.pack_start(icon_);
   box_.pack_start(label_);
+  box_.set_name(name_);
   event_box_.add(box_);
 
   // Icon Size
@@ -67,6 +68,14 @@ UPower::UPower(const std::string& id, const Json::Value& config)
     box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::show_tooltip_callback));
   }
 
+  upowerWatcher_id = g_bus_watch_name(G_BUS_TYPE_SYSTEM,
+                                      "org.freedesktop.UPower",
+                                      G_BUS_NAME_WATCHER_FLAGS_AUTO_START,
+                                      upowerAppear,
+                                      upowerDisappear,
+                                      this,
+                                      NULL);
+
   GError* error = NULL;
   client = up_client_new_full(NULL, &error);
   if (client == NULL) {
@@ -105,6 +114,7 @@ UPower::~UPower() {
     g_dbus_connection_signal_unsubscribe(login1_connection, login1_id);
     login1_id = 0;
   }
+  g_bus_unwatch_name(upowerWatcher_id);
   removeDevices();
 }
 
@@ -140,6 +150,17 @@ void UPower::prepareForSleep_cb(GDBusConnection* system_bus, const gchar* sender
       up->setDisplayDevice();
     }
   }
+}
+void UPower::upowerAppear(GDBusConnection* conn, const gchar* name, const gchar* name_owner,
+                          gpointer data) {
+  UPower* up = static_cast<UPower*>(data);
+  up->upowerRunning = true;
+  up->event_box_.set_visible(true);
+}
+void UPower::upowerDisappear(GDBusConnection* conn, const gchar* name, gpointer data) {
+  UPower* up = static_cast<UPower*>(data);
+  up->upowerRunning = false;
+  up->event_box_.set_visible(false);
 }
 
 void UPower::removeDevice(const gchar* objectPath) {
@@ -226,11 +247,13 @@ const std::string UPower::getDeviceStatus(UpDeviceState& state) {
     case UP_DEVICE_STATE_CHARGING:
     case UP_DEVICE_STATE_PENDING_CHARGE:
       return "charging";
-    case UP_DEVICE_STATE_EMPTY:
-    case UP_DEVICE_STATE_FULLY_CHARGED:
     case UP_DEVICE_STATE_DISCHARGING:
     case UP_DEVICE_STATE_PENDING_DISCHARGE:
       return "discharging";
+    case UP_DEVICE_STATE_FULLY_CHARGED:
+      return "full";
+    case UP_DEVICE_STATE_EMPTY:
+      return "empty";
     default:
       return "unknown-status";
   }
@@ -257,6 +280,9 @@ std::string UPower::timeToString(gint64 time) {
 
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
+
+  // Don't update widget if the UPower service isn't running
+  if (!upowerRunning) return;
 
   UpDeviceKind  kind;
   UpDeviceState state;
@@ -344,7 +370,7 @@ auto UPower::update() -> void {
   label_.set_markup(onlySpaces ? "" : label_format);
 
   // Set icon
-  if (!Gtk::IconTheme::get_default()->has_icon(icon_name)) {
+  if (icon_name == NULL || !Gtk::IconTheme::get_default()->has_icon(icon_name)) {
     icon_name = (char*)"battery-missing-symbolic";
   }
   icon_.set_from_icon_name(icon_name, Gtk::ICON_SIZE_INVALID);

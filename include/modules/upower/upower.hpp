@@ -34,6 +34,10 @@ class UPower : public AModule {
                                  const gchar *object_path, const gchar *interface_name,
                                  const gchar *signal_name, GVariant *parameters,
                                  gpointer user_data);
+  static void upowerAppear(GDBusConnection *conn, const gchar *name, const gchar *name_owner,
+                           gpointer data);
+  static void upowerDisappear(GDBusConnection *connection, const gchar *name, gpointer user_data);
+
   void        removeDevice(const gchar *objectPath);
   void        addDevice(UpDevice *device);
   void        setDisplayDevice();
@@ -67,6 +71,8 @@ class UPower : public AModule {
   UPowerTooltip   *upower_tooltip;
   std::string      lastStatus;
   bool             showAltText;
+  bool             upowerRunning;
+  guint            upowerWatcher_id;
 };
 
 }  // namespace waybar::modules::upower
