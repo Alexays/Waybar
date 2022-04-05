@@ -62,7 +62,9 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
                  NULL);
 
     // Skip Line_Power and BAT0 devices
-    if (kind == UP_DEVICE_KIND_LINE_POWER || strcmp(native_path, "BAT0") == 0) continue;
+    if (kind == UP_DEVICE_KIND_LINE_POWER || native_path == NULL || strlen(native_path) == 0 ||
+        strcmp(native_path, "BAT0") == 0)
+      continue;
 
     Gtk::Box* modelBox = new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL);
     box->add(*modelBox);
@@ -77,6 +79,7 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
     modelBox->add(*deviceIcon);
 
     // Set model
+    if (model == NULL) model = (gchar*)"";
     Gtk::Label* modelLabel = new Gtk::Label(model);
     modelBox->add(*modelLabel);
 
@@ -86,7 +89,7 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
     // Set icon
     Gtk::Image* icon = new Gtk::Image();
     icon->set_pixel_size(iconSize);
-    if (!Gtk::IconTheme::get_default()->has_icon(icon_name)) {
+    if (icon_name == NULL || !Gtk::IconTheme::get_default()->has_icon(icon_name)) {
       icon_name = (char*)"battery-missing-symbolic";
     }
     icon->set_from_icon_name(icon_name, Gtk::ICON_SIZE_INVALID);
