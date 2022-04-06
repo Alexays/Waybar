@@ -1,6 +1,8 @@
 #include <spdlog/spdlog.h>
-#include <sys/sysctl.h>
+// clang-format off
 #include <sys/types.h>
+#include <sys/sysctl.h>
+// clang-format on
 #include <unistd.h>  // sysconf
 
 #include <cmath>    // NAN

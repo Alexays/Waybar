@@ -1,5 +1,7 @@
-#include <sys/sysctl.h>
+// clang-format off
 #include <sys/types.h>
+#include <sys/sysctl.h>
+// clang-format on
 #include <unistd.h>  // getpagesize
 
 #include "modules/memory.hpp"
