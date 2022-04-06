@@ -53,24 +53,24 @@ class Workspace {
  private:
   auto get_icon() -> std::string;
 
-  const Bar         &bar_;
+  const Bar &bar_;
   const Json::Value &config_;
-  WorkspaceGroup    &workspace_group_;
+  WorkspaceGroup &workspace_group_;
 
   // wlr stuff
   zext_workspace_handle_v1 *workspace_handle_;
-  uint32_t                  state_ = 0;
+  uint32_t state_ = 0;
 
-  uint32_t                                  id_;
-  std::string                               name_;
-  std::vector<uint32_t>                     coordinates_;
+  uint32_t id_;
+  std::string name_;
+  std::vector<uint32_t> coordinates_;
   static std::map<std::string, std::string> icons_map_;
-  std::string                               format_;
-  bool                                      with_icon_ = false;
+  std::string format_;
+  bool with_icon_ = false;
 
   Gtk::Button button_;
-  Gtk::Box    content_;
-  Gtk::Label  label_;
+  Gtk::Box content_;
+  Gtk::Label label_;
 };
 
 class WorkspaceGroup {
@@ -102,19 +102,19 @@ class WorkspaceGroup {
   auto commit() -> void;
 
  private:
-  static uint32_t    workspace_global_id;
+  static uint32_t workspace_global_id;
   const waybar::Bar &bar_;
-  Gtk::Box          &box_;
+  Gtk::Box &box_;
   const Json::Value &config_;
-  WorkspaceManager  &workspace_manager_;
+  WorkspaceManager &workspace_manager_;
 
   // wlr stuff
   zext_workspace_group_handle_v1 *workspace_group_handle_;
-  wl_output                      *output_ = nullptr;
+  wl_output *output_ = nullptr;
 
-  uint32_t                                id_;
+  uint32_t id_;
   std::vector<std::unique_ptr<Workspace>> workspaces_;
-  bool                                    need_to_sort = false;
+  bool need_to_sort = false;
 };
 
 class WorkspaceManager : public AModule {
@@ -141,8 +141,8 @@ class WorkspaceManager : public AModule {
   auto commit() -> void;
 
  private:
-  const waybar::Bar                           &bar_;
-  Gtk::Box                                     box_;
+  const waybar::Bar &bar_;
+  Gtk::Box box_;
   std::vector<std::unique_ptr<WorkspaceGroup>> groups_;
 
   // wlr stuff

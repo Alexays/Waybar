@@ -35,7 +35,7 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
   uint deviceCount = 0;
   // Adds all valid devices
   for (auto pair : devices) {
-    UpDevice*   device = pair.second;
+    UpDevice* device = pair.second;
     std::string objectPath = pair.first;
 
     if (!G_IS_OBJECT(device)) continue;
@@ -43,23 +43,13 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
     Gtk::Box* box = new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, tooltipSpacing);
 
     UpDeviceKind kind;
-    double       percentage;
-    gchar*       native_path;
-    gchar*       model;
-    gchar*       icon_name;
+    double percentage;
+    gchar* native_path;
+    gchar* model;
+    gchar* icon_name;
 
-    g_object_get(device,
-                 "kind",
-                 &kind,
-                 "percentage",
-                 &percentage,
-                 "native-path",
-                 &native_path,
-                 "model",
-                 &model,
-                 "icon-name",
-                 &icon_name,
-                 NULL);
+    g_object_get(device, "kind", &kind, "percentage", &percentage, "native-path", &native_path,
+                 "model", &model, "icon-name", &icon_name, NULL);
 
     // Skip Line_Power and BAT0 devices
     if (kind == UP_DEVICE_KIND_LINE_POWER || native_path == NULL || strlen(native_path) == 0 ||

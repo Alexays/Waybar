@@ -93,8 +93,8 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
   {
     std::unique_ptr<udev, UdevDeleter> udev_check{udev_new()};
     check_nn(udev_check.get(), "Udev check new failed");
-    enumerate_devices(
-        devices_.begin(), devices_.end(), std::back_inserter(devices_), udev_check.get());
+    enumerate_devices(devices_.begin(), devices_.end(), std::back_inserter(devices_),
+                      udev_check.get());
     if (devices_.empty()) {
       throw std::runtime_error("No backlight found");
     }
@@ -108,8 +108,7 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
     std::unique_ptr<udev_monitor, UdevMonitorDeleter> mon{
         udev_monitor_new_from_netlink(udev.get(), "udev")};
     check_nn(mon.get(), "udev monitor new failed");
-    check_gte(udev_monitor_filter_add_match_subsystem_devtype(mon.get(), "backlight", nullptr),
-              0,
+    check_gte(udev_monitor_filter_add_match_subsystem_devtype(mon.get(), "backlight", nullptr), 0,
               "udev failed to add monitor filter: ");
     udev_monitor_enable_receiving(mon.get());
 
@@ -126,8 +125,8 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
     epoll_event events[EPOLL_MAX_EVENTS];
 
     while (udev_thread_.isRunning()) {
-      const int event_count = epoll_wait(
-          epoll_fd.get(), events, EPOLL_MAX_EVENTS, std::chrono::milliseconds{interval_}.count());
+      const int event_count = epoll_wait(epoll_fd.get(), events, EPOLL_MAX_EVENTS,
+                                         std::chrono::milliseconds{interval_}.count());
       if (!udev_thread_.isRunning()) {
         break;
       }
@@ -173,9 +172,10 @@ auto waybar::modules::Backlight::update() -> void {
       return;
     }
 
-    const uint8_t percent = best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-    label_.set_markup(fmt::format(
-        format_, fmt::arg("percent", std::to_string(percent)), fmt::arg("icon", getIcon(percent))));
+    const uint8_t percent =
+        best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
+    label_.set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
+                                  fmt::arg("icon", getIcon(percent))));
     getState(percent);
   } else {
     if (!previous_best_.has_value()) {
@@ -241,7 +241,7 @@ void waybar::modules::Backlight::enumerate_devices(ForwardIt first, ForwardIt la
   udev_list_entry *enum_devices = udev_enumerate_get_list_entry(enumerate.get());
   udev_list_entry *dev_list_entry;
   udev_list_entry_foreach(dev_list_entry, enum_devices) {
-    const char *                                    path = udev_list_entry_get_name(dev_list_entry);
+    const char *path = udev_list_entry_get_name(dev_list_entry);
     std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_device_new_from_syspath(udev, path)};
     check_nn(dev.get(), "dev new failed");
     upsert_device(first, last, inserter, dev.get());

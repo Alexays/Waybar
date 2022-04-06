@@ -79,11 +79,8 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
 }
 
 void BarIpcClient::onConfigUpdate(const swaybar_config& config) {
-  spdlog::info("config update for {}: id {}, mode {}, hidden_state {}",
-               bar_.bar_id,
-               config.id,
-               config.mode,
-               config.hidden_state);
+  spdlog::info("config update for {}: id {}, mode {}, hidden_state {}", bar_.bar_id, config.id,
+               config.mode, config.hidden_state);
   bar_config_ = config;
   update();
 }

@@ -13,11 +13,11 @@ class AIconLabel : public ALabel {
              const std::string &format, uint16_t interval = 0, bool ellipsize = false,
              bool enable_click = false, bool enable_scroll = false);
   virtual ~AIconLabel() = default;
-  virtual auto        update() -> void;
+  virtual auto update() -> void;
 
  protected:
   Gtk::Image image_;
-  Gtk::Box   box_;
+  Gtk::Box box_;
 
   bool iconEnabled() const;
 };

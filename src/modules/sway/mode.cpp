@@ -1,4 +1,5 @@
 #include "modules/sway/mode.hpp"
+
 #include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
@@ -21,7 +22,7 @@ Mode::Mode(const std::string& id, const Json::Value& config)
 void Mode::onEvent(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto                        payload = parser_.parse(res.payload);
+    auto payload = parser_.parse(res.payload);
     if (payload["change"] != "default") {
       if (payload["pango_markup"].asBool()) {
         mode_ = payload["change"].asString();

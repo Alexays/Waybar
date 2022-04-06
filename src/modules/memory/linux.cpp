@@ -4,8 +4,8 @@ static unsigned zfsArcSize() {
   std::ifstream zfs_arc_stats{"/proc/spl/kstat/zfs/arcstats"};
 
   if (zfs_arc_stats.is_open()) {
-    std::string   name;
-    std::string   type;
+    std::string name;
+    std::string type;
     unsigned long data{0};
 
     std::string line;
@@ -23,7 +23,7 @@ static unsigned zfsArcSize() {
 
 void waybar::modules::Memory::parseMeminfo() {
   const std::string data_dir_ = "/proc/meminfo";
-  std::ifstream     info(data_dir_);
+  std::ifstream info(data_dir_);
   if (!info.is_open()) {
     throw std::runtime_error("Can't open " + data_dir_);
   }
@@ -35,7 +35,7 @@ void waybar::modules::Memory::parseMeminfo() {
     }
 
     std::string name = line.substr(0, posDelim);
-    int64_t     value = std::stol(line.substr(posDelim + 1));
+    int64_t value = std::stol(line.substr(posDelim + 1));
     meminfo_[name] = value;
   }
 

@@ -34,14 +34,14 @@ class BarIpcClient {
   void onVisibilityUpdate(bool visible_by_modifier);
   void update();
 
-  Bar&             bar_;
+  Bar& bar_;
   util::JsonParser parser_;
-  Ipc              ipc_;
+  Ipc ipc_;
 
   swaybar_config bar_config_;
-  bool           visible_by_modifier_ = false;
+  bool visible_by_modifier_ = false;
 
-  SafeSignal<bool>           signal_visible_;
+  SafeSignal<bool> signal_visible_;
   SafeSignal<swaybar_config> signal_config_;
 };
 

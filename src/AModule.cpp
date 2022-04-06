@@ -1,24 +1,28 @@
 #include "AModule.hpp"
+
 #include <fmt/format.h>
+
 #include <util/command.hpp>
 
 namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
-    : name_(std::move(name)), config_(std::move(config))
-    , distance_scrolled_y_(0.0)
-    , distance_scrolled_x_(0.0) {
+    : name_(std::move(name)),
+      config_(std::move(config)),
+      distance_scrolled_y_(0.0),
+      distance_scrolled_x_(0.0) {
   // configure events' user commands
   if (enable_click) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
   } else {
     std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator it{eventMap_.cbegin()};
-    while(it != eventMap_.cend()) {
+    while (it != eventMap_.cend()) {
       if (config_[it->second].isString()) {
         event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-        event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
+        event_box_.signal_button_press_event().connect(
+            sigc::mem_fun(*this, &AModule::handleToggle));
         break;
       }
       ++it;
@@ -27,7 +31,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() || enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
-    }
+  }
 }
 
 AModule::~AModule() {
@@ -46,12 +50,15 @@ auto AModule::update() -> void {
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) {
-  const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{eventMap_.find(std::pair(e->button, e->type))};
-  std::string format{ (rec != eventMap_.cend()) ? rec->second : std::string{""}};
+  const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
+      eventMap_.find(std::pair(e->button, e->type))};
+  std::string format{(rec != eventMap_.cend()) ? rec->second : std::string{""}};
 
   if (!format.empty()) {
-    if (config_[format].isString()) format = config_[format].asString();
-    else format.clear();
+    if (config_[format].isString())
+      format = config_[format].asString();
+    else
+      format.clear();
   }
 
   if (!format.empty()) {
@@ -62,11 +69,15 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
 }
 
 AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
-  switch (e -> direction) {
-    case GDK_SCROLL_UP: return SCROLL_DIR::UP;
-    case GDK_SCROLL_DOWN: return SCROLL_DIR::DOWN;
-    case GDK_SCROLL_LEFT: return SCROLL_DIR::LEFT;
-    case GDK_SCROLL_RIGHT: return SCROLL_DIR::RIGHT;
+  switch (e->direction) {
+    case GDK_SCROLL_UP:
+      return SCROLL_DIR::UP;
+    case GDK_SCROLL_DOWN:
+      return SCROLL_DIR::DOWN;
+    case GDK_SCROLL_LEFT:
+      return SCROLL_DIR::LEFT;
+    case GDK_SCROLL_RIGHT:
+      return SCROLL_DIR::RIGHT;
     case GDK_SCROLL_SMOOTH: {
       SCROLL_DIR dir{SCROLL_DIR::NONE};
 
@@ -104,7 +115,8 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
       return dir;
     }
     // Silence -Wreturn-type:
-    default: return SCROLL_DIR::NONE;
+    default:
+      return SCROLL_DIR::NONE;
   }
 }
 

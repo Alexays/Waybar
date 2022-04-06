@@ -38,41 +38,41 @@ class UPower : public AModule {
                            gpointer data);
   static void upowerDisappear(GDBusConnection *connection, const gchar *name, gpointer user_data);
 
-  void        removeDevice(const gchar *objectPath);
-  void        addDevice(UpDevice *device);
-  void        setDisplayDevice();
-  void        resetDevices();
-  void        removeDevices();
-  bool        show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Tooltip> &tooltip);
-  bool        handleToggle(GdkEventButton *const &);
+  void removeDevice(const gchar *objectPath);
+  void addDevice(UpDevice *device);
+  void setDisplayDevice();
+  void resetDevices();
+  void removeDevices();
+  bool show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Tooltip> &tooltip);
+  bool handleToggle(GdkEventButton *const &);
   std::string timeToString(gint64 time);
 
   const std::string getDeviceStatus(UpDeviceState &state);
 
-  Gtk::Box   box_;
+  Gtk::Box box_;
   Gtk::Image icon_;
   Gtk::Label label_;
 
   // Config
-  bool        hideIfEmpty = true;
-  bool        tooltip_enabled = true;
-  uint        tooltip_spacing = 4;
-  uint        tooltip_padding = 4;
-  uint        iconSize = 20;
+  bool hideIfEmpty = true;
+  bool tooltip_enabled = true;
+  uint tooltip_spacing = 4;
+  uint tooltip_padding = 4;
+  uint iconSize = 20;
   std::string format = DEFAULT_FORMAT;
   std::string format_alt = DEFAULT_FORMAT_ALT;
 
-  Devices          devices;
-  std::mutex       m_Mutex;
-  UpClient        *client;
-  UpDevice        *displayDevice;
-  guint            login1_id;
+  Devices devices;
+  std::mutex m_Mutex;
+  UpClient *client;
+  UpDevice *displayDevice;
+  guint login1_id;
   GDBusConnection *login1_connection;
-  UPowerTooltip   *upower_tooltip;
-  std::string      lastStatus;
-  bool             showAltText;
-  bool             upowerRunning;
-  guint            upowerWatcher_id;
+  UPowerTooltip *upower_tooltip;
+  std::string lastStatus;
+  bool showAltText;
+  bool upowerRunning;
+  guint upowerWatcher_id;
 };
 
 }  // namespace waybar::modules::upower

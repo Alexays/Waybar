@@ -70,11 +70,11 @@ std::optional<Glib::ustring> getIconName(const std::string& app_id) {
     }
     return icon_name;
   } catch (Glib::FileError& error) {
-    spdlog::warn(
-        "Error while loading desktop file {}: {}", desktop_file_path.value(), error.what().c_str());
+    spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
+                 error.what().c_str());
   } catch (Glib::KeyFileError& error) {
-    spdlog::warn(
-        "Error while loading desktop file {}: {}", desktop_file_path.value(), error.what().c_str());
+    spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
+                 error.what().c_str());
   }
   return {};
 }
@@ -114,8 +114,8 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
-                                fmt::arg("app_id", app_id_)));
+  label_.set_markup(
+      fmt::format(format_, fmt::arg("title", rewriteTitle(window_)), fmt::arg("app_id", app_id_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
@@ -126,28 +126,26 @@ auto Window::update() -> void {
 int leafNodesInWorkspace(const Json::Value& node) {
   auto const& nodes = node["nodes"];
   auto const& floating_nodes = node["floating_nodes"];
-  if(nodes.empty() && floating_nodes.empty()) {
-    if(node["type"] == "workspace")
+  if (nodes.empty() && floating_nodes.empty()) {
+    if (node["type"] == "workspace")
       return 0;
     else
       return 1;
   }
   int sum = 0;
   if (!nodes.empty()) {
-    for(auto const& node : nodes)
-      sum += leafNodesInWorkspace(node);
+    for (auto const& node : nodes) sum += leafNodesInWorkspace(node);
   }
   if (!floating_nodes.empty()) {
-    for(auto const& node : floating_nodes)
-      sum += leafNodesInWorkspace(node);
+    for (auto const& node : floating_nodes) sum += leafNodesInWorkspace(node);
   }
   return sum;
 }
 
 std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
-    const Json::Value& nodes, std::string& output, const Json::Value& config_,
-    const Bar& bar_, Json::Value& parentWorkspace) {
-  for(auto const& node : nodes) {
+    const Json::Value& nodes, std::string& output, const Json::Value& config_, const Bar& bar_,
+    Json::Value& parentWorkspace) {
+  for (auto const& node : nodes) {
     if (node["output"].isString()) {
       output = node["output"].asString();
     }
@@ -156,25 +154,22 @@ std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
       if ((!config_["all-outputs"].asBool() && output == bar_.output->name) ||
           config_["all-outputs"].asBool()) {
         auto app_id = node["app_id"].isString() ? node["app_id"].asString()
-                      : node["window_properties"]["instance"].asString();
+                                                : node["window_properties"]["instance"].asString();
         int nb = node.size();
-        if(parentWorkspace != 0)
-          nb = leafNodesInWorkspace(parentWorkspace);
-        return {nb,
-          node["id"].asInt(),
-          Glib::Markup::escape_text(node["name"].asString()),
-          app_id};
+        if (parentWorkspace != 0) nb = leafNodesInWorkspace(parentWorkspace);
+        return {nb, node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()), app_id};
       }
     }
     // iterate
-    if(node["type"] == "workspace")
-      parentWorkspace = node;
-    auto [nb, id, name, app_id] = gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace);
+    if (node["type"] == "workspace") parentWorkspace = node;
+    auto [nb, id, name, app_id] =
+        gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }
     // Search for floating node
-    std::tie(nb, id, name, app_id) = gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace);
+    std::tie(nb, id, name, app_id) =
+        gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
       return {nb, id, name, app_id};
     }

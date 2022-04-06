@@ -170,10 +170,8 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
       vertical_ = true;
       unanchored = GTK_LAYER_SHELL_EDGE_LEFT;
     }
-    for (auto edge : {GTK_LAYER_SHELL_EDGE_LEFT,
-                      GTK_LAYER_SHELL_EDGE_RIGHT,
-                      GTK_LAYER_SHELL_EDGE_TOP,
-                      GTK_LAYER_SHELL_EDGE_BOTTOM}) {
+    for (auto edge : {GTK_LAYER_SHELL_EDGE_LEFT, GTK_LAYER_SHELL_EDGE_RIGHT,
+                      GTK_LAYER_SHELL_EDGE_TOP, GTK_LAYER_SHELL_EDGE_BOTTOM}) {
       gtk_layer_set_anchor(window_.gobj(), edge, unanchored != edge);
     }
   }
@@ -186,11 +184,11 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
 
  private:
   Gtk::Window& window_;
-  std::string  output_name_;
-  uint32_t     width_;
-  uint32_t     height_;
-  bool         passthrough_ = false;
-  bool         vertical_ = false;
+  std::string output_name_;
+  uint32_t width_;
+  uint32_t height_;
+  bool passthrough_ = false;
+  bool vertical_ = false;
 
   void onMap(GdkEventAny* ev) { setPassThrough(passthrough_); }
 
@@ -276,8 +274,8 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     margins_ = margins;
     // updating already mapped window
     if (layer_surface_) {
-      zwlr_layer_surface_v1_set_margin(
-          layer_surface_.get(), margins_.top, margins_.right, margins_.bottom, margins_.left);
+      zwlr_layer_surface_v1_set_margin(layer_surface_.get(), margins_.top, margins_.right,
+                                       margins_.bottom, margins_.left);
     }
   }
 
@@ -335,21 +333,21 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
   using layer_surface_ptr =
       std::unique_ptr<zwlr_layer_surface_v1, deleter_fn<zwlr_layer_surface_v1_destroy>>;
 
-  Gtk::Window&       window_;
-  std::string        output_name_;
-  uint32_t           configured_width_ = 0;
-  uint32_t           configured_height_ = 0;
-  uint32_t           width_ = 0;
-  uint32_t           height_ = 0;
-  uint8_t            anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-  bool               exclusive_zone_ = true;
-  bool               passthrough_ = false;
+  Gtk::Window& window_;
+  std::string output_name_;
+  uint32_t configured_width_ = 0;
+  uint32_t configured_height_ = 0;
+  uint32_t width_ = 0;
+  uint32_t height_ = 0;
+  uint8_t anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
+  bool exclusive_zone_ = true;
+  bool passthrough_ = false;
   struct bar_margins margins_;
 
   zwlr_layer_shell_v1_layer layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-  struct wl_output*         output_ = nullptr;   // owned by GTK
-  struct wl_surface*        surface_ = nullptr;  // owned by GTK
-  layer_surface_ptr         layer_surface_;
+  struct wl_output* output_ = nullptr;    // owned by GTK
+  struct wl_surface* surface_ = nullptr;  // owned by GTK
+  layer_surface_ptr layer_surface_;
 
   void onRealize() {
     auto gdk_window = window_.get_window()->gobj();
@@ -365,14 +363,14 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     auto gdk_window = window_.get_window()->gobj();
     surface_ = gdk_wayland_window_get_wl_surface(gdk_window);
 
-    layer_surface_.reset(zwlr_layer_shell_v1_get_layer_surface(
-        client->layer_shell, surface_, output_, layer_, "waybar"));
+    layer_surface_.reset(zwlr_layer_shell_v1_get_layer_surface(client->layer_shell, surface_,
+                                                               output_, layer_, "waybar"));
 
     zwlr_layer_surface_v1_add_listener(layer_surface_.get(), &layer_surface_listener, this);
     zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface_.get(), false);
     zwlr_layer_surface_v1_set_anchor(layer_surface_.get(), anchor_);
-    zwlr_layer_surface_v1_set_margin(
-        layer_surface_.get(), margins_.top, margins_.right, margins_.bottom, margins_.left);
+    zwlr_layer_surface_v1_set_margin(layer_surface_.get(), margins_.top, margins_.right,
+                                     margins_.bottom, margins_.left);
 
     setSurfaceSize(width_, height_);
     setExclusiveZone(exclusive_zone_);
@@ -453,10 +451,8 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
       o->window_.set_size_request(o->width_, o->height_);
       o->window_.resize(o->width_, o->height_);
       o->setExclusiveZone(o->exclusive_zone_);
-      spdlog::info(BAR_SIZE_MSG,
-                   o->width_ == 1 ? "auto" : std::to_string(o->width_),
-                   o->height_ == 1 ? "auto" : std::to_string(o->height_),
-                   o->output_name_);
+      spdlog::info(BAR_SIZE_MSG, o->width_ == 1 ? "auto" : std::to_string(o->width_),
+                   o->height_ == 1 ? "auto" : std::to_string(o->height_), o->output_name_);
       o->commit();
     }
     zwlr_layer_surface_v1_ack_configure(surface, serial);
@@ -520,7 +516,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
         config["margin-left"].isInt() ? config["margin-left"].asInt() : 0,
     };
   } else if (config["margin"].isString()) {
-    std::istringstream       iss(config["margin"].asString());
+    std::istringstream iss(config["margin"].asString());
     std::vector<std::string> margins{std::istream_iterator<std::string>(iss), {}};
     try {
       if (margins.size() == 1) {
@@ -723,7 +719,8 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
-void waybar::Bar::getModules(const Factory& factory, const std::string& pos, Gtk::Box* group = nullptr) {
+void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
+                             Gtk::Box* group = nullptr) {
   auto module_list = group ? config[pos]["modules"] : config[pos];
   if (module_list.isArray()) {
     for (const auto& name : module_list) {

@@ -1,8 +1,9 @@
 #include "modules/mpd/mpd.hpp"
 
 #include <fmt/chrono.h>
-#include <spdlog/spdlog.h>
 #include <glibmm/ustring.h>
+#include <spdlog/spdlog.h>
+
 #include "modules/mpd/state.hpp"
 #if defined(MPD_NOINLINE)
 namespace waybar::modules {
@@ -98,9 +99,9 @@ void waybar::modules::MPD::setLabel() {
   }
 
   auto format = format_;
-  Glib::ustring        artist, album_artist, album, title;
-  std::string          date;
-  int                  song_pos = 0, queue_length = 0, volume = 0;
+  Glib::ustring artist, album_artist, album, title;
+  std::string date;
+  int song_pos = 0, queue_length = 0, volume = 0;
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
@@ -139,37 +140,32 @@ void waybar::modules::MPD::setLabel() {
     totalTime = std::chrono::seconds(mpd_status_get_total_time(status_.get()));
   }
 
-  bool        consumeActivated = mpd_status_get_consume(status_.get());
+  bool consumeActivated = mpd_status_get_consume(status_.get());
   std::string consumeIcon = getOptionIcon("consume", consumeActivated);
-  bool        randomActivated = mpd_status_get_random(status_.get());
+  bool randomActivated = mpd_status_get_random(status_.get());
   std::string randomIcon = getOptionIcon("random", randomActivated);
-  bool        repeatActivated = mpd_status_get_repeat(status_.get());
+  bool repeatActivated = mpd_status_get_repeat(status_.get());
   std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
-  bool        singleActivated = mpd_status_get_single(status_.get());
+  bool singleActivated = mpd_status_get_single(status_.get());
   std::string singleIcon = getOptionIcon("single", singleActivated);
   if (config_["artist-len"].isInt()) artist = artist.substr(0, config_["artist-len"].asInt());
-  if (config_["album-artist-len"].isInt()) album_artist = album_artist.substr(0, config_["album-artist-len"].asInt());
+  if (config_["album-artist-len"].isInt())
+    album_artist = album_artist.substr(0, config_["album-artist-len"].asInt());
   if (config_["album-len"].isInt()) album = album.substr(0, config_["album-len"].asInt());
-  if (config_["title-len"].isInt()) title = title.substr(0,config_["title-len"].asInt());
+  if (config_["title-len"].isInt()) title = title.substr(0, config_["title-len"].asInt());
 
   try {
     label_.set_markup(
-        fmt::format(format,
-                    fmt::arg("artist", Glib::Markup::escape_text(artist).raw()),
+        fmt::format(format, fmt::arg("artist", Glib::Markup::escape_text(artist).raw()),
                     fmt::arg("albumArtist", Glib::Markup::escape_text(album_artist).raw()),
                     fmt::arg("album", Glib::Markup::escape_text(album).raw()),
                     fmt::arg("title", Glib::Markup::escape_text(title).raw()),
                     fmt::arg("date", Glib::Markup::escape_text(date).raw()),
-                    fmt::arg("volume", volume),
-                    fmt::arg("elapsedTime", elapsedTime),
-                    fmt::arg("totalTime", totalTime),
-                    fmt::arg("songPosition", song_pos),
-                    fmt::arg("queueLength", queue_length),
-                    fmt::arg("stateIcon", stateIcon),
-                    fmt::arg("consumeIcon", consumeIcon),
-                    fmt::arg("randomIcon", randomIcon),
-                    fmt::arg("repeatIcon", repeatIcon),
-                    fmt::arg("singleIcon", singleIcon)));
+                    fmt::arg("volume", volume), fmt::arg("elapsedTime", elapsedTime),
+                    fmt::arg("totalTime", totalTime), fmt::arg("songPosition", song_pos),
+                    fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
+                    fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
+                    fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon)));
   } catch (fmt::format_error const& e) {
     spdlog::warn("mpd: format error: {}", e.what());
   }
@@ -179,22 +175,15 @@ void waybar::modules::MPD::setLabel() {
     tooltip_format = config_["tooltip-format"].isString() ? config_["tooltip-format"].asString()
                                                           : "MPD (connected)";
     try {
-      auto tooltip_text = fmt::format(tooltip_format,
-                                      fmt::arg("artist", artist.raw()),
-                                      fmt::arg("albumArtist", album_artist.raw()),
-                                      fmt::arg("album", album.raw()),
-                                      fmt::arg("title", title.raw()),
-                                      fmt::arg("date", date),
-                                      fmt::arg("volume", volume),
-                                      fmt::arg("elapsedTime", elapsedTime),
-                                      fmt::arg("totalTime", totalTime),
-                                      fmt::arg("songPosition", song_pos),
-                                      fmt::arg("queueLength", queue_length),
-                                      fmt::arg("stateIcon", stateIcon),
-                                      fmt::arg("consumeIcon", consumeIcon),
-                                      fmt::arg("randomIcon", randomIcon),
-                                      fmt::arg("repeatIcon", repeatIcon),
-                                      fmt::arg("singleIcon", singleIcon));
+      auto tooltip_text =
+          fmt::format(tooltip_format, fmt::arg("artist", artist.raw()),
+                      fmt::arg("albumArtist", album_artist.raw()), fmt::arg("album", album.raw()),
+                      fmt::arg("title", title.raw()), fmt::arg("date", date),
+                      fmt::arg("volume", volume), fmt::arg("elapsedTime", elapsedTime),
+                      fmt::arg("totalTime", totalTime), fmt::arg("songPosition", song_pos),
+                      fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
+                      fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
+                      fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon));
       label_.set_tooltip_text(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpd: format error (tooltip): {}", e.what());

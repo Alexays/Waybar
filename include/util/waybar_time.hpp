@@ -6,7 +6,7 @@
 namespace waybar {
 
 struct waybar_time {
-  std::locale         locale;
+  std::locale locale;
   date::zoned_seconds ztime;
 };
 

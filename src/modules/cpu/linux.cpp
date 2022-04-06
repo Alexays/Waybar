@@ -1,4 +1,5 @@
 #include <filesystem>
+
 #include "modules/cpu.hpp"
 
 std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
@@ -8,12 +9,12 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
     throw std::runtime_error("Can't open " + data_dir_);
   }
   std::vector<std::tuple<size_t, size_t>> cpuinfo;
-  std::string                             line;
+  std::string line;
   while (getline(info, line)) {
     if (line.substr(0, 3).compare("cpu") != 0) {
       break;
     }
-    std::stringstream   sline(line.substr(5));
+    std::stringstream sline(line.substr(5));
     std::vector<size_t> times;
     for (size_t time = 0; sline >> time; times.push_back(time))
       ;
@@ -51,12 +52,9 @@ std::vector<float> waybar::modules::Cpu::parseCpuFrequencies() {
   if (frequencies.size() <= 0) {
     std::string cpufreq_dir = "/sys/devices/system/cpu/cpufreq";
     if (std::filesystem::exists(cpufreq_dir)) {
-      std::vector<std::string> frequency_files = {
-        "/cpuinfo_min_freq",
-        "/cpuinfo_max_freq"
-      };
-      for (auto& p: std::filesystem::directory_iterator(cpufreq_dir)) {
-        for (auto freq_file: frequency_files) {
+      std::vector<std::string> frequency_files = {"/cpuinfo_min_freq", "/cpuinfo_max_freq"};
+      for (auto& p : std::filesystem::directory_iterator(cpufreq_dir)) {
+        for (auto freq_file : frequency_files) {
           std::string freq_file_path = p.path().string() + freq_file;
           if (std::filesystem::exists(freq_file_path)) {
             std::string freq_value;

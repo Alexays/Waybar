@@ -1,3 +1,5 @@
+#include "modules/river/tags.hpp"
+
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
@@ -6,7 +8,6 @@
 #include <algorithm>
 
 #include "client.hpp"
-#include "modules/river/tags.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar::modules::river {
@@ -44,7 +45,7 @@ static void listen_command_failure(void *data,
   spdlog::error("failure when selecting/toggling tags {}", output);
 }
 
-static const zriver_command_callback_v1_listener command_callback_listener_impl {
+static const zriver_command_callback_v1_listener command_callback_listener_impl{
     .success = listen_command_success,
     .failure = listen_command_failure,
 };
@@ -77,7 +78,6 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
   /* Ignore event */
 }
 
-
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
@@ -89,7 +89,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       bar_(bar),
       box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       output_status_{nullptr} {
-  struct wl_display * display = Client::inst()->wl_display;
+  struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
@@ -119,7 +119,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
 
   std::vector<std::string> tag_labels(num_tags);
   for (uint32_t tag = 0; tag < num_tags; ++tag) {
-    tag_labels[tag] = std::to_string(tag+1);
+    tag_labels[tag] = std::to_string(tag + 1);
   }
   const Json::Value custom_labels = config["tag-labels"];
   if (custom_labels.isArray() && !custom_labels.empty()) {
@@ -134,8 +134,10 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     button.set_relief(Gtk::RELIEF_NONE);
     box_.pack_start(button, false, false, 0);
     if (!config_["disable-click"].asBool()) {
-      button.signal_clicked().connect(sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), i));
-      button.signal_button_press_event().connect(sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
+      button.signal_clicked().connect(
+          sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), i));
+      button.signal_button_press_event().connect(
+          sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
     }
     button.show();
     i <<= 1;

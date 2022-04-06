@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
   Glib::init();
 
   session.applyCommandLine(argc, argv);
-  const auto  logger = spdlog::default_logger();
+  const auto logger = spdlog::default_logger();
   const auto& reporter_name = session.config().getReporterName();
   if (reporter_name == "tap") {
     spdlog::set_pattern("# [%l] %v");

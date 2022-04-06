@@ -1,5 +1,7 @@
 #include "ALabel.hpp"
+
 #include <fmt/format.h>
+
 #include <util/command.hpp>
 
 namespace waybar {
@@ -46,15 +48,10 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     } else {
       label_.set_xalign(align);
     }
-
   }
-
-
 }
 
-auto ALabel::update() -> void {
-  AModule::update();
-}
+auto ALabel::update() -> void { AModule::update(); }
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
@@ -78,7 +75,8 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   return "";
 }
 
-std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>& alts, uint16_t max) {
+std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>& alts,
+                            uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
     std::string _alt = "default";

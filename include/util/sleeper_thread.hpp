@@ -17,7 +17,8 @@ namespace waybar::util {
  */
 class CancellationGuard {
   int oldstate;
-public:
+
+ public:
   CancellationGuard() { pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate); }
   ~CancellationGuard() { pthread_setcancelstate(oldstate, &oldstate); }
 };
@@ -47,7 +48,7 @@ class SleeperThread {
   bool isRunning() const { return do_run_; }
 
   auto sleep_for(std::chrono::system_clock::duration dur) {
-    std::unique_lock  lk(mutex_);
+    std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
     return condvar_.wait_for(lk, dur, [this] { return signal_ || !do_run_; });
   }
@@ -55,7 +56,7 @@ class SleeperThread {
   auto sleep_until(
       std::chrono::time_point<std::chrono::system_clock, std::chrono::system_clock::duration>
           time_point) {
-    std::unique_lock  lk(mutex_);
+    std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
     return condvar_.wait_until(lk, time_point, [this] { return signal_ || !do_run_; });
   }
@@ -90,11 +91,11 @@ class SleeperThread {
   }
 
  private:
-  std::thread             thread_;
+  std::thread thread_;
   std::condition_variable condvar_;
-  std::mutex              mutex_;
-  bool                    do_run_ = true;
-  bool                    signal_ = false;
+  std::mutex mutex_;
+  bool do_run_ = true;
+  bool signal_ = false;
 };
 
 }  // namespace waybar::util

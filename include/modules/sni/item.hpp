@@ -31,25 +31,25 @@ class Item : public sigc::trackable {
   std::string bus_name;
   std::string object_path;
 
-  int           icon_size;
-  int           effective_icon_size;
-  Gtk::Image    image;
+  int icon_size;
+  int effective_icon_size;
+  Gtk::Image image;
   Gtk::EventBox event_box;
-  std::string   category;
-  std::string   id;
+  std::string category;
+  std::string id;
 
-  std::string                  title;
-  std::string                  icon_name;
-  Glib::RefPtr<Gdk::Pixbuf>    icon_pixmap;
+  std::string title;
+  std::string icon_name;
+  Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
   Glib::RefPtr<Gtk::IconTheme> icon_theme;
-  std::string                  overlay_icon_name;
-  std::string                  attention_icon_name;
-  std::string                  attention_movie_name;
-  std::string                  icon_theme_path;
-  std::string                  menu;
-  ToolTip                      tooltip;
-  DbusmenuGtkMenu*             dbus_menu = nullptr;
-  Gtk::Menu*                   gtk_menu = nullptr;
+  std::string overlay_icon_name;
+  std::string attention_icon_name;
+  std::string attention_movie_name;
+  std::string icon_theme_path;
+  std::string menu;
+  ToolTip tooltip;
+  DbusmenuGtkMenu* dbus_menu = nullptr;
+  Gtk::Menu* gtk_menu = nullptr;
   /**
    * ItemIsMenu flag means that the item only supports the context menu.
    * Default value is true because libappindicator supports neither ItemIsMenu nor Activate method
@@ -67,15 +67,15 @@ class Item : public sigc::trackable {
   void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                 const Glib::VariantContainerBase& arguments);
 
-  void                      updateImage();
+  void updateImage();
   Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
-  double                    getScaledIconSize();
-  static void               onMenuDestroyed(Item* self, GObject* old_menu_pointer);
-  void                      makeMenu();
-  bool                      handleClick(GdkEventButton* const& /*ev*/);
-  bool                      handleScroll(GdkEventScroll* const&);
+  double getScaledIconSize();
+  static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
+  void makeMenu();
+  bool handleClick(GdkEventButton* const& /*ev*/);
+  bool handleScroll(GdkEventScroll* const&);
 
   // smooth scrolling threshold
   gdouble scroll_threshold_ = 0;
@@ -86,7 +86,7 @@ class Item : public sigc::trackable {
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
-  std::set<std::string_view>     update_pending_;
+  std::set<std::string_view> update_pending_;
 };
 
 }  // namespace waybar::modules::SNI
