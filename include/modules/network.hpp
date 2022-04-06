@@ -8,6 +8,8 @@
 #include <netlink/netlink.h>
 #include <sys/epoll.h>
 
+#include <optional>
+
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 #ifdef WANT_RFKILL
