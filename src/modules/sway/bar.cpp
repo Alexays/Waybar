@@ -23,7 +23,9 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
   signal_visible_.connect(sigc::mem_fun(*this, &BarIpcClient::onVisibilityUpdate));
   signal_urgency_.connect(sigc::mem_fun(*this, &BarIpcClient::onUrgencyUpdate));
 
-  ipc_.subscribe(R"(["bar_state_update", "barconfig_update", "workspace"])");
+  // Subscribe to non bar events to determine if the modifier key press is followed by another
+  // action.
+  ipc_.subscribe(R"(["bar_state_update", "barconfig_update", "workspace", "mode", "binding"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &BarIpcClient::onIpcEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &BarIpcClient::onCmd));
   // Launch worker
@@ -79,7 +81,12 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
               ipc_.sendCmd(IPC_GET_WORKSPACES);
             }
           }
+          modifier_no_action_ = false;
         }
+        break;
+      case IPC_EVENT_MODE:
+      case IPC_EVENT_BINDING:
+        modifier_no_action_ = false;
         break;
       case IPC_EVENT_BAR_STATE_UPDATE:
       case IPC_EVENT_BARCONFIG_UPDATE:
@@ -133,6 +140,16 @@ void BarIpcClient::onConfigUpdate(const swaybar_config& config) {
 void BarIpcClient::onVisibilityUpdate(bool visible_by_modifier) {
   spdlog::debug("visibility update for {}: {}", bar_.bar_id, visible_by_modifier);
   visible_by_modifier_ = visible_by_modifier;
+  if (visible_by_modifier) {
+    modifier_no_action_ = true;
+  }
+  if (!visible_by_modifier_ && modifier_no_action_) {
+    // Modifier key was pressed and released without a different action.
+    // This signals an acknowledgment and should hide the bar again.
+    // Hide the bar and clear the urgency flag.
+    visible_by_urgency_ = false;
+  }
+
   update();
 }
 

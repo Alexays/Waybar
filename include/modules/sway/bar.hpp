@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <string>
 
 #include "modules/sway/ipc/client.hpp"
@@ -43,6 +44,7 @@ class BarIpcClient {
   swaybar_config bar_config_;
   bool visible_by_modifier_ = false;
   bool visible_by_urgency_ = false;
+  std::atomic<bool> modifier_no_action_ = false;
 
   SafeSignal<bool> signal_visible_;
   SafeSignal<bool> signal_urgency_;
