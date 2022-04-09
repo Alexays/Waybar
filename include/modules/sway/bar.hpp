@@ -34,6 +34,7 @@ class BarIpcClient {
   void onCmd(const struct Ipc::ipc_response&);
   void onConfigUpdate(const swaybar_config& config);
   void onVisibilityUpdate(bool visible_by_modifier);
+  void onModeUpdate(bool visible_by_modifier);
   void onUrgencyUpdate(bool visible_by_urgency);
   void update();
 
@@ -42,10 +43,12 @@ class BarIpcClient {
   Ipc ipc_;
 
   swaybar_config bar_config_;
+  bool visible_by_mode_ = false;
   bool visible_by_modifier_ = false;
   bool visible_by_urgency_ = false;
   std::atomic<bool> modifier_no_action_ = false;
 
+  SafeSignal<bool> signal_mode_;
   SafeSignal<bool> signal_visible_;
   SafeSignal<bool> signal_urgency_;
   SafeSignal<swaybar_config> signal_config_;

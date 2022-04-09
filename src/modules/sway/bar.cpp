@@ -22,6 +22,7 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
   signal_config_.connect(sigc::mem_fun(*this, &BarIpcClient::onConfigUpdate));
   signal_visible_.connect(sigc::mem_fun(*this, &BarIpcClient::onVisibilityUpdate));
   signal_urgency_.connect(sigc::mem_fun(*this, &BarIpcClient::onUrgencyUpdate));
+  signal_mode_.connect(sigc::mem_fun(*this, &BarIpcClient::onModeUpdate));
 
   // Subscribe to non bar events to determine if the modifier key press is followed by another
   // action.
@@ -85,6 +86,11 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
         }
         break;
       case IPC_EVENT_MODE:
+        if (payload.isMember("change")) {
+          signal_mode_(payload["change"] != "default");
+          modifier_no_action_ = false;
+        }
+        break;
       case IPC_EVENT_BINDING:
         modifier_no_action_ = false;
         break;
@@ -137,6 +143,12 @@ void BarIpcClient::onConfigUpdate(const swaybar_config& config) {
   update();
 }
 
+void BarIpcClient::onModeUpdate(bool visible_by_mode) {
+  spdlog::debug("mode update for {}: {}", bar_.bar_id, visible_by_mode);
+  visible_by_mode_ = visible_by_mode;
+  update();
+}
+
 void BarIpcClient::onVisibilityUpdate(bool visible_by_modifier) {
   spdlog::debug("visibility update for {}: {}", bar_.bar_id, visible_by_modifier);
   visible_by_modifier_ = visible_by_modifier;
@@ -148,6 +160,7 @@ void BarIpcClient::onVisibilityUpdate(bool visible_by_modifier) {
     // This signals an acknowledgment and should hide the bar again.
     // Hide the bar and clear the urgency flag.
     visible_by_urgency_ = false;
+    visible_by_mode_ = false;
   }
 
   update();
@@ -160,7 +173,7 @@ void BarIpcClient::onUrgencyUpdate(bool visible_by_urgency) {
 }
 
 void BarIpcClient::update() {
-  bool visible = visible_by_modifier_ || visible_by_urgency_;
+  bool visible = visible_by_modifier_ || visible_by_mode_ || visible_by_urgency_;
   if (bar_config_.mode == "invisible") {
     visible = false;
   } else if (bar_config_.mode != "hide" || bar_config_.hidden_state != "hide") {
