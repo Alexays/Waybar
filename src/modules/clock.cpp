@@ -25,44 +25,38 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       current_time_zone_idx_(0),
       is_calendar_in_tooltip_(false),
-      is_timezoned_list_in_tooltip_(false)
-{
+      is_timezoned_list_in_tooltip_(false) {
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
-    for (const auto& zone_name: config_["timezones"]) {
+    for (const auto& zone_name : config_["timezones"]) {
       if (!zone_name.isString() || zone_name.asString().empty()) {
         time_zones_.push_back(nullptr);
         continue;
       }
-      time_zones_.push_back(
-        date::locate_zone(
-          zone_name.asString()
-        )
-      );
+      time_zones_.push_back(date::locate_zone(zone_name.asString()));
     }
   } else if (config_["timezone"].isString() && !config_["timezone"].asString().empty()) {
-    time_zones_.push_back(
-        date::locate_zone(
-          config_["timezone"].asString()
-        )
-      );
+    time_zones_.push_back(date::locate_zone(config_["timezone"].asString()));
   }
 
-  // If all timezones are parsed and no one is good, add nullptr to the timezones vector, to mark that local time should be shown.
+  // If all timezones are parsed and no one is good, add nullptr to the timezones vector, to mark
+  // that local time should be shown.
   if (!time_zones_.size()) {
     time_zones_.push_back(nullptr);
   }
 
   if (!is_timezone_fixed()) {
-    spdlog::warn("As using a timezone, some format args may be missing as the date library haven't got a release since 2018.");
+    spdlog::warn(
+        "As using a timezone, some format args may be missing as the date library haven't got a "
+        "release since 2018.");
   }
 
-  // Check if a particular placeholder is present in the tooltip format, to know what to calculate on update.
+  // Check if a particular placeholder is present in the tooltip format, to know what to calculate
+  // on update.
   if (config_["tooltip-format"].isString()) {
     std::string trimmed_format = config_["tooltip-format"].asString();
-    trimmed_format.erase(std::remove_if(trimmed_format.begin(),
-                              trimmed_format.end(),
-                              [](unsigned char x){return std::isspace(x);}),
-               trimmed_format.end());
+    trimmed_format.erase(std::remove_if(trimmed_format.begin(), trimmed_format.end(),
+                                        [](unsigned char x) { return std::isspace(x); }),
+                         trimmed_format.end());
     if (trimmed_format.find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
       is_calendar_in_tooltip_ = true;
     }
@@ -87,7 +81,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 const date::time_zone* waybar::modules::Clock::current_timezone() {
-  return time_zones_[current_time_zone_idx_] ? time_zones_[current_time_zone_idx_] : date::current_zone();
+  return time_zones_[current_time_zone_idx_] ? time_zones_[current_time_zone_idx_]
+                                             : date::current_zone();
 }
 
 bool waybar::modules::Clock::is_timezone_fixed() {
@@ -121,7 +116,9 @@ auto waybar::modules::Clock::update() -> void {
         timezoned_time_lines = timezones_text(&now);
       }
       auto tooltip_format = config_["tooltip-format"].asString();
-      text = fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines), fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
+      text =
+          fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines),
+                      fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
       label_.set_tooltip_markup(text);
     }
   }
@@ -130,7 +127,7 @@ auto waybar::modules::Clock::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Clock::handleScroll(GdkEventScroll* e) {
   // defer to user commands if set
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);
@@ -149,7 +146,8 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll *e) {
     size_t new_idx = current_time_zone_idx_ + 1;
     current_time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
   } else {
-    current_time_zone_idx_ = current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
+    current_time_zone_idx_ =
+        current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
   }
 
   update();
@@ -164,14 +162,15 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   }
 
   const date::year_month ym(ymd.year(), ymd.month());
-  const auto             curr_day = ymd.day();
+  const auto curr_day = ymd.day();
 
   std::stringstream os;
-  const auto        first_dow = first_day_of_week();
+
+  const auto first_dow = first_day_of_week();
   int ws{0};    // weeks-pos: side(1 - left, 2 - right)
   int wn{0};    // weeknumber
   if (config_["calendar-weeks-pos"].isString()) {
-    wn = (date::sys_days{date::year_month_day{ym / 1}} - date::sys_days{date::year_month_day{ymd.year() / 1 / 1}}).count() / 7 + 1;
+    wn = (date::sys_days{date::year_month_day{ym/1}} - date::sys_days{date::year_month_day{ymd.year()/1/1}}).count()/7+1;
     if (config_["calendar-weeks-pos"].asString() == "left") {
       ws = 1;
       // Add paddings before the header
@@ -180,6 +179,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       ws = 2;
     }
   }
+  
   weekdays_header(first_dow, os);
   /* Print weeknumber on the left for the first row*/
   if (ws == 1) {
@@ -246,7 +246,7 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
     auto clen = ustring_clen(wd_ustring);
     auto wd_len = wd_ustring.length();
     while (clen > 2) {
-      wd_ustring = wd_ustring.substr(0, wd_len-1);
+      wd_ustring = wd_ustring.substr(0, wd_len - 1);
       wd_len--;
       clen = ustring_clen(wd_ustring);
     }
@@ -260,7 +260,8 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
   } else os << res.str();
 }
 
-auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point *now) -> std::string {
+auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point* now)
+    -> std::string {
   if (time_zones_.size() == 1) {
     return "";
   }
@@ -305,9 +306,9 @@ auto waybar::modules::Clock::first_day_of_week() -> date::weekday {
       newlocale(LC_ALL, locale_.name().c_str(), nullptr)};
   if (posix_locale) {
     const int i = (std::intptr_t)nl_langinfo_l(_NL_TIME_WEEK_1STDAY, posix_locale.get());
-    auto      ymd = date::year(i / 10000) / (i / 100 % 100) / (i % 100);
-    auto      wd = date::weekday(ymd);
-    uint8_t   j = *nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, posix_locale.get());
+    auto ymd = date::year(i / 10000) / (i / 100 % 100) / (i % 100);
+    auto wd = date::weekday(ymd);
+    uint8_t j = *nl_langinfo_l(_NL_TIME_FIRST_WEEKDAY, posix_locale.get());
     return wd + date::days(j - 1);
   }
 #endif

@@ -48,7 +48,7 @@ void waybar::modules::Custom::continuousWorker() {
     throw std::runtime_error("Unable to open " + cmd);
   }
   thread_ = [this, cmd] {
-    char*  buff = nullptr;
+    char* buff = nullptr;
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
@@ -120,9 +120,7 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
-    auto str = fmt::format(format_,
-                           text_,
-                           fmt::arg("alt", alt_),
+    auto str = fmt::format(format_, text_, fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
     if (str.empty()) {
@@ -156,8 +154,8 @@ auto waybar::modules::Custom::update() -> void {
 
 void waybar::modules::Custom::parseOutputRaw() {
   std::istringstream output(output_.out);
-  std::string        line;
-  int                i = 0;
+  std::string line;
+  int i = 0;
   while (getline(output, line)) {
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
@@ -180,7 +178,7 @@ void waybar::modules::Custom::parseOutputRaw() {
 
 void waybar::modules::Custom::parseOutputJson() {
   std::istringstream output(output_.out);
-  std::string        line;
+  std::string line;
   class_.clear();
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);

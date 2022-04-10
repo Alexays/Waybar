@@ -52,7 +52,7 @@ void waybar::modules::Battery::worker() {
   };
   thread_ = [this] {
     struct inotify_event event = {0};
-    int                  nbytes = read(battery_watch_fd_, &event, sizeof(event));
+    int nbytes = read(battery_watch_fd_, &event, sizeof(event));
     if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
       thread_.stop();
       return;
@@ -61,7 +61,7 @@ void waybar::modules::Battery::worker() {
   };
   thread_battery_update_ = [this] {
     struct inotify_event event = {0};
-    int                  nbytes = read(global_watch_fd_, &event, sizeof(event));
+    int nbytes = read(global_watch_fd_, &event, sizeof(event));
     if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
       thread_.stop();
       return;
@@ -94,7 +94,7 @@ void waybar::modules::Battery::refreshBatteries() {
         std::string type;
         std::ifstream(node.path() / "type") >> type;
 
-        if (!type.compare("Battery")){
+        if (!type.compare("Battery")) {
           check_map[node.path()] = true;
           auto search = batteries_.find(node.path());
           if (search == batteries_.end()) {
@@ -139,11 +139,16 @@ void waybar::modules::Battery::refreshBatteries() {
 
 // Unknown > Full > Not charging > Discharging > Charging
 static bool status_gt(const std::string& a, const std::string& b) {
-  if (a == b) return false;
-  else if (a == "Unknown") return true;
-  else if (a == "Full" && b != "Unknown") return true;
-  else if (a == "Not charging" && b != "Unknown" && b != "Full") return true;
-  else if (a == "Discharging" && b != "Unknown" && b != "Full" && b != "Not charging") return true;
+  if (a == b)
+    return false;
+  else if (a == "Unknown")
+    return true;
+  else if (a == "Full" && b != "Unknown")
+    return true;
+  else if (a == "Not charging" && b != "Unknown" && b != "Full")
+    return true;
+  else if (a == "Discharging" && b != "Unknown" && b != "Full" && b != "Not charging")
+    return true;
   return false;
 }
 
@@ -151,19 +156,19 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
-    uint32_t    total_power = 0;   // μW
-    uint32_t    total_energy = 0;  // μWh
-    uint32_t    total_energy_full = 0;
-    uint32_t    total_energy_full_design = 0;
-    uint32_t    total_capacity{0};
+    uint32_t total_power = 0;   // μW
+    uint32_t total_energy = 0;  // μWh
+    uint32_t total_energy_full = 0;
+    uint32_t total_energy_full_design = 0;
+    uint32_t total_capacity{0};
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
       auto bat = item.first;
-      uint32_t    power_now;
-      uint32_t    energy_full;
-      uint32_t    energy_now;
-      uint32_t    energy_full_design;
-      uint32_t    capacity{0};
+      uint32_t power_now;
+      uint32_t energy_full;
+      uint32_t energy_now;
+      uint32_t energy_full_design;
+      uint32_t capacity{0};
       std::string _status;
       std::getline(std::ifstream(bat / "status"), _status);
 
@@ -198,17 +203,17 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
         energy_now = ((uint64_t)charge_now * (uint64_t)voltage_now) / 1000000;
         energy_full = ((uint64_t)charge_full * (uint64_t)voltage_now) / 1000000;
         energy_full_design = ((uint64_t)charge_full_design * (uint64_t)voltage_now) / 1000000;
-      } // Gamepads such as PS Dualshock provide the only capacity
-        else if (fs::exists(bat / "energy_now") && fs::exists(bat / "energy_full")) {
-          std::ifstream(bat / "power_now") >> power_now;
-          std::ifstream(bat / "energy_now") >> energy_now;
-          std::ifstream(bat / "energy_full") >> energy_full;
-          std::ifstream(bat / "energy_full_design") >> energy_full_design;
+      }  // Gamepads such as PS Dualshock provide the only capacity
+      else if (fs::exists(bat / "energy_now") && fs::exists(bat / "energy_full")) {
+        std::ifstream(bat / "power_now") >> power_now;
+        std::ifstream(bat / "energy_now") >> energy_now;
+        std::ifstream(bat / "energy_full") >> energy_full;
+        std::ifstream(bat / "energy_full_design") >> energy_full_design;
       } else {
         std::ifstream(bat / "capacity") >> capacity;
-        power_now          = 0;
-        energy_now         = 0;
-        energy_full        = 0;
+        power_now = 0;
+        energy_now = 0;
+        energy_full = 0;
         energy_full_design = 0;
       }
 
@@ -241,14 +246,14 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       }
     }
     float capacity{0.0f};
-    if(total_energy_full > 0.0f) {
-      capacity = ((float)total_energy * 100.0f / (float) total_energy_full);
+    if (total_energy_full > 0.0f) {
+      capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
     } else {
       capacity = (float)total_capacity;
     }
     // Handle design-capacity
     if (config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) {
-        capacity = ((float)total_energy * 100.0f / (float) total_energy_full_design);
+      capacity = ((float)total_energy * 100.0f / (float)total_energy_full_design);
     }
     // Handle full-at
     if (config_["full-at"].isUInt()) {
@@ -295,7 +300,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
-  auto     format = std::string("{H} h {M} min");
+  auto format = std::string("{H} h {M} min");
   if (full_hours == 0 && minutes == 0) {
     // Migh as well not show "0h 0min"
     return "";
@@ -317,9 +322,8 @@ auto waybar::modules::Battery::update() -> void {
   }
   auto status_pretty = status;
   // Transform to lowercase  and replace space with dash
-  std::transform(status.begin(), status.end(), status.begin(), [](char ch) {
-    return ch == ' ' ? '-' : std::tolower(ch);
-  });
+  std::transform(status.begin(), status.end(), status.begin(),
+                 [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
   auto format = format_;
   auto state = getState(capacity, true);
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
@@ -341,8 +345,7 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format,
-                                        fmt::arg("timeTo", tooltip_text_default),
+    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("capacity", capacity),
                                         fmt::arg("time", time_remaining_formatted)));
   }
@@ -363,9 +366,7 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    label_.set_markup(fmt::format(format,
-                                  fmt::arg("capacity", capacity),
-                                  fmt::arg("power", power),
+    label_.set_markup(fmt::format(format, fmt::arg("capacity", capacity), fmt::arg("power", power),
                                   fmt::arg("icon", getIcon(capacity, icons)),
                                   fmt::arg("time", time_remaining_formatted)));
   }

@@ -1,4 +1,5 @@
 #include "modules/sni/tray.hpp"
+
 #include <spdlog/spdlog.h>
 
 namespace waybar::modules::SNI {

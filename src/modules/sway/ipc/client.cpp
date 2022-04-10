@@ -1,4 +1,5 @@
 #include "modules/sway/ipc/client.hpp"
+
 #include <fcntl.h>
 
 namespace waybar::modules::sway {
@@ -35,8 +36,8 @@ const std::string Ipc::getSocketPath() const {
   std::string str;
   {
     std::string str_buf;
-    FILE*       in;
-    char        buf[512] = {0};
+    FILE* in;
+    char buf[512] = {0};
     if ((in = popen("sway --get-socketpath 2>/dev/null", "r")) == nullptr) {
       throw std::runtime_error("Failed to get socket path");
     }
@@ -76,7 +77,7 @@ int Ipc::open(const std::string& socketPath) const {
 struct Ipc::ipc_response Ipc::recv(int fd) {
   std::string header;
   header.resize(ipc_header_size_);
-  auto   data32 = reinterpret_cast<uint32_t*>(header.data() + ipc_magic_.size());
+  auto data32 = reinterpret_cast<uint32_t*>(header.data() + ipc_magic_.size());
   size_t total = 0;
 
   while (total < ipc_header_size_) {

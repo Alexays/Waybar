@@ -1,6 +1,5 @@
 ---
 BasedOnStyle: Google
-AlignConsecutiveDeclarations: true
-BinPackArguments: false
+AlignConsecutiveDeclarations: false
 ColumnLimit: 100
 ...

@@ -1,4 +1,5 @@
 #include "modules/temperature.hpp"
+
 #include <filesystem>
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
@@ -6,7 +7,10 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
   } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
-    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())).path().string() + "/" + config_["input-filename"].asString();
+    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString()))
+                     .path()
+                     .string() +
+                 "/" + config_["input-filename"].asString();
   } else {
     auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
@@ -35,7 +39,7 @@ auto waybar::modules::Temperature::update() -> void {
     label_.get_style_context()->remove_class("critical");
   }
 
-  if(format.empty()) {
+  if (format.empty()) {
     event_box_.hide();
     return;
   } else {
@@ -43,8 +47,7 @@ auto waybar::modules::Temperature::update() -> void {
   }
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("temperatureC", temperature_c),
+  label_.set_markup(fmt::format(format, fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
@@ -53,10 +56,9 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format,
-                                fmt::arg("temperatureC", temperature_c),
-                                fmt::arg("temperatureF", temperature_f),
-                                fmt::arg("temperatureK", temperature_k)));
+    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("temperatureC", temperature_c),
+                                        fmt::arg("temperatureF", temperature_f),
+                                        fmt::arg("temperatureK", temperature_k)));
   }
   // Call parent update
   ALabel::update();
@@ -72,7 +74,7 @@ float waybar::modules::Temperature::getTemperature() {
     getline(temp, line);
   }
   temp.close();
-  auto                           temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
+  auto temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
   return temperature_c;
 }
 

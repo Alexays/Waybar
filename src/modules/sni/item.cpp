@@ -31,7 +31,7 @@ struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
 namespace waybar::modules::SNI {
 
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
-static const unsigned      UPDATE_DEBOUNCE_TIME = 10;
+static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
     : bus_name(bn),
@@ -49,7 +49,7 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
     show_passive_ = config["show-passive-items"].asBool();
   }
 
-  auto &window = const_cast<Bar &>(bar).window;
+  auto& window = const_cast<Bar&>(bar).window;
   window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Item::onConfigure));
   event_box.add(image);
   event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -62,18 +62,12 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   cancellable_ = Gio::Cancellable::create();
 
   auto interface = Glib::wrap(sn_item_interface_info(), true);
-  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION,
-                                   bus_name,
-                                   object_path,
-                                   SNI_INTERFACE_NAME,
-                                   sigc::mem_fun(*this, &Item::proxyReady),
-                                   cancellable_,
-                                   interface);
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
+                                   SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
+                                   cancellable_, interface);
 }
 
-void Item::onConfigure(GdkEventConfigure* ev) {
-  this->updateImage();
-}
+void Item::onConfigure(GdkEventConfigure* ev) { this->updateImage(); }
 
 void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
   try {
@@ -167,16 +161,10 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     }
   } catch (const Glib::Error& err) {
     spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
-                 id.empty() ? bus_name : id,
-                 name,
-                 value,
-                 err.what());
+                 id.empty() ? bus_name : id, name, value, err.what());
   } catch (const std::exception& err) {
     spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
-                 id.empty() ? bus_name : id,
-                 name,
-                 value,
-                 err.what());
+                 id.empty() ? bus_name : id, name, value, err.what());
   }
 }
 
@@ -199,8 +187,7 @@ void Item::getUpdatedProperties() {
   auto params = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<Glib::ustring>::create(SNI_INTERFACE_NAME)});
   proxy_->call("org.freedesktop.DBus.Properties.GetAll",
-               sigc::mem_fun(*this, &Item::processUpdatedProperties),
-               params);
+               sigc::mem_fun(*this, &Item::processUpdatedProperties), params);
 };
 
 void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
@@ -266,11 +253,11 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
     return Glib::RefPtr<Gdk::Pixbuf>{};
   }
   GVariant* val;
-  gint      lwidth = 0;
-  gint      lheight = 0;
-  gint      width;
-  gint      height;
-  guchar*   array = nullptr;
+  gint lwidth = 0;
+  gint lheight = 0;
+  gint width;
+  gint height;
+  guchar* array = nullptr;
   while (g_variant_iter_loop(it, "(ii@ay)", &width, &height, &val)) {
     if (width > 0 && height > 0 && val != nullptr && width * height > lwidth * lheight) {
       auto size = g_variant_get_size(val);
@@ -303,14 +290,8 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
       array[i + 2] = array[i + 3];
       array[i + 3] = alpha;
     }
-    return Gdk::Pixbuf::create_from_data(array,
-                                         Gdk::Colorspace::COLORSPACE_RGB,
-                                         true,
-                                         8,
-                                         lwidth,
-                                         lheight,
-                                         4 * lwidth,
-                                         &pixbuf_data_deleter);
+    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
+                                         lheight, 4 * lwidth, &pixbuf_data_deleter);
   }
   return Glib::RefPtr<Gdk::Pixbuf>{};
 }
@@ -318,7 +299,7 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
 void Item::updateImage() {
   auto pixbuf = getIconPixbuf();
   auto scaled_icon_size = getScaledIconSize();
- 
+
   if (!pixbuf) {
     pixbuf = getIconByName("image-missing", getScaledIconSize());
   }
@@ -349,7 +330,7 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
     }
   } catch (Glib::Error& e) {
     spdlog::error("Item '{}': {}", id, static_cast<std::string>(e.what()));
-  } 
+  }
   return getIconByName("image-missing", getScaledIconSize());
 }
 
@@ -374,15 +355,15 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int reque
     tmp_size = request_size;
   }
   if (!icon_theme_path.empty() &&
-      icon_theme->lookup_icon(
-          name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
-    return icon_theme->load_icon(
-        name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+      icon_theme->lookup_icon(name.c_str(), tmp_size,
+                              Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
+    return icon_theme->load_icon(name.c_str(), tmp_size,
+                                 Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
   }
   Glib::RefPtr<Gtk::IconTheme> default_theme = Gtk::IconTheme::get_default();
   default_theme->rescan_if_needed();
-  return default_theme->load_icon(
-      name.c_str(), tmp_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+  return default_theme->load_icon(name.c_str(), tmp_size,
+                                  Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
 double Item::getScaledIconSize() {

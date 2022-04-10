@@ -1,31 +1,32 @@
 #include "modules/keyboard_state.hpp"
+
 #include <errno.h>
-#include <filesystem>
 #include <spdlog/spdlog.h>
 #include <string.h>
 
+#include <filesystem>
+
 extern "C" {
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 }
 
 class errno_error : public std::runtime_error {
  public:
   int code;
   errno_error(int code, const std::string& msg)
-    : std::runtime_error(getErrorMsg(code, msg.c_str())),
-      code(code) {}
-  errno_error(int code, const char* msg)
-    : std::runtime_error(getErrorMsg(code, msg)),
-      code(code) {}
+      : std::runtime_error(getErrorMsg(code, msg.c_str())), code(code) {}
+  errno_error(int code, const char* msg) : std::runtime_error(getErrorMsg(code, msg)), code(code) {}
+
  private:
   static auto getErrorMsg(int err, const char* msg) -> std::string {
     std::string error_msg{msg};
     error_msg += ": ";
 
 #if (__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 32)
-    // strerrorname_np gets the error code's name; it's nice to have, but it's a recent GNU extension
+    // strerrorname_np gets the error code's name; it's nice to have, but it's a recent GNU
+    // extension
     const auto errno_name = strerrorname_np(err);
     error_msg += errno_name;
     error_msg += " ";
@@ -67,33 +68,37 @@ auto openDevice(int fd) -> libevdev* {
 }
 
 auto supportsLockStates(const libevdev* dev) -> bool {
-  return libevdev_has_event_type(dev, EV_LED)
-    && libevdev_has_event_code(dev, EV_LED, LED_NUML)
-    && libevdev_has_event_code(dev, EV_LED, LED_CAPSL)
-    && libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
+  return libevdev_has_event_type(dev, EV_LED) && libevdev_has_event_code(dev, EV_LED, LED_NUML) &&
+         libevdev_has_event_code(dev, EV_LED, LED_CAPSL) &&
+         libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
 }
 
-waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::Value& config)
+waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
+                                              const Json::Value& config)
     : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
       numlock_label_(""),
       capslock_label_(""),
       numlock_format_(config_["format"].isString() ? config_["format"].asString()
-                      : config_["format"]["numlock"].isString() ? config_["format"]["numlock"].asString()
-                      : "{name} {icon}"),
+                      : config_["format"]["numlock"].isString()
+                          ? config_["format"]["numlock"].asString()
+                          : "{name} {icon}"),
       capslock_format_(config_["format"].isString() ? config_["format"].asString()
-                       : config_["format"]["capslock"].isString() ? config_["format"]["capslock"].asString()
-                       : "{name} {icon}"),
+                       : config_["format"]["capslock"].isString()
+                           ? config_["format"]["capslock"].asString()
+                           : "{name} {icon}"),
       scrolllock_format_(config_["format"].isString() ? config_["format"].asString()
-                         : config_["format"]["scrolllock"].isString() ? config_["format"]["scrolllock"].asString()
-                         : "{name} {icon}"),
-      interval_(std::chrono::seconds(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1)),
+                         : config_["format"]["scrolllock"].isString()
+                             ? config_["format"]["scrolllock"].asString()
+                             : "{name} {icon}"),
+      interval_(
+          std::chrono::seconds(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1)),
       icon_locked_(config_["format-icons"]["locked"].isString()
-                   ? config_["format-icons"]["locked"].asString()
-                   : "locked"),
+                       ? config_["format-icons"]["locked"].asString()
+                       : "locked"),
       icon_unlocked_(config_["format-icons"]["unlocked"].isString()
-                     ? config_["format-icons"]["unlocked"].asString()
-                     : "unlocked"),
+                         ? config_["format-icons"]["unlocked"].asString()
+                         : "unlocked"),
       fd_(0),
       dev_(nullptr) {
   box_.set_name("keyboard-state");
@@ -120,7 +125,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
     if (dev_dir == nullptr) {
       throw errno_error(errno, "Failed to open /dev/input");
     }
-    dirent *ep;
+    dirent* ep;
     while ((ep = readdir(dev_dir))) {
       if (ep->d_type != DT_CHR) continue;
       std::string dev_path = std::string("/dev/input/") + ep->d_name;
@@ -128,7 +133,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       try {
         auto dev = openDevice(fd);
         if (supportsLockStates(dev)) {
-          spdlog::info("Found device {} at '{}'", libevdev_get_name(dev),  dev_path);
+          spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
           fd_ = fd;
           dev_ = dev;
           break;
@@ -184,9 +189,9 @@ auto waybar::modules::KeyboardState::update() -> void {
     const std::string& format;
     const char* name;
   } label_states[] = {
-    {(bool) numl, numlock_label_, numlock_format_, "Num"},
-    {(bool) capsl, capslock_label_, capslock_format_, "Caps"},
-    {(bool) scrolll, scrolllock_label_, scrolllock_format_, "Scroll"},
+      {(bool)numl, numlock_label_, numlock_format_, "Num"},
+      {(bool)capsl, capslock_label_, capslock_format_, "Caps"},
+      {(bool)scrolll, scrolllock_label_, scrolllock_format_, "Scroll"},
   };
   for (auto& label_state : label_states) {
     std::string text;

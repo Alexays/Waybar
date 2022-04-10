@@ -17,8 +17,8 @@ class Rfkill : public sigc::trackable {
 
  private:
   enum rfkill_type rfkill_type_;
-  bool             state_ = false;
-  int              fd_ = -1;
+  bool state_ = false;
+  int fd_ = -1;
 
   bool on_event(Glib::IOCondition cond);
 };

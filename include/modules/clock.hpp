@@ -1,6 +1,7 @@
 #pragma once
 
 #include <date/tz.h>
+
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -24,7 +25,7 @@ class Clock : public ALabel {
   std::locale locale_;
   std::vector<const date::time_zone*> time_zones_;
   int current_time_zone_idx_;
-  date::year_month_day cached_calendar_ymd_ = date::January/1/0;
+  date::year_month_day cached_calendar_ymd_ = date::January / 1 / 0;
   std::string cached_calendar_text_;
   bool is_calendar_in_tooltip_;
   bool is_timezoned_list_in_tooltip_;
@@ -38,7 +39,7 @@ class Clock : public ALabel {
   auto print_iso_weeknum(std::ostream& os,
                          int weeknum) -> void;
   bool is_timezone_fixed();
-  auto timezones_text(std::chrono::system_clock::time_point *now) -> std::string;
+  auto timezones_text(std::chrono::system_clock::time_point* now) -> std::string;
 };
 
 }  // namespace modules

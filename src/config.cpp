@@ -13,12 +13,8 @@
 namespace waybar {
 
 const std::vector<std::string> Config::CONFIG_DIRS = {
-    "$XDG_CONFIG_HOME/waybar/",
-    "$HOME/.config/waybar/",
-    "$HOME/waybar/",
-    "/etc/xdg/waybar/",
-    SYSCONFDIR "/xdg/waybar/",
-    "./resources/",
+    "$XDG_CONFIG_HOME/waybar/", "$HOME/.config/waybar/",   "$HOME/waybar/",
+    "/etc/xdg/waybar/",         SYSCONFDIR "/xdg/waybar/", "./resources/",
 };
 
 std::optional<std::string> tryExpandPath(const std::string &path) {
@@ -55,9 +51,9 @@ void Config::setupConfig(Json::Value &dst, const std::string &config_file, int d
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
   }
-  std::string      str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   util::JsonParser parser;
-  Json::Value      tmp_config = parser.parse(str);
+  Json::Value tmp_config = parser.parse(str);
   if (tmp_config.isArray()) {
     for (auto &config_part : tmp_config) {
       resolveConfigIncludes(config_part, depth);

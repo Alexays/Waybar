@@ -1,6 +1,7 @@
 #include "modules/wlr/workspace_manager_binding.hpp"
 
 #include <spdlog/spdlog.h>
+
 #include <cstdint>
 
 #include "client.hpp"
@@ -23,7 +24,7 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
                                                             .global_remove = handle_global_remove};
 
 void add_registry_listener(void *data) {
-  wl_display * display = Client::inst()->wl_display;
+  wl_display *display = Client::inst()->wl_display;
   wl_registry *registry = wl_display_get_registry(display);
 
   wl_registry_add_listener(registry, &registry_listener_impl, data);
@@ -89,7 +90,7 @@ static const zext_workspace_group_handle_v1_listener workspace_group_impl = {
     .remove = workspace_group_handle_remove};
 
 void add_workspace_group_listener(zext_workspace_group_handle_v1 *workspace_group_handle,
-                                  void *                          data) {
+                                  void *data) {
   zext_workspace_group_handle_v1_add_listener(workspace_group_handle, &workspace_group_impl, data);
 }
 
@@ -100,7 +101,7 @@ void workspace_handle_name(void *data, struct zext_workspace_handle_v1 *_, const
 void workspace_handle_coordinates(void *data, struct zext_workspace_handle_v1 *_,
                                   struct wl_array *coordinates) {
   std::vector<uint32_t> coords_vec;
-  auto                  coords = static_cast<uint32_t *>(coordinates->data);
+  auto coords = static_cast<uint32_t *>(coordinates->data);
   for (size_t i = 0; i < coordinates->size / sizeof(uint32_t); ++i) {
     coords_vec.push_back(coords[i]);
   }
@@ -111,7 +112,7 @@ void workspace_handle_coordinates(void *data, struct zext_workspace_handle_v1 *_
 void workspace_handle_state(void *data, struct zext_workspace_handle_v1 *workspace_handle,
                             struct wl_array *state) {
   std::vector<uint32_t> state_vec;
-  auto                  states = static_cast<uint32_t *>(state->data);
+  auto states = static_cast<uint32_t *>(state->data);
   for (size_t i = 0; i < state->size / sizeof(uint32_t); ++i) {
     state_vec.push_back(states[i]);
   }

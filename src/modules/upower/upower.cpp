@@ -68,13 +68,9 @@ UPower::UPower(const std::string& id, const Json::Value& config)
     box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::show_tooltip_callback));
   }
 
-  upowerWatcher_id = g_bus_watch_name(G_BUS_TYPE_SYSTEM,
-                                      "org.freedesktop.UPower",
-                                      G_BUS_NAME_WATCHER_FLAGS_AUTO_START,
-                                      upowerAppear,
-                                      upowerDisappear,
-                                      this,
-                                      NULL);
+  upowerWatcher_id = g_bus_watch_name(G_BUS_TYPE_SYSTEM, "org.freedesktop.UPower",
+                                      G_BUS_NAME_WATCHER_FLAGS_AUTO_START, upowerAppear,
+                                      upowerDisappear, this, NULL);
 
   GError* error = NULL;
   client = up_client_new_full(NULL, &error);
@@ -87,16 +83,10 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   if (!login1_connection) {
     throw std::runtime_error("Unable to connect to the SYSTEM Bus!...");
   } else {
-    login1_id = g_dbus_connection_signal_subscribe(login1_connection,
-                                                   "org.freedesktop.login1",
-                                                   "org.freedesktop.login1.Manager",
-                                                   "PrepareForSleep",
-                                                   "/org/freedesktop/login1",
-                                                   NULL,
-                                                   G_DBUS_SIGNAL_FLAGS_NONE,
-                                                   prepareForSleep_cb,
-                                                   this,
-                                                   NULL);
+    login1_id = g_dbus_connection_signal_subscribe(
+        login1_connection, "org.freedesktop.login1", "org.freedesktop.login1.Manager",
+        "PrepareForSleep", "/org/freedesktop/login1", NULL, G_DBUS_SIGNAL_FLAGS_NONE,
+        prepareForSleep_cb, this, NULL);
   }
 
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &UPower::handleToggle));
@@ -284,26 +274,15 @@ auto UPower::update() -> void {
   // Don't update widget if the UPower service isn't running
   if (!upowerRunning) return;
 
-  UpDeviceKind  kind;
+  UpDeviceKind kind;
   UpDeviceState state;
-  double        percentage;
-  gint64        time_empty;
-  gint64        time_full;
-  gchar*        icon_name;
+  double percentage;
+  gint64 time_empty;
+  gint64 time_full;
+  gchar* icon_name;
 
-  g_object_get(displayDevice,
-               "kind",
-               &kind,
-               "state",
-               &state,
-               "percentage",
-               &percentage,
-               "icon-name",
-               &icon_name,
-               "time-to-empty",
-               &time_empty,
-               "time-to-full",
-               &time_full,
+  g_object_get(displayDevice, "kind", &kind, "state", &state, "percentage", &percentage,
+               "icon-name", &icon_name, "time-to-empty", &time_empty, "time-to-full", &time_full,
                NULL);
 
   bool displayDeviceValid =
@@ -357,9 +336,9 @@ auto UPower::update() -> void {
     default:
       break;
   }
-  std::string label_format = fmt::format(showAltText ? format_alt : format,
-                                         fmt::arg("percentage", percentString),
-                                         fmt::arg("time", time_format));
+  std::string label_format =
+      fmt::format(showAltText ? format_alt : format, fmt::arg("percentage", percentString),
+                  fmt::arg("time", time_format));
   // Only set the label text if it doesn't only contain spaces
   bool onlySpaces = true;
   for (auto& character : label_format) {
