@@ -45,7 +45,7 @@ Language::Language(const std::string& id, const Json::Value& config)
 }
 
 void Language::onCmd(const struct Ipc::ipc_response& res) {
-  if (res.type != static_cast<uint32_t>(IPC_GET_INPUTS)) {
+  if (res.type != IPC_GET_INPUTS) {
     return;
   }
 
@@ -77,7 +77,7 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
 }
 
 void Language::onEvent(const struct Ipc::ipc_response& res) {
-  if (res.type != static_cast<uint32_t>(IPC_EVENT_INPUT)) {
+  if (res.type != IPC_EVENT_INPUT) {
     return;
   }
 
