@@ -3,6 +3,7 @@
 #include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 
+#include <sstream>
 #include <stdexcept>
 
 #include "bar.hpp"
@@ -19,6 +20,23 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
     handle.disconnect();
   }
 
+  Json::Value subscribe_events{Json::arrayValue};
+  subscribe_events.append("bar_state_update");
+  subscribe_events.append("barconfig_update");
+
+  bool has_mode = isModuleEnabled("sway/mode");
+  bool has_workspaces = isModuleEnabled("sway/workspaces");
+
+  if (has_mode) {
+    subscribe_events.append("mode");
+  }
+  if (has_workspaces) {
+    subscribe_events.append("workspace");
+  }
+  if (has_mode || has_workspaces) {
+    subscribe_events.append("binding");
+  }
+
   signal_config_.connect(sigc::mem_fun(*this, &BarIpcClient::onConfigUpdate));
   signal_visible_.connect(sigc::mem_fun(*this, &BarIpcClient::onVisibilityUpdate));
   signal_urgency_.connect(sigc::mem_fun(*this, &BarIpcClient::onUrgencyUpdate));
@@ -26,7 +44,9 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
 
   // Subscribe to non bar events to determine if the modifier key press is followed by another
   // action.
-  ipc_.subscribe(R"(["bar_state_update", "barconfig_update", "workspace", "mode", "binding"])");
+  std::ostringstream oss_events;
+  oss_events << subscribe_events;
+  ipc_.subscribe(oss_events.str());
   ipc_.signal_event.connect(sigc::mem_fun(*this, &BarIpcClient::onIpcEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &BarIpcClient::onCmd));
   // Launch worker
@@ -37,6 +57,19 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
       spdlog::error("BarIpcClient::handleEvent {}", e.what());
     }
   });
+}
+
+bool BarIpcClient::isModuleEnabled(std::string name) {
+  for (const auto& section : {"modules-left", "modules-center", "modules-right"}) {
+    if (const auto& modules = bar_.config.get(section, {}); modules.isArray()) {
+      for (const auto& module : modules) {
+        if (module.asString().rfind(name, 0) == 0) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 struct swaybar_config parseConfig(const Json::Value& payload) {
