@@ -12,6 +12,11 @@ auto waybar::modules::Bluetooth::update() -> void {
 
   label_.set_markup(
       fmt::format(format_, fmt::arg("status", status), fmt::arg("icon", getIcon(0, status))));
+  if (status == "disabled") {
+    label_.get_style_context()->add_class("disabled");
+  } else {
+    label_.get_style_context()->remove_class("disabled");
+  }
 
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
