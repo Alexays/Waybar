@@ -37,6 +37,8 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
     subscribe_events.append("binding");
   }
 
+  modifier_reset_ = bar.config.get("modifier-reset", "press").asString();
+
   signal_config_.connect(sigc::mem_fun(*this, &BarIpcClient::onConfigUpdate));
   signal_visible_.connect(sigc::mem_fun(*this, &BarIpcClient::onVisibilityUpdate));
   signal_urgency_.connect(sigc::mem_fun(*this, &BarIpcClient::onUrgencyUpdate));
@@ -188,10 +190,12 @@ void BarIpcClient::onVisibilityUpdate(bool visible_by_modifier) {
   if (visible_by_modifier) {
     modifier_no_action_ = true;
   }
-  if (!visible_by_modifier_ && modifier_no_action_) {
-    // Modifier key was pressed and released without a different action.
-    // This signals an acknowledgment and should hide the bar again.
-    // Hide the bar and clear the urgency flag.
+
+  // Clear on either press or release depending on bar_.bar_config_.action value.
+  // For the check on release, make sure that the modifier key was not used for another action.
+  if (((modifier_reset_ == "press" && visible_by_modifier_) ||
+       (modifier_reset_ == "release" && !visible_by_modifier_ && modifier_no_action_))) {
+    // Clear the flags to hide the bar.
     visible_by_urgency_ = false;
     visible_by_mode_ = false;
   }

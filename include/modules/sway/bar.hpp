@@ -44,6 +44,7 @@ class BarIpcClient {
   Ipc ipc_;
 
   swaybar_config bar_config_;
+  std::string modifier_reset_;
   bool visible_by_mode_ = false;
   bool visible_by_modifier_ = false;
   bool visible_by_urgency_ = false;
