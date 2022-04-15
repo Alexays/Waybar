@@ -1,4 +1,5 @@
 #include "modules/clock.hpp"
+#include <iomanip>
 
 #include <spdlog/spdlog.h>
 #if FMT_VERSION < 60000
@@ -164,9 +165,28 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   const auto curr_day = ymd.day();
 
   std::stringstream os;
-  const auto first_dow = first_day_of_week();
-  weekdays_header(first_dow, os);
 
+  const auto first_dow = first_day_of_week();
+  int ws{0};    // weeks-pos: side(1 - left, 2 - right)
+  int wn{0};    // weeknumber
+  if (config_["calendar-weeks-pos"].isString()) {
+    wn = (date::sys_days{date::year_month_day{ym/1}} - date::sys_days{date::year_month_day{ymd.year()/1/1}}).count()/7+1;
+    if (config_["calendar-weeks-pos"].asString() == "left") {
+      ws = 1;
+      // Add paddings before the header
+      os << std::string(4, ' ');
+    } else if (config_["calendar-weeks-pos"].asString() == "right") {
+      ws = 2;
+    }
+  }
+  
+  weekdays_header(first_dow, os);
+  /* Print weeknumber on the left for the first row*/
+  if (ws == 1) {
+    print_iso_weeknum(os, wn);
+    os << ' ';
+    ++wn;
+  }
   // First week prefixed with spaces if needed.
   auto wd = date::weekday(ym / 1);
   auto empty_days = (wd - first_dow).count();
@@ -178,7 +198,19 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     if (wd != first_dow) {
       os << ' ';
     } else if (unsigned(d) != 1) {
+      if (ws == 2) {
+        os << ' ';
+        print_iso_weeknum(os, wn);
+        ++wn;
+      }
+
       os << '\n';
+
+      if (ws == 1) {
+        print_iso_weeknum(os, wn);
+        os << ' ';
+        ++wn;
+      }
     }
     if (d == curr_day) {
       if (config_["today-format"].isString()) {
@@ -187,8 +219,14 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       } else {
         os << "<b><u>" << date::format("%e", d) << "</u></b>";
       }
-    } else {
-      os << date::format("%e", d);
+    } else if (config_["format-calendar"].isString()) {
+      os << fmt::format(config_["format-calendar"].asString(), date::format("%e", d));
+    } else os << date::format("%e", d);
+    /*Print weeks on the right when the endings with spaces*/
+    if (ws == 2 && d == last_day && wd.c_encoding() < 6) {
+      empty_days = 6 - wd.c_encoding();
+      os << std::string(empty_days * 3 + 1, ' ');
+      print_iso_weeknum(os, wn);
     }
   }
 
@@ -200,9 +238,10 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
 auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std::ostream& os)
     -> void {
+  std::stringstream res;
   auto wd = first_dow;
   do {
-    if (wd != first_dow) os << ' ';
+    if (wd != first_dow) res << ' ';
     Glib::ustring wd_ustring(date::format(locale_, "%a", wd));
     auto clen = ustring_clen(wd_ustring);
     auto wd_len = wd_ustring.length();
@@ -212,9 +251,13 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_dow, std
       clen = ustring_clen(wd_ustring);
     }
     const std::string pad(2 - clen, ' ');
-    os << pad << wd_ustring;
+    res << pad << wd_ustring;
   } while (++wd != first_dow);
-  os << "\n";
+  res << "\n";
+
+  if (config_["format-calendar-weekdays"].isString()) {
+    os << fmt::format(config_["format-calendar-weekdays"].asString(), res.str());
+  } else os << res.str();
 }
 
 auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point* now)
@@ -236,6 +279,16 @@ auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_poin
     os << fmt::format(format_, wtime) << "\n";
   }
   return os.str();
+}
+
+auto waybar::modules::Clock::print_iso_weeknum(std::ostream& os,
+                                               int weeknum) -> void {
+  std::stringstream res;
+  res << 'W' << std::setfill('0') << std::setw(2) << weeknum;
+
+  if (config_["format-calendar-weeks"].isString()) {
+    os << fmt::format(config_["format-calendar-weeks"].asString(), res.str());
+  } else os << res.str();
 }
 
 #ifdef HAVE_LANGINFO_1STDAY
