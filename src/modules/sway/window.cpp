@@ -38,7 +38,7 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     auto payload = parser_.parse(res.payload);
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
     std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload["nodes"], output);
-    updateAppIcon();
+    updateAppIconName();
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
@@ -79,17 +79,30 @@ std::optional<Glib::ustring> getIconName(const std::string& app_id) {
   return {};
 }
 
-void Window::updateAppIcon() {
+void Window::updateAppIconName() {
   if (!iconEnabled()) {
     return;
   }
+
   const auto icon_name = getIconName(app_id_);
   if (icon_name.has_value()) {
-    image_.set_from_icon_name(icon_name.value(), Gtk::ICON_SIZE_LARGE_TOOLBAR);
-    image_.set_visible(true);
-    return;
+    app_icon_name_ = icon_name.value();
+  } else {
+    app_icon_name_ = "";
   }
-  image_.set_visible(false);
+  update_app_icon_ = true;
+}
+
+void Window::updateAppIcon() {
+  if (update_app_icon_) {
+    update_app_icon_ = false;
+    if (app_icon_name_.empty()) {
+      image_.set_visible(false);
+    } else {
+      image_.set_from_icon_name(app_icon_name_, Gtk::ICON_SIZE_LARGE_TOOLBAR);
+      image_.set_visible(true);
+    }
+  }
 }
 
 auto Window::update() -> void {
@@ -119,6 +132,9 @@ auto Window::update() -> void {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
+
+  updateAppIcon();
+
   // Call parent update
   AIconLabel::update();
 }
