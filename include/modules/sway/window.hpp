@@ -25,6 +25,7 @@ class Window : public AIconLabel, public sigc::trackable {
                                                                         std::string& output);
   void getTree();
   std::string rewriteTitle(const std::string& title);
+  void updateAppIconName();
   void updateAppIcon();
 
   const Bar& bar_;
@@ -33,6 +34,8 @@ class Window : public AIconLabel, public sigc::trackable {
   std::string app_id_;
   std::string old_app_id_;
   std::size_t app_nb_;
+  bool update_app_icon_{true};
+  std::string app_icon_name_;
   util::JsonParser parser_;
   std::mutex mutex_;
   Ipc ipc_;
