@@ -75,6 +75,11 @@ Addressed by *sway/window*
 	default: false ++
 	Option to hide the application icon.
 
+*icon-size*: ++
+	typeof: integer ++
+	default: 24 ++
+	Option to change the size of the application icon.
+
 # REWRITE RULES
 
 *rewrite* is an object where keys are regular expressions and values are
