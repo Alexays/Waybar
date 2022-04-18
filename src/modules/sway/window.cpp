@@ -5,6 +5,7 @@
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
 #include <gtkmm/enums.h>
+#include <gtkmm/icontheme.h>
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
@@ -37,7 +38,8 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
-    std::tie(app_nb_, windowId_, window_, app_id_) = getFocusedNode(payload["nodes"], output);
+    std::tie(app_nb_, windowId_, window_, app_id_, app_class_) =
+        getFocusedNode(payload["nodes"], output);
     updateAppIconName();
     dp.emit();
   } catch (const std::exception& e) {
@@ -45,30 +47,70 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
   }
 }
 
-std::optional<std::string> getDesktopFilePath(const std::string& app_id) {
+std::optional<std::string> getDesktopFilePath(const std::string& app_id,
+                                              const std::string& app_class) {
   const auto data_dirs = Glib::get_system_data_dirs();
   for (const auto& data_dir : data_dirs) {
-    const auto desktop_file_path = data_dir + "applications/" + app_id + ".desktop";
+    const auto data_app_dir = data_dir + "applications/";
+    auto desktop_file_path = data_app_dir + app_id + ".desktop";
     if (std::filesystem::exists(desktop_file_path)) {
       return desktop_file_path;
+    }
+    if (!app_class.empty()) {
+      desktop_file_path = data_app_dir + app_class + ".desktop";
+      if (std::filesystem::exists(desktop_file_path)) {
+        return desktop_file_path;
+      }
     }
   }
   return {};
 }
 
-std::optional<Glib::ustring> getIconName(const std::string& app_id) {
-  const auto desktop_file_path = getDesktopFilePath(app_id);
+std::optional<Glib::ustring> getIconName(const std::string& app_id, const std::string& app_class) {
+  const auto desktop_file_path = getDesktopFilePath(app_id, app_class);
   if (!desktop_file_path.has_value()) {
+    // Try some heuristics to find a matching icon
+
+    const auto default_icon_theme = Gtk::IconTheme::get_default();
+    if (default_icon_theme->has_icon(app_id)) {
+      return app_id;
+    }
+
+    const auto app_id_desktop = app_id + "-desktop";
+    if (default_icon_theme->has_icon(app_id_desktop)) {
+      return app_id_desktop;
+    }
+
+    const auto to_lower = [](const std::string& str) {
+      auto str_cpy = str;
+      std::transform(str_cpy.begin(), str_cpy.end(), str_cpy.begin(),
+                     [](unsigned char c) { return std::tolower(c); });
+      return str;
+    };
+
+    const auto first_space = app_id.find_first_of(' ');
+    if (first_space != std::string::npos) {
+      const auto first_word = to_lower(app_id.substr(0, first_space));
+      if (default_icon_theme->has_icon(first_word)) {
+        return first_word;
+      }
+    }
+
+    const auto first_dash = app_id.find_first_of('-');
+    if (first_dash != std::string::npos) {
+      const auto first_word = to_lower(app_id.substr(0, first_dash));
+      if (default_icon_theme->has_icon(first_word)) {
+        return first_word;
+      }
+    }
+
     return {};
   }
+
   try {
     Glib::KeyFile desktop_file;
     desktop_file.load_from_file(desktop_file_path.value());
-    const auto icon_name = desktop_file.get_string("Desktop Entry", "Icon");
-    if (icon_name.empty()) {
-      return {};
-    }
-    return icon_name;
+    return desktop_file.get_string("Desktop Entry", "Icon");
   } catch (Glib::FileError& error) {
     spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
                  error.what().c_str());
@@ -84,7 +126,7 @@ void Window::updateAppIconName() {
     return;
   }
 
-  const auto icon_name = getIconName(app_id_);
+  const auto icon_name = getIconName(app_id_, app_class_);
   if (icon_name.has_value()) {
     app_icon_name_ = icon_name.value();
   } else {
@@ -158,7 +200,7 @@ int leafNodesInWorkspace(const Json::Value& node) {
   return sum;
 }
 
-std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
+std::tuple<std::size_t, int, std::string, std::string, std::string> gfnWithWorkspace(
     const Json::Value& nodes, std::string& output, const Json::Value& config_, const Bar& bar_,
     Json::Value& parentWorkspace) {
   for (auto const& node : nodes) {
@@ -171,29 +213,33 @@ std::tuple<std::size_t, int, std::string, std::string> gfnWithWorkspace(
           config_["all-outputs"].asBool()) {
         auto app_id = node["app_id"].isString() ? node["app_id"].asString()
                                                 : node["window_properties"]["instance"].asString();
+        const auto app_class = node["window_properties"]["class"].isString()
+                                   ? node["window_properties"]["class"].asString()
+                                   : "";
         int nb = node.size();
         if (parentWorkspace != 0) nb = leafNodesInWorkspace(parentWorkspace);
-        return {nb, node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()), app_id};
+        return {nb, node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()), app_id,
+                app_class};
       }
     }
     // iterate
     if (node["type"] == "workspace") parentWorkspace = node;
-    auto [nb, id, name, app_id] =
+    auto [nb, id, name, app_id, app_class] =
         gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
-      return {nb, id, name, app_id};
+      return {nb, id, name, app_id, app_class};
     }
     // Search for floating node
-    std::tie(nb, id, name, app_id) =
+    std::tie(nb, id, name, app_id, app_class) =
         gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
-      return {nb, id, name, app_id};
+      return {nb, id, name, app_id, app_class};
     }
   }
-  return {0, -1, "", ""};
+  return {0, -1, "", "", ""};
 }
 
-std::tuple<std::size_t, int, std::string, std::string> Window::getFocusedNode(
+std::tuple<std::size_t, int, std::string, std::string, std::string> Window::getFocusedNode(
     const Json::Value& nodes, std::string& output) {
   Json::Value placeholder = 0;
   return gfnWithWorkspace(nodes, output, config_, bar_, placeholder);
