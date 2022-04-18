@@ -42,7 +42,7 @@ waybar::modules::Network::readBandwidthUsage() {
     std::string ifacename;
     iss >> ifacename;      // ifacename contains "eth0:"
     ifacename.pop_back();  // remove trailing ':'
-    if (!checkInterface(ifacename)) {
+    if (ifacename != ifname_) {
       continue;
     }
 
