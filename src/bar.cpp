@@ -174,6 +174,17 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
                       GTK_LAYER_SHELL_EDGE_TOP, GTK_LAYER_SHELL_EDGE_BOTTOM}) {
       gtk_layer_set_anchor(window_.gobj(), edge, unanchored != edge);
     }
+
+    // Disable anchoring for other edges too if the width
+    // or the height has been set to a value other than 'auto'
+    // otherwise the bar will use all space
+    if (vertical_ && height_ > 1) {
+      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_BOTTOM, false);
+      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_TOP, false);
+    } else if (width_ > 1) {
+      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_LEFT, false);
+      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_RIGHT, false);
+    }
   }
 
   void setSize(uint32_t width, uint32_t height) override {
@@ -563,8 +574,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   surface_impl_->setMargins(margins_);
-  surface_impl_->setPosition(position);
   surface_impl_->setSize(width, height);
+  // Position needs to be set after calculating the height due to the
+  // GTK layer shell anchors logic relying on the dimensions of the bar.
+  surface_impl_->setPosition(position);
 
   /* Read custom modes if available */
   if (auto modes = config.get("modes", {}); modes.isObject()) {
