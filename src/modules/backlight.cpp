@@ -214,17 +214,20 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
       strncmp(name, "amdgpu_bl", 9) == 0 ? "brightness" : "actual_brightness";
 
   const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
-  const int actual_int = actual == nullptr ? 0 : std::stoi(actual);
-
   const char *max = udev_device_get_sysattr_value(dev, "max_brightness");
-  const int max_int = max == nullptr ? 0 : std::stoi(max);
 
   auto found =
       std::find_if(first, last, [name](const auto &device) { return device.name() == name; });
   if (found != last) {
-    found->set_actual(actual_int);
-    found->set_max(max_int);
+    if (actual != nullptr) {
+      found->set_actual(std::stoi(actual));
+    }
+    if (max != nullptr) {
+      found->set_max(std::stoi(max));
+    }
   } else {
+    const int actual_int = actual == nullptr ? 0 : std::stoi(actual);
+    const int max_int = max == nullptr ? 0 : std::stoi(max);
     *inserter = BacklightDev{name, actual_int, max_int};
     ++inserter;
   }
