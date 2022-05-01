@@ -4,7 +4,7 @@
 #include "util/command.hpp"
 
 std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
-bool                        waybar::modules::IdleInhibitor::status = false;
+bool waybar::modules::IdleInhibitor::status = false;
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
@@ -47,7 +47,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
     label_.get_style_context()->remove_class("deactivated");
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
-        waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
+          waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
   } else {
     label_.get_style_context()->remove_class("activated");
@@ -58,8 +58,8 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   }
 
   std::string status_text = status ? "activated" : "deactivated";
-  label_.set_markup(
-      fmt::format(format_, fmt::arg("status", status_text), fmt::arg("icon", getIcon(0, status_text))));
+  label_.set_markup(fmt::format(format_, fmt::arg("status", status_text),
+                                fmt::arg("icon", getIcon(0, status_text))));
   label_.get_style_context()->add_class(status_text);
   if (tooltipEnabled()) {
     label_.set_tooltip_text(status_text);

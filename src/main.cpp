@@ -1,9 +1,11 @@
+#include <spdlog/spdlog.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <csignal>
 #include <list>
 #include <mutex>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <spdlog/spdlog.h>
+
 #include "client.hpp"
 
 std::mutex reap_mtx;
@@ -38,8 +40,7 @@ void* signalThread(void* args) {
         }
         break;
       default:
-        spdlog::debug("Received signal with number {}, but not handling",
-                      signum);
+        spdlog::debug("Received signal with number {}, but not handling", signum);
         break;
     }
   }
@@ -79,9 +80,9 @@ int main(int argc, char* argv[]) {
     });
 
     std::signal(SIGUSR2, [](int /*signal*/) {
-        spdlog::info("Reloading...");
-        reload = true;
-        waybar::Client::inst()->reset();
+      spdlog::info("Reloading...");
+      reload = true;
+      waybar::Client::inst()->reset();
     });
 
     for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {

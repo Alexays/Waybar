@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.8',
+    version: '0.9.12',
     license: 'MIT',
     meson_version: '>= 0.49.0',
     default_options : [
@@ -79,19 +79,20 @@ is_netbsd = host_machine.system() == 'netbsd'
 is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
-fmt = dependency('fmt', version : ['>=5.3.0'], fallback : ['fmt', 'fmt_dep'])
+fmt = dependency('fmt', version : ['>=7.0.0'], fallback : ['fmt', 'fmt_dep'])
 spdlog = dependency('spdlog', version : ['>=1.8.5'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=true'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
-giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled()))
+giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled() or get_option('upower_glib').enabled()))
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
+upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libevdev = dependency('libevdev', required: get_option('libevdev'))
@@ -142,6 +143,7 @@ src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
+    'src/AIconLabel.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
@@ -200,6 +202,12 @@ endif
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += 'src/modules/network.cpp'
+endif
+
+if (upower_glib.found() and giounix.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
+    src_files += 'src/modules/upower/upower.cpp'
+    src_files += 'src/modules/upower/upower_tooltip.cpp'
 endif
 
 if libpulse.found()
@@ -287,6 +295,7 @@ executable(
         giounix,
         libnl,
         libnlgen,
+        upower_glib,
         libpulse,
         libudev,
         libepoll,
@@ -295,7 +304,7 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-				xkbregistry 
+		xkbregistry
     ],
     include_directories: [include_directories('include')],
     install: true,
@@ -350,6 +359,7 @@ if scdoc.found()
         'waybar-wlr-workspaces.5.scd',
         'waybar-bluetooth.5.scd',
         'waybar-sndio.5.scd',
+        'waybar-upower.5.scd',
     ]
 
     if (giounix.found() and not get_option('logind').disabled())

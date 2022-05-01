@@ -1,7 +1,9 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <fstream>
+
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -14,10 +16,10 @@ class Temperature : public ALabel {
   auto update() -> void;
 
  private:
-  float               getTemperature();
-  bool                isCritical(uint16_t);
+  float getTemperature();
+  bool isCritical(uint16_t);
 
-  std::string         file_path_;
+  std::string file_path_;
   util::SleeperThread thread_;
 };
 

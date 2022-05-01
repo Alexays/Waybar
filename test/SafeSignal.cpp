@@ -1,4 +1,3 @@
-#define CATCH_CONFIG_RUNNER
 #include "util/SafeSignal.hpp"
 
 #include <glibmm.h>
@@ -21,12 +20,12 @@ using remove_cvref_t = typename std::remove_cv<typename std::remove_reference<T>
  */
 TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal basic functionality", "[signal][thread][util]") {
   const int NUM_EVENTS = 100;
-  int       count = 0;
-  int       last_value = 0;
+  int count = 0;
+  int last_value = 0;
 
   SafeSignal<int, std::string> test_signal;
 
-  const auto  main_tid = std::this_thread::get_id();
+  const auto main_tid = std::this_thread::get_id();
   std::thread producer;
 
   // timeout the test in 500ms
@@ -64,7 +63,7 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal basic functionality", "[signal][t
 
 template <typename T>
 struct TestObject {
-  T        value;
+  T value;
   unsigned copied = 0;
   unsigned moved = 0;
 
@@ -94,7 +93,7 @@ struct TestObject {
   }
 
   bool operator==(T other) const { return value == other; }
-       operator T() const { return value; }
+  operator T() const { return value; }
 };
 
 /*
@@ -102,7 +101,7 @@ struct TestObject {
  */
 TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal copy/move counter", "[signal][thread][util]") {
   const int NUM_EVENTS = 3;
-  int       count = 0;
+  int count = 0;
 
   SafeSignal<TestObject<int>> test_signal;
 
@@ -137,9 +136,4 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal copy/move counter", "[signal][thr
   });
   producer.join();
   REQUIRE(count == NUM_EVENTS);
-}
-
-int main(int argc, char* argv[]) {
-  Glib::init();
-  return Catch::Session().run(argc, argv);
 }

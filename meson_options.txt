@@ -3,6 +3,7 @@ option('libnl', type: 'feature', value: 'auto', description: 'Enable libnl suppo
 option('libudev', type: 'feature', value: 'auto', description: 'Enable libudev support for udev related features')
 option('libevdev', type: 'feature', value: 'auto', description: 'Enable libevdev support for evdev related features')
 option('pulseaudio', type: 'feature', value: 'auto', description: 'Enable support for pulseaudio')
+option('upower_glib', type: 'feature', value: 'auto', description: 'Enable support for upower')
 option('systemd', type: 'feature', value: 'auto', description: 'Install systemd user service unit')
 option('dbusmenu-gtk', type: 'feature', value: 'auto', description: 'Enable support for tray')
 option('man-pages', type: 'feature', value: 'auto', description: 'Generate and install man pages')

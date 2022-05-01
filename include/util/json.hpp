@@ -13,7 +13,7 @@ struct JsonParser {
       return root;
     }
     std::unique_ptr<Json::CharReader> const reader(builder_.newCharReader());
-    std::string                             err;
+    std::string err;
     bool res = reader->parse(data.c_str(), data.c_str() + data.size(), &root, &err);
     if (!res) throw std::runtime_error(err);
     return root;

@@ -94,3 +94,4 @@ Addressed by *bluetooth*
 # STYLE
 
 - *#bluetooth*
+- *#bluetooth.disabled*

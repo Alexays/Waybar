@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include "ALabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
@@ -13,14 +14,14 @@ class IdleInhibitor : public ALabel {
   ~IdleInhibitor();
   auto update() -> void;
   static std::list<waybar::AModule*> modules;
-  static bool                        status;
+  static bool status;
 
  private:
   bool handleToggle(GdkEventButton* const& e);
 
-  const Bar&                    bar_;
+  const Bar& bar_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
-  int                           pid_;
+  int pid_;
 };
 
 }  // namespace waybar::modules

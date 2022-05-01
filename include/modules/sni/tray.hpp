@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/sni/host.hpp"
@@ -20,9 +21,9 @@ class Tray : public AModule {
   void onRemove(std::unique_ptr<Item>& item);
 
   static inline std::size_t nb_hosts_ = 0;
-  Gtk::Box                  box_;
-  SNI::Watcher::singleton   watcher_;
-  SNI::Host                 host_;
+  Gtk::Box box_;
+  SNI::Watcher::singleton watcher_;
+  SNI::Host host_;
 };
 
 }  // namespace waybar::modules::SNI

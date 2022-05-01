@@ -1,8 +1,10 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <tuple>
-#include "ALabel.hpp"
+
+#include "AIconLabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
@@ -10,29 +12,34 @@
 
 namespace waybar::modules::sway {
 
-class Window : public ALabel, public sigc::trackable {
+class Window : public AIconLabel, public sigc::trackable {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;
   auto update() -> void;
 
  private:
-  void                                                   onEvent(const struct Ipc::ipc_response&);
-  void                                                   onCmd(const struct Ipc::ipc_response&);
+  void onEvent(const struct Ipc::ipc_response&);
+  void onCmd(const struct Ipc::ipc_response&);
   std::tuple<std::size_t, int, std::string, std::string> getFocusedNode(const Json::Value& nodes,
-                                                                        std::string&       output);
-  void                                                   getTree();
-  std::string                                            rewriteTitle(const std::string& title);
+                                                                        std::string& output);
+  void getTree();
+  std::string rewriteTitle(const std::string& title);
+  void updateAppIconName();
+  void updateAppIcon();
 
-  const Bar&       bar_;
-  std::string      window_;
-  int              windowId_;
-  std::string      app_id_;
-  std::string      old_app_id_;
-  std::size_t      app_nb_;
+  const Bar& bar_;
+  std::string window_;
+  int windowId_;
+  std::string app_id_;
+  std::string old_app_id_;
+  std::size_t app_nb_;
+  unsigned app_icon_size_{24};
+  bool update_app_icon_{true};
+  std::string app_icon_name_;
   util::JsonParser parser_;
-  std::mutex       mutex_;
-  Ipc              ipc_;
+  std::mutex mutex_;
+  Ipc ipc_;
 };
 
 }  // namespace waybar::modules::sway

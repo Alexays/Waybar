@@ -19,8 +19,8 @@ namespace waybar {
 class Factory;
 struct waybar_output {
   Glib::RefPtr<Gdk::Monitor> monitor;
-  std::string                name;
-  std::string                identifier;
+  std::string name;
+  std::string identifier;
 
   std::unique_ptr<struct zxdg_output_v1, decltype(&zxdg_output_v1_destroy)> xdg_output = {
       nullptr, &zxdg_output_v1_destroy};
@@ -41,9 +41,9 @@ struct bar_margins {
 
 struct bar_mode {
   bar_layer layer;
-  bool      exclusive;
-  bool      passthrough;
-  bool      visible;
+  bool exclusive;
+  bool passthrough;
+  bool visible;
 };
 
 #ifdef HAVE_SWAY
@@ -71,7 +71,7 @@ class BarSurface {
 class Bar {
  public:
   using bar_mode_map = std::map<std::string_view, struct bar_mode>;
-  static const bar_mode_map     PRESET_MODES;
+  static const bar_mode_map PRESET_MODES;
   static const std::string_view MODE_DEFAULT;
   static const std::string_view MODE_INVISIBLE;
 
@@ -85,11 +85,11 @@ class Bar {
   void handleSignal(int);
 
   struct waybar_output *output;
-  Json::Value           config;
-  struct wl_surface    *surface;
-  bool                  visible = true;
-  bool                  vertical = false;
-  Gtk::Window           window;
+  Json::Value config;
+  struct wl_surface *surface;
+  bool visible = true;
+  bool vertical = false;
+  Gtk::Window window;
 
 #ifdef HAVE_SWAY
   std::string bar_id;
@@ -98,20 +98,20 @@ class Bar {
  private:
   void onMap(GdkEventAny *);
   auto setupWidgets() -> void;
-  void getModules(const Factory &, const std::string &, Gtk::Box*);
+  void getModules(const Factory &, const std::string &, Gtk::Box *);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
-  std::string  last_mode_{MODE_DEFAULT};
+  std::string last_mode_{MODE_DEFAULT};
 
-  std::unique_ptr<BarSurface>                   surface_impl_;
-  Gtk::Box                                      left_;
-  Gtk::Box                                      center_;
-  Gtk::Box                                      right_;
-  Gtk::Box                                      box_;
+  std::unique_ptr<BarSurface> surface_impl_;
+  Gtk::Box left_;
+  Gtk::Box center_;
+  Gtk::Box right_;
+  Gtk::Box box_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_left_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_center_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_right_;

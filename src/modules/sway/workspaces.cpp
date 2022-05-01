@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cctype>
 #include <string>
 
@@ -12,7 +13,7 @@ namespace waybar::modules::sway {
 int Workspaces::convertWorkspaceNameToNum(std::string name) {
   if (isdigit(name[0])) {
     errno = 0;
-    char *    endptr = NULL;
+    char *endptr = NULL;
     long long parsed_num = strtoll(name.c_str(), &endptr, 10);
     if (errno != 0 || parsed_num > INT32_MAX || parsed_num < 0 || endptr == name.c_str()) {
       return -1;
@@ -64,11 +65,9 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
     try {
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto                        payload = parser_.parse(res.payload);
+        auto payload = parser_.parse(res.payload);
         workspaces_.clear();
-        std::copy_if(payload.begin(),
-                     payload.end(),
-                     std::back_inserter(workspaces_),
+        std::copy_if(payload.begin(), payload.end(), std::back_inserter(workspaces_),
                      [&](const auto &workspace) {
                        return !config_["all-outputs"].asBool()
                                   ? workspace["output"].asString() == bar_.output->name
@@ -77,12 +76,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
         // adding persistent workspaces (as per the config file)
         if (config_["persistent_workspaces"].isObject()) {
-          const Json::Value &            p_workspaces = config_["persistent_workspaces"];
+          const Json::Value &p_workspaces = config_["persistent_workspaces"];
           const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
           for (const std::string &p_w_name : p_workspaces_names) {
             const Json::Value &p_w = p_workspaces[p_w_name];
-            auto               it =
+            auto it =
                 std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
                   return node["name"].asString() == p_w_name;
                 });
@@ -98,6 +97,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                   Json::Value v;
                   v["name"] = p_w_name;
                   v["target_output"] = bar_.output->name;
+                  v["num"] = convertWorkspaceNameToNum(p_w_name);
                   workspaces_.emplace_back(std::move(v));
                   break;
                 }
@@ -107,55 +107,55 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
               Json::Value v;
               v["name"] = p_w_name;
               v["target_output"] = "";
+              v["num"] = convertWorkspaceNameToNum(p_w_name);
               workspaces_.emplace_back(std::move(v));
             }
           }
         }
 
-        // config option to sort numeric workspace names before others
-        bool config_numeric_first = config_["numeric-first"].asBool();
-
-        std::sort(workspaces_.begin(),
-                  workspaces_.end(),
-                  [config_numeric_first](const Json::Value &lhs, const Json::Value &rhs) {
-                    // the "num" property (integer type):
-                    // The workspace number or -1 for workspaces that do
-                    // not start with a number.
-                    // We could rely on sway providing this property:
-                    //
-                    //     auto l = lhs["num"].asInt();
-                    //     auto r = rhs["num"].asInt();
-                    //
-                    // We cannot rely on the "num" property as provided by sway
-                    // via IPC, because persistent workspace might not exist in
-                    // sway's view. However, we need this property also for
-                    // not-yet created persistent workspace. As such, we simply
-                    // duplicate sway's logic of assigning the "num" property
-                    // into waybar (see convertWorkspaceNameToNum). This way the
-                    // sorting should work out even when we include workspaces
-                    // that do not currently exist.
+        // sway has a defined ordering of workspaces that should be preserved in
+        // the representation displayed by waybar to ensure that commands such
+        // as "workspace prev" or "workspace next" make sense when looking at
+        // the workspace representation in the bar.
+        // Due to waybar's own feature of persistent workspaces unknown to sway,
+        // custom sorting logic is necessary to make these workspaces appear
+        // naturally in the list of workspaces without messing up sway's
+        // sorting. For this purpose, a custom numbering property is created
+        // that preserves the order provided by sway while inserting numbered
+        // persistent workspaces at their natural positions.
+        //
+        // All of this code assumes that sway provides numbered workspaces first
+        // and other workspaces are sorted by their creation time.
+        //
+        // In a first pass, the maximum "num" value is computed to enqueue
+        // unnumbered workspaces behind numbered ones when computing the sort
+        // attribute.
+        int max_num = -1;
+        for (auto &workspace : workspaces_) {
+          max_num = std::max(workspace["num"].asInt(), max_num);
+        }
+        for (auto &workspace : workspaces_) {
+          auto workspace_num = workspace["num"].asInt();
+          if (workspace_num > -1) {
+            workspace["sort"] = workspace_num;
+          } else {
+            workspace["sort"] = ++max_num;
+          }
+        }
+        std::sort(workspaces_.begin(), workspaces_.end(),
+                  [](const Json::Value &lhs, const Json::Value &rhs) {
                     auto lname = lhs["name"].asString();
                     auto rname = rhs["name"].asString();
-                    int  l = convertWorkspaceNameToNum(lname);
-                    int  r = convertWorkspaceNameToNum(rname);
+                    int l = lhs["sort"].asInt();
+                    int r = rhs["sort"].asInt();
 
                     if (l == r) {
-                      // in case both integers are the same, lexicographical
-                      // sort. This also covers the case when both don't have a
-                      // number (i.e., l == r == -1).
+                      // In case both integers are the same, lexicographical
+                      // sort. The code above already ensure that this will only
+                      // happend in case of explicitly numbered workspaces.
                       return lname < rname;
                     }
 
-                    // one of the workspaces doesn't begin with a number, so
-                    // num is -1.
-                    if (l < 0 || r < 0) {
-                      if (config_numeric_first) {
-                        return r < 0;
-                      }
-                      return l < 0;
-                    }
-
-                    // both workspaces have a "num" so let's just compare those
                     return l < r;
                   });
       }
@@ -169,9 +169,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 bool Workspaces::filterButtons() {
   bool needReorder = false;
   for (auto it = buttons_.begin(); it != buttons_.end();) {
-    auto ws = std::find_if(workspaces_.begin(), workspaces_.end(), [it](const auto &node) {
-      return node["name"].asString() == it->first;
-    });
+    auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
+                           [it](const auto &node) { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end() ||
         (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
@@ -185,7 +184,7 @@ bool Workspaces::filterButtons() {
 
 auto Workspaces::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
-  bool                        needReorder = filterButtons();
+  bool needReorder = filterButtons();
   for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
     auto bit = buttons_.find((*it)["name"].asString());
     if (bit == buttons_.end()) {
@@ -227,10 +226,8 @@ auto Workspaces::update() -> void {
     std::string output = (*it)["name"].asString();
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      output = fmt::format(format,
-                           fmt::arg("icon", getIcon(output, *it)),
-                           fmt::arg("value", output),
-                           fmt::arg("name", trimWorkspaceName(output)),
+      output = fmt::format(format, fmt::arg("icon", getIcon(output, *it)),
+                           fmt::arg("value", output), fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
@@ -245,7 +242,7 @@ auto Workspaces::update() -> void {
 }
 
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
-  auto   pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
+  auto pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_name("sway-workspace-" + node["name"].asString());
@@ -254,22 +251,18 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
     button.signal_pressed().connect([this, node] {
       try {
         if (node["target_output"].isString()) {
-          ipc_.sendCmd(
-              IPC_COMMAND,
-              fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
-                          "--no-auto-back-and-forth",
-                          node["name"].asString(),
-                          node["target_output"].asString(),
-                          "--no-auto-back-and-forth",
-                          node["name"].asString()));
+          ipc_.sendCmd(IPC_COMMAND,
+                       fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " +
+                                       workspace_switch_cmd_,
+                                   "--no-auto-back-and-forth", node["name"].asString(),
+                                   node["target_output"].asString(), "--no-auto-back-and-forth",
+                                   node["name"].asString()));
         } else {
-          ipc_.sendCmd(
-              IPC_COMMAND,
-              fmt::format("workspace {} \"{}\"",
-                          config_["disable-auto-back-and-forth"].asBool()
-                            ? "--no-auto-back-and-forth"
-                            : "",
-                          node["name"].asString()));
+          ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
+                                                config_["disable-auto-back-and-forth"].asBool()
+                                                    ? "--no-auto-back-and-forth"
+                                                    : "",
+                                                node["name"].asString()));
         }
       } catch (const std::exception &e) {
         spdlog::error("Workspaces: {}", e.what());
@@ -312,9 +305,8 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   std::string name;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
-      return workspace["focused"].asBool();
-    });
+    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
+                           [](const auto &workspace) { return workspace["focused"].asBool(); });
     if (it == workspaces_.end()) {
       return true;
     }
@@ -330,9 +322,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
   }
   try {
-    ipc_.sendCmd(
-        IPC_COMMAND,
-        fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
+    ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }
@@ -340,7 +330,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
 }
 
 const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
-                                                bool                               prev) const {
+                                                bool prev) const {
   if (prev && it == workspaces_.begin() && !config_["disable-scroll-wraparound"].asBool()) {
     return (*(--workspaces_.end()))["name"].asString();
   }

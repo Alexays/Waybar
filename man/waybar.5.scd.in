@@ -77,10 +77,23 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Selects one of the preconfigured display modes. This is an equivalent of the sway-bar(5) *mode* command and supports the same values: *dock*, *hide*, *invisible*, *overlay*. ++
 	Note: *hide* and *invisible* modes may be not as useful without Sway IPC.
 
+modifier-reset ++
+	typeof: string ++
+	default: *press*
+	Defines the timing of modifier key to reset the bar visibility.
+	To reset the visibility of the bar with the press of the modifier key use *press*.
+	Use *release* to reset the visibility upon the release of the modifier key and only if no other action happened while the key was pressed. This prevents hiding the bar when the modifier is used to switch a workspace, change binding mode or start a keybinding.
+
 *exclusive* ++
 	typeof: bool ++
 	default: *true* ++
 	Option to request an exclusive zone from the compositor. Disable this to allow drawing application windows underneath or on top of the bar.
+
+*fixed-center* ++
+	typeof: bool ++
+	default: *true*
+	Prefer fixed center position for the `modules-center` block. The center block will stay in the middle of the bar whenever possible. It can still be pushed around if other blocks need more space.
+	When false, the center block is centered in the space between the left and right block.
 
 *passthrough* ++
 	typeof: bool ++

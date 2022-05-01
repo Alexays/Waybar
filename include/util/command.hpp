@@ -20,13 +20,13 @@ extern std::list<pid_t> reap;
 namespace waybar::util::command {
 
 struct res {
-  int         exit_code;
+  int exit_code;
   std::string out;
 };
 
 inline std::string read(FILE* fp) {
   std::array<char, 128> buffer = {0};
-  std::string           output;
+  std::string output;
   while (feof(fp) == 0) {
     if (fgets(buffer.data(), 128, fp) != nullptr) {
       output += buffer.data();
@@ -68,7 +68,10 @@ inline int close(FILE* fp, pid_t pid) {
 inline FILE* open(const std::string& cmd, int& pid) {
   if (cmd == "") return nullptr;
   int fd[2];
-  pipe(fd);
+  if (pipe(fd) != 0) {
+    spdlog::error("Unable to pipe fd");
+    return nullptr;
+  }
 
   pid_t child_pid = fork();
 
@@ -109,7 +112,7 @@ inline FILE* open(const std::string& cmd, int& pid) {
 }
 
 inline struct res exec(const std::string& cmd) {
-  int  pid;
+  int pid;
   auto fp = command::open(cmd, pid);
   if (!fp) return {-1, ""};
   auto output = command::read(fp);
@@ -118,7 +121,7 @@ inline struct res exec(const std::string& cmd) {
 }
 
 inline struct res execNoRead(const std::string& cmd) {
-  int  pid;
+  int pid;
   auto fp = command::open(cmd, pid);
   if (!fp) return {-1, ""};
   auto stat = command::close(fp, pid);

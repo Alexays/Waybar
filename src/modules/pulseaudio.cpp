@@ -50,13 +50,14 @@ void waybar::modules::Pulseaudio::contextStateCb(pa_context *c, void *data) {
     case PA_CONTEXT_READY:
       pa_context_get_server_info(c, serverInfoCb, data);
       pa_context_set_subscribe_callback(c, subscribeCb, data);
-      pa_context_subscribe(
-          c,
-          static_cast<enum pa_subscription_mask>(static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
-                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
-                                                 static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE)),
-          nullptr,
-          nullptr);
+      pa_context_subscribe(c,
+                           static_cast<enum pa_subscription_mask>(
+                               static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
+                               static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
+                               static_cast<int>(PA_SUBSCRIPTION_MASK_SINK_INPUT) |
+                               static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE) |
+                               static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE_OUTPUT)),
+                           nullptr, nullptr);
       break;
     case PA_CONTEXT_FAILED:
       pa->mainloop_api_->quit(pa->mainloop_api_, 1);
@@ -79,16 +80,16 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-  if (config_["reverse-scrolling"].asInt() == 1){
+  if (config_["reverse-scrolling"].asInt() == 1) {
     if (dir == SCROLL_DIR::UP) {
       dir = SCROLL_DIR::DOWN;
     } else if (dir == SCROLL_DIR::DOWN) {
       dir = SCROLL_DIR::UP;
     }
   }
-  double      volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
+  double volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_volume_t change = volume_tick;
-  pa_cvolume  pa_volume = pa_volume_;
+  pa_cvolume pa_volume = pa_volume_;
   // isDouble returns true for integers as well, just in case
   if (config_["scroll-step"].isDouble()) {
     change = round(config_["scroll-step"].asDouble() * volume_tick);
@@ -109,7 +110,7 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
 /*
  * Called when an event we subscribed to occurs.
  */
-void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 context,
+void waybar::modules::Pulseaudio::subscribeCb(pa_context *context,
                                               pa_subscription_event_type_t type, uint32_t idx,
                                               void *data) {
   unsigned facility = type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
@@ -121,8 +122,12 @@ void waybar::modules::Pulseaudio::subscribeCb(pa_context *                 conte
     pa_context_get_server_info(context, serverInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
     pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
+  } else if (facility == PA_SUBSCRIPTION_EVENT_SINK_INPUT) {
+    pa_context_get_sink_info_list(context, sinkInfoCb, data);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE) {
     pa_context_get_source_info_by_index(context, idx, sourceInfoCb, data);
+  } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT) {
+    pa_context_get_source_info_list(context, sourceInfoCb, data);
   }
 }
 
@@ -158,8 +163,7 @@ void waybar::modules::Pulseaudio::sourceInfoCb(pa_context * /*context*/, const p
  */
 void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i,
                                              int /*eol*/, void *data) {
-  if (i == nullptr)
-    return;
+  if (i == nullptr) return;
 
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
   if (pa->current_sink_name_ == i->name) {
@@ -206,15 +210,7 @@ void waybar::modules::Pulseaudio::serverInfoCb(pa_context *context, const pa_ser
 }
 
 static const std::array<std::string, 9> ports = {
-    "headphone",
-    "speaker",
-    "hdmi",
-    "headset",
-    "hands-free",
-    "portable",
-    "car",
-    "hifi",
-    "phone",
+    "headphone", "speaker", "hdmi", "headset", "hands-free", "portable", "car", "hifi", "phone",
 };
 
 const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
@@ -232,11 +228,11 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
 
 auto waybar::modules::Pulseaudio::update() -> void {
   auto format = format_;
-  std::string                 tooltip_format;
+  std::string tooltip_format;
   if (!alt_) {
     std::string format_name = "format";
-    if (monitor_.find("a2dp_sink") != std::string::npos || // PulseAudio
-        monitor_.find("a2dp-sink") != std::string::npos) { // PipeWire
+    if (monitor_.find("a2dp_sink") != std::string::npos ||  // PulseAudio
+        monitor_.find("a2dp-sink") != std::string::npos) {  // PipeWire
       format_name = format_name + "-bluetooth";
       label_.get_style_context()->add_class("bluetooth");
     } else {
@@ -254,8 +250,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
       label_.get_style_context()->remove_class("muted");
       label_.get_style_context()->remove_class("sink-muted");
     }
-    format =
-      config_[format_name].isString() ? config_[format_name].asString() : format;
+    format = config_[format_name].isString() ? config_[format_name].asString() : format;
   }
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
@@ -271,28 +266,22 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
   }
   format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("desc", desc_),
-                                fmt::arg("volume", volume_),
-                                fmt::arg("format_source", format_source),
-                                fmt::arg("source_volume", source_volume_),
-                                fmt::arg("source_desc", source_desc_),
-                                fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
+  label_.set_markup(fmt::format(
+      format, fmt::arg("desc", desc_), fmt::arg("volume", volume_),
+      fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume_),
+      fmt::arg("source_desc", source_desc_), fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
   getState(volume_);
-  
+
   if (tooltipEnabled()) {
     if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
       label_.set_tooltip_text(fmt::format(
-        tooltip_format,
-        fmt::arg("desc", desc_),
-        fmt::arg("volume", volume_),
-        fmt::arg("format_source", format_source),
-        fmt::arg("source_volume", source_volume_),
-        fmt::arg("source_desc", source_desc_),
-        fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
+          tooltip_format, fmt::arg("desc", desc_), fmt::arg("volume", volume_),
+          fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume_),
+          fmt::arg("source_desc", source_desc_),
+          fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
     } else {
       label_.set_tooltip_text(desc_);
     }

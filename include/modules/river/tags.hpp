@@ -5,8 +5,8 @@
 
 #include "AModule.hpp"
 #include "bar.hpp"
-#include "river-status-unstable-v1-client-protocol.h"
 #include "river-control-unstable-v1-client-protocol.h"
+#include "river-status-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar::modules::river {
@@ -29,8 +29,8 @@ class Tags : public waybar::AModule {
   struct wl_seat *seat_;
 
  private:
-  const waybar::Bar &      bar_;
-  Gtk::Box                 box_;
+  const waybar::Bar &bar_;
+  Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
   struct zriver_output_status_v1 *output_status_;
 };

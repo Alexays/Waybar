@@ -64,10 +64,10 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
     }
   }
 
-  Glib::Dispatcher        dp_;
-  std::mutex              mutex_;
+  Glib::Dispatcher dp_;
+  std::mutex mutex_;
   std::queue<arg_tuple_t> queue_;
-  const std::thread::id   main_tid_ = std::this_thread::get_id();
+  const std::thread::id main_tid_ = std::this_thread::get_id();
   // cache functor for signal emission to avoid recreating it on each event
   const slot_t cached_fn_ = make_slot();
 };

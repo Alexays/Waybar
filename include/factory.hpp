@@ -7,10 +7,10 @@
 #include "modules/simpleclock.hpp"
 #endif
 #ifdef HAVE_SWAY
+#include "modules/sway/language.hpp"
 #include "modules/sway/mode.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
-#include "modules/sway/language.hpp"
 #endif
 #ifdef HAVE_WLR
 #include "modules/wlr/taskbar.hpp"
@@ -42,6 +42,9 @@
 #ifdef HAVE_LIBEVDEV
 #include "modules/keyboard_state.hpp"
 #endif
+#ifdef HAVE_UPOWER
+#include "modules/upower/upower.hpp"
+#endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
@@ -58,9 +61,9 @@
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
 #if defined(__linux__)
-#  ifdef WANT_RFKILL
-#    include "modules/bluetooth.hpp"
-#  endif
+#ifdef WANT_RFKILL
+#include "modules/bluetooth.hpp"
+#endif
 #endif
 
 namespace waybar {
@@ -71,7 +74,7 @@ class Factory {
   AModule* makeModule(const std::string& name) const;
 
  private:
-  const Bar&         bar_;
+  const Bar& bar_;
   const Json::Value& config_;
 };
 

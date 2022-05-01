@@ -46,11 +46,11 @@ auto waybar::modules::Cpu::update() -> void {
     store.push_back(fmt::arg("min_frequency", min_frequency));
     store.push_back(fmt::arg("avg_frequency", avg_frequency));
     for (size_t i = 1; i < cpu_usage.size(); ++i) {
-	    auto core_i = i - 1;
-	    auto core_format = fmt::format("usage{}", core_i);
-	    store.push_back(fmt::arg(core_format.c_str(), cpu_usage[i]));
-	    auto icon_format = fmt::format("icon{}", core_i);
-	    store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
+      auto core_i = i - 1;
+      auto core_format = fmt::format("usage{}", core_i);
+      store.push_back(fmt::arg(core_format.c_str(), cpu_usage[i]));
+      auto icon_format = fmt::format("icon{}", core_i);
+      store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
     }
     label_.set_markup(fmt::vformat(format, store));
   }
@@ -62,7 +62,7 @@ auto waybar::modules::Cpu::update() -> void {
 double waybar::modules::Cpu::getCpuLoad() {
   double load[1];
   if (getloadavg(load, 1) != -1) {
-    return load[0];
+    return std::ceil(load[0] * 100.0) / 100.0;
   }
   throw std::runtime_error("Can't get Cpu load");
 }
@@ -73,14 +73,14 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::Cpu::getCpuUsage
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
   std::vector<std::tuple<size_t, size_t>> curr_times = parseCpuinfo();
-  std::string                             tooltip;
-  std::vector<uint16_t>                   usage;
+  std::string tooltip;
+  std::vector<uint16_t> usage;
   for (size_t i = 0; i < curr_times.size(); ++i) {
     auto [curr_idle, curr_total] = curr_times[i];
     auto [prev_idle, prev_total] = prev_times_[i];
     const float delta_idle = curr_idle - prev_idle;
     const float delta_total = curr_total - prev_total;
-    uint16_t    tmp = 100 * (1 - delta_idle / delta_total);
+    uint16_t tmp = 100 * (1 - delta_idle / delta_total);
     if (i == 0) {
       tooltip = fmt::format("Total: {}%", tmp);
     } else {
@@ -95,12 +95,13 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::Cpu::getCpuUsage
 std::tuple<float, float, float> waybar::modules::Cpu::getCpuFrequency() {
   std::vector<float> frequencies = parseCpuFrequencies();
   auto [min, max] = std::minmax_element(std::begin(frequencies), std::end(frequencies));
-  float avg_frequency = std::accumulate(std::begin(frequencies), std::end(frequencies), 0.0) / frequencies.size();
+  float avg_frequency =
+      std::accumulate(std::begin(frequencies), std::end(frequencies), 0.0) / frequencies.size();
 
   // Round frequencies with double decimal precision to get GHz
   float max_frequency = std::ceil(*max / 10.0) / 100.0;
   float min_frequency = std::ceil(*min / 10.0) / 100.0;
   avg_frequency = std::ceil(avg_frequency / 10.0) / 100.0;
 
-  return { max_frequency, min_frequency, avg_frequency };
+  return {max_frequency, min_frequency, avg_frequency};
 }
