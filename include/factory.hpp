@@ -56,15 +56,11 @@
 #endif
 #ifdef HAVE_GIO_UNIX
 #include "modules/inhibitor.hpp"
+#include "modules/bluetooth.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
-#if defined(__linux__)
-#ifdef WANT_RFKILL
-#include "modules/bluetooth.hpp"
-#endif
-#endif
 
 namespace waybar {
 
