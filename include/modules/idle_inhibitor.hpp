@@ -9,6 +9,8 @@
 namespace waybar::modules {
 
 class IdleInhibitor : public ALabel {
+ sigc::connection       timeout_;
+
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   ~IdleInhibitor();

@@ -72,6 +72,29 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
     status = !status;
 
+    if (timeout_.connected()) {
+      /* cancel any already active timeout handler */
+      timeout_.disconnect();
+    }
+
+    if (status && config_["timeout"].isNumeric()) {
+      auto timeoutMins = config_["timeout"].asDouble();
+      int timeoutSecs = timeoutMins * 60;
+
+      timeout_ = Glib::signal_timeout().connect_seconds([]() {
+        /* intentionally not tied to a module instance lifetime
+         * as the output with `this` can be disconnected
+         */
+        spdlog::info("deactivating idle_inhibitor by timeout");
+        status = false;
+        for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+          module->update();
+        }
+        /* disconnect */
+        return false;
+      }, timeoutSecs);
+    }
+
     // Make all other idle inhibitor modules update
     for (auto const& module : waybar::modules::IdleInhibitor::modules) {
       if (module != this) {
