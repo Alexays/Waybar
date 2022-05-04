@@ -70,6 +70,7 @@ class Bluetooth : public ALabel {
   AdapterInfo cur_adapter_;
   std::vector<DeviceInfo> connected_devices_;
   DeviceInfo cur_focussed_device_;
+  std::string device_enumerate_;
 
   std::vector<std::string> device_preference_;
 };

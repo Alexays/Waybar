@@ -114,6 +114,15 @@ Addressed by *bluetooth*
 	typeof: string ++
 	This format is used when the selected connected device, defined by the config option *format-device-preference*, provides is battery percentage. This needs the experimental features of bluez to be enabled to work.
 
+*tooltip-format-enumerate-connected*: ++
+	typeof: string ++
+	This format is used to define how each connected device should be displayed within the *device_enumerate* format replacement in the tooltip menu.
+
+*tooltip-format-enumerate-connected-battery*: ++
+	typeof: string ++
+	This format is used to define how each connected device with a battery should be displayed within the *device_enumerate* format replacement in the tooltip menu. When this config option is not defined, the *tooltip-format-enumerate-connected* format will be used also for the connected devices with a battery.
+
+
 # FORMAT REPLACEMENTS
 
 *{status}*: Status of the bluetooth device.
@@ -134,25 +143,31 @@ Addressed by *bluetooth*
 
 *{device_battery_percentage}*: Battery percentage of the current selected device if available. Only use in the *format-connected-battery* and *tooltip-format-connected-battery*.
 
-# EXAMPLES
+*{device_enumerate}*: Show a list of all connected devices in the tooltip, each on a seperate line. Only applicable in the *connected* state. Define the format of each device with the *tooltip-format-enumerate-connected* or/and *tooltip-format-enumerate-connected-battery* config options.
 
-```
-"bluetooth": {
-	"format": " {status}",
-        "format-connected": " {device_alias}",
-        "format-connected-battery": " {device_battery_percentage}%",
-	"tooltip-format": "{adapter_alias} {adapter_address}"
-}
-```
+# EXAMPLES
 
 ```
 "bluetooth": {
 	// "adapter-alias": "adapter1", // specify the adapter alias (name) if there are more than 1 on the system
 	"format": " {status}",
-        "format-connected": " {num_connections} connected",
-	// TODO: make it so that it shows all connected devices in the tooltip
-        // "tooltip-format-connected": "{device_alias}",
-        // "tooltip-format-connected-battery": "{device_alias} {device_battery_percentage}%",
+	"format-connected": " {num_connections} connected",
+	"tooltip-format": "{adapter_alias}\t{adapter_address}",
+	"tooltip-format-connected": "{adapter_alias}\t{adapter_address}\n\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+	"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%"
+}
+```
+
+```
+"bluetooth": {
+	"format": " {status}",
+        "format-connected": " {device_alias}",
+        "format-connected-battery": " {device_alias} {device_battery_percentage}%",
+        // "format-device-preference": [ "alias1", "alias2" ], // preference list deciding which device to show in format-connected format-connected-battery
+	"tooltip-format": "{adapter_alias}\t{adapter_address}\n\n{num_connections} connected\n\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+	"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%"
 }
 ```
 

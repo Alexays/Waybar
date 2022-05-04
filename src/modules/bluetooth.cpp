@@ -1,6 +1,7 @@
 #include "modules/bluetooth.hpp"
 
 #include <algorithm>
+#include <sstream>
 #include <spdlog/spdlog.h>
 #include <fmt/format.h>
 
@@ -199,8 +200,32 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0))
         ));
 
-  // TODO: make possible to show information about all connected devices in the tooltip
   if (tooltipEnabled()) {
+    bool tooltip_enumerate_connections_ = config_["tooltip-format-enumerate-connected"].isString();
+    bool tooltip_enumerate_connections_battery_ = config_["tooltip-format-enumerate-connected-battery"].isString();
+    if (tooltip_enumerate_connections_ || tooltip_enumerate_connections_battery_) {
+      std::stringstream ss;
+      for (DeviceInfo dev : connected_devices_) {
+        if (tooltip_enumerate_connections_battery_ && dev.battery_percentage.has_value()) {
+          ss << "\n";
+          ss << fmt::format(config_["tooltip-format-enumerate-connected-battery"].asString(),
+                fmt::arg("device_address", dev.address),
+                fmt::arg("device_address_type", dev.address_type),
+                fmt::arg("device_alias", dev.alias),
+                fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)));
+        } else if (tooltip_enumerate_connections_) {
+          ss << "\n";
+          ss << fmt::format(config_["tooltip-format-enumerate-connected"].asString(),
+                fmt::arg("device_address", dev.address),
+                fmt::arg("device_address_type", dev.address_type),
+                fmt::arg("device_alias", dev.alias));
+        }
+      }
+      device_enumerate_ = ss.str();
+      if (!device_enumerate_.empty()) {
+        device_enumerate_.erase(0, 1);
+      }
+    }
     label_.set_tooltip_text(fmt::format(tooltip_format,
           fmt::arg("status", state_),
           fmt::arg("num_connections", connected_devices_.size()),
@@ -210,7 +235,8 @@ auto waybar::modules::Bluetooth::update() -> void {
           fmt::arg("device_address", cur_focussed_device_.address),
           fmt::arg("device_address_type", cur_focussed_device_.address_type),
           fmt::arg("device_alias", cur_focussed_device_.alias),
-          fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0))
+          fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
+          fmt::arg("device_enumerate", device_enumerate_)
           ));
   }
 
