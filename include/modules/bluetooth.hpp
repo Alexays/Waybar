@@ -12,7 +12,7 @@
 namespace waybar::modules {
 
 class Bluetooth : public ALabel {
-  struct AdapterInfo
+  struct ControllerInfo
   {
     std::string path;
     std::string address;
@@ -29,7 +29,7 @@ class Bluetooth : public ALabel {
   struct DeviceInfo
   {
     std::string path;
-    std::string paired_adapter;
+    std::string paired_controller;
     std::string address;
     std::string address_type;
     // std::optional<std::string> name; // just use alias instead
@@ -55,9 +55,9 @@ class Bluetooth : public ALabel {
 
   auto getDeviceBatteryPercentage(GDBusObject*) -> std::optional<unsigned char>;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
-  auto getAdapterProperties(GDBusObject*, AdapterInfo&) -> bool;
+  auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;
 
-  auto findCurAdapter(AdapterInfo&) -> bool;
+  auto findCurController(ControllerInfo&) -> bool;
   auto findConnectedDevices(const std::string&, std::vector<DeviceInfo>&) -> void;
 
 
@@ -67,7 +67,7 @@ class Bluetooth : public ALabel {
   const std::unique_ptr<GDBusObjectManager, void (*)(GDBusObjectManager*)> manager_;
 
   std::string state_;
-  AdapterInfo cur_adapter_;
+  ControllerInfo cur_controller_;
   std::vector<DeviceInfo> connected_devices_;
   DeviceInfo cur_focussed_device_;
   std::string device_enumerate_;

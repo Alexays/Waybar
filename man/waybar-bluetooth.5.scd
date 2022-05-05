@@ -6,15 +6,18 @@ waybar - bluetooth module
 
 # DESCRIPTION
 
-The *bluetooth* module displays information about the bluetooth adapter and its connections.
+The *bluetooth* module displays information about the bluetooth controller and its connections.
 
 # CONFIGURATION
 
 Addressed by *bluetooth*
 
-*adapter-alias*: ++
+*controller*: ++
 	typeof: string ++
-	Use the adapter with the defined alias (name). Otherwise select a random adapter to display. Recommended to define when there is more than 1 adapter available to the system (use ```bluetoothctl show``` to show all available adapters).
+	Use the controller with the defined alias (name). Otherwise select a
+	random controller to display. Recommended to define when there is more
+	than 1 controller available to the system (use ```bluetoothctl show```
+	to show all available controller).
 
 *format-device-preference*: ++
 	typeof: array ++
@@ -27,19 +30,19 @@ Addressed by *bluetooth*
 
 *format-disabled*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is disabled.
+	This format is used when the displayed controller is disabled.
 
 *format-off*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is turned off.
+	This format is used when the displayed controller is turned off.
 
 *format-on*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is turned on with no devices connected.
+	This format is used when the displayed controller is turned on with no devices connected.
 
 *format-connected*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is connected to at least 1 device.
+	This format is used when the displayed controller is connected to at least 1 device.
 
 *format-connected-battery*: ++
 	typeof: string ++
@@ -96,19 +99,19 @@ Addressed by *bluetooth*
 
 *tooltip-format-disabled*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is disabled.
+	This format is used when the displayed controller is disabled.
 
 *tooltip-format-off*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is turned off.
+	This format is used when the displayed controller is turned off.
 
 *tooltip-format-on*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is turned on with no devices connected.
+	This format is used when the displayed controller is turned on with no devices connected.
 
 *tooltip-format-connected*: ++
 	typeof: string ++
-	This format is used when the displayed adapter is connected to at least 1 device.
+	This format is used when the displayed controller is connected to at least 1 device.
 
 *tooltip-format-connected-battery*: ++
 	typeof: string ++
@@ -127,13 +130,14 @@ Addressed by *bluetooth*
 
 *{status}*: Status of the bluetooth device.
 
-*{num_connections}*: Number of connections the selected adapter has.
+*{num_connections}*: Number of connections the selected controller has.
 
-*{adapter_address}*: Address of the selected adapter.
+*{controller_address}*: Address of the selected controller.
 
-*{adapter_address_type}*: Address type of the selected adapter.
+*{controller_address_type}*: Address type of the selected controller.
 
-*{adapter_alias}*: Alias of the selected adapter. By default equal to the *adapter_name* but can be changed by the user when there are conflicts.
+*{controller_alias}*: Alias of the selected controller. By default equal to the
+*controller_name* but can be changed by the user when there are conflicts.
 
 *{device_address}*: Address of the current selected selected connected device.
 
@@ -149,11 +153,11 @@ Addressed by *bluetooth*
 
 ```
 "bluetooth": {
-	// "adapter-alias": "adapter1", // specify the adapter alias (name) if there are more than 1 on the system
+	// "controller": "controller1", // specify the controller alias (name) if there are more than 1 on the system
 	"format": " {status}",
 	"format-connected": " {num_connections} connected",
-	"tooltip-format": "{adapter_alias}\t{adapter_address}",
-	"tooltip-format-connected": "{adapter_alias}\t{adapter_address}\n\n{device_enumerate}",
+	"tooltip-format": "{controller_alias}\t{controller_address}",
+	"tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
 	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
 	"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%"
 }
@@ -165,7 +169,7 @@ Addressed by *bluetooth*
         "format-connected": " {device_alias}",
         "format-connected-battery": " {device_alias} {device_battery_percentage}%",
         // "format-device-preference": [ "alias1", "alias2" ], // preference list deciding which device to show in format-connected format-connected-battery
-	"tooltip-format": "{adapter_alias}\t{adapter_address}\n\n{num_connections} connected\n\n{device_enumerate}",
+	"tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
 	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
 	"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%"
 }
