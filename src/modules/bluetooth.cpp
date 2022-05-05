@@ -206,22 +206,18 @@ auto waybar::modules::Bluetooth::update() -> void {
     if (tooltip_enumerate_connections_ || tooltip_enumerate_connections_battery_) {
       std::stringstream ss;
       for (DeviceInfo dev : connected_devices_) {
-        if (tooltip_enumerate_connections_battery_ && dev.battery_percentage.has_value()) {
+        if ((tooltip_enumerate_connections_battery_ && dev.battery_percentage.has_value()) || tooltip_enumerate_connections_) {
           ss << "\n";
-          ss << fmt::format(config_["tooltip-format-enumerate-connected-battery"].asString(),
+          std::string enumerate_format = (tooltip_enumerate_connections_battery_ && dev.battery_percentage.has_value()) ? config_["tooltip-format-enumerate-connected-battery"].asString() : config_["tooltip-format-enumerate-connected"].asString();
+          ss << fmt::format(enumerate_format,
                 fmt::arg("device_address", dev.address),
                 fmt::arg("device_address_type", dev.address_type),
                 fmt::arg("device_alias", dev.alias),
                 fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)));
-        } else if (tooltip_enumerate_connections_) {
-          ss << "\n";
-          ss << fmt::format(config_["tooltip-format-enumerate-connected"].asString(),
-                fmt::arg("device_address", dev.address),
-                fmt::arg("device_address_type", dev.address_type),
-                fmt::arg("device_alias", dev.alias));
         }
       }
       device_enumerate_ = ss.str();
+      // don't start the connected devices text with a new line
       if (!device_enumerate_.empty()) {
         device_enumerate_.erase(0, 1);
       }
