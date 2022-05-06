@@ -55,8 +55,8 @@
 #include "modules/sndio.hpp"
 #endif
 #ifdef HAVE_GIO_UNIX
-#include "modules/inhibitor.hpp"
 #include "modules/bluetooth.hpp"
+#include "modules/inhibitor.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"

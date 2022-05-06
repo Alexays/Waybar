@@ -101,11 +101,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
 #endif
 #ifdef HAVE_GIO_UNIX
-    if (ref == "inhibitor") {
-      return new waybar::modules::Inhibitor(id, bar_, config_[name]);
-    }
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
+    }
+    if (ref == "inhibitor") {
+      return new waybar::modules::Inhibitor(id, bar_, config_[name]);
     }
 #endif
     if (ref == "temperature") {

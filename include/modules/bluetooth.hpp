@@ -5,15 +5,15 @@
 #include "util/rfkill.hpp"
 #endif
 #include <gio/gio.h>
-#include <vector>
-#include <string>
+
 #include <optional>
+#include <string>
+#include <vector>
 
 namespace waybar::modules {
 
 class Bluetooth : public ALabel {
-  struct ControllerInfo
-  {
+  struct ControllerInfo {
     std::string path;
     std::string address;
     std::string address_type;
@@ -26,8 +26,7 @@ class Bluetooth : public ALabel {
   };
 
   // NOTE: there are some properties that not all devices provide
-  struct DeviceInfo
-  {
+  struct DeviceInfo {
     std::string path;
     std::string paired_controller;
     std::string address;
@@ -50,8 +49,11 @@ class Bluetooth : public ALabel {
   auto update() -> void;
 
  private:
-  static auto onInterfaceAddedOrRemoved(GDBusObjectManager*, GDBusObject*, GDBusInterface*, gpointer) -> void;
-  static auto onInterfaceProxyPropertiesChanged(GDBusObjectManagerClient*, GDBusObjectProxy*, GDBusProxy*, GVariant*, const gchar* const*, gpointer) -> void;
+  static auto onInterfaceAddedOrRemoved(GDBusObjectManager*, GDBusObject*, GDBusInterface*,
+                                        gpointer) -> void;
+  static auto onInterfaceProxyPropertiesChanged(GDBusObjectManagerClient*, GDBusObjectProxy*,
+                                                GDBusProxy*, GVariant*, const gchar* const*,
+                                                gpointer) -> void;
 
   auto getDeviceBatteryPercentage(GDBusObject*) -> std::optional<unsigned char>;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
@@ -59,7 +61,6 @@ class Bluetooth : public ALabel {
 
   auto findCurController(ControllerInfo&) -> bool;
   auto findConnectedDevices(const std::string&, std::vector<DeviceInfo>&) -> void;
-
 
 #ifdef WANT_RFKILL
   util::Rfkill rfkill_;
