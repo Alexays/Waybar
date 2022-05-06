@@ -6,7 +6,7 @@ waybar - bluetooth module
 
 # DESCRIPTION
 
-The *bluetooth* module displays information about the bluetooth controller and its connections.
+The *bluetooth* module displays information about a bluetooth controller and its connections.
 
 # CONFIGURATION
 
@@ -14,14 +14,12 @@ Addressed by *bluetooth*
 
 *controller*: ++
 	typeof: string ++
-	Use the controller with the defined alias (name). Otherwise select a
-	random controller to display. Recommended to define when there is more
-	than 1 controller available to the system (use ```bluetoothctl show```
-	to show all available controller).
+	Use the controller with the defined alias. Otherwise a random controller is used. Recommended to define when there is more than 1 controller available to the system.
 
 *format-device-preference*: ++
 	typeof: array ++
-	A ranking of bluetooth devices, addressed by their alias (name). The order is *first displayed* to *last displayed*. If this config option is not defined or none of the devices in the list are connected, it will fall back to showing the last connected device. A devices alias can be manually changed using the ```bluetoothctl set-alias``` command.
+	A ranking of bluetooth devices, addressed by their alias. The order is from *first displayed* to *last displayed*. ++
+	If this config option is not defined or none of the devices in the list are connected, it will fall back to showing the last connected device.
 
 *format*: ++
 	typeof: string  ++
@@ -43,10 +41,6 @@ Addressed by *bluetooth*
 *format-connected*: ++
 	typeof: string ++
 	This format is used when the displayed controller is connected to at least 1 device.
-
-*format-connected-battery*: ++
-	typeof: string ++
-	This format is used when the selected connected device, defined by the config option *format-device-preference*, provides is battery percentage. This needs the experimental features of bluez to be enabled to work.
 
 *rotate*: ++
 	typeof: integer ++
@@ -113,65 +107,77 @@ Addressed by *bluetooth*
 	typeof: string ++
 	This format is used when the displayed controller is connected to at least 1 device.
 
-*tooltip-format-connected-battery*: ++
-	typeof: string ++
-	This format is used when the selected connected device, defined by the config option *format-device-preference*, provides is battery percentage. This needs the experimental features of bluez to be enabled to work.
-
 *tooltip-format-enumerate-connected*: ++
 	typeof: string ++
 	This format is used to define how each connected device should be displayed within the *device_enumerate* format replacement in the tooltip menu.
-
-*tooltip-format-enumerate-connected-battery*: ++
-	typeof: string ++
-	This format is used to define how each connected device with a battery should be displayed within the *device_enumerate* format replacement in the tooltip menu. When this config option is not defined, the *tooltip-format-enumerate-connected* format will be used also for the connected devices with a battery.
-
 
 # FORMAT REPLACEMENTS
 
 *{status}*: Status of the bluetooth device.
 
-*{num_connections}*: Number of connections the selected controller has.
+*{num_connections}*: Number of connections the displayed controller has.
 
-*{controller_address}*: Address of the selected controller.
+*{controller_address}*: Address of the displayed controller.
 
-*{controller_address_type}*: Address type of the selected controller.
+*{controller_address_type}*: Address type of the displayed controller.
 
-*{controller_alias}*: Alias of the selected controller. By default equal to the
-*controller_name* but can be changed by the user when there are conflicts.
+*{controller_alias}*: Alias of the displayed controller.
 
-*{device_address}*: Address of the current selected selected connected device.
+*{device_address}*: Address of the displayed device.
 
-*{device_address_type}*: Address type of the current selected selected connected device.
+*{device_address_type}*: Address type of the displayed device.
 
-*{device_alias}*: Alias of the current selected connected device. By default equal to the *device_name* but can be changed by the user when there are conflicts.
+*{device_alias}*: Alias of the displayed device.
 
-*{device_battery_percentage}*: Battery percentage of the current selected device if available. Only use in the *format-connected-battery* and *tooltip-format-connected-battery*.
+*{device_enumerate}*: Show a list of all connected devices, each on a seperate line. Define the format of each device with the *tooltip-format-enumerate-connected* ++
+and/or *tooltip-format-enumerate-connected-battery* config options. Can only be used in the tooltip related format options.
 
-*{device_enumerate}*: Show a list of all connected devices in the tooltip, each on a seperate line. Only applicable in the *connected* state. Define the format of each device with the *tooltip-format-enumerate-connected* or/and *tooltip-format-enumerate-connected-battery* config options.
+# EXPERIMENTAL BATTERY PERCENTAGE FEATURE
+
+At the time of writing, the experimental features of BlueZ need to be turned on, for the battery percentage options listed below to work.
+
+## FORMAT REPLACEMENT
+
+*{device_battery_percentage}*: Battery percentage of the displayed device if available. Use only in the config options defined below.
+
+## CONFIGURATION
+
+*format-connected-battery*: ++
+	typeof: string ++
+	This format is used when the displayed device provides its battery percentage.
+
+*tooltip-format-connected-battery*: ++
+	typeof: string ++
+	This format is used when the displayed device provides its battery percentage.
+
+*tooltip-format-enumerate-connected-battery*: ++
+	typeof: string ++
+	This format is used to define how each connected device with a battery should be displayed within the *device_enumerate* format replacement option. ++
+	When this config option is not defined, it will fall back on the *tooltip-format-enumerate-connected* config option.
 
 # EXAMPLES
 
 ```
 "bluetooth": {
-	// "controller": "controller1", // specify the controller alias (name) if there are more than 1 on the system
+	// "controller": "controller1", // specify the alias of the controller if there are more than 1 on the system
 	"format": " {status}",
 	"format-connected": " {num_connections} connected",
-	"tooltip-format": "{controller_alias}\t{controller_address}",
-	"tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{device_enumerate}",
-	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
-	"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%"
+	"tooltip-format": "{controller_alias}\\t{controller_address}",
+	"tooltip-format-connected": "{controller_alias}\\t{controller_address}\\n\\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\\t{device_address}"
 }
 ```
 
 ```
 "bluetooth": {
 	"format": " {status}",
-        "format-connected": " {device_alias}",
-        "format-connected-battery": " {device_alias} {device_battery_percentage}%",
-        // "format-device-preference": [ "alias1", "alias2" ], // preference list deciding which device to show in format-connected format-connected-battery
-	"tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
-	"tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
-	"tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%"
+	"format-connected": " {device_alias}",
+	"format-connected-battery": " {device_alias} {device_battery_percentage}%",
+	// "format-device-preference": [ "device1", "device2" ], // preference list deciding the displayed device
+	"tooltip-format": "{controller_alias}\\t{controller_address}\\n\\n{num_connections} connected",
+	"tooltip-format-connected": "{controller_alias}\\t{controller_address}\\n\\n{num_connections} connected\\n\\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\\t{device_address}",
+	"tooltip-format-enumerate-connected-battery": "{device_alias}\\t{device_address}\\t{device_battery_percentage}%"
 }
 ```
 

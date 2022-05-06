@@ -40,7 +40,7 @@ class Bluetooth : public ALabel {
     bool blocked;
     bool connected;
     bool services_resolved;
-    // TODO: make experimental in waybar as it is also a experimental feature in bluez
+    // NOTE: experimental feature in bluez
     std::optional<unsigned char> battery_percentage;
   };
 
