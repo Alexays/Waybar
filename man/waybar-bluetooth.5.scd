@@ -161,6 +161,7 @@ At the time of writing, the experimental features of BlueZ need to be turned on,
 "bluetooth": {
 	// "controller": "controller1", // specify the alias of the controller if there are more than 1 on the system
 	"format": " {status}",
+	"format-disabled": "", // an empty format will hide the module
 	"format-connected": " {num_connections} connected",
 	"tooltip-format": "{controller_alias}\\t{controller_address}",
 	"tooltip-format-connected": "{controller_alias}\\t{controller_address}\\n\\n{device_enumerate}",

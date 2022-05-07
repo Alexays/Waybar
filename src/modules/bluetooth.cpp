@@ -171,6 +171,8 @@ auto waybar::modules::Bluetooth::update() -> void {
     tooltip_format = config_["tooltip-format"].asString();
   }
 
+  format_.empty() ? event_box_.hide() : event_box_.show();
+
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
     if (in_next_state && !label_.get_style_context()->has_class(style_class)) {
       label_.get_style_context()->add_class(style_class);
