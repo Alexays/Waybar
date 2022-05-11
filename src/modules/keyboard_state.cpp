@@ -103,12 +103,15 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       dev_(nullptr) {
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
+    numlock_label_.get_style_context()->add_class("numlock");
     box_.pack_end(numlock_label_, false, false, 0);
   }
   if (config_["capslock"].asBool()) {
+    capslock_label_.get_style_context()->add_class("capslock");
     box_.pack_end(capslock_label_, false, false, 0);
   }
   if (config_["scrolllock"].asBool()) {
+    scrolllock_label_.get_style_context()->add_class("scrolllock");
     box_.pack_end(scrolllock_label_, false, false, 0);
   }
   if (!id.empty()) {
