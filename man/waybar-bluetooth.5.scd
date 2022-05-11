@@ -6,21 +6,41 @@ waybar - bluetooth module
 
 # DESCRIPTION
 
-The *bluetooth* module displays information about the status of the device's bluetooth device.
+The *bluetooth* module displays information about a bluetooth controller and its connections.
 
 # CONFIGURATION
 
 Addressed by *bluetooth*
 
+*controller*: ++
+	typeof: string ++
+	Use the controller with the defined alias. Otherwise a random controller is used. Recommended to define when there is more than 1 controller available to the system.
+
+*format-device-preference*: ++
+	typeof: array ++
+	A ranking of bluetooth devices, addressed by their alias. The order is from *first displayed* to *last displayed*. ++
+	If this config option is not defined or none of the devices in the list are connected, it will fall back to showing the last connected device.
+
 *format*: ++
 	typeof: string  ++
-	default: *{icon}* ++
+	default: * {status}* ++
 	The format, how information should be displayed. This format is used when other formats aren't specified.
 
-*format-icons*: ++
-	typeof: array/object ++
-	Based on the device status, the corresponding icon gets selected. ++
-	The order is *low* to *high*. Or by the state if it is an object.
+*format-disabled*: ++
+	typeof: string ++
+	This format is used when the displayed controller is disabled.
+
+*format-off*: ++
+	typeof: string ++
+	This format is used when the displayed controller is turned off.
+
+*format-on*: ++
+	typeof: string ++
+	This format is used when the displayed controller is turned on with no devices connected.
+
+*format-connected*: ++
+	typeof: string ++
+	This format is used when the displayed controller is connected to at least 1 device.
 
 *rotate*: ++
 	typeof: integer ++
@@ -71,23 +91,94 @@ Addressed by *bluetooth*
 	typeof: string ++
 	The format, how information should be displayed in the tooltip. This format is used when other formats aren't specified.
 
+*tooltip-format-disabled*: ++
+	typeof: string ++
+	This format is used when the displayed controller is disabled.
+
+*tooltip-format-off*: ++
+	typeof: string ++
+	This format is used when the displayed controller is turned off.
+
+*tooltip-format-on*: ++
+	typeof: string ++
+	This format is used when the displayed controller is turned on with no devices connected.
+
+*tooltip-format-connected*: ++
+	typeof: string ++
+	This format is used when the displayed controller is connected to at least 1 device.
+
+*tooltip-format-enumerate-connected*: ++
+	typeof: string ++
+	This format is used to define how each connected device should be displayed within the *device_enumerate* format replacement in the tooltip menu.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: Status of the bluetooth device.
 
-*{icon}*: Icon, as defined in *format-icons*.
+*{num_connections}*: Number of connections the displayed controller has.
+
+*{controller_address}*: Address of the displayed controller.
+
+*{controller_address_type}*: Address type of the displayed controller.
+
+*{controller_alias}*: Alias of the displayed controller.
+
+*{device_address}*: Address of the displayed device.
+
+*{device_address_type}*: Address type of the displayed device.
+
+*{device_alias}*: Alias of the displayed device.
+
+*{device_enumerate}*: Show a list of all connected devices, each on a seperate line. Define the format of each device with the *tooltip-format-enumerate-connected* ++
+and/or *tooltip-format-enumerate-connected-battery* config options. Can only be used in the tooltip related format options.
+
+# EXPERIMENTAL BATTERY PERCENTAGE FEATURE
+
+At the time of writing, the experimental features of BlueZ need to be turned on, for the battery percentage options listed below to work.
+
+## FORMAT REPLACEMENT
+
+*{device_battery_percentage}*: Battery percentage of the displayed device if available. Use only in the config options defined below.
+
+## CONFIGURATION
+
+*format-connected-battery*: ++
+	typeof: string ++
+	This format is used when the displayed device provides its battery percentage.
+
+*tooltip-format-connected-battery*: ++
+	typeof: string ++
+	This format is used when the displayed device provides its battery percentage.
+
+*tooltip-format-enumerate-connected-battery*: ++
+	typeof: string ++
+	This format is used to define how each connected device with a battery should be displayed within the *device_enumerate* format replacement option. ++
+	When this config option is not defined, it will fall back on the *tooltip-format-enumerate-connected* config option.
 
 # EXAMPLES
 
 ```
 "bluetooth": {
-	"format": "{icon}",
-	"format-alt": "bluetooth: {status}",
-	"format-icons": {
-		"enabled": "",
-		"disabled": ""
-	},
-	"tooltip-format": "{}"
+	// "controller": "controller1", // specify the alias of the controller if there are more than 1 on the system
+	"format": " {status}",
+	"format-disabled": "", // an empty format will hide the module
+	"format-connected": " {num_connections} connected",
+	"tooltip-format": "{controller_alias}\\t{controller_address}",
+	"tooltip-format-connected": "{controller_alias}\\t{controller_address}\\n\\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\\t{device_address}"
+}
+```
+
+```
+"bluetooth": {
+	"format": " {status}",
+	"format-connected": " {device_alias}",
+	"format-connected-battery": " {device_alias} {device_battery_percentage}%",
+	// "format-device-preference": [ "device1", "device2" ], // preference list deciding the displayed device
+	"tooltip-format": "{controller_alias}\\t{controller_address}\\n\\n{num_connections} connected",
+	"tooltip-format-connected": "{controller_alias}\\t{controller_address}\\n\\n{num_connections} connected\\n\\n{device_enumerate}",
+	"tooltip-format-enumerate-connected": "{device_alias}\\t{device_address}",
+	"tooltip-format-enumerate-connected-battery": "{device_alias}\\t{device_address}\\t{device_battery_percentage}%"
 }
 ```
 
@@ -95,3 +186,9 @@ Addressed by *bluetooth*
 
 - *#bluetooth*
 - *#bluetooth.disabled*
+- *#bluetooth.off*
+- *#bluetooth.on*
+- *#bluetooth.connected*
+- *#bluetooth.discoverable*
+- *#bluetooth.discovering*
+- *#bluetooth.pairable*

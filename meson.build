@@ -253,16 +253,14 @@ endif
 if (giounix.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_GIO_UNIX', language: 'cpp')
     src_files += 'src/modules/inhibitor.cpp'
+    src_files += 'src/modules/bluetooth.cpp'
 endif
 
-if get_option('rfkill').enabled()
-    if is_linux
-        add_project_arguments('-DWANT_RFKILL', language: 'cpp')
-        src_files += files(
-            'src/modules/bluetooth.cpp',
-            'src/util/rfkill.cpp'
-        )
-    endif
+if get_option('rfkill').enabled() and is_linux
+    add_project_arguments('-DWANT_RFKILL', language: 'cpp')
+    src_files += files(
+        'src/util/rfkill.cpp'
+    )
 endif
 
 if tz_dep.found()
