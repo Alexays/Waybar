@@ -69,7 +69,14 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   if (config_["locale"].isString()) {
     locale_ = std::locale(config_["locale"].asString());
   } else {
-    locale_ = std::locale("");
+    char* sysLocale{getenv("LC_TIME")};
+    try {
+      locale_ = sysLocale ? std::locale(sysLocale) : std::locale("");
+    }
+    catch(std::runtime_error const& localeErr) {
+      spdlog::warn(localeErr.what());
+      locale_ = std::locale();
+    }
   }
 
   thread_ = [this] {
