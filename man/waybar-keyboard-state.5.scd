@@ -79,4 +79,9 @@ The following *format-icons* can be set.
 - *#keyboard-state*
 - *#keyboard-state label*
 - *#keyboard-state label.locked*
-
+- *#keyboard-state label.numlock*
+- *#keyboard-state label.numlock.locked*
+- *#keyboard-state label.capslock*
+- *#keyboard-state label.capslock.locked*
+- *#keyboard-state label.scrolllock*
+- *#keyboard-state label.scrolllock.locked*
