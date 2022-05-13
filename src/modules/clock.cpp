@@ -232,7 +232,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     /*Print weeks on the right when the endings with spaces*/
     if (ws == 2 && d == last_day) {
       empty_days = 6 - (wd.c_encoding() - first_dow.c_encoding());
-      if(empty_days > 0) {
+      if (empty_days > 0) {
         os << std::string(empty_days * 3 + 1, ' ');
         print_iso_weeknum(os, wn);
       }
