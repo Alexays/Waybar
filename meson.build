@@ -204,6 +204,11 @@ if libnl.found() and libnlgen.found()
     src_files += 'src/modules/network.cpp'
 endif
 
+if (giounix.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_GAMEMODE', language: 'cpp')
+    src_files += 'src/modules/gamemode.cpp'
+endif
+
 if (upower_glib.found() and giounix.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
     src_files += 'src/modules/upower/upower.cpp'

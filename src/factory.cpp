@@ -12,6 +12,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Battery(id, config_[name]);
     }
 #endif
+#ifdef HAVE_GAMEMODE
+    if (ref == "gamemode") {
+      return new waybar::modules::Gamemode(id, config_[name]);
+    }
+#endif
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
       return new waybar::modules::upower::UPower(id, config_[name]);
