@@ -83,7 +83,7 @@ void waybar::modules::Battery::refreshBatteries() {
       if (!fs::is_directory(node)) {
         continue;
       }
-      auto dir_name = node.path().filename().string();
+      auto dir_name = node.path().filename();
       auto bat_defined = config_["bat"].isString();
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
           (fs::exists(node.path() / "capacity") || fs::exists(node.path() / "charge_now")) &&
