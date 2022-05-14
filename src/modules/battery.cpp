@@ -20,7 +20,6 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
     throw std::runtime_error("Could not watch for battery plug/unplug");
   }
 
-  refreshBatteries();
   worker();
 }
 
@@ -73,7 +72,6 @@ void waybar::modules::Battery::worker() {
 
 void waybar::modules::Battery::refreshBatteries() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
-
   // Mark existing list of batteries as not necessarily found
   std::map<fs::path, bool> check_map;
   for (auto const& bat : batteries_) {
@@ -85,7 +83,7 @@ void waybar::modules::Battery::refreshBatteries() {
       if (!fs::is_directory(node)) {
         continue;
       }
-      auto dir_name = node.path().filename();
+      auto dir_name = node.path().filename().string();
       auto bat_defined = config_["bat"].isString();
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
           (fs::exists(node.path() / "capacity") || fs::exists(node.path() / "charge_now")) &&
@@ -117,12 +115,14 @@ void waybar::modules::Battery::refreshBatteries() {
   } catch (fs::filesystem_error& e) {
     throw std::runtime_error(e.what());
   }
-  if (batteries_.empty()) {
+  if (warnFirstTime_ && batteries_.empty()) {
     if (config_["bat"].isString()) {
-      spdlog::warn("No battery named {}", config_["bat"].asString());
+      spdlog::warn("No battery named {0}", config_["bat"].asString());
     } else {
       spdlog::warn("No batteries.");
     }
+
+    warnFirstTime_ = false;
   }
 
   // Remove any batteries that are no longer present and unwatch them
