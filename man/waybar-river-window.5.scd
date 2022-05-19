@@ -56,4 +56,4 @@ Addressed by *river/window*
 # STYLE
 
 - *#window*
-- *window#.focused* Applied when the output this module's bar belongs to is focused.
+- *#window.focused* Applied when the output this module's bar belongs to is focused.
