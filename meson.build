@@ -197,6 +197,7 @@ endif
 if true
     add_project_arguments('-DHAVE_RIVER', language: 'cpp')
     src_files += 'src/modules/river/tags.cpp'
+    src_files += 'src/modules/river/window.cpp'
 endif
 
 if libnl.found() and libnlgen.found()
