@@ -18,6 +18,7 @@
 #endif
 #ifdef HAVE_RIVER
 #include "modules/river/tags.hpp"
+#include "modules/river/window.hpp"
 #endif
 #if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
