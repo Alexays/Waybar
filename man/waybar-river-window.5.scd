@@ -1,0 +1,31 @@
+waybar-river-window(5)
+
+# NAME
+
+waybar - river window module
+
+# DESCRIPTION
+
+The *window* module displays the title of the currently focused window in river
+
+# CONFIGURATION
+
+Addressed by *river/window*
+
+*format*: ++
+	typeof: string ++
+	default: {} ++
+	The format, how information should be displayed. On {} data gets inserted.
+
+# EXAMPLES
+
+```
+"river/window": {
+    "format": "{}"
+}
+```
+
+# STYLE
+
+- *#window*
+- *window#.focused* Applied when the output this module's bar belongs to is focused.

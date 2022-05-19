@@ -1,14 +1,11 @@
 #include "modules/river/window.hpp"
 
-#include <gtkmm/button.h>
-#include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 #include <wayland-client.h>
 
 #include <algorithm>
 
 #include "client.hpp"
-#include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar::modules::river {
 
@@ -99,11 +96,11 @@ void Window::handle_focused_view(const char *title) {
   // last focused view, and will get blank labels until they are brought into focus at least once.
   if (focused_output_ != output_) return;
 
-  if (std::strcmp(title, "") == 0) {
-    label_.hide();  // hide empty labels
+  if (std::strcmp(title, "") == 0 || format_.empty()) {
+    label_.hide();  // hide empty labels or labels with empty format
   } else {
     label_.show();
-    label_.set_markup(title);
+    label_.set_markup(fmt::format(format_, title));
   }
 
   ALabel::update();
