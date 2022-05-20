@@ -94,6 +94,10 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::Cpu::getCpuUsage
 
 std::tuple<float, float, float> waybar::modules::Cpu::getCpuFrequency() {
   std::vector<float> frequencies = parseCpuFrequencies();
+  if (frequencies.empty())
+  {
+    return {0.f, 0.f, 0.f};
+  }
   auto [min, max] = std::minmax_element(std::begin(frequencies), std::end(frequencies));
   float avg_frequency =
       std::accumulate(std::begin(frequencies), std::end(frequencies), 0.0) / frequencies.size();
