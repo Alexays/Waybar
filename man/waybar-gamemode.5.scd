@@ -81,8 +81,8 @@ Feral Gamemode optimizations.
 	"hide-not-running": true,
 	"use-icon": true,
 	"icon-name": "input-gaming-symbolic",
-	"icon-spacing": 6,
-	"icon-size": 30,
+	"icon-spacing": 4,
+	"icon-size": 20,
 	"tooltip": true,
 	"tooltip-format": "Games running: {count}"
 }
