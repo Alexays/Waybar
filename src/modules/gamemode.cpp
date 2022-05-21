@@ -35,8 +35,8 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   box_.set_has_tooltip(tooltip);
 
   // Hide when game count is 0
-  if (config_["not-running-hide"].isBool()) {
-    notRunningHide = config_["not-running-hide"].asBool();
+  if (config_["hide-not-running"].isBool()) {
+    hideNotRunning = config_["hide-not-running"].asBool();
   }
 
   // Icon Name
@@ -186,7 +186,7 @@ bool Gamemode::handleToggle(GdkEventButton* const& event) {
 
 auto Gamemode::update() -> void {
   // Don't update widget if the Gamemode service isn't running
-  if (!gamemodeRunning || (gameCount <= 0 && notRunningHide)) {
+  if (!gamemodeRunning || (gameCount <= 0 && hideNotRunning)) {
     event_box_.set_visible(false);
     return;
   }

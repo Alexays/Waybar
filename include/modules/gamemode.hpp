@@ -45,7 +45,7 @@ class Gamemode : public AModule {
   std::string format_alt = DEFAULT_FORMAT_ALT;
   std::string glyph = DEFAULT_GLYPH;
   bool tooltip = true;
-  bool notRunningHide = true;
+  bool hideNotRunning = true;
   bool useIcon = true;
   uint iconSize = 20;
   uint iconSpacing = 4;
