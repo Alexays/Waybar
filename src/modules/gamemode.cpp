@@ -34,6 +34,11 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   }
   box_.set_has_tooltip(tooltip);
 
+  // Tooltip Format
+  if (config_["tooltip-format"].isString()) {
+    tooltip_format = config_["tooltip-format"].asString();
+  }
+
   // Hide when game count is 0
   if (config_["hide-not-running"].isBool()) {
     hideNotRunning = config_["hide-not-running"].asBool();
@@ -208,9 +213,8 @@ auto Gamemode::update() -> void {
 
   // Tooltip
   if (tooltip) {
-    std::string text = "Games running: ";
-    box_.set_tooltip_text(text + std::to_string(gameCount));
-    box_.set_has_tooltip(gameCount > 0);
+    std::string text = fmt::format(tooltip_format, fmt::arg("count", gameCount));
+    box_.set_tooltip_text(text);
   }
 
   // Label format

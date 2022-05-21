@@ -25,6 +25,7 @@ class Gamemode : public AModule {
   const std::string DEFAULT_ICON_NAME = "input-gaming-symbolic";
   const std::string DEFAULT_FORMAT = "{glyph}";
   const std::string DEFAULT_FORMAT_ALT = "{glyph} {count}";
+  const std::string DEFAULT_TOOLTIP_FORMAT = "Games running: {count}";
   const std::string DEFAULT_GLYPH = "";
 
   void appear(const Glib::RefPtr<Gio::DBus::Connection> &connection, const Glib::ustring &name,
@@ -43,6 +44,7 @@ class Gamemode : public AModule {
   // Config
   std::string format = DEFAULT_FORMAT;
   std::string format_alt = DEFAULT_FORMAT_ALT;
+  std::string tooltip_format = DEFAULT_TOOLTIP_FORMAT;
   std::string glyph = DEFAULT_GLYPH;
   bool tooltip = true;
   bool hideNotRunning = true;
