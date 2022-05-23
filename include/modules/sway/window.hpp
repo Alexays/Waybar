@@ -21,8 +21,8 @@ class Window : public AIconLabel, public sigc::trackable {
  private:
   void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
-  std::tuple<std::size_t, int, std::string, std::string> getFocusedNode(const Json::Value& nodes,
-                                                                        std::string& output);
+  std::tuple<std::size_t, int, std::string, std::string, std::string> getFocusedNode(
+      const Json::Value& nodes, std::string& output);
   void getTree();
   std::string rewriteTitle(const std::string& title);
   void updateAppIconName();
@@ -32,6 +32,7 @@ class Window : public AIconLabel, public sigc::trackable {
   std::string window_;
   int windowId_;
   std::string app_id_;
+  std::string app_class_;
   std::string old_app_id_;
   std::size_t app_nb_;
   unsigned app_icon_size_{24};
