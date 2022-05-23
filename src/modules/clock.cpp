@@ -230,10 +230,12 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     } else
       os << date::format("%e", d);
     /*Print weeks on the right when the endings with spaces*/
-    if (ws == 2 && d == last_day && wd.c_encoding() < 6) {
-      empty_days = 6 - wd.c_encoding();
-      os << std::string(empty_days * 3 + 1, ' ');
-      print_iso_weeknum(os, wn);
+    if (ws == 2 && d == last_day) {
+      empty_days = 6 - (wd.c_encoding() - first_dow.c_encoding());
+      if (empty_days > 0) {
+        os << std::string(empty_days * 3 + 1, ' ');
+        print_iso_weeknum(os, wn);
+      }
     }
   }
 
@@ -291,7 +293,7 @@ auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_poin
 
 auto waybar::modules::Clock::print_iso_weeknum(std::ostream& os, int weeknum) -> void {
   std::stringstream res;
-  res << 'W' << std::setfill('0') << std::setw(2) << weeknum;
+  res << std::setfill('0') << std::setw(2) << weeknum;
 
   if (config_["format-calendar-weeks"].isString()) {
     os << fmt::format(config_["format-calendar-weeks"].asString(), res.str());
