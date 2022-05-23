@@ -94,8 +94,7 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::Cpu::getCpuUsage
 
 std::tuple<float, float, float> waybar::modules::Cpu::getCpuFrequency() {
   std::vector<float> frequencies = parseCpuFrequencies();
-  if (frequencies.empty())
-  {
+  if (frequencies.empty()) {
     return {0.f, 0.f, 0.f};
   }
   auto [min, max] = std::minmax_element(std::begin(frequencies), std::end(frequencies));

@@ -25,8 +25,8 @@ class Window : public waybar::ALabel {
 
  private:
   const waybar::Bar &bar_;
-  struct wl_output *output_; // stores the output this module belongs to
-  struct wl_output *focused_output_; // stores the currently focused output
+  struct wl_output *output_;          // stores the output this module belongs to
+  struct wl_output *focused_output_;  // stores the currently focused output
   struct zriver_seat_status_v1 *seat_status_;
 };
 
