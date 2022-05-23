@@ -50,6 +50,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "river/tags") {
       return new waybar::modules::river::Tags(id, bar_, config_[name]);
     }
+    if (ref == "river/window") {
+      return new waybar::modules::river::Window(id, bar_, config_[name]);
+    }
 #endif
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
