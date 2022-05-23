@@ -2,6 +2,8 @@
 
 #include <libupower-glib/upower.h>
 
+#include <unordered_map>
+
 #include "gtkmm/box.h"
 #include "gtkmm/label.h"
 #include "gtkmm/window.h"
