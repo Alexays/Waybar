@@ -46,6 +46,7 @@ class Battery : public ALabel {
   int global_watch_fd_;
   std::mutex battery_list_mutex_;
   std::string old_status_;
+  bool warnFirstTime_{true};
 
   util::SleeperThread thread_;
   util::SleeperThread thread_battery_update_;
