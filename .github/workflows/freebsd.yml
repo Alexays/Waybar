@@ -21,7 +21,7 @@ jobs:
           pkg install -y git #  subprojects/date
           pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
             libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
-            pkgconf pulseaudio scdoc sndio spdlog wayland-protocols
+            pkgconf pulseaudio scdoc sndio spdlog wayland-protocols upower
         run: |
           meson build -Dman-pages=enabled
           ninja -C build
