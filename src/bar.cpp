@@ -181,7 +181,7 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
     if (vertical_ && height_ > 1) {
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_BOTTOM, false);
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_TOP, false);
-    } else if (width_ > 1) {
+    } else if (!vertical_ && width_ > 1) {
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_LEFT, false);
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_RIGHT, false);
     }
