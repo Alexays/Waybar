@@ -42,6 +42,12 @@ Addressed by *bluetooth*
 	typeof: string ++
 	This format is used when the displayed controller is connected to at least 1 device.
 
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current battery percentage (see section *EXPERIMENTAL BATTERY PERCENTAGE FEATURE*), the corresponding icon gets selected. ++
+	The order is *low* to *high*. Will only show the current battery percentage icon in the *\*-connected-battery* config options. ++
+	Or by the state if it is an object. It will fall back to the enabled state if its derivatives are not defined (on, off, connected).
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label.
@@ -114,6 +120,8 @@ Addressed by *bluetooth*
 # FORMAT REPLACEMENTS
 
 *{status}*: Status of the bluetooth device.
+
+*{icon}*: Icon, as defined in *format-icons*.
 
 *{num_connections}*: Number of connections the displayed controller has.
 

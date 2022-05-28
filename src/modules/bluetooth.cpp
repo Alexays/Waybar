@@ -152,11 +152,23 @@ auto waybar::modules::Bluetooth::update() -> void {
 #ifdef WANT_RFKILL
   if (rfkill_.getState()) state = "disabled";
 #endif
+  bool battery_available =
+      state == "connected" && cur_focussed_device_.battery_percentage.has_value();
+
+#ifdef WANT_RFKILL
+  // also adds enabled icon if icon for state is not defined
+  std::vector<std::string> states = {state, rfkill_.getState() ? "disabled" : "enabled"};
+  std::string icon = getIcon(0, states);
+#else
+  std::string icon = getIcon(0, state);
+#endif
+  std::string icon_label = icon;
+  std::string icon_tooltip = icon;
 
   if (!alt_) {
-    if (state == "connected" && cur_focussed_device_.battery_percentage.has_value() &&
-        config_["format-connected-battery"].isString()) {
+    if (battery_available && config_["format-connected-battery"].isString()) {
       format_ = config_["format-connected-battery"].asString();
+      icon_label = getIcon(cur_focussed_device_.battery_percentage.value_or(0));
     } else if (config_["format-" + state].isString()) {
       format_ = config_["format-" + state].asString();
     } else if (config_["format"].isString()) {
@@ -165,7 +177,10 @@ auto waybar::modules::Bluetooth::update() -> void {
       format_ = default_format_;
     }
   }
-  if (config_["tooltip-format-" + state].isString()) {
+  if (battery_available && config_["tooltip-format-connected-battery"].isString()) {
+    tooltip_format = config_["tooltip-format-connected-battery"].asString();
+    icon_tooltip = getIcon(cur_focussed_device_.battery_percentage.value_or(0));
+  } else if (config_["tooltip-format-" + state].isString()) {
     tooltip_format = config_["tooltip-format-" + state].asString();
   } else if (config_["tooltip-format"].isString()) {
     tooltip_format = config_["tooltip-format"].asString();
@@ -196,7 +211,7 @@ auto waybar::modules::Bluetooth::update() -> void {
       fmt::arg("controller_alias", cur_controller_.alias),
       fmt::arg("device_address", cur_focussed_device_.address),
       fmt::arg("device_address_type", cur_focussed_device_.address_type),
-      fmt::arg("device_alias", cur_focussed_device_.alias),
+      fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
       fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0))));
 
   if (tooltipEnabled()) {
@@ -209,14 +224,18 @@ auto waybar::modules::Bluetooth::update() -> void {
         if ((tooltip_enumerate_connections_battery_ && dev.battery_percentage.has_value()) ||
             tooltip_enumerate_connections_) {
           ss << "\n";
-          std::string enumerate_format =
-              (tooltip_enumerate_connections_battery_ && dev.battery_percentage.has_value())
-                  ? config_["tooltip-format-enumerate-connected-battery"].asString()
-                  : config_["tooltip-format-enumerate-connected"].asString();
+          std::string enumerate_format;
+          std::string enumerate_icon;
+          if (tooltip_enumerate_connections_battery_ && dev.battery_percentage.has_value()) {
+            enumerate_format = config_["tooltip-format-enumerate-connected-battery"].asString();
+            enumerate_icon = getIcon(dev.battery_percentage.value_or(0));
+          } else {
+            enumerate_format = config_["tooltip-format-enumerate-connected"].asString();
+          }
           ss << fmt::format(
               enumerate_format, fmt::arg("device_address", dev.address),
               fmt::arg("device_address_type", dev.address_type),
-              fmt::arg("device_alias", dev.alias),
+              fmt::arg("device_alias", dev.alias), fmt::arg("icon", enumerate_icon),
               fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)));
         }
       }
@@ -234,7 +253,7 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("controller_alias", cur_controller_.alias),
         fmt::arg("device_address", cur_focussed_device_.address),
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
-        fmt::arg("device_alias", cur_focussed_device_.alias),
+        fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_tooltip),
         fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
         fmt::arg("device_enumerate", device_enumerate_)));
   }
