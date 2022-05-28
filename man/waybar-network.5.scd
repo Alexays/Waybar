@@ -153,6 +153,10 @@ Addressed by *network*
 
 *{bandwidthDownOctets}*: Instant down speed in octets/seconds.
 
+*{bandwidthUpBytes}*: Instant up speed in bytes/seconds.
+
+*{bandwidthDownByes}*: Instant down speed in bytes/seconds.
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 # EXAMPLES
