@@ -165,7 +165,9 @@ auto waybar::modules::Bluetooth::update() -> void {
       format_ = default_format_;
     }
   }
-  if (config_["tooltip-format-" + state].isString()) {
+  if (battery_available && config_["tooltip-format-connected-battery"].isString()) {
+    tooltip_format = config_["tooltip-format-connected-battery"].asString();
+  } else if (config_["tooltip-format-" + state].isString()) {
     tooltip_format = config_["tooltip-format-" + state].asString();
   } else if (config_["tooltip-format"].isString()) {
     tooltip_format = config_["tooltip-format"].asString();
