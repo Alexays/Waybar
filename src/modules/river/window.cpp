@@ -24,10 +24,16 @@ static void listen_unfocused_output(void *data, struct zriver_seat_status_v1 *zr
   static_cast<Window *>(data)->handle_unfocused_output(output);
 }
 
+static void listen_mode(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                        const char *mode) {
+  // This module doesn't care
+}
+
 static const zriver_seat_status_v1_listener seat_status_listener_impl{
     .focused_output = listen_focused_output,
     .unfocused_output = listen_unfocused_output,
     .focused_view = listen_focused_view,
+    .mode = listen_mode,
 };
 
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,

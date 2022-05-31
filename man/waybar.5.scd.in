@@ -268,7 +268,9 @@ A module group is defined by specifying a module named "group/some-group-name". 
 - *waybar-mpd(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
+- *waybar-river-mode(5)*
 - *waybar-river-tags(5)*
+- *waybar-river-window(5)*
 - *waybar-states(5)*
 - *waybar-sway-mode(5)*
 - *waybar-sway-window(5)*

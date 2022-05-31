@@ -17,6 +17,7 @@
 #include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
+#include "modules/river/mode.hpp"
 #include "modules/river/tags.hpp"
 #include "modules/river/window.hpp"
 #endif

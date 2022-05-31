@@ -47,6 +47,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #endif
 #endif
 #ifdef HAVE_RIVER
+    if (ref == "river/mode") {
+      return new waybar::modules::river::Mode(id, bar_, config_[name]);
+    }
     if (ref == "river/tags") {
       return new waybar::modules::river::Tags(id, bar_, config_[name]);
     }
