@@ -196,6 +196,7 @@ endif
 
 if true
     add_project_arguments('-DHAVE_RIVER', language: 'cpp')
+    src_files += 'src/modules/river/mode.cpp'
     src_files += 'src/modules/river/tags.cpp'
     src_files += 'src/modules/river/window.cpp'
 endif
@@ -352,6 +353,7 @@ if scdoc.found()
         'waybar-mpd.5.scd',
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
+        'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',
         'waybar-sway-language.5.scd',
