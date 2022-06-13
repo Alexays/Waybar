@@ -1,7 +1,7 @@
 [wrap-file]
 directory = fmt-8.1.1
 
-source_url = https://github.com/fmtlib/fmt/archive/refs/tags/8.1.1.tar.gz
+source_url = https://github.com/fmtlib/fmt/archive/8.1.1.tar.gz
 source_filename = fmt-8.1.1.tar.gz
 source_hash = b6f4ceaed0a0a24ccf575fab6c56dd50ccf6f1a9
 
