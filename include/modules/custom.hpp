@@ -30,6 +30,7 @@ class Custom : public ALabel {
 
   const std::string name_;
   std::string text_;
+  std::string id_;
   std::string alt_;
   std::string tooltip_;
   std::vector<std::string> class_;

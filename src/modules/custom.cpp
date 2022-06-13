@@ -4,7 +4,12 @@
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config)
-    : ALabel(config, "custom-" + name, id, "{}"), name_(name), fp_(nullptr), pid_(-1) {
+    : ALabel(config, "custom-" + name, id, "{}"),
+      name_(name),
+      id_(id),
+      percentage_(0),
+      fp_(nullptr),
+      pid_(-1) {
   dp.emit();
   if (interval_.count() > 0) {
     delayWorker();
@@ -140,6 +145,7 @@ auto waybar::modules::Custom::update() -> void {
       }
       auto classes = label_.get_style_context()->list_classes();
       for (auto const& c : classes) {
+        if (c == id_) continue;
         label_.get_style_context()->remove_class(c);
       }
       for (auto const& c : class_) {
