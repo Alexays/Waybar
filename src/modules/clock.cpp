@@ -168,6 +168,9 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   const auto week_format{config_["format-calendar-weekdays"].isString()
                              ? config_["format-calendar-weekdays"].asString()
                              : ""};
+  const auto wn_format{config_["format-calendar-weeks"].isString()
+                             ? config_["format-calendar-weeks"].asString()
+                             : ""};
 
   std::stringstream os;
 
@@ -196,7 +199,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   }
   /* Print weeknumber on the left for the first row*/
   if (ws == 1) {
-    os << fmt::format(config_["format-calendar-weeks"].asString(), lwd);
+    os << fmt::format(wn_format, lwd);
     os << ' ';
     lwd += date::weeks{1};
   }
@@ -211,14 +214,14 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     } else if (unsigned(d) != 1) {
       if (ws == 2) {
         os << ' ';
-        os << fmt::format(config_["format-calendar-weeks"].asString(), lwd);
+        os << fmt::format(wn_format, lwd);
         lwd += date::weeks{1};
       }
 
       os << '\n';
 
       if (ws == 1) {
-        os << fmt::format(config_["format-calendar-weeks"].asString(), lwd);
+        os << fmt::format(wn_format, lwd);
         os << ' ';
         lwd += date::weeks{1};
       }
@@ -239,7 +242,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       empty_days = 6 - (wd.c_encoding() - first_dow.c_encoding());
       if (empty_days > 0) {
         os << std::string(empty_days * 3 + 1, ' ');
-        os << fmt::format(config_["format-calendar-weeks"].asString(), lwd);
+        os << fmt::format(wn_format, lwd);
       }
     }
   }
