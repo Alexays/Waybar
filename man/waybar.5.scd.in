@@ -242,6 +242,7 @@ A module group is defined by specifying a module named "group/some-group-name". 
 	"modules-right": ["group/hardware", "clock"],
 
 	"group/hardware": {
+		"orientation": "vertical",
 		"modules": [
 			"cpu",
 			"memory",
@@ -252,6 +253,8 @@ A module group is defined by specifying a module named "group/some-group-name". 
 	...
 }
 ```
+
+Valid options for the (optional) "orientation" property are: "horizontal", "vertical", "inherit", and "orthogonal" (default).
 
 # SUPPORTED MODULES
 
