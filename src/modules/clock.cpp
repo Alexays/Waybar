@@ -165,7 +165,9 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
   const date::year_month ym(ymd.year(), ymd.month());
   const auto curr_day = ymd.day();
-  const auto week_format{config_["format-calendar-weekdays"].isString() ? config_["format-calendar-weekdays"].asString():""};
+  const auto week_format{config_["format-calendar-weekdays"].isString()
+                             ? config_["format-calendar-weekdays"].asString()
+                             : ""};
 
   std::stringstream os;
 
@@ -189,7 +191,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   auto empty_days = (wd - first_dow).count();
   date::sys_days lwd{static_cast<date::sys_days>(ym / 1) + date::days{7 - empty_days}};
 
-  if(first_dow == date::Monday){
+  if(first_dow == date::Monday) {
     lwd -= date::days{1};
   }
   /* Print weeknumber on the left for the first row*/
