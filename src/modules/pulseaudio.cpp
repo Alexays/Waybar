@@ -190,6 +190,8 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
     pa->port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
     if (auto ff = pa_proplist_gets(i->proplist, PA_PROP_DEVICE_FORM_FACTOR)) {
       pa->form_factor_ = ff;
+    } else {
+      pa->form_factor_ = "";
     }
     pa->dp.emit();
   }
