@@ -165,18 +165,19 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
   const date::year_month ym(ymd.year(), ymd.month());
   const auto curr_day = ymd.day();
+  const auto week_format{config_["format-calendar-weekdays"].isString()
+                             ? config_["format-calendar-weekdays"].asString()
+                             : ""};
+  const auto wn_format{config_["format-calendar-weeks"].isString()
+                           ? config_["format-calendar-weeks"].asString()
+                           : ""};
 
   std::stringstream os;
 
   const auto first_dow = first_day_of_week();
   int ws{0};  // weeks-pos: side(1 - left, 2 - right)
-  int wn{0};  // weeknumber
+
   if (config_["calendar-weeks-pos"].isString()) {
-    wn = (date::sys_days{date::year_month_day{ym / 1}} -
-          date::sys_days{date::year_month_day{ymd.year() / 1 / 1}})
-                 .count() /
-             7 +
-         1;
     if (config_["calendar-weeks-pos"].asString() == "left") {
       ws = 1;
       // Add paddings before the header
@@ -187,15 +188,22 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   }
 
   weekdays_header(first_dow, os);
-  /* Print weeknumber on the left for the first row*/
-  if (ws == 1) {
-    print_iso_weeknum(os, wn);
-    os << ' ';
-    ++wn;
-  }
+
   // First week prefixed with spaces if needed.
   auto wd = date::weekday(ym / 1);
   auto empty_days = (wd - first_dow).count();
+  date::sys_days lwd{static_cast<date::sys_days>(ym / 1) + date::days{7 - empty_days}};
+
+  if (first_dow == date::Monday) {
+    lwd -= date::days{1};
+  }
+  /* Print weeknumber on the left for the first row*/
+  if (ws == 1) {
+    os << fmt::format(wn_format, lwd);
+    os << ' ';
+    lwd += date::weeks{1};
+  }
+
   if (empty_days > 0) {
     os << std::string(empty_days * 3 - 1, ' ');
   }
@@ -206,16 +214,16 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     } else if (unsigned(d) != 1) {
       if (ws == 2) {
         os << ' ';
-        print_iso_weeknum(os, wn);
-        ++wn;
+        os << fmt::format(wn_format, lwd);
+        lwd += date::weeks{1};
       }
 
       os << '\n';
 
       if (ws == 1) {
-        print_iso_weeknum(os, wn);
+        os << fmt::format(wn_format, lwd);
         os << ' ';
-        ++wn;
+        lwd += date::weeks{1};
       }
     }
     if (d == curr_day) {
@@ -234,7 +242,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       empty_days = 6 - (wd.c_encoding() - first_dow.c_encoding());
       if (empty_days > 0) {
         os << std::string(empty_days * 3 + 1, ' ');
-        print_iso_weeknum(os, wn);
+        os << fmt::format(wn_format, lwd);
       }
     }
   }
@@ -289,16 +297,6 @@ auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_poin
     os << fmt::format(format_, wtime) << "\n";
   }
   return os.str();
-}
-
-auto waybar::modules::Clock::print_iso_weeknum(std::ostream& os, int weeknum) -> void {
-  std::stringstream res;
-  res << std::setfill('0') << std::setw(2) << weeknum;
-
-  if (config_["format-calendar-weeks"].isString()) {
-    os << fmt::format(config_["format-calendar-weeks"].asString(), res.str());
-  } else
-    os << res.str();
 }
 
 #ifdef HAVE_LANGINFO_1STDAY
