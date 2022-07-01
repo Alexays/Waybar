@@ -118,6 +118,9 @@ void Workspaces::updateButtons() {
   for (auto it = ws.begin(); it != ws.end(); ++it) {
     auto bit = buttons_.find(*it);
 
+    if (bit == buttons_.end())
+        needReorder = true;
+
     auto &button = bit == buttons_.end() ? addButton(*it) : bit->second;
 
     if (focusedWorkspace == *it) {
@@ -132,12 +135,18 @@ void Workspaces::updateButtons() {
       label = fmt::format(format, fmt::arg("icon", getIcon(*it)), fmt::arg("name", *it));
     }
 
+    if (needReorder) {
+      box_.reorder_child(button, it - workspaces.begin());
+    }
+
     button.set_label(label);
 
     button.show();
   }
 
   AModule::update();
+
+  needReorder = false;
 
   mutex_.unlock();
 }
@@ -183,22 +192,28 @@ void Workspaces::onEvent(const std::string& ev) {
         focusedWorkspace = WORKSPACE;
     } else if (EVENT == "createworkspace") {
         workspaces.emplace_back(WORKSPACE);
-
-        // remove the buttons for reorder
-        buttons_.clear();
     } else {
-        const auto it = std::remove(workspaces.begin(), workspaces.end(), WORKSPACE);
+        for (auto it = workspaces.begin(); it != workspaces.end(); it++) {
+            if (*it == WORKSPACE) {
+                workspaces.erase(it);
+                break;
+            }
+        }
 
-        if (it != workspaces.end())
-            workspaces.erase(it);
+        // also remove the button
+        for (auto it = buttons_.begin(); it != buttons_.end(); it++) {
+            if (it->second.get_name() == WORKSPACE)
+                it = buttons_.erase(it);
 
-        // also remove the buttons
-        buttons_.clear();
+            if (it == buttons_.end())
+                break;
+        }
+
     }
 
-    dp.emit();
-
     mutex_.unlock();
+
+    dp.emit();
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {

@@ -32,6 +32,8 @@ class Workspaces : public AModule, public sigc::trackable {
 
   bool isNumber(const std::string&);
 
+  bool needReorder = false;
+
   Gtk::Box box_;
   const Bar& bar_;
   std::deque<std::string> workspaces;
