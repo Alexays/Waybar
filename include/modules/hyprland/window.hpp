@@ -18,10 +18,6 @@ private:
   void onEvent(const std::string&);
 
   const Bar& bar_;
-  IPC ipc;
-  unsigned app_icon_size_{24};
-  bool update_app_icon_{true};
-  std::string app_icon_name_;
   util::JsonParser parser_;
   std::string lastView;
 };

@@ -1,8 +1,9 @@
 #include "modules/hyprland/backend.hpp"
 
-#include <errno.h>
-#include <fcntl.h>
+#include <ctype.h>
+#include <netdb.h>
 #include <netinet/in.h>
+#include <spdlog/spdlog.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,9 +13,13 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <spdlog/spdlog.h>
+#include <fstream>
+#include <iostream>
+#include <string>
 
-void waybar::modules::hyprland::IPC::startIPC() {
+namespace waybar::modules::hyprland {
+
+void IPC::startIPC() {
   // will start IPC and relay events to parseIPC
 
   std::thread([&]() {
@@ -84,7 +89,7 @@ void waybar::modules::hyprland::IPC::startIPC() {
   }).detach();
 }
 
-void waybar::modules::hyprland::IPC::parseIPC(const std::string& ev) {
+void IPC::parseIPC(const std::string& ev) {
   // todo
   std::string request = ev.substr(0, ev.find_first_of('>'));
 
@@ -95,11 +100,73 @@ void waybar::modules::hyprland::IPC::parseIPC(const std::string& ev) {
   }
 }
 
-void waybar::modules::hyprland::IPC::registerForIPC(const std::string& ev,
+void IPC::registerForIPC(const std::string& ev,
                                                     std::function<void(const std::string&)> fn) {
   callbackMutex.lock();
 
   callbacks.emplace_back(std::make_pair(ev, fn));
 
   callbackMutex.unlock();
+}
+
+std::string IPC::getSocket1Reply(const std::string& rq) {
+  // basically hyprctl
+
+  const auto SERVERSOCKET = socket(AF_UNIX, SOCK_STREAM, 0);
+
+  if (SERVERSOCKET < 0) {
+    spdlog::error("Hyprland IPC: Couldn't open a socket (1)");
+    return "";
+  }
+
+  const auto SERVER = gethostbyname("localhost");
+
+  if (!SERVER) {
+    spdlog::error("Hyprland IPC: Couldn't get host (2)");
+    return "";
+  }
+
+  // get the instance signature
+  auto instanceSig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+
+  if (!instanceSig) {
+    spdlog::error("Hyprland IPC: HYPRLAND_INSTANCE_SIGNATURE was not set! (Is Hyprland running?)");
+    return "";
+  }
+
+  std::string instanceSigStr = std::string(instanceSig);
+
+  sockaddr_un serverAddress = {0};
+  serverAddress.sun_family = AF_UNIX;
+
+  std::string socketPath = "/tmp/hypr/" + instanceSigStr + "/.socket.sock";
+
+  strcpy(serverAddress.sun_path, socketPath.c_str());
+
+  if (connect(SERVERSOCKET, (sockaddr*)&serverAddress, SUN_LEN(&serverAddress)) < 0) {
+    spdlog::error("Hyprland IPC: Couldn't connect to " + socketPath + ". (3)");
+    return "";
+  }
+
+  auto sizeWritten = write(SERVERSOCKET, rq.c_str(), rq.length());
+
+  if (sizeWritten < 0) {
+    spdlog::error("Hyprland IPC: Couldn't write (4)");
+    return "";
+  }
+
+  char buffer[8192] = {0};
+
+  sizeWritten = read(SERVERSOCKET, buffer, 8192);
+
+  if (sizeWritten < 0) {
+    spdlog::error("Hyprland IPC: Couldn't read (5)");
+    return "";
+  }
+
+  close(SERVERSOCKET);
+
+  return std::string(buffer);
+}
+
 }
