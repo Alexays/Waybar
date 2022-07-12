@@ -1,12 +1,12 @@
 #include "client.hpp"
 
-#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 
 #include <iostream>
 
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
+#include "util/format.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 waybar::Client *waybar::Client::inst() {

@@ -1,6 +1,5 @@
 #include "config.hpp"
 
-#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
 #include <wordexp.h>

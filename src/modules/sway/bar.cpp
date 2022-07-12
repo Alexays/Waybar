@@ -1,6 +1,5 @@
 #include "modules/sway/bar.hpp"
 
-#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 
 #include <sstream>
