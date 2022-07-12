@@ -12,6 +12,7 @@ jobs:
           - debian
           - fedora
           - opensuse
+          - gentoo
 
     runs-on: ubuntu-latest
     container:
