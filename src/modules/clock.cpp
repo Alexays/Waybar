@@ -1,15 +1,10 @@
 #include "modules/clock.hpp"
 
+#include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
-#include <iomanip>
-#if FMT_VERSION < 60000
-#include <fmt/time.h>
-#else
-#include <fmt/chrono.h>
-#endif
-
 #include <ctime>
+#include <iomanip>
 #include <sstream>
 #include <type_traits>
 
