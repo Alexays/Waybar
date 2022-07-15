@@ -39,7 +39,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *format*: ++
 	typeof: string ++
 	default: {capacity}% ++
-	The format, how the time should be displayed.
+	The format, how information should be displayed.
 
 *format-time*: ++
 	typeof: string ++
