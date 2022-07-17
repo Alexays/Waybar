@@ -319,14 +319,15 @@ void Item::updateImage() {
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
   try {
+    if (icon_pixmap) {
+      return icon_pixmap;
+    }
     if (!icon_name.empty()) {
       std::ifstream temp(icon_name);
       if (temp.is_open()) {
         return Gdk::Pixbuf::create_from_file(icon_name);
       }
       return getIconByName(icon_name, getScaledIconSize());
-    } else if (icon_pixmap) {
-      return icon_pixmap;
     }
   } catch (Glib::Error& e) {
     spdlog::error("Item '{}': {}", id, static_cast<std::string>(e.what()));
