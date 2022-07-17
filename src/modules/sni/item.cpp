@@ -300,10 +300,6 @@ void Item::updateImage() {
   auto pixbuf = getIconPixbuf();
   auto scaled_icon_size = getScaledIconSize();
 
-  if (!pixbuf) {
-    pixbuf = getIconByName("image-missing", getScaledIconSize());
-  }
-
   // If the loaded icon is not square, assume that the icon height should match the
   // requested icon size, but the width is allowed to be different. As such, if the
   // height of the image does not match the requested icon size, resize the icon such that
