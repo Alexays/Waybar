@@ -10,6 +10,13 @@ namespace waybar::modules {
 }  // namespace waybar::modules
 #endif
 
+#if FMT_VERSION >= 90000
+/* Satisfy fmt 9.x deprecation of implicit conversion of enums to int */
+auto format_as(enum mpd_idle val) {
+  return static_cast<std::underlying_type_t<enum mpd_idle>>(val);
+}
+#endif
+
 namespace waybar::modules::detail {
 
 #define IDLE_RUN_NOIDLE_AND_CMD(...)                                      \

@@ -1,6 +1,14 @@
 #pragma once
 
+#include <fmt/ostream.h>
 #include <json/json.h>
+
+#if (FMT_VERSION >= 90000)
+
+template <>
+struct fmt::formatter<Json::Value> : ostream_formatter {};
+
+#endif
 
 namespace waybar::util {
 
