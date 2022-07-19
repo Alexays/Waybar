@@ -19,25 +19,11 @@ std::string waybar::modules::JACK::JACKState() {
   if(state_.compare("connected") == 0)
     return "connected";
 
-  std::string procname;
-  bool foundJACK = false;
-  proc_t** proctab = readproctab(PROC_FILLSTAT);
-  for(int i=0; proctab[i]; i++) {
-    procname = proctab[i]->cmd;
-    if(!procname.compare("jackd") || !procname.compare("jackdbus") ||
-       !procname.compare("pipewire"))
-      foundJACK = true;
-    freeproc(proctab[i]);
-  }
-  free(proctab);
-  if(!foundJACK)
-    return "disconnected";
-
   client_ = jack_client_open("waybar", JackNoStartServer, NULL);
   if (client_) {
-    jack_thread_ = jack_client_thread_id(client_);
+    pthread_t jack_thread = jack_client_thread_id(client_);
     if(config_["realtime"].isBool() && !config_["realtime"].asBool())
-      jack_drop_real_time_scheduling(jack_thread_);
+      jack_drop_real_time_scheduling(jack_thread);
 
     bufsize_ = jack_get_buffer_size(client_);
     samplerate_ = jack_get_sample_rate(client_);

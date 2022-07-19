@@ -1,9 +1,3 @@
-## note: this fork depends on libjack and libprocps as well as the dependencies listed below
-
-
-
-
-
 # Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>

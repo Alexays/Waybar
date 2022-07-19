@@ -9,7 +9,7 @@ option('dbusmenu-gtk', type: 'feature', value: 'auto', description: 'Enable supp
 option('man-pages', type: 'feature', value: 'auto', description: 'Generate and install man pages')
 option('mpd', type: 'feature', value: 'auto', description: 'Enable support for the Music Player Daemon')
 option('gtk-layer-shell', type: 'feature', value: 'auto', description: 'Use gtk-layer-shell library for popups support')
-option('rfkill', type: 'feature', value: 'auto', description: 'Enable support for RFKILL')
+option('rfkill', type: 'feature', value: 'enabled', description: 'Enable support for RFKILL')
 option('sndio', type: 'feature', value: 'auto', description: 'Enable support for sndio')
 option('logind', type: 'feature', value: 'auto', description: 'Enable support for logind')
 option('tests', type: 'feature', value: 'auto', description: 'Enable tests')

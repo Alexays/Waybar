@@ -4,7 +4,6 @@
 #include <fstream>
 #include <jack/jack.h>
 #include <jack/thread.h>
-#include <proc/readproc.h>
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -28,7 +27,6 @@ class JACK : public ALabel {
   jack_nframes_t      samplerate_;
   unsigned int        xruns_;
   std::string         state_;
-  pthread_t           jack_thread_;
   util::SleeperThread thread_;
 };
 
