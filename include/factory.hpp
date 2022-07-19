@@ -70,9 +70,6 @@
 #ifdef HAVE_LIBJACK
 #include "modules/jack.hpp"
 #endif
-#ifdef HAVE_LIBJACK
-#include "modules/jack.hpp"
-#endif
 
 namespace waybar {
 
