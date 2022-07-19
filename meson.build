@@ -5,7 +5,7 @@ project(
     meson_version: '>= 0.49.0',
     default_options : [
         'cpp_std=c++17',
-        'buildtype=debug',
+        'buildtype=release',
         'default_library=static'
     ],
 )
