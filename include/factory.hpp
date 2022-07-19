@@ -63,13 +63,12 @@
 #include "modules/bluetooth.hpp"
 #include "modules/inhibitor.hpp"
 #endif
-#include "bar.hpp"
-#include "modules/custom.hpp"
-#include "modules/temperature.hpp"
-
 #ifdef HAVE_LIBJACK
 #include "modules/jack.hpp"
 #endif
+#include "bar.hpp"
+#include "modules/custom.hpp"
+#include "modules/temperature.hpp"
 
 namespace waybar {
 

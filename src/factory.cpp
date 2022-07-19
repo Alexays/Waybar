@@ -101,11 +101,6 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::Pulseaudio(id, config_[name]);
     }
 #endif
-#ifdef HAVE_LIBJACK
-    if (ref == "jack") {
-      return new waybar::modules::JACK(id, config_[name]);
-    }
-#endif
 #ifdef HAVE_LIBMPDCLIENT
     if (ref == "mpd") {
       return new waybar::modules::MPD(id, config_[name]);
@@ -122,6 +117,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
     if (ref == "inhibitor") {
       return new waybar::modules::Inhibitor(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_LIBJACK
+    if (ref == "jack") {
+      return new waybar::modules::JACK(id, config_[name]);
     }
 #endif
     if (ref == "temperature") {
