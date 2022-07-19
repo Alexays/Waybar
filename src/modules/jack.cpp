@@ -103,13 +103,6 @@ int waybar::modules::JACK::xrun() {
   return 0;
 }
 
-/*
-** problem: pipewire leaves old client threads hanging around after server
-** is killed. was handling this sloppily by calling pthread_cancel() on the
-** JACK thread but since JACK2 cleans up after itself properly, this call
-** led to segfault when using JACK2. probably best course of action is to
-** submit a bug report to pipewire.
-*/
 void waybar::modules::JACK::shutdown() {
   client_ = NULL;
   state_ = "disconnected";
