@@ -79,7 +79,6 @@ auto waybar::modules::JACK::update() -> void {
         tooltip_format, fmt::arg("load", std::round(load)), fmt::arg("bufsize", bufsize_),
         fmt::arg("samplerate", samplerate_), fmt::arg("latency", fmt::format("{:.2f}", latency)),
         fmt::arg("xruns", xruns_)));
-
   }
 
   // Call parent update
