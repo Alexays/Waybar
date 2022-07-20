@@ -106,8 +106,6 @@ void JACK::shutdown() {
 
 }  // namespace waybar::modules
 
-namespace {
-
 int bufSizeCallback(unsigned int size, void *obj) {
   return static_cast<waybar::modules::JACK *>(obj)->bufSize(size);
 }
@@ -116,4 +114,3 @@ int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->
 
 void shutdownCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->shutdown(); }
 
-}  // namespace
