@@ -64,8 +64,7 @@ auto waybar::modules::JACK::update() -> void {
   } else
     format = "DSP {load}%";
 
-  if (!label_.get_style_context()->has_class(state))
-    label_.get_style_context()->add_class(state);
+  if (!label_.get_style_context()->has_class(state)) label_.get_style_context()->add_class(state);
   state_ = state;
 
   label_.set_markup(fmt::format(format, fmt::arg("load", std::round(load)),
@@ -76,11 +75,10 @@ auto waybar::modules::JACK::update() -> void {
   if (tooltipEnabled()) {
     std::string tooltip_format = "{bufsize}/{samplerate} {latency}ms";
     if (config_["tooltip-format"].isString()) tooltip_format = config_["tooltip-format"].asString();
-    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("load", std::round(load)),
-                                       	fmt::arg("bufsize", bufsize_),
-                                       	fmt::arg("samplerate", samplerate_),
-                                        fmt::arg("latency", fmt::format("{:.2f}", latency)),
-                                        fmt::arg("xruns", xruns_)));
+    label_.set_tooltip_text(fmt::format(
+        tooltip_format, fmt::arg("load", std::round(load)), fmt::arg("bufsize", bufsize_),
+        fmt::arg("samplerate", samplerate_), fmt::arg("latency", fmt::format("{:.2f}", latency)),
+        fmt::arg("xruns", xruns_)));
 
   }
 
