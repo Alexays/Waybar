@@ -1,6 +1,8 @@
 #include "modules/jack.hpp"
 
-waybar::modules::JACK::JACK(const std::string &id, const Json::Value &config)
+namespace waybar::modules {
+
+JACK::JACK(const std::string &id, const Json::Value &config)
     : ALabel(config, "jack", id, "{load}%", 1) {
   xruns_ = 0;
   state_ = "disconnected";
@@ -13,7 +15,7 @@ waybar::modules::JACK::JACK(const std::string &id, const Json::Value &config)
   };
 }
 
-std::string waybar::modules::JACK::JACKState() {
+std::string JACK::JACKState() {
   if (state_.compare("xrun") == 0) return "xrun";
   if (state_.compare("connected") == 0) return "connected";
 
@@ -34,7 +36,7 @@ std::string waybar::modules::JACK::JACKState() {
   return "disconnected";
 }
 
-auto waybar::modules::JACK::update() -> void {
+auto JACK::update() -> void {
   std::string format;
   float latency = 1000 * (float)bufsize_ / (float)samplerate_;
   auto state = JACKState();
@@ -85,22 +87,26 @@ auto waybar::modules::JACK::update() -> void {
   ALabel::update();
 }
 
-int waybar::modules::JACK::bufSize(unsigned int size) {
+int JACK::bufSize(unsigned int size) {
   bufsize_ = size;
   return size;
 }
 
-int waybar::modules::JACK::xrun() {
+int JACK::xrun() {
   xruns_ += 1;
   state_ = "xrun";
   return 0;
 }
 
-void waybar::modules::JACK::shutdown() {
+void JACK::shutdown() {
   client_ = NULL;
   state_ = "disconnected";
   xruns_ = 0;
 }
+
+}  // namespace waybar::modules
+
+namespace {
 
 int bufSizeCallback(unsigned int size, void *obj) {
   return static_cast<waybar::modules::JACK *>(obj)->bufSize(size);
@@ -109,3 +115,5 @@ int bufSizeCallback(unsigned int size, void *obj) {
 int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->xrun(); }
 
 void shutdownCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->shutdown(); }
+
+}  // namespace
