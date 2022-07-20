@@ -113,4 +113,3 @@ int bufSizeCallback(unsigned int size, void *obj) {
 int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->xrun(); }
 
 void shutdownCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->shutdown(); }
-
