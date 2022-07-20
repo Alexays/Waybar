@@ -1,12 +1,12 @@
 #include "modules/jack.hpp"
 
-waybar::modules::JACK::JACK(const std::string& id, const Json::Value& config)
+waybar::modules::JACK::JACK(const std::string &id, const Json::Value &config)
     : ALabel(config, "jack", id, "{load}%", 1) {
-  xruns_  = 0;
-  state_  = "disconnected";
+  xruns_ = 0;
+  state_ = "disconnected";
   client_ = NULL;
 
-  state_  = JACKState();
+  state_ = JACKState();
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -14,15 +14,13 @@ waybar::modules::JACK::JACK(const std::string& id, const Json::Value& config)
 }
 
 std::string waybar::modules::JACK::JACKState() {
-  if(state_.compare("xrun") == 0)
-    return "xrun";
-  if(state_.compare("connected") == 0)
-    return "connected";
+  if (state_.compare("xrun") == 0) return "xrun";
+  if (state_.compare("connected") == 0) return "connected";
 
   client_ = jack_client_open("waybar", JackNoStartServer, NULL);
   if (client_) {
     pthread_t jack_thread = jack_client_thread_id(client_);
-    if(config_["realtime"].isBool() && !config_["realtime"].asBool())
+    if (config_["realtime"].isBool() && !config_["realtime"].asBool())
       jack_drop_real_time_scheduling(jack_thread);
 
     bufsize_ = jack_get_buffer_size(client_);
@@ -31,8 +29,7 @@ std::string waybar::modules::JACK::JACKState() {
     jack_set_xrun_callback(client_, xrunCallback, this);
     jack_on_shutdown(client_, shutdownCallback, this);
 
-    if (!jack_activate(client_))
-      return "connected";
+    if (!jack_activate(client_)) return "connected";
   }
   return "disconnected";
 }
@@ -43,12 +40,12 @@ auto waybar::modules::JACK::update() -> void {
   auto state = JACKState();
   float load;
 
-  if(label_.get_style_context()->has_class("xrun")) {
+  if (label_.get_style_context()->has_class("xrun")) {
     label_.get_style_context()->remove_class("xrun");
     state = "connected";
   }
 
-  if(state.compare("disconnected") != 0)
+  if (state.compare("disconnected") != 0)
     load = jack_cpu_load(client_);
   else {
     load = 0;
@@ -57,29 +54,28 @@ auto waybar::modules::JACK::update() -> void {
     latency = 0;
   }
 
-  if(label_.get_style_context()->has_class(state_))
+  if (label_.get_style_context()->has_class(state_))
     label_.get_style_context()->remove_class(state_);
 
   if (config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
   } else if (config_["format"].isString()) {
     format = config_["format"].asString();
-  } else format = "DSP {load}%";
+  } else
+    format = "DSP {load}%";
 
-  if(!label_.get_style_context()->has_class(state))
+  if (!label_.get_style_context()->has_class(state))
     label_.get_style_context()->add_class(state);
   state_ = state;
 
   label_.set_markup(fmt::format(format, fmt::arg("load", std::round(load)),
-                                        fmt::arg("bufsize", bufsize_),
-                                        fmt::arg("samplerate", samplerate_),
-                                        fmt::arg("latency", fmt::format("{:.2f}", latency)),
-                                        fmt::arg("xruns", xruns_)));
+                                fmt::arg("bufsize", bufsize_), fmt::arg("samplerate", samplerate_),
+                                fmt::arg("latency", fmt::format("{:.2f}", latency)),
+                                fmt::arg("xruns", xruns_)));
 
   if (tooltipEnabled()) {
     std::string tooltip_format = "{bufsize}/{samplerate} {latency}ms";
-    if (config_["tooltip-format"].isString())
-      tooltip_format = config_["tooltip-format"].asString();
+    if (config_["tooltip-format"].isString()) tooltip_format = config_["tooltip-format"].asString();
     label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("load", std::round(load)),
                                        	fmt::arg("bufsize", bufsize_),
                                        	fmt::arg("samplerate", samplerate_),
@@ -110,13 +106,9 @@ void waybar::modules::JACK::shutdown() {
 }
 
 int bufSizeCallback(unsigned int size, void *obj) {
-  return static_cast<waybar::modules::JACK*>(obj)->bufSize(size);
+  return static_cast<waybar::modules::JACK *>(obj)->bufSize(size);
 }
 
-int xrunCallback(void *obj) {
-  return static_cast<waybar::modules::JACK*>(obj)->xrun();
-}
+int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->xrun(); }
 
-void shutdownCallback(void *obj) {
-  return static_cast<waybar::modules::JACK*>(obj)->shutdown();
-}
+void shutdownCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->shutdown(); }
