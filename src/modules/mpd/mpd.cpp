@@ -73,6 +73,16 @@ std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const 
   return result;
 }
 
+std::string waybar::modules::MPD::getFilename() const {
+  std::string path = mpd_song_get_uri(song_.get());
+  size_t position = path.find_last_of("/");
+  if (position == std::string::npos) {
+    return path;
+  } else {
+    return path.substr(position + 1);
+  }
+}
+
 void waybar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
     label_.get_style_context()->add_class("disconnected");
@@ -100,7 +110,7 @@ void waybar::modules::MPD::setLabel() {
 
   auto format = format_;
   Glib::ustring artist, album_artist, album, title;
-  std::string date;
+  std::string date, filename;
   int song_pos = 0, queue_length = 0, volume = 0;
   std::chrono::seconds elapsedTime, totalTime;
 
@@ -130,6 +140,7 @@ void waybar::modules::MPD::setLabel() {
     album = getTag(MPD_TAG_ALBUM);
     title = getTag(MPD_TAG_TITLE);
     date = getTag(MPD_TAG_DATE);
+    filename = getFilename();
     song_pos = mpd_status_get_song_pos(status_.get()) + 1;
     volume = mpd_status_get_volume(status_.get());
     if (volume < 0) {
@@ -165,7 +176,8 @@ void waybar::modules::MPD::setLabel() {
                     fmt::arg("totalTime", totalTime), fmt::arg("songPosition", song_pos),
                     fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
                     fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
-                    fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon)));
+                    fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon),
+                    fmt::arg("filename", filename)));
   } catch (fmt::format_error const& e) {
     spdlog::warn("mpd: format error: {}", e.what());
   }
