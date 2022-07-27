@@ -170,6 +170,15 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
   if (i == nullptr) return;
 
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
+
+  if (pa->config_["ignored-sinks"].isArray()) {
+    for (const auto& ignored_sink : pa->config_["ignored-sinks"]) {
+      if (ignored_sink.asString() == i->description) {
+        return;
+      }
+    }
+  }
+
   if (pa->current_sink_name_ == i->name) {
     if (i->state != PA_SINK_RUNNING) {
       pa->current_sink_running_ = false;
