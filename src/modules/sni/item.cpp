@@ -335,7 +335,7 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
       // Will throw if it can not find an icon.
       return getIconByName(icon_name, getScaledIconSize());
     } catch (Glib::Error& e) {
-      spdlog::info("Item '{}': {}", id, static_cast<std::string>(e.what()));
+      spdlog::trace("Item '{}': {}", id, static_cast<std::string>(e.what()));
     }
   }
 
