@@ -300,10 +300,6 @@ void Item::updateImage() {
   auto pixbuf = getIconPixbuf();
   auto scaled_icon_size = getScaledIconSize();
 
-  if (!pixbuf) {
-    pixbuf = getIconByName("image-missing", getScaledIconSize());
-  }
-
   // If the loaded icon is not square, assume that the icon height should match the
   // requested icon size, but the width is allowed to be different. As such, if the
   // height of the image does not match the requested icon size, resize the icon such that
@@ -318,19 +314,42 @@ void Item::updateImage() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
-  try {
-    if (!icon_name.empty()) {
+
+  if (!icon_name.empty()) {
+
+    try {
       std::ifstream temp(icon_name);
       if (temp.is_open()) {
         return Gdk::Pixbuf::create_from_file(icon_name);
       }
-      return getIconByName(icon_name, getScaledIconSize());
-    } else if (icon_pixmap) {
-      return icon_pixmap;
+    } catch (Glib::Error& e) {
+      // Ignore because we want to also try different methods of getting an icon.
+      //
+      // But a warning is logged, as the file apparently exists, but there was
+      // a failure in creating a pixbuf out of it.
+
+      spdlog::warn("Item '{}': {}", id, static_cast<std::string>(e.what()));
     }
-  } catch (Glib::Error& e) {
-    spdlog::error("Item '{}': {}", id, static_cast<std::string>(e.what()));
+
+    try {
+      // Will throw if it can not find an icon.
+      return getIconByName(icon_name, getScaledIconSize());
+    } catch (Glib::Error& e) {
+      spdlog::trace("Item '{}': {}", id, static_cast<std::string>(e.what()));
+    }
   }
+
+  // Return the pixmap only if an icon for the given name could not be found.
+  if (icon_pixmap) {
+    return icon_pixmap;
+  }
+
+  if (icon_name.empty()) {
+    spdlog::error("Item '{}': No icon name or pixmap given.", id);
+  } else {
+    spdlog::error("Item '{}': Could not find an icon named '{}' and no pixmap given.", id, icon_name);
+  }
+
   return getIconByName("image-missing", getScaledIconSize());
 }
 
