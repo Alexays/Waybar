@@ -96,9 +96,8 @@ bool waybar::modules::Clock::is_timezone_fixed() {
 auto waybar::modules::Clock::update() -> void {
   auto time_zone = current_timezone();
   auto now = std::chrono::system_clock::now();
-  waybar_time wtime = {locale_,
-                       date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now) +
-                                                       calendar_shift_ )};
+  waybar_time wtime = {locale_, date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now) +
+                                                                calendar_shift_ )};
   std::string text = "";
   if (!is_timezone_fixed()) {
     // As date dep is not fully compatible, prefer fmt
@@ -171,8 +170,8 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
                        ? date::year_month_day{daypoint} + calendar_shift_
                        : date::year_month_day{daypoint};
   const auto curr_day{(calendar_shift_init_.count() > 0 && calendar_shift_.count() != 0)
-                       ? date::day{0}
-                       : ymd.day()};
+                          ? date::day{0}
+                          : ymd.day()};
 
   if (calendar_cached_ymd_ == ymd) return calendar_cached_text_;
 
