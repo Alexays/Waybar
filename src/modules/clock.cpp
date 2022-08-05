@@ -63,7 +63,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 
   if (is_calendar_in_tooltip_) {
     if (config_["on-scroll"][kCalendarPlaceholder].isInt()) {
-      calendar_shift_init_ = date::months{config_["on-scroll"].get(kCalendarPlaceholder, 0).asInt()};
+      calendar_shift_init_ =
+          date::months{config_["on-scroll"].get(kCalendarPlaceholder, 0).asInt()};
     }
   }
 
@@ -96,7 +97,8 @@ auto waybar::modules::Clock::update() -> void {
   auto time_zone = current_timezone();
   auto now = std::chrono::system_clock::now();
   waybar_time wtime = {locale_,
-                       date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now) + calendar_shift_ )};
+                       date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now) +
+                                                       calendar_shift_ )};
   std::string text = "";
   if (!is_timezone_fixed()) {
     // As date dep is not fully compatible, prefer fmt
@@ -155,7 +157,7 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll* e) {
       current_time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
     } else {
       current_time_zone_idx_ =
-        current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
+          current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
     }
   }
 
@@ -165,10 +167,12 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll* e) {
 
 auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::string {
   const auto daypoint = date::floor<date::days>(wtime.ztime.get_local_time());
-  const auto ymd = (calendar_shift_init_.count() > 0 && calendar_shift_.count() != 0) ?
-    date::year_month_day{daypoint} + calendar_shift_ : date::year_month_day{daypoint};
-  const auto curr_day{(calendar_shift_init_.count() > 0 && calendar_shift_.count() != 0) ?
-    date::day{0} : ymd.day()};
+  const auto ymd = (calendar_shift_init_.count() > 0 && calendar_shift_.count() != 0)
+                       ? date::year_month_day{daypoint} + calendar_shift_
+                       : date::year_month_day{daypoint};
+  const auto curr_day{(calendar_shift_init_.count() > 0 && calendar_shift_.count() != 0)
+                       ? date::day{0}
+                       : ymd.day()};
 
   if (calendar_cached_ymd_ == ymd) return calendar_cached_text_;
 
