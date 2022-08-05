@@ -97,7 +97,7 @@ auto waybar::modules::Clock::update() -> void {
   auto time_zone = current_timezone();
   auto now = std::chrono::system_clock::now();
   waybar_time wtime = {locale_, date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now) +
-                                                                calendar_shift_ )};
+                                                                calendar_shift_)};
   std::string text = "";
   if (!is_timezone_fixed()) {
     // As date dep is not fully compatible, prefer fmt
