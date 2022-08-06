@@ -162,7 +162,7 @@ void waybar::modules::Custom::parseOutputRaw() {
   std::istringstream output(output_.out);
   std::string line;
   int i = 0;
-  while (getline(output, line)) {
+  while (getline(output, line, '\t')) {
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
         text_ = Glib::Markup::escape_text(line);
