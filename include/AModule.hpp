@@ -48,10 +48,10 @@ class AModule : public IModule {
       {std::make_pair(3, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-right"},
       {std::make_pair(8, GdkEventType::GDK_BUTTON_PRESS), "on-click-backward"},
       {std::make_pair(8, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-backward"},
-      {std::make_pair(8, GdkEventType::GDK_2BUTTON_PRESS), "on-triple-click-backward"},
+      {std::make_pair(8, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-backward"},
       {std::make_pair(9, GdkEventType::GDK_BUTTON_PRESS), "on-click-forward"},
       {std::make_pair(9, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-forward"},
-      {std::make_pair(9, GdkEventType::GDK_2BUTTON_PRESS), "on-triple-click-forward"}};
+      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"}};
 };
 
 }  // namespace waybar
