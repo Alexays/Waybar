@@ -26,6 +26,9 @@ class JACK : public ALabel {
   jack_nframes_t      bufsize_;
   jack_nframes_t      samplerate_;
   unsigned int        xruns_;
+  float               load_;
+  bool                running_;
+  std::mutex          mutex_;
   std::string         state_;
   util::SleeperThread thread_;
 };

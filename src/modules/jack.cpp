@@ -1,14 +1,13 @@
 #include "modules/jack.hpp"
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules {
 
 JACK::JACK(const std::string &id, const Json::Value &config)
     : ALabel(config, "jack", id, "{load}%", 1) {
-  xruns_ = 0;
-  state_ = "disconnected";
+  running_ = false;
   client_ = NULL;
 
-  state_ = JACKState();
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -16,8 +15,20 @@ JACK::JACK(const std::string &id, const Json::Value &config)
 }
 
 std::string JACK::JACKState() {
-  if (state_.compare("xrun") == 0) return "xrun";
-  if (state_.compare("connected") == 0) return "connected";
+  if (running_) {
+    load_ = jack_cpu_load(client_);
+    return state_;
+  }
+
+  xruns_ = 0;
+  load_ = 0;
+  bufsize_ = 0;
+  samplerate_ = 0;
+
+  if (client_) {
+//    jack_client_close(client_);
+    client_ = NULL;
+  }
 
   client_ = jack_client_open("waybar", JackNoStartServer, NULL);
   if (client_) {
@@ -31,33 +42,28 @@ std::string JACK::JACKState() {
     jack_set_xrun_callback(client_, xrunCallback, this);
     jack_on_shutdown(client_, shutdownCallback, this);
 
-    if (!jack_activate(client_)) return "connected";
+    if (!jack_activate(client_)) {
+      running_ = true;
+      return "connected";
+    }
   }
   return "disconnected";
 }
 
 auto JACK::update() -> void {
   std::string format;
-  float latency = 1000 * (float)bufsize_ / (float)samplerate_;
   auto state = JACKState();
-  float load;
+  float latency = 1000 * (float)bufsize_ / (float)samplerate_;
 
   if (label_.get_style_context()->has_class("xrun")) {
     label_.get_style_context()->remove_class("xrun");
     state = "connected";
   }
 
-  if (state.compare("disconnected") != 0)
-    load = jack_cpu_load(client_);
-  else {
-    load = 0;
-    bufsize_ = 0;
-    samplerate_ = 0;
-    latency = 0;
-  }
-
   if (label_.get_style_context()->has_class(state_))
     label_.get_style_context()->remove_class(state_);
+  label_.get_style_context()->add_class(state);
+  state_ = state;
 
   if (config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
@@ -66,10 +72,7 @@ auto JACK::update() -> void {
   } else
     format = "DSP {load}%";
 
-  if (!label_.get_style_context()->has_class(state)) label_.get_style_context()->add_class(state);
-  state_ = state;
-
-  label_.set_markup(fmt::format(format, fmt::arg("load", std::round(load)),
+  label_.set_markup(fmt::format(format, fmt::arg("load", std::round(load_)),
                                 fmt::arg("bufsize", bufsize_), fmt::arg("samplerate", samplerate_),
                                 fmt::arg("latency", fmt::format("{:.2f}", latency)),
                                 fmt::arg("xruns", xruns_)));
@@ -78,7 +81,7 @@ auto JACK::update() -> void {
     std::string tooltip_format = "{bufsize}/{samplerate} {latency}ms";
     if (config_["tooltip-format"].isString()) tooltip_format = config_["tooltip-format"].asString();
     label_.set_tooltip_text(fmt::format(
-        tooltip_format, fmt::arg("load", std::round(load)), fmt::arg("bufsize", bufsize_),
+        tooltip_format, fmt::arg("load", std::round(load_)), fmt::arg("bufsize", bufsize_),
         fmt::arg("samplerate", samplerate_), fmt::arg("latency", fmt::format("{:.2f}", latency)),
         fmt::arg("xruns", xruns_)));
   }
@@ -99,9 +102,7 @@ int JACK::xrun() {
 }
 
 void JACK::shutdown() {
-  client_ = NULL;
-  state_ = "disconnected";
-  xruns_ = 0;
+  running_ = false;
 }
 
 }  // namespace waybar::modules
