@@ -153,6 +153,10 @@ waybar::modules::Network::~Network() {
     nl_close(sock_);
     nl_socket_free(sock_);
   }
+  if (sock2_ != nullptr) {
+    nl_close(sock2_);
+    nl_socket_free(sock2_);
+  }
 }
 
 void waybar::modules::Network::createEventSocket() {
@@ -210,12 +214,21 @@ void waybar::modules::Network::createEventSocket() {
 
 void waybar::modules::Network::createInfoSocket() {
   sock_ = nl_socket_alloc();
+  sock2_ = nl_socket_alloc();
   if (genl_connect(sock_) != 0) {
+    throw std::runtime_error("Can't connect to netlink socket");
+  }
+  if (genl_connect(sock2_) != 0) {
     throw std::runtime_error("Can't connect to netlink socket");
   }
   if (nl_socket_modify_cb(sock_, NL_CB_VALID, NL_CB_CUSTOM, handleScan, this) < 0) {
     throw std::runtime_error("Can't set callback");
   }
+
+  if (nl_socket_modify_cb(sock2_, NL_CB_VALID, NL_CB_CUSTOM, handleInfo, this) < 0) {
+    throw std::runtime_error("Can't set callback");
+  }
+
   nl80211_id_ = genl_ctrl_resolve(sock_, "nl80211");
   if (nl80211_id_ < 0) {
     spdlog::warn("Can't resolve nl80211 interface");
@@ -293,6 +306,7 @@ auto waybar::modules::Network::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string tooltip_format;
 
+  /*
   auto bandwidth = readBandwidthUsage();
   auto bandwidth_down = 0ull;
   auto bandwidth_up = 0ull;
@@ -306,6 +320,7 @@ auto waybar::modules::Network::update() -> void {
     bandwidth_up = up_octets - bandwidth_up_total_;
     bandwidth_up_total_ = up_octets;
   }
+  */
 
   if (!alt_) {
     auto state = getNetworkState();
@@ -336,7 +351,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
-      fmt::arg("icon", getIcon(signal_strength_, state_)),
+      fmt::arg("icon", getIcon(signal_strength_, state_))/*,
       fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthTotalBits",
@@ -348,7 +363,7 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s"))*/);
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -368,7 +383,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
-          fmt::arg("icon", getIcon(signal_strength_, state_)),
+          fmt::arg("icon", getIcon(signal_strength_, state_))/*,
           fmt::arg("bandwidthDownBits",
                    pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
           fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
@@ -381,7 +396,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s"))*/);
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_text(tooltip_text);
       }
@@ -731,6 +746,56 @@ int waybar::modules::Network::handleEventsDone(struct nl_msg *msg, void *data) {
   return NL_OK;
 }
 
+int waybar::modules::Network::handleInfo(struct nl_msg *msg, void *data) {
+static struct nla_policy stats_policy[NL80211_STA_INFO_MAX + 1]{};
+  stats_policy[NL80211_STA_INFO_INACTIVE_TIME].type = NLA_U32;
+  stats_policy[NL80211_STA_INFO_RX_BYTES].type = NLA_U32;
+  stats_policy[NL80211_STA_INFO_TX_BYTES].type = NLA_U32;
+  stats_policy[NL80211_STA_INFO_RX_PACKETS].type = NLA_U32;
+  stats_policy[NL80211_STA_INFO_TX_PACKETS].type = NLA_U32;
+  stats_policy[NL80211_STA_INFO_SIGNAL].type = NLA_U8;
+  stats_policy[NL80211_STA_INFO_TX_BITRATE].type = NLA_NESTED;
+  stats_policy[NL80211_STA_INFO_LLID].type = NLA_U16;
+  stats_policy[NL80211_STA_INFO_PLID].type = NLA_U16;
+  stats_policy[NL80211_STA_INFO_PLINK_STATE].type = NLA_U8;
+
+  auto net = static_cast<waybar::modules::Network *>(data);
+  auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
+  struct nlattr *tb[NL80211_ATTR_MAX + 1];
+  struct nlattr *sinfo[NL80211_STA_INFO_MAX + 1];
+
+  nla_parse(tb,
+            NL80211_ATTR_MAX,
+            genlmsg_attrdata(gnlh, 0),
+            genlmsg_attrlen(gnlh, 0),
+            NULL);
+
+  if (!tb[NL80211_ATTR_STA_INFO])
+    return NL_SKIP;
+
+  if (nla_parse_nested(sinfo, NL80211_STA_INFO_MAX,
+                       tb[NL80211_ATTR_STA_INFO], stats_policy)) {
+    fprintf(stderr, "failed to parse nested attributes!\n"); return NL_SKIP;
+  }
+
+  if (sinfo[NL80211_STA_INFO_SIGNAL]) {
+    net->signal_strength_dbm_ = (int8_t)nla_get_u8(sinfo[NL80211_STA_INFO_SIGNAL]);
+
+    // If a signal is too strong, it can overwhelm receiving circuity that is designed
+    // to pick up and process a certain signal level. The following percentage is scaled to
+    // punish signals that are too strong (>= -45dBm) or too weak (<= -45 dBm).
+    const int hardwareOptimum = -45;
+    const int hardwareMin = -90;
+    const int strength =
+        100 -
+        ((abs(net->signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) *
+         100);
+    net->signal_strength_ = std::clamp(strength, 0, 100);
+  }
+
+  return NL_OK;
+}
+
 int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   auto net = static_cast<waybar::modules::Network *>(data);
   auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
@@ -751,6 +816,7 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
                 nullptr) < 0) {
     return NL_SKIP;
   }
+
   if (tb[NL80211_ATTR_BSS] == nullptr) {
     return NL_SKIP;
   }
@@ -761,7 +827,7 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
     return NL_SKIP;
   }
   net->parseEssid(bss);
-  net->parseSignal(bss);
+  //net->parseSignal(bss);
   net->parseFreq(bss);
   return NL_OK;
 }
@@ -855,6 +921,16 @@ auto waybar::modules::Network::getInfo() -> void {
     return;
   }
   nl_send_sync(sock_, nl_msg);
+
+  struct nl_msg *nl_msg2 = nlmsg_alloc();
+  if (genlmsg_put(nl_msg2, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, NLM_F_DUMP,
+                  NL80211_CMD_GET_STATION, 0) == nullptr ||
+      nla_put_u32(nl_msg2, NL80211_ATTR_IFINDEX, ifid_) < 0) {
+    nlmsg_free(nl_msg2);
+    return;
+  }
+
+  nl_send_sync(sock2_, nl_msg2);
 }
 
 // https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
