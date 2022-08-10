@@ -175,8 +175,8 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(
-      fmt::format(format_, fmt::arg("title", rewriteTitle(window_)), fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
+  label_.set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
+                                fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
@@ -223,14 +223,12 @@ std::tuple<std::size_t, int, std::string, std::string, std::string, std::string>
                                    ? node["window_properties"]["class"].asString()
                                    : "";
 
-        const auto shell = node["shell"].isString()
-                               ? node["shell"].asString()
-                               : "";
+        const auto shell = node["shell"].isString() ? node["shell"].asString() : "";
 
         int nb = node.size();
         if (parentWorkspace != 0) nb = leafNodesInWorkspace(parentWorkspace);
-        return {nb, node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()), app_id,
-                app_class, shell};
+        return {nb, node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()),
+                app_id, app_class, shell};
       }
     }
     // iterate
@@ -250,8 +248,8 @@ std::tuple<std::size_t, int, std::string, std::string, std::string, std::string>
   return {0, -1, "", "", "", ""};
 }
 
-std::tuple<std::size_t, int, std::string, std::string, std::string, std::string> Window::getFocusedNode(
-    const Json::Value& nodes, std::string& output) {
+std::tuple<std::size_t, int, std::string, std::string, std::string, std::string>
+Window::getFocusedNode(const Json::Value& nodes, std::string& output) {
   Json::Value placeholder = 0;
   return gfnWithWorkspace(nodes, output, config_, bar_, placeholder);
 }
