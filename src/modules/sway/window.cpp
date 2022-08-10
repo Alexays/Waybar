@@ -44,7 +44,7 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
-    std::tie(app_nb_, windowId_, window_, app_id_, app_class_) =
+    std::tie(app_nb_, windowId_, window_, app_id_, app_class_, shell_) =
         getFocusedNode(payload["nodes"], output);
     updateAppIconName();
     dp.emit();
@@ -176,7 +176,7 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("empty");
   }
   label_.set_markup(
-      fmt::format(format_, fmt::arg("title", rewriteTitle(window_)), fmt::arg("app_id", app_id_)));
+      fmt::format(format_, fmt::arg("title", rewriteTitle(window_)), fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
@@ -206,7 +206,7 @@ int leafNodesInWorkspace(const Json::Value& node) {
   return sum;
 }
 
-std::tuple<std::size_t, int, std::string, std::string, std::string> gfnWithWorkspace(
+std::tuple<std::size_t, int, std::string, std::string, std::string, std::string> gfnWithWorkspace(
     const Json::Value& nodes, std::string& output, const Json::Value& config_, const Bar& bar_,
     Json::Value& parentWorkspace) {
   for (auto const& node : nodes) {
@@ -222,30 +222,35 @@ std::tuple<std::size_t, int, std::string, std::string, std::string> gfnWithWorks
         const auto app_class = node["window_properties"]["class"].isString()
                                    ? node["window_properties"]["class"].asString()
                                    : "";
+
+        const auto shell = node["shell"].isString()
+                               ? node["shell"].asString()
+                               : "";
+
         int nb = node.size();
         if (parentWorkspace != 0) nb = leafNodesInWorkspace(parentWorkspace);
         return {nb, node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()), app_id,
-                app_class};
+                app_class, shell};
       }
     }
     // iterate
     if (node["type"] == "workspace") parentWorkspace = node;
-    auto [nb, id, name, app_id, app_class] =
+    auto [nb, id, name, app_id, app_class, shell] =
         gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
-      return {nb, id, name, app_id, app_class};
+      return {nb, id, name, app_id, app_class, shell};
     }
     // Search for floating node
-    std::tie(nb, id, name, app_id, app_class) =
+    std::tie(nb, id, name, app_id, app_class, shell) =
         gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace);
     if (id > -1 && !name.empty()) {
-      return {nb, id, name, app_id, app_class};
+      return {nb, id, name, app_id, app_class, shell};
     }
   }
-  return {0, -1, "", "", ""};
+  return {0, -1, "", "", "", ""};
 }
 
-std::tuple<std::size_t, int, std::string, std::string, std::string> Window::getFocusedNode(
+std::tuple<std::size_t, int, std::string, std::string, std::string, std::string> Window::getFocusedNode(
     const Json::Value& nodes, std::string& output) {
   Json::Value placeholder = 0;
   return gfnWithWorkspace(nodes, output, config_, bar_, placeholder);
