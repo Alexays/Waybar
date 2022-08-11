@@ -14,6 +14,7 @@ JACK::JACK(const std::string &id, const Json::Value &config)
 }
 
 std::string JACK::JACKState() {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (running_) {
     load_ = jack_cpu_load(client_);
     return state_;
@@ -30,23 +31,22 @@ std::string JACK::JACKState() {
   }
 
   client_ = jack_client_open("waybar", JackNoStartServer, NULL);
-  if (client_) {
+  if (!client_) return "disconnected";
+
+  if (config_["realtime"].isBool() && !config_["realtime"].asBool()) {
     pthread_t jack_thread = jack_client_thread_id(client_);
-    if (config_["realtime"].isBool() && !config_["realtime"].asBool())
-      jack_drop_real_time_scheduling(jack_thread);
-
-    bufsize_ = jack_get_buffer_size(client_);
-    samplerate_ = jack_get_sample_rate(client_);
-    jack_set_buffer_size_callback(client_, bufSizeCallback, this);
-    jack_set_xrun_callback(client_, xrunCallback, this);
-    jack_on_shutdown(client_, shutdownCallback, this);
-
-    if (!jack_activate(client_)) {
-      running_ = true;
-      return "connected";
-    }
+    jack_drop_real_time_scheduling(jack_thread);
   }
-  return "disconnected";
+
+  bufsize_ = jack_get_buffer_size(client_);
+  samplerate_ = jack_get_sample_rate(client_);
+  jack_set_buffer_size_callback(client_, bufSizeCallback, this);
+  jack_set_xrun_callback(client_, xrunCallback, this);
+  jack_on_shutdown(client_, shutdownCallback, this);
+  if (jack_activate(client_)) return "disconnected";
+
+  running_ = true;
+  return "connected";
 }
 
 auto JACK::update() -> void {
@@ -101,6 +101,7 @@ int JACK::xrun() {
 }
 
 void JACK::shutdown() {
+  std::lock_guard<std::mutex> lock(mutex_);
   running_ = false;
 }
 
