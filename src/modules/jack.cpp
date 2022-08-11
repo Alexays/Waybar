@@ -1,5 +1,4 @@
 #include "modules/jack.hpp"
-#include <spdlog/spdlog.h>
 
 namespace waybar::modules {
 
@@ -26,7 +25,7 @@ std::string JACK::JACKState() {
   samplerate_ = 0;
 
   if (client_) {
-//    jack_client_close(client_);
+    jack_client_close(client_);
     client_ = NULL;
   }
 
@@ -52,7 +51,7 @@ std::string JACK::JACKState() {
 
 auto JACK::update() -> void {
   std::string format;
-  auto state = JACKState();
+  std::string state = JACKState();
   float latency = 1000 * (float)bufsize_ / (float)samplerate_;
 
   if (label_.get_style_context()->has_class("xrun")) {
