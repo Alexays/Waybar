@@ -15,7 +15,7 @@ Addressed by *sway/window*
 *format*: ++
 	typeof: string ++
 	default: {title} ++
-	The format, how information should be displayed. On {} data gets inserted.
+	The format, how information should be displayed.
 
 *rotate*: ++
 	typeof: integer ++
