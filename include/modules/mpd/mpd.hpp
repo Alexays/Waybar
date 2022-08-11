@@ -41,6 +41,7 @@ class MPD : public ALabel {
 
  private:
   std::string getTag(mpd_tag_type type, unsigned idx = 0) const;
+  std::string getFilename() const;
   void setLabel();
   std::string getStateIcon() const;
   std::string getOptionIcon(std::string optionName, bool activated) const;
