@@ -15,7 +15,8 @@ class JACK : public ALabel {
   ~JACK() = default;
   auto update() -> void;
 
-  int                 bufSize(unsigned int size);
+  int                 bufSize(jack_nframes_t size);
+  int                 sampleRate(jack_nframes_t rate);
   int                 xrun();
   void                shutdown();
 
@@ -35,6 +36,7 @@ class JACK : public ALabel {
 
 }  // namespace waybar::modules
 
-int bufSizeCallback(unsigned int size, void *obj);
+int bufSizeCallback(jack_nframes_t size, void *obj);
+int sampleRateCallback(jack_nframes_t rate, void *obj);
 int xrunCallback(void *obj);
 void shutdownCallback(void *obj);

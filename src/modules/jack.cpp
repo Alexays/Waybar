@@ -40,6 +40,7 @@ std::string JACK::JACKState() {
 
   bufsize_ = jack_get_buffer_size(client_);
   samplerate_ = jack_get_sample_rate(client_);
+  jack_set_sample_rate_callback(client_, sampleRateCallback, this);
   jack_set_buffer_size_callback(client_, bufSizeCallback, this);
   jack_set_xrun_callback(client_, xrunCallback, this);
   jack_on_shutdown(client_, shutdownCallback, this);
@@ -89,9 +90,14 @@ auto JACK::update() -> void {
   ALabel::update();
 }
 
-int JACK::bufSize(unsigned int size) {
+int JACK::bufSize(jack_nframes_t size) {
   bufsize_ = size;
-  return size;
+  return 0;
+}
+
+int JACK::sampleRate(jack_nframes_t rate) {
+  samplerate_ = rate;
+  return 0;
 }
 
 int JACK::xrun() {
@@ -107,8 +113,12 @@ void JACK::shutdown() {
 
 }  // namespace waybar::modules
 
-int bufSizeCallback(unsigned int size, void *obj) {
+int bufSizeCallback(jack_nframes_t size, void *obj) {
   return static_cast<waybar::modules::JACK *>(obj)->bufSize(size);
+}
+
+int sampleRateCallback(jack_nframes_t rate, void *obj) {
+  return static_cast<waybar::modules::JACK *>(obj)->sampleRate(rate);
 }
 
 int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->xrun(); }
