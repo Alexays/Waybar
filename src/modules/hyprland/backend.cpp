@@ -100,8 +100,7 @@ void IPC::parseIPC(const std::string& ev) {
   }
 }
 
-void IPC::registerForIPC(const std::string& ev,
-                                                    std::function<void(const std::string&)> fn) {
+void IPC::registerForIPC(const std::string& ev, std::function<void(const std::string&)> fn) {
   callbackMutex.lock();
 
   callbacks.emplace_back(std::make_pair(ev, fn));
@@ -169,4 +168,4 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   return std::string(buffer);
 }
 
-}
+}  // namespace waybar::modules::hyprland

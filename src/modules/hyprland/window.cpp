@@ -1,7 +1,8 @@
-#include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/window.hpp"
 
 #include <spdlog/spdlog.h>
+
+#include "modules/hyprland/backend.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -58,4 +59,5 @@ void Window::onEvent(const std::string& ev) {
 
   dp.emit();
 }
-}
+
+}  // namespace waybar::modules::hyprland
