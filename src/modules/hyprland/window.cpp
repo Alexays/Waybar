@@ -20,10 +20,24 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   gIPC->registerForIPC("activewindow", [&](const std::string& ev) { this->onEvent(ev); });
 }
 
+auto Window::update() -> void {
+  // fix ampersands
+  std::lock_guard<std::mutex> lg(mutex_);
+
+  if (!format_.empty()) {
+    label_.show();
+    label_.set_markup(fmt::format(format_, lastView));
+  } else {
+    label_.hide();
+  }
+
+  ALabel::update();
+}
+
 void Window::onEvent(const std::string& ev) {
+  std::lock_guard<std::mutex> lg(mutex_);
   auto windowName = ev.substr(ev.find_first_of(',') + 1).substr(0, 256);
 
-  // fix ampersands
   auto replaceAll = [](std::string str, const std::string& from,
                        const std::string& to) -> std::string {
     size_t start_pos = 0;
@@ -42,13 +56,6 @@ void Window::onEvent(const std::string& ev) {
 
   spdlog::debug("hyprland window onevent with {}", windowName);
 
-  if (!format_.empty()) {
-    label_.show();
-    label_.set_markup(fmt::format(format_, windowName));
-  } else {
-    label_.hide();
-  }
-
-  ALabel::update();
+  dp.emit();
 }
 }

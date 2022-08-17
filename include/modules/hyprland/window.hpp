@@ -14,9 +14,12 @@ public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;
 
+  auto update() -> void;
+
 private:
   void onEvent(const std::string&);
 
+  std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
   std::string lastView;
