@@ -70,7 +70,7 @@ auto JACK::update() -> void {
   } else if (config_["format"].isString()) {
     format = config_["format"].asString();
   } else
-    format = "DSP {load}%";
+    format = "{load}%";
 
   label_.set_markup(fmt::format(format, fmt::arg("load", std::round(load_)),
                                 fmt::arg("bufsize", bufsize_), fmt::arg("samplerate", samplerate_),
