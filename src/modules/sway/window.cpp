@@ -15,7 +15,7 @@
 namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AIconLabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
+    : AIconLabel(config, "window", id, "{title}", 0, true), bar_(bar), windowId_(-1) {
   // Icon size
   if (config_["icon-size"].isUInt()) {
     app_icon_size_ = config["icon-size"].asUInt();
