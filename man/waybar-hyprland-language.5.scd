@@ -19,7 +19,7 @@ Addressed by *hyprland/language*
 
 *keyboard-name*: ++
     typeof: string ++
-    Specifies which keyboard to use from *hyprctl devices* output. Using the option that begins with "AT Translated set..." is recommended.
+    Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "AT Translated set..." is recommended.
 
 
 # EXAMPLES
