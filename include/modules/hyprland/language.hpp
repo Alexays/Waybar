@@ -18,6 +18,7 @@ private:
   void onEvent(const std::string&);
 
   void initLanguage();
+  std::string getShortFrom(const std::string&);
 
   std::mutex mutex_;
   const Bar& bar_;
