@@ -71,8 +71,7 @@ void Language::onEvent(const std::string& ev) {
 void Language::initLanguage() {
   const auto INPUTDEVICES = gIPC->getSocket1Reply("devices");
 
-  if (!config_.isMember("keyboard-name"))
-    return;
+  if (!config_.isMember("keyboard-name")) return;
 
   const auto KEEBNAME = config_["keyboard-name"].asString();
 
