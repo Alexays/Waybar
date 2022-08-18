@@ -27,7 +27,6 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
 }
 
 auto Language::update() -> void {
-  // fix ampersands
   std::lock_guard<std::mutex> lg(mutex_);
 
   if (!format_.empty()) {
