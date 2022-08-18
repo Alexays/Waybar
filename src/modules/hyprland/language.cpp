@@ -1,6 +1,8 @@
 #include "modules/hyprland/language.hpp"
 
 #include <spdlog/spdlog.h>
+#include <xkbcommon/xkbregistry.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include "modules/hyprland/backend.hpp"
 
@@ -30,7 +32,7 @@ auto Language::update() -> void {
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(fmt::format(format_, layoutName_));
+    label_.set_markup(layoutName_);
   } else {
     label_.hide();
   }
@@ -56,6 +58,15 @@ void Language::onEvent(const std::string& ev) {
     }
     return str;
   };
+
+  const auto BRIEFNAME = getShortFrom(layoutName);
+
+  if (config_.isMember("format-" + BRIEFNAME)) {
+    const auto PROPNAME = "format-" + BRIEFNAME;
+    layoutName = fmt::format(format_, config_[PROPNAME].asString());
+  } else {
+    layoutName = fmt::format(format_, layoutName);
+  }
 
   layoutName = replaceAll(layoutName, "&", "&amp;");
 
@@ -90,6 +101,32 @@ void Language::initLanguage() {
   } catch (std::exception& e) {
     spdlog::error("hyprland language initLanguage failed with {}", e.what());
   }
+}
+
+std::string Language::getShortFrom(const std::string& fullName) {
+  const auto CONTEXT = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
+  rxkb_context_parse_default_ruleset(CONTEXT);
+
+  std::string foundName = "";
+  rxkb_layout* layout = rxkb_layout_first(CONTEXT);
+  while (layout) {
+    std::string nameOfLayout = rxkb_layout_get_description(layout);
+
+    if (nameOfLayout != fullName) {
+      layout = rxkb_layout_next(layout);
+      continue;
+    }
+
+    std::string briefName = rxkb_layout_get_brief(layout);
+
+    rxkb_context_unref(CONTEXT);
+
+    return briefName;
+  }
+  
+  rxkb_context_unref(CONTEXT);
+
+  return "";
 }
 
 }  // namespace waybar::modules::hyprland
