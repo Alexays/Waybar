@@ -227,8 +227,8 @@ std::tuple<std::size_t, int, std::string, std::string, std::string, std::string>
 
         int nb = node.size();
         if (parentWorkspace != 0) nb = leafNodesInWorkspace(parentWorkspace);
-        return {nb, node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()),
-                app_id, app_class, shell};
+        return {nb,     node["id"].asInt(), Glib::Markup::escape_text(node["name"].asString()),
+                app_id, app_class,          shell};
       }
     }
     // iterate

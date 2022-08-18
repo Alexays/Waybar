@@ -314,9 +314,7 @@ void Item::updateImage() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
-
   if (!icon_name.empty()) {
-
     try {
       std::ifstream temp(icon_name);
       if (temp.is_open()) {
@@ -347,7 +345,8 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
   if (icon_name.empty()) {
     spdlog::error("Item '{}': No icon name or pixmap given.", id);
   } else {
-    spdlog::error("Item '{}': Could not find an icon named '{}' and no pixmap given.", id, icon_name);
+    spdlog::error("Item '{}': Could not find an icon named '{}' and no pixmap given.", id,
+                  icon_name);
   }
 
   return getIconByName("image-missing", getScaledIconSize());
