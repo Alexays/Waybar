@@ -45,7 +45,7 @@ void Language::onEvent(const std::string& ev) {
   keebName = keebName.substr(keebName.find_first_of('>') + 2);
 
   if (config_.isMember("keyboard-name") && keebName != config_["keyboard-name"].asString())
-    return; // ignore
+    return;  // ignore
 
   auto replaceAll = [](std::string str, const std::string& from,
                        const std::string& to) -> std::string {
@@ -69,29 +69,29 @@ void Language::onEvent(const std::string& ev) {
 }
 
 void Language::initLanguage() {
-    const auto INPUTDEVICES = gIPC->getSocket1Reply("devices");
+  const auto INPUTDEVICES = gIPC->getSocket1Reply("devices");
 
-    if (!config_.isMember("keyboard-name"))
-      return;
+  if (!config_.isMember("keyboard-name"))
+    return;
 
-    const auto KEEBNAME = config_["keyboard-name"].asString();
+  const auto KEEBNAME = config_["keyboard-name"].asString();
 
-    try {
+  try {
 
-      auto searcher = INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
-      searcher = searcher.substr(searcher.find("Keyboard at"));
-      searcher = searcher.substr(searcher.find("keymap:") + 7);
-      searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
+    auto searcher = INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
+    searcher = searcher.substr(searcher.find("Keyboard at"));
+    searcher = searcher.substr(searcher.find("keymap:") + 7);
+    searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 
-      layoutName_ = searcher;
+    layoutName_ = searcher;
 
-      spdlog::debug("hyprland language initLanguage found {}", layoutName_);
+    spdlog::debug("hyprland language initLanguage found {}", layoutName_);
 
-      dp.emit();
+    dp.emit();
 
-    } catch (std::exception& e) {
-      spdlog::error("hyprland language initLanguage failed with {}", e.what());
-    }
+  } catch (std::exception& e) {
+    spdlog::error("hyprland language initLanguage failed with {}", e.what());
+  }
 }
 
 }  // namespace waybar::modules::hyprland
