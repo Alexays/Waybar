@@ -187,12 +187,6 @@ src_files += [
     'src/modules/sway/workspaces.cpp'
 ]
 
-add_project_arguments('-DHAVE_HYPR', language: 'cpp')
-src_files += [
-    'src/modules/hypr/ipc.cpp',
-    'src/modules/hypr/window.cpp',
-]
-
 if true
     add_project_arguments('-DHAVE_WLR', language: 'cpp')
     src_files += 'src/modules/wlr/taskbar.cpp'
