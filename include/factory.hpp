@@ -24,6 +24,7 @@
 #ifdef HAVE_HYPRLAND
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/window.hpp"
+#include "modules/hyprland/language.hpp"
 #endif
 #if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
