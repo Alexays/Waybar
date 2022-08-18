@@ -1,8 +1,8 @@
 #include "modules/hyprland/language.hpp"
 
 #include <spdlog/spdlog.h>
-#include <xkbcommon/xkbregistry.h>
 #include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbregistry.h>
 
 #include "modules/hyprland/backend.hpp"
 
@@ -123,7 +123,7 @@ std::string Language::getShortFrom(const std::string& fullName) {
 
     return briefName;
   }
-  
+
   rxkb_context_unref(CONTEXT);
 
   return "";
