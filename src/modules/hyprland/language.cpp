@@ -76,7 +76,6 @@ void Language::initLanguage() {
   const auto KEEBNAME = config_["keyboard-name"].asString();
 
   try {
-
     auto searcher = INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
     searcher = searcher.substr(searcher.find("Keyboard at"));
     searcher = searcher.substr(searcher.find("keymap:") + 7);
