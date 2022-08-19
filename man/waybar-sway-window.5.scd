@@ -14,8 +14,8 @@ Addressed by *sway/window*
 
 *format*: ++
 	typeof: string ++
-	default: {} ++
-	The format, how information should be displayed. On {} data gets inserted.
+	default: {title} ++
+	The format, how information should be displayed.
 
 *rotate*: ++
 	typeof: integer ++
@@ -79,6 +79,15 @@ Addressed by *sway/window*
 	typeof: integer ++
 	default: 24 ++
 	Option to change the size of the application icon.
+
+# FORMAT REPLACEMENTS
+
+*{title}*: The title of the focused window.
+
+*{app_id}*: The app_id of the focused window.
+
+*{shell}*: The shell of the focused window. It's 'xwayland' when the window is
+running through xwayland, otherwise it's 'xdg-shell'.
 
 # REWRITE RULES
 

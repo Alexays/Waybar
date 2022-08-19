@@ -201,6 +201,12 @@ if true
     src_files += 'src/modules/river/window.cpp'
 endif
 
+if true
+    add_project_arguments('-DHAVE_HYPRLAND', language: 'cpp')
+    src_files += 'src/modules/hyprland/backend.cpp'
+    src_files += 'src/modules/hyprland/window.cpp'
+endif
+
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += 'src/modules/network.cpp'
