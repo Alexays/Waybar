@@ -47,7 +47,7 @@ Addressed by *jack*
 *interval*: ++
     typeof: integer ++
     default: 1 ++
-    Positive value to rotate the text label.
+    The interval in which the information gets polled.
 
 *rotate*: ++
     typeof: integer ++
