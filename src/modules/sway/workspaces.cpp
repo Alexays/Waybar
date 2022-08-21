@@ -8,7 +8,7 @@
 
 namespace waybar::modules::sway {
 
-// Helper function to to assign a number to a workspace, just like sway. In fact
+// Helper function to assign a number to a workspace, just like sway. In fact
 // this is taken quite verbatim from `sway/ipc-json.c`.
 int Workspaces::convertWorkspaceNameToNum(std::string name) {
   if (isdigit(name[0])) {
