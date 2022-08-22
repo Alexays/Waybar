@@ -8,8 +8,12 @@
 
 extern "C" {
 #include <fcntl.h>
+#include <libinput.h>
+#include <linux/input-event-codes.h>
+#include <poll.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 }
 
 class errno_error : public std::runtime_error {
@@ -73,6 +77,51 @@ auto supportsLockStates(const libevdev* dev) -> bool {
          libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
 }
 
+auto waybar::modules::KeyboardState::findKeyboards() -> void {
+  if (config_["device-path"].isString()) {
+    std::string dev_path = config_["device-path"].asString();
+    libinput_devices_[dev_path] = nullptr;
+    fd_ = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
+    dev_ = openDevice(fd_);
+  } else {
+    DIR* dev_dir = opendir("/dev/input/by-path");
+    if (dev_dir == nullptr) {
+      throw errno_error(errno, "Failed to open /dev/input");
+    }
+    dirent* ep;
+    while ((ep = readdir(dev_dir))) {
+      if (ep->d_type == DT_DIR) continue;
+      std::string dev_path = std::string("/dev/input/by-path/") + ep->d_name;
+      int fd = openFile(dev_path.c_str(), O_NONBLOCK | O_CLOEXEC | O_RDONLY);
+      try {
+        auto dev = openDevice(fd);
+        if (supportsLockStates(dev)) {
+          spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
+          if (libinput_devices_.empty()) {
+            fd_ = fd;
+            dev_ = dev;
+          } else {
+            libevdev_free(dev);
+            closeFile(fd);
+          }
+          libinput_devices_[dev_path] = libinput_path_add_device(libinput_, dev_path.c_str());
+        } else {
+          libevdev_free(dev);
+          closeFile(fd);
+        }
+      } catch (const errno_error& e) {
+        // ENOTTY just means the device isn't an evdev device, skip it
+        if (e.code != ENOTTY) {
+          spdlog::warn(e.what());
+        }
+      }
+    }
+    if (dev_ == nullptr) {
+      throw errno_error(errno, "Failed to find keyboard device");
+    }
+  }
+}
+
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
@@ -100,7 +149,14 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
                          ? config_["format-icons"]["unlocked"].asString()
                          : "unlocked"),
       fd_(0),
-      dev_(nullptr) {
+      dev_(nullptr),
+      libinput_(nullptr),
+      libinput_devices_({}) {
+  struct libinput_interface interface = {
+      [](const char* path, int flags, void* user_data) { return open(path, flags); },
+      [](int fd, void* user_data) { close(fd); }};
+  libinput_ = libinput_path_create_context(&interface, NULL);
+
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
     numlock_label_.get_style_context()->add_class("numlock");
@@ -119,44 +175,39 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   }
   event_box_.add(box_);
 
-  if (config_["device-path"].isString()) {
-    std::string dev_path = config_["device-path"].asString();
-    fd_ = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    dev_ = openDevice(fd_);
-  } else {
-    DIR* dev_dir = opendir("/dev/input");
-    if (dev_dir == nullptr) {
-      throw errno_error(errno, "Failed to open /dev/input");
-    }
-    dirent* ep;
-    while ((ep = readdir(dev_dir))) {
-      if (ep->d_type != DT_CHR) continue;
-      std::string dev_path = std::string("/dev/input/") + ep->d_name;
-      int fd = openFile(dev_path.c_str(), O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-      try {
-        auto dev = openDevice(fd);
-        if (supportsLockStates(dev)) {
-          spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
-          fd_ = fd;
-          dev_ = dev;
-          break;
-        }
-      } catch (const errno_error& e) {
-        // ENOTTY just means the device isn't an evdev device, skip it
-        if (e.code != ENOTTY) {
-          spdlog::warn(e.what());
-        }
-      }
-      closeFile(fd);
-    }
-    if (dev_ == nullptr) {
-      throw errno_error(errno, "Failed to find keyboard device");
-    }
-  }
+  findKeyboards();
 
   thread_ = [this] {
     dp.emit();
-    thread_.sleep_for(interval_);
+    while (1) {
+      struct pollfd fd = {libinput_get_fd(libinput_), POLLIN, 0};
+      poll(&fd, 1, -1);
+      libinput_dispatch(libinput_);
+      struct libinput_event* event;
+      while ((event = libinput_get_event(libinput_))) {
+        auto type = libinput_event_get_type(event);
+        if (type == LIBINPUT_EVENT_KEYBOARD_KEY) {
+          auto keyboard_event = libinput_event_get_keyboard_event(event);
+          auto state = libinput_event_keyboard_get_key_state(keyboard_event);
+          if (state == LIBINPUT_KEY_STATE_RELEASED) {
+            uint32_t key = libinput_event_keyboard_get_key(keyboard_event);
+            switch (key) {
+              case KEY_CAPSLOCK:
+              case KEY_NUMLOCK:
+              case KEY_SCROLLLOCK:
+                dp.emit();
+                break;
+              default:
+                break;
+            }
+          }
+        } else if (type == LIBINPUT_EVENT_DEVICE_REMOVED) {
+          // TODO: Handle device removal.
+          // Clear libinput_devices_ and re-find keyboards.
+        }
+        libinput_event_destroy(event);
+      }
+    }
   };
 }
 
@@ -167,9 +218,14 @@ waybar::modules::KeyboardState::~KeyboardState() {
   } catch (const std::runtime_error& e) {
     spdlog::warn(e.what());
   }
+  for (const auto& [_, dev_ptr] : libinput_devices_) {
+    libinput_path_remove_device(dev_ptr);
+  }
 }
 
 auto waybar::modules::KeyboardState::update() -> void {
+  sleep(0);  // wait for keyboard status change
+
   int err = LIBEVDEV_READ_STATUS_SUCCESS;
   while (err == LIBEVDEV_READ_STATUS_SUCCESS) {
     input_event ev;

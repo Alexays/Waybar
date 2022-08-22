@@ -90,6 +90,7 @@ giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabl
 jsoncpp = dependency('jsoncpp')
 sigcpp = dependency('sigc++-2.0')
 libepoll = dependency('epoll-shim', required: false)
+libinput = dependency('libinput', required: get_option('libinput'))
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
@@ -243,8 +244,9 @@ if libudev.found() and (is_linux or libepoll.found())
     src_files += 'src/modules/backlight.cpp'
 endif
 
-if libevdev.found() and (is_linux or libepoll.found())
+if libevdev.found() and (is_linux or libepoll.found()) and libinput.found()
     add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
+    add_project_arguments('-DHAVE_LIBINPUT', language: 'cpp')
     src_files += 'src/modules/keyboard_state.cpp'
 endif
 
@@ -304,6 +306,7 @@ executable(
         gtkmm,
         dbusmenu_gtk,
         giounix,
+        libinput,
         libnl,
         libnlgen,
         upower_glib,

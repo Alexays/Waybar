@@ -1,4 +1,5 @@
 option('libcxx', type : 'boolean', value : false, description : 'Build with Clang\'s libc++ instead of libstdc++ on Linux.')
+option('libinput', type: 'feature', value: 'auto', description: 'Enable libinput support for libinput related features')
 option('libnl', type: 'feature', value: 'auto', description: 'Enable libnl support for network related features')
 option('libudev', type: 'feature', value: 'auto', description: 'Enable libudev support for udev related features')
 option('libevdev', type: 'feature', value: 'auto', description: 'Enable libevdev support for evdev related features')
