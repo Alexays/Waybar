@@ -110,6 +110,10 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   static struct libinput_interface interface = {
       [](const char* path, int flags, void* user_data) { return open(path, flags); },
       [](int fd, void* user_data) { close(fd); }};
+  if (config_["interval"].isUInt()) {
+    spdlog::warn("keyboard-state: interval is deprecated");
+  }
+
   libinput_ = libinput_path_create_context(&interface, NULL);
 
   box_.set_name("keyboard-state");
