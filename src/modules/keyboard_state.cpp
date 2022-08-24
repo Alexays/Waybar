@@ -137,18 +137,22 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   if (config_["device-path"].isString()) {
     std::string dev_path = config_["device-path"].asString();
     tryAddDevice(dev_path);
-  } else {
-    DIR* dev_dir = opendir(devices_path_.c_str());
-    if (dev_dir == nullptr) {
-      throw errno_error(errno, "Failed to open " + devices_path_);
-    }
-    dirent* ep;
-    while ((ep = readdir(dev_dir))) {
-      if (ep->d_type == DT_DIR) continue;
-      std::string dev_path = devices_path_ + ep->d_name;
-      tryAddDevice(dev_path);
+    if (libinput_devices_.empty()) {
+      spdlog::error("keyboard-state: Cannot find device {}", dev_path);
     }
   }
+
+  DIR* dev_dir = opendir(devices_path_.c_str());
+  if (dev_dir == nullptr) {
+    throw errno_error(errno, "Failed to open " + devices_path_);
+  }
+  dirent* ep;
+  while ((ep = readdir(dev_dir))) {
+    if (ep->d_type == DT_DIR) continue;
+    std::string dev_path = devices_path_ + ep->d_name;
+    tryAddDevice(dev_path);
+  }
+
   if (libinput_devices_.empty()) {
     throw errno_error(errno, "Failed to find keyboard device");
   }
@@ -241,7 +245,13 @@ auto waybar::modules::KeyboardState::update() -> void {
   int numl = 0, capsl = 0, scrolll = 0;
 
   try {
-    std::string dev_path = libinput_devices_.begin()->first;
+    std::string dev_path;
+    if (config_["device-path"].isString() &&
+        libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
+      dev_path = config_["device-path"].asString();
+    } else {
+      dev_path = libinput_devices_.begin()->first;
+    }
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
     auto dev = openDevice(fd);
     numl = libevdev_get_event_value(dev, EV_LED, LED_NUML);
