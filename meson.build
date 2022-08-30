@@ -365,6 +365,7 @@ if scdoc.found()
         'waybar-river-window.5.scd',
         'waybar-sway-language.5.scd',
         'waybar-sway-mode.5.scd',
+        'waybar-sway-scratchpad.5.scd',
         'waybar-sway-window.5.scd',
         'waybar-sway-workspaces.5.scd',
         'waybar-temperature.5.scd',
