@@ -15,6 +15,7 @@
 #include <sstream>
 #include <utility>
 
+#include "gdkmm/general.h"
 #include "glibmm/error.h"
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
@@ -173,18 +174,24 @@ bool Task::image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme>
   }
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+  auto scaled_icon_size = size * image.get_scale_factor();
 
   try {
-    pixbuf = icon_theme->load_icon(ret_icon_name, size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+    pixbuf = icon_theme->load_icon(ret_icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
   } catch (...) {
     if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS))
-      pixbuf = load_icon_from_file(ret_icon_name, size);
+      pixbuf = load_icon_from_file(ret_icon_name, scaled_icon_size);
     else
       pixbuf = {};
   }
 
   if (pixbuf) {
-    image.set(pixbuf);
+    if (pixbuf->get_width() != scaled_icon_size) {
+        int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+        pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+    }
+    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
+    image.set(surface);
     return true;
   }
 
