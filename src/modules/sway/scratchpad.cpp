@@ -5,10 +5,14 @@
 #include <string>
 
 namespace waybar::modules::sway {
-Scratchpad::Scratchpad(const std::string& id, const waybar::Bar& bar, const Json::Value& config)
-    : ALabel(config, "scratchpad", id, "{count}"),
-      box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
-      bar_(bar),
+Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
+    : ALabel(config, "scratchpad", id,
+             config["format"].isString() ? config["format"].asString() : "{icon} {count}"),
+      tooltip_format_(config_["tooltip-format"].isString() ? config_["tooltip-format"].asString()
+                                                           : "{app}: {title}"),
+      show_empty_(config_["show-empty"].isBool() ? config_["show-empty"].asBool() : false),
+      tooltip_enabled_(config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true),
+      tooltip_text_(""),
       count_(0) {
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Scratchpad::onEvent));
@@ -25,8 +29,23 @@ Scratchpad::Scratchpad(const std::string& id, const waybar::Bar& bar, const Json
   });
 }
 auto Scratchpad::update() -> void {
-  label_.set_markup(fmt::format(format_, fmt::arg("count", count_)));
-  AModule::update();
+  if (count_ || show_empty_) {
+    event_box_.show();
+    label_.set_markup(
+        fmt::format(format_, fmt::arg("icon", getIcon(count_, "", config_["format-icons"].size())),
+                    fmt::arg("count", count_)));
+    if (tooltip_enabled_) {
+      label_.set_tooltip_markup(tooltip_text_);
+    }
+  } else {
+    event_box_.hide();
+  }
+  if (count_) {
+    label_.get_style_context()->remove_class("empty");
+  } else {
+    label_.get_style_context()->add_class("empty");
+  }
+  ALabel::update();
 }
 
 auto Scratchpad::getTree() -> void {
@@ -42,6 +61,17 @@ auto Scratchpad::onCmd(const struct Ipc::ipc_response& res) -> void {
     std::lock_guard<std::mutex> lock(mutex_);
     auto tree = parser_.parse(res.payload);
     count_ = tree["nodes"][0]["nodes"][0]["floating_nodes"].size();
+    if (tooltip_enabled_) {
+      tooltip_text_.clear();
+      for (const auto& window : tree["nodes"][0]["nodes"][0]["floating_nodes"]) {
+        tooltip_text_.append(fmt::format(tooltip_format_ + '\n',
+                                         fmt::arg("app", window["app_id"].asString()),
+                                         fmt::arg("title", window["name"].asString())));
+      }
+      if (!tooltip_text_.empty()) {
+        tooltip_text_.pop_back();
+      }
+    }
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Scratchpad: {}", e.what());

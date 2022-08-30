@@ -12,10 +12,9 @@
 #include "util/json.hpp"
 
 namespace waybar::modules::sway {
-// class Scratchpad : public AModule, public sigc::trackable {
 class Scratchpad : public ALabel {
  public:
-  Scratchpad(const std::string&, const waybar::Bar&, const Json::Value&);
+  Scratchpad(const std::string&, const Json::Value&);
   ~Scratchpad() = default;
   auto update() -> void;
 
@@ -23,11 +22,13 @@ class Scratchpad : public ALabel {
   auto getTree() -> void;
   auto onCmd(const struct Ipc::ipc_response&) -> void;
   auto onEvent(const struct Ipc::ipc_response&) -> void;
-  // bool handleScroll(GdkEventScroll*);
-  Gtk::Box box_;
-  const Bar& bar_;
-  std::mutex mutex_;
+
+  std::string tooltip_format_;
+  bool show_empty_;
+  bool tooltip_enabled_;
+  std::string tooltip_text_;
   int count_;
+  std::mutex mutex_;
   Ipc ipc_;
   util::JsonParser parser_;
 };
