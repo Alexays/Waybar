@@ -309,7 +309,8 @@ void Item::updateImage() {
     pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
   }
 
-  auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
+  auto surface =
+      Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
   image.set(surface);
 }
 
