@@ -187,10 +187,11 @@ bool Task::image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme>
 
   if (pixbuf) {
     if (pixbuf->get_width() != scaled_icon_size) {
-        int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
-        pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+      int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+      pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
     }
-    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
+    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(),
+                                                          image.get_window());
     image.set(surface);
     return true;
   }
