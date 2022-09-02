@@ -67,6 +67,9 @@
 #include "modules/bluetooth.hpp"
 #include "modules/inhibitor.hpp"
 #endif
+#ifdef HAVE_LIBJACK
+#include "modules/jack.hpp"
+#endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"

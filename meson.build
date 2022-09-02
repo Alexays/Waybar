@@ -98,6 +98,7 @@ libudev = dependency('libudev', required: get_option('libudev'))
 libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
+libjack = dependency('jack', required: get_option('jack'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -228,6 +229,11 @@ if libpulse.found()
     src_files += 'src/modules/pulseaudio.cpp'
 endif
 
+if libjack.found()
+    add_project_arguments('-DHAVE_LIBJACK', language: 'cpp')
+    src_files += 'src/modules/jack.cpp'
+endif
+
 if dbusmenu_gtk.found()
     add_project_arguments('-DHAVE_DBUSMENU', language: 'cpp')
     src_files += files(
@@ -308,6 +314,7 @@ executable(
         libnlgen,
         upower_glib,
         libpulse,
+        libjack,
         libudev,
         libepoll,
         libmpdclient,
