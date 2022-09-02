@@ -246,6 +246,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
         charge_now = 0;
       }
 
+      if (!capacity_exists && charge_now_exists && charge_full_exists) {
+        if (charge_full != 0) {
+          capacity_exists = true;
+          capacity = charge_now * 100 / charge_full;
+        }
+      }
+
       uint32_t power_now;
       bool power_now_exists;
       if (fs::exists(bat / "power_now")) {
@@ -257,6 +264,20 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       } else {
         power_now_exists = false;
         power_now = 0;
+      }
+
+      if (!current_now_exists && power_now_exists && voltage_now_exists) {
+        if (voltage_now != 0){
+          current_now_exists = true;
+          current_now = (uint64_t)power_now * 1000000 / (uint64_t)voltage_now;
+        }
+      }
+
+      if (!voltage_now_exists && power_now_exists && current_now_exists) {
+        if (current_now != 0) {
+          voltage_now_exists = true;
+          voltage_now = (uint64_t)power_now * 1000000 / (uint64_t)current_now;
+        }
       }
 
       uint32_t energy_now;
@@ -272,6 +293,20 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
         energy_now = 0;
       }  
 
+      if (!charge_now_exists && energy_now_exists && voltage_now_exists) {
+        if (voltage_now != 0){
+          charge_now_exists = true;
+          charge_now = (uint64_t)energy_now * 1000000 / (uint64_t)voltage_now;
+        }
+      }
+
+      if (!voltage_now_exists && energy_now_exists && charge_now_exists) {
+        if (charge_now != 0) {
+          voltage_now_exists = true;
+          voltage_now = (uint64_t)energy_now * 1000000 / (uint64_t)charge_now;
+        }
+      }
+
       uint32_t energy_full;
       bool energy_full_exists;
       if (fs::exists(bat / "energy_full")) {
@@ -285,6 +320,20 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
         energy_full = 0;
       }
 
+      if (!charge_full_exists && energy_full_exists && voltage_now_exists) {
+        if (voltage_now != 0){
+          charge_full_exists = true;
+          charge_full = (uint64_t)energy_full * 1000000 / (uint64_t)voltage_now;
+        }
+      }
+
+      if (!voltage_now_exists && energy_full_exists && charge_full_exists) {
+        if (charge_full != 0) {
+          voltage_now_exists = true;
+          voltage_now = (uint64_t)energy_full * 1000000 / (uint64_t)charge_full;
+        }
+      }
+
       uint32_t energy_full_design;
       bool energy_full_design_exists;
       if (fs::exists(bat / "energy_full_design")) {
@@ -296,6 +345,20 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       } else {
         energy_full_design_exists = false;
         energy_full_design = 0;
+      }
+
+      if (!charge_full_design_exists && energy_full_design_exists && voltage_now_exists) {
+        if (voltage_now != 0){
+          charge_full_design_exists = true;
+          charge_full_design = (uint64_t)energy_full_design * 1000000 / (uint64_t)voltage_now;
+        }
+      }
+
+      if (!voltage_now_exists && energy_full_design_exists && charge_full_design_exists) {
+        if (charge_full_design != 0) {
+          voltage_now_exists = true;
+          voltage_now = (uint64_t)energy_full_design * 1000000 / (uint64_t)charge_full_design;
+        }
       }
 
       // Show the "smallest" status among all batteries
