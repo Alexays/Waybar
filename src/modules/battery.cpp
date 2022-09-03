@@ -108,7 +108,7 @@ void waybar::modules::Battery::refreshBatteries() {
       }
       auto adap_defined = config_["adapter"].isString();
       if (((adap_defined && dir_name == config_["adapter"].asString()) || !adap_defined) &&
-          fs::exists(node.path() / "online")) {
+          (fs::exists(node.path() / "online") || fs::exists(node.path() / "status"))) {
         adapter_ = node.path();
       }
     }
@@ -175,36 +175,6 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
-
-      // uint32_t capacity (bool pass) {
-      //   uint32_t c = 0;
-      //   if (fs::exists(bat / "capacity"))
-      //     c = std::ifstream(bat / "capacity");
-      //   else if (pass)
-      //     c = charge_now(pass) / charge_full(pass);
-      //   return c;
-      // }
-
-      // uint32_t current_now (bool pass) {
-      //   uint32_t c = 0;
-      //   if (fs::exists(bat / "current_now"))
-      //     std::ifstream(bat / "current_now") >> c;
-      //   else if (fs::exists(bat / "current_avg")) 
-      //     std::ifstream(bat / "current_avg") >> c;
-      //   else
-      //     c = power_now(pass) / voltage_now(pass);
-      //   return c;
-      // }
-
-      // uint32_t voltage_now () {
-      //   uint32_t v = 0;
-      //   if (fs::exists(bat / "voltage_now"))
-      //     std::ifstream(bat / "voltage_now") >> v;
-      //   else if (fs::exists(bat / "voltage_avg"))
-      //     std::ifstream(bat / "voltage_avg") >> v;
-      //   else
-
-      // }
 
       uint32_t capacity = 0;
       bool capacity_exists = false;
@@ -392,7 +362,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
         }
       }
 
-      if (!power_now_exists && voltage_now_exists && charge_now_exists) {
+      if (!power_now_exists && voltage_now_exists && current_now_exists) {
         power_now_exists = true;
         power_now = voltage_now * current_now / 1000000;
       }
@@ -430,11 +400,10 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 
     if (!adapter_.empty() && status == "Discharging") {
       bool online;
-      if (fs::exists(adapter_ / "online"))
-        std::ifstream(adapter_ / "online") >> online;
-      else
-        online = false;
-      if (online)
+      std::string current_status;
+      std::ifstream(adapter_ / "online") >> online;
+      std::getline(std::ifstream(adapter_ / "status"), current_status);
+      if (online && current_status != "Discharging")
         status = "Plugged";
     }
 
@@ -493,11 +462,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
+    std::string status;
     std::ifstream(adapter_ / "online") >> online;
+    std::getline(std::ifstream(adapter_ / "status"), status);
     if (capacity == 100) {
       return "Full";
     }
-    if (online) {
+    if (online && status != "Discharging") {
       return "Plugged";
     }
     return "Discharging";
