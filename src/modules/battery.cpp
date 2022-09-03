@@ -164,7 +164,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     bool total_energy_full_exists = false;
     uint32_t total_energy_full_design = 0;
     bool total_energy_full_design_exists = false;
-    uint32_t total_capacity{0};
+    uint32_t total_capacity = 0;
     bool total_capacity_exists = false;
 
     std::string status = "Unknown";
@@ -176,189 +176,230 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
 
-      uint32_t capacity;
-      bool capacity_exists;
+      // uint32_t capacity (bool pass) {
+      //   uint32_t c = 0;
+      //   if (fs::exists(bat / "capacity"))
+      //     c = std::ifstream(bat / "capacity");
+      //   else if (pass)
+      //     c = charge_now(pass) / charge_full(pass);
+      //   return c;
+      // }
+
+      // uint32_t current_now (bool pass) {
+      //   uint32_t c = 0;
+      //   if (fs::exists(bat / "current_now"))
+      //     std::ifstream(bat / "current_now") >> c;
+      //   else if (fs::exists(bat / "current_avg")) 
+      //     std::ifstream(bat / "current_avg") >> c;
+      //   else
+      //     c = power_now(pass) / voltage_now(pass);
+      //   return c;
+      // }
+
+      // uint32_t voltage_now () {
+      //   uint32_t v = 0;
+      //   if (fs::exists(bat / "voltage_now"))
+      //     std::ifstream(bat / "voltage_now") >> v;
+      //   else if (fs::exists(bat / "voltage_avg"))
+      //     std::ifstream(bat / "voltage_avg") >> v;
+      //   else
+
+      // }
+
+      uint32_t capacity = 0;
+      bool capacity_exists = false;
       if (fs::exists(bat / "capacity")) {
-        capacity_exists = true;
-        std::ifstream(bat / "capacity") >> capacity;
-      } else {
-        capacity_exists = false;
-        capacity = 0;
+       capacity_exists = true;
+       std::ifstream(bat / "capacity") >> capacity;
       }
 
-      uint32_t current_now;
-      bool current_now_exists;
+      uint32_t current_now = 0;
+      bool current_now_exists = false;
       if (fs::exists(bat / "current_now")) {
-        current_now_exists = true;
-        std::ifstream(bat / "current_now") >> current_now;
+       current_now_exists = true;
+       std::ifstream(bat / "current_now") >> current_now;
       } else if (fs::exists(bat / "current_avg")) {
-        current_now_exists = true;
-        std::ifstream(bat / "current_avg") >> current_now;
-      } else {
-        current_now_exists = false;
-        current_now = 0;
+       current_now_exists = true;
+       std::ifstream(bat / "current_avg") >> current_now;
       }
 
-      uint32_t voltage_now;
-      bool voltage_now_exists;
+      uint32_t voltage_now = 0;
+      bool voltage_now_exists = false;
       if (fs::exists(bat / "voltage_now")) {
-        voltage_now_exists = true;
-        std::ifstream(bat / "voltage_now") >> voltage_now;
+       voltage_now_exists = true;
+       std::ifstream(bat / "voltage_now") >> voltage_now;
       } else if (fs::exists(bat / "voltage_avg")) {
-        voltage_now_exists = true;
-        std::ifstream(bat / "voltage_avg") >> voltage_now;
-      } else {
-        voltage_now_exists = false;
-        voltage_now = 0;
+       voltage_now_exists = true;
+       std::ifstream(bat / "voltage_avg") >> voltage_now;
       }
 
-      uint32_t charge_full;
-      bool charge_full_exists;
+      uint32_t charge_full = 0;
+      bool charge_full_exists = false;
       if (fs::exists(bat / "charge_full")) {
         charge_full_exists = true;
         std::ifstream(bat / "charge_full") >> charge_full;
-      } else {
-        charge_full_exists = false;
-        charge_full = 0;
       }
 
-      uint32_t charge_full_design;
-      bool charge_full_design_exists;
+      uint32_t charge_full_design = 0;
+      bool charge_full_design_exists = false;
       if (fs::exists(bat / "charge_full_design")) {
         charge_full_design_exists = true;
         std::ifstream(bat / "charge_full_design") >> charge_full_design;
-      } else {
-        charge_full_design_exists = false;
-        charge_full_design = 0;
       }
 
-      uint32_t charge_now;
-      bool charge_now_exists;
+      uint32_t charge_now = 0;
+      bool charge_now_exists = false;
       if (fs::exists(bat / "charge_now")) {
         charge_now_exists = true;
         std::ifstream(bat / "charge_now") >> charge_now;
-      } else if (capacity_exists && charge_full_exists) {
-        // charge_now is missing on some systems, estimate using capacity and charge_full.
-        charge_now_exists = true; // this could be debatably set to false (same for all properties below)
-        charge_now = (capacity * charge_full) / 100;
-      } else {
-        charge_now_exists = false;
-        charge_now = 0;
       }
 
-      if (!capacity_exists && charge_now_exists && charge_full_exists) {
-        if (charge_full != 0) {
-          capacity_exists = true;
-          capacity = charge_now * 100 / charge_full;
-        }
-      }
-
-      uint32_t power_now;
-      bool power_now_exists;
+      uint32_t power_now = 0;
+      bool power_now_exists = false;
       if (fs::exists(bat / "power_now")) {
         power_now_exists = true;
         std::ifstream(bat / "power_now") >> power_now;
-      } else if (current_now_exists && voltage_now_exists) {
-        power_now_exists = true;
-        power_now = ((uint64_t)current_now * (uint64_t)voltage_now) / 1000000;
-      } else {
-        power_now_exists = false;
-        power_now = 0;
-      }
+      } 
 
-      if (!current_now_exists && power_now_exists && voltage_now_exists) {
-        if (voltage_now != 0){
-          current_now_exists = true;
-          current_now = (uint64_t)power_now * 1000000 / (uint64_t)voltage_now;
-        }
-      }
-
-      if (!voltage_now_exists && power_now_exists && current_now_exists) {
-        if (current_now != 0) {
-          voltage_now_exists = true;
-          voltage_now = (uint64_t)power_now * 1000000 / (uint64_t)current_now;
-        }
-      }
-
-      uint32_t energy_now;
-      bool energy_now_exists;
+      uint32_t energy_now = 0;
+      bool energy_now_exists = false;
       if (fs::exists(bat / "energy_now")) {
         energy_now_exists = true;
         std::ifstream(bat / "energy_now") >> energy_now;
-      } else if (charge_now_exists && voltage_now_exists) {
-        energy_now_exists = true;
-        energy_now = ((uint64_t)charge_now * (uint64_t)voltage_now) / 1000000;
-      } else {
-        energy_now_exists = false;
-        energy_now = 0;
       }  
 
-      if (!charge_now_exists && energy_now_exists && voltage_now_exists) {
-        if (voltage_now != 0){
-          charge_now_exists = true;
-          charge_now = (uint64_t)energy_now * 1000000 / (uint64_t)voltage_now;
-        }
-      }
-
-      if (!voltage_now_exists && energy_now_exists && charge_now_exists) {
-        if (charge_now != 0) {
-          voltage_now_exists = true;
-          voltage_now = (uint64_t)energy_now * 1000000 / (uint64_t)charge_now;
-        }
-      }
-
-      uint32_t energy_full;
-      bool energy_full_exists;
+      uint32_t energy_full = 0;
+      bool energy_full_exists = false;
       if (fs::exists(bat / "energy_full")) {
         energy_full_exists = true;
         std::ifstream(bat / "energy_full") >> energy_full;
-      } else if (charge_full_exists && voltage_now_exists) {
-        energy_full_exists = true;
-        energy_full = ((uint64_t)charge_full * (uint64_t)voltage_now) / 1000000;
-      } else {
-        energy_full_exists = false;
-        energy_full = 0;
       }
 
-      if (!charge_full_exists && energy_full_exists && voltage_now_exists) {
-        if (voltage_now != 0){
-          charge_full_exists = true;
-          charge_full = (uint64_t)energy_full * 1000000 / (uint64_t)voltage_now;
-        }
-      }
-
-      if (!voltage_now_exists && energy_full_exists && charge_full_exists) {
-        if (charge_full != 0) {
-          voltage_now_exists = true;
-          voltage_now = (uint64_t)energy_full * 1000000 / (uint64_t)charge_full;
-        }
-      }
-
-      uint32_t energy_full_design;
-      bool energy_full_design_exists;
+      uint32_t energy_full_design = 0;
+      bool energy_full_design_exists = false;
       if (fs::exists(bat / "energy_full_design")) {
         energy_full_design_exists = true;
         std::ifstream(bat / "energy_full_design") >> energy_full_design;
-      } else if (charge_full_design_exists && voltage_now_exists) {
-        energy_full_design_exists = true;
-        energy_full_design = ((uint64_t)charge_full_design * (uint64_t)voltage_now) / 1000000;
-      } else {
-        energy_full_design_exists = false;
-        energy_full_design = 0;
       }
 
-      if (!charge_full_design_exists && energy_full_design_exists && voltage_now_exists) {
-        if (voltage_now != 0){
-          charge_full_design_exists = true;
-          charge_full_design = (uint64_t)energy_full_design * 1000000 / (uint64_t)voltage_now;
-        }
-      }
-
-      if (!voltage_now_exists && energy_full_design_exists && charge_full_design_exists) {
-        if (charge_full_design != 0) {
+      if (!voltage_now_exists) {
+        if (power_now_exists && current_now_exists && current_now != 0) {
           voltage_now_exists = true;
-          voltage_now = (uint64_t)energy_full_design * 1000000 / (uint64_t)charge_full_design;
+          voltage_now = 1000000 * power_now / current_now;
+        } else if (energy_full_design_exists && charge_full_design_exists && charge_full_design != 0) {
+          voltage_now_exists = true;
+          voltage_now = 1000000 * energy_full_design / charge_full_design;
+        } else if (energy_now_exists) {
+          if (charge_now_exists && charge_now != 0) {
+            voltage_now_exists = true;
+            voltage_now = 1000000 * energy_now / charge_now;
+          } else if (capacity_exists && charge_full_exists) {
+            charge_now_exists = true;
+            charge_now = charge_full * capacity / 100;
+            if (charge_full != 0 && capacity != 0) {
+              voltage_now_exists = true;
+              voltage_now = 1000000 * energy_now * 100 / charge_full / capacity;
+            }
+          } 
+        } else if (energy_full_exists) {
+          if (charge_full_exists && charge_full != 0) {
+            voltage_now_exists = true;
+            voltage_now = 1000000 * energy_full / charge_full;
+          } else if (charge_now_exists && capacity_exists) {
+            if (capacity != 0) {
+              charge_full_exists = true;
+              charge_full = 100 * charge_now / capacity;
+            }
+            if (charge_now != 0) {
+              voltage_now_exists = true;
+              voltage_now = 10000 * energy_full * capacity / charge_now;
+            }
+          }
         }
+      }
+
+      if (!capacity_exists) {
+        if (charge_now_exists && charge_full_exists && charge_full != 0) {
+          capacity_exists = true;
+          capacity = 100 * charge_now / charge_full;
+        } else if (energy_now_exists && energy_full_exists && energy_full != 0) {
+          capacity_exists = true;
+          capacity = 100 * energy_now / energy_full;
+        } else if (charge_now_exists && energy_full_exists && voltage_now_exists) {
+          if (!charge_full_exists && voltage_now != 0) {
+            charge_full_exists = true;
+            charge_full = 1000000 * energy_full / voltage_now;
+          }
+          if (energy_full != 0) {
+            capacity_exists = true;
+            capacity = charge_now * voltage_now / 10000 / energy_full;
+          }
+        } else if (charge_full_exists && energy_now_exists && voltage_now_exists) {
+          if (!charge_now_exists && voltage_now != 0) {
+            charge_now_exists = true;
+            charge_now = 1000000 * energy_now / voltage_now;
+          }
+          if (voltage_now != 0 && charge_full != 0) {
+            capacity_exists = true;
+            capacity = 100 * 1000000 * energy_now / voltage_now / charge_full;
+          }
+        }
+      }
+
+      if (!energy_now_exists && voltage_now_exists) {
+        if (charge_now_exists) {
+          energy_now_exists = true;
+          energy_now = charge_now * voltage_now / 1000000;
+        } else if (capacity_exists && charge_full_exists) {
+          charge_now_exists = true;
+          charge_now = capacity * charge_full / 100;
+          energy_now_exists = true;
+          energy_now = voltage_now * capacity * charge_full / 1000000 / 100;
+        } else if (capacity_exists && energy_full) {
+          if (voltage_now != 0) {
+            charge_full_exists = true;
+            charge_full = 1000000 * energy_full / voltage_now;
+            charge_now_exists = true;
+            charge_now = capacity * 10000 * energy_full / voltage_now;
+          }
+          energy_now_exists = true;
+          energy_now = capacity * energy_full / 100;
+        } 
+      }
+
+      if (!energy_full_exists && voltage_now_exists) {
+        if (charge_full_exists) {
+          energy_full_exists = true;
+          energy_full = charge_full * voltage_now / 1000000;
+        } else if (charge_now_exists && capacity_exists && capacity != 0) {
+          charge_full_exists = true;
+          charge_full = 100 * charge_now / capacity;
+          energy_full_exists = true;
+          energy_full = charge_now * voltage_now / capacity / 10000;
+        } else if (capacity_exists && energy_now) {
+          if (voltage_now != 0) {
+            charge_now_exists = true;
+            charge_now = 1000000 * energy_now / voltage_now;
+          }
+          if (capacity != 0) {
+            energy_full_exists = true;
+            energy_full = 100 * energy_now / capacity;
+            if (voltage_now != 0) {
+              charge_full_exists = true;
+              charge_full = 100 * 1000000 * energy_now / voltage_now / capacity;
+            }
+          }
+        }
+      }
+
+      if (!power_now_exists && voltage_now_exists && charge_now_exists) {
+        power_now_exists = true;
+        power_now = voltage_now * current_now / 1000000;
+      }
+
+      if (!energy_full_design_exists && voltage_now_exists && charge_full_design_exists) {
+        energy_full_design_exists = true;
+        energy_full_design = voltage_now * charge_full_design / 1000000;
       }
 
       // Show the "smallest" status among all batteries
