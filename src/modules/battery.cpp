@@ -255,34 +255,34 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       if (!voltage_now_exists) {
         if (power_now_exists && current_now_exists && current_now != 0) {
           voltage_now_exists = true;
-          voltage_now = 1000000 * power_now / current_now;
+          voltage_now = 1000000 * (uint64_t)power_now / (uint64_t)current_now;
         } else if (energy_full_design_exists && charge_full_design_exists && charge_full_design != 0) {
           voltage_now_exists = true;
-          voltage_now = 1000000 * energy_full_design / charge_full_design;
+          voltage_now = 1000000 * (uint64_t)energy_full_design / (uint64_t)charge_full_design;
         } else if (energy_now_exists) {
           if (charge_now_exists && charge_now != 0) {
             voltage_now_exists = true;
-            voltage_now = 1000000 * energy_now / charge_now;
+            voltage_now = 1000000 * (uint64_t)energy_now / (uint64_t)charge_now;
           } else if (capacity_exists && charge_full_exists) {
             charge_now_exists = true;
-            charge_now = charge_full * capacity / 100;
+            charge_now = (uint64_t)charge_full * (uint64_t)capacity / 100;
             if (charge_full != 0 && capacity != 0) {
               voltage_now_exists = true;
-              voltage_now = 1000000 * energy_now * 100 / charge_full / capacity;
+              voltage_now = 1000000 * (uint64_t)energy_now * 100 / (uint64_t)charge_full / (uint64_t)capacity;
             }
           } 
         } else if (energy_full_exists) {
           if (charge_full_exists && charge_full != 0) {
             voltage_now_exists = true;
-            voltage_now = 1000000 * energy_full / charge_full;
+            voltage_now = 1000000 * (uint64_t)energy_full / (uint64_t)charge_full;
           } else if (charge_now_exists && capacity_exists) {
             if (capacity != 0) {
               charge_full_exists = true;
-              charge_full = 100 * charge_now / capacity;
+              charge_full = 100 * (uint64_t)charge_now / (uint64_t)capacity;
             }
             if (charge_now != 0) {
               voltage_now_exists = true;
-              voltage_now = 10000 * energy_full * capacity / charge_now;
+              voltage_now = 10000 * (uint64_t)energy_full * (uint64_t)capacity / (uint64_t)charge_now;
             }
           }
         }
@@ -291,27 +291,27 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       if (!capacity_exists) {
         if (charge_now_exists && charge_full_exists && charge_full != 0) {
           capacity_exists = true;
-          capacity = 100 * charge_now / charge_full;
+          capacity = 100 * (uint64_t)charge_now / (uint64_t)charge_full;
         } else if (energy_now_exists && energy_full_exists && energy_full != 0) {
           capacity_exists = true;
-          capacity = 100 * energy_now / energy_full;
+          capacity = 100 * (uint64_t)energy_now / (uint64_t)energy_full;
         } else if (charge_now_exists && energy_full_exists && voltage_now_exists) {
           if (!charge_full_exists && voltage_now != 0) {
             charge_full_exists = true;
-            charge_full = 1000000 * energy_full / voltage_now;
+            charge_full = 1000000 * (uint64_t)energy_full / (uint64_t)voltage_now;
           }
           if (energy_full != 0) {
             capacity_exists = true;
-            capacity = charge_now * voltage_now / 10000 / energy_full;
+            capacity = (uint64_t)charge_now * (uint64_t)voltage_now / 10000 / (uint64_t)energy_full;
           }
         } else if (charge_full_exists && energy_now_exists && voltage_now_exists) {
           if (!charge_now_exists && voltage_now != 0) {
             charge_now_exists = true;
-            charge_now = 1000000 * energy_now / voltage_now;
+            charge_now = 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now;
           }
           if (voltage_now != 0 && charge_full != 0) {
             capacity_exists = true;
-            capacity = 100 * 1000000 * energy_now / voltage_now / charge_full;
+            capacity = 100 * 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now / (uint64_t)charge_full;
           }
         }
       }
@@ -319,44 +319,44 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       if (!energy_now_exists && voltage_now_exists) {
         if (charge_now_exists) {
           energy_now_exists = true;
-          energy_now = charge_now * voltage_now / 1000000;
+          energy_now = (uint64_t)charge_now * (uint64_t)voltage_now / 1000000;
         } else if (capacity_exists && charge_full_exists) {
           charge_now_exists = true;
-          charge_now = capacity * charge_full / 100;
+          charge_now = (uint64_t)capacity * (uint64_t)charge_full / 100;
           energy_now_exists = true;
-          energy_now = voltage_now * capacity * charge_full / 1000000 / 100;
+          energy_now = (uint64_t)voltage_now * (uint64_t)capacity * (uint64_t)charge_full / 1000000 / 100;
         } else if (capacity_exists && energy_full) {
           if (voltage_now != 0) {
             charge_full_exists = true;
-            charge_full = 1000000 * energy_full / voltage_now;
+            charge_full = 1000000 * (uint64_t)energy_full / (uint64_t)voltage_now;
             charge_now_exists = true;
-            charge_now = capacity * 10000 * energy_full / voltage_now;
+            charge_now = (uint64_t)capacity * 10000 * (uint64_t)energy_full / (uint64_t)voltage_now;
           }
           energy_now_exists = true;
-          energy_now = capacity * energy_full / 100;
+          energy_now = (uint64_t)capacity * (uint64_t)energy_full / 100;
         } 
       }
 
       if (!energy_full_exists && voltage_now_exists) {
         if (charge_full_exists) {
           energy_full_exists = true;
-          energy_full = charge_full * voltage_now / 1000000;
+          energy_full = (uint64_t)charge_full * (uint64_t)voltage_now / 1000000;
         } else if (charge_now_exists && capacity_exists && capacity != 0) {
           charge_full_exists = true;
-          charge_full = 100 * charge_now / capacity;
+          charge_full = 100 * (uint64_t)charge_now / (uint64_t)capacity;
           energy_full_exists = true;
-          energy_full = charge_now * voltage_now / capacity / 10000;
+          energy_full = (uint64_t)charge_now * (uint64_t)voltage_now / (uint64_t)capacity / 10000;
         } else if (capacity_exists && energy_now) {
           if (voltage_now != 0) {
             charge_now_exists = true;
-            charge_now = 1000000 * energy_now / voltage_now;
+            charge_now = 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now;
           }
           if (capacity != 0) {
             energy_full_exists = true;
-            energy_full = 100 * energy_now / capacity;
+            energy_full = 100 * (uint64_t)energy_now / (uint64_t)capacity;
             if (voltage_now != 0) {
               charge_full_exists = true;
-              charge_full = 100 * 1000000 * energy_now / voltage_now / capacity;
+              charge_full = 100 * 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now / (uint64_t)capacity;
             }
           }
         }
@@ -364,12 +364,12 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 
       if (!power_now_exists && voltage_now_exists && current_now_exists) {
         power_now_exists = true;
-        power_now = voltage_now * current_now / 1000000;
+        power_now = (uint64_t)voltage_now * (uint64_t)current_now / 1000000;
       }
 
       if (!energy_full_design_exists && voltage_now_exists && charge_full_design_exists) {
         energy_full_design_exists = true;
-        energy_full_design = voltage_now * charge_full_design / 1000000;
+        energy_full_design = (uint64_t)voltage_now * (uint64_t)charge_full_design / 1000000;
       }
 
       // Show the "smallest" status among all batteries
