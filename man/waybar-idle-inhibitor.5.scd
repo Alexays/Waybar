@@ -72,6 +72,14 @@ screensaving, also known as "presentation mode".
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format-activated*: ++
+	typeof: string ++
+	This format is used when the inhibit is activated.
+
+*tooltip-format-deactivated*: ++
+	typeof: string ++
+	This format is used when the inhibit is deactivated.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: status (*activated* or *deactivated*)
