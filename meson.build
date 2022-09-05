@@ -206,6 +206,7 @@ if true
     add_project_arguments('-DHAVE_HYPRLAND', language: 'cpp')
     src_files += 'src/modules/hyprland/backend.cpp'
     src_files += 'src/modules/hyprland/window.cpp'
+    src_files += 'src/modules/hyprland/language.cpp'
 endif
 
 if libnl.found() and libnlgen.found()
