@@ -30,14 +30,14 @@ std::optional<std::string> tryExpandPath(const std::string base, const std::stri
     path = fs::path(base);
   }
 
-  spdlog::debug("Try expanding: {}", path);
+  spdlog::debug("Try expanding: {}", path.string());
 
   wordexp_t p;
   if (wordexp(path.c_str(), &p, 0) == 0) {
     if (access(*p.we_wordv, F_OK) == 0) {
       std::string result = *p.we_wordv;
       wordfree(&p);
-      spdlog::debug("Found config file: {}", path);
+      spdlog::debug("Found config file: {}", path.string());
       return result;
     }
     wordfree(&p);
