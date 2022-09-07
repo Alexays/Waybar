@@ -308,7 +308,8 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
   if (config_["format-time"].isString()) {
     format = config_["format-time"].asString();
   }
-  return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes));
+  std::string zero_pad_minutes = fmt::format("{:02d}", minutes);
+  return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes), fmt::arg("m", zero_pad_minutes));
 }
 
 auto waybar::modules::Battery::update() -> void {

@@ -114,9 +114,10 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 The *battery* module allows you to define how time should be formatted via *format-time*.
 
-The two arguments are:
+The three arguments are:
 *{H}*: Hours
 *{M}*: Minutes
+*{m}*: Zero-padded minutes
 
 # CUSTOM FORMATS
 
