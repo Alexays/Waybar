@@ -108,7 +108,7 @@ void waybar::modules::Battery::refreshBatteries() {
       }
       auto adap_defined = config_["adapter"].isString();
       if (((adap_defined && dir_name == config_["adapter"].asString()) || !adap_defined) &&
-          fs::exists(node.path() / "online")) {
+          (fs::exists(node.path() / "online") || fs::exists(node.path() / "status"))) {
         adapter_ = node.path();
       }
     }
@@ -157,122 +157,300 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 
   try {
     uint32_t total_power = 0;   // μW
+    bool total_power_exists = false;
     uint32_t total_energy = 0;  // μWh
+    bool total_energy_exists = false;
     uint32_t total_energy_full = 0;
+    bool total_energy_full_exists = false;
     uint32_t total_energy_full_design = 0;
-    uint32_t total_capacity{0};
+    bool total_energy_full_design_exists = false;
+    uint32_t total_capacity = 0;
+    bool total_capacity_exists = false;
+
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
       auto bat = item.first;
-      uint32_t power_now;
-      uint32_t energy_full;
-      uint32_t energy_now;
-      uint32_t energy_full_design;
-      uint32_t capacity{0};
       std::string _status;
       std::getline(std::ifstream(bat / "status"), _status);
 
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
-      if (fs::exists(bat / "current_now") || fs::exists(bat / "current_avg")) {
-        uint32_t voltage_now;
-        uint32_t current_now;
-        uint32_t charge_now;
-        uint32_t charge_full;
-        uint32_t charge_full_design;
-        // Some batteries have only *_avg, not *_now
-        if (fs::exists(bat / "voltage_now"))
-          std::ifstream(bat / "voltage_now") >> voltage_now;
-        else
-          std::ifstream(bat / "voltage_avg") >> voltage_now;
-        if (fs::exists(bat / "current_now"))
-          std::ifstream(bat / "current_now") >> current_now;
-        else
-          std::ifstream(bat / "current_avg") >> current_now;
+
+      uint32_t capacity = 0;
+      bool capacity_exists = false;
+      if (fs::exists(bat / "capacity")) {
+       capacity_exists = true;
+       std::ifstream(bat / "capacity") >> capacity;
+      }
+
+      uint32_t current_now = 0;
+      bool current_now_exists = false;
+      if (fs::exists(bat / "current_now")) {
+       current_now_exists = true;
+       std::ifstream(bat / "current_now") >> current_now;
+      } else if (fs::exists(bat / "current_avg")) {
+       current_now_exists = true;
+       std::ifstream(bat / "current_avg") >> current_now;
+      }
+
+      uint32_t voltage_now = 0;
+      bool voltage_now_exists = false;
+      if (fs::exists(bat / "voltage_now")) {
+       voltage_now_exists = true;
+       std::ifstream(bat / "voltage_now") >> voltage_now;
+      } else if (fs::exists(bat / "voltage_avg")) {
+       voltage_now_exists = true;
+       std::ifstream(bat / "voltage_avg") >> voltage_now;
+      }
+
+      uint32_t charge_full = 0;
+      bool charge_full_exists = false;
+      if (fs::exists(bat / "charge_full")) {
+        charge_full_exists = true;
         std::ifstream(bat / "charge_full") >> charge_full;
+      }
+
+      uint32_t charge_full_design = 0;
+      bool charge_full_design_exists = false;
+      if (fs::exists(bat / "charge_full_design")) {
+        charge_full_design_exists = true;
         std::ifstream(bat / "charge_full_design") >> charge_full_design;
-        if (fs::exists(bat / "charge_now"))
-          std::ifstream(bat / "charge_now") >> charge_now;
-        else {
-          // charge_now is missing on some systems, estimate using capacity.
-          uint32_t capacity;
-          std::ifstream(bat / "capacity") >> capacity;
-          charge_now = (capacity * charge_full) / 100;
-        }
-        power_now = ((uint64_t)current_now * (uint64_t)voltage_now) / 1000000;
-        energy_now = ((uint64_t)charge_now * (uint64_t)voltage_now) / 1000000;
-        energy_full = ((uint64_t)charge_full * (uint64_t)voltage_now) / 1000000;
-        energy_full_design = ((uint64_t)charge_full_design * (uint64_t)voltage_now) / 1000000;
-      }  // Gamepads such as PS Dualshock provide the only capacity
-      else if (fs::exists(bat / "energy_now") && fs::exists(bat / "energy_full")) {
+      }
+
+      uint32_t charge_now = 0;
+      bool charge_now_exists = false;
+      if (fs::exists(bat / "charge_now")) {
+        charge_now_exists = true;
+        std::ifstream(bat / "charge_now") >> charge_now;
+      }
+
+      uint32_t power_now = 0;
+      bool power_now_exists = false;
+      if (fs::exists(bat / "power_now")) {
+        power_now_exists = true;
         std::ifstream(bat / "power_now") >> power_now;
+      } 
+
+      uint32_t energy_now = 0;
+      bool energy_now_exists = false;
+      if (fs::exists(bat / "energy_now")) {
+        energy_now_exists = true;
         std::ifstream(bat / "energy_now") >> energy_now;
+      }  
+
+      uint32_t energy_full = 0;
+      bool energy_full_exists = false;
+      if (fs::exists(bat / "energy_full")) {
+        energy_full_exists = true;
         std::ifstream(bat / "energy_full") >> energy_full;
+      }
+
+      uint32_t energy_full_design = 0;
+      bool energy_full_design_exists = false;
+      if (fs::exists(bat / "energy_full_design")) {
+        energy_full_design_exists = true;
         std::ifstream(bat / "energy_full_design") >> energy_full_design;
-      } else {
-        std::ifstream(bat / "capacity") >> capacity;
-        power_now = 0;
-        energy_now = 0;
-        energy_full = 0;
-        energy_full_design = 0;
+      }
+
+      if (!voltage_now_exists) {
+        if (power_now_exists && current_now_exists && current_now != 0) {
+          voltage_now_exists = true;
+          voltage_now = 1000000 * (uint64_t)power_now / (uint64_t)current_now;
+        } else if (energy_full_design_exists && charge_full_design_exists && charge_full_design != 0) {
+          voltage_now_exists = true;
+          voltage_now = 1000000 * (uint64_t)energy_full_design / (uint64_t)charge_full_design;
+        } else if (energy_now_exists) {
+          if (charge_now_exists && charge_now != 0) {
+            voltage_now_exists = true;
+            voltage_now = 1000000 * (uint64_t)energy_now / (uint64_t)charge_now;
+          } else if (capacity_exists && charge_full_exists) {
+            charge_now_exists = true;
+            charge_now = (uint64_t)charge_full * (uint64_t)capacity / 100;
+            if (charge_full != 0 && capacity != 0) {
+              voltage_now_exists = true;
+              voltage_now = 1000000 * (uint64_t)energy_now * 100 / (uint64_t)charge_full / (uint64_t)capacity;
+            }
+          } 
+        } else if (energy_full_exists) {
+          if (charge_full_exists && charge_full != 0) {
+            voltage_now_exists = true;
+            voltage_now = 1000000 * (uint64_t)energy_full / (uint64_t)charge_full;
+          } else if (charge_now_exists && capacity_exists) {
+            if (capacity != 0) {
+              charge_full_exists = true;
+              charge_full = 100 * (uint64_t)charge_now / (uint64_t)capacity;
+            }
+            if (charge_now != 0) {
+              voltage_now_exists = true;
+              voltage_now = 10000 * (uint64_t)energy_full * (uint64_t)capacity / (uint64_t)charge_now;
+            }
+          }
+        }
+      }
+
+      if (!capacity_exists) {
+        if (charge_now_exists && charge_full_exists && charge_full != 0) {
+          capacity_exists = true;
+          capacity = 100 * (uint64_t)charge_now / (uint64_t)charge_full;
+        } else if (energy_now_exists && energy_full_exists && energy_full != 0) {
+          capacity_exists = true;
+          capacity = 100 * (uint64_t)energy_now / (uint64_t)energy_full;
+        } else if (charge_now_exists && energy_full_exists && voltage_now_exists) {
+          if (!charge_full_exists && voltage_now != 0) {
+            charge_full_exists = true;
+            charge_full = 1000000 * (uint64_t)energy_full / (uint64_t)voltage_now;
+          }
+          if (energy_full != 0) {
+            capacity_exists = true;
+            capacity = (uint64_t)charge_now * (uint64_t)voltage_now / 10000 / (uint64_t)energy_full;
+          }
+        } else if (charge_full_exists && energy_now_exists && voltage_now_exists) {
+          if (!charge_now_exists && voltage_now != 0) {
+            charge_now_exists = true;
+            charge_now = 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now;
+          }
+          if (voltage_now != 0 && charge_full != 0) {
+            capacity_exists = true;
+            capacity = 100 * 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now / (uint64_t)charge_full;
+          }
+        }
+      }
+
+      if (!energy_now_exists && voltage_now_exists) {
+        if (charge_now_exists) {
+          energy_now_exists = true;
+          energy_now = (uint64_t)charge_now * (uint64_t)voltage_now / 1000000;
+        } else if (capacity_exists && charge_full_exists) {
+          charge_now_exists = true;
+          charge_now = (uint64_t)capacity * (uint64_t)charge_full / 100;
+          energy_now_exists = true;
+          energy_now = (uint64_t)voltage_now * (uint64_t)capacity * (uint64_t)charge_full / 1000000 / 100;
+        } else if (capacity_exists && energy_full) {
+          if (voltage_now != 0) {
+            charge_full_exists = true;
+            charge_full = 1000000 * (uint64_t)energy_full / (uint64_t)voltage_now;
+            charge_now_exists = true;
+            charge_now = (uint64_t)capacity * 10000 * (uint64_t)energy_full / (uint64_t)voltage_now;
+          }
+          energy_now_exists = true;
+          energy_now = (uint64_t)capacity * (uint64_t)energy_full / 100;
+        } 
+      }
+
+      if (!energy_full_exists && voltage_now_exists) {
+        if (charge_full_exists) {
+          energy_full_exists = true;
+          energy_full = (uint64_t)charge_full * (uint64_t)voltage_now / 1000000;
+        } else if (charge_now_exists && capacity_exists && capacity != 0) {
+          charge_full_exists = true;
+          charge_full = 100 * (uint64_t)charge_now / (uint64_t)capacity;
+          energy_full_exists = true;
+          energy_full = (uint64_t)charge_now * (uint64_t)voltage_now / (uint64_t)capacity / 10000;
+        } else if (capacity_exists && energy_now) {
+          if (voltage_now != 0) {
+            charge_now_exists = true;
+            charge_now = 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now;
+          }
+          if (capacity != 0) {
+            energy_full_exists = true;
+            energy_full = 100 * (uint64_t)energy_now / (uint64_t)capacity;
+            if (voltage_now != 0) {
+              charge_full_exists = true;
+              charge_full = 100 * 1000000 * (uint64_t)energy_now / (uint64_t)voltage_now / (uint64_t)capacity;
+            }
+          }
+        }
+      }
+
+      if (!power_now_exists && voltage_now_exists && current_now_exists) {
+        power_now_exists = true;
+        power_now = (uint64_t)voltage_now * (uint64_t)current_now / 1000000;
+      }
+
+      if (!energy_full_design_exists && voltage_now_exists && charge_full_design_exists) {
+        energy_full_design_exists = true;
+        energy_full_design = (uint64_t)voltage_now * (uint64_t)charge_full_design / 1000000;
       }
 
       // Show the "smallest" status among all batteries
-      if (status_gt(status, _status)) {
+      if (status_gt(status, _status))
         status = _status;
+
+      if (power_now_exists) {
+        total_power_exists = true;
+        total_power += power_now;
       }
-      total_power += power_now;
-      total_energy += energy_now;
-      total_energy_full += energy_full;
-      total_energy_full_design += energy_full_design;
-      total_capacity += capacity;
+      if (energy_now_exists) {
+        total_energy_exists = true;
+        total_energy += energy_now;
+      }
+      if (energy_full_exists) {
+        total_energy_full_exists = true;
+        total_energy_full += energy_full;
+      }
+      if (energy_full_design_exists) {
+        total_energy_full_design_exists = true;
+        total_energy_full_design += energy_full_design;
+      }
+      if (capacity_exists) {
+        total_capacity_exists = true;
+        total_capacity += capacity;
+      }
     }
+
     if (!adapter_.empty() && status == "Discharging") {
       bool online;
+      std::string current_status;
       std::ifstream(adapter_ / "online") >> online;
-      if (online) {
+      std::getline(std::ifstream(adapter_ / "status"), current_status);
+      if (online && current_status != "Discharging")
         status = "Plugged";
-      }
     }
-    float time_remaining = 0;
-    if (status == "Discharging" && total_power != 0) {
-      time_remaining = (float)total_energy / total_power;
-    } else if (status == "Charging" && total_power != 0) {
-      time_remaining = -(float)(total_energy_full - total_energy) / total_power;
-      if (time_remaining > 0.0f) {
-        // If we've turned positive it means the battery is past 100% and so
-        // just report that as no time remaining
+
+    float time_remaining{0.0f};
+    if (status == "Discharging" && total_power_exists && total_energy_exists) {
+      if (total_power != 0)
+        time_remaining = (float)total_energy / total_power;
+    } else if (status == "Charging" && total_energy_exists && total_energy_full_exists && total_power_exists) {
+      if (total_power != 0)
+        time_remaining = -(float)(total_energy_full - total_energy) / total_power;
+      // If we've turned positive it means the battery is past 100% and so just report that as no time remaining
+      if (time_remaining > 0.0f)
         time_remaining = 0.0f;
+    }
+
+    float calculated_capacity{0.0f};
+    if (total_capacity_exists) {
+      if (total_capacity > 0.0f)
+        calculated_capacity = (float)total_capacity;
+      else if (total_energy_full_exists && total_energy_exists) {
+        if (total_energy_full > 0.0f)
+          calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
       }
     }
-    float capacity{0.0f};
-    if (total_energy_full > 0.0f) {
-      capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
-    } else {
-      capacity = (float)total_capacity;
-    }
+    
     // Handle design-capacity
-    if (config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) {
-      capacity = ((float)total_energy * 100.0f / (float)total_energy_full_design);
+    if ((config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) && total_energy_exists && total_energy_full_design_exists) {
+      if (total_energy_full_design > 0.0f)
+        calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full_design);
     }
+
     // Handle full-at
     if (config_["full-at"].isUInt()) {
       auto full_at = config_["full-at"].asUInt();
-      if (full_at < 100) {
-        capacity = 100.f * capacity / full_at;
-      }
+      if (full_at < 100) 
+        calculated_capacity = 100.f * calculated_capacity / full_at;
     }
-    if (capacity > 100.f) {
-      // This can happen when the battery is calibrating and goes above 100%
-      // Handle it gracefully by clamping at 100%
-      capacity = 100.f;
-    }
-    uint8_t cap = round(capacity);
-    if (cap == 100 && status == "Charging") {
-      // If we've reached 100% just mark as full as some batteries can stay
-      // stuck reporting they're still charging but not yet done
+
+    // Handle it gracefully by clamping at 100%
+    // This can happen when the battery is calibrating and goes above 100%
+    if (calculated_capacity > 100.f)  
+      calculated_capacity = 100.f;
+    
+    uint8_t cap = round(calculated_capacity);
+    // If we've reached 100% just mark as full as some batteries can stay stuck reporting they're still charging but not yet done
+    if (cap == 100 && status == "Charging") 
       status = "Full";
-    }
 
     return {cap, time_remaining, status, total_power / 1e6};
   } catch (const std::exception& e) {
@@ -284,11 +462,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
   if (!adapter_.empty()) {
     bool online;
+    std::string status;
     std::ifstream(adapter_ / "online") >> online;
+    std::getline(std::ifstream(adapter_ / "status"), status);
     if (capacity == 100) {
       return "Full";
     }
-    if (online) {
+    if (online && status != "Discharging") {
       return "Plugged";
     }
     return "Discharging";
