@@ -60,6 +60,23 @@ void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
   }
 }
 
+// Read the configuration on whether the given workspace should be shown by the
+// module
+bool Workspaces::isShown(const Json::Value &workspace) {
+  if (config_["all-outputs"].asBool()) {
+    return true;
+  }
+
+  Json::String outputShown;
+  if (config_["for-output"].isString()) {
+    outputShown = config_["for-output"].asString();
+  } else {
+    // Show workspaces of the output on which the bar is shown
+    outputShown = bar_.output->name;
+  }
+  return workspace["output"].asString() == outputShown;
+}
+
 void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   if (res.type == IPC_GET_WORKSPACES) {
     try {
@@ -68,11 +85,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         auto payload = parser_.parse(res.payload);
         workspaces_.clear();
         std::copy_if(payload.begin(), payload.end(), std::back_inserter(workspaces_),
-                     [&](const auto &workspace) {
-                       return !config_["all-outputs"].asBool()
-                                  ? workspace["output"].asString() == bar_.output->name
-                                  : true;
-                     });
+                     [&](const auto &workspace) { return isShown(workspace); });
 
         // adding persistent workspaces (as per the config file)
         if (config_["persistent_workspaces"].isObject()) {
@@ -178,8 +191,7 @@ bool Workspaces::filterButtons() {
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
                            [it](const auto &node) { return node["name"].asString() == it->first; });
-    if (ws == workspaces_.end() ||
-        (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
+    if (ws == workspaces_.end() || !isShown(*ws)) {
       it = buttons_.erase(it);
       needReorder = true;
     } else {
