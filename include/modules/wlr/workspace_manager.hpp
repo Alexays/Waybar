@@ -152,6 +152,7 @@ class WorkspaceManager : public AModule {
 
   bool sort_by_name_ = true;
   bool sort_by_coordinates_ = true;
+  bool sort_by_number_ = true;
   bool all_outputs_ = false;
   bool active_only_ = false;
   bool creation_delayed_ = false;

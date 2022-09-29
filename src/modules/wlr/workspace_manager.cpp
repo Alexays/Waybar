@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <string>
 #include <vector>
 
 #include "gtkmm/widget.h"
@@ -31,7 +32,10 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
   if (config_sort_by_coordinates.isBool()) {
     sort_by_coordinates_ = config_sort_by_coordinates.asBool();
   }
-
+  auto config_sort_by_number = config_["sort-by-number"];
+  if (config_sort_by_number.isBool()) {
+    sort_by_number_ = config_sort_by_number.asBool();
+  }
   auto config_all_outputs = config_["all-outputs"];
   if (config_all_outputs.isBool()) {
     all_outputs_ = config_all_outputs.asBool();
@@ -58,12 +62,15 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
 auto WorkspaceManager::workspace_comparator() const
     -> std::function<bool(std::unique_ptr<Workspace> &, std::unique_ptr<Workspace> &)> {
   return [=](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
+    auto is_number_less = stoi(lhs->get_name()) < stoi(rhs->get_name());
     auto is_name_less = lhs->get_name() < rhs->get_name();
     auto is_name_eq = lhs->get_name() == rhs->get_name();
     auto is_coords_less = lhs->get_coords() < rhs->get_coords();
     if (sort_by_name_) {
       if (sort_by_coordinates_) {
         return is_name_eq ? is_coords_less : is_name_less;
+      } else if (sort_by_number_) {
+        return is_name_eq ? is_number_less : is_name_less;
       } else {
         return is_name_less;
       }
@@ -71,6 +78,9 @@ auto WorkspaceManager::workspace_comparator() const
 
     if (sort_by_coordinates_) {
       return is_coords_less;
+    }
+    if (sort_by_number_) {
+      return is_number_less;
     }
 
     return lhs->id() < rhs->id();
