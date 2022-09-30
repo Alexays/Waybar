@@ -81,6 +81,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
+    if (ref == "user") {
+      return new waybar::modules::User(id, config_[name]);
+    }
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
     }
