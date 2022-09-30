@@ -91,19 +91,33 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   pa_volume_t change = volume_tick;
   pa_cvolume pa_volume = pa_volume_;
   int max_volume = 100;
+  double step = 1;
   // isDouble returns true for integers as well, just in case
   if (config_["scroll-step"].isDouble()) {
-    change = round(config_["scroll-step"].asDouble() * volume_tick);
+    step = config_["scroll-step"].asDouble();
   }
   if (config_["max-volume"].isInt()) {
-    max_volume = std::min(0, config_["max-volume"].asInt());
+    max_volume = std::min(config_["max-volume"].asInt(), static_cast<int>(PA_VOLUME_UI_MAX));
   }
+
   if (dir == SCROLL_DIR::UP) {
-    if (volume_ + 1 <= max_volume) {
+    if (volume_ < max_volume) {
+      if (volume_ + step > max_volume) {
+        change = round((max_volume - volume_) * volume_tick);
+      }
+      else {
+        change = round(step * volume_tick);
+      }
       pa_cvolume_inc(&pa_volume, change);
     }
   } else if (dir == SCROLL_DIR::DOWN) {
-    if (volume_ - 1 >= 0) {
+    if (volume_ > 0) {
+      if (volume_ - step < 0) {
+        change = round(volume_ * volume_tick);
+      }
+      else {
+        change = round(step * volume_tick);
+      }
       pa_cvolume_dec(&pa_volume, change);
     }
   }
