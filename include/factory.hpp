@@ -27,7 +27,7 @@
 #include "modules/hyprland/language.hpp"
 #include "modules/hyprland/window.hpp"
 #endif
-#if defined(__linux__) && !defined(NO_FILESYSTEM)
+#if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
 #include "modules/battery.hpp"
 #endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)

@@ -179,6 +179,11 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
         'src/modules/memory/bsd.cpp',
         'src/modules/memory/common.cpp',
     )
+    if is_freebsd
+    src_files += files(
+        'src/modules/battery.cpp',
+        )
+    endif
 endif
 
 add_project_arguments('-DHAVE_SWAY', language: 'cpp')
