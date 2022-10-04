@@ -1,8 +1,6 @@
 #include "modules/battery.hpp"
 #if defined(__FreeBSD__)
-// clang-format off
 #include <sys/sysctl.h>
-// clang-format on
 #endif
 #include <spdlog/spdlog.h>
 
