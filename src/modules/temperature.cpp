@@ -10,7 +10,6 @@
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
-
 #if defined(__FreeBSD__)
 // try to read sysctl?
 #else
@@ -84,12 +83,12 @@ float waybar::modules::Temperature::getTemperature() {
   auto sysctl_thermal = fmt::format("hw.acpi.thermal.tz{}.temperature", zone);
 
   if (sysctlbyname(sysctl_thermal.c_str(), &temp, &size, NULL, 0) != 0) {
-    throw std::runtime_error(fmt::format("sysctl {} failed",sysctl_thermal));
+    throw std::runtime_error(fmt::format("sysctl {} failed", sysctl_thermal));
   }
-  auto temperature_c = ((float)temp-2732)/10;  
+  auto temperature_c = ((float)temp - 2732) / 10;
   return temperature_c;
 
-#else // Linux
+#else  // Linux
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
