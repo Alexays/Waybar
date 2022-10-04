@@ -81,8 +81,11 @@ float waybar::modules::Temperature::getTemperature() {
   int temp;
   size_t size = sizeof temp;
 
-  if (sysctlbyname("hw.acpi.thermal.tz0.temperature", &temp, &size, NULL, 0) != 0) {
-    throw std::runtime_error("sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
+  auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
+  auto sysctl_thermal = fmt::format("hw.acpi.thermal.tz{}.temperature", zone);
+
+  if (sysctlbyname(sysctl_thermal.c_str(), &temp, &size, NULL, 0) != 0) {
+    throw std::runtime_error(fmt::format("sysctl {} failed",sysctl_thermal));
   }
   auto temperature_c = ((float)temp-2732)/10;  
   return temperature_c;
