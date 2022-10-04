@@ -224,7 +224,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     }
 
     // spdlog::info("{} {} {} {}", capacity,time,status,rate);
-    return {capacity, time, status, rate};
+    return {capacity, time / 60.0, status, rate};
 
 #elif defined(__linux__)
     uint32_t total_power = 0;   // μW
