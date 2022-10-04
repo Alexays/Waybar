@@ -226,7 +226,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     //spdlog::info("{} {} {} {}", capacity,time,status,rate);
     return {capacity, time, status, rate};
 
-#else
+#elif defined(__linux__)
     uint32_t total_power = 0;   // μW
 >>>>>>> 246e377 (FreeBSD: Add support to battery)
     uint32_t total_energy = 0;  // μWh
