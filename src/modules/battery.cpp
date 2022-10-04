@@ -179,27 +179,27 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     /* Allocate state of battery units reported via ACPI. */
     int battery_units = 0;
     size_t battery_units_size = sizeof battery_units;
-    if( sysctlbyname("hw.acpi.battery.units", &battery_units, &battery_units_size, NULL, 0) != 0) {
+    if (sysctlbyname("hw.acpi.battery.units", &battery_units, &battery_units_size, NULL, 0) != 0) {
       throw std::runtime_error("sysctl hw.acpi.battery.units failed");
     }
 
-    if(battery_units < 0) {
+    if (battery_units < 0) {
       throw std::runtime_error("No battery units");
     }
 
     int capacity;
     size_t size_capacity = sizeof capacity;
-    if (sysctlbyname("hw.acpi.battery.life", &capacity, &size_capacity, NULL,0) != 0) {
+    if (sysctlbyname("hw.acpi.battery.life", &capacity, &size_capacity, NULL, 0) != 0) {
       throw std::runtime_error("sysctl hw.acpi.battery.life failed");
     }
     int time;
     size_t size_time = sizeof time;
-    if (sysctlbyname("hw.acpi.battery.time", &time, &size_time, NULL,0) != 0) {
+    if (sysctlbyname("hw.acpi.battery.time", &time, &size_time, NULL, 0) != 0) {
       throw std::runtime_error("sysctl hw.acpi.battery.time failed");
     }
     int rate;
     size_t size_rate = sizeof rate;
-    if (sysctlbyname("hw.acpi.battery.rate", &rate, &size_rate, NULL,0) != 0) {
+    if (sysctlbyname("hw.acpi.battery.rate", &rate, &size_rate, NULL, 0) != 0) {
       throw std::runtime_error("sysctl hw.acpi.battery.rate failed");
     }
 
@@ -217,13 +217,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       capacity = 100.f;
     }
     uint8_t cap = round(capacity);
-    if (cap == 100 && status=="Plugged") {
+    if (cap == 100 && status == "Plugged") {
       // If we've reached 100% just mark as full as some batteries can stay
       // stuck reporting they're still charging but not yet done
       status = "Full";
     }
 
-    //spdlog::info("{} {} {} {}", capacity,time,status,rate);
+    // spdlog::info("{} {} {} {}", capacity,time,status,rate);
     return {capacity, time, status, rate};
 
 #elif defined(__linux__)
@@ -538,7 +538,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
 #if defined(__FreeBSD__)
   int state;
   size_t size_state = sizeof state;
-  if (sysctlbyname("hw.acpi.battery.state", &state, &size_state, NULL,0) != 0) {
+  if (sysctlbyname("hw.acpi.battery.state", &state, &size_state, NULL, 0) != 0) {
     throw std::runtime_error("sysctl hw.acpi.battery.state failed");
   }
   bool online = state == 2;
