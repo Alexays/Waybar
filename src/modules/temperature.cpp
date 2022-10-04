@@ -3,9 +3,7 @@
 #include <filesystem>
 
 #if defined(__FreeBSD__)
-// clang-format off
 #include <sys/sysctl.h>
-// clang-format on
 #endif
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
