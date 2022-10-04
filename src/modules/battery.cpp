@@ -535,7 +535,15 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 }
 
 const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
-#if defined(__linux__)
+#if defined(__FreeBSD__)
+  int state;
+  size_t size_state = sizeof state;
+  if (sysctlbyname("hw.acpi.battery.state", &state, &size_state, NULL,0) != 0) {
+    throw std::runtime_error("sysctl hw.acpi.battery.state failed");
+  }
+  bool online = state == 2;
+  {
+#else
   if (!adapter_.empty()) {
     bool online;
     std::string status;
@@ -556,9 +564,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
       return "Plugged";
     }
     return "Discharging";
-#if defined(__linux__)
   }
-#endif
   return "Unknown";
 }
 
