@@ -31,7 +31,7 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
 }
 
 waybar::modules::Battery::~Battery() {
-#if (__Linux__)
+#if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   if (global_watch >= 0) {
@@ -87,7 +87,7 @@ void waybar::modules::Battery::worker() {
 }
 
 void waybar::modules::Battery::refreshBatteries() {
-#if (__Linux__)
+#if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
   // Mark existing list of batteries as not necessarily found
   std::map<fs::path, bool> check_map;
@@ -525,7 +525,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 }
 
 const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
-#if defined(__Linux__)
+#if defined(__linux__)
   if (!adapter_.empty()) {
     bool online;
     std::string status;
@@ -546,7 +546,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
       return "Plugged";
     }
     return "Discharging";
-#if defined(__Linux__)
+#if defined(__linux__)
   }
 #endif
   return "Unknown";
@@ -570,7 +570,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 }
 
 auto waybar::modules::Battery::update() -> void {
-#if __Linux__
+#if defined(__linux__)
   if (batteries_.empty()) {
     event_box_.hide();
     return;
