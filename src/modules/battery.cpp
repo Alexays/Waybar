@@ -177,6 +177,17 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     uint32_t total_power = 0;  // μW
     bool total_power_exists = false;
 #if defined(__FreeBSD__)
+    /* Allocate state of battery units reported via ACPI. */
+    int battery_units = 0;
+    size_t battery_units_size = sizeof battery_units;
+    if( sysctlbyname("hw.acpi.battery.units", &battery_units, &battery_units_size, NULL, 0) != 0) {
+      throw std::runtime_error("sysctl hw.acpi.battery.units failed");
+    }
+
+    if(battery_units < 0) {
+      throw std::runtime_error("No battery units");
+    }
+
     int capacity;
     size_t size_capacity = sizeof capacity;
     if (sysctlbyname("hw.acpi.battery.life", &capacity, &size_capacity, NULL,0) != 0) {

@@ -6,7 +6,7 @@
 #include <filesystem>
 #endif
 #include <fmt/format.h>
-#if #defined(__linux__)
+#if defined(__linux__)
 #include <sys/inotify.h>
 #endif
 
