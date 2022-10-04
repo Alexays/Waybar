@@ -2,8 +2,19 @@
 
 #include <filesystem>
 
+#if defined(__FreeBSD__)
+// clang-format off
+#include <sys/types.h>
+#include <sys/sysctl.h>
+// clang-format on
+#endif
+
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
+
+#if defined(__FreeBSD__)
+// try to read sysctl?
+#else
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
   } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
@@ -19,6 +30,7 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
   }
+#endif
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -65,6 +77,17 @@ auto waybar::modules::Temperature::update() -> void {
 }
 
 float waybar::modules::Temperature::getTemperature() {
+#if defined(__FreeBSD__)
+  int temp;
+  size_t size = sizeof temp;
+
+  if (sysctlbyname("hw.acpi.thermal.tz0.temperature", &temp, &size, NULL, 0) != 0) {
+    throw std::runtime_error("sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
+  }
+  auto temperature_c = ((float)temp-2732)/10;  
+  return temperature_c;
+
+#else // Linux
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
@@ -76,6 +99,7 @@ float waybar::modules::Temperature::getTemperature() {
   temp.close();
   auto temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
   return temperature_c;
+#endif
 }
 
 bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {
