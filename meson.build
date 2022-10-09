@@ -154,7 +154,8 @@ src_files = files(
     'src/client.cpp',
     'src/config.cpp',
     'src/group.cpp',
-    'src/util/ustring_clen.cpp'
+    'src/util/ustring_clen.cpp',
+    'src/util/sanitize_str.cpp'
 )
 
 if is_linux
