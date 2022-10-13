@@ -1,7 +1,6 @@
 #include "modules/hyprland/window.hpp"
 
 #include <spdlog/spdlog.h>
-#include <optional>
 
 #include "modules/hyprland/backend.hpp"
 #include "util/command.hpp"
