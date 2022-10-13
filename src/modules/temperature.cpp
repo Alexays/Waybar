@@ -1,6 +1,9 @@
 #include "modules/temperature.hpp"
 
 #include <filesystem>
+#include <iostream>
+#include <regex>
+#include <string>
 
 #if defined(__FreeBSD__)
 // clang-format off
@@ -11,7 +14,6 @@
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
-
 #if defined(__FreeBSD__)
 // try to read sysctl?
 #else
@@ -23,8 +25,38 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
                      .string() +
                  "/" + config_["input-filename"].asString();
   } else {
-    auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
-    file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
+    bool file_path_set = false;
+    if (config_["thermal-zone-type"].isString()) {
+      std::string desired_t_zone_type = config_["thermal-zone-type"].asString();
+      if (desired_t_zone_type.back() != '\n') {
+        desired_t_zone_type += '\n';
+      }
+
+      const std::filesystem::path t_dir{"/sys/class/thermal"};
+      std::vector<std::string> t_zone_entries;
+      std::regex t_zone_pattern("(thermal_zone)[0-9]+");
+      for (auto const& dir_entry : std::filesystem::directory_iterator{t_dir}) {
+        if (dir_entry.is_directory() &&
+            std::regex_match(dir_entry.path().filename().string(), t_zone_pattern)) {
+          t_zone_entries.push_back(dir_entry.path().filename().string());
+        }
+      }
+
+      for (auto t_zone_entry : t_zone_entries) {
+        std::ifstream ifs(fmt::format("/sys/class/thermal/{}/type", t_zone_entry));
+        std::string t_zone_type((std::istreambuf_iterator<char>(ifs)),
+                                (std::istreambuf_iterator<char>()));
+        if (desired_t_zone_type == t_zone_type) {
+          file_path_ = fmt::format("/sys/class/thermal/{}/temp", t_zone_entry);
+          file_path_set = true;
+          break;
+        }
+      }
+    }
+    if (!file_path_set) {
+      auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
+      file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
+    }
   }
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
@@ -82,12 +114,13 @@ float waybar::modules::Temperature::getTemperature() {
   size_t size = sizeof temp;
 
   if (sysctlbyname("hw.acpi.thermal.tz0.temperature", &temp, &size, NULL, 0) != 0) {
-    throw std::runtime_error("sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
+    throw std::runtime_error(
+        "sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
   }
-  auto temperature_c = ((float)temp-2732)/10;  
+  auto temperature_c = ((float)temp - 2732) / 10;
   return temperature_c;
 
-#else // Linux
+#else  // Linux
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);

@@ -12,6 +12,10 @@ The *temperature* module displays the current temperature from a thermal zone.
 
 Addressed by *temperature*
 
+*thermal-zone-type*: ++
+	typeof: string ++
+	The thermal zone type, to match with contents of */sys/class/thermal/thermal_zone[0-9]+/type*.
+
 *thermal-zone*: ++
 	typeof: integer ++
 	The thermal zone, as in */sys/class/thermal/*.
