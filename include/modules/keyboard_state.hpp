@@ -1,15 +1,11 @@
 #pragma once
 
-#include <fmt/format.h>
-#if FMT_VERSION < 60000
-#include <fmt/time.h>
-#else
 #include <fmt/chrono.h>
-#endif
+#include <gtkmm/label.h>
+
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "util/sleeper_thread.hpp"
-#include <gtkmm/label.h>
 
 extern "C" {
 #include <libevdev/libevdev.h>
@@ -24,12 +20,10 @@ class KeyboardState : public AModule {
   auto update() -> void;
 
  private:
-  static auto openDevice(const std::string&) -> std::pair<int, libevdev*>;
-
-  Gtk::Box    box_;
-  Gtk::Label  numlock_label_;
-  Gtk::Label  capslock_label_;
-  Gtk::Label  scrolllock_label_;
+  Gtk::Box box_;
+  Gtk::Label numlock_label_;
+  Gtk::Label capslock_label_;
+  Gtk::Label scrolllock_label_;
 
   std::string numlock_format_;
   std::string capslock_format_;
@@ -38,8 +32,8 @@ class KeyboardState : public AModule {
   std::string icon_locked_;
   std::string icon_unlocked_;
 
-  int         fd_;
-  libevdev*   dev_;
+  int fd_;
+  libevdev* dev_;
 
   util::SleeperThread thread_;
 };

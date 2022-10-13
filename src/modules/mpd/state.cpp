@@ -10,6 +10,13 @@ namespace waybar::modules {
 }  // namespace waybar::modules
 #endif
 
+#if FMT_VERSION >= 90000
+/* Satisfy fmt 9.x deprecation of implicit conversion of enums to int */
+auto format_as(enum mpd_idle val) {
+  return static_cast<std::underlying_type_t<enum mpd_idle>>(val);
+}
+#endif
+
 namespace waybar::modules::detail {
 
 #define IDLE_RUN_NOIDLE_AND_CMD(...)                                      \
@@ -50,7 +57,7 @@ void Idle::update() noexcept {
 }
 
 void Idle::entry() noexcept {
-  auto            conn = ctx_->connection().get();
+  auto conn = ctx_->connection().get();
   assert(conn != nullptr);
 
   if (!mpd_send_idle_mask(
@@ -61,8 +68,7 @@ void Idle::entry() noexcept {
     spdlog::debug("mpd: Idle: watching FD");
     sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
     idle_connection_ =
-        Glib::signal_io().connect(idle_slot,
-                                  mpd_connection_get_fd(conn),
+        Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
                                   Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
   }
 }
@@ -75,7 +81,7 @@ void Idle::exit() noexcept {
 }
 
 bool Idle::on_io(Glib::IOCondition const&) {
-  auto                         conn = ctx_->connection().get();
+  auto conn = ctx_->connection().get();
 
   // callback should do this:
   enum mpd_idle events = mpd_recv_idle(conn, /* ignore_timeout?= */ false);
@@ -193,7 +199,7 @@ void Paused::exit() noexcept {
 }
 
 bool Paused::on_timer() {
-  bool                         rc = true;
+  bool rc = true;
 
   // Attempt to connect with MPD.
   try {
@@ -264,7 +270,7 @@ void Stopped::exit() noexcept {
 }
 
 bool Stopped::on_timer() {
-  bool                         rc = true;
+  bool rc = true;
 
   // Attempt to connect with MPD.
   try {
@@ -327,8 +333,7 @@ void Disconnected::arm_timer(int interval) noexcept {
 
   // register timer
   sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Disconnected::on_timer);
-  timer_connection_ =
-      Glib::signal_timeout().connect(timer_slot, interval);
+  timer_connection_ = Glib::signal_timeout().connect(timer_slot, interval);
   spdlog::debug("mpd: Disconnected: enabled interval timer.");
 }
 
@@ -345,9 +350,7 @@ void Disconnected::entry() noexcept {
   arm_timer(1'000);
 }
 
-void Disconnected::exit() noexcept {
-  disarm_timer();
-}
+void Disconnected::exit() noexcept { disarm_timer(); }
 
 bool Disconnected::on_timer() {
   // Attempt to connect with MPD.

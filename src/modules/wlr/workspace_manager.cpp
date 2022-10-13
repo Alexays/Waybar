@@ -13,8 +13,8 @@
 
 namespace waybar::modules::wlr {
 
-uint32_t                           WorkspaceGroup::workspace_global_id = 0;
-uint32_t                           WorkspaceManager::group_global_id = 0;
+uint32_t WorkspaceGroup::workspace_global_id = 0;
+uint32_t WorkspaceManager::group_global_id = 0;
 std::map<std::string, std::string> Workspace::icons_map_;
 
 WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
@@ -156,8 +156,7 @@ WorkspaceManager::~WorkspaceManager() {
 }
 
 auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
-  auto it = std::find_if(groups_.begin(),
-                         groups_.end(),
+  auto it = std::find_if(groups_.begin(), groups_.end(),
                          [id](const std::unique_ptr<WorkspaceGroup> &g) { return g->id() == id; });
 
   if (it == groups_.end()) {
@@ -170,7 +169,7 @@ auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
 auto WorkspaceManager::commit() -> void { zext_workspace_manager_v1_commit(workspace_manager_); }
 
 WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value &config,
-                               WorkspaceManager               &manager,
+                               WorkspaceManager &manager,
                                zext_workspace_group_handle_v1 *workspace_group_handle, uint32_t id)
     : bar_(bar),
       box_(box),
@@ -257,8 +256,7 @@ auto WorkspaceGroup::update() -> void {
 }
 
 auto WorkspaceGroup::remove_workspace(uint32_t id) -> void {
-  auto it = std::find_if(workspaces_.begin(),
-                         workspaces_.end(),
+  auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
                          [id](const std::unique_ptr<Workspace> &w) { return w->id() == id; });
 
   if (it == workspaces_.end()) {
@@ -353,8 +351,8 @@ Workspace::~Workspace() {
 }
 
 auto Workspace::update() -> void {
-  label_.set_markup(fmt::format(
-      format_, fmt::arg("name", name_), fmt::arg("icon", with_icon_ ? get_icon() : "")));
+  label_.set_markup(fmt::format(format_, fmt::arg("name", name_),
+                                fmt::arg("icon", with_icon_ ? get_icon() : "")));
 }
 
 auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {

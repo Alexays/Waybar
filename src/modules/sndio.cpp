@@ -1,14 +1,16 @@
 #include "modules/sndio.hpp"
+
+#include <fmt/format.h>
+#include <poll.h>
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cstdlib>
-#include <poll.h>
-#include <fmt/format.h>
-#include <spdlog/spdlog.h>
 
 namespace waybar::modules {
 
 void ondesc(void *arg, struct sioctl_desc *d, int curval) {
-  auto self = static_cast<Sndio*>(arg);
+  auto self = static_cast<Sndio *>(arg);
   if (d == NULL) {
     // d is NULL when the list is done
     return;
@@ -17,7 +19,7 @@ void ondesc(void *arg, struct sioctl_desc *d, int curval) {
 }
 
 void onval(void *arg, unsigned int addr, unsigned int val) {
-  auto self = static_cast<Sndio*>(arg);
+  auto self = static_cast<Sndio *>(arg);
   self->put_val(addr, val);
 }
 
@@ -52,10 +54,8 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
   event_box_.show();
 
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK | Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_scroll_event().connect(
-    sigc::mem_fun(*this, &Sndio::handleScroll));
-  event_box_.signal_button_press_event().connect(
-    sigc::mem_fun(*this, &Sndio::handleToggle));
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Sndio::handleScroll));
+  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Sndio::handleToggle));
 
   thread_ = [this] {
     dp.emit();
@@ -80,7 +80,7 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
       while (thread_.isRunning()) {
         try {
           connect_to_sndio();
-        } catch(std::runtime_error const& e) {
+        } catch (std::runtime_error const &e) {
           // avoid leaking hdl_
           if (hdl_) {
             sioctl_close(hdl_);
@@ -98,9 +98,7 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
   };
 }
 
-Sndio::~Sndio() {
-  sioctl_close(hdl_);
-}
+Sndio::~Sndio() { sioctl_close(hdl_); }
 
 auto Sndio::update() -> void {
   auto format = format_;
@@ -112,9 +110,7 @@ auto Sndio::update() -> void {
     label_.get_style_context()->remove_class("muted");
   }
 
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("volume", vol),
-                                fmt::arg("raw_value", volume_)));
+  label_.set_markup(fmt::format(format, fmt::arg("volume", vol), fmt::arg("raw_value", volume_)));
 
   ALabel::update();
 }
@@ -177,7 +173,7 @@ bool Sndio::handleScroll(GdkEventScroll *e) {
   return true;
 }
 
-bool Sndio::handleToggle(GdkEventButton* const& e) {
+bool Sndio::handleToggle(GdkEventButton *const &e) {
   // toggle mute only when no user provided events are configured
   if (config_["on-click"].isString()) {
     return AModule::handleToggle(e);

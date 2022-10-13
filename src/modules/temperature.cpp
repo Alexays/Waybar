@@ -1,20 +1,68 @@
 #include "modules/temperature.hpp"
+
 #include <filesystem>
+#include <iostream>
+#include <regex>
+#include <string>
+
+#if defined(__FreeBSD__)
+// clang-format off
+#include <sys/types.h>
+#include <sys/sysctl.h>
+// clang-format on
+#endif
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
+#if defined(__FreeBSD__)
+// try to read sysctl?
+#else
   if (config_["hwmon-path"].isString()) {
     file_path_ = config_["hwmon-path"].asString();
   } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
-    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())).path().string() + "/" + config_["input-filename"].asString();
+    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString()))
+                     .path()
+                     .string() +
+                 "/" + config_["input-filename"].asString();
   } else {
-    auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
-    file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
+    bool file_path_set = false;
+    if (config_["thermal-zone-type"].isString()) {
+      std::string desired_t_zone_type = config_["thermal-zone-type"].asString();
+      if (desired_t_zone_type.back() != '\n') {
+        desired_t_zone_type += '\n';
+      }
+
+      const std::filesystem::path t_dir{"/sys/class/thermal"};
+      std::vector<std::string> t_zone_entries;
+      std::regex t_zone_pattern("(thermal_zone)[0-9]+");
+      for (auto const& dir_entry : std::filesystem::directory_iterator{t_dir}) {
+        if (dir_entry.is_directory() &&
+            std::regex_match(dir_entry.path().filename().string(), t_zone_pattern)) {
+          t_zone_entries.push_back(dir_entry.path().filename().string());
+        }
+      }
+
+      for (auto t_zone_entry : t_zone_entries) {
+        std::ifstream ifs(fmt::format("/sys/class/thermal/{}/type", t_zone_entry));
+        std::string t_zone_type((std::istreambuf_iterator<char>(ifs)),
+                                (std::istreambuf_iterator<char>()));
+        if (desired_t_zone_type == t_zone_type) {
+          file_path_ = fmt::format("/sys/class/thermal/{}/temp", t_zone_entry);
+          file_path_set = true;
+          break;
+        }
+      }
+    }
+    if (!file_path_set) {
+      auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
+      file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
+    }
   }
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
   }
+#endif
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -34,9 +82,16 @@ auto waybar::modules::Temperature::update() -> void {
   } else {
     label_.get_style_context()->remove_class("critical");
   }
+
+  if (format.empty()) {
+    event_box_.hide();
+    return;
+  } else {
+    event_box_.show();
+  }
+
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_.set_markup(fmt::format(format,
-                                fmt::arg("temperatureC", temperature_c),
+  label_.set_markup(fmt::format(format, fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
@@ -45,16 +100,27 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format,
-                                fmt::arg("temperatureC", temperature_c),
-                                fmt::arg("temperatureF", temperature_f),
-                                fmt::arg("temperatureK", temperature_k)));
+    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("temperatureC", temperature_c),
+                                        fmt::arg("temperatureF", temperature_f),
+                                        fmt::arg("temperatureK", temperature_k)));
   }
   // Call parent update
   ALabel::update();
 }
 
 float waybar::modules::Temperature::getTemperature() {
+#if defined(__FreeBSD__)
+  int temp;
+  size_t size = sizeof temp;
+
+  if (sysctlbyname("hw.acpi.thermal.tz0.temperature", &temp, &size, NULL, 0) != 0) {
+    throw std::runtime_error(
+        "sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
+  }
+  auto temperature_c = ((float)temp - 2732) / 10;
+  return temperature_c;
+
+#else  // Linux
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
@@ -64,8 +130,9 @@ float waybar::modules::Temperature::getTemperature() {
     getline(temp, line);
   }
   temp.close();
-  auto                           temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
+  auto temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
   return temperature_c;
+#endif
 }
 
 bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {

@@ -7,17 +7,24 @@
 #include "modules/simpleclock.hpp"
 #endif
 #ifdef HAVE_SWAY
+#include "modules/sway/language.hpp"
 #include "modules/sway/mode.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
-#include "modules/sway/language.hpp"
 #endif
 #ifdef HAVE_WLR
 #include "modules/wlr/taskbar.hpp"
 #include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
+#include "modules/river/mode.hpp"
 #include "modules/river/tags.hpp"
+#include "modules/river/window.hpp"
+#endif
+#ifdef HAVE_HYPRLAND
+#include "modules/hyprland/backend.hpp"
+#include "modules/hyprland/window.hpp"
+#include "modules/hyprland/language.hpp"
 #endif
 #if defined(__linux__) && !defined(NO_FILESYSTEM)
 #include "modules/battery.hpp"
@@ -42,6 +49,12 @@
 #ifdef HAVE_LIBEVDEV
 #include "modules/keyboard_state.hpp"
 #endif
+#ifdef HAVE_GAMEMODE
+#include "modules/gamemode.hpp"
+#endif
+#ifdef HAVE_UPOWER
+#include "modules/upower/upower.hpp"
+#endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
@@ -52,16 +65,15 @@
 #include "modules/sndio.hpp"
 #endif
 #ifdef HAVE_GIO_UNIX
+#include "modules/bluetooth.hpp"
 #include "modules/inhibitor.hpp"
+#endif
+#ifdef HAVE_LIBJACK
+#include "modules/jack.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
-#if defined(__linux__)
-#  ifdef WANT_RFKILL
-#    include "modules/bluetooth.hpp"
-#  endif
-#endif
 
 namespace waybar {
 
@@ -71,7 +83,7 @@ class Factory {
   AModule* makeModule(const std::string& name) const;
 
  private:
-  const Bar&         bar_;
+  const Bar& bar_;
   const Json::Value& config_;
 };
 

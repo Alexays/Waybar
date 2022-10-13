@@ -96,6 +96,11 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	default: true ++
 	Option to disable tooltip on hover.
 
+*max-volume*: ++
+	typeof: integer ++
+	default: 100 ++
+	The maximum volume that can be set, in percentage.
+
 # FORMAT REPLACEMENTS
 
 *{desc}*: Pulseaudio port's description, for bluetooth it'll be the device name.

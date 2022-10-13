@@ -22,8 +22,8 @@ class MPD : public ALabel {
 
   // Not using unique_ptr since we don't manage the pointer
   // (It's either nullptr, or from the config)
-  const char*       server_;
-  const unsigned    port_;
+  const char* server_;
+  const unsigned port_;
   const std::string password_;
 
   unsigned timeout_;
@@ -31,8 +31,8 @@ class MPD : public ALabel {
   detail::unique_connection connection_;
 
   detail::unique_status status_;
-  mpd_state             state_;
-  detail::unique_song   song_;
+  mpd_state state_;
+  detail::unique_song song_;
 
  public:
   MPD(const std::string&, const Json::Value&);
@@ -41,7 +41,8 @@ class MPD : public ALabel {
 
  private:
   std::string getTag(mpd_tag_type type, unsigned idx = 0) const;
-  void        setLabel();
+  std::string getFilename() const;
+  void setLabel();
   std::string getStateIcon() const;
   std::string getOptionIcon(std::string optionName, bool activated) const;
 

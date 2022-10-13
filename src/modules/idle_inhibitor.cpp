@@ -4,7 +4,7 @@
 #include "util/command.hpp"
 
 std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
-bool                        waybar::modules::IdleInhibitor::status = false;
+bool waybar::modules::IdleInhibitor::status = false;
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
@@ -47,7 +47,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
     label_.get_style_context()->remove_class("deactivated");
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
-        waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
+          waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
   } else {
     label_.get_style_context()->remove_class("activated");
@@ -58,11 +58,21 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   }
 
   std::string status_text = status ? "activated" : "deactivated";
-  label_.set_markup(
-      fmt::format(format_, fmt::arg("status", status_text), fmt::arg("icon", getIcon(0, status_text))));
+  label_.set_markup(fmt::format(format_, fmt::arg("status", status_text),
+                                fmt::arg("icon", getIcon(0, status_text))));
   label_.get_style_context()->add_class(status_text);
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(status_text);
+    label_.set_tooltip_markup(
+        status ? fmt::format(config_["tooltip-format-activated"].isString()
+                                 ? config_["tooltip-format-activated"].asString()
+                                 : "{status}",
+                             fmt::arg("status", status_text),
+                             fmt::arg("icon", getIcon(0, status_text)))
+               : fmt::format(config_["tooltip-format-deactivated"].isString()
+                                 ? config_["tooltip-format-deactivated"].asString()
+                                 : "{status}",
+                             fmt::arg("status", status_text),
+                             fmt::arg("icon", getIcon(0, status_text))));
   }
   // Call parent update
   ALabel::update();
@@ -71,6 +81,31 @@ auto waybar::modules::IdleInhibitor::update() -> void {
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
     status = !status;
+
+    if (timeout_.connected()) {
+      /* cancel any already active timeout handler */
+      timeout_.disconnect();
+    }
+
+    if (status && config_["timeout"].isNumeric()) {
+      auto timeoutMins = config_["timeout"].asDouble();
+      int timeoutSecs = timeoutMins * 60;
+
+      timeout_ = Glib::signal_timeout().connect_seconds(
+          []() {
+            /* intentionally not tied to a module instance lifetime
+             * as the output with `this` can be disconnected
+             */
+            spdlog::info("deactivating idle_inhibitor by timeout");
+            status = false;
+            for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+              module->update();
+            }
+            /* disconnect */
+            return false;
+          },
+          timeoutSecs);
+    }
 
     // Make all other idle inhibitor modules update
     for (auto const& module : waybar::modules::IdleInhibitor::modules) {

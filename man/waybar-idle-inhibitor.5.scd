@@ -63,10 +63,22 @@ screensaving, also known as "presentation mode".
 	typeof: double ++
 	Threshold to be used when scrolling.
 
+*timeout*: ++
+	typeof: double ++
+	The number of minutes the inhibit should last.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.
+
+*tooltip-format-activated*: ++
+	typeof: string ++
+	This format is used when the inhibit is activated.
+
+*tooltip-format-deactivated*: ++
+	typeof: string ++
+	This format is used when the inhibit is deactivated.
 
 # FORMAT REPLACEMENTS
 
@@ -82,6 +94,7 @@ screensaving, also known as "presentation mode".
 	"format-icons": {
 	    "activated": "",
 	    "deactivated": ""
-	}
+	},
+	"timeout": 30.5
 }
 ```

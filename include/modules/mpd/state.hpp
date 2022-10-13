@@ -1,7 +1,7 @@
 #pragma once
 
-#include <mpd/client.h>
 #include <fmt/format.h>
+#include <mpd/client.h>
 #include <spdlog/spdlog.h>
 
 #include <condition_variable>
@@ -57,7 +57,7 @@ class State {
 };
 
 class Idle : public State {
-  Context* const   ctx_;
+  Context* const ctx_;
   sigc::connection idle_connection_;
 
  public:
@@ -80,7 +80,7 @@ class Idle : public State {
 };
 
 class Playing : public State {
-  Context* const   ctx_;
+  Context* const ctx_;
   sigc::connection timer_connection_;
 
  public:
@@ -102,7 +102,7 @@ class Playing : public State {
 };
 
 class Paused : public State {
-  Context* const   ctx_;
+  Context* const ctx_;
   sigc::connection timer_connection_;
 
  public:
@@ -124,7 +124,7 @@ class Paused : public State {
 };
 
 class Stopped : public State {
-  Context* const   ctx_;
+  Context* const ctx_;
   sigc::connection timer_connection_;
 
  public:
@@ -146,7 +146,7 @@ class Stopped : public State {
 };
 
 class Disconnected : public State {
-  Context* const   ctx_;
+  Context* const ctx_;
   sigc::connection timer_connection_;
 
  public:
@@ -170,7 +170,7 @@ class Disconnected : public State {
 
 class Context {
   std::unique_ptr<State> state_;
-  waybar::modules::MPD*  mpd_module_;
+  waybar::modules::MPD* mpd_module_;
 
   friend class State;
   friend class Playing;
@@ -188,18 +188,18 @@ class Context {
     state_->entry();
   }
 
-  bool                             is_connected() const;
-  bool                             is_playing() const;
-  bool                             is_paused() const;
-  bool                             is_stopped() const;
-  constexpr std::size_t            interval() const;
-  void                             tryConnect() const;
-  void                             checkErrors(mpd_connection*) const;
-  void                             do_update();
-  void                             queryMPD() const;
-  void                             fetchState() const;
-  constexpr mpd_state              state() const;
-  void                             emit() const;
+  bool is_connected() const;
+  bool is_playing() const;
+  bool is_paused() const;
+  bool is_stopped() const;
+  constexpr std::size_t interval() const;
+  void tryConnect() const;
+  void checkErrors(mpd_connection*) const;
+  void do_update();
+  void queryMPD() const;
+  void fetchState() const;
+  constexpr mpd_state state() const;
+  void emit() const;
   [[nodiscard]] unique_connection& connection();
 
  public:

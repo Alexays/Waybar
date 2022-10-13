@@ -8,6 +8,8 @@ waybar - keyboard-state module
 
 The *keyboard-state* module displays the state of number lock, caps lock, and scroll lock.
 
+You must be a member of the input group to use this module.
+
 # CONFIGURATION
 
 *interval*: ++
@@ -77,4 +79,9 @@ The following *format-icons* can be set.
 - *#keyboard-state*
 - *#keyboard-state label*
 - *#keyboard-state label.locked*
-
+- *#keyboard-state label.numlock*
+- *#keyboard-state label.numlock.locked*
+- *#keyboard-state label.capslock*
+- *#keyboard-state label.capslock.locked*
+- *#keyboard-state label.scrolllock*
+- *#keyboard-state label.scrolllock.locked*

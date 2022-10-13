@@ -1,12 +1,12 @@
 #include "client.hpp"
 
-#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 
 #include <iostream>
 
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
+#include "util/format.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 waybar::Client *waybar::Client::inst() {
@@ -32,7 +32,7 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
   }
 }
 
-void waybar::Client::handleGlobalRemove(void *   data, struct wl_registry * /*registry*/,
+void waybar::Client::handleGlobalRemove(void *data, struct wl_registry * /*registry*/,
                                         uint32_t name) {
   // Nothing here
 }
@@ -52,8 +52,8 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
 }
 
 struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
-  auto it = std::find_if(
-      outputs_.begin(), outputs_.end(), [&addr](const auto &output) { return &output == addr; });
+  auto it = std::find_if(outputs_.begin(), outputs_.end(),
+                         [&addr](const auto &output) { return &output == addr; });
   if (it == outputs_.end()) {
     throw std::runtime_error("Unable to find valid output");
   }
@@ -93,7 +93,7 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
   }
 }
 
-void waybar::Client::handleOutputName(void *      data, struct zxdg_output_v1 * /*xdg_output*/,
+void waybar::Client::handleOutputName(void *data, struct zxdg_output_v1 * /*xdg_output*/,
                                       const char *name) {
   auto client = waybar::Client::inst();
   try {
@@ -108,7 +108,7 @@ void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 *
                                              const char *description) {
   auto client = waybar::Client::inst();
   try {
-    auto &      output = client->getOutput(data);
+    auto &output = client->getOutput(data);
     const char *open_paren = strrchr(description, '(');
 
     // Description format: "identifier (name)"
@@ -169,8 +169,8 @@ auto waybar::Client::setupCss(const std::string &css_file) -> void {
     throw std::runtime_error("Can't open style file");
   }
   // there's always only one screen
-  style_context_->add_provider_for_screen(
-      Gdk::Screen::get_default(), css_provider_, GTK_STYLE_PROVIDER_PRIORITY_USER);
+  style_context_->add_provider_for_screen(Gdk::Screen::get_default(), css_provider_,
+                                          GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void waybar::Client::bindInterfaces() {
@@ -195,12 +195,12 @@ void waybar::Client::bindInterfaces() {
 }
 
 int waybar::Client::main(int argc, char *argv[]) {
-  bool        show_help = false;
-  bool        show_version = false;
+  bool show_help = false;
+  bool show_version = false;
   std::string config_opt;
   std::string style_opt;
   std::string log_level;
-  auto        cli = clara::detail::Help(show_help) |
+  auto cli = clara::detail::Help(show_help) |
              clara::detail::Opt(show_version)["-v"]["--version"]("Show version") |
              clara::detail::Opt(config_opt, "config")["-c"]["--config"]("Config path") |
              clara::detail::Opt(style_opt, "style")["-s"]["--style"]("Style path") |
@@ -224,8 +224,8 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  gtk_app = Gtk::Application::create(
-      argc, argv, "fr.arouillard.waybar", Gio::APPLICATION_HANDLES_COMMAND_LINE);
+  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
+                                     Gio::APPLICATION_HANDLES_COMMAND_LINE);
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
     throw std::runtime_error("Can't find display");
@@ -244,6 +244,4 @@ int waybar::Client::main(int argc, char *argv[]) {
   return 0;
 }
 
-void waybar::Client::reset() {
-  gtk_app->quit();
-}
+void waybar::Client::reset() { gtk_app->quit(); }

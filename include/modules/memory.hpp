@@ -1,8 +1,10 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <fstream>
 #include <unordered_map>
+
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -15,7 +17,7 @@ class Memory : public ALabel {
   auto update() -> void;
 
  private:
-  void                            parseMeminfo();
+  void parseMeminfo();
 
   std::unordered_map<std::string, unsigned long> meminfo_;
 

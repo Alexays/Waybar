@@ -1,12 +1,14 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <cstdint>
 #include <fstream>
 #include <numeric>
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -19,11 +21,11 @@ class Cpu : public ALabel {
   auto update() -> void;
 
  private:
-  double                                         getCpuLoad();
+  double getCpuLoad();
   std::tuple<std::vector<uint16_t>, std::string> getCpuUsage();
-  std::tuple<float, float, float>                getCpuFrequency();
-  std::vector<std::tuple<size_t, size_t>>        parseCpuinfo();
-  std::vector<float>                             parseCpuFrequencies();
+  std::tuple<float, float, float> getCpuFrequency();
+  std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
+  std::vector<float> parseCpuFrequencies();
 
   std::vector<std::tuple<size_t, size_t>> prev_times_;
 

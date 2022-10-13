@@ -4,14 +4,14 @@ on: [ push, pull_request ]
 
 jobs:
   clang:
-    # Run actions in a FreeBSD vm on the macos-10.15 runner
+    # Run actions in a FreeBSD VM on the macos-12 runner
     # https://github.com/actions/runner/issues/385 - for FreeBSD runner support
     # https://github.com/actions/virtual-environments/issues/4060 - for lack of VirtualBox on MacOS 11 runners
-    runs-on: macos-10.15
+    runs-on: macos-12
     steps:
     - uses: actions/checkout@v2
     - name: Test in FreeBSD VM
-      uses: vmactions/freebsd-vm@v0.1.5 # aka FreeBSD 13.0
+      uses: vmactions/freebsd-vm@v0
       with:
         mem: 2048
         usesh: true
@@ -21,7 +21,7 @@ jobs:
           pkg install -y git #  subprojects/date
           pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
             libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
-            pkgconf pulseaudio scdoc sndio spdlog
+            pkgconf pulseaudio scdoc sndio spdlog wayland-protocols upower
         run: |
           meson build -Dman-pages=enabled
           ninja -C build

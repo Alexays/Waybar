@@ -8,12 +8,12 @@
 
 namespace waybar::modules::sway {
 
-// Helper function to to assign a number to a workspace, just like sway. In fact
+// Helper function to assign a number to a workspace, just like sway. In fact
 // this is taken quite verbatim from `sway/ipc-json.c`.
 int Workspaces::convertWorkspaceNameToNum(std::string name) {
   if (isdigit(name[0])) {
     errno = 0;
-    char *    endptr = NULL;
+    char *endptr = NULL;
     long long parsed_num = strtoll(name.c_str(), &endptr, 10);
     if (errno != 0 || parsed_num > INT32_MAX || parsed_num < 0 || endptr == name.c_str()) {
       return -1;
@@ -65,11 +65,9 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
     try {
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto                        payload = parser_.parse(res.payload);
+        auto payload = parser_.parse(res.payload);
         workspaces_.clear();
-        std::copy_if(payload.begin(),
-                     payload.end(),
-                     std::back_inserter(workspaces_),
+        std::copy_if(payload.begin(), payload.end(), std::back_inserter(workspaces_),
                      [&](const auto &workspace) {
                        return !config_["all-outputs"].asBool()
                                   ? workspace["output"].asString() == bar_.output->name
@@ -78,12 +76,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
         // adding persistent workspaces (as per the config file)
         if (config_["persistent_workspaces"].isObject()) {
-          const Json::Value &            p_workspaces = config_["persistent_workspaces"];
+          const Json::Value &p_workspaces = config_["persistent_workspaces"];
           const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
           for (const std::string &p_w_name : p_workspaces_names) {
             const Json::Value &p_w = p_workspaces[p_w_name];
-            auto               it =
+            auto it =
                 std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
                   return node["name"].asString() == p_w_name;
                 });
@@ -133,10 +131,10 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         // unnumbered workspaces behind numbered ones when computing the sort
         // attribute.
         int max_num = -1;
-        for (auto & workspace : workspaces_) {
+        for (auto &workspace : workspaces_) {
           max_num = std::max(workspace["num"].asInt(), max_num);
         }
-        for (auto & workspace : workspaces_) {
+        for (auto &workspace : workspaces_) {
           auto workspace_num = workspace["num"].asInt();
           if (workspace_num > -1) {
             workspace["sort"] = workspace_num;
@@ -144,13 +142,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
             workspace["sort"] = ++max_num;
           }
         }
-        std::sort(workspaces_.begin(),
-                  workspaces_.end(),
+        std::sort(workspaces_.begin(), workspaces_.end(),
                   [](const Json::Value &lhs, const Json::Value &rhs) {
                     auto lname = lhs["name"].asString();
                     auto rname = rhs["name"].asString();
-                    int  l = lhs["sort"].asInt();
-                    int  r = rhs["sort"].asInt();
+                    int l = lhs["sort"].asInt();
+                    int r = rhs["sort"].asInt();
 
                     if (l == r) {
                       // In case both integers are the same, lexicographical
@@ -161,7 +158,6 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
                     return l < r;
                   });
-
       }
       dp.emit();
     } catch (const std::exception &e) {
@@ -173,9 +169,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 bool Workspaces::filterButtons() {
   bool needReorder = false;
   for (auto it = buttons_.begin(); it != buttons_.end();) {
-    auto ws = std::find_if(workspaces_.begin(), workspaces_.end(), [it](const auto &node) {
-      return node["name"].asString() == it->first;
-    });
+    auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
+                           [it](const auto &node) { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end() ||
         (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
@@ -189,7 +184,7 @@ bool Workspaces::filterButtons() {
 
 auto Workspaces::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
-  bool                        needReorder = filterButtons();
+  bool needReorder = filterButtons();
   for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
     auto bit = buttons_.find((*it)["name"].asString());
     if (bit == buttons_.end()) {
@@ -231,10 +226,8 @@ auto Workspaces::update() -> void {
     std::string output = (*it)["name"].asString();
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      output = fmt::format(format,
-                           fmt::arg("icon", getIcon(output, *it)),
-                           fmt::arg("value", output),
-                           fmt::arg("name", trimWorkspaceName(output)),
+      output = fmt::format(format, fmt::arg("icon", getIcon(output, *it)),
+                           fmt::arg("value", output), fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
@@ -249,7 +242,7 @@ auto Workspaces::update() -> void {
 }
 
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
-  auto   pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
+  auto pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto &&button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_name("sway-workspace-" + node["name"].asString());
@@ -258,22 +251,18 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
     button.signal_pressed().connect([this, node] {
       try {
         if (node["target_output"].isString()) {
-          ipc_.sendCmd(
-              IPC_COMMAND,
-              fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " + workspace_switch_cmd_,
-                          "--no-auto-back-and-forth",
-                          node["name"].asString(),
-                          node["target_output"].asString(),
-                          "--no-auto-back-and-forth",
-                          node["name"].asString()));
+          ipc_.sendCmd(IPC_COMMAND,
+                       fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " +
+                                       workspace_switch_cmd_,
+                                   "--no-auto-back-and-forth", node["name"].asString(),
+                                   node["target_output"].asString(), "--no-auto-back-and-forth",
+                                   node["name"].asString()));
         } else {
-          ipc_.sendCmd(
-              IPC_COMMAND,
-              fmt::format("workspace {} \"{}\"",
-                          config_["disable-auto-back-and-forth"].asBool()
-                            ? "--no-auto-back-and-forth"
-                            : "",
-                          node["name"].asString()));
+          ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
+                                                config_["disable-auto-back-and-forth"].asBool()
+                                                    ? "--no-auto-back-and-forth"
+                                                    : "",
+                                                node["name"].asString()));
         }
       } catch (const std::exception &e) {
         spdlog::error("Workspaces: {}", e.what());
@@ -316,9 +305,8 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   std::string name;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [](const auto &workspace) {
-      return workspace["focused"].asBool();
-    });
+    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
+                           [](const auto &workspace) { return workspace["focused"].asBool(); });
     if (it == workspaces_.end()) {
       return true;
     }
@@ -334,9 +322,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
   }
   try {
-    ipc_.sendCmd(
-        IPC_COMMAND,
-        fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
+    ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }
@@ -344,7 +330,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
 }
 
 const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
-                                                bool                               prev) const {
+                                                bool prev) const {
   if (prev && it == workspaces_.begin() && !config_["disable-scroll-wraparound"].asBool()) {
     return (*(--workspaces_.end()))["name"].asString();
   }

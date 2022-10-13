@@ -1,32 +1,43 @@
 #include "config.hpp"
 
-#include <fmt/ostream.h>
 #include <spdlog/spdlog.h>
 #include <unistd.h>
 #include <wordexp.h>
 
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
 
 #include "util/json.hpp"
 
+namespace fs = std::filesystem;
+
 namespace waybar {
 
 const std::vector<std::string> Config::CONFIG_DIRS = {
-    "$XDG_CONFIG_HOME/waybar/",
-    "$HOME/.config/waybar/",
-    "$HOME/waybar/",
-    "/etc/xdg/waybar/",
-    SYSCONFDIR "/xdg/waybar/",
-    "./resources/",
+    "$XDG_CONFIG_HOME/waybar/", "$HOME/.config/waybar/",   "$HOME/waybar/",
+    "/etc/xdg/waybar/",         SYSCONFDIR "/xdg/waybar/", "./resources/",
 };
 
-std::optional<std::string> tryExpandPath(const std::string &path) {
+const char *Config::CONFIG_PATH_ENV = "WAYBAR_CONFIG_DIR";
+
+std::optional<std::string> tryExpandPath(const std::string base, const std::string filename) {
+  fs::path path;
+
+  if (filename != "") {
+    path = fs::path(base) / fs::path(filename);
+  } else {
+    path = fs::path(base);
+  }
+
+  spdlog::debug("Try expanding: {}", path.string());
+
   wordexp_t p;
   if (wordexp(path.c_str(), &p, 0) == 0) {
     if (access(*p.we_wordv, F_OK) == 0) {
       std::string result = *p.we_wordv;
       wordfree(&p);
+      spdlog::debug("Found config file: {}", path.string());
       return result;
     }
     wordfree(&p);
@@ -36,10 +47,17 @@ std::optional<std::string> tryExpandPath(const std::string &path) {
 
 std::optional<std::string> Config::findConfigPath(const std::vector<std::string> &names,
                                                   const std::vector<std::string> &dirs) {
-  std::vector<std::string> paths;
+  if (const char *dir = std::getenv(Config::CONFIG_PATH_ENV)) {
+    for (const auto &name : names) {
+      if (auto res = tryExpandPath(dir, name); res) {
+        return res;
+      }
+    }
+  }
+
   for (const auto &dir : dirs) {
     for (const auto &name : names) {
-      if (auto res = tryExpandPath(dir + name); res) {
+      if (auto res = tryExpandPath(dir, name); res) {
         return res;
       }
     }
@@ -55,9 +73,9 @@ void Config::setupConfig(Json::Value &dst, const std::string &config_file, int d
   if (!file.is_open()) {
     throw std::runtime_error("Can't open config file");
   }
-  std::string      str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  std::string str((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   util::JsonParser parser;
-  Json::Value      tmp_config = parser.parse(str);
+  Json::Value tmp_config = parser.parse(str);
   if (tmp_config.isArray()) {
     for (auto &config_part : tmp_config) {
       resolveConfigIncludes(config_part, depth);
@@ -73,11 +91,11 @@ void Config::resolveConfigIncludes(Json::Value &config, int depth) {
   if (includes.isArray()) {
     for (const auto &include : includes) {
       spdlog::info("Including resource file: {}", include.asString());
-      setupConfig(config, tryExpandPath(include.asString()).value_or(""), ++depth);
+      setupConfig(config, tryExpandPath(include.asString(), "").value_or(""), ++depth);
     }
   } else if (includes.isString()) {
     spdlog::info("Including resource file: {}", includes.asString());
-    setupConfig(config, tryExpandPath(includes.asString()).value_or(""), ++depth);
+    setupConfig(config, tryExpandPath(includes.asString(), "").value_or(""), ++depth);
   }
 }
 
