@@ -32,6 +32,11 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
     sort_by_coordinates_ = config_sort_by_coordinates.asBool();
   }
 
+  auto config_sort_by_number = config_["sort-by-number"];
+  if (config_sort_by_number.isBool()) {
+    sort_by_number_ = config_sort_by_number.asBool();
+  }
+
   auto config_all_outputs = config_["all-outputs"];
   if (config_all_outputs.isBool()) {
     all_outputs_ = config_all_outputs.asBool();
@@ -61,6 +66,12 @@ auto WorkspaceManager::workspace_comparator() const
     auto is_name_less = lhs->get_name() < rhs->get_name();
     auto is_name_eq = lhs->get_name() == rhs->get_name();
     auto is_coords_less = lhs->get_coords() < rhs->get_coords();
+    auto is_number_less = std::stoi(lhs->get_name()) < std::stoi(rhs->get_name());
+
+    if (sort_by_number_) {
+      return is_number_less;
+    }
+
     if (sort_by_name_) {
       if (sort_by_coordinates_) {
         return is_name_eq ? is_coords_less : is_name_less;
