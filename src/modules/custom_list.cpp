@@ -132,82 +132,81 @@ auto waybar::modules::CustomList::update() -> void {
   }
   bool needReorder = false;
   for(auto res = results_.begin(); res != results_.end(); res++) {
+    std::string name = (*res)["name"].asString();
+    auto bit = buttons_.find(name);
+    if(bit == buttons_.end()) {
+      needReorder = true;
+    }
+    auto &button = bit == buttons_.end() ? addButton(*res) : bit->second;
 
-      std::string name = (*res)["name"].asString();
-      auto bit = buttons_.find(name);
-      if(bit == buttons_.end()) {
-        needReorder = true;
-      }
-      auto &button = bit == buttons_.end() ? addButton(*res) : bit->second;
+    auto prev = std::find_if(prev_.begin(), prev_.end(), [name](auto p) {
+      return p["name"] == name;
+    });
 
-      auto prev = std::find_if(prev_.begin(), prev_.end(), [name](auto p) {
-        return p["name"] == name;
-      });
+    // Classes
+    std::vector<std::string> prev_classes;
+    if(prev != prev_.end()) {
+      if ((*prev)["class"].isString()) {
+        prev_classes.push_back((*prev)["class"].asString());
+      } else if ((*prev)["class"].isArray()) {
+        for (auto const& c : (*prev)["class"]) {
+          prev_classes.push_back(c.asString());
+        }
+      }
+    }
+    std::vector<std::string> new_classes;
+    if ((*res)["class"].isString()) {
+      new_classes.push_back((*res)["class"].asString());
+    } else if ((*res)["class"].isArray()) {
+      for (auto const& c : (*res)["class"]) {
+        new_classes.push_back(c.asString());
+      }
+    }
 
-      // Classes
-      std::vector<std::string> prev_classes;
-      if(prev != prev_.end()) {
-          if ((*prev)["class"].isString()) {
-              prev_classes.push_back((*prev)["class"].asString());
-          } else if ((*prev)["class"].isArray()) {
-              for (auto const& c : (*prev)["class"]) {
-                  prev_classes.push_back(c.asString());
-              }
-          }
-      }
-      std::vector<std::string> new_classes;
-      if ((*res)["class"].isString()) {
-          new_classes.push_back((*res)["class"].asString());
-      } else if ((*res)["class"].isArray()) {
-          for (auto const& c : (*res)["class"]) {
-              new_classes.push_back(c.asString());
-          }
-      }
+    for(auto it : prev_classes) {
+      if(std::find(new_classes.begin(), new_classes.end(), it) == new_classes.end())
+        button.get_style_context()->remove_class(it);
+    }
+    for(auto it : new_classes) {
+      if(std::find(prev_classes.begin(), prev_classes.end(), it) == prev_classes.end())
+        button.get_style_context()->add_class(it);
+    }
 
-      for(auto it : prev_classes) {
-          if(std::find(new_classes.begin(), new_classes.end(), it) == new_classes.end())
-              button.get_style_context()->remove_class(it);
-      }
-      for(auto it : new_classes) {
-          if(std::find(prev_classes.begin(), prev_classes.end(), it) == prev_classes.end())
-              button.get_style_context()->add_class(it);
-      }
+    // Reorder to match results order
+    if(needReorder) {
+      box_.reorder_child(button, res - results_.begin());
+    }
 
-      // Reorder to match results order
-      if(needReorder) {
-        box_.reorder_child(button, res - results_.begin());
-      }
+    if(!(*res)["disable-markup"].asBool()) {
+      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup((*res)["text"].asString());
+    } else {
+      button.set_label((*res)["text"].asString());
+    }
 
-      if(!(*res)["disable-markup"].asBool()) {
-          static_cast<Gtk::Label *>(button.get_children()[0])->set_markup((*res)["text"].asString());
-      } else {
-          button.set_label((*res)["text"].asString());
-      }
+    if((*res)["hide"].asBool()) {
+      button.hide();
+    } else {
+      button.show();
+    }
 
-      if((*res)["hide"].asBool()) {
-          button.hide();
-      } else {
-          button.show();
-      }
-
-      if(button.get_tooltip_markup() != (*res)["tooltip"].asString()) {
-        button.set_tooltip_markup((*res)["tooltip"].asString());
-      }
+    if(button.get_tooltip_markup() != (*res)["tooltip"].asString()) {
+      button.set_tooltip_markup((*res)["tooltip"].asString());
+    }
 
   }
-  for(auto prev : prev_) {
+  void name()or(auto prev : prev_) {
     auto res_it = std::find_if(results_.begin(), results_.end(), [prev](auto it) {
       return it["name"] == prev["name"];
     });
-      if(res_it == results_.end()) {
+    if(res_it == results_.end()) {
       // Node has been removed
-          auto bit = buttons_.find(prev["name"].asString());
-          if(bit != buttons_.end()) {
-              auto &button = bit->second;
-              box_.remove(button);
-              buttons_.erase(bit);
-          }
+      auto bit = buttons_.find(prev["name"].asString());
+      if(bit != buttons_.end()) {
+        auto &button = bit->second;
+        box_.remove(button);
+        buttons_.erase(bit);
       }
+    }
 
   }
   prev_ = results_;
@@ -237,9 +236,9 @@ Gtk::Button &waybar::modules::CustomList::addButton(const Json::Value &node) {
     button.set_name(name_ + node["name"].asString());
     button.set_relief(Gtk::RELIEF_NONE);
     if(!config_["disable-click"].asBool()) {
-        button.signal_pressed().connect([this, node] {
-          handleClick(node["name"].asString());
-        });
+      button.signal_pressed().connect([this, node] {
+        handleClick(node["name"].asString());
+      });
     }
     return button;
 }
@@ -251,7 +250,7 @@ void waybar::modules::CustomList::parseOutputJson() {
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
     if(!parsed["data"].isArray()) {
-        throw std::runtime_error("Output should be a list");
+      throw std::runtime_error("Output should be a list");
     }
     results_.clear();
     for(auto it : parsed["data"]) {
