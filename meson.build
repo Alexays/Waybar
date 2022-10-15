@@ -146,6 +146,7 @@ src_files = files(
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/modules/custom.cpp',
+    'src/modules/custom_list.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/temperature.cpp',
