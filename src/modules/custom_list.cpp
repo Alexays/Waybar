@@ -194,7 +194,7 @@ auto waybar::modules::CustomList::update() -> void {
     }
 
   }
-  void name()or(auto prev : prev_) {
+  for(auto prev : prev_) {
     auto res_it = std::find_if(results_.begin(), results_.end(), [prev](auto it) {
       return it["name"] == prev["name"];
     });
