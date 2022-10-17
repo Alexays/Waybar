@@ -56,11 +56,10 @@ struct formatter<pow_format> {
       fraction /= base;
     }
 
-    auto number_width = 5            // coeff in {:.1f} format
-                        + s.binary_; // potential 4th digit before the decimal point
-    auto max_width = number_width
-                     + 1          // prefix from units array
-                     + s.binary_  // for the 'i' in GiB.
+    auto number_width = 5              // coeff in {:.1f} format
+                        + s.binary_;   // potential 4th digit before the decimal point
+    auto max_width = number_width + 1  // prefix from units array
+                     + s.binary_       // for the 'i' in GiB.
                      + s.unit_.length();
 
     const char* format;

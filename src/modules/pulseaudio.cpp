@@ -104,8 +104,7 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
     if (volume_ < max_volume) {
       if (volume_ + step > max_volume) {
         change = round((max_volume - volume_) * volume_tick);
-      }
-      else {
+      } else {
         change = round(step * volume_tick);
       }
       pa_cvolume_inc(&pa_volume, change);
@@ -114,8 +113,7 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
     if (volume_ > 0) {
       if (volume_ - step < 0) {
         change = round(volume_ * volume_tick);
-      }
-      else {
+      } else {
         change = round(step * volume_tick);
       }
       pa_cvolume_dec(&pa_volume, change);
@@ -186,7 +184,7 @@ void waybar::modules::Pulseaudio::sinkInfoCb(pa_context * /*context*/, const pa_
   auto pa = static_cast<waybar::modules::Pulseaudio *>(data);
 
   if (pa->config_["ignored-sinks"].isArray()) {
-    for (const auto& ignored_sink : pa->config_["ignored-sinks"]) {
+    for (const auto &ignored_sink : pa->config_["ignored-sinks"]) {
       if (ignored_sink.asString() == i->description) {
         return;
       }

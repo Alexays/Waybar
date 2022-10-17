@@ -16,10 +16,8 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
     throw std::runtime_error("idle-inhibit not available");
   }
 
-  if (waybar::modules::IdleInhibitor::modules.empty()
-    && config_["start-activated"].isBool()
-    && config_["start-activated"].asBool() != status
-  ) {
+  if (waybar::modules::IdleInhibitor::modules.empty() && config_["start-activated"].isBool() &&
+      config_["start-activated"].asBool() != status) {
     toggleStatus();
   }
 
