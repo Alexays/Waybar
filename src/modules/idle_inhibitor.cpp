@@ -16,6 +16,13 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
     throw std::runtime_error("idle-inhibit not available");
   }
 
+  if (waybar::modules::IdleInhibitor::modules.empty()
+    && config_["start-activated"].isBool()
+    && config_["start-activated"].asBool() != status
+  ) {
+    toggleStatus();
+  }
+
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
   event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
@@ -78,34 +85,38 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   ALabel::update();
 }
 
+void waybar::modules::IdleInhibitor::toggleStatus() {
+  status = !status;
+
+  if (timeout_.connected()) {
+    /* cancel any already active timeout handler */
+    timeout_.disconnect();
+  }
+
+  if (status && config_["timeout"].isNumeric()) {
+    auto timeoutMins = config_["timeout"].asDouble();
+    int timeoutSecs = timeoutMins * 60;
+
+    timeout_ = Glib::signal_timeout().connect_seconds(
+        []() {
+          /* intentionally not tied to a module instance lifetime
+           * as the output with `this` can be disconnected
+           */
+          spdlog::info("deactivating idle_inhibitor by timeout");
+          status = false;
+          for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+            module->update();
+          }
+          /* disconnect */
+          return false;
+        },
+        timeoutSecs);
+  }
+}
+
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
-    status = !status;
-
-    if (timeout_.connected()) {
-      /* cancel any already active timeout handler */
-      timeout_.disconnect();
-    }
-
-    if (status && config_["timeout"].isNumeric()) {
-      auto timeoutMins = config_["timeout"].asDouble();
-      int timeoutSecs = timeoutMins * 60;
-
-      timeout_ = Glib::signal_timeout().connect_seconds(
-          []() {
-            /* intentionally not tied to a module instance lifetime
-             * as the output with `this` can be disconnected
-             */
-            spdlog::info("deactivating idle_inhibitor by timeout");
-            status = false;
-            for (auto const& module : waybar::modules::IdleInhibitor::modules) {
-              module->update();
-            }
-            /* disconnect */
-            return false;
-          },
-          timeoutSecs);
-    }
+    toggleStatus();
 
     // Make all other idle inhibitor modules update
     for (auto const& module : waybar::modules::IdleInhibitor::modules) {

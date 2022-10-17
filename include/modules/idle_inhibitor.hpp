@@ -20,6 +20,7 @@ class IdleInhibitor : public ALabel {
 
  private:
   bool handleToggle(GdkEventButton* const& e);
+  void toggleStatus();
 
   const Bar& bar_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
