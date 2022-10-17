@@ -56,9 +56,10 @@ struct formatter<pow_format> {
       fraction /= base;
     }
 
-    auto max_width = 4            // coeff in {:.3g} format
-                     + 1          // prefix from units array
-                     + s.binary_  // for the 'i' in GiB.
+    auto number_width = 5              // coeff in {:.1f} format
+                        + s.binary_;   // potential 4th digit before the decimal point
+    auto max_width = number_width + 1  // prefix from units array
+                     + s.binary_       // for the 'i' in GiB.
                      + s.unit_.length();
 
     const char* format;
@@ -69,15 +70,16 @@ struct formatter<pow_format> {
       case '<':
         return format_to(ctx.out(), "{:<{}}", fmt::format("{}", s), max_width);
       case '=':
-        format = "{coefficient:<4.3g}{padding}{prefix}{unit}";
+        format = "{coefficient:<{number_width}.1f}{padding}{prefix}{unit}";
         break;
       case 0:
       default:
-        format = "{coefficient:.3g}{prefix}{unit}";
+        format = "{coefficient:.1f}{prefix}{unit}";
         break;
     }
     return format_to(
         ctx.out(), format, fmt::arg("coefficient", fraction),
+        fmt::arg("number_width", number_width),
         fmt::arg("prefix", std::string() + units[pow] + ((s.binary_ && pow) ? "i" : "")),
         fmt::arg("unit", s.unit_),
         fmt::arg("padding", pow         ? ""

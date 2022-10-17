@@ -2,13 +2,13 @@
 
 #include <fmt/format.h>
 
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 
 namespace waybar::modules {
 
-class IdleInhibitor : public ALabel {
+class IdleInhibitor : public AButton {
   sigc::connection timeout_;
 
  public:
@@ -20,6 +20,7 @@ class IdleInhibitor : public ALabel {
 
  private:
   bool handleToggle(GdkEventButton* const& e);
+  void toggleStatus();
 
   const Bar& bar_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
