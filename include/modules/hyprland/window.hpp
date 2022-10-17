@@ -10,13 +10,13 @@
 namespace waybar::modules::hyprland {
 
 class Window : public waybar::ALabel {
-public:
+ public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window() = default;
 
   auto update() -> void;
 
-private:
+ private:
   uint getActiveWorkspaceID(std::string);
   std::string getLastWindowTitle(uint);
   void onEvent(const std::string&);
@@ -28,4 +28,4 @@ private:
   std::string lastView;
 };
 
-}
+}  // namespace waybar::modules::hyprland

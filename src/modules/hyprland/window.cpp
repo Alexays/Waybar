@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <util/sanitize_str.hpp>
+
 #include "modules/hyprland/backend.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
@@ -72,17 +74,7 @@ void Window::onEvent(const std::string& ev) {
     windowName = ev.substr(ev.find_first_of(',') + 1).substr(0, 256);
   }
 
-  auto replaceAll = [](std::string str, const std::string& from,
-                       const std::string& to) -> std::string {
-    size_t start_pos = 0;
-    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-      str.replace(start_pos, from.length(), to);
-      start_pos += to.length();
-    }
-    return str;
-  };
-
-  windowName = replaceAll(windowName, "&", "&amp;");
+  windowName = waybar::util::sanitize_string(windowName);
 
   if (windowName == lastView) return;
 

@@ -18,7 +18,7 @@
 using waybar::waybar_time;
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
-    : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
+    : AButton(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       current_time_zone_idx_(0),
       is_calendar_in_tooltip_(false),
       is_timezoned_list_in_tooltip_(false) {
@@ -107,7 +107,7 @@ auto waybar::modules::Clock::update() -> void {
   } else {
     text = fmt::format(format_, wtime);
   }
-  label_.set_markup(text);
+  label_->set_markup(text);
 
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
@@ -119,12 +119,12 @@ auto waybar::modules::Clock::update() -> void {
       text =
           fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines),
                       fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
-      label_.set_tooltip_markup(text);
+      button_.set_tooltip_markup(text);
     }
   }
 
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 bool waybar::modules::Clock::handleScroll(GdkEventScroll* e) {

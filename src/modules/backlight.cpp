@@ -87,7 +87,7 @@ int waybar::modules::Backlight::BacklightDev::get_max() const { return max_; }
 void waybar::modules::Backlight::BacklightDev::set_max(int max) { max_ = max; }
 
 waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
-    : ALabel(config, "backlight", id, "{percent}%", 2),
+    : AButton(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
   // Get initial state
   {
@@ -174,19 +174,19 @@ auto waybar::modules::Backlight::update() -> void {
 
     const uint8_t percent =
         best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-    label_.set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
-                                  fmt::arg("icon", getIcon(percent))));
+    label_->set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
+                                   fmt::arg("icon", getIcon(percent))));
     getState(percent);
   } else {
     if (!previous_best_.has_value()) {
       return;
     }
-    label_.set_markup("");
+    label_->set_markup("");
   }
   previous_best_ = best == nullptr ? std::nullopt : std::optional{*best};
   previous_format_ = format_;
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 template <class ForwardIt>
