@@ -4,6 +4,9 @@
 #include <glibmm/ustring.h>
 #include <spdlog/spdlog.h>
 
+#include <util/sanitize_str.hpp>
+using namespace waybar::util;
+
 #include "modules/mpd/state.hpp"
 #if defined(MPD_NOINLINE)
 namespace waybar::modules {
@@ -135,12 +138,12 @@ void waybar::modules::MPD::setLabel() {
 
     stateIcon = getStateIcon();
 
-    artist = getTag(MPD_TAG_ARTIST);
-    album_artist = getTag(MPD_TAG_ALBUM_ARTIST);
-    album = getTag(MPD_TAG_ALBUM);
-    title = getTag(MPD_TAG_TITLE);
-    date = getTag(MPD_TAG_DATE);
-    filename = getFilename();
+    artist = sanitize_string(getTag(MPD_TAG_ARTIST));
+    album_artist = sanitize_string(getTag(MPD_TAG_ALBUM_ARTIST));
+    album = sanitize_string(getTag(MPD_TAG_ALBUM));
+    title = sanitize_string(getTag(MPD_TAG_TITLE));
+    date = sanitize_string(getTag(MPD_TAG_DATE));
+    filename = sanitize_string(getFilename());
     song_pos = mpd_status_get_song_pos(status_.get()) + 1;
     volume = mpd_status_get_volume(status_.get());
     if (volume < 0) {

@@ -4,6 +4,8 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbregistry.h>
 
+#include <util/sanitize_str.hpp>
+
 #include "modules/hyprland/backend.hpp"
 
 namespace waybar::modules::hyprland {
@@ -48,16 +50,6 @@ void Language::onEvent(const std::string& ev) {
   if (config_.isMember("keyboard-name") && keebName != config_["keyboard-name"].asString())
     return;  // ignore
 
-  auto replaceAll = [](std::string str, const std::string& from,
-                       const std::string& to) -> std::string {
-    size_t start_pos = 0;
-    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-      str.replace(start_pos, from.length(), to);
-      start_pos += to.length();
-    }
-    return str;
-  };
-
   const auto BRIEFNAME = getShortFrom(layoutName);
 
   if (config_.isMember("format-" + BRIEFNAME)) {
@@ -67,7 +59,7 @@ void Language::onEvent(const std::string& ev) {
     layoutName = fmt::format(format_, layoutName);
   }
 
-  layoutName = replaceAll(layoutName, "&", "&amp;");
+  layoutName = waybar::util::sanitize_string(layoutName);
 
   if (layoutName == layoutName_) return;
 
