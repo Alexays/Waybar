@@ -17,8 +17,11 @@ class Window : public waybar::ALabel {
   auto update() -> void;
 
  private:
+  uint getActiveWorkspaceID(std::string);
+  std::string getLastWindowTitle(uint);
   void onEvent(const std::string&);
 
+  bool separate_outputs;
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;

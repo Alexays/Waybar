@@ -5,12 +5,15 @@
 #include <util/sanitize_str.hpp>
 
 #include "modules/hyprland/backend.hpp"
+#include "util/command.hpp"
+#include "util/json.hpp"
 
 namespace waybar::modules::hyprland {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "window", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
+  separate_outputs = config["separate-outputs"].as<bool>();
 
   if (!gIPC.get()) {
     gIPC = std::make_unique<IPC>();
@@ -37,9 +40,39 @@ auto Window::update() -> void {
   ALabel::update();
 }
 
+uint Window::getActiveWorkspaceID(std::string monitorName) {
+  auto cmd = waybar::util::command::exec("hyprctl monitors -j");
+  assert(cmd.exit_code == 0);
+  Json::Value json = parser_.parse(cmd.out);
+  assert(json.isArray());
+  auto monitor = std::find_if(json.begin(), json.end(), [&](Json::Value monitor){
+    return monitor["name"] == monitorName;
+  });
+  assert(monitor != std::end(json));
+  return (*monitor)["activeWorkspace"]["id"].as<uint>();
+}
+
+std::string Window::getLastWindowTitle(uint workspaceID) {
+  auto cmd = waybar::util::command::exec("hyprctl workspaces -j");
+  assert(cmd.exit_code == 0);
+  Json::Value json = parser_.parse(cmd.out);
+  assert(json.isArray());
+  auto workspace = std::find_if(json.begin(), json.end(), [&](Json::Value workspace){
+    return workspace["id"].as<uint>() == workspaceID;
+  });
+  assert(workspace != std::end(json));
+  return (*workspace)["lastwindowtitle"].as<std::string>();
+}
+
 void Window::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  auto windowName = ev.substr(ev.find_first_of(',') + 1).substr(0, 256);
+
+  std::string windowName;
+  if (separate_outputs) {
+    windowName = getLastWindowTitle(getActiveWorkspaceID(this->bar_.output->name));
+  } else {
+    windowName = ev.substr(ev.find_first_of(',') + 1).substr(0, 256);
+  }
 
   windowName = waybar::util::sanitize_string(windowName);
 
