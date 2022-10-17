@@ -8,7 +8,7 @@ bool waybar::modules::IdleInhibitor::status = false;
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
-    : ALabel(config, "idle_inhibitor", id, "{status}"),
+    : AButton(config, "idle_inhibitor", id, "{status}", 0, false, true),
       bar_(bar),
       idle_inhibitor_(nullptr),
       pid_(-1) {
@@ -51,13 +51,13 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
 auto waybar::modules::IdleInhibitor::update() -> void {
   // Check status
   if (status) {
-    label_.get_style_context()->remove_class("deactivated");
+    button_.get_style_context()->remove_class("deactivated");
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
           waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
   } else {
-    label_.get_style_context()->remove_class("activated");
+    button_.get_style_context()->remove_class("activated");
     if (idle_inhibitor_ != nullptr) {
       zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
       idle_inhibitor_ = nullptr;
@@ -65,11 +65,11 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   }
 
   std::string status_text = status ? "activated" : "deactivated";
-  label_.set_markup(fmt::format(format_, fmt::arg("status", status_text),
-                                fmt::arg("icon", getIcon(0, status_text))));
-  label_.get_style_context()->add_class(status_text);
+  label_->set_markup(fmt::format(format_, fmt::arg("status", status_text),
+                                 fmt::arg("icon", getIcon(0, status_text))));
+  button_.get_style_context()->add_class(status_text);
   if (tooltipEnabled()) {
-    label_.set_tooltip_markup(
+    button_.set_tooltip_markup(
         status ? fmt::format(config_["tooltip-format-activated"].isString()
                                  ? config_["tooltip-format-activated"].asString()
                                  : "{status}",
@@ -82,7 +82,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
                              fmt::arg("icon", getIcon(0, status_text))));
   }
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 void waybar::modules::IdleInhibitor::toggleStatus() {
@@ -126,6 +126,6 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
     }
   }
 
-  ALabel::handleToggle(e);
+  AButton::handleToggle(e);
   return true;
 }

@@ -80,7 +80,7 @@ auto getUcharProperty(GDBusProxy* proxy, const char* property_name) -> unsigned 
 }  // namespace
 
 waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
-    : ALabel(config, "bluetooth", id, " {status}", 10),
+    : AButton(config, "bluetooth", id, " {status}", 10),
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_BLUETOOTH},
 #endif
@@ -189,10 +189,10 @@ auto waybar::modules::Bluetooth::update() -> void {
   format_.empty() ? event_box_.hide() : event_box_.show();
 
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
-    if (in_next_state && !label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->add_class(style_class);
-    } else if (!in_next_state && label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->remove_class(style_class);
+    if (in_next_state && !button_.get_style_context()->has_class(style_class)) {
+      button_.get_style_context()->add_class(style_class);
+    } else if (!in_next_state && button_.get_style_context()->has_class(style_class)) {
+      button_.get_style_context()->remove_class(style_class);
     }
   };
   update_style_context("discoverable", cur_controller_.discoverable);
@@ -204,7 +204,7 @@ auto waybar::modules::Bluetooth::update() -> void {
   update_style_context(state, true);
   state_ = state;
 
-  label_.set_markup(fmt::format(
+  label_->set_markup(fmt::format(
       format_, fmt::arg("status", state_), fmt::arg("num_connections", connected_devices_.size()),
       fmt::arg("controller_address", cur_controller_.address),
       fmt::arg("controller_address_type", cur_controller_.address_type),
@@ -245,7 +245,7 @@ auto waybar::modules::Bluetooth::update() -> void {
         device_enumerate_.erase(0, 1);
       }
     }
-    label_.set_tooltip_text(fmt::format(
+    button_.set_tooltip_text(fmt::format(
         tooltip_format, fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
         fmt::arg("controller_address", cur_controller_.address),
@@ -259,7 +259,7 @@ auto waybar::modules::Bluetooth::update() -> void {
   }
 
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 // NOTE: only for when the org.bluez.Battery1 interface is added/removed after/before a device is
