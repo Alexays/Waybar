@@ -4,12 +4,14 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbregistry.h>
 
+#include <util/sanitize_str.hpp>
+
 #include "modules/hyprland/backend.hpp"
 
 namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
+    : AButton(config, "language", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
   if (!gIPC.get()) {
@@ -19,8 +21,8 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   // get the active layout when open
   initLanguage();
 
-  label_.hide();
-  ALabel::update();
+  button_.hide();
+  AButton::update();
 
   // register for hyprland ipc
   gIPC->registerForIPC("activelayout", [&](const std::string& ev) { this->onEvent(ev); });
@@ -30,13 +32,13 @@ auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   if (!format_.empty()) {
-    label_.show();
-    label_.set_markup(layoutName_);
+    button_.show();
+    label_->set_markup(layoutName_);
   } else {
-    label_.hide();
+    button_.hide();
   }
 
-  ALabel::update();
+  AButton::update();
 }
 
 void Language::onEvent(const std::string& ev) {
@@ -48,16 +50,6 @@ void Language::onEvent(const std::string& ev) {
   if (config_.isMember("keyboard-name") && keebName != config_["keyboard-name"].asString())
     return;  // ignore
 
-  auto replaceAll = [](std::string str, const std::string& from,
-                       const std::string& to) -> std::string {
-    size_t start_pos = 0;
-    while ((start_pos = str.find(from, start_pos)) != std::string::npos) {
-      str.replace(start_pos, from.length(), to);
-      start_pos += to.length();
-    }
-    return str;
-  };
-
   const auto BRIEFNAME = getShortFrom(layoutName);
 
   if (config_.isMember("format-" + BRIEFNAME)) {
@@ -67,7 +59,7 @@ void Language::onEvent(const std::string& ev) {
     layoutName = fmt::format(format_, layoutName);
   }
 
-  layoutName = replaceAll(layoutName, "&", "&amp;");
+  layoutName = waybar::util::sanitize_string(layoutName);
 
   if (layoutName == layoutName_) return;
 

@@ -10,7 +10,7 @@
 
 #include <optional>
 
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "util/sleeper_thread.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
@@ -18,7 +18,7 @@
 
 namespace waybar::modules {
 
-class Network : public ALabel {
+class Network : public AButton {
  public:
   Network(const std::string&, const Json::Value&);
   ~Network();

@@ -63,6 +63,11 @@ screensaving, also known as "presentation mode".
 	typeof: double ++
 	Threshold to be used when scrolling.
 
+*start-activated*: ++
+  typeof: bool ++
+  default: *false* ++
+  Whether the inhibit should be activated when starting waybar.
+
 *timeout*: ++
 	typeof: double ++
 	The number of minutes the inhibit should last.

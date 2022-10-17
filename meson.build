@@ -143,6 +143,7 @@ endif
 src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
+    'src/AButton.cpp',
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/modules/custom.cpp',
@@ -155,7 +156,8 @@ src_files = files(
     'src/client.cpp',
     'src/config.cpp',
     'src/group.cpp',
-    'src/util/ustring_clen.cpp'
+    'src/util/ustring_clen.cpp',
+    'src/util/sanitize_str.cpp'
 )
 
 if is_linux
