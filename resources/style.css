@@ -34,6 +34,12 @@ window#waybar.chromium {
     border: none;
 }
 
+/* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
+button:hover {
+    background: inherit;
+    box-shadow: inset 0 -3px #ffffff;
+}
+
 #workspaces button {
     padding: 0 5px;
     background-color: transparent;
@@ -45,10 +51,8 @@ window#waybar.chromium {
     border-radius: 0;
 }
 
-/* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
 #workspaces button:hover {
     background: rgba(0, 0, 0, 0.2);
-    box-shadow: inset 0 -3px #ffffff;
 }
 
 #workspaces button.focused {

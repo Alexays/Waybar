@@ -4,12 +4,12 @@
 
 #include <vector>
 
-#include "ALabel.hpp"
+#include "AButton.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Sndio : public ALabel {
+class Sndio : public AButton {
  public:
   Sndio(const std::string &, const Json::Value &);
   ~Sndio();
