@@ -3,10 +3,7 @@
 #include <filesystem>
 
 #if defined(__FreeBSD__)
-// clang-format off
-#include <sys/types.h>
 #include <sys/sysctl.h>
-// clang-format on
 #endif
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
@@ -79,6 +76,9 @@ float waybar::modules::Temperature::getTemperature() {
 #if defined(__FreeBSD__)
   int temp;
   size_t size = sizeof temp;
+
+  auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
+  auto sysctl_thermal = fmt::format("hw.acpi.thermal.tz{}.temperature", zone);
 
   if (sysctlbyname("hw.acpi.thermal.tz0.temperature", &temp, &size, NULL, 0) != 0) {
     throw std::runtime_error(
