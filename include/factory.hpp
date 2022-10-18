@@ -73,9 +73,9 @@
 #include "modules/jack.hpp"
 #endif
 #include "bar.hpp"
-#include "modules/user.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
+#include "modules/user.hpp"
 
 namespace waybar {
 

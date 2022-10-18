@@ -45,9 +45,8 @@ uint Window::getActiveWorkspaceID(std::string monitorName) {
   assert(cmd.exit_code == 0);
   Json::Value json = parser_.parse(cmd.out);
   assert(json.isArray());
-  auto monitor = std::find_if(json.begin(), json.end(), [&](Json::Value monitor){
-    return monitor["name"] == monitorName;
-  });
+  auto monitor = std::find_if(json.begin(), json.end(),
+                              [&](Json::Value monitor) { return monitor["name"] == monitorName; });
   assert(monitor != std::end(json));
   return (*monitor)["activeWorkspace"]["id"].as<uint>();
 }
@@ -57,7 +56,7 @@ std::string Window::getLastWindowTitle(uint workspaceID) {
   assert(cmd.exit_code == 0);
   Json::Value json = parser_.parse(cmd.out);
   assert(json.isArray());
-  auto workspace = std::find_if(json.begin(), json.end(), [&](Json::Value workspace){
+  auto workspace = std::find_if(json.begin(), json.end(), [&](Json::Value workspace) {
     return workspace["id"].as<uint>() == workspaceID;
   });
   assert(workspace != std::end(json));
