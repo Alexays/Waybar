@@ -171,8 +171,6 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
-    uint32_t total_power = 0;  // μW
-    bool total_power_exists = false;
 #if defined(__FreeBSD__)
     /* Allocate state of battery units reported via ACPI. */
     int battery_units = 0;
@@ -225,8 +223,8 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     return {capacity, time / 60.0, status, rate};
 
 #elif defined(__linux__)
-    uint32_t total_power = 0;   // μW
->>>>>>> 246e377 (FreeBSD: Add support to battery)
+    uint32_t total_power = 0;  // μW
+    bool total_power_exists = false;
     uint32_t total_energy = 0;  // μWh
     bool total_energy_exists = false;
     uint32_t total_energy_full = 0;
@@ -540,6 +538,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
     throw std::runtime_error("sysctl hw.acpi.battery.state failed");
   }
   bool online = state == 2;
+  std::string status{"Unknown"};  // TODO: add status in FreeBSD
   {
 #else
   if (!adapter_.empty()) {
@@ -547,13 +546,6 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
     std::string status;
     std::ifstream(adapter_ / "online") >> online;
     std::getline(std::ifstream(adapter_ / "status"), status);
-#else
-    int state;
-    size_t size_state = sizeof state;
-    if (sysctlbyname("hw.acpi.battery.state", &state, &size_state, NULL,0) != 0) {
-      throw std::runtime_error("sysctl hw.acpi.battery.state failed");
-    }
-    bool online = state == 2;
 #endif
     if (capacity == 100) {
       return "Full";
