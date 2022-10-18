@@ -59,7 +59,10 @@ std::string Window::getLastWindowTitle(uint workspaceID) {
   auto workspace = std::find_if(json.begin(), json.end(), [&](Json::Value workspace) {
     return workspace["id"].as<uint>() == workspaceID;
   });
-  assert(workspace != std::end(json));
+
+  if (workspace != std::end(json)) {
+    return "";
+  }
   return (*workspace)["lastwindowtitle"].as<std::string>();
 }
 
