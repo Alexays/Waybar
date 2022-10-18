@@ -82,6 +82,7 @@ button:hover {
 #tray,
 #mode,
 #idle_inhibitor,
+#scratchpad,
 #mpd {
     padding: 0 10px;
     color: #ffffff;
@@ -255,4 +256,12 @@ label:focus {
 
 #keyboard-state > label.locked {
     background: rgba(0, 0, 0, 0.2);
+}
+
+#scratchpad {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+#scratchpad.empty {
+	background-color: transparent;
 }

@@ -35,6 +35,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "sway/language") {
       return new waybar::modules::sway::Language(id, config_[name]);
     }
+    if (ref == "sway/scratchpad") {
+      return new waybar::modules::sway::Scratchpad(id, config_[name]);
+    }
 #endif
 #ifdef HAVE_WLR
     if (ref == "wlr/taskbar") {

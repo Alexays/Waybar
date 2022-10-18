@@ -187,7 +187,8 @@ src_files += [
     'src/modules/sway/mode.cpp',
     'src/modules/sway/language.cpp',
     'src/modules/sway/window.cpp',
-    'src/modules/sway/workspaces.cpp'
+    'src/modules/sway/workspaces.cpp',
+    'src/modules/sway/scratchpad.cpp'
 ]
 
 if true
@@ -374,6 +375,7 @@ if scdoc.found()
         'waybar-river-window.5.scd',
         'waybar-sway-language.5.scd',
         'waybar-sway-mode.5.scd',
+        'waybar-sway-scratchpad.5.scd',
         'waybar-sway-window.5.scd',
         'waybar-sway-workspaces.5.scd',
         'waybar-temperature.5.scd',
