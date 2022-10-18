@@ -9,6 +9,7 @@
 #ifdef HAVE_SWAY
 #include "modules/sway/language.hpp"
 #include "modules/sway/mode.hpp"
+#include "modules/sway/scratchpad.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
@@ -74,6 +75,7 @@
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/temperature.hpp"
+#include "modules/user.hpp"
 
 namespace waybar {
 

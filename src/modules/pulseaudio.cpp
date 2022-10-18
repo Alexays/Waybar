@@ -36,6 +36,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
 }
 
 waybar::modules::Pulseaudio::~Pulseaudio() {
+  pa_context_disconnect(context_);
   mainloop_api_->quit(mainloop_api_, 0);
   pa_threaded_mainloop_stop(mainloop_);
   pa_threaded_mainloop_free(mainloop_);
