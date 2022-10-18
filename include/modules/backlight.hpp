@@ -18,12 +18,14 @@ class Backlight : public AButton {
   class BacklightDev {
    public:
     BacklightDev() = default;
-    BacklightDev(std::string name, int actual, int max);
+    BacklightDev(std::string name, int actual, int max, bool powered);
     std::string_view name() const;
     int get_actual() const;
     void set_actual(int actual);
     int get_max() const;
     void set_max(int max);
+    bool get_powered() const;
+    void set_powered(bool powered);
     friend inline bool operator==(const BacklightDev &lhs, const BacklightDev &rhs) {
       return lhs.name_ == rhs.name_ && lhs.actual_ == rhs.actual_ && lhs.max_ == rhs.max_;
     }
@@ -32,6 +34,7 @@ class Backlight : public AButton {
     std::string name_;
     int actual_ = 1;
     int max_ = 1;
+    bool powered_ = true;
   };
 
  public:
