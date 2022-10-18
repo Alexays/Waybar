@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <regex>
 #include <util/sanitize_str.hpp>
 
 #include "modules/hyprland/backend.hpp"
@@ -32,7 +33,7 @@ auto Window::update() -> void {
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(fmt::format(format_, lastView));
+    label_.set_markup(fmt::format(format_, rewriteTitle(lastView)));
   } else {
     label_.hide();
   }
@@ -82,6 +83,32 @@ void Window::onEvent(const std::string& ev) {
   spdlog::debug("hyprland window onevent with {}", windowName);
 
   dp.emit();
+}
+
+std::string Window::rewriteTitle(const std::string& title) {
+  const auto& rules = config_["rewrite"];
+  if (!rules.isObject()) {
+    return title;
+  }
+
+  std::string res = title;
+
+  for (auto it = rules.begin(); it != rules.end(); ++it) {
+    if (it.key().isString() && it->isString()) {
+      try {
+        // malformated regexes will cause an exception.
+        // in this case, log error and try the next rule.
+        const std::regex rule{it.key().asString()};
+        if (std::regex_match(title, rule)) {
+          res = std::regex_replace(res, rule, it->asString());
+        }
+      } catch (const std::regex_error& e) {
+        spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
+      }
+    }
+  }
+
+  return res;
 }
 
 }  // namespace waybar::modules::hyprland

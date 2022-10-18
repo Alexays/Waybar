@@ -19,6 +19,7 @@ class Window : public waybar::ALabel {
  private:
   uint getActiveWorkspaceID(std::string);
   std::string getLastWindowTitle(uint);
+  std::string rewriteTitle(const std::string&);
   void onEvent(const std::string&);
 
   bool separate_outputs;
