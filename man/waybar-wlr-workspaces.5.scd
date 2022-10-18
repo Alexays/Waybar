@@ -33,6 +33,11 @@ Addressed by *wlr/workspaces*
 	Note that if both  *sort-by-name* and *sort-by-coordinates* are true sort by name will be first.
 	If both are false - sort by id will be performed.
 
+*sort-by-number*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, workspace names will be sorted numerically. Takes presedence over any other sort-by option.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
@@ -75,7 +80,8 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"5": "",
 		"focused": "",
 		"default": ""
-	}
+	},
+	"sort-by-number": true
 }
 ```
 
