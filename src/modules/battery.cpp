@@ -7,7 +7,7 @@
 #include <iostream>
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
     : AButton(config, "battery", id, "{capacity}%", 60) {
-#if defined(__Linux__)
+#if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
