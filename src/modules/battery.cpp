@@ -1,9 +1,13 @@
 #include "modules/battery.hpp"
-
+#if defined(__FreeBSD__)
+#include <sys/sysctl.h>
+#endif
 #include <spdlog/spdlog.h>
 
+#include <iostream>
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
     : AButton(config, "battery", id, "{capacity}%", 60) {
+#if defined(__Linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
@@ -19,11 +23,12 @@ waybar::modules::Battery::Battery(const std::string& id, const Json::Value& conf
   if (global_watch < 0) {
     throw std::runtime_error("Could not watch for battery plug/unplug");
   }
-
+#endif
   worker();
 }
 
 waybar::modules::Battery::~Battery() {
+#if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   if (global_watch >= 0) {
@@ -39,9 +44,16 @@ waybar::modules::Battery::~Battery() {
     batteries_.erase(it);
   }
   close(battery_watch_fd_);
+#endif
 }
 
 void waybar::modules::Battery::worker() {
+#if defined(__FreeBSD__)
+  thread_timer_ = [this] {
+    dp.emit();
+    thread_timer_.sleep_for(interval_);
+  };
+#else
   thread_timer_ = [this] {
     // Make sure we eventually update the list of batteries even if we miss an
     // inotify event for some reason
@@ -68,9 +80,11 @@ void waybar::modules::Battery::worker() {
     refreshBatteries();
     dp.emit();
   };
+#endif
 }
 
 void waybar::modules::Battery::refreshBatteries() {
+#if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
   // Mark existing list of batteries as not necessarily found
   std::map<fs::path, bool> check_map;
@@ -135,6 +149,7 @@ void waybar::modules::Battery::refreshBatteries() {
       batteries_.erase(check.first);
     }
   }
+#endif
 }
 
 // Unknown > Full > Not charging > Discharging > Charging
@@ -156,6 +171,58 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
+#if defined(__FreeBSD__)
+    /* Allocate state of battery units reported via ACPI. */
+    int battery_units = 0;
+    size_t battery_units_size = sizeof battery_units;
+    if (sysctlbyname("hw.acpi.battery.units", &battery_units, &battery_units_size, NULL, 0) != 0) {
+      throw std::runtime_error("sysctl hw.acpi.battery.units failed");
+    }
+
+    if (battery_units < 0) {
+      throw std::runtime_error("No battery units");
+    }
+
+    int capacity;
+    size_t size_capacity = sizeof capacity;
+    if (sysctlbyname("hw.acpi.battery.life", &capacity, &size_capacity, NULL, 0) != 0) {
+      throw std::runtime_error("sysctl hw.acpi.battery.life failed");
+    }
+    int time;
+    size_t size_time = sizeof time;
+    if (sysctlbyname("hw.acpi.battery.time", &time, &size_time, NULL, 0) != 0) {
+      throw std::runtime_error("sysctl hw.acpi.battery.time failed");
+    }
+    int rate;
+    size_t size_rate = sizeof rate;
+    if (sysctlbyname("hw.acpi.battery.rate", &rate, &size_rate, NULL, 0) != 0) {
+      throw std::runtime_error("sysctl hw.acpi.battery.rate failed");
+    }
+
+    auto status = getAdapterStatus(capacity);
+    // Handle full-at
+    if (config_["full-at"].isUInt()) {
+      auto full_at = config_["full-at"].asUInt();
+      if (full_at < 100) {
+        capacity = 100.f * capacity / full_at;
+      }
+    }
+    if (capacity > 100.f) {
+      // This can happen when the battery is calibrating and goes above 100%
+      // Handle it gracefully by clamping at 100%
+      capacity = 100.f;
+    }
+    uint8_t cap = round(capacity);
+    if (cap == 100 && status == "Plugged") {
+      // If we've reached 100% just mark as full as some batteries can stay
+      // stuck reporting they're still charging but not yet done
+      status = "Full";
+    }
+
+    // spdlog::info("{} {} {} {}", capacity,time,status,rate);
+    return {capacity, time / 60.0, status, rate};
+
+#elif defined(__linux__)
     uint32_t total_power = 0;  // μW
     bool total_power_exists = false;
     uint32_t total_energy = 0;  // μWh
@@ -456,6 +523,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     if (cap == 100 && status == "Charging") status = "Full";
 
     return {cap, time_remaining, status, total_power / 1e6};
+#endif
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
     return {0, 0, "Unknown", 0};
@@ -463,11 +531,22 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
 }
 
 const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
+#if defined(__FreeBSD__)
+  int state;
+  size_t size_state = sizeof state;
+  if (sysctlbyname("hw.acpi.battery.state", &state, &size_state, NULL, 0) != 0) {
+    throw std::runtime_error("sysctl hw.acpi.battery.state failed");
+  }
+  bool online = state == 2;
+  std::string status{"Unknown"};  // TODO: add status in FreeBSD
+  {
+#else
   if (!adapter_.empty()) {
     bool online;
     std::string status;
     std::ifstream(adapter_ / "online") >> online;
     std::getline(std::ifstream(adapter_ / "status"), status);
+#endif
     if (capacity == 100) {
       return "Full";
     }
@@ -497,10 +576,12 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 }
 
 auto waybar::modules::Battery::update() -> void {
+#if defined(__linux__)
   if (batteries_.empty()) {
     event_box_.hide();
     return;
   }
+#endif
   auto [capacity, time_remaining, status, power] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
