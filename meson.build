@@ -157,7 +157,8 @@ src_files = files(
     'src/config.cpp',
     'src/group.cpp',
     'src/util/ustring_clen.cpp',
-    'src/util/sanitize_str.cpp'
+    'src/util/sanitize_str.cpp',
+    'src/util/rewrite_title.cpp'
 )
 
 if is_linux

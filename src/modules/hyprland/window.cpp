@@ -8,6 +8,7 @@
 #include "modules/hyprland/backend.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
+#include "util/rewrite_title.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -33,7 +34,7 @@ auto Window::update() -> void {
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(fmt::format(format_, rewriteTitle(lastView)));
+    label_.set_markup(fmt::format(format_, waybar::util::rewriteTitle(lastView, config_["rewrite"])));
   } else {
     label_.hide();
   }
@@ -61,7 +62,7 @@ std::string Window::getLastWindowTitle(uint workspaceID) {
     return workspace["id"].as<uint>() == workspaceID;
   });
 
-  if (workspace != std::end(json)) {
+  if (workspace == std::end(json)) {
     return "";
   }
   return (*workspace)["lastwindowtitle"].as<std::string>();
@@ -87,31 +88,4 @@ void Window::onEvent(const std::string& ev) {
 
   dp.emit();
 }
-
-std::string Window::rewriteTitle(const std::string& title) {
-  const auto& rules = config_["rewrite"];
-  if (!rules.isObject()) {
-    return title;
-  }
-
-  std::string res = title;
-
-  for (auto it = rules.begin(); it != rules.end(); ++it) {
-    if (it.key().isString() && it->isString()) {
-      try {
-        // malformated regexes will cause an exception.
-        // in this case, log error and try the next rule.
-        const std::regex rule{it.key().asString()};
-        if (std::regex_match(title, rule)) {
-          res = std::regex_replace(res, rule, it->asString());
-        }
-      } catch (const std::regex_error& e) {
-        spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
-      }
-    }
-  }
-
-  return res;
-}
-
 }  // namespace waybar::modules::hyprland

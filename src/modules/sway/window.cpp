@@ -1,4 +1,5 @@
 #include "modules/sway/window.hpp"
+#include "util/rewrite_title.hpp"
 
 #include <gdkmm/pixbuf.h>
 #include <glibmm/fileutils.h>
@@ -175,7 +176,7 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("title", rewriteTitle(window_)),
+  label_.set_markup(fmt::format(format_, fmt::arg("title", waybar::util::rewriteTitle(window_, config_["rewrite"])),
                                 fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
@@ -260,32 +261,6 @@ void Window::getTree() {
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
   }
-}
-
-std::string Window::rewriteTitle(const std::string& title) {
-  const auto& rules = config_["rewrite"];
-  if (!rules.isObject()) {
-    return title;
-  }
-
-  std::string res = title;
-
-  for (auto it = rules.begin(); it != rules.end(); ++it) {
-    if (it.key().isString() && it->isString()) {
-      try {
-        // malformated regexes will cause an exception.
-        // in this case, log error and try the next rule.
-        const std::regex rule{it.key().asString()};
-        if (std::regex_match(title, rule)) {
-          res = std::regex_replace(res, rule, it->asString());
-        }
-      } catch (const std::regex_error& e) {
-        spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
-      }
-    }
-  }
-
-  return res;
 }
 
 }  // namespace waybar::modules::sway
