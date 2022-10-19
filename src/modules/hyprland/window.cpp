@@ -34,7 +34,8 @@ auto Window::update() -> void {
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(fmt::format(format_, waybar::util::rewriteTitle(lastView, config_["rewrite"])));
+    label_.set_markup(
+        fmt::format(format_, waybar::util::rewriteTitle(lastView, config_["rewrite"])));
   } else {
     label_.hide();
   }
