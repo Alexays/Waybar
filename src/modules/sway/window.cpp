@@ -1,5 +1,4 @@
 #include "modules/sway/window.hpp"
-#include "util/rewrite_title.hpp"
 
 #include <gdkmm/pixbuf.h>
 #include <glibmm/fileutils.h>
@@ -12,6 +11,8 @@
 #include <filesystem>
 #include <regex>
 #include <string>
+
+#include "util/rewrite_title.hpp"
 
 namespace waybar::modules::sway {
 
@@ -176,8 +177,9 @@ auto Window::update() -> void {
     bar_.window.get_style_context()->remove_class("solo");
     bar_.window.get_style_context()->remove_class("empty");
   }
-  label_.set_markup(fmt::format(format_, fmt::arg("title", waybar::util::rewriteTitle(window_, config_["rewrite"])),
-                                fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
+  label_.set_markup(fmt::format(
+      format_, fmt::arg("title", waybar::util::rewriteTitle(window_, config_["rewrite"])),
+      fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
