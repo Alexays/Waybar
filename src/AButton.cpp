@@ -18,6 +18,12 @@ AButton::AButton(const Json::Value& config, const std::string& name, const std::
       default_format_(format_) {
   button_.set_name(name);
   button_.set_relief(Gtk::RELIEF_NONE);
+
+  /* https://github.com/Alexays/Waybar/issues/1731 */
+  auto css = Gtk::CssProvider::create();
+  css->load_from_data("button { min-width: 0; }");
+  button_.get_style_context()->add_provider(css, GTK_STYLE_PROVIDER_PRIORITY_USER);
+
   if (!id.empty()) {
     button_.get_style_context()->add_class(id);
   }
