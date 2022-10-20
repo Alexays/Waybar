@@ -2,6 +2,7 @@
 
 #include <glibmm/markup.h>
 #include <gtkmm/button.h>
+#include <gtkmm/cssprovider.h>
 #include <gtkmm/label.h>
 #include <json/json.h>
 

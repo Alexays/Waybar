@@ -40,8 +40,6 @@ button {
     /* Avoid rounded borders under each button name */
     border: none;
     border-radius: 0;
-    /* https://github.com/Alexays/Waybar/issues/1731 */
-    min-width: 0;
 }
 
 /* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
