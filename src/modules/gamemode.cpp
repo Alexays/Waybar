@@ -109,7 +109,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
 }
 
 Gamemode::~Gamemode() {
-  if (gamemode_proxy) gamemode_proxy->unreference();
+  if (gamemode_proxy) gamemode_proxy.reset();
   if (gamemodeWatcher_id > 0) {
     Gio::DBus::unwatch_name(gamemodeWatcher_id);
     gamemodeWatcher_id = 0;
