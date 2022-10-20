@@ -24,7 +24,6 @@ class Window : public AIconLabel, public sigc::trackable {
   std::tuple<std::size_t, int, std::string, std::string, std::string, std::string> getFocusedNode(
       const Json::Value& nodes, std::string& output);
   void getTree();
-  std::string rewriteTitle(const std::string& title);
   void updateAppIconName();
   void updateAppIcon();
 

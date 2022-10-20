@@ -2,11 +2,13 @@
 
 #include <spdlog/spdlog.h>
 
+#include <regex>
 #include <util/sanitize_str.hpp>
 
 #include "modules/hyprland/backend.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
+#include "util/rewrite_title.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -32,7 +34,8 @@ auto Window::update() -> void {
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(fmt::format(format_, lastView));
+    label_.set_markup(
+        fmt::format(format_, waybar::util::rewriteTitle(lastView, config_["rewrite"])));
   } else {
     label_.hide();
   }
@@ -60,7 +63,7 @@ std::string Window::getLastWindowTitle(uint workspaceID) {
     return workspace["id"].as<uint>() == workspaceID;
   });
 
-  if (workspace != std::end(json)) {
+  if (workspace == std::end(json)) {
     return "";
   }
   return (*workspace)["lastwindowtitle"].as<std::string>();
@@ -86,5 +89,4 @@ void Window::onEvent(const std::string& ev) {
 
   dp.emit();
 }
-
 }  // namespace waybar::modules::hyprland
