@@ -1,6 +1,6 @@
 #include "config.hpp"
 
-#include <catch2/catch_all.hpp>
+#include <catch2/catch.hpp>
 
 TEST_CASE("Load simple config", "[config]") {
   waybar::Config conf;

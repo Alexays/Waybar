@@ -2,7 +2,7 @@
 
 #include <glibmm.h>
 
-#include <catch2/catch_all.hpp>
+#include <catch2/catch.hpp>
 #include <thread>
 #include <type_traits>
 
