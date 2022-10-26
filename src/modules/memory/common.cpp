@@ -31,17 +31,17 @@ auto waybar::modules::Memory::update() -> void {
   }
 
   if (memtotal > 0 && memfree >= 0) {
-    auto total_ram_gigabytes = memtotal / std::pow(1024, 2);
-    auto total_swap_gigabytes = swaptotal / std::pow(1024, 2);
+    float total_ram_gigabytes = 0.01*round(memtotal / 10485.76); // 100*10485.76 = 2^20 = 1024^2 = GiB/KiB
+    float total_swap_gigabytes = 0.01*round(swaptotal / 10485.76);
     int used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
     int used_swap_percentage = 0;
     if (swaptotal && swapfree) {
       used_swap_percentage = 100 * (swaptotal - swapfree) / swaptotal;
     }
-    auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
-    auto used_swap_gigabytes = (swaptotal - swapfree) / std::pow(1024, 2);
-    auto available_ram_gigabytes = memfree / std::pow(1024, 2);
-    auto available_swap_gigabytes = swapfree / std::pow(1024, 2);
+    float used_ram_gigabytes = 0.01*round((memtotal - memfree) / 10485.76);
+    float used_swap_gigabytes = 0.01*round((swaptotal - swapfree) / 10485.76);
+    float available_ram_gigabytes = 0.01*round(memfree / 10485.76);
+    float available_swap_gigabytes = 0.01*round(swapfree / 10485.76);
 
     auto format = format_;
     auto state = getState(used_ram_percentage);
