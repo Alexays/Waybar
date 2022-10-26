@@ -252,8 +252,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
 };
 
 static const std::vector<Gtk::TargetEntry> target_entries = {
-   Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)
-};
+    Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)};
 
 Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
            struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat)
@@ -317,15 +316,18 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
 
   button_.add_events(Gdk::BUTTON_PRESS_MASK);
   button_.signal_button_press_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
-  button_.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_button_release), false);
+  button_.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_button_release),
+                                                false);
 
-  button_.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify), false);
+  button_.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
+                                               false);
 
   button_.drag_source_set(target_entries, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
   button_.drag_dest_set(target_entries, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
 
   button_.signal_drag_data_get().connect(sigc::mem_fun(*this, &Task::handle_drag_data_get), false);
-  button_.signal_drag_data_received().connect(sigc::mem_fun(*this, &Task::handle_drag_data_received), false);
+  button_.signal_drag_data_received().connect(
+      sigc::mem_fun(*this, &Task::handle_drag_data_received), false);
 }
 
 Task::~Task() {
@@ -556,47 +558,41 @@ bool Task::handle_button_release(GdkEventButton *bt) {
 }
 
 bool Task::handle_motion_notify(GdkEventMotion *mn) {
-  if (drag_start_button == -1)
-    return false;
+  if (drag_start_button == -1) return false;
 
-  if ( button_.drag_check_threshold(drag_start_x, drag_start_y, mn->x, mn->y)) {
+  if (button_.drag_check_threshold(drag_start_x, drag_start_y, mn->x, mn->y)) {
     /* start drag in addition to other assigned action */
     auto target_list = Gtk::TargetList::create(target_entries);
     auto refptr = Glib::RefPtr<Gtk::TargetList>(target_list);
-    auto drag_context = button_.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent*)mn);
+    auto drag_context =
+        button_.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent *)mn);
   }
 
   return false;
 }
 
-void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context, Gtk::SelectionData& selection_data, guint info, guint time)
-{
+void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext> &context,
+                                Gtk::SelectionData &selection_data, guint info, guint time) {
   spdlog::debug("drag_data_get");
-  void* button_addr = (void*)&this->button_;
+  void *button_addr = (void *)&this->button_;
 
-  selection_data.set(
-    "WAYBAR_TOPLEVEL",
-    32,
-    (const guchar *)&button_addr,
-    sizeof (gpointer));
+  selection_data.set("WAYBAR_TOPLEVEL", 32, (const guchar *)&button_addr, sizeof(gpointer));
 }
 
-void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y, Gtk::SelectionData selection_data, guint info, guint time)
-{
+void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext> &context, int x, int y,
+                                     Gtk::SelectionData selection_data, guint info, guint time) {
   spdlog::debug("drag_data_received");
-  gpointer handle = *(gpointer*)selection_data.get_data();
-  auto dragged_button = (Gtk::Button*)handle;
+  gpointer handle = *(gpointer *)selection_data.get_data();
+  auto dragged_button = (Gtk::Button *)handle;
 
-  if(dragged_button == &this->button_)
-    return;
+  if (dragged_button == &this->button_) return;
 
   auto parent_of_dragged = dragged_button->get_parent();
   auto parent_of_dest = this->button_.get_parent();
 
-  if(parent_of_dragged != parent_of_dest)
-    return;
+  if (parent_of_dragged != parent_of_dest) return;
 
-  auto box = (Gtk::Box*)parent_of_dragged;
+  auto box = (Gtk::Box *)parent_of_dragged;
 
   auto position_prop = box->child_property_position(this->button_);
   auto position = position_prop.get_value();
