@@ -101,7 +101,7 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
     } else {
       spdlog::error("findCurController() failed: no bluetooth controller found");
     }
-    event_box_.hide()
+    event_box_.hide();
     return;
   }
   findConnectedDevices(cur_controller_.path, connected_devices_);
