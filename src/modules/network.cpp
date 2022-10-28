@@ -646,11 +646,12 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       if (has_gateway && !has_destination && temp_idx != -1) {
         // Check if this is the first default route we see, or if this new
         // route have a higher priority.
-        /** Module doesn`t update state, because RTA_GATEWAY call before enable new router and set higher priority.
-            Disable router -> RTA_GATEWAY -> up new router -> set higher priority
-            added checking route id
+        /** Module doesn`t update state, because RTA_GATEWAY call before enable new router and set
+        higher priority. Disable router -> RTA_GATEWAY -> up new router -> set higher priority added
+        checking route id
         **/
-        if (!is_del_event && ((net->ifid_ == -1) || (priority < net->route_priority) || (net->ifid_ != temp_idx))) {
+        if (!is_del_event &&
+            ((net->ifid_ == -1) || (priority < net->route_priority) || (net->ifid_ != temp_idx))) {
           // Clear if's state for the case were there is a higher priority
           // route on a different interface.
           net->clearIface();
