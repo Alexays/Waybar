@@ -612,7 +612,7 @@ auto waybar::modules::Battery::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     button_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("timeTo", tooltip_text_default),
-                                         fmt::arg("capacity", capacity),
+                                         fmt::arg("power", power), fmt::arg("capacity", capacity),
                                          fmt::arg("time", time_remaining_formatted)));
   }
   if (!old_status_.empty()) {
