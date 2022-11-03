@@ -21,7 +21,7 @@ AButton::AButton(const Json::Value& config, const std::string& name, const std::
 
   /* https://github.com/Alexays/Waybar/issues/1731 */
   auto css = Gtk::CssProvider::create();
-  css->load_from_data("button { min-width: 0; }");
+  css->load_from_data("button { all: unset; min-width: 0; }");
   button_.get_style_context()->add_provider(css, GTK_STYLE_PROVIDER_PRIORITY_USER);
 
   if (!id.empty()) {
