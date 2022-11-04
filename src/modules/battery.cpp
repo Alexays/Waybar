@@ -470,7 +470,9 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       }
     }
 
-    if (!adapter_.empty() && status == "Discharging") {
+    // Give `Plugged` higher priority over `Not charging`.
+    // So in a setting where TLP is used, `Plugged` is shown when the threshold is reached
+    if (!adapter_.empty() && (status == "Discharging" || status == "Not charging")) {
       bool online;
       std::string current_status;
       std::ifstream(adapter_ / "online") >> online;
