@@ -33,7 +33,7 @@ compatible devices in the tooltip.
 
 *tooltip*: ++
 	typeof: bool ++
-	defualt: true ++
+	default: true ++
 	Option to disable tooltip on hover.
 
 *tooltip-spacing*: ++

@@ -23,7 +23,7 @@ Feral Gamemode optimizations.
 
 *tooltip*: ++
 	typeof: bool ++
-	defualt: true ++
+	default: true ++
 	Option to disable tooltip on hover.
 
 *tooltip-format*: ++
