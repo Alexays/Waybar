@@ -170,16 +170,14 @@ void waybar::modules::MPD::setLabel() {
 
   try {
     label_->set_markup(fmt::format(
-        format, fmt::arg("artist", Glib::Markup::escape_text(artist).raw()),
-        fmt::arg("albumArtist", Glib::Markup::escape_text(album_artist).raw()),
-        fmt::arg("album", Glib::Markup::escape_text(album).raw()),
-        fmt::arg("title", Glib::Markup::escape_text(title).raw()),
-        fmt::arg("date", Glib::Markup::escape_text(date).raw()), fmt::arg("volume", volume),
-        fmt::arg("elapsedTime", elapsedTime), fmt::arg("totalTime", totalTime),
-        fmt::arg("songPosition", song_pos), fmt::arg("queueLength", queue_length),
-        fmt::arg("stateIcon", stateIcon), fmt::arg("consumeIcon", consumeIcon),
-        fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
-        fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename)));
+        format, fmt::arg("artist", artist.raw()), fmt::arg("albumArtist", album_artist.raw()),
+        fmt::arg("album", album.raw()), fmt::arg("title", title.raw()), fmt::arg("date", date),
+        fmt::arg("volume", volume), fmt::arg("elapsedTime", elapsedTime),
+        fmt::arg("totalTime", totalTime), fmt::arg("songPosition", song_pos),
+        fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
+        fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
+        fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon),
+        fmt::arg("filename", filename)));
   } catch (fmt::format_error const& e) {
     spdlog::warn("mpd: format error: {}", e.what());
   }
