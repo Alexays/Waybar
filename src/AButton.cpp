@@ -21,7 +21,9 @@ AButton::AButton(const Json::Value& config, const std::string& name, const std::
 
   /* https://github.com/Alexays/Waybar/issues/1731 */
   auto css = Gtk::CssProvider::create();
-  css->load_from_data("button { all: unset; min-width: 0; } label:disabled,button:disabled { all: inherit; } label { all: unset; }");
+  css->load_from_data(
+      "button { all: unset; min-width: 0; } label:disabled,button:disabled { all: inherit; } label "
+      "{ all: unset; }");
   button_.get_style_context()->add_provider(css, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 
   if (!id.empty()) {
