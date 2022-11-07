@@ -32,7 +32,7 @@ Addressed by *disk*
 	Positive value to rotate the text label.
 
 *states*: ++
-	typeof: array ++
+	typeof: object ++
 	A number of disk utilization states which get activated on certain percentage thresholds (percentage_used). See *waybar-states(5)*.
 
 *max-length*: ++

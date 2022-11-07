@@ -37,8 +37,8 @@ The *backlight* module displays the current backlight level.
 	Positive value to rotate the text label.
 
 *states*: ++
-	typeof: array ++
-	A number of backlight states which get activated on certain brightness levels.
+	typeof: object ++
+	A number of backlight states which get activated on certain brightness levels. See *waybar-states(5)*.
 
 *on-click*: ++
 	typeof: string ++
