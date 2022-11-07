@@ -174,9 +174,20 @@ auto waybar::modules::Backlight::update() -> void {
 
     const uint8_t percent =
         best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-    label_->set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
-                                   fmt::arg("icon", getIcon(percent))));
-    getState(percent);
+
+    auto format = format_;
+    auto state = getState(percent);
+    if (!state.empty() && config_["format-" + state].isString()) {
+      format = config_["format-" + state].asString();
+    }
+
+    if (format.empty()) {
+      event_box_.hide();
+    } else {
+      event_box_.show();
+      label_->set_markup(fmt::format(format, fmt::arg("percent", std::to_string(percent)),
+                                     fmt::arg("icon", getIcon(percent))));
+    }
   } else {
     if (!previous_best_.has_value()) {
       return;
