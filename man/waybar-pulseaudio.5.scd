@@ -43,8 +43,8 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	Positive value to rotate the text label.
 
 *states*: ++
-	typeof: array ++
-	A number of volume states which get activated on certain volume levels. See *waybar-states(5)*
+	typeof: object ++
+	A number of volume states which get activated on certain volume levels. See *waybar-states(5)*.
 
 *max-length*: ++
 	typeof: integer ++

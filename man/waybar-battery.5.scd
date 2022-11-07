@@ -33,7 +33,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	The interval in which the information gets polled.
 
 *states*: ++
-	typeof: array ++
+	typeof: object ++
 	A number of battery states which get activated on certain capacity levels. See *waybar-states(5)*.
 
 *format*: ++
