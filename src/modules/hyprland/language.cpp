@@ -25,7 +25,13 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   AButton::update();
 
   // register for hyprland ipc
-  gIPC->registerForIPC("activelayout", [&](const std::string& ev) { this->onEvent(ev); });
+  gIPC->registerForIPC("activelayout", this);
+}
+
+Language::~Language() {
+  gIPC->unregisterForIPC(this);
+  // wait for possible event handler to finish
+  std::lock_guard<std::mutex> lg(mutex_);
 }
 
 auto Language::update() -> void {
