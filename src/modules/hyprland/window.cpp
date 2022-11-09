@@ -25,7 +25,13 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   ALabel::update();
 
   // register for hyprland ipc
-  gIPC->registerForIPC("activewindow", [&](const std::string& ev) { this->onEvent(ev); });
+  gIPC->registerForIPC("activewindow", this);
+}
+
+Window::~Window() {
+  gIPC->unregisterForIPC(this);
+  // wait for possible event handler to finish
+  std::lock_guard<std::mutex> lg(mutex_);
 }
 
 auto Window::update() -> void {
@@ -50,7 +56,9 @@ uint Window::getActiveWorkspaceID(std::string monitorName) {
   assert(json.isArray());
   auto monitor = std::find_if(json.begin(), json.end(),
                               [&](Json::Value monitor) { return monitor["name"] == monitorName; });
-  assert(monitor != std::end(json));
+  if(monitor == std::end(json)) {
+    return 0;
+  }
   return (*monitor)["activeWorkspace"]["id"].as<uint>();
 }
 

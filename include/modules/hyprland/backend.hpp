@@ -1,5 +1,5 @@
 #pragma once
-#include <deque>
+#include <list>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -7,11 +7,19 @@
 #include <thread>
 
 namespace waybar::modules::hyprland {
+
+class EventHandler {
+public:
+  virtual void onEvent(const std::string& ev) = 0;
+  virtual ~EventHandler() = default;
+};
+
 class IPC {
  public:
   IPC() { startIPC(); }
 
-  void registerForIPC(const std::string&, std::function<void(const std::string&)>);
+  void registerForIPC(const std::string&, EventHandler*);
+  void unregisterForIPC(EventHandler*);
 
   std::string getSocket1Reply(const std::string& rq);
 
@@ -20,7 +28,7 @@ class IPC {
   void parseIPC(const std::string&);
 
   std::mutex callbackMutex;
-  std::deque<std::pair<std::string, std::function<void(const std::string&)>>> callbacks;
+  std::list<std::pair<std::string, EventHandler*>> callbacks;
 };
 
 inline std::unique_ptr<IPC> gIPC;
