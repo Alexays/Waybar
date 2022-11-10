@@ -56,7 +56,7 @@ uint Window::getActiveWorkspaceID(std::string monitorName) {
   assert(json.isArray());
   auto monitor = std::find_if(json.begin(), json.end(),
                               [&](Json::Value monitor) { return monitor["name"] == monitorName; });
-  if(monitor == std::end(json)) {
+  if (monitor == std::end(json)) {
     return 0;
   }
   return (*monitor)["activeWorkspace"]["id"].as<uint>();

@@ -73,7 +73,8 @@ void check_nn(const void *ptr, const char *message = "ptr was null") {
 }
 }  // namespace
 
-waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max, bool powered)
+waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max,
+                                                       bool powered)
     : name_(std::move(name)), actual_(actual), max_(max), powered_(powered) {}
 
 std::string_view waybar::modules::Backlight::BacklightDev::name() const { return name_; }

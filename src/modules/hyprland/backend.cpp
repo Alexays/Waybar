@@ -112,13 +112,13 @@ void IPC::registerForIPC(const std::string& ev, EventHandler* ev_handler) {
 }
 
 void IPC::unregisterForIPC(EventHandler* ev_handler) {
-    if (!ev_handler) {
+  if (!ev_handler) {
     return;
   }
 
   callbackMutex.lock();
 
-  for(auto it = callbacks.begin(); it != callbacks.end(); ) {
+  for (auto it = callbacks.begin(); it != callbacks.end();) {
     auto it_current = it;
     it++;
     auto& [eventname, handler] = *it_current;
