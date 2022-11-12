@@ -495,7 +495,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     float calculated_capacity{0.0f};
     if (total_capacity_exists) {
       if (total_capacity > 0.0f)
-        calculated_capacity = (float)total_capacity;
+        calculated_capacity = (float)total_capacity / batteries_.size();
       else if (total_energy_full_exists && total_energy_exists) {
         if (total_energy_full > 0.0f)
           calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
