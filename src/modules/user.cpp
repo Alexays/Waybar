@@ -20,25 +20,21 @@
 #include <time.h>
 #endif
 
-#define LEFT_MOUSE_BUTTON 1
-
 namespace waybar::modules {
 User::User(const std::string& id, const Json::Value& config)
-    : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", 60, false, false, true) {
+    : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", 60, false, true, true) {
   if (AIconLabel::iconEnabled()) {
     this->init_avatar(AIconLabel::config_);
   }
   this->init_update_worker();
-  AModule::event_box_.signal_button_press_event().connect(sigc::mem_fun(this, &User::signal_label));
 }
 
-bool User::signal_label(GdkEventButton* button) const {
-  if (button->type != GDK_BUTTON_PRESS) return true;
-
-  if (button->button == LEFT_MOUSE_BUTTON) {
+bool User::handleToggle(GdkEventButton* const& e) {
+  if (AIconLabel::config_["open-on-click"].isBool() &&
+      AIconLabel::config_["open-on-click"].asBool()) {
     Gio::AppInfo::launch_default_for_uri("file:///" + this->get_user_home_dir());
   }
-  return false;
+  return ALabel::handleToggle(e);
 }
 
 long User::uptime_as_seconds() {

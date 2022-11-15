@@ -14,6 +14,8 @@ class User : public AIconLabel {
   ~User() = default;
   auto update() -> void;
 
+  bool handleToggle(GdkEventButton* const& e) override;
+
  private:
   util::SleeperThread thread_;
 
@@ -21,8 +23,6 @@ class User : public AIconLabel {
 
   static constexpr inline int defaultUserImageWidth_ = 20;
   static constexpr inline int defaultUserImageHeight_ = 20;
-
-  bool signal_label(GdkEventButton* button) const;
 
   long uptime_as_seconds();
   std::string get_user_login() const;
