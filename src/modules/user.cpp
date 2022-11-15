@@ -6,7 +6,11 @@
 
 #include <algorithm>
 #include <chrono>
-#include <iostream>
+
+#include "gdkmm/event.h"
+#include "gdkmm/types.h"
+#include "sigc++/functors/mem_fun.h"
+#include "sigc++/functors/ptr_fun.h"
 
 #if HAVE_CPU_LINUX
 #include <sys/sysinfo.h>
@@ -16,6 +20,8 @@
 #include <time.h>
 #endif
 
+#define LEFT_MOUSE_BUTTON 1
+
 namespace waybar::modules {
 User::User(const std::string& id, const Json::Value& config)
     : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", 60, false, false, true) {
@@ -23,6 +29,16 @@ User::User(const std::string& id, const Json::Value& config)
     this->init_avatar(AIconLabel::config_);
   }
   this->init_update_worker();
+  AModule::event_box_.signal_button_press_event().connect(sigc::mem_fun(this, &User::signal_label));
+}
+
+bool User::signal_label(GdkEventButton* button) const {
+  if (button->type != GDK_BUTTON_PRESS) return true;
+
+  if (button->button == LEFT_MOUSE_BUTTON) {
+    Gio::AppInfo::launch_default_for_uri("file:///" + this->get_user_home_dir());
+  }
+  return false;
 }
 
 long User::uptime_as_seconds() {
@@ -45,9 +61,9 @@ long User::uptime_as_seconds() {
   return uptime;
 }
 
-std::string User::get_user_login() { return Glib::get_user_name(); }
+std::string User::get_user_login() const { return Glib::get_user_name(); }
 
-std::string User::get_user_home_dir() { return Glib::get_home_dir(); }
+std::string User::get_user_home_dir() const { return Glib::get_home_dir(); }
 
 void User::init_update_worker() {
   this->thread_ = [this] {
@@ -74,7 +90,7 @@ void User::init_avatar(const Json::Value& config) {
   this->init_default_user_avatar(width, width);
 }
 
-std::string User::get_default_user_avatar_path() {
+std::string User::get_default_user_avatar_path() const {
   return this->get_user_home_dir() + "/" + ".face";
 }
 
