@@ -1,7 +1,7 @@
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
-    : ALabel(config, "memory", id, "{}%", 30) {
+    : AButton(config, "memory", id, "{}%", 30) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -31,17 +31,18 @@ auto waybar::modules::Memory::update() -> void {
   }
 
   if (memtotal > 0 && memfree >= 0) {
-    auto total_ram_gigabytes = memtotal / std::pow(1024, 2);
-    auto total_swap_gigabytes = swaptotal / std::pow(1024, 2);
+    float total_ram_gigabytes =
+        0.01 * round(memtotal / 10485.76);  // 100*10485.76 = 2^20 = 1024^2 = GiB/KiB
+    float total_swap_gigabytes = 0.01 * round(swaptotal / 10485.76);
     int used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
     int used_swap_percentage = 0;
     if (swaptotal && swapfree) {
       used_swap_percentage = 100 * (swaptotal - swapfree) / swaptotal;
     }
-    auto used_ram_gigabytes = (memtotal - memfree) / std::pow(1024, 2);
-    auto used_swap_gigabytes = (swaptotal - swapfree) / std::pow(1024, 2);
-    auto available_ram_gigabytes = memfree / std::pow(1024, 2);
-    auto available_swap_gigabytes = swapfree / std::pow(1024, 2);
+    float used_ram_gigabytes = 0.01 * round((memtotal - memfree) / 10485.76);
+    float used_swap_gigabytes = 0.01 * round((swaptotal - swapfree) / 10485.76);
+    float available_ram_gigabytes = 0.01 * round(memfree / 10485.76);
+    float available_swap_gigabytes = 0.01 * round(swapfree / 10485.76);
 
     auto format = format_;
     auto state = getState(used_ram_percentage);
@@ -54,7 +55,7 @@ auto waybar::modules::Memory::update() -> void {
     } else {
       event_box_.show();
       auto icons = std::vector<std::string>{state};
-      label_.set_markup(fmt::format(
+      label_->set_markup(fmt::format(
           format, used_ram_percentage, fmt::arg("icon", getIcon(used_ram_percentage, icons)),
           fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
           fmt::arg("percentage", used_ram_percentage),
@@ -66,7 +67,7 @@ auto waybar::modules::Memory::update() -> void {
     if (tooltipEnabled()) {
       if (config_["tooltip-format"].isString()) {
         auto tooltip_format = config_["tooltip-format"].asString();
-        label_.set_tooltip_text(fmt::format(
+        button_.set_tooltip_text(fmt::format(
             tooltip_format, used_ram_percentage, fmt::arg("total", total_ram_gigabytes),
             fmt::arg("swapTotal", total_swap_gigabytes),
             fmt::arg("percentage", used_ram_percentage),
@@ -74,12 +75,12 @@ auto waybar::modules::Memory::update() -> void {
             fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
             fmt::arg("swapAvail", available_swap_gigabytes)));
       } else {
-        label_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
+        button_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
       }
     }
   } else {
     event_box_.hide();
   }
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }

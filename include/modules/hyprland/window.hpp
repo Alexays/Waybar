@@ -9,20 +9,24 @@
 
 namespace waybar::modules::hyprland {
 
-class Window : public waybar::ALabel {
-public:
+class Window : public waybar::ALabel,
+ public EventHandler {
+ public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
-  ~Window() = default;
+  ~Window();
 
   auto update() -> void;
 
-private:
+ private:
+  uint getActiveWorkspaceID(std::string);
+  std::string getLastWindowTitle(uint);
   void onEvent(const std::string&);
 
+  bool separate_outputs;
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
   std::string lastView;
 };
 
-}
+}  // namespace waybar::modules::hyprland

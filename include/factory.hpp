@@ -9,6 +9,7 @@
 #ifdef HAVE_SWAY
 #include "modules/sway/language.hpp"
 #include "modules/sway/mode.hpp"
+#include "modules/sway/scratchpad.hpp"
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
@@ -23,10 +24,10 @@
 #endif
 #ifdef HAVE_HYPRLAND
 #include "modules/hyprland/backend.hpp"
-#include "modules/hyprland/window.hpp"
 #include "modules/hyprland/language.hpp"
+#include "modules/hyprland/window.hpp"
 #endif
-#if defined(__linux__) && !defined(NO_FILESYSTEM)
+#if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
 #include "modules/battery.hpp"
 #endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
@@ -75,6 +76,7 @@
 #include "modules/custom.hpp"
 #include "modules/custom_list.hpp"
 #include "modules/temperature.hpp"
+#include "modules/user.hpp"
 
 namespace waybar {
 

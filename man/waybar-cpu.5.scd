@@ -42,7 +42,7 @@ The *cpu* module displays the current cpu utilization.
 	Positive value to rotate the text label.
 
 *states*: ++
-	typeof: array ++
+	typeof: object ++
 	A number of cpu usage states which get activated on certain usage levels. See *waybar-states(5)*.
 
 *on-click*: ++

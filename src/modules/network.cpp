@@ -78,7 +78,7 @@ waybar::modules::Network::readBandwidthUsage() {
 }
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
+    : AButton(config, "network", id, DEFAULT_FORMAT, 60),
       ifid_(-1),
       family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
       efd_(-1),
@@ -95,11 +95,11 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
 #endif
       frequency_(0.0) {
 
-  // Start with some "text" in the module's label_, update() will then
+  // Start with some "text" in the module's label_-> update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
   // the module start with no text, but the the event_box_ is shown.
-  label_.set_markup("<s></s>");
+  label_->set_markup("<s></s>");
 
   auto bandwidth = readBandwidthUsage();
   if (bandwidth.has_value()) {
@@ -309,8 +309,8 @@ auto waybar::modules::Network::update() -> void {
 
   if (!alt_) {
     auto state = getNetworkState();
-    if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
-      label_.get_style_context()->remove_class(state_);
+    if (!state_.empty() && button_.get_style_context()->has_class(state_)) {
+      button_.get_style_context()->remove_class(state_);
     }
     if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
@@ -322,8 +322,8 @@ auto waybar::modules::Network::update() -> void {
     if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
     }
-    if (!label_.get_style_context()->has_class(state)) {
-      label_.get_style_context()->add_class(state);
+    if (!button_.get_style_context()->has_class(state)) {
+      button_.get_style_context()->add_class(state);
     }
     format_ = default_format_;
     state_ = state;
@@ -349,8 +349,8 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
       fmt::arg("bandwidthTotalBytes",
                pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
-  if (text.compare(label_.get_label()) != 0) {
-    label_.set_markup(text);
+  if (text.compare(label_->get_label()) != 0) {
+    label_->set_markup(text);
     if (text.empty()) {
       event_box_.hide();
     } else {
@@ -382,16 +382,16 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
                    pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
-      if (label_.get_tooltip_text() != tooltip_text) {
-        label_.set_tooltip_markup(tooltip_text);
+      if (button_.get_tooltip_text() != tooltip_text) {
+        button_.set_tooltip_markup(tooltip_text);
       }
-    } else if (label_.get_tooltip_text() != text) {
-      label_.set_tooltip_markup(text);
+    } else if (button_.get_tooltip_text() != text) {
+      button_.set_tooltip_markup(text);
     }
   }
 
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 bool waybar::modules::Network::checkInterface(std::string name) {
@@ -646,7 +646,12 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       if (has_gateway && !has_destination && temp_idx != -1) {
         // Check if this is the first default route we see, or if this new
         // route have a higher priority.
-        if (!is_del_event && ((net->ifid_ == -1) || (priority < net->route_priority))) {
+        /** Module doesn`t update state, because RTA_GATEWAY call before enable new router and set
+        higher priority. Disable router -> RTA_GATEWAY -> up new router -> set higher priority added
+        checking route id
+        **/
+        if (!is_del_event &&
+            ((net->ifid_ == -1) || (priority < net->route_priority) || (net->ifid_ != temp_idx))) {
           // Clear if's state for the case were there is a higher priority
           // route on a different interface.
           net->clearIface();

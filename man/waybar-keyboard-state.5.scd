@@ -13,6 +13,7 @@ You must be a member of the input group to use this module.
 # CONFIGURATION
 
 *interval*: ++
+	Deprecated, this module use event loop now, the interval has no effect.
 	typeof: integer ++
 	default: 1 ++
 	The interval, in seconds, to poll the keyboard state.

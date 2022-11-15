@@ -43,8 +43,8 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	Positive value to rotate the text label.
 
 *states*: ++
-	typeof: array ++
-	A number of volume states which get activated on certain volume levels. See *waybar-states(5)*
+	typeof: object ++
+	A number of volume states which get activated on certain volume levels. See *waybar-states(5)*.
 
 *max-length*: ++
 	typeof: integer ++
@@ -100,6 +100,10 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	typeof: integer ++
 	default: 100 ++
 	The maximum volume that can be set, in percentage.
+
+*ignored-sinks*: ++
+	typeof: array ++
+	Sinks in this list will not be shown as the active sink by Waybar. Entries should be the sink's description field.
 
 # FORMAT REPLACEMENTS
 

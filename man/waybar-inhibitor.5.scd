@@ -6,7 +6,7 @@ waybar - inhibitor module
 
 # DESCRIPTION
 
-The *inhibitor* module allows to take an inhibitor lock that logind provides.
+The *inhibitor* module allows one to take an inhibitor lock that logind provides.
 See *systemd-inhibit*(1) for more information.
 
 # CONFIGURATION

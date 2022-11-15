@@ -137,7 +137,7 @@ Addressed by *bluetooth*
 
 *{device_alias}*: Alias of the displayed device.
 
-*{device_enumerate}*: Show a list of all connected devices, each on a seperate line. Define the format of each device with the *tooltip-format-enumerate-connected* ++
+*{device_enumerate}*: Show a list of all connected devices, each on a separate line. Define the format of each device with the *tooltip-format-enumerate-connected* ++
 and/or *tooltip-format-enumerate-connected-battery* config options. Can only be used in the tooltip related format options.
 
 # EXPERIMENTAL BATTERY PERCENTAGE FEATURE

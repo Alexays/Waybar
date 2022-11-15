@@ -73,8 +73,9 @@ void check_nn(const void *ptr, const char *message = "ptr was null") {
 }
 }  // namespace
 
-waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max)
-    : name_(std::move(name)), actual_(actual), max_(max) {}
+waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max,
+                                                       bool powered)
+    : name_(std::move(name)), actual_(actual), max_(max), powered_(powered) {}
 
 std::string_view waybar::modules::Backlight::BacklightDev::name() const { return name_; }
 
@@ -86,8 +87,12 @@ int waybar::modules::Backlight::BacklightDev::get_max() const { return max_; }
 
 void waybar::modules::Backlight::BacklightDev::set_max(int max) { max_ = max; }
 
+bool waybar::modules::Backlight::BacklightDev::get_powered() const { return powered_; }
+
+void waybar::modules::Backlight::BacklightDev::set_powered(bool powered) { powered_ = powered; }
+
 waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
-    : ALabel(config, "backlight", id, "{percent}%", 2),
+    : AButton(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
   // Get initial state
   {
@@ -172,21 +177,26 @@ auto waybar::modules::Backlight::update() -> void {
       return;
     }
 
-    const uint8_t percent =
-        best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-    label_.set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
-                                  fmt::arg("icon", getIcon(percent))));
-    getState(percent);
+    if (best->get_powered()) {
+      event_box_.show();
+      const uint8_t percent =
+          best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
+      label_->set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
+                                     fmt::arg("icon", getIcon(percent))));
+      getState(percent);
+    } else {
+      event_box_.hide();
+    }
   } else {
     if (!previous_best_.has_value()) {
       return;
     }
-    label_.set_markup("");
+    label_->set_markup("");
   }
   previous_best_ = best == nullptr ? std::nullopt : std::optional{*best};
   previous_format_ = format_;
   // Call parent update
-  ALabel::update();
+  AButton::update();
 }
 
 template <class ForwardIt>
@@ -215,6 +225,7 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
 
   const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
   const char *max = udev_device_get_sysattr_value(dev, "max_brightness");
+  const char *power = udev_device_get_sysattr_value(dev, "bl_power");
 
   auto found =
       std::find_if(first, last, [name](const auto &device) { return device.name() == name; });
@@ -225,10 +236,14 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
     if (max != nullptr) {
       found->set_max(std::stoi(max));
     }
+    if (power != nullptr) {
+      found->set_powered(std::stoi(power) == 0);
+    }
   } else {
     const int actual_int = actual == nullptr ? 0 : std::stoi(actual);
     const int max_int = max == nullptr ? 0 : std::stoi(max);
-    *inserter = BacklightDev{name, actual_int, max_int};
+    const bool power_bool = power == nullptr ? true : std::stoi(power) == 0;
+    *inserter = BacklightDev{name, actual_int, max_int, power_bool};
     ++inserter;
   }
 }

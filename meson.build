@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.13',
+    version: '0.9.15',
     license: 'MIT',
     meson_version: '>= 0.49.0',
     default_options : [
@@ -87,9 +87,11 @@ wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled() or get_option('upower_glib').enabled()))
-jsoncpp = dependency('jsoncpp')
+jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 sigcpp = dependency('sigc++-2.0')
+libinotify = dependency('libinotify', required: false)
 libepoll = dependency('epoll-shim', required: false)
+libinput = dependency('libinput', required: get_option('libinput'))
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
@@ -143,6 +145,7 @@ endif
 src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
+    'src/AButton.cpp',
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/modules/custom.cpp',
@@ -150,12 +153,15 @@ src_files = files(
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/temperature.cpp',
+    'src/modules/user.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
     'src/config.cpp',
     'src/group.cpp',
-    'src/util/ustring_clen.cpp'
+    'src/util/ustring_clen.cpp',
+    'src/util/sanitize_str.cpp',
+    'src/util/rewrite_title.cpp'
 )
 
 if is_linux
@@ -177,6 +183,11 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
         'src/modules/memory/bsd.cpp',
         'src/modules/memory/common.cpp',
     )
+    if is_freebsd
+    src_files += files(
+        'src/modules/battery.cpp',
+        )
+    endif
 endif
 
 add_project_arguments('-DHAVE_SWAY', language: 'cpp')
@@ -186,7 +197,8 @@ src_files += [
     'src/modules/sway/mode.cpp',
     'src/modules/sway/language.cpp',
     'src/modules/sway/window.cpp',
-    'src/modules/sway/workspaces.cpp'
+    'src/modules/sway/workspaces.cpp',
+    'src/modules/sway/scratchpad.cpp'
 ]
 
 if true
@@ -251,8 +263,9 @@ if libudev.found() and (is_linux or libepoll.found())
     src_files += 'src/modules/backlight.cpp'
 endif
 
-if libevdev.found() and (is_linux or libepoll.found())
+if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
     add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
+    add_project_arguments('-DHAVE_LIBINPUT', language: 'cpp')
     src_files += 'src/modules/keyboard_state.cpp'
 endif
 
@@ -312,12 +325,14 @@ executable(
         gtkmm,
         dbusmenu_gtk,
         giounix,
+        libinput,
         libnl,
         libnlgen,
         upower_glib,
         libpulse,
         libjack,
         libudev,
+        libinotify,
         libepoll,
         libmpdclient,
         libevdev,
@@ -373,6 +388,7 @@ if scdoc.found()
         'waybar-river-window.5.scd',
         'waybar-sway-language.5.scd',
         'waybar-sway-mode.5.scd',
+        'waybar-sway-scratchpad.5.scd',
         'waybar-sway-window.5.scd',
         'waybar-sway-workspaces.5.scd',
         'waybar-temperature.5.scd',
@@ -413,6 +429,7 @@ endif
 
 catch2 = dependency(
     'catch2',
+    version: '>=3.0.0',
     fallback: ['catch2', 'catch2_dep'],
     required: get_option('tests'),
 )

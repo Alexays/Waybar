@@ -1,9 +1,14 @@
 [wrap-file]
-source_url=https://github.com/HowardHinnant/date/archive/v3.0.0.tar.gz
-source_filename=date-3.0.0.tar.gz
-source_hash=87bba2eaf0ebc7ec539e5e62fc317cb80671a337c1fb1b84cb9e4d42c6dbebe3
-directory=date-3.0.0
+source_url = https://github.com/HowardHinnant/date/archive/v3.0.1.tar.gz
+source_filename = date-3.0.1.tar.gz
+source_hash = 7a390f200f0ccd207e8cff6757e04817c1a0aec3e327b006b7eb451c57ee3538
+directory = date-3.0.1
+patch_filename = hinnant-date_3.0.1-2_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/hinnant-date_3.0.1-2/get_patch
+patch_hash = 11b715b792609117a63310eeefc2939cc2ca26ecd4e996108335e504db58a41d
+wrapdb_version = 3.0.1-2
 
-patch_url = https://github.com/mesonbuild/hinnant-date/releases/download/3.0.0-1/hinnant-date.zip
-patch_filename = hinnant-date-3.0.0-1-wrap.zip
-patch_hash = 6ccaf70732d8bdbd1b6d5fdf3e1b935c23bf269bda12fdfd0e561276f63432fe
+[provide]
+tz = tz_dep
+date = date_dep
+

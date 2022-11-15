@@ -95,15 +95,37 @@ void IPC::parseIPC(const std::string& ev) {
 
   for (auto& [eventname, handler] : callbacks) {
     if (eventname == request) {
-      handler(ev);
+      handler->onEvent(ev);
     }
   }
 }
 
-void IPC::registerForIPC(const std::string& ev, std::function<void(const std::string&)> fn) {
+void IPC::registerForIPC(const std::string& ev, EventHandler* ev_handler) {
+  if (!ev_handler) {
+    return;
+  }
   callbackMutex.lock();
 
-  callbacks.emplace_back(std::make_pair(ev, fn));
+  callbacks.emplace_back(std::make_pair(ev, ev_handler));
+
+  callbackMutex.unlock();
+}
+
+void IPC::unregisterForIPC(EventHandler* ev_handler) {
+  if (!ev_handler) {
+    return;
+  }
+
+  callbackMutex.lock();
+
+  for (auto it = callbacks.begin(); it != callbacks.end();) {
+    auto it_current = it;
+    it++;
+    auto& [eventname, handler] = *it_current;
+    if (handler == ev_handler) {
+      callbacks.erase(it_current);
+    }
+  }
 
   callbackMutex.unlock();
 }
