@@ -27,8 +27,13 @@ waybar::modules::Custom::~Custom() {
 
 void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
-    std::for_each(this->pid_children_.cbegin(), this->pid_children_.cend(),
-      [](int i){ wait(&i); });
+    for( int i : this->pid_children_ )
+    {
+      int status;
+      waitpid(i, &status, 0);
+    }
+
+    this->pid_children_.clear();
 
     bool can_update = true;
     if (config_["exec-if"].isString()) {
