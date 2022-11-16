@@ -19,8 +19,6 @@ class User : public AIconLabel {
  private:
   util::SleeperThread thread_;
 
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf_;
-
   static constexpr inline int defaultUserImageWidth_ = 20;
   static constexpr inline int defaultUserImageHeight_ = 20;
 
