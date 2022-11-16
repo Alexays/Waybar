@@ -260,7 +260,8 @@ auto waybar::modules::Pulseaudio::update() -> void {
   if (!alt_) {
     std::string format_name = "format";
     if (monitor_.find("a2dp_sink") != std::string::npos ||  // PulseAudio
-        monitor_.find("a2dp-sink") != std::string::npos) {  // PipeWire
+        monitor_.find("a2dp-sink") != std::string::npos ||  // PipeWire
+        monitor_.find("bluez") != std::string::npos) {
       format_name = format_name + "-bluetooth";
       button_.get_style_context()->add_class("bluetooth");
     } else {
