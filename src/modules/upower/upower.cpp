@@ -250,6 +250,9 @@ const std::string UPower::getDeviceStatus(UpDeviceState& state) {
 }
 
 bool UPower::handleToggle(GdkEventButton* const& event) {
+  std::lock_guard<std::mutex> guard(m_Mutex);
+  showAltText = !showAltText;
+  dp.emit();
   return AModule::handleToggle(event);
 }
 
