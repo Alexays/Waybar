@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include "ALabel.hpp"
+#include "AButton.hpp"
 #include "glibconfig.h"
 #include "gtkmm/box.h"
 #include "gtkmm/image.h"
