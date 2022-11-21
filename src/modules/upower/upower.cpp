@@ -257,7 +257,7 @@ bool UPower::handleToggle(GdkEventButton* const& event) {
   std::lock_guard<std::mutex> guard(m_Mutex);
   showAltText = !showAltText;
   dp.emit();
-  return true
+  return true;
 }
 
 std::string UPower::timeToString(gint64 time) {
