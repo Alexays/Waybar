@@ -138,6 +138,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::JACK(id, config_[name]);
     }
 #endif
+#ifdef HAVE_LIBWIREPLUMBER
+    if (ref == "wireplumber") {
+      return new waybar::modules::Wireplumber(id, config_[name]);
+    }
+#endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }
