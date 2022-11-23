@@ -21,6 +21,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
 waybar::modules::Custom::~Custom() {
   if (pid_ != -1) {
     killpg(pid_, SIGTERM);
+    waitpid(pid_, NULL, 0);
     pid_ = -1;
   }
 }
