@@ -16,6 +16,7 @@
 - Network
 - Bluetooth
 - Pulseaudio
+- Wireplumber
 - Disk
 - Memory
 - Cpu load average
