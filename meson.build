@@ -151,6 +151,7 @@ src_files = files(
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
+    'src/modules/image.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
     'src/main.cpp',
