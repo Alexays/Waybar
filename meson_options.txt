@@ -16,3 +16,4 @@ option('logind', type: 'feature', value: 'auto', description: 'Enable support fo
 option('tests', type: 'feature', value: 'auto', description: 'Enable tests')
 option('experimental', type : 'boolean', value : false, description: 'Enable experimental features')
 option('jack', type: 'feature', value: 'auto', description: 'Enable support for JACK')
+option('wireplumber', type: 'feature', value: 'auto', description: 'Enable support for WirePlumber')

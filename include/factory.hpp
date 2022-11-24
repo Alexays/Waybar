@@ -72,6 +72,9 @@
 #ifdef HAVE_LIBJACK
 #include "modules/jack.hpp"
 #endif
+#ifdef HAVE_LIBWIREPLUMBER
+#include "modules/wireplumber.hpp"
+#endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/custom_list.hpp"
