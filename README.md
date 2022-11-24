@@ -23,6 +23,7 @@
 - Temperature
 - MPD
 - Custom scripts
+- Custom image
 - Multiple output configuration
 - And many more customizations
 
