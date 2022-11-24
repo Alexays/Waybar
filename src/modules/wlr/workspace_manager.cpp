@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <stdexcept>
 #include <vector>
 
 #include "gtkmm/widget.h"
@@ -66,10 +67,13 @@ auto WorkspaceManager::workspace_comparator() const
     auto is_name_less = lhs->get_name() < rhs->get_name();
     auto is_name_eq = lhs->get_name() == rhs->get_name();
     auto is_coords_less = lhs->get_coords() < rhs->get_coords();
-    auto is_number_less = std::stoi(lhs->get_name()) < std::stoi(rhs->get_name());
 
     if (sort_by_number_) {
-      return is_number_less;
+      try {
+        auto is_number_less = std::stoi(lhs->get_name()) < std::stoi(rhs->get_name());
+        return is_number_less;
+      } catch (std::invalid_argument) {
+      }
     }
 
     if (sort_by_name_) {

@@ -18,8 +18,8 @@ class Window : public waybar::ALabel,
   auto update() -> void;
 
  private:
-  uint getActiveWorkspaceID(std::string);
-  std::string getLastWindowTitle(uint);
+  int getActiveWorkspaceID(std::string);
+  std::string getLastWindowTitle(int);
   void onEvent(const std::string&);
 
   bool separate_outputs;
