@@ -2,7 +2,7 @@
 
 #include <date/tz.h>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar {
@@ -14,7 +14,7 @@ namespace modules {
 const std::string kCalendarPlaceholder = "calendar";
 const std::string KTimezonedTimeListPlaceholder = "timezoned_time_list";
 
-class Clock : public AButton {
+class Clock : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
   ~Clock() = default;

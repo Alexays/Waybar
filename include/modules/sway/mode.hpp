@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
@@ -10,7 +10,7 @@
 
 namespace waybar::modules::sway {
 
-class Mode : public AButton, public sigc::trackable {
+class Mode : public ALabel, public sigc::trackable {
  public:
   Mode(const std::string&, const Json::Value&);
   ~Mode() = default;

@@ -9,12 +9,12 @@
 #include <utility>
 #include <vector>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Cpu : public AButton {
+class Cpu : public ALabel {
  public:
   Cpu(const std::string&, const Json::Value&);
   ~Cpu() = default;

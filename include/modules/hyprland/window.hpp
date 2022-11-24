@@ -9,8 +9,7 @@
 
 namespace waybar::modules::hyprland {
 
-class Window : public waybar::ALabel,
- public EventHandler {
+class Window : public waybar::ALabel, public EventHandler {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window();

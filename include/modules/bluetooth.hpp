@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
@@ -12,7 +12,7 @@
 
 namespace waybar::modules {
 
-class Bluetooth : public AButton {
+class Bluetooth : public ALabel {
   struct ControllerInfo {
     std::string path;
     std::string address;
