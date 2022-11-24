@@ -5,13 +5,13 @@
 
 #include <fstream>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/format.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Disk : public AButton {
+class Disk : public ALabel {
  public:
   Disk(const std::string&, const Json::Value&);
   ~Disk() = default;

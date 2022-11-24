@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -14,7 +14,7 @@ struct udev_device;
 
 namespace waybar::modules {
 
-class Backlight : public AButton {
+class Backlight : public ALabel {
   class BacklightDev {
    public:
     BacklightDev() = default;

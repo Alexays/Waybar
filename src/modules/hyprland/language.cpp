@@ -11,7 +11,7 @@
 namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AButton(config, "language", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
   if (!gIPC.get()) {
@@ -21,8 +21,8 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   // get the active layout when open
   initLanguage();
 
-  button_.hide();
-  AButton::update();
+  label_.hide();
+  ALabel::update();
 
   // register for hyprland ipc
   gIPC->registerForIPC("activelayout", this);
@@ -38,13 +38,13 @@ auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   if (!format_.empty()) {
-    button_.show();
-    label_->set_markup(layoutName_);
+    label_.show();
+    label_.set_markup(layoutName_);
   } else {
-    button_.hide();
+    label_.hide();
   }
 
-  AButton::update();
+  ALabel::update();
 }
 
 void Language::onEvent(const std::string& ev) {

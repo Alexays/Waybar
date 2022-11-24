@@ -41,7 +41,7 @@ auto Sndio::connect_to_sndio() -> void {
 }
 
 Sndio::Sndio(const std::string &id, const Json::Value &config)
-    : AButton(config, "sndio", id, "{volume}%", 1, false, true),
+    : ALabel(config, "sndio", id, "{volume}%", 1, false, true),
       hdl_(nullptr),
       pfds_(0),
       addr_(0),
@@ -105,14 +105,14 @@ auto Sndio::update() -> void {
   unsigned int vol = 100. * static_cast<double>(volume_) / static_cast<double>(maxval_);
 
   if (volume_ == 0) {
-    button_.get_style_context()->add_class("muted");
+    label_.get_style_context()->add_class("muted");
   } else {
-    button_.get_style_context()->remove_class("muted");
+    label_.get_style_context()->remove_class("muted");
   }
 
-  label_->set_markup(fmt::format(format, fmt::arg("volume", vol), fmt::arg("raw_value", volume_)));
+  label_.set_markup(fmt::format(format, fmt::arg("volume", vol), fmt::arg("raw_value", volume_)));
 
-  AButton::update();
+  ALabel::update();
 }
 
 auto Sndio::set_desc(struct sioctl_desc *d, unsigned int val) -> void {

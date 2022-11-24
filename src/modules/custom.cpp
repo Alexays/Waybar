@@ -4,7 +4,7 @@
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config)
-    : AButton(config, "custom-" + name, id, "{}"),
+    : ALabel(config, "custom-" + name, id, "{}"),
       name_(name),
       id_(id),
       percentage_(0),
@@ -104,13 +104,13 @@ void waybar::modules::Custom::handleEvent() {
 }
 
 bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
-  auto ret = AButton::handleScroll(e);
+  auto ret = ALabel::handleScroll(e);
   handleEvent();
   return ret;
 }
 
 bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
-  auto ret = AButton::handleToggle(e);
+  auto ret = ALabel::handleToggle(e);
   handleEvent();
   return ret;
 }
@@ -132,33 +132,33 @@ auto waybar::modules::Custom::update() -> void {
     if (str.empty()) {
       event_box_.hide();
     } else {
-      label_->set_markup(str);
+      label_.set_markup(str);
       if (tooltipEnabled()) {
         if (text_ == tooltip_) {
-          if (button_.get_tooltip_markup() != str) {
-            button_.set_tooltip_markup(str);
+          if (label_.get_tooltip_markup() != str) {
+            label_.set_tooltip_markup(str);
           }
         } else {
-          if (button_.get_tooltip_markup() != tooltip_) {
-            button_.set_tooltip_markup(tooltip_);
+          if (label_.get_tooltip_markup() != tooltip_) {
+            label_.set_tooltip_markup(tooltip_);
           }
         }
       }
-      auto classes = button_.get_style_context()->list_classes();
+      auto classes = label_.get_style_context()->list_classes();
       for (auto const& c : classes) {
         if (c == id_) continue;
-        button_.get_style_context()->remove_class(c);
+        label_.get_style_context()->remove_class(c);
       }
       for (auto const& c : class_) {
-        button_.get_style_context()->add_class(c);
+        label_.get_style_context()->add_class(c);
       }
-      button_.get_style_context()->add_class("flat");
-      button_.get_style_context()->add_class("text-button");
+      label_.get_style_context()->add_class("flat");
+      label_.get_style_context()->add_class("text-button");
       event_box_.show();
     }
   }
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 void waybar::modules::Custom::parseOutputRaw() {

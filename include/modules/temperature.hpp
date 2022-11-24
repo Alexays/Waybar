@@ -4,12 +4,12 @@
 
 #include <fstream>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Temperature : public AButton {
+class Temperature : public ALabel {
  public:
   Temperature(const std::string&, const Json::Value&);
   ~Temperature() = default;

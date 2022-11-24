@@ -5,14 +5,14 @@
 #include <csignal>
 #include <string>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Custom : public AButton {
+class Custom : public ALabel {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&);
   ~Custom();

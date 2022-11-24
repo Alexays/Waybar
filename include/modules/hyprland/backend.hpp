@@ -1,6 +1,6 @@
 #pragma once
-#include <list>
 #include <functional>
+#include <list>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -9,7 +9,7 @@
 namespace waybar::modules::hyprland {
 
 class EventHandler {
-public:
+ public:
   virtual void onEvent(const std::string& ev) = 0;
   virtual ~EventHandler() = default;
 };
