@@ -49,7 +49,7 @@ auto Window::update() -> void {
   ALabel::update();
 }
 
-uint Window::getActiveWorkspaceID(std::string monitorName) {
+int Window::getActiveWorkspaceID(std::string monitorName) {
   auto cmd = waybar::util::command::exec("hyprctl monitors -j");
   assert(cmd.exit_code == 0);
   Json::Value json = parser_.parse(cmd.out);
@@ -59,16 +59,16 @@ uint Window::getActiveWorkspaceID(std::string monitorName) {
   if (monitor == std::end(json)) {
     return 0;
   }
-  return (*monitor)["activeWorkspace"]["id"].as<uint>();
+  return (*monitor)["activeWorkspace"]["id"].as<int>();
 }
 
-std::string Window::getLastWindowTitle(uint workspaceID) {
+std::string Window::getLastWindowTitle(int workspaceID) {
   auto cmd = waybar::util::command::exec("hyprctl workspaces -j");
   assert(cmd.exit_code == 0);
   Json::Value json = parser_.parse(cmd.out);
   assert(json.isArray());
   auto workspace = std::find_if(json.begin(), json.end(), [&](Json::Value workspace) {
-    return workspace["id"].as<uint>() == workspaceID;
+    return workspace["id"].as<int>() == workspaceID;
   });
 
   if (workspace == std::end(json)) {
