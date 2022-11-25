@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
@@ -26,7 +26,7 @@ namespace fs = std::experimental::filesystem;
 namespace fs = std::filesystem;
 #endif
 
-class Battery : public AButton {
+class Battery : public ALabel {
  public:
   Battery(const std::string&, const Json::Value&);
   ~Battery();

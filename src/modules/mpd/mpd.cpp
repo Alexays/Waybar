@@ -15,7 +15,7 @@ namespace waybar::modules {
 #endif
 
 waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
-    : AButton(config, "mpd", id, "{album} - {artist} - {title}", 5, false, true),
+    : ALabel(config, "mpd", id, "{album} - {artist} - {title}", 5, false, true),
       module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
       port_(config_["port"].isUInt() ? config["port"].asUInt() : 0),
@@ -47,7 +47,7 @@ auto waybar::modules::MPD::update() -> void {
   context_.update();
 
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 void waybar::modules::MPD::queryMPD() {
@@ -88,15 +88,15 @@ std::string waybar::modules::MPD::getFilename() const {
 
 void waybar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
-    button_.get_style_context()->add_class("disconnected");
-    button_.get_style_context()->remove_class("stopped");
-    button_.get_style_context()->remove_class("playing");
-    button_.get_style_context()->remove_class("paused");
+    label_.get_style_context()->add_class("disconnected");
+    label_.get_style_context()->remove_class("stopped");
+    label_.get_style_context()->remove_class("playing");
+    label_.get_style_context()->remove_class("paused");
 
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
                       : "disconnected";
-    label_->set_markup(format);
+    label_.set_markup(format);
 
     if (tooltipEnabled()) {
       std::string tooltip_format;
@@ -104,11 +104,11 @@ void waybar::modules::MPD::setLabel() {
                            ? config_["tooltip-format-disconnected"].asString()
                            : "MPD (disconnected)";
       // Nothing to format
-      button_.set_tooltip_text(tooltip_format);
+      label_.set_tooltip_text(tooltip_format);
     }
     return;
   } else {
-    button_.get_style_context()->remove_class("disconnected");
+    label_.get_style_context()->remove_class("disconnected");
   }
 
   auto format = format_;
@@ -121,19 +121,19 @@ void waybar::modules::MPD::setLabel() {
   if (stopped()) {
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
-    button_.get_style_context()->add_class("stopped");
-    button_.get_style_context()->remove_class("playing");
-    button_.get_style_context()->remove_class("paused");
+    label_.get_style_context()->add_class("stopped");
+    label_.get_style_context()->remove_class("playing");
+    label_.get_style_context()->remove_class("paused");
   } else {
-    button_.get_style_context()->remove_class("stopped");
+    label_.get_style_context()->remove_class("stopped");
     if (playing()) {
-      button_.get_style_context()->add_class("playing");
-      button_.get_style_context()->remove_class("paused");
+      label_.get_style_context()->add_class("playing");
+      label_.get_style_context()->remove_class("paused");
     } else if (paused()) {
       format = config_["format-paused"].isString() ? config_["format-paused"].asString()
                                                    : config_["format"].asString();
-      button_.get_style_context()->add_class("paused");
-      button_.get_style_context()->remove_class("playing");
+      label_.get_style_context()->add_class("paused");
+      label_.get_style_context()->remove_class("playing");
     }
 
     stateIcon = getStateIcon();
@@ -169,7 +169,7 @@ void waybar::modules::MPD::setLabel() {
   if (config_["title-len"].isInt()) title = title.substr(0, config_["title-len"].asInt());
 
   try {
-    label_->set_markup(fmt::format(
+    label_.set_markup(fmt::format(
         format, fmt::arg("artist", artist.raw()), fmt::arg("albumArtist", album_artist.raw()),
         fmt::arg("album", album.raw()), fmt::arg("title", title.raw()), fmt::arg("date", date),
         fmt::arg("volume", volume), fmt::arg("elapsedTime", elapsedTime),
@@ -196,7 +196,7 @@ void waybar::modules::MPD::setLabel() {
                       fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
                       fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
                       fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon));
-      button_.set_tooltip_text(tooltip_text);
+      label_.set_tooltip_text(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpd: format error (tooltip): {}", e.what());
     }

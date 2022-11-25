@@ -2,13 +2,13 @@
 
 #include <fmt/format.h>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 
 namespace waybar::modules {
 
-class IdleInhibitor : public AButton {
+class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
 
  public:

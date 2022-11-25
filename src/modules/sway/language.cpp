@@ -18,7 +18,7 @@ const std::string Language::XKB_LAYOUT_NAMES_KEY = "xkb_layout_names";
 const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name";
 
 Language::Language(const std::string& id, const Json::Value& config)
-    : AButton(config, "language", id, "{}", 0, true) {
+    : ALabel(config, "language", id, "{}", 0, true) {
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
   if (format_.find("{}") != std::string::npos || format_.find("{short}") != std::string::npos) {
     displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortName);
@@ -99,7 +99,7 @@ auto Language::update() -> void {
       format_, fmt::arg("short", layout_.short_name),
       fmt::arg("shortDescription", layout_.short_description), fmt::arg("long", layout_.full_name),
       fmt::arg("variant", layout_.variant), fmt::arg("flag", layout_.country_flag())));
-  label_->set_markup(display_layout);
+  label_.set_markup(display_layout);
   if (tooltipEnabled()) {
     if (tooltip_format_ != "") {
       auto tooltip_display_layout = trim(
@@ -107,22 +107,22 @@ auto Language::update() -> void {
                       fmt::arg("shortDescription", layout_.short_description),
                       fmt::arg("long", layout_.full_name), fmt::arg("variant", layout_.variant),
                       fmt::arg("flag", layout_.country_flag())));
-      button_.set_tooltip_markup(tooltip_display_layout);
+      label_.set_tooltip_markup(tooltip_display_layout);
     } else {
-      button_.set_tooltip_markup(display_layout);
+      label_.set_tooltip_markup(display_layout);
     }
   }
 
   event_box_.show();
 
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 auto Language::set_current_layout(std::string current_layout) -> void {
-  button_.get_style_context()->remove_class(layout_.short_name);
+  label_.get_style_context()->remove_class(layout_.short_name);
   layout_ = layouts_map_[current_layout];
-  button_.get_style_context()->add_class(layout_.short_name);
+  label_.get_style_context()->add_class(layout_.short_name);
 }
 
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {

@@ -9,8 +9,7 @@
 
 namespace waybar::modules::hyprland {
 
-class Window : public waybar::ALabel,
- public EventHandler {
+class Window : public waybar::ALabel, public EventHandler {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Window();
@@ -18,8 +17,8 @@ class Window : public waybar::ALabel,
   auto update() -> void;
 
  private:
-  uint getActiveWorkspaceID(std::string);
-  std::string getLastWindowTitle(uint);
+  int getActiveWorkspaceID(std::string);
+  std::string getLastWindowTitle(int);
   void onEvent(const std::string&);
 
   bool separate_outputs;

@@ -7,7 +7,7 @@
 #endif
 
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
-    : AButton(config, "temperature", id, "{temperatureC}°C", 10) {
+    : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
 #if defined(__FreeBSD__)
 // try to read sysctl?
 #else
@@ -42,9 +42,9 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    button_.get_style_context()->add_class("critical");
+    label_.get_style_context()->add_class("critical");
   } else {
-    button_.get_style_context()->remove_class("critical");
+    label_.get_style_context()->remove_class("critical");
   }
 
   if (format.empty()) {
@@ -55,21 +55,21 @@ auto waybar::modules::Temperature::update() -> void {
   }
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_->set_markup(fmt::format(format, fmt::arg("temperatureC", temperature_c),
-                                 fmt::arg("temperatureF", temperature_f),
-                                 fmt::arg("temperatureK", temperature_k),
-                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
+  label_.set_markup(fmt::format(format, fmt::arg("temperatureC", temperature_c),
+                                fmt::arg("temperatureF", temperature_f),
+                                fmt::arg("temperatureK", temperature_k),
+                                fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
   if (tooltipEnabled()) {
     std::string tooltip_format = "{temperatureC}°C";
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    button_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("temperatureC", temperature_c),
-                                         fmt::arg("temperatureF", temperature_f),
-                                         fmt::arg("temperatureK", temperature_k)));
+    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("temperatureC", temperature_c),
+                                        fmt::arg("temperatureF", temperature_f),
+                                        fmt::arg("temperatureK", temperature_k)));
   }
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 float waybar::modules::Temperature::getTemperature() {

@@ -7,11 +7,11 @@
 #include <algorithm>
 #include <array>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 
 namespace waybar::modules {
 
-class Pulseaudio : public AButton {
+class Pulseaudio : public ALabel {
  public:
   Pulseaudio(const std::string&, const Json::Value&);
   ~Pulseaudio();

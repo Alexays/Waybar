@@ -6,7 +6,7 @@
 #include <map>
 #include <string>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
@@ -14,7 +14,7 @@
 
 namespace waybar::modules::sway {
 
-class Language : public AButton, public sigc::trackable {
+class Language : public ALabel, public sigc::trackable {
  public:
   Language(const std::string& id, const Json::Value& config);
   ~Language() = default;

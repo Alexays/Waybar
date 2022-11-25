@@ -92,7 +92,7 @@ bool waybar::modules::Backlight::BacklightDev::get_powered() const { return powe
 void waybar::modules::Backlight::BacklightDev::set_powered(bool powered) { powered_ = powered; }
 
 waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
-    : AButton(config, "backlight", id, "{percent}%", 2),
+    : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
   // Get initial state
   {
@@ -181,8 +181,8 @@ auto waybar::modules::Backlight::update() -> void {
       event_box_.show();
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-      label_->set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
-                                     fmt::arg("icon", getIcon(percent))));
+      label_.set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
+                                    fmt::arg("icon", getIcon(percent))));
       getState(percent);
     } else {
       event_box_.hide();
@@ -191,12 +191,12 @@ auto waybar::modules::Backlight::update() -> void {
     if (!previous_best_.has_value()) {
       return;
     }
-    label_->set_markup("");
+    label_.set_markup("");
   }
   previous_best_ = best == nullptr ? std::nullopt : std::optional{*best};
   previous_format_ = format_;
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 template <class ForwardIt>

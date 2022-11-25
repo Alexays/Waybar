@@ -16,12 +16,14 @@
 - Network
 - Bluetooth
 - Pulseaudio
+- Wireplumber
 - Disk
 - Memory
 - Cpu load average
 - Temperature
 - MPD
 - Custom scripts
+- Custom image
 - Multiple output configuration
 - And many more customizations
 

@@ -1,14 +1,13 @@
 #include <fmt/format.h>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::hyprland {
 
-class Language : public waybar::AButton,
-public EventHandler {
+class Language : public waybar::ALabel, public EventHandler {
  public:
   Language(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Language();
