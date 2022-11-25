@@ -250,14 +250,9 @@ const std::string UPower::getDeviceStatus(UpDeviceState& state) {
 }
 
 bool UPower::handleToggle(GdkEventButton* const& event) {
-  bool clickHandled = AModule::handleToggle(event);
-  if (clickHandled) {
-    return clickHandled;
-  }
   std::lock_guard<std::mutex> guard(m_Mutex);
   showAltText = !showAltText;
-  dp.emit();
-  return true;
+  return AModule::handleToggle(event);
 }
 
 std::string UPower::timeToString(gint64 time) {
