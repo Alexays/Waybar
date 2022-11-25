@@ -77,7 +77,6 @@
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
-#include "modules/custom_list.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
 
