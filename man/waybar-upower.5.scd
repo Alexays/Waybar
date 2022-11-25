@@ -47,6 +47,10 @@ compatible devices in the tooltip.
 	default: 4 ++
 	Defines the spacing between the tooltip window edge and the tooltip content.
 
+*on-click*: ++
+	typeof: string ++
+	Command to execute when clicked on the module.
+
 # FORMAT REPLACEMENTS
 
 *{percentage}*: The battery capacity in percentage
