@@ -2,14 +2,20 @@
 
 #include <spdlog/spdlog.h>
 
-waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
+waybar::modules::Custom::Custom(const std::string& name,
+                                const Bar &bar,
+                                const std::string& id,
                                 const Json::Value& config)
-    : AButton(config, "custom-" + name, id, "{}"),
-      name_(name),
-      id_(id),
-      percentage_(0),
+    : AModule(config, "custom-" + name, id, false, !config["disable-scroll"].asBool()),
+      interval_(config["interval"].isUInt() ? config_["interval"].asUInt() : 0),
+      box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
       fp_(nullptr),
       pid_(-1) {
+  box_.set_name("custom-" + name);
+  event_box_.add(box_);
+  if(!id.empty()) {
+      box_.get_style_context()->add_class(id);
+  }
   dp.emit();
   if (interval_.count() > 0) {
     delayWorker();
@@ -80,7 +86,6 @@ void waybar::modules::Custom::continuousWorker() {
       }
     } else {
       std::string output = buff;
-
       // Remove last newline
       if (!output.empty() && output[output.length() - 1] == '\n') {
         output.erase(output.length() - 1);
@@ -104,13 +109,13 @@ void waybar::modules::Custom::handleEvent() {
 }
 
 bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
-  auto ret = AButton::handleScroll(e);
+  auto ret = AModule::handleScroll(e);
   handleEvent();
   return ret;
 }
 
 bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
-  auto ret = AButton::handleToggle(e);
+  auto ret = AModule::handleToggle(e);
   handleEvent();
   return ret;
 }
@@ -121,99 +126,188 @@ auto waybar::modules::Custom::update() -> void {
       (output_.out.empty() || output_.exit_code != 0)) {
     event_box_.hide();
   } else {
+    event_box_.show();
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
     } else {
       parseOutputRaw();
     }
-    auto str = fmt::format(format_, text_, fmt::arg("alt", alt_),
-                           fmt::arg("icon", getIcon(percentage_, alt_)),
-                           fmt::arg("percentage", percentage_));
-    if (str.empty()) {
-      event_box_.hide();
-    } else {
-      label_->set_markup(str);
-      if (tooltipEnabled()) {
-        if (text_ == tooltip_) {
-          if (button_.get_tooltip_markup() != str) {
-            button_.set_tooltip_markup(str);
-          }
-        } else {
-          if (button_.get_tooltip_markup() != tooltip_) {
-            button_.set_tooltip_markup(tooltip_);
+    bool needReorder = false;
+    for(auto res = results_.begin(); res != results_.end(); res++) {
+      std::string name = res->name_;
+      auto bit = buttons_.find(name);
+      if(bit == buttons_.end()) {
+        needReorder = true;
+      }
+
+      auto &button = bit == buttons_.end() ? addButton(*res) : bit->second;
+
+      auto str = res->text_;
+      //auto str = fmt::format(res->format_, res->text_, fmt::arg("alt", res->alt_),
+                             //fmt::arg("icon", getIcon(res->percentage_, res->alt_)), TODO
+        //                     fmt::arg("percentage", res->percentage_));
+
+      if(str.empty() || res->hide_) {
+        button.hide();
+      } else {
+        Gtk::Label *label_ = static_cast<Gtk::Label *>(button.get_children()[0]);
+        label_->set_markup(str);
+        button.show();
+        auto prev = std::find_if(prev_.begin(), prev_.end(), [name](auto p) {
+          return p.name_ == name;
+        });
+        if(prev != prev_.end()) {
+          for(auto it : prev->class_) {
+            if(std::find(res->class_.begin(), res->class_.end(), it) == res->class_.end()) {
+              button.get_style_context()->remove_class(it);
+            }
           }
         }
+        for(auto it : res->class_) {
+          if(prev  != prev_.end()) {
+            if(std::find(prev->class_.begin(), prev->class_.end(), it) == prev->class_.end()) {
+              button.get_style_context()->add_class(it);
+            }
+          } else {
+            button.get_style_context()->add_class(it);
+          }
+        }
+
+        if(needReorder) {
+          box_.reorder_child(button, res - results_.begin());
+        }
+
+        if(button.get_tooltip_markup() != res->tooltip_) {
+          button.set_tooltip_markup(res->tooltip_);
+        }
       }
-      auto classes = button_.get_style_context()->list_classes();
-      for (auto const& c : classes) {
-        if (c == id_) continue;
-        button_.get_style_context()->remove_class(c);
+    }
+
+    for(auto prev : prev_) {
+      auto res_it = std::find_if(results_.begin(), results_.end(), [prev](auto it) {
+        return it.name_ == prev.name_;
+      });
+      if(res_it == results_.end()) {
+        auto bit = buttons_.find(prev.name_);
+        if(bit != buttons_.end()) {
+          auto &button = bit->second;
+          box_.remove(button);
+          buttons_.erase(bit);
+        }
       }
-      for (auto const& c : class_) {
-        button_.get_style_context()->add_class(c);
-      }
-      button_.get_style_context()->add_class("flat");
-      button_.get_style_context()->add_class("text-button");
-      event_box_.show();
     }
   }
+  prev_ = results_;
   // Call parent update
-  AButton::update();
+  AModule::update();
 }
 
 void waybar::modules::Custom::parseOutputRaw() {
+  Node n = Node();
+  // Retain name if there is only one node
+  n.name_ = name_;
   std::istringstream output(output_.out);
   std::string line;
   int i = 0;
   while (getline(output, line)) {
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
-        text_ = Glib::Markup::escape_text(line);
+        n.text_ = Glib::Markup::escape_text(line);
       } else {
-        text_ = line;
+        n.text_ = line;
       }
-      tooltip_ = line;
-      class_.clear();
+      n.tooltip_ = line;
+      n.class_.clear();
     } else if (i == 1) {
-      tooltip_ = line;
+      n.tooltip_ = line;
     } else if (i == 2) {
-      class_.push_back(line);
+      n.class_.push_back(line);
     } else {
       break;
     }
     i++;
   }
+  results_.clear();
+  results_.push_back(n);
+}
+
+waybar::modules::Custom::Node waybar::modules::Custom::parseItem(Json::Value &parsed) {
+  Node n;
+  if (config_["escape"].isBool() && config_["escape"].asBool()) {
+    n.text_ = Glib::Markup::escape_text(parsed["text"].asString());
+  } else {
+    n.text_ = parsed["text"].asString();
+  }
+  if (config_["escape"].isBool() && config_["escape"].asBool()) {
+    n.alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
+  } else {
+    n.alt_ = parsed["alt"].asString();
+  }
+  n.tooltip_ = parsed["tooltip"].asString();
+  if (parsed["class"].isString()) {
+    n.class_.push_back(parsed["class"].asString());
+  } else if (parsed["class"].isArray()) {
+    for (auto const& c : parsed["class"]) {
+      n.class_.push_back(c.asString());
+    }
+  }
+  if(!parsed["name"].asString().empty()) {
+    n.name_ = name_ + parsed["name"].asString();
+  }
+  if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
+    n.percentage_ = parsed["percentage"].asUInt();
+  } else {
+    n.percentage_ = 0;
+  }
+  if (!parsed["onclick"].asString().empty() && parsed["onclick"].isString()) {
+    n.onclick_ = parsed["onclick"].asString();
+  }
+  return n;
 }
 
 void waybar::modules::Custom::parseOutputJson() {
   std::istringstream output(output_.out);
   std::string line;
-  class_.clear();
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      text_ = Glib::Markup::escape_text(parsed["text"].asString());
-    } else {
-      text_ = parsed["text"].asString();
-    }
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
-    } else {
-      alt_ = parsed["alt"].asString();
-    }
-    tooltip_ = parsed["tooltip"].asString();
-    if (parsed["class"].isString()) {
-      class_.push_back(parsed["class"].asString());
-    } else if (parsed["class"].isArray()) {
-      for (auto const& c : parsed["class"]) {
-        class_.push_back(c.asString());
+    results_.clear();
+    if(parsed["data"].isArray()) {
+      for(auto it : parsed["data"]) {
+        results_.push_back(parseItem(it));
       }
-    }
-    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
-      percentage_ = parsed["percentage"].asUInt();
     } else {
-      percentage_ = 0;
+      Node n = parseItem(parsed);
+      n.name_ = name_ + "-node";
+      results_.push_back(n);
     }
-    break;
+  }
+}
+
+Gtk::Button &waybar::modules::Custom::addButton(const waybar::modules::Custom::Node &node) {
+    auto pair = buttons_.emplace(node.name_, node.name_);
+    auto &&button = pair.first->second;
+    box_.pack_start(button, false, false, 0);
+    button.set_name(name_ + node.name_);
+    button.set_relief(Gtk::RELIEF_NONE);
+    if(!config_["disable-click"].asBool()) {
+      button.signal_pressed().connect([this, node] {
+        handleClick(node.name_);
+      });
+    }
+    return button;
+}
+
+
+void waybar::modules::Custom::handleClick(std::string name) {
+  auto node = std::find_if(results_.begin(), results_.end(), [name](auto it) {
+    return it.name_ == name;
+  });
+
+  if(node == results_.end())
+    return;
+  auto cmd = node->onclick_;
+
+  if(!cmd.empty()) {
+    util::command::execNoRead(cmd);
   }
 }
