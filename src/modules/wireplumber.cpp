@@ -54,17 +54,25 @@ uint32_t waybar::modules::Wireplumber::getDefaultNodeId(waybar::modules::Wireplu
 }
 
 void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* self) {
-  auto proxy = static_cast<WpPipewireObject*>(wp_object_manager_lookup(
-      self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_PW_GLOBAL_PROPERTY, "object.id", "=u",
-      self->node_id_, NULL));
+  auto proxy = static_cast<WpProxy*>(
+      wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                               "bound-id", "=u", self->node_id_, NULL));
 
   if (!proxy) {
     throw std::runtime_error(fmt::format("Object '{}' not found\n", self->node_id_));
   }
 
-  g_autoptr(WpProperties) properties = wp_pipewire_object_get_properties(proxy);
+  g_autoptr(WpProperties) properties =
+      WP_IS_PIPEWIRE_OBJECT(proxy) ? wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(proxy))
+                                   : wp_properties_new_empty();
+  g_autoptr(WpProperties) global_p = wp_global_proxy_get_global_properties(WP_GLOBAL_PROXY(proxy));
   properties = wp_properties_ensure_unique_owner(properties);
-  self->node_name_ = wp_properties_get(properties, "node.nick");
+  wp_properties_add(properties, global_p);
+  wp_properties_set(properties, "object.id", NULL);
+  auto nick = wp_properties_get(properties, "node.nick");
+  auto description = wp_properties_get(properties, "node.description");
+
+  self->node_name_ = nick ? nick : description;
 }
 
 void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* self) {
@@ -120,6 +128,7 @@ void waybar::modules::Wireplumber::activatePlugins() {
 
 void waybar::modules::Wireplumber::prepare() {
   wp_object_manager_add_interest(om_, WP_TYPE_NODE, NULL);
+  wp_object_manager_add_interest(om_, WP_TYPE_GLOBAL_PROXY, NULL);
   wp_object_manager_request_object_features(om_, WP_TYPE_GLOBAL_PROXY,
                                             WP_PIPEWIRE_OBJECT_FEATURES_MINIMAL);
 }
