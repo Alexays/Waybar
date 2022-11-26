@@ -156,8 +156,8 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("muted");
   }
 
-  std::string markup =
-      fmt::format(format, fmt::arg("node_name", node_name_), fmt::arg("volume", volume_));
+  std::string markup = fmt::format(format, fmt::arg("node_name", node_name_),
+                                   fmt::arg("volume", volume_), fmt::arg("icon", getIcon(volume_)));
   label_.set_markup(markup);
 
   getState(volume_);
@@ -169,7 +169,8 @@ auto waybar::modules::Wireplumber::update() -> void {
 
     if (!tooltip_format.empty()) {
       label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("node_name", node_name_),
-                                          fmt::arg("volume", volume_)));
+                                          fmt::arg("volume", volume_),
+                                          fmt::arg("icon", getIcon(volume_))));
     } else {
       label_.set_tooltip_text(node_name_);
     }
