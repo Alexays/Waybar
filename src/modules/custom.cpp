@@ -9,6 +9,7 @@ waybar::modules::Custom::Custom(const std::string& name,
     : AModule(config, "custom-" + name, id, false, !config["disable-scroll"].asBool()),
       interval_(config["interval"].isUInt() ? config_["interval"].asUInt() : 0),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
+      format_(config["format"].isString() ? config["format"].asString() : "{}"),
       fp_(nullptr),
       pid_(-1) {
   box_.set_name("custom-" + name);
@@ -142,11 +143,9 @@ auto waybar::modules::Custom::update() -> void {
 
       auto &button = bit == buttons_.end() ? addButton(*res) : bit->second;
 
-      auto str = res->text_;
-      //auto str = fmt::format(res->format_, res->text_, fmt::arg("alt", res->alt_),
-                             //fmt::arg("icon", getIcon(res->percentage_, res->alt_)), TODO
-        //                     fmt::arg("percentage", res->percentage_));
-
+      auto str = fmt::format(format_, res->text_, fmt::arg("alt", res->alt_),
+                             fmt::arg("icon", getIcon(res->percentage_, res->alt_)),
+                             fmt::arg("percentage", res->percentage_));
       if(str.empty() || res->hide_) {
         button.hide();
       } else {
@@ -200,6 +199,28 @@ auto waybar::modules::Custom::update() -> void {
   prev_ = results_;
   // Call parent update
   AModule::update();
+}
+
+std::string waybar::modules::Custom::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
+  auto format_icons = config_["format-icons"];
+  if (format_icons.isObject()) {
+    if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
+      format_icons = format_icons[alt];
+    } else {
+      format_icons = format_icons["default"];
+    }
+  }
+  if (format_icons.isArray()) {
+    auto size = format_icons.size();
+    if (size) {
+      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+      format_icons = format_icons[idx];
+    }
+  }
+  if (format_icons.isString()) {
+    return format_icons.asString();
+  }
+  return "";
 }
 
 void waybar::modules::Custom::parseOutputRaw() {
@@ -262,6 +283,12 @@ waybar::modules::Custom::Node waybar::modules::Custom::parseItem(Json::Value &pa
   if (!parsed["onclick"].asString().empty() && parsed["onclick"].isString()) {
     n.onclick_ = parsed["onclick"].asString();
   }
+  if(parsed["hide"].isBool()) {
+    n.hide_ = parsed["hide"].asBool();
+  }
+
+
+
   return n;
 }
 

@@ -33,7 +33,6 @@ class Custom : public AModule {
     std::string text_;
     std::string alt_;
     std::string tooltip_;
-    std::string format_;
     std::string onclick_;
     bool hide_;
     std::vector<std::string> class_;
@@ -42,7 +41,6 @@ class Custom : public AModule {
              text_(""),
              alt_(""),
              tooltip_(""),
-             format_(""),
              onclick_(""),
              hide_(false),
              class_(std::vector<std::string>()),
@@ -59,6 +57,7 @@ class Custom : public AModule {
   void handleClick(std::string name);
   Node parseItem(Json::Value &parsed);
   Gtk::Button &addButton(const Node &node);
+  std::string getIcon(uint16_t percentage, const std::string& alt = "", uint16_t max = 0);
 
   const std::chrono::seconds interval_;
   util::command::res output_;
@@ -68,6 +67,7 @@ class Custom : public AModule {
 
   std::unordered_map<std::string, Gtk::Button> buttons_;
   Gtk::Box box_;
+  std::string format_;
 
   FILE* fp_;
   int pid_;
