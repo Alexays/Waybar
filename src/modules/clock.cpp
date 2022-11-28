@@ -136,7 +136,7 @@ bool waybar::modules::Clock::handleScroll(GdkEventScroll* e) {
   auto dir = AModule::getScrollDir(e);
 
   // Shift calendar date
-  if (calendar_shift_init_.count() > 0) {
+  if (calendar_shift_init_.count() != 0) {
     if (dir == SCROLL_DIR::UP)
       calendar_shift_ += calendar_shift_init_;
     else
@@ -170,7 +170,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
   if (calendar_cached_ymd_ == ymd) return calendar_cached_text_;
 
-  const auto curr_day{(calendar_shift_init_.count() > 0 && calendar_shift_.count() != 0)
+  const auto curr_day{(calendar_shift_init_.count() != 0 && calendar_shift_.count() != 0)
                           ? date::day{0}
                           : ymd.day()};
   const date::year_month ym{ymd.year(), ymd.month()};
