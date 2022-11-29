@@ -10,6 +10,7 @@
 #include "gdkmm/cursor.h"
 #include "gdkmm/event.h"
 #include "gdkmm/types.h"
+#include "glibmm/fileutils.h"
 #include "sigc++/functors/mem_fun.h"
 #include "sigc++/functors/ptr_fun.h"
 
@@ -106,8 +107,12 @@ void User::init_default_user_avatar(int width, int height) {
 }
 
 void User::init_user_avatar(const std::string& path, int width, int height) {
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf_ = Gdk::Pixbuf::create_from_file(path, width, height);
-  AIconLabel::image_.set(pixbuf_);
+  if (Glib::file_test(path, Glib::FILE_TEST_EXISTS)) {
+    Glib::RefPtr<Gdk::Pixbuf> pixbuf_ = Gdk::Pixbuf::create_from_file(path, width, height);
+    AIconLabel::image_.set(pixbuf_);
+  } else {
+    AIconLabel::box_.remove(AIconLabel::image_);
+  }
 }
 
 auto User::update() -> void {
