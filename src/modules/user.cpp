@@ -138,6 +138,6 @@ auto User::update() -> void {
                            fmt::arg("work_S", fmt::format("{:%S}", workSystemTimeSeconds)),
                            fmt::arg("user", systemUser));
   ALabel::label_.set_markup(label);
-  ALabel::update();
+  AIconLabel::update();
 }
 };  // namespace waybar::modules
