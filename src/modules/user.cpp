@@ -28,6 +28,7 @@ namespace waybar::modules {
 User::User(const std::string& id, const Json::Value& config)
     : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", 60, false, true, true) {
   if (AIconLabel::iconEnabled()) {
+    AIconLabel::box_.set_spacing(0);
     this->init_avatar(AIconLabel::config_);
   }
   this->init_update_worker();
