@@ -130,6 +130,8 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
   callbackMutex.unlock();
 }
 
+
+
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
@@ -140,7 +142,7 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     return "";
   }
 
-  const auto SERVER = gethostbyname("localhost");
+  const auto SERVER = getaddrinfo("localhost", NULL, NULL, 0);
 
   if (!SERVER) {
     spdlog::error("Hyprland IPC: Couldn't get host (2)");
