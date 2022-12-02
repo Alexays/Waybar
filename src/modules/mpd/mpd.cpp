@@ -96,7 +96,13 @@ void waybar::modules::MPD::setLabel() {
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
                       : "disconnected";
-    label_.set_markup(format);
+    if(format.empty()) {
+      label_.set_markup(format);
+      label_.show();
+    } else {
+      label_.hide();
+    }
+    
 
     if (tooltipEnabled()) {
       std::string tooltip_format;
@@ -107,9 +113,8 @@ void waybar::modules::MPD::setLabel() {
       label_.set_tooltip_text(tooltip_format);
     }
     return;
-  } else {
-    label_.get_style_context()->remove_class("disconnected");
   }
+  label_.get_style_context()->remove_class("disconnected");
 
   auto format = format_;
   Glib::ustring artist, album_artist, album, title;
@@ -169,7 +174,7 @@ void waybar::modules::MPD::setLabel() {
   if (config_["title-len"].isInt()) title = title.substr(0, config_["title-len"].asInt());
 
   try {
-    label_.set_markup(fmt::format(
+    auto text = fmt::format(
         format, fmt::arg("artist", artist.raw()), fmt::arg("albumArtist", album_artist.raw()),
         fmt::arg("album", album.raw()), fmt::arg("title", title.raw()), fmt::arg("date", date),
         fmt::arg("volume", volume), fmt::arg("elapsedTime", elapsedTime),
@@ -177,7 +182,13 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
         fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
         fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon),
-        fmt::arg("filename", filename)));
+        fmt::arg("filename", filename));
+    if(text.empty()) {
+      label_.hide();
+    } else {
+      label_.show();
+      label_.set_markup(text);
+    }
   } catch (fmt::format_error const& e) {
     spdlog::warn("mpd: format error: {}", e.what());
   }
