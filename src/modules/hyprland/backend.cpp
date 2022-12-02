@@ -130,8 +130,6 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
   callbackMutex.unlock();
 }
 
-
-
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
