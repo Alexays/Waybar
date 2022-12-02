@@ -96,7 +96,7 @@ void waybar::modules::MPD::setLabel() {
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
                       : "disconnected";
-    if(format.empty()) {
+    if (format.empty()) {
       label_.set_markup(format);
       label_.show();
     } else {
@@ -183,7 +183,7 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
         fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon),
         fmt::arg("filename", filename));
-    if(text.empty()) {
+    if (text.empty()) {
       label_.hide();
     } else {
       label_.show();
