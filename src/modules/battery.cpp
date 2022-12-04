@@ -107,6 +107,15 @@ void waybar::modules::Battery::refreshBatteries() {
         std::ifstream(node.path() / "type") >> type;
 
         if (!type.compare("Battery")) {
+          // Ignore non-system power supplies unless explicitly requested
+          if (!bat_defined && fs::exists(node.path() / "scope")) {
+            std::string scope;
+            std::ifstream(node.path() / "scope") >> scope;
+            if (g_ascii_strcasecmp(scope.data(), "device") == 0) {
+              continue;
+            }
+          }
+
           check_map[node.path()] = true;
           auto search = batteries_.find(node.path());
           if (search == batteries_.end()) {
