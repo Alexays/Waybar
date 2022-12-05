@@ -27,6 +27,7 @@ const static int LEFT_MOUSE_BUTTON_CODE = 1;
 namespace waybar::modules {
 User::User(const std::string& id, const Json::Value& config)
     : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", 60, false, true, true) {
+  AIconLabel::box_.set_spacing(0);
   if (AIconLabel::iconEnabled()) {
     this->init_avatar(AIconLabel::config_);
   }
@@ -137,6 +138,6 @@ auto User::update() -> void {
                            fmt::arg("work_S", fmt::format("{:%S}", workSystemTimeSeconds)),
                            fmt::arg("user", systemUser));
   ALabel::label_.set_markup(label);
-  ALabel::update();
+  AIconLabel::update();
 }
 };  // namespace waybar::modules
