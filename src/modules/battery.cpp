@@ -233,6 +233,10 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     bool total_energy_full_design_exists = false;
     uint32_t total_capacity = 0;
     bool total_capacity_exists = false;
+    uint32_t time_to_empty_now = 0;
+    bool time_to_empty_now_exists = false;
+    uint32_t time_to_full_now = 0;
+    bool time_to_full_now_exists = false;
 
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
@@ -258,6 +262,16 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       } else if (fs::exists(bat / "current_avg")) {
         current_now_exists = true;
         std::ifstream(bat / "current_avg") >> current_now;
+      }
+
+      if (fs::exists(bat / "time_to_empty_now")) {
+        time_to_empty_now_exists = true;
+        std::ifstream(bat / "time_to_empty_now") >> time_to_empty_now;
+      }
+
+      if (fs::exists(bat / "time_to_full_now")) {
+        time_to_full_now_exists = true;
+        std::ifstream(bat / "time_to_full_now") >> time_to_full_now;
       }
 
       uint32_t voltage_now = 0;
@@ -481,8 +495,15 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     }
 
     float time_remaining{0.0f};
-    if (status == "Discharging" && total_power_exists && total_energy_exists) {
+    if (status == "Discharging" && time_to_empty_now_exists) {
+      if (time_to_empty_now != 0) time_remaining = (float)time_to_empty_now / 1000.0f;
+    } else if (status == "Discharging" && total_power_exists && total_energy_exists) {
       if (total_power != 0) time_remaining = (float)total_energy / total_power;
+    } else if (status == "Charging" && time_to_full_now_exists) {
+      if (time_to_full_now_exists && (time_to_full_now != 0)) time_remaining = -(float)time_to_full_now / 1000.0f;
+      // If we've turned positive it means the battery is past 100% and so just report that as no
+      // time remaining
+      if (time_remaining > 0.0f) time_remaining = 0.0f;
     } else if (status == "Charging" && total_energy_exists && total_energy_full_exists &&
                total_power_exists) {
       if (total_power != 0)
