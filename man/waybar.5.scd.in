@@ -30,6 +30,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *output* ++
 	typeof: string|array ++
 	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
+	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
 
 *position* ++
 	typeof: string ++
@@ -280,3 +281,7 @@ A module group is defined by specifying a module named "group/some-group-name". 
 - *waybar-wlr-workspaces(5)*
 - *waybar-temperature(5)*
 - *waybar-tray(5)*
+
+# SEE ALSO
+
+*sway-output(5)*
