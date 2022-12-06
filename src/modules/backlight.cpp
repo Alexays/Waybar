@@ -189,8 +189,9 @@ auto waybar::modules::Backlight::update() -> void {
               : roundf(powf((float)best->get_actual() / best->get_max(), 1.0f / 2.718f) * 100);
 
       label_.set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
-                                    fmt::arg("percentexp", std::to_string(percent_exp)),
-                                    fmt::arg("icon", getIcon(percent))));
+                                    fmt::arg("percent_exp", std::to_string(percent_exp)),
+                                    fmt::arg("icon", getIcon(percent)),
+                                    fmt::arg("icon_exp", getIcon(percent_exp))));
       getState(percent);
     } else {
       event_box_.hide();
