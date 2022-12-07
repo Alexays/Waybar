@@ -209,15 +209,12 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
   // First week prefixed with spaces if needed.
   auto first_month_day = date::weekday(ym / 1);
-  int empty_days = (first_week_day - first_month_day).count() + 1;
-  date::sys_days last_week_day{static_cast<date::sys_days>(ym / 1) + date::days{7 - empty_days}};
+  int empty_days = (first_month_day - first_week_day).count();
+  date::sys_days last_week_day{static_cast<date::sys_days>(ym / 1) + date::days{6 - empty_days}};
 
-  if (first_week_day == date::Monday) {
-    last_week_day -= date::days{1};
-  }
   /* Print weeknumber on the left for the first row*/
   if (weeks_pos == WeeksPlacement::LEFT) {
-    os << fmt::format(weeks_format, date::format("%U", last_week_day)) << ' ';
+    os << fmt::format(weeks_format, last_week_day) << ' ';
     last_week_day += date::weeks{1};
   }
 
@@ -230,19 +227,18 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     if (weekday != first_week_day) {
       os << ' ';
     } else if (unsigned(d) != 1) {
-      last_week_day -= date::days{1};
       if (weeks_pos == WeeksPlacement::RIGHT) {
         os << ' ';
-        os << fmt::format(weeks_format, date::format("%U", last_week_day));
+        os << fmt::format(weeks_format, last_week_day);
       }
 
       os << "\n";
 
       if (weeks_pos == WeeksPlacement::LEFT) {
-        os << fmt::format(weeks_format, date::format("%U", last_week_day));
+        os << fmt::format(weeks_format, last_week_day);
         os << ' ';
       }
-      last_week_day += date::weeks{1} + date::days{1};
+      last_week_day += date::weeks{1};
     }
     if (d == curr_day) {
       if (config_["today-format"].isString()) {
@@ -258,11 +254,9 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     }
     /*Print weeks on the right when the endings with spaces*/
     if (weeks_pos == WeeksPlacement::RIGHT && d == last_day) {
-      last_week_day -= date::days{1};
       empty_days = 6 - (weekday - first_week_day).count();
       os << std::string(empty_days * 3 + 1, ' ');
-      os << fmt::format(weeks_format, date::format("%U", last_week_day));
-      last_week_day += date::days{1};
+      os << fmt::format(weeks_format, date::sys_days{ym / date::literals::last});
     }
   }
 
