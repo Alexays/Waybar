@@ -28,6 +28,7 @@ class Clock : public ALabel {
   date::year_month_day calendar_cached_ymd_{date::January / 1 / 0};
   date::months calendar_shift_{0}, calendar_shift_init_{0};
   std::string calendar_cached_text_;
+  std::string weeks_format_;
   bool is_calendar_in_tooltip_;
   bool is_timezoned_list_in_tooltip_;
 

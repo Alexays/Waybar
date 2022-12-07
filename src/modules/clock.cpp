@@ -74,6 +74,18 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     locale_ = std::locale("");
   }
 
+  if (config_["format-calendar-weeks"].isString()) {
+    weeks_format_ = config_["format-calendar-weeks"].asString();
+    const size_t empty_format = weeks_format_.find("{}");
+    if (empty_format != std::string::npos) {
+      if (first_day_of_week() == date::Monday) {
+        weeks_format_.replace(empty_format, 2, "{:%V}");
+      } else {
+        weeks_format_.replace(empty_format, 2, "{:%U}");
+      }
+    }
+  }
+
   thread_ = [this] {
     dp.emit();
     auto now = std::chrono::system_clock::now();
@@ -180,9 +192,6 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
                           ? date::day{0}
                           : ymd.day()};
   const date::year_month ym{ymd.year(), ymd.month()};
-  const auto weeks_format{config_["format-calendar-weeks"].isString()
-                              ? config_["format-calendar-weeks"].asString()
-                              : ""};
 
   std::stringstream os;
 
@@ -214,7 +223,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
   /* Print weeknumber on the left for the first row*/
   if (weeks_pos == WeeksPlacement::LEFT) {
-    os << fmt::format(weeks_format, last_week_day) << ' ';
+    os << fmt::format(weeks_format_, last_week_day) << ' ';
     last_week_day += date::weeks{1};
   }
 
@@ -229,13 +238,13 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     } else if (unsigned(d) != 1) {
       if (weeks_pos == WeeksPlacement::RIGHT) {
         os << ' ';
-        os << fmt::format(weeks_format, last_week_day);
+        os << fmt::format(weeks_format_, last_week_day);
       }
 
       os << "\n";
 
       if (weeks_pos == WeeksPlacement::LEFT) {
-        os << fmt::format(weeks_format, last_week_day);
+        os << fmt::format(weeks_format_, last_week_day);
         os << ' ';
       }
       last_week_day += date::weeks{1};
@@ -256,7 +265,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     if (weeks_pos == WeeksPlacement::RIGHT && d == last_day) {
       empty_days = 6 - (weekday - first_week_day).count();
       os << std::string(empty_days * 3 + 1, ' ');
-      os << fmt::format(weeks_format, date::sys_days{ym / date::literals::last});
+      os << fmt::format(weeks_format_, date::sys_days{ym / date::literals::last});
     }
   }
 
