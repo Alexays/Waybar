@@ -10,6 +10,7 @@
 #include "gdkmm/cursor.h"
 #include "gdkmm/event.h"
 #include "gdkmm/types.h"
+#include "glibmm/fileutils.h"
 #include "sigc++/functors/mem_fun.h"
 #include "sigc++/functors/ptr_fun.h"
 
@@ -26,6 +27,7 @@ const static int LEFT_MOUSE_BUTTON_CODE = 1;
 namespace waybar::modules {
 User::User(const std::string& id, const Json::Value& config)
     : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", 60, false, true, true) {
+  AIconLabel::box_.set_spacing(0);
   if (AIconLabel::iconEnabled()) {
     this->init_avatar(AIconLabel::config_);
   }
@@ -106,8 +108,12 @@ void User::init_default_user_avatar(int width, int height) {
 }
 
 void User::init_user_avatar(const std::string& path, int width, int height) {
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf_ = Gdk::Pixbuf::create_from_file(path, width, height);
-  AIconLabel::image_.set(pixbuf_);
+  if (Glib::file_test(path, Glib::FILE_TEST_EXISTS)) {
+    Glib::RefPtr<Gdk::Pixbuf> pixbuf_ = Gdk::Pixbuf::create_from_file(path, width, height);
+    AIconLabel::image_.set(pixbuf_);
+  } else {
+    AIconLabel::box_.remove(AIconLabel::image_);
+  }
 }
 
 auto User::update() -> void {
@@ -132,6 +138,6 @@ auto User::update() -> void {
                            fmt::arg("work_S", fmt::format("{:%S}", workSystemTimeSeconds)),
                            fmt::arg("user", systemUser));
   ALabel::label_.set_markup(label);
-  ALabel::update();
+  AIconLabel::update();
 }
 };  // namespace waybar::modules

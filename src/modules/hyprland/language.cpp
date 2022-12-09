@@ -85,7 +85,6 @@ void Language::initLanguage() {
 
   try {
     auto searcher = INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
-    searcher = searcher.substr(searcher.find("Keyboard at"));
     searcher = searcher.substr(searcher.find("keymap:") + 7);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 

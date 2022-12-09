@@ -295,10 +295,16 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
   }
   format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
-  label_.set_markup(fmt::format(
+  auto text = fmt::format(
       format, fmt::arg("desc", desc_), fmt::arg("volume", volume_),
       fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume_),
-      fmt::arg("source_desc", source_desc_), fmt::arg("icon", getIcon(volume_, getPulseIcon()))));
+      fmt::arg("source_desc", source_desc_), fmt::arg("icon", getIcon(volume_, getPulseIcon())));
+  if (text.empty()) {
+    label_.hide();
+  } else {
+    label_.set_markup(text);
+    label_.show();
+  }
   getState(volume_);
 
   if (tooltipEnabled()) {
