@@ -89,6 +89,7 @@ dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gt
 giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled() or get_option('upower_glib').enabled()))
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 sigcpp = dependency('sigc++-2.0')
+libkvm = dependency('libkvm', required: false)
 libinotify = dependency('libinotify', required: false)
 libepoll = dependency('epoll-shim', required: false)
 libinput = dependency('libinput', required: get_option('libinput'))
@@ -263,9 +264,27 @@ if dbusmenu_gtk.found()
     )
 endif
 
-if libudev.found() and (is_linux or libepoll.found())
+if libudev.found() and (is_linux or %libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
+endif
+
+if (is_freebsd or is_openbsd) and libkvm.found()
+    add_project_arguments('-DHAVE_LIBKVM', language: 'cpp')
+    src_files += [
+      'src/modules/wnd.cpp',
+      'src/modules/wnd/utils/bsd.cpp',
+      'src/modules/wnd/display/display.cpp',
+    ]
+elif is_linux
+    src_files += [
+      'src/modules/wnd.cpp',
+      'src/modules/wnd/cpu/process_cpu_linux.cpp',
+      'src/modules/wnd/system/cpu.cpp',
+      'src/modules/wnd/memory/process_memory_linux.cpp',
+      'src/modules/wnd/utils/linux.cpp',
+      'src/modules/wnd/display/display.cpp',
+    ]
 endif
 
 if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
@@ -338,6 +357,7 @@ executable(
         libjack,
         libwireplumber,
         libudev,
+        libkvm,
         libinotify,
         libepoll,
         libmpdclient,

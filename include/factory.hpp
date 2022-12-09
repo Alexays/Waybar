@@ -13,6 +13,9 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
+#if ((defined(__FreeBSD__) && defined(HAVE_LIBKVM)) || defined(__linux__)) && defined(HAVE_SWAY)
+#include "modules/wnd.hpp"
+#endif
 #ifdef HAVE_WLR
 #include "modules/wlr/taskbar.hpp"
 #include "modules/wlr/workspace_manager.hpp"

@@ -39,6 +39,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::sway::Scratchpad(id, config_[name]);
     }
 #endif
+#if ((defined(__FreeBSD__) && defined(HAVE_LIBKVM)) || defined(__linux__)) && defined(HAVE_SWAY)
+    if (ref == "wnd") {
+      return new waybar::modules::Wnd(id, config_[name]);
+    }    
+#endif
 #ifdef HAVE_WLR
     if (ref == "wlr/taskbar") {
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
