@@ -80,7 +80,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
         std::regex_replace(config_["format-calendar-weeks"].asString(), std::regex("\\{\\}"),
                            (first_day_of_week() == date::Monday) ? "{:%V}" : "{:%U}");
     weeks_format_left_gaps =
-        std::regex_replace(weeks_format_, std::regex(".*<b>|</b>.*|\\{.?+\\}"), "").length();
+        std::regex_replace(weeks_format_, std::regex("</?[^>]+>|\\{.*\\}"), "").length();
   } else {
     weeks_format_ = "";
   }
