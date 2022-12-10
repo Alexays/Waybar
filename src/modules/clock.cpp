@@ -5,8 +5,8 @@
 
 #include <ctime>
 #include <iomanip>
-#include <sstream>
 #include <regex>
+#include <sstream>
 #include <type_traits>
 
 #include "util/ustring_clen.hpp"
@@ -76,8 +76,11 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   }
 
   if (config_["format-calendar-weeks"].isString()) {
-    weeks_format_ = std::regex_replace(config_["format-calendar-weeks"].asString(), std::regex("\\{\\}"), (first_day_of_week() == date::Monday) ? "{:%V}" : "{:%U}");
-    weeks_format_left_gaps = std::regex_replace(weeks_format_, std::regex(".*<b>|</b>.*|\\{.?+\\}"), "").length();
+    weeks_format_ =
+        std::regex_replace(config_["format-calendar-weeks"].asString(), std::regex("\\{\\}"),
+                           (first_day_of_week() == date::Monday) ? "{:%V}" : "{:%U}");
+    weeks_format_left_gaps =
+        std::regex_replace(weeks_format_, std::regex(".*<b>|</b>.*|\\{.?+\\}"), "").length();
   } else {
     weeks_format_ = "";
   }
@@ -192,7 +195,6 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
   std::stringstream os;
 
-
   enum class WeeksSide {
     LEFT,
     RIGHT,
@@ -213,7 +215,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   weekdays_header(first_dow, os);
 
   // First week day prefixed with spaces if needed.
-  date::sys_days print_wd{ym/1};
+  date::sys_days print_wd{ym / 1};
   auto wd{date::weekday{print_wd}};
   auto empty_days = (wd - first_dow).count();
 
@@ -231,14 +233,14 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
   for (auto d{date::day{1}}; d <= last_day; ++d, ++wd) {
     if (wd != first_dow) {
       os << ' ';
-    } else if (unsigned(d)!= 1) {
+    } else if (unsigned(d) != 1) {
       if (weeks_pos == WeeksSide::RIGHT) {
         os << ' ' << fmt::format(weeks_format_, print_wd);
       }
 
       os << '\n';
 
-      print_wd = {ym/d};
+      print_wd = {ym / d};
 
       if (weeks_pos == WeeksSide::LEFT) {
         os << fmt::format(weeks_format_, print_wd) << ' ';
