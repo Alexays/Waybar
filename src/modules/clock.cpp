@@ -240,7 +240,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
       os << '\n';
 
-      print_wd = {ym / d};
+      print_wd = (ym / d);
 
       if (weeks_pos == WeeksSide::LEFT) {
         os << fmt::format(weeks_format_, print_wd) << ' ';
