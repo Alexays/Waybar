@@ -41,15 +41,15 @@ wnd::Memory ProcessMemory::get_memory_for_process(std::string_view pid) {
   wnd::Memory memory = get_process_memory(pid);
 
 #ifdef _SC_PAGESIZE
-  const static int PAGE_SIZE = sysconf(_SC_PAGESIZE);
+  const static int MEMORY_PAGE_SIZE = sysconf(_SC_PAGESIZE);
 #elif _SC_PAGE_SIZE
-  const static int PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
+  const static int MEMORY_PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
 #endif
 
-  memory.vmSize = memory.vmSize * PAGE_SIZE;
-  memory.vmRss = memory.vmRss * PAGE_SIZE;
-  memory.drs = memory.drs * PAGE_SIZE;
-  memory.trs = memory.trs * PAGE_SIZE;
+  memory.vmSize = memory.vmSize * MEMORY_PAGE_SIZE;
+  memory.vmRss = memory.vmRss * MEMORY_PAGE_SIZE;
+  memory.drs = memory.drs * MEMORY_PAGE_SIZE;
+  memory.trs = memory.trs * MEMORY_PAGE_SIZE;
 
   return memory;
 }
