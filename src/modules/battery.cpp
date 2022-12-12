@@ -509,7 +509,8 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     } else if (status == "Discharging" && total_power_exists && total_energy_exists) {
       if (total_power != 0) time_remaining = (float)total_energy / total_power;
     } else if (status == "Charging" && time_to_full_now_exists) {
-      if (time_to_full_now_exists && (time_to_full_now != 0)) time_remaining = -(float)time_to_full_now / 1000.0f;
+      if (time_to_full_now_exists && (time_to_full_now != 0))
+        time_remaining = -(float)time_to_full_now / 1000.0f;
       // If we've turned positive it means the battery is past 100% and so just report that as no
       // time remaining
       if (time_remaining > 0.0f) time_remaining = 0.0f;
