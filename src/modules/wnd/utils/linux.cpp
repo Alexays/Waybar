@@ -179,7 +179,7 @@ static Processes Process = Processes();
 
 namespace wnd::utils {
 ProcessTree::Process ProcessTree::get_tree_for_process(int pid) {
-  if(pid <= 0) return;
+  if (pid <= 0) return {};
   return ::Process.get_tree_for_process(std::to_string(pid));
 }
 };  // namespace wnd::utils

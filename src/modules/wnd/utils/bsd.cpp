@@ -63,7 +63,7 @@ void find_childs_for_process(int pid, kinfo_proc* kinfo, int cnt,
   for (int i = 0; i < cnt; ++i) {
     kinfo_proc& kp = kinfo[i];
     if (kp.ki_ppid == pid) {
-        if(kp.ki_ppid == kp.ki_pid) continue;
+      if (kp.ki_ppid == kp.ki_pid) continue;
       wnd::utils::ProcessTree::Process info = create_process_struct(&kp);
       find_childs_for_process(kp.ki_pid, kinfo, cnt, info.child);
       ref.push_back(info);
@@ -71,8 +71,7 @@ void find_childs_for_process(int pid, kinfo_proc* kinfo, int cnt,
   }
 }
 
-void find_childs_for_process(int pid,
-                             std::vector<wnd::utils::ProcessTree::Process>& ref) {
+void find_childs_for_process(int pid, std::vector<wnd::utils::ProcessTree::Process>& ref) {
   char errbuf[_POSIX2_LINE_MAX] = {0};
   kvm_t* kd = kvm_open(NULL, MEM_PATH, NULL, O_RDONLY, errbuf);
   if (NULL == kd) {
@@ -90,7 +89,7 @@ void find_childs_for_process(int pid,
 
 namespace wnd::utils {
 ProcessTree::Process ProcessTree::get_tree_for_process(int pid) {
-  if(pid <= 0) return {};
+  if (pid <= 0) return {};
   wnd::utils::ProcessTree::Process head = find_process(pid);
   find_childs_for_process(pid, head.child);
   return head;
