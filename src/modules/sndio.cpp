@@ -117,7 +117,6 @@ auto Sndio::update() -> void {
     label_.set_markup(text);
     label_.show();
   }
-  
 
   ALabel::update();
 }

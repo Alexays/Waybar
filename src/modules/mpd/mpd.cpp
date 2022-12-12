@@ -102,7 +102,6 @@ void waybar::modules::MPD::setLabel() {
     } else {
       label_.hide();
     }
-    
 
     if (tooltipEnabled()) {
       std::string tooltip_format;
