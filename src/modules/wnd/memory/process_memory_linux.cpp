@@ -11,12 +11,6 @@
 
 namespace {
 
-#ifdef _SC_PAGESIZE
-const static int PAGE_SIZE = sysconf(_SC_PAGESIZE);
-#elif _SC_PAGE_SIZE
-const static int PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
-#endif
-
 wnd::Memory get_process_memory(std::string_view pid) {
   std::ifstream stream;
   wnd::Memory info = {0};
@@ -45,6 +39,12 @@ wnd::Memory get_process_memory(std::string_view pid) {
 namespace wnd {
 wnd::Memory ProcessMemory::get_memory_for_process(std::string_view pid) {
   wnd::Memory memory = get_process_memory(pid);
+
+#ifdef _SC_PAGESIZE
+  const static int PAGE_SIZE = sysconf(_SC_PAGESIZE);
+#elif _SC_PAGE_SIZE
+  const static int PAGE_SIZE = sysconf(_SC_PAGE_SIZE);
+#endif
 
   memory.vmSize = memory.vmSize * PAGE_SIZE;
   memory.vmRss = memory.vmRss * PAGE_SIZE;

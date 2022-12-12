@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "modules/wnd/utils/process.hpp"
 
 #ifdef __linux__
@@ -88,8 +90,12 @@ class Processes {
     adapter.name = process.name;
     adapter.pid = process.pid;
     adapter.ppid = process.ppid;
-    adapter.p_cpu = static_cast<float>(process.cpu - process.cpuLast) /
-                    (wnd::system::Cpu::get_cpu_total() - this->cpuLast);
+
+    float p_cpu = static_cast<float>(process.cpu - process.cpuLast) /
+                  (wnd::system::Cpu::get_cpu_total() - this->cpuLast);
+
+    std::cout << adapter.name << "  " << p_cpu << std::endl;
+    adapter.p_cpu = p_cpu > 0 ? p_cpu * 100 : 0.f;
 
     return adapter;
   }
