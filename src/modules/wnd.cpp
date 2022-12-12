@@ -39,7 +39,7 @@ Wnd::Wnd(const std::string& id, const Json::Value& config)
 auto Wnd::update() -> void {
   // Call parent update
   wnd::utils::ProcessTree::Process processTree =
-      wnd::utils::ProcessTree::get_tree_for_process(std::to_string(windowId_));
+      wnd::utils::ProcessTree::get_tree_for_process(windowId_);
   ALabel::label_.set_markup(this->display_.show_head(processTree));
   ALabel::label_.set_tooltip_markup(this->display_.show(processTree));
   ALabel::update();
@@ -60,7 +60,6 @@ void Wnd::onCmd(const struct sway::Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
     std::tie(app_nb_, windowId_, window_) = getFocusedNode(payload["nodes"]);
-    dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
   }

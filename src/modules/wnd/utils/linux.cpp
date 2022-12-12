@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "modules/wnd/utils/process.hpp"
 
 #ifdef __linux__
@@ -94,7 +92,6 @@ class Processes {
     float p_cpu = static_cast<float>(process.cpu - process.cpuLast) /
                   (wnd::system::Cpu::get_cpu_total() - this->cpuLast);
 
-    std::cout << adapter.name << "  " << p_cpu << std::endl;
     adapter.p_cpu = p_cpu > 0 ? p_cpu * 100 : 0.f;
 
     return adapter;
@@ -181,8 +178,9 @@ class Processes {
 static Processes Process = Processes();
 
 namespace wnd::utils {
-ProcessTree::Process ProcessTree::get_tree_for_process(std::string_view pid) {
-  return ::Process.get_tree_for_process(pid);
+ProcessTree::Process ProcessTree::get_tree_for_process(int pid) {
+  if(pid <= 0) return;
+  return ::Process.get_tree_for_process(std::to_string(pid));
 }
 };  // namespace wnd::utils
 

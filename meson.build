@@ -89,7 +89,6 @@ dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gt
 giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled() or get_option('upower_glib').enabled()))
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 sigcpp = dependency('sigc++-2.0')
-libkvm = dependency('libkvm', required: false)
 libinotify = dependency('libinotify', required: false)
 libepoll = dependency('epoll-shim', required: false)
 libinput = dependency('libinput', required: get_option('libinput'))
@@ -115,6 +114,13 @@ if libsndio.found()
         endif
     endif
 endif
+
+if is_freebsd or is_openbsd
+  libkvm = compiler.find_library('kvm')
+else
+  libkvm = dependency('', required: false)
+endif
+
 
 gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
@@ -264,7 +270,7 @@ if dbusmenu_gtk.found()
     )
 endif
 
-if libudev.found() and (is_linux or %libepoll.found())
+if libudev.found() and (is_linux or libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
 endif

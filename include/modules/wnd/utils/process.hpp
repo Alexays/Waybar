@@ -20,6 +20,6 @@ class ProcessTree {
 
     std::vector<Process> child;
   };
-  static Process get_tree_for_process(std::string_view pid);
+  static Process get_tree_for_process(int pid);
 };
 };  // namespace wnd::utils
