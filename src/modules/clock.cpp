@@ -76,13 +76,19 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   }
 
   if (config_["format-calendar-weeks"].isString()) {
-    weeks_format_ =
+    fmt_str_weeks_ =
         std::regex_replace(config_["format-calendar-weeks"].asString(), std::regex("\\{\\}"),
                            (first_day_of_week() == date::Monday) ? "{:%V}" : "{:%U}");
-    weeks_format_left_gaps =
-        std::regex_replace(weeks_format_, std::regex("</?[^>]+>|\\{.*\\}"), "").length();
+    fmt_weeks_left_pad_ =
+        std::regex_replace(fmt_str_weeks_, std::regex("</?[^>]+>|\\{.*\\}"), "").length();
   } else {
-    weeks_format_ = "";
+    fmt_str_weeks_ = "";
+  }
+
+  if (config_["format-calendar"].isString()) {
+    fmt_str_calendar_ = config_["format-calendar"].asString();
+  } else {
+    fmt_str_calendar_ = "{}";
   }
 
   thread_ = [this] {
@@ -206,7 +212,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     if (config_["calendar-weeks-pos"].asString() == "left") {
       weeks_pos = WeeksSide::LEFT;
       // Add paddings before the header
-      os << std::string(3 + weeks_format_left_gaps, ' ');
+      os << std::string(3 + fmt_weeks_left_pad_, ' ');
     } else if (config_["calendar-weeks-pos"].asString() == "right") {
       weeks_pos = WeeksSide::RIGHT;
     }
@@ -221,7 +227,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
 
   /* Print weeknumber on the left for the first row*/
   if (weeks_pos == WeeksSide::LEFT) {
-    os << fmt::format(weeks_format_, print_wd) << ' ';
+    os << fmt::format(fmt_str_weeks_, print_wd) << ' ';
   }
 
   if (empty_days > 0) {
@@ -235,7 +241,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       os << ' ';
     } else if (unsigned(d) != 1) {
       if (weeks_pos == WeeksSide::RIGHT) {
-        os << ' ' << fmt::format(weeks_format_, print_wd);
+        os << ' ' << fmt::format(fmt_str_weeks_, print_wd);
       }
 
       os << '\n';
@@ -243,7 +249,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       print_wd = (ym / d);
 
       if (weeks_pos == WeeksSide::LEFT) {
-        os << fmt::format(weeks_format_, print_wd) << ' ';
+        os << fmt::format(fmt_str_weeks_, print_wd) << ' ';
       }
     }
 
@@ -254,19 +260,18 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
       } else {
         os << "<b><u>" << date::format("%e", d) << "</u></b>";
       }
-    } else if (config_["format-calendar"].isString()) {
-      os << fmt::format(config_["format-calendar"].asString(), date::format("%e", d));
     } else {
-      os << date::format("%e", d);
+      os << fmt::format(fmt_str_calendar_, date::format("%e", d));
     }
     /*Print weeks on the right when the endings with spaces*/
     if (weeks_pos == WeeksSide::RIGHT && d == last_day) {
       empty_days = 6 - (wd.c_encoding() - first_dow.c_encoding());
-      if (empty_days > 0) {
+      if (empty_days > 0 &&
+          empty_days < 7) {
         os << std::string(empty_days * 3, ' ');
       }
 
-      os << ' ' << fmt::format(weeks_format_, print_wd);
+      os << ' ' << fmt::format(fmt_str_weeks_, print_wd);
     }
   }
 
