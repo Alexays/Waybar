@@ -266,8 +266,7 @@ auto waybar::modules::Clock::calendar_text(const waybar_time& wtime) -> std::str
     /*Print weeks on the right when the endings with spaces*/
     if (weeks_pos == WeeksSide::RIGHT && d == last_day) {
       empty_days = 6 - (wd.c_encoding() - first_dow.c_encoding());
-      if (empty_days > 0 &&
-          empty_days < 7) {
+      if (empty_days > 0 && empty_days < 7) {
         os << std::string(empty_days * 3, ' ');
       }
 
