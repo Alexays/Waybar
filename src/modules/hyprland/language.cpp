@@ -79,16 +79,26 @@ void Language::onEvent(const std::string& ev) {
 void Language::initLanguage() {
   const auto INPUTDEVICES = gIPC->getSocket1Reply("devices");
 
-  if (!config_.isMember("keyboard-name")) return;
-
   const auto KEEBNAME = config_["keyboard-name"].asString();
 
   try {
-    auto searcher = INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
-    searcher = searcher.substr(searcher.find("keymap:") + 7);
+    auto searcher = KEEBNAME.empty() ? INPUTDEVICES : INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
+    searcher = searcher.substr(searcher.find("keymap:") + 8);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 
-    layoutName_ = searcher;
+    auto layoutName = std::string{};
+    const auto BRIEFNAME = getShortFrom(searcher);
+
+    if (config_.isMember("format-" + BRIEFNAME)) {
+      const auto PROPNAME = "format-" + BRIEFNAME;
+      layoutName = fmt::format(format_, config_[PROPNAME].asString());
+    } else {
+      layoutName = fmt::format(format_, searcher);
+    }
+
+    layoutName = waybar::util::sanitize_string(layoutName);
+
+    layoutName_ = layoutName;
 
     spdlog::debug("hyprland language initLanguage found {}", layoutName_);
 
