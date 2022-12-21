@@ -11,6 +11,7 @@
 #include "modules/sway/mode.hpp"
 #include "modules/sway/scratchpad.hpp"
 #include "modules/sway/window.hpp"
+#include "modules/sway/windows.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
 #ifdef HAVE_WLR

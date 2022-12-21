@@ -32,6 +32,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "sway/window") {
       return new waybar::modules::sway::Window(id, bar_, config_[name]);
     }
+    if (ref == "sway/windows") {
+      return new waybar::modules::sway::Windows(id, bar_, config_[name]);
+    }
     if (ref == "sway/language") {
       return new waybar::modules::sway::Language(id, config_[name]);
     }
