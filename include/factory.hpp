@@ -39,6 +39,7 @@
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
 #include "modules/cpu.hpp"
 #include "modules/cpu_frequency.hpp"
+#include "modules/cpu_usage.hpp"
 #include "modules/load.hpp"
 #endif
 #include "modules/idle_inhibitor.hpp"

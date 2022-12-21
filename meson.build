@@ -192,6 +192,8 @@ if is_linux
         'src/modules/cpu/linux.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_frequency/linux.cpp',
+        'src/modules/cpu_usage/common.cpp',
+        'src/modules/cpu_usage/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
     )
@@ -201,6 +203,8 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     src_files += files(
         'src/modules/cpu/bsd.cpp',
         'src/modules/cpu/common.cpp',
+        'src/modules/cpu_usage/bsd.cpp',
+        'src/modules/cpu_usage/common.cpp',
         'src/modules/memory/bsd.cpp',
         'src/modules/memory/common.cpp',
     )
