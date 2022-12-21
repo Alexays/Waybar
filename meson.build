@@ -190,6 +190,8 @@ if is_linux
         'src/modules/battery.cpp',
         'src/modules/cpu/common.cpp',
         'src/modules/cpu/linux.cpp',
+        'src/modules/cpu_frequency/common.cpp',
+        'src/modules/cpu_frequency/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
     )
