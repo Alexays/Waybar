@@ -23,7 +23,7 @@ Addressed by *hyprland/language*
 
 *keyboard-name*: ++
     typeof: string ++
-    Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "AT Translated set..." is recommended.
+    Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
 
 
 
@@ -32,9 +32,9 @@ Addressed by *hyprland/language*
 ```
 "hyprland/language": {
     "format": "Lang: {}"
-    "format-us": "AMERICA, HELL YEAH!" // For American English
-    "format-tr": "As bayrakları" // For Turkish
-    "keyboard-name": "AT Translated Set 2 keyboard"
+    "format-en": "AMERICA, HELL YEAH!"
+    "format-tr": "As bayrakları"
+    "keyboard-name": "at-translated-set-2-keyboard"
 }
 ```
 
