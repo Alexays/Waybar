@@ -67,6 +67,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "hyprland/language") {
       return new waybar::modules::hyprland::Language(id, bar_, config_[name]);
     }
+    if (ref == "hyprland/submap") {
+      return new waybar::modules::hyprland::Submap(id, bar_, config_[name]);
+    }
 #endif
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
