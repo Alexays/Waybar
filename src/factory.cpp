@@ -99,6 +99,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);
     }
+    if (ref == "load") {
+      return new waybar::modules::Load(id, config_[name]);
+    }
 #endif
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
