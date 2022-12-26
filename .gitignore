@@ -2,6 +2,7 @@
 *~
 vgcore.*
 /.vscode
+/.cache
 *.swp
 packagecache
 /subprojects/**/
