@@ -225,12 +225,12 @@ auto waybar::modules::Wireplumber::update() -> void {
   auto format = config_["format"].isString() ? config_["format"].asString() : format_;
   std::string sinkformat =
       fmt::format(config_["format-sink"].isString() ? config_["format-sink"].asString()
-                                                    : fmt::format("{}", sinkvolume_),
+                                                    : std::string("OUT: {volume}%"),
                   fmt::arg("volume", sinkvolume_), fmt::arg("sinknode_name", sinknode_name_),
                   fmt::arg("sourcenode_name", sourcenode_name_));
   std::string sourceformat =
       fmt::format(config_["format-source"].isString() ? config_["format-source"].asString()
-                                                      : fmt::format("{}", sourcevolume_),
+                                                      : std::string("IN: {volume}%"),
                   fmt::arg("volume", sourcevolume_), fmt::arg("sinknode_name", sinknode_name_),
                   fmt::arg("sourcenode_name", sourcenode_name_));
 
