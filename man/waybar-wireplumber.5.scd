@@ -33,6 +33,14 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
     typeof: string ++
     This format is used when the source node is muted.
 
+*sinknode-id*: ++
+    typeof: integer ++
+    Force ID of the sink node
+
+*sourcenode-id*: ++
+    typeof: integer ++
+    Force ID of the source node
+
 *tooltip*: ++
     typeof: bool ++
     default: *true* ++
