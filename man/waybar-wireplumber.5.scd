@@ -103,7 +103,7 @@ Only in *{format}*:
 
 ```
 "wireplumber": {
-    "format": "{format-sink} {format-source}",
+    "format": "{format_sink} {format_source}",
     "format-sink": "OUT: {volume}%",
     "format-sink-muted": "OUT: MUTED",
     "format-source": "IN: {volume}%",
