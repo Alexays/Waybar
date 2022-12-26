@@ -1,7 +1,7 @@
 #include "modules/wireplumber.hpp"
 
 waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config)
-    : ALabel(config, "wireplumber", id, "{sinkvolume}% {sourcevolume}%"),
+    : ALabel(config, "wireplumber", id, "{format_sink} {format_source}"),
       wp_core_(nullptr),
       apis_(nullptr),
       om_(nullptr),
@@ -222,26 +222,38 @@ void waybar::modules::Wireplumber::loadRequiredApiModules() {
 }
 
 auto waybar::modules::Wireplumber::update() -> void {
-  auto format = format_;
+  auto format = config_["format"].isString() ? config_["format"].asString() : format_;
+  std::string sinkformat =
+      fmt::format(config_["format-sink"].isString() ? config_["format-sink"].asString()
+                                                    : fmt::format("{}", sinkvolume_),
+                  fmt::arg("volume", sinkvolume_), fmt::arg("sinknode_name", sinknode_name_),
+                  fmt::arg("sourcenode_name", sourcenode_name_));
+  std::string sourceformat =
+      fmt::format(config_["format-source"].isString() ? config_["format-source"].asString()
+                                                      : fmt::format("{}", sourcevolume_),
+                  fmt::arg("volume", sourcevolume_), fmt::arg("sinknode_name", sinknode_name_),
+                  fmt::arg("sourcenode_name", sourcenode_name_));
+
   std::string tooltip_format;
 
   if (sinkmuted_) {
-    format = config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
+    if (config_["format-sink-muted"].isString()) {
+      sinkformat = config_["format-sink-muted"].asString();
+    }
     label_.get_style_context()->add_class("sinkmuted");
   } else {
     label_.get_style_context()->remove_class("sinkmuted");
   }
   if (sourcemuted_) {
-    format = config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
+    if (config_["format-source-muted"].isString()) {
+      sourceformat = config_["format-source-muted"].asString();
+    }
     label_.get_style_context()->add_class("sourcemuted");
   } else {
     label_.get_style_context()->remove_class("sourcemuted");
   }
-
-  std::string markup =
-      fmt::format(format, fmt::arg("sinknode_name", sinknode_name_),
-                  fmt::arg("sourcenode_name", sourcenode_name_),
-                  fmt::arg("sinkvolume", sinkvolume_), fmt::arg("sourcevolume", sourcevolume_));
+  std::string markup = fmt::format(format, fmt::arg("format_sink", sinkformat),
+                                   fmt::arg("format_source", sourceformat));
   label_.set_markup(markup);
 
   getState(sinkvolume_);
@@ -255,10 +267,10 @@ auto waybar::modules::Wireplumber::update() -> void {
     if (!tooltip_format.empty()) {
       label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("sinknode_name", sinknode_name_),
                                           fmt::arg("sourcenode_name", sourcenode_name_),
-                                          fmt::arg("sinkvolume", sinkvolume_),
-                                          fmt::arg("sourcevolume", sourcevolume_)));
+                                          fmt::arg("sinkvolume", sinkformat),
+                                          fmt::arg("sourcevolume", sourceformat)));
     } else {
-      label_.set_tooltip_text(sinknode_name_);
+      label_.set_tooltip_text(fmt::format("Sink: {} Source: {}", sinknode_name_, sourcenode_name_));
     }
   }
 
