@@ -49,9 +49,8 @@ auto Language::update() -> void {
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  auto layoutName = ev.substr(ev.find_last_of(',') + 1);
-  auto kbName = ev.substr(0, ev.find_last_of(','));
-  kbName = kbName.substr(kbName.find_first_of('>') + 2);
+  auto kbName = ev.substr(ev.find_last_of('>') + 1, ev.find_first_of(','));
+  auto layoutName = ev.substr(ev.find_first_of(',') + 1);
 
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
