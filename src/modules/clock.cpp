@@ -66,6 +66,11 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     if (config_["on-scroll"][kCalendarPlaceholder].isInt()) {
       calendar_shift_init_ =
           date::months{config_["on-scroll"].get(kCalendarPlaceholder, 0).asInt()};
+      event_box_.add_events(Gdk::LEAVE_NOTIFY_MASK);
+      event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
+        calendar_shift_ = date::months{0};
+        return false;
+      });
     }
   }
 
@@ -113,8 +118,14 @@ bool waybar::modules::Clock::is_timezone_fixed() {
 auto waybar::modules::Clock::update() -> void {
   auto time_zone = current_timezone();
   auto now = std::chrono::system_clock::now();
-  waybar_time wtime = {locale_, date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now) +
-                                                                calendar_shift_)};
+  waybar_time wtime = {locale_,
+                       date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now))};
+
+  auto shifted_date = date::year_month_day{date::floor<date::days>(now)} + calendar_shift_;
+  auto now_shifted = date::sys_days{shifted_date} + (now - date::floor<date::days>(now));
+  waybar_time shifted_wtime = {
+      locale_, date::make_zoned(time_zone, date::floor<std::chrono::seconds>(now_shifted))};
+
   std::string text = "";
   if (!is_timezone_fixed()) {
     // As date dep is not fully compatible, prefer fmt
@@ -131,15 +142,15 @@ auto waybar::modules::Clock::update() -> void {
       std::string calendar_lines{""};
       std::string timezoned_time_lines{""};
       if (is_calendar_in_tooltip_) {
-        calendar_lines = calendar_text(wtime);
+        calendar_lines = calendar_text(shifted_wtime);
       }
       if (is_timezoned_list_in_tooltip_) {
         timezoned_time_lines = timezones_text(&now);
       }
       auto tooltip_format = config_["tooltip-format"].asString();
-      text =
-          fmt::format(tooltip_format, wtime, fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines),
-                      fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
+      text = fmt::format(tooltip_format, shifted_wtime,
+                         fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines),
+                         fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
       label_.set_tooltip_markup(text);
     }
   }
