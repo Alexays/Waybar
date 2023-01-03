@@ -115,6 +115,13 @@ if libsndio.found()
     endif
 endif
 
+if is_freebsd or is_openbsd
+  libkvm = compiler.find_library('kvm')
+else
+  libkvm = dependency('', required: false)
+endif
+
+
 gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
@@ -269,6 +276,24 @@ if libudev.found() and (is_linux or libepoll.found())
     src_files += 'src/modules/backlight.cpp'
 endif
 
+if (is_freebsd or is_openbsd) and libkvm.found()
+    add_project_arguments('-DHAVE_LIBKVM', language: 'cpp')
+    src_files += [
+      'src/modules/wnd.cpp',
+      'src/modules/wnd/utils/bsd.cpp',
+      'src/modules/wnd/display/display.cpp',
+    ]
+elif is_linux
+    src_files += [
+      'src/modules/wnd.cpp',
+      'src/modules/wnd/cpu/process_cpu_linux.cpp',
+      'src/modules/wnd/system/cpu.cpp',
+      'src/modules/wnd/memory/process_memory_linux.cpp',
+      'src/modules/wnd/utils/linux.cpp',
+      'src/modules/wnd/display/display.cpp',
+    ]
+endif
+
 if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
     add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
     add_project_arguments('-DHAVE_LIBINPUT', language: 'cpp')
@@ -339,6 +364,7 @@ executable(
         libjack,
         libwireplumber,
         libudev,
+        libkvm,
         libinotify,
         libepoll,
         libmpdclient,
