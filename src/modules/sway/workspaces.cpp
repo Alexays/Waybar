@@ -131,7 +131,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         // unnumbered workspaces behind numbered ones when computing the sort
         // attribute.
         //
-        // Note: if the 'alphabetical_sort' option is true, the user is in 
+        // Note: if the 'alphabetical_sort' option is true, the user is in
         // agreement that the "workspace prev/next" commands may not follow
         // the order displayed in Waybar.
         int max_num = -1;

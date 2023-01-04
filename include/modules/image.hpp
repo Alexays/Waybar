@@ -23,10 +23,10 @@ class Image : public AModule {
   void delayWorker();
   void handleEvent();
 
-  Gtk::Image  image_;
+  Gtk::Image image_;
   std::string path_;
-  int         size_;
-  int         interval_;
+  int size_;
+  int interval_;
 
   util::SleeperThread thread_;
 };

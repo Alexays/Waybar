@@ -1,4 +1,5 @@
 #include <fmt/format.h>
+
 #include "ALabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
