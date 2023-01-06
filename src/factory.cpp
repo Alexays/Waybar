@@ -22,6 +22,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::upower::UPower(id, config_[name]);
     }
 #endif
+#ifdef HAVE_MPRIS
+    if (ref == "mpris") {
+      return new waybar::modules::mpris::Mpris(id, config_[name]);
+    }
+#endif
 #ifdef HAVE_SWAY
     if (ref == "sway/mode") {
       return new waybar::modules::sway::Mode(id, config_[name]);

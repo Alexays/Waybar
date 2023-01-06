@@ -42,6 +42,9 @@
 #ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"
 #endif
+#ifdef HAVE_MPRIS
+#include "modules/mpris/mpris.hpp"
+#endif
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
 #endif
