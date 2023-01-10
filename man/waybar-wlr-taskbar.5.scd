@@ -52,6 +52,11 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, always reorder the tasks in the taskbar so that the currently active one is first. Otherwise don't reorder.
 
+*sort-by-app-id*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
+
 *on-click*: ++
 	typeof: string ++
 	The action which should be triggered when clicking on the application button with the left mouse button.
