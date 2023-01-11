@@ -102,8 +102,11 @@ Glib::RefPtr<Gio::DesktopAppInfo> get_desktop_app_info(const std::string &app_id
         desktop_file = desktop_list[0][i];
       } else {
         auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
-        auto startup_class = tmp_info->get_startup_wm_class();
+        if (!tmp_info)
+          // see https://github.com/Alexays/Waybar/issues/1446
+          continue;
 
+        auto startup_class = tmp_info->get_startup_wm_class();
         if (startup_class == app_id) {
           desktop_file = desktop_list[0][i];
           break;
