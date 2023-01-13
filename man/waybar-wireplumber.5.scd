@@ -12,12 +12,34 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *format*: ++
     typeof: string ++
-    default: *{volume}%* ++
+    default: *{format_sink} {format_source}* ++
     The format, how information should be displayed. This format is used when other formats aren't specified.
 
- *format-muted*: ++
+ *format-sink*: ++
     typeof: string ++
-    This format is used when the sound is muted.
+    default: *OUT: {volume}%* ++
+    This format is used when the sink node is not muted.
+
+ *format-source*: ++
+    typeof: string ++
+    default: *IN: {volume}%* ++
+    This format is used when the source node is not muted.
+
+ *format-sink-muted*: ++
+    typeof: string ++
+    This format is used when the sink node is muted.
+
+ *format-source-muted*: ++
+    typeof: string ++
+    This format is used when the source node is muted.
+
+*sinknode-id*: ++
+    typeof: integer ++
+    Force ID of the sink node
+
+*sourcenode-id*: ++
+    typeof: integer ++
+    Force ID of the source node
 
 *tooltip*: ++
     typeof: bool ++
@@ -26,7 +48,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *tooltip-format*: ++
     typeof: string ++
-    default: *{node_name}* ++
+    default: *Sink: {sinknode_name} Source: {sourcenode_name}* ++
     The format of information displayed in the tooltip.
 
 *rotate*: ++
@@ -69,19 +91,30 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *{volume}*: Volume in percentage.
 
-*{node_name}*: The node's nickname as reported by WirePlumber (*node.nick* property)
+*{sinknode_name}*: The sink node's nickname as reported by WirePlumber (*node.nick* property)
+
+*{sourcenode_name}*: The source node's nickname as reported by WirePlumber (*node.nick* property)
+
+Only in *{format}*:
+	*{format_sink}*: Represents the field *format-sink* in config
+	*{format_source}*: Represents the field *format-source* in config
 
 # EXAMPLES
 
 ```
 "wireplumber": {
-    "format": "{volume}%",
-    "format-muted": "",
-    "on-click": "helvum"
-}
+    "format": "{format_sink} {format_source}",
+    "format-sink": "OUT: {volume}%",
+    "format-sink-muted": "OUT: MUTED",
+    "format-source": "IN: {volume}%",
+    "format-source-muted": "IN: MUTED",
+    "tooltip": true,
+    "on-click": "qpwgraph",
+},
 ```
 
 # STYLE
 
 - *#wireplumber*
-- *#wireplumber.muted*
+- *#wireplumber.sinkmuted*
+- *#wireplumber.sourcemuted*

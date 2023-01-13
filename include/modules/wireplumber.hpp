@@ -20,9 +20,12 @@ class Wireplumber : public ALabel {
   void loadRequiredApiModules();
   void prepare();
   void activatePlugins();
-  static void updateVolume(waybar::modules::Wireplumber* self);
-  static void updateNodeName(waybar::modules::Wireplumber* self);
-  static uint32_t getDefaultNodeId(waybar::modules::Wireplumber* self);
+  static void updateSinkVolume(waybar::modules::Wireplumber* self);
+  static void updateSourceVolume(waybar::modules::Wireplumber* self);
+  static void updateSinkNodeName(waybar::modules::Wireplumber* self);
+  static void updateSourceNodeName(waybar::modules::Wireplumber* self);
+  static uint32_t getDefaultSinkNodeId(waybar::modules::Wireplumber* self);
+  static uint32_t getDefaultSourceNodeId(waybar::modules::Wireplumber* self);
   static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
   static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
 
@@ -30,10 +33,14 @@ class Wireplumber : public ALabel {
   GPtrArray* apis_;
   WpObjectManager* om_;
   uint32_t pending_plugins_;
-  bool muted_;
-  double volume_;
-  uint32_t node_id_{0};
-  std::string node_name_;
+  bool sinkmuted_;
+  double sinkvolume_;
+  uint32_t sinknode_id_{0};
+  bool sourcemuted_;
+  double sourcevolume_;
+  uint32_t sourcenode_id_{0};
+  std::string sinknode_name_;
+  std::string sourcenode_name_;
 };
 
 }  // namespace waybar::modules
