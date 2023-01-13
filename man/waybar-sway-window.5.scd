@@ -136,7 +136,7 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 # STYLE
 
 - *#window*
-- *window#waybar.empty* When no windows are in the workspace, or screen is not focused and offscreen-text option is not set
+- *window#waybar.empty* When no windows are in the workspace, or screen is not focused and offscreen-css option is not set
 - *window#waybar.solo* When one tiled window is in the workspace
 - *window#waybar.floating* When there are only floating windows in the workspace
 - *window#waybar.stacked* When there is more than one window in the workspace and the workspace layout is stacked
