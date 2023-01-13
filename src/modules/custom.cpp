@@ -209,8 +209,8 @@ void waybar::modules::Custom::parseOutputJson() {
         class_.push_back(c.asString());
       }
     }
-    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
-      percentage_ = parsed["percentage"].asUInt();
+    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
+      percentage_ = (int) lround(parsed["percentage"].asFloat());
     } else {
       percentage_ = 0;
     }
