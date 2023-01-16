@@ -278,7 +278,7 @@ auto waybar::modules::KeyboardState::update() -> void {
   };
   for (auto& label_state : label_states) {
     std::string text;
-    text = fmt::format(label_state.format,
+    text = fmt::format(fmt::runtime(label_state.format),
                        fmt::arg("icon", label_state.state ? icon_locked_ : icon_unlocked_),
                        fmt::arg("name", label_state.name));
     label_state.label.set_markup(text);

@@ -4,6 +4,7 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 
+#include <string_view>
 #include <unordered_map>
 
 #include "AModule.hpp"
@@ -21,7 +22,9 @@ class Workspaces : public AModule, public sigc::trackable {
   auto update() -> void;
 
  private:
-  static inline const std::string workspace_switch_cmd_ = "workspace {} \"{}\"";
+  static constexpr std::string_view workspace_switch_cmd_ = "workspace {} \"{}\"";
+  static constexpr std::string_view persistent_workspace_switch_cmd_ =
+      R"(workspace {} "{}"; move workspace to output "{}"; workspace {} "{}")";
 
   static int convertWorkspaceNameToNum(std::string name);
 

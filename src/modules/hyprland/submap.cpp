@@ -34,7 +34,7 @@ auto Submap::update() -> void {
   if (submap_.empty()) {
     event_box_.hide();
   } else {
-    label_.set_markup(fmt::format(format_, submap_));
+    label_.set_markup(fmt::format(fmt::runtime(format_), submap_));
     if (tooltipEnabled()) {
       label_.set_tooltip_text(submap_);
     }

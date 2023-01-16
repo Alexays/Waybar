@@ -378,10 +378,10 @@ auto Mpris::update() -> void {
       break;
   }
   auto label_format =
-      fmt::format(formatstr, fmt::arg("player", info.name), fmt::arg("status", info.status_string),
-                  fmt::arg("artist", *info.artist), fmt::arg("title", *info.title),
-                  fmt::arg("album", *info.album), fmt::arg("length", *info.length),
-                  fmt::arg("dynamic", dynamic.str()),
+      fmt::format(fmt::runtime(formatstr), fmt::arg("player", info.name),
+                  fmt::arg("status", info.status_string), fmt::arg("artist", *info.artist),
+                  fmt::arg("title", *info.title), fmt::arg("album", *info.album),
+                  fmt::arg("length", *info.length), fmt::arg("dynamic", dynamic.str()),
                   fmt::arg("player_icon", getIcon(config_["player-icons"], info.name)),
                   fmt::arg("status_icon", getIcon(config_["status-icons"], info.status_string)));
   label_.set_markup(label_format);

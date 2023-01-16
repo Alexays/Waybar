@@ -121,9 +121,9 @@ auto waybar::modules::Clock::update() -> void {
     // As date dep is not fully compatible, prefer fmt
     tzset();
     auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
-    text = fmt::format(locale_, format_, localtime);
+    text = fmt::format(locale_, fmt::runtime(format_), localtime);
   } else {
-    text = fmt::format(locale_, format_, ztime);
+    text = fmt::format(locale_, fmt::runtime(format_), ztime);
   }
   label_.set_markup(text);
 
@@ -138,7 +138,7 @@ auto waybar::modules::Clock::update() -> void {
         timezoned_time_lines = timezones_text(&now);
       }
       auto tooltip_format = config_["tooltip-format"].asString();
-      text = fmt::format(locale_, tooltip_format, shifted_ztime,
+      text = fmt::format(locale_, fmt::runtime(tooltip_format), shifted_ztime,
                          fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines),
                          fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
       label_.set_tooltip_markup(text);
@@ -228,7 +228,7 @@ auto waybar::modules::Clock::calendar_text(const date::zoned_seconds& ztime) -> 
 
   /* Print weeknumber on the left for the first row*/
   if (weeks_pos == WeeksSide::LEFT) {
-    os << fmt::format(fmt_str_weeks_, print_wd) << ' ';
+    os << fmt::format(fmt::runtime(fmt_str_weeks_), print_wd) << ' ';
   }
 
   if (empty_days > 0) {
@@ -242,7 +242,7 @@ auto waybar::modules::Clock::calendar_text(const date::zoned_seconds& ztime) -> 
       os << ' ';
     } else if (unsigned(d) != 1) {
       if (weeks_pos == WeeksSide::RIGHT) {
-        os << ' ' << fmt::format(fmt_str_weeks_, print_wd);
+        os << ' ' << fmt::format(fmt::runtime(fmt_str_weeks_), print_wd);
       }
 
       os << '\n';
@@ -250,19 +250,19 @@ auto waybar::modules::Clock::calendar_text(const date::zoned_seconds& ztime) -> 
       print_wd = (ym / d);
 
       if (weeks_pos == WeeksSide::LEFT) {
-        os << fmt::format(fmt_str_weeks_, print_wd) << ' ';
+        os << fmt::format(fmt::runtime(fmt_str_weeks_), print_wd) << ' ';
       }
     }
 
     if (d == curr_day) {
       if (config_["today-format"].isString()) {
         auto today_format = config_["today-format"].asString();
-        os << fmt::format(today_format, date::format("%e", d));
+        os << fmt::format(fmt::runtime(today_format), date::format("%e", d));
       } else {
         os << "<b><u>" << date::format("%e", d) << "</u></b>";
       }
     } else {
-      os << fmt::format(fmt_str_calendar_, date::format("%e", d));
+      os << fmt::format(fmt::runtime(fmt_str_calendar_), date::format("%e", d));
     }
     /*Print weeks on the right when the endings with spaces*/
     if (weeks_pos == WeeksSide::RIGHT && d == last_day) {
@@ -271,7 +271,7 @@ auto waybar::modules::Clock::calendar_text(const date::zoned_seconds& ztime) -> 
         os << std::string(empty_days * 3, ' ');
       }
 
-      os << ' ' << fmt::format(fmt_str_weeks_, print_wd);
+      os << ' ' << fmt::format(fmt::runtime(fmt_str_weeks_), print_wd);
     }
   }
 
@@ -303,7 +303,8 @@ auto waybar::modules::Clock::weekdays_header(const date::weekday& first_week_day
   res << '\n';
 
   if (config_["format-calendar-weekdays"].isString()) {
-    os << fmt::format(config_["format-calendar-weekdays"].asString(), res.str());
+    auto weekdays_format = config_["format-calendar-weekdays"].asString();
+    os << fmt::format(fmt::runtime(weekdays_format), res.str());
   } else
     os << res.str();
 }
@@ -323,7 +324,7 @@ auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_poin
       timezone = date::current_zone();
     }
     auto ztime = date::zoned_time{timezone, date::floor<std::chrono::seconds>(*now)};
-    os << fmt::format(locale_, format_, ztime) << '\n';
+    os << fmt::format(locale_, fmt::runtime(format_), ztime) << '\n';
   }
   return os.str();
 }
