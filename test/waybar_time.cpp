@@ -3,7 +3,12 @@
 #include <date/date.h>
 #include <date/tz.h>
 
-#include <catch2/catch_all.hpp>
+#if __has_include(<catch2/catch_test_macros.hpp>)
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_all.hpp>
+#else
+#include <catch2/catch.hpp>
+#endif
 #include <chrono>
 #include <stdexcept>
 
