@@ -5,11 +5,7 @@
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar {
-
-struct waybar_time;
-
-namespace modules {
+namespace waybar::modules {
 
 const std::string kCalendarPlaceholder = "calendar";
 const std::string KTimezonedTimeListPlaceholder = "timezoned_time_list";
@@ -36,12 +32,11 @@ class Clock : public ALabel {
   std::string fmt_str_weeks_;
   std::string fmt_str_calendar_;
   int fmt_weeks_left_pad_{0};
-  auto calendar_text(const waybar_time& wtime) -> std::string;
+  auto calendar_text(const date::zoned_seconds& ztime) -> std::string;
   auto weekdays_header(const date::weekday& first_dow, std::ostream& os) -> void;
   auto first_day_of_week() -> date::weekday;
   const date::time_zone* current_timezone();
   bool is_timezone_fixed();
   auto timezones_text(std::chrono::system_clock::time_point* now) -> std::string;
 };
-}  // namespace modules
-}  // namespace waybar
+}  // namespace waybar::modules
