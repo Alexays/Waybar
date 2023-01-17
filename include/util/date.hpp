@@ -1,7 +1,33 @@
 #pragma once
 
-#include <date/tz.h>
 #include <fmt/format.h>
+
+#if HAVE_CHRONO_TIMEZONES
+#include <chrono>
+#include <format>
+
+/* Compatibility layer for <date/tz.h> on top of C++20 <chrono> */
+namespace date {
+
+using namespace std::chrono;
+
+namespace literals {
+using std::chrono::last;
+}
+
+inline auto format(const std::string& spec, const auto& ztime) {
+  return spec.empty() ? "" : std::vformat("{:L" + spec + "}", std::make_format_args(ztime));
+}
+
+inline auto format(const std::locale& loc, const std::string& spec, const auto& ztime) {
+  return spec.empty() ? "" : std::vformat(loc, "{:L" + spec + "}", std::make_format_args(ztime));
+}
+
+}  // namespace date
+
+#else
+#include <date/tz.h>
+#endif
 
 template <typename Duration, typename TimeZonePtr>
 struct fmt::formatter<date::zoned_time<Duration, TimeZonePtr>> {

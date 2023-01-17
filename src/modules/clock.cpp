@@ -9,7 +9,6 @@
 #include <sstream>
 #include <type_traits>
 
-#include "util/date.hpp"
 #include "util/ustring_clen.hpp"
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>

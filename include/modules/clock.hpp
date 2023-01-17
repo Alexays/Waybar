@@ -1,8 +1,7 @@
 #pragma once
 
-#include <date/tz.h>
-
 #include "ALabel.hpp"
+#include "util/date.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
