@@ -9,7 +9,7 @@ jobs:
     # https://github.com/actions/virtual-environments/issues/4060 - for lack of VirtualBox on MacOS 11 runners
     runs-on: macos-12
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Test in FreeBSD VM
       uses: vmactions/freebsd-vm@v0
       with:
