@@ -41,12 +41,6 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     time_zones_.push_back(nullptr);
   }
 
-  if (!is_timezone_fixed()) {
-    spdlog::warn(
-        "As using a timezone, some format args may be missing as the date library haven't got a "
-        "release since 2018.");
-  }
-
   // Check if a particular placeholder is present in the tooltip format, to know what to calculate
   // on update.
   if (config_["tooltip-format"].isString()) {
