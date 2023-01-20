@@ -19,6 +19,7 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
 
   // register for hyprland ipc
   gIPC->registerForIPC("submap", this);
+  dp.emit();
 }
 
 Submap::~Submap() {
