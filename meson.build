@@ -395,6 +395,7 @@ if scdoc.found()
         'waybar-disk.5.scd',
         'waybar-gamemode.5.scd',
         'waybar-idle-inhibitor.5.scd',
+        'waybar-image.5.scd',
         'waybar-keyboard-state.5.scd',
         'waybar-memory.5.scd',
         'waybar-mpd.5.scd',
