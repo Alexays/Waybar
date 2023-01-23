@@ -364,8 +364,8 @@ auto getCalendarLine(date::year_month_day const currDate, date::year_month const
   return res.str();
 }
 
-auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now, const date::zoned_seconds& wtime)
-    -> std::string {
+auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
+                                          const date::zoned_seconds& wtime) -> std::string {
   auto daypoint = date::floor<date::days>(wtime.get_local_time());
   const auto ymd{date::year_month_day{daypoint}};
   const auto ym{ymd.year() / ymd.month()};
