@@ -604,7 +604,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
     format = config_["format-time"].asString();
   }
   std::string zero_pad_minutes = fmt::format("{:02d}", minutes);
-  return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes),
+  return fmt::format(fmt::runtime(format), fmt::arg("H", full_hours), fmt::arg("M", minutes),
                      fmt::arg("m", zero_pad_minutes));
 }
 
@@ -644,7 +644,8 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("timeTo", tooltip_text_default),
+    label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
+                                        fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("power", power), fmt::arg("capacity", capacity),
                                         fmt::arg("time", time_remaining_formatted)));
   }
@@ -665,9 +666,9 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    label_.set_markup(fmt::format(format, fmt::arg("capacity", capacity), fmt::arg("power", power),
-                                  fmt::arg("icon", getIcon(capacity, icons)),
-                                  fmt::arg("time", time_remaining_formatted)));
+    label_.set_markup(fmt::format(
+        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
+        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted)));
   }
   // Call parent update
   ALabel::update();

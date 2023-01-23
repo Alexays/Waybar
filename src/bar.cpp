@@ -725,10 +725,7 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
 
 void waybar::Bar::handleSignal(int signal) {
   for (auto& module : modules_all_) {
-    auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
-    if (custom != nullptr) {
-      custom->refresh(signal);
-    }
+    module->refresh(signal);
   }
 }
 

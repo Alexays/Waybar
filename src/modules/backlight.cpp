@@ -48,13 +48,13 @@ struct UdevMonitorDeleter {
 
 void check_eq(int rc, int expected, const char *message = "eq, rc was: ") {
   if (rc != expected) {
-    throw std::runtime_error(fmt::format(message, rc));
+    throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
 void check_neq(int rc, int bad_rc, const char *message = "neq, rc was: ") {
   if (rc == bad_rc) {
-    throw std::runtime_error(fmt::format(message, rc));
+    throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
@@ -62,7 +62,7 @@ void check0(int rc, const char *message = "rc wasn't 0") { check_eq(rc, 0, messa
 
 void check_gte(int rc, int gte, const char *message = "rc was: ") {
   if (rc < gte) {
-    throw std::runtime_error(fmt::format(message, rc));
+    throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
@@ -181,7 +181,8 @@ auto waybar::modules::Backlight::update() -> void {
       event_box_.show();
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-      label_.set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
+      label_.set_markup(fmt::format(fmt::runtime(format_),
+                                    fmt::arg("percent", std::to_string(percent)),
                                     fmt::arg("icon", getIcon(percent))));
       getState(percent);
     } else {

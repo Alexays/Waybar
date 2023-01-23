@@ -127,16 +127,16 @@ auto User::update() -> void {
   auto startSystemTime = currentSystemTime - workSystemTimeSeconds;
   long workSystemDays = uptimeSeconds / 86400;
 
-  auto label = fmt::format(ALabel::format_, fmt::arg("up_H", fmt::format("{:%H}", startSystemTime)),
-                           fmt::arg("up_M", fmt::format("{:%M}", startSystemTime)),
-                           fmt::arg("up_d", fmt::format("{:%d}", startSystemTime)),
-                           fmt::arg("up_m", fmt::format("{:%m}", startSystemTime)),
-                           fmt::arg("up_Y", fmt::format("{:%Y}", startSystemTime)),
-                           fmt::arg("work_d", workSystemDays),
-                           fmt::arg("work_H", fmt::format("{:%H}", workSystemTimeSeconds)),
-                           fmt::arg("work_M", fmt::format("{:%M}", workSystemTimeSeconds)),
-                           fmt::arg("work_S", fmt::format("{:%S}", workSystemTimeSeconds)),
-                           fmt::arg("user", systemUser));
+  auto label = fmt::format(
+      fmt::runtime(ALabel::format_), fmt::arg("up_H", fmt::format("{:%H}", startSystemTime)),
+      fmt::arg("up_M", fmt::format("{:%M}", startSystemTime)),
+      fmt::arg("up_d", fmt::format("{:%d}", startSystemTime)),
+      fmt::arg("up_m", fmt::format("{:%m}", startSystemTime)),
+      fmt::arg("up_Y", fmt::format("{:%Y}", startSystemTime)), fmt::arg("work_d", workSystemDays),
+      fmt::arg("work_H", fmt::format("{:%H}", workSystemTimeSeconds)),
+      fmt::arg("work_M", fmt::format("{:%M}", workSystemTimeSeconds)),
+      fmt::arg("work_S", fmt::format("{:%S}", workSystemTimeSeconds)),
+      fmt::arg("user", systemUser));
   ALabel::label_.set_markup(label);
   AIconLabel::update();
 }

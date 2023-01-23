@@ -8,6 +8,7 @@
 #include <cstring>
 #include <memory>
 #include <mutex>
+#include <string>
 
 #include "ipc.hpp"
 #include "util/sleeper_thread.hpp"

@@ -103,7 +103,7 @@ void Mode::handle_mode(const char *mode) {
     }
 
     label_.get_style_context()->add_class(mode);
-    label_.set_markup(fmt::format(format_, Glib::Markup::escape_text(mode).raw()));
+    label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(mode).raw()));
     label_.show();
   }
 

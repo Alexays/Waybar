@@ -618,9 +618,10 @@ void Task::update() {
     app_id = Glib::Markup::escape_text(app_id);
   }
   if (!format_before_.empty()) {
-    auto txt = fmt::format(format_before_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_before_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
     if (markup)
       text_before_.set_markup(txt);
     else
@@ -628,9 +629,10 @@ void Task::update() {
     text_before_.show();
   }
   if (!format_after_.empty()) {
-    auto txt = fmt::format(format_after_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_after_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
     if (markup)
       text_after_.set_markup(txt);
     else
@@ -639,9 +641,10 @@ void Task::update() {
   }
 
   if (!format_tooltip_.empty()) {
-    auto txt = fmt::format(format_tooltip_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_tooltip_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
     if (markup)
       button_.set_tooltip_markup(txt);
     else

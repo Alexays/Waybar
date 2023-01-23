@@ -1,15 +1,10 @@
 #pragma once
 
-#include <date/tz.h>
-
 #include "ALabel.hpp"
+#include "util/date.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar {
-
-struct waybar_time;
-
-namespace modules {
+namespace waybar::modules {
 
 const std::string kCalendarPlaceholder = "calendar";
 const std::string KTimezonedTimeListPlaceholder = "timezoned_time_list";
@@ -62,10 +57,8 @@ class Clock : public ALabel {
   std::string cldYearCached_{};
   std::string cldMonCached_{};
   /*Calendar functions*/
-  auto get_calendar(const waybar_time& now,
-                    const waybar_time& wtime) -> std::string;
+  auto get_calendar(const date::zoned_seconds& now,
+                    const date::zoned_seconds& wtime) -> std::string;
   void cldModeSwitch();
 };
-
-}  // namespace modules
-}  // namespace waybar
+}  // namespace waybar::modules

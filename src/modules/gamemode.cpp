@@ -213,14 +213,14 @@ auto Gamemode::update() -> void {
 
   // Tooltip
   if (tooltip) {
-    std::string text = fmt::format(tooltip_format, fmt::arg("count", gameCount));
+    std::string text = fmt::format(fmt::runtime(tooltip_format), fmt::arg("count", gameCount));
     box_.set_tooltip_text(text);
   }
 
   // Label format
-  std::string str =
-      fmt::format(showAltText ? format_alt : format, fmt::arg("glyph", useIcon ? "" : glyph),
-                  fmt::arg("count", gameCount > 0 ? std::to_string(gameCount) : ""));
+  std::string str = fmt::format(fmt::runtime(showAltText ? format_alt : format),
+                                fmt::arg("glyph", useIcon ? "" : glyph),
+                                fmt::arg("count", gameCount > 0 ? std::to_string(gameCount) : ""));
   label_.set_markup(str);
 
   if (useIcon) {
