@@ -13,16 +13,20 @@ jobs:
           - fedora
           - opensuse
           - gentoo
+        cpp_std: [c++17]
+        include:
+          - distro: fedora
+            cpp_std: c++20
 
     runs-on: ubuntu-latest
     container:
       image: alexays/waybar:${{ matrix.distro }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: configure
-        run: meson -Dman-pages=enabled build
+        run: meson -Dman-pages=enabled -Dcpp_std=${{matrix.cpp_std}} build
       - name: build
         run: ninja -C build
       - name: test
-        run: meson test -C build --no-rebuild --print-errorlogs --suite waybar
+        run: meson test -C build --no-rebuild --verbose --suite waybar

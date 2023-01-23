@@ -15,7 +15,7 @@ test_src = files(
 
 if tz_dep.found()
   test_dep += tz_dep
-  test_src += files('waybar_time.cpp')
+  test_src += files('date.cpp')
 endif
 
 waybar_test = executable(

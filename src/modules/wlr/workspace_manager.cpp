@@ -379,7 +379,7 @@ Workspace::~Workspace() {
 }
 
 auto Workspace::update() -> void {
-  label_.set_markup(fmt::format(format_, fmt::arg("name", name_),
+  label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("name", name_),
                                 fmt::arg("icon", with_icon_ ? get_icon() : "")));
 }
 

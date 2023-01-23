@@ -55,7 +55,7 @@ auto waybar::modules::Temperature::update() -> void {
   }
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_.set_markup(fmt::format(format, fmt::arg("temperatureC", temperature_c),
+  label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
@@ -64,9 +64,9 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("temperatureC", temperature_c),
-                                        fmt::arg("temperatureF", temperature_f),
-                                        fmt::arg("temperatureK", temperature_k)));
+    label_.set_tooltip_text(fmt::format(
+        fmt::runtime(tooltip_format), fmt::arg("temperatureC", temperature_c),
+        fmt::arg("temperatureF", temperature_f), fmt::arg("temperatureK", temperature_k)));
   }
   // Call parent update
   ALabel::update();

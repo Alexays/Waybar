@@ -32,7 +32,8 @@ auto Scratchpad::update() -> void {
   if (count_ || show_empty_) {
     event_box_.show();
     label_.set_markup(
-        fmt::format(format_, fmt::arg("icon", getIcon(count_, "", config_["format-icons"].size())),
+        fmt::format(fmt::runtime(format_),
+                    fmt::arg("icon", getIcon(count_, "", config_["format-icons"].size())),
                     fmt::arg("count", count_)));
     if (tooltip_enabled_) {
       label_.set_tooltip_markup(tooltip_text_);
@@ -64,7 +65,7 @@ auto Scratchpad::onCmd(const struct Ipc::ipc_response& res) -> void {
     if (tooltip_enabled_) {
       tooltip_text_.clear();
       for (const auto& window : tree["nodes"][0]["nodes"][0]["floating_nodes"]) {
-        tooltip_text_.append(fmt::format(tooltip_format_ + '\n',
+        tooltip_text_.append(fmt::format(fmt::runtime(tooltip_format_ + '\n'),
                                          fmt::arg("app", window["app_id"].asString()),
                                          fmt::arg("title", window["name"].asString())));
       }

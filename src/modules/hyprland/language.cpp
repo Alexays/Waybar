@@ -59,9 +59,9 @@ void Language::onEvent(const std::string& ev) {
 
   if (config_.isMember("format-" + briefName)) {
     const auto propName = "format-" + briefName;
-    layoutName = fmt::format(format_, config_[propName].asString());
+    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
   } else {
-    layoutName = fmt::format(format_, layoutName);
+    layoutName = fmt::format(fmt::runtime(format_), layoutName);
   }
 
   layoutName = waybar::util::sanitize_string(layoutName);
@@ -92,9 +92,9 @@ void Language::initLanguage() {
 
     if (config_.isMember("format-" + briefName)) {
       const auto propName = "format-" + briefName;
-      layoutName = fmt::format(format_, config_[propName].asString());
+      layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
     } else {
-      layoutName = fmt::format(format_, searcher);
+      layoutName = fmt::format(fmt::runtime(format_), searcher);
     }
 
     layoutName = waybar::util::sanitize_string(layoutName);

@@ -123,11 +123,18 @@ gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
 systemd = dependency('systemd', required: get_option('systemd'))
-tz_dep = dependency('date',
-    required: false,
-    default_options : [ 'use_system_tzdb=true' ],
-    modules : [ 'date::date', 'date::date-tz' ],
-    fallback: [ 'date', 'tz_dep' ])
+
+cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
+have_chrono_timezones = cpp_lib_chrono >= 201907
+if have_chrono_timezones
+  tz_dep = declare_dependency()
+else
+  tz_dep = dependency('date',
+      required: false,
+      default_options : [ 'use_system_tzdb=true' ],
+      modules : [ 'date::date', 'date::date-tz' ],
+      fallback: [ 'date', 'tz_dep' ])
+endif
 
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
@@ -312,7 +319,10 @@ if get_option('rfkill').enabled() and is_linux
     )
 endif
 
-if tz_dep.found()
+if have_chrono_timezones
+    add_project_arguments('-DHAVE_CHRONO_TIMEZONES', language: 'cpp')
+    src_files += 'src/modules/clock.cpp'
+elif tz_dep.found()
     add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
     src_files += 'src/modules/clock.cpp'
 else
@@ -448,7 +458,7 @@ endif
 
 catch2 = dependency(
     'catch2',
-    version: '>=3.0.0',
+    version: '>=2.0.0',
     fallback: ['catch2', 'catch2_dep'],
     required: get_option('tests'),
 )
