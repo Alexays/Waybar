@@ -233,7 +233,7 @@ auto Workspaces::update() -> void {
     std::string output = (*it)["name"].asString();
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      output = fmt::format(format, fmt::arg("icon", getIcon(output, *it)),
+      output = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)),
                            fmt::arg("value", output), fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
@@ -259,11 +259,9 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
       try {
         if (node["target_output"].isString()) {
           ipc_.sendCmd(IPC_COMMAND,
-                       fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " +
-                                       workspace_switch_cmd_,
-                                   "--no-auto-back-and-forth", node["name"].asString(),
-                                   node["target_output"].asString(), "--no-auto-back-and-forth",
-                                   node["name"].asString()));
+                       fmt::format(persistent_workspace_switch_cmd_, "--no-auto-back-and-forth",
+                                   node["name"].asString(), node["target_output"].asString(),
+                                   "--no-auto-back-and-forth", node["name"].asString()));
         } else {
           ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
                                                 config_["disable-auto-back-and-forth"].asBool()

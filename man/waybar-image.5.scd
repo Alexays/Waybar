@@ -1,4 +1,4 @@
-waybar-custom(5)
+waybar-image(5)
 
 # NAME
 

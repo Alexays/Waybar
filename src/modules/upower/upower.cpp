@@ -336,8 +336,8 @@ auto UPower::update() -> void {
       break;
   }
   std::string label_format =
-      fmt::format(showAltText ? format_alt : format, fmt::arg("percentage", percentString),
-                  fmt::arg("time", time_format));
+      fmt::format(fmt::runtime(showAltText ? format_alt : format),
+                  fmt::arg("percentage", percentString), fmt::arg("time", time_format));
   // Only set the label text if it doesn't only contain spaces
   bool onlySpaces = true;
   for (auto& character : label_format) {
