@@ -415,9 +415,10 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
             if (line == 1 && cldWnLen_ > 0) os << std::string(cldWnLen_, ' ');
 
             if (line > 1 && line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
-              os << fmt::format(fmt::runtime(fmtMap_[4]), (line == 2) ? date::sys_days{ymTmp / 1}
-                                                        : date::sys_days{cldGetWeekForLine(
-                                                              ymTmp, firstdow, line)})
+              os << fmt::format(fmt::runtime(fmtMap_[4]),
+                                (line == 2)
+                                    ? date::sys_days{ymTmp / 1}
+                                    : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)})
                  << ' ';
           }
 
@@ -429,9 +430,10 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
 
             if (line > 1 && line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
               os << ' '
-                 << fmt::format(fmt::runtime(fmtMap_[4]), (line == 2) ? date::sys_days{ymTmp / 1}
-                                                        : date::sys_days{cldGetWeekForLine(
-                                                              ymTmp, firstdow, line)});
+                 << fmt::format(fmt::runtime(fmtMap_[4]),
+                                (line == 2)
+                                    ? date::sys_days{ymTmp / 1}
+                                    : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)});
           }
         }
       }
