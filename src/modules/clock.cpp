@@ -450,11 +450,29 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
     if (row + 1u != maxRows && cldMode_ == CldMode::YEAR) tmp << '\n';
   }
 
+  os << fmt::format(
+                  // Apply days format
+      fmt::format(fmt::runtime(fmtMap_[2]),
+                  // Apply today format
+                  fmt::format(tmp.str(),
+                  fmt::arg("today", fmt::format(fmt::runtime(fmtMap_[3]), date::format("%e", ymd.day()))))));
+
+//  std::string tmpOS{
+//    fmt::format(fmt::runtime(fmtMap_[2]),
+//    fmt::format(tmp.str(), fmt::arg("today", fmt::format(fmt::runtime(fmtMap_[3]), date::format("%e", ymd.day())))))};
+//  os << tmpOS;
+
+//  std::string tmpToday{fmt::format(fmt::runtime(fmtMap_[3]), date::format("%e", ymd.day()))};
+
+//  os << fmt::format(fmt::runtime(fmtMap_[2]), tmp.str(),
+//                    "today"_a=tmpToday);
+                    //fmt::arg("today", tmpToday));
+/*
   os << fmt::format(  // Apply days format
       fmt::format(fmt::runtime(fmtMap_[2]), tmp.str()),
       // Apply today format
       fmt::arg("today", fmt::format(fmt::runtime(fmtMap_[3]), date::format("%e", ymd.day()))));
-
+*/
   if (cldMode_ == CldMode::YEAR)
     cldYearCached_ = os.str();
   else
