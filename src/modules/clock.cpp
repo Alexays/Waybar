@@ -415,7 +415,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
             if (line == 1 && cldWnLen_ > 0) os << std::string(cldWnLen_, ' ');
 
             if (line > 1 && line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
-              os << fmt::format(fmtMap_[4], (line == 2) ? date::sys_days{ymTmp / 1}
+              os << fmt::format(fmt::runtime(fmtMap_[4]), (line == 2) ? date::sys_days{ymTmp / 1}
                                                         : date::sys_days{cldGetWeekForLine(
                                                               ymTmp, firstdow, line)})
                  << ' ';
@@ -429,7 +429,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
 
             if (line > 1 && line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
               os << ' '
-                 << fmt::format(fmtMap_[4], (line == 2) ? date::sys_days{ymTmp / 1}
+                 << fmt::format(fmt::runtime(fmtMap_[4]), (line == 2) ? date::sys_days{ymTmp / 1}
                                                         : date::sys_days{cldGetWeekForLine(
                                                               ymTmp, firstdow, line)});
           }
@@ -438,7 +438,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
 
       // Apply user formats to calendar
       if (line < 2)
-        tmp << fmt::format(fmtMap_[line], os.str());
+        tmp << fmt::format(fmt::runtime(fmtMap_[line]), os.str());
       else
         tmp << os.str();
       // Clear ostringstream
@@ -449,9 +449,9 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
   }
 
   os << fmt::format(  // Apply days format
-      fmt::format(fmtMap_[2], tmp.str()),
+      fmt::format(fmt::runtime(fmtMap_[2]), tmp.str()),
       // Apply today format
-      fmt::arg("today", fmt::format(fmtMap_[3], date::format("%e", ymd.day()))));
+      fmt::arg("today", fmt::format(fmt::runtime(fmtMap_[3]), date::format("%e", ymd.day()))));
 
   if (cldMode_ == CldMode::YEAR)
     cldYearCached_ = os.str();
