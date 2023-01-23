@@ -210,7 +210,7 @@ void waybar::modules::Custom::parseOutputJson() {
       }
     }
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
-      percentage_ = (int) lround(parsed["percentage"].asFloat());
+      percentage_ = (int)lround(parsed["percentage"].asFloat());
     } else {
       percentage_ = 0;
     }
