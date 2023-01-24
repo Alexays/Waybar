@@ -97,7 +97,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
-    } 
+    }
     if (ref == "image") {
       return new waybar::modules::Image(id, config_[name]);
     }
