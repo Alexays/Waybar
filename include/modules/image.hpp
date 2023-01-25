@@ -27,6 +27,7 @@ class Image : public AModule {
   std::string path_;
   int size_;
   int interval_;
+  util::command::res output_;
 
   util::SleeperThread thread_;
 };

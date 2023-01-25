@@ -9,7 +9,7 @@ waybar::modules::Image::Image(const std::string& name, const std::string& id,
 
   dp.emit();
 
-  path_ = config["path"].asString();
+  //path_ = config["path"].asString();
   size_ = config["size"].asInt();
 
   interval_ = config_["interval"].asInt();
@@ -41,7 +41,15 @@ void waybar::modules::Image::refresh(int sig) {
 
 auto waybar::modules::Image::update() -> void {
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-
+  if(config_["path"].isString())
+  {
+    path_ = config_["path"].asString();
+  }
+  else
+  {
+    output_ = util::command::exec(config_["exec"].asString());
+    path_ =output_.out;
+  }
   if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS))
     pixbuf = Gdk::Pixbuf::create_from_file(path_, size_, size_);
   else
