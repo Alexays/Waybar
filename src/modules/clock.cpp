@@ -216,7 +216,7 @@ bool waybar::modules::Clock::handleToggle(GdkEventButton* const& e) {
   if (callMethod) {
     (this->*callMethod)();
   } else
-    return AModule::handleToggle(e);
+    return ALabel::handleToggle(e);
 
   update();
   return true;
