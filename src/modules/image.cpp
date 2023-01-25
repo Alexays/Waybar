@@ -9,7 +9,6 @@ waybar::modules::Image::Image(const std::string& name, const std::string& id,
 
   dp.emit();
 
-  //path_ = config["path"].asString();
   size_ = config["size"].asInt();
 
   interval_ = config_["interval"].asInt();
