@@ -10,8 +10,6 @@ The *image* module displays an image from a path.
 
 # CONFIGURATION
 
-Addressed by *custom/<name>*
-
 *path*: ++
 	typeof: string ++
 	The path to the image.
@@ -58,15 +56,15 @@ Addressed by *custom/<name>*
 
 # EXAMPLES
 
-## Spotify:
-
-## mpd:
-
 ```
-"image/album-art": {
+"image#album-art": {
 	"path": "/tmp/mpd_art",
 	"size": 32,
 	"interval": 5,
 	"on-click": "mpc toggle"
 }
 ```
+
+# STYLE
+
+- *#image*

@@ -1,11 +1,13 @@
 #include "modules/image.hpp"
 
-#include <spdlog/spdlog.h>
-
-waybar::modules::Image::Image(const std::string& name, const std::string& id,
-                              const Json::Value& config)
-    : AModule(config, "image-" + name, id, "{}") {
-  event_box_.add(image_);
+waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
+    : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+  box_.pack_start(image_);
+  box_.set_name("image");
+  if (!id.empty()) {
+    box_.get_style_context()->add_class(id);
+  }
+  event_box_.add(box_);
 
   dp.emit();
 
