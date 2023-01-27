@@ -70,23 +70,19 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       fmtMap_.insert({2, config_[kCalendarPlaceholder]["format"]["days"].asString()});
     else
       fmtMap_.insert({2, "{}"});
-    if (config_[kCalendarPlaceholder]["format"]["weeks"].isString()) {
+    if (config_[kCalendarPlaceholder]["format"]["weeks"].isString() &&
+        cldWPos_ != WeeksSide::HIDDEN) {
       fmtMap_.insert(
           {4, std::regex_replace(config_[kCalendarPlaceholder]["format"]["weeks"].asString(),
                                  std::regex("\\{\\}"),
                                  (first_day_of_week() == date::Monday) ? "{:%W}" : "{:%U}")});
-
-      if (cldWPos_ == WeeksSide::HIDDEN)
-        cldWnLen_ = 0;
-      else {
-        // tmp contains full length of the weeks including user characters
-        Glib::ustring tmp{std::regex_replace(fmtMap_[4], std::regex("</?[^>]+>|\\{.*\\}"), "")};
-        cldWnLen_ += (tmp.size() + 1);
-        cldMonColLen_ += cldWnLen_;
-      }
+      Glib::ustring tmp{std::regex_replace(fmtMap_[4], std::regex("</?[^>]+>|\\{.*\\}"), "")};
+      cldWnLen_ += tmp.size();
     } else {
       if (cldWPos_ != WeeksSide::HIDDEN)
         fmtMap_.insert({4, (first_day_of_week() == date::Monday) ? "{:%W}" : "{:%U}"});
+      else
+        cldWnLen_ = 0;
     }
     if (config_[kCalendarPlaceholder]["format"]["weekdays"].isString())
       fmtMap_.insert({1, config_[kCalendarPlaceholder]["format"]["weekdays"].asString()});
@@ -277,7 +273,7 @@ auto cldGetWeekForLine(date::year_month const ym, date::weekday const firstdow, 
 }
 
 auto getCalendarLine(date::year_month_day const currDate, date::year_month const ym,
-                     unsigned const line, date::weekday const firstdow, int rowLen,
+                     unsigned const line, date::weekday const firstdow,
                      const std::locale* const locale_) -> std::string {
   using namespace date::literals;
   std::ostringstream res;
@@ -285,8 +281,8 @@ auto getCalendarLine(date::year_month_day const currDate, date::year_month const
   switch (line) {
     case 0: {
       // Output month and year title
-      Glib::ustring wd_ustring{Glib::ustring::format(
-          std::left, std::setw(rowLen), date::format(*locale_, "%B %Y", ym), std::right)};
+      Glib::ustring wd_ustring{
+          Glib::ustring::format(std::left, date::format(*locale_, "%B %Y", ym), std::right)};
       res << wd_ustring;
       break;
     }
@@ -308,7 +304,6 @@ auto getCalendarLine(date::year_month_day const currDate, date::year_month const
 
         res << pad << wd_ustring;
       } while (++wd != firstdow);
-
       break;
     }
     case 2: {
@@ -354,9 +349,7 @@ auto getCalendarLine(date::year_month_day const currDate, date::year_month const
         }
         // Append row with spaces if the week did not complete
         res << std::string(static_cast<unsigned>((firstdow - wd).count()) * 3, ' ');
-      } else  // Otherwise not a valid week, output a blank row
-        res << std::string(rowLen, ' ');
-
+      }
       break;
     }
   }
@@ -412,28 +405,35 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
 
           // Week numbers on the left
           if (cldWPos_ == WeeksSide::LEFT && line > 0) {
-            if (line == 1 && cldWnLen_ > 0) os << std::string(cldWnLen_, ' ');
-
-            if (line > 1 && line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
-              os << fmt::format(fmt::runtime(fmtMap_[4]),
-                                (line == 2)
-                                    ? date::sys_days{ymTmp / 1}
-                                    : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)})
-                 << ' ';
+            if (line > 1) {
+              if (line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
+                os << fmt::format(fmt::runtime(fmtMap_[4]),
+                                  (line == 2)
+                                      ? date::sys_days{ymTmp / 1}
+                                      : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)})
+                   << ' ';
+              else
+                os << std::string(cldWnLen_, ' ');
+            }
           }
 
-          os << getCalendarLine(currDate, ymTmp, line, firstdow, cldMonColLen_, &locale_);
+          os << fmt::format(
+              fmt::runtime((cldWPos_ == WeeksSide::RIGHT || line == 0) ? "{:<{}}" : "{:>{}}"),
+              getCalendarLine(currDate, ymTmp, line, firstdow, &locale_),
+              (cldMonColLen_ + ((line < 2) ? cldWnLen_ : 0)));
 
           // Week numbers on the right
           if (cldWPos_ == WeeksSide ::RIGHT && line > 0) {
-            if (line == 1 && cldWnLen_ > 0) os << std::string(cldWnLen_, ' ');
-
-            if (line > 1 && line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
-              os << ' '
-                 << fmt::format(fmt::runtime(fmtMap_[4]),
-                                (line == 2)
-                                    ? date::sys_days{ymTmp / 1}
-                                    : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)});
+            if (line > 1) {
+              if (line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
+                os << ' '
+                   << fmt::format(fmt::runtime(fmtMap_[4]),
+                                  (line == 2)
+                                      ? date::sys_days{ymTmp / 1}
+                                      : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)});
+              else
+                os << std::string(cldWnLen_, ' ');
+            }
           }
         }
       }

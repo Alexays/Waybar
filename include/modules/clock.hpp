@@ -49,7 +49,7 @@ class Clock : public ALabel {
   CldMode cldMode_{CldMode::MONTH};
   uint cldMonCols_{3}; // Count of the month in the row
   int cldMonColLen_{20}; // Length of the month column
-  int cldWnLen_{2}; // Length of the week number
+  int cldWnLen_{3}; // Length of the week number
   date::year_month_day cldYearShift_;
   date::year_month cldMonShift_;
   date::months cldCurrShift_{0};
