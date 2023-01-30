@@ -39,6 +39,8 @@ void waybar::modules::Image::refresh(int sig) {
 }
 
 auto waybar::modules::Image::update() -> void {
+  util::command::res output_;
+
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;
   if(config_["path"].isString())
   {
