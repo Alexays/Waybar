@@ -22,11 +22,13 @@ static void listen_urgent_tags(void *data, struct zriver_output_status_v1 *zrive
   // Intentionally empty
 }
 
-static void listen_layout_name(void *data, struct zriver_output_status_v1 *zriver_output_status_v1, const char *layout) {
+static void listen_layout_name(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
+                               const char *layout) {
   static_cast<Layout *>(data)->handle_name(layout);
 }
 
-static void listen_layout_name_clear(void *data, struct zriver_output_status_v1 *zriver_output_status_v1) {
+static void listen_layout_name_clear(void *data,
+                                     struct zriver_output_status_v1 *zriver_output_status_v1) {
   static_cast<Layout *>(data)->handle_clear();
 }
 
@@ -51,11 +53,11 @@ static void listen_mode(void *data, struct zriver_seat_status_v1 *zriver_seat_st
 }
 
 static const zriver_output_status_v1_listener output_status_listener_impl{
-  .focused_tags = listen_focused_tags,
-  .view_tags = listen_view_tags,
-  .urgent_tags = listen_urgent_tags,
-  .layout_name = listen_layout_name,
-  .layout_name_clear = listen_layout_name_clear,
+    .focused_tags = listen_focused_tags,
+    .view_tags = listen_view_tags,
+    .urgent_tags = listen_urgent_tags,
+    .layout_name = listen_layout_name,
+    .layout_name_clear = listen_layout_name_clear,
 };
 
 static const zriver_seat_status_v1_listener seat_status_listener_impl{
@@ -73,7 +75,9 @@ static void handle_global(void *data, struct wl_registry *registry, uint32_t nam
     // implies ZRIVER_OUTPUT_STATUS_V1_LAYOUT_NAME_CLEAR_SINCE_VERSION
     if (version < ZRIVER_OUTPUT_STATUS_V1_LAYOUT_NAME_SINCE_VERSION) {
       spdlog::error(
-          "river server does not support the \"layout_name\" and \"layout_clear\" events; the module will be disabled" + std::to_string(version));
+          "river server does not support the \"layout_name\" and \"layout_clear\" events; the "
+          "module will be disabled" +
+          std::to_string(version));
       return;
     }
     static_cast<Layout *>(data)->status_manager_ = static_cast<struct zriver_status_manager_v1 *>(
@@ -117,7 +121,6 @@ Layout::Layout(const std::string &id, const waybar::Bar &bar, const Json::Value 
   }
 
   label_.hide();
-  label_.set_markup("");
   ALabel::update();
 
   seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
