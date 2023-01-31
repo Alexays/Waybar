@@ -217,6 +217,7 @@ if true
     src_files += 'src/modules/river/mode.cpp'
     src_files += 'src/modules/river/tags.cpp'
     src_files += 'src/modules/river/window.cpp'
+    src_files += 'src/modules/river/layout.cpp'
 endif
 
 if true
@@ -404,6 +405,7 @@ if scdoc.found()
         'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',
+        'waybar-river-layout.5.scd',
         'waybar-sway-language.5.scd',
         'waybar-sway-mode.5.scd',
         'waybar-sway-scratchpad.5.scd',
