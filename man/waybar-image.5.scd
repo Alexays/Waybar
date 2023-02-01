@@ -15,7 +15,10 @@ Addressed by *custom/<name>*
 *path*: ++
 	typeof: string ++
 	The path to the image.
-
+*exec*: ++
+	typeof: string ++
+	The path to the script, which should return image path file
+	it will only execute if the path is not set
 *size*: ++
 	typeof: integer ++
 	The width/height to render the image.
