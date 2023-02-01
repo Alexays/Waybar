@@ -47,7 +47,7 @@ waybar::modules::Wireplumber::~Wireplumber() {
   g_clear_object(&wp_core_);
   g_clear_object(&mixer_api_);
   g_clear_object(&def_nodes_api_);
-  g_free(&default_node_name_);
+  g_free(default_node_name_);
 }
 
 void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* self, uint32_t id) {
