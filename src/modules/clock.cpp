@@ -281,9 +281,7 @@ auto getCalendarLine(date::year_month_day const currDate, date::year_month const
   switch (line) {
     case 0: {
       // Output month and year title
-      Glib::ustring wd_ustring{
-          Glib::ustring::format(std::left, date::format(*locale_, "%B %Y", ym), std::right)};
-      res << wd_ustring;
+      res << date::format(*locale_, "%B %Y", ym);
       break;
     }
     case 1: {
@@ -418,7 +416,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
           }
 
           os << fmt::format(
-              fmt::runtime((cldWPos_ == WeeksSide::RIGHT || line == 0) ? "{:<{}}" : "{:>{}}"),
+              fmt::runtime((cldWPos_ != WeeksSide::LEFT || line == 0) ? "{:<{}}" : "{:>{}}"),
               getCalendarLine(currDate, ymTmp, line, firstdow, &locale_),
               (cldMonColLen_ + ((line < 2) ? cldWnLen_ : 0)));
 
