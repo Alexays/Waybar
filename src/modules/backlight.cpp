@@ -325,16 +325,18 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
   int new_value = best->get_actual();
 
   if (dir == SCROLL_DIR::UP) {
-      new_value += abs_step;
+    new_value += abs_step;
   } else if (dir == SCROLL_DIR::DOWN) {
-      new_value -= abs_step;
+    new_value -= abs_step;
   }
 
   // Clamp the value
   new_value = std::clamp(new_value, 0, best->get_max());
 
   // Set the new value
-  auto call_args = Glib::VariantContainerBase(g_variant_new("(ssu)", "backlight", std::string(best->name()).c_str(), new_value));
+  auto call_args = Glib::VariantContainerBase(
+      g_variant_new("(ssu)", "backlight", std::string(best->name()).c_str(), new_value));
+
   login_proxy_->call_sync("SetBrightness", call_args);
 
   return true;
