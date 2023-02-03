@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ALabel.hpp"
+#include "giomm/dbusproxy.h"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -62,5 +63,7 @@ class Backlight : public ALabel {
   std::vector<BacklightDev> devices_;
   // thread must destruct before shared data
   util::SleeperThread udev_thread_;
+
+  Glib::RefPtr<Gio::DBus::Proxy> login_proxy_;
 };
 }  // namespace waybar::modules

@@ -110,6 +110,11 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
 
+  // Connect to the login interface
+  login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
+      Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
+      "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
+
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
     check_nn(udev.get(), "Udev new failed");
@@ -275,6 +280,11 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
     return AModule::handleScroll(e);
   }
 
+  // Fail fast if the proxy could not be initialized
+  if (!login_proxy_) {
+    return true;
+  }
+
   // Check scroll direction
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
@@ -323,16 +333,9 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
   // Clamp the value
   new_value = std::clamp(new_value, 0, best->get_max());
 
-  // Get a udev instance
-  std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
-  check_nn(udev.get(), "Udev new failed");
-
-  // Get the udev device
-  std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_device_new_from_subsystem_sysname(udev.get(), "backlight", std::string(best->name()).c_str())};
-  check_nn(dev.get(), "Udev device new failed");
-
   // Set the new value
-  udev_device_set_sysattr_value(dev.get(), "brightness", std::to_string(new_value).c_str());
+  auto call_args = Glib::VariantContainerBase(g_variant_new("(ssu)", "backlight", std::string(best->name()).c_str(), new_value));
+  login_proxy_->call_sync("SetBrightness", call_args);
 
   return true;
 }
