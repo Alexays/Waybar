@@ -32,10 +32,10 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     time_zones_.push_back(date::locate_zone(config_["timezone"].asString()));
   }
 
-  // If all timezones are parsed and no one is good, add nullptr to the timezones vector, to mark
-  // that local time should be shown.
+  // If all timezones are parsed and no one is good, add current time zone. nullptr in timezones
+  // vector means that local time should be shown
   if (!time_zones_.size()) {
-    time_zones_.push_back(nullptr);
+    time_zones_.push_back(date::current_zone());
   }
 
   // Check if a particular placeholder is present in the tooltip format, to know what to calculate
