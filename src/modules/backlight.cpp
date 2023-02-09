@@ -106,6 +106,15 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
     dp.emit();
   }
 
+  // Set up scroll handler
+  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
+
+  // Connect to the login interface
+  login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
+      Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
+      "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
+
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
     check_nn(udev.get(), "Udev new failed");
@@ -263,4 +272,72 @@ void waybar::modules::Backlight::enumerate_devices(ForwardIt first, ForwardIt la
     check_nn(dev.get(), "dev new failed");
     upsert_device(first, last, inserter, dev.get());
   }
+}
+
+bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
+  // Check if the user has set a custom command for scrolling
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+
+  // Fail fast if the proxy could not be initialized
+  if (!login_proxy_) {
+    return true;
+  }
+
+  // Check scroll direction
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  if (config_["reverse-scrolling"].asBool()) {
+    if (dir == SCROLL_DIR::UP) {
+      dir = SCROLL_DIR::DOWN;
+    } else if (dir == SCROLL_DIR::DOWN) {
+      dir = SCROLL_DIR::UP;
+    }
+  }
+
+  // Get scroll step
+  double step = 1;
+
+  if (config_["scroll-step"].isDouble()) {
+    step = config_["scroll-step"].asDouble();
+  }
+
+  // Get the best device
+  decltype(devices_) devices;
+  {
+    std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
+    devices = devices_;
+  }
+  const auto best = best_device(devices.cbegin(), devices.cend(), preferred_device_);
+
+  if (best == nullptr) {
+    return true;
+  }
+
+  // Compute the absolute step
+  const auto abs_step = static_cast<int>(round(step * best->get_max() / 100.0f));
+
+  // Compute the new value
+  int new_value = best->get_actual();
+
+  if (dir == SCROLL_DIR::UP) {
+    new_value += abs_step;
+  } else if (dir == SCROLL_DIR::DOWN) {
+    new_value -= abs_step;
+  }
+
+  // Clamp the value
+  new_value = std::clamp(new_value, 0, best->get_max());
+
+  // Set the new value
+  auto call_args = Glib::VariantContainerBase(
+      g_variant_new("(ssu)", "backlight", std::string(best->name()).c_str(), new_value));
+
+  login_proxy_->call_sync("SetBrightness", call_args);
+
+  return true;
 }
