@@ -238,6 +238,11 @@ if get_option('wlr_hyprland')
     add_project_arguments('-DUSE_WLR_HYPRLAND', language: 'cpp')
 endif
 
+if get_option('gammastep')
+    add_project_arguments('-DHAVE_GAMMASTEP', language: 'cpp')
+    src_files += 'src/modules/gammastep.cpp'
+endif
+
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += 'src/modules/network.cpp'

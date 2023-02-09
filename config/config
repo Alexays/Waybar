@@ -1,0 +1,147 @@
+{
+    "layer": "top",
+	"position": "top",
+	"height": 30,
+	"spacing": 4,
+
+    "modules-left": ["custom/power_menu", "wlr/workspaces", "hyprland/window"],
+    "modules-center": ["clock"],
+    "modules-right": ["gammastep","idle_inhibitor", "custom/gammastep", "pulseaudio", "network", "bluetooth", "battery"],
+
+	"custom/power_menu": {
+		"format": "⌘",
+		"on-click": "/home/manuel/.config/wofi/power_menu.sh",
+		"on-click-right": "killall -9 wofi"
+	},
+	
+	"custom/gammastep": {
+      "format": "🌡️",
+      "on-click": "~/.config/hypr/gammastep.sh toggle"
+ 	},
+ 
+    "wlr/workspaces": {
+        "format": "{name}",
+        "on-click": "activate",
+        "format-icons": {
+        "1": "",
+        "2": "",
+        "3": "",
+        "4": "",
+        "5": "",
+        "urgent": "",
+        "active": "",
+        "default": ""
+        },
+        "sort-by-number": true
+    },
+
+    "hyprland/window": {
+    	"format": "{}",
+		"max-length": 30
+    },
+
+	"idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": {
+            "activated": "",
+            "deactivated": ""
+        }
+    },
+
+	"tray": {
+        "icon-size": 21,
+        "spacing": 10
+    },
+
+	"clock": {
+        // "timezone": "Europe/Italy",
+		"today-format": "<span color='#ff6699'><b><u>{}</u></b></span>",
+    	"calendar-weeks-pos": "right", 
+		"format-calendar": "<span color='#ecc6d9'><b>{}</b></span>",
+   		"format-calendar-weeks": "<span color='#99ffdd'><b>W{:%V}</b></span>",
+    	"format-calendar-weekdays": "<span color='#ffcc66'><b>{}</b></span>",   
+		"tooltip-format": "<big><b>{:%Y %B}</b></big>\n<tt><small>{calendar}</small></tt>",
+        "format-alt": "{:%d-%m-%Y}"
+    },
+
+	"cpu": {
+        "format": "{usage}% ",
+        "tooltip": false
+    },
+
+    "memory": {
+        "format": "{}% "
+    },
+
+    "temperature": {
+        // "thermal-zone": 2,
+        // "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
+        "critical-threshold": 80,
+        // "format-critical": "{temperatureC}°C {icon}",
+        "format": "{temperatureC}°C {icon}",
+        "format-icons": ["", "", ""]
+    },
+
+    "backlight": {
+        // "device": "acpi_video1",
+        "format": "{percent}% {icon}",
+        "format-icons": ["", "", "", "", "", "", "", "", ""]
+    },
+
+    "battery": {
+        "states": {
+            // "good": 95,
+            "warning": 30,
+            "critical": 15
+        },
+        "format": "{capacity}% {icon}",
+        "format-charging": "{capacity}% ",
+        "format-plugged": "{capacity}% ",
+        "format-alt": "{time} {icon}",
+        // "format-good": "", // An empty format will hide the module
+        // "format-full": "",
+        "format-icons": ["", "", "", "", ""]
+    },
+
+	"network": {
+        // "interface": "wlp2*", // (Optional) To force the use of this interface
+        // "format-wifi": "{essid} ({signalStrength}%) ",
+        // "format-wifi": "{bandwidthUpBytes}↑ | {bandwidthDownBytes}↓ {signalStrength}% ",
+		"format-wifi": "{essid} ({signalStrength}%) ",
+        "format-ethernet": "{bandwidthUpBytes}↑ | {bandwidthDownBytes}↓ {ipaddr}/{cidr} ",
+        "tooltip-format": "{ifname} via {gwaddr} ",
+        "format-linked": "{ifname} (No IP) ",
+        "format-disconnected": "Disconnected ⚠",
+        //"format-alt": "{ifname}: {ipaddr}/{cidr}",
+        "on-click": "/home/manuel/.config/wofi/wifi4wofi",
+		"on-click-right": "killall -9 wofi"	
+    },
+
+	"pulseaudio": {
+        // "scroll-step": 1, // %, can be a float
+        "format": "{volume}% {icon}  | {format_source}",
+        "format-bluetooth": "{volume}% {icon} {format_source}",
+        "format-bluetooth-muted": " {icon} {format_source}",
+        "format-muted": " {format_source}",
+        "format-source": "{volume}% ",
+        "format-source-muted": "",
+        "format-icons": {
+            "headphone": "",
+            "hands-free": "",
+            "headset": "",
+            "phone": "",
+            "portable": "",
+            "car": "",
+            "default": ["", "", ""]
+        },
+        "on-click": "pavucontrol"
+    },
+
+	"bluetooth": {
+		"controller": "blueman-manager",
+		"format": "{status} ",
+		"tooltip-format": "{device_alias} {device_address}",
+		"on-click": "blueman-manager",
+		"on-click-right": "killall blueman-manager"
+	}
+}
