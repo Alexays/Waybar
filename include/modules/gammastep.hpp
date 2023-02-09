@@ -9,7 +9,7 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 #include <iostream>
-#include <thread>
+#include <memory>
 
 #include "gtk-layer-shell.h"
 #include <gtkmm/application.h>
@@ -31,10 +31,12 @@ public:
 	Settings();
 	virtual ~Settings();
 	int run();
-private:
+	static Settings* create();
 	Glib::RefPtr<Gtk::Application> app_;
 	Gtk::Window window_;
+protected:
 	Gtk::Box box_;
+	Gtk::HeaderBar header_;
 	Gtk::Label label_;
 };
 
@@ -54,7 +56,7 @@ public:
 	virtual ~SettingsButton();
 	void handle_clicked();
 private:
-	Settings settings_;
+	Settings* settings_;
 };
 	
 class Gammastep : public ALabel {
