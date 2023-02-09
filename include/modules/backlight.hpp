@@ -51,7 +51,7 @@ class Backlight : public ALabel {
   template <class ForwardIt, class Inserter>
   static void enumerate_devices(ForwardIt first, ForwardIt last, Inserter inserter, udev *udev);
 
-  bool handleScroll(GdkEventScroll* e);
+  bool handleScroll(GdkEventScroll *e);
 
   const std::string preferred_device_;
   static constexpr int EPOLL_MAX_EVENTS = 16;

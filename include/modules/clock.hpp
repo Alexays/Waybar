@@ -15,10 +15,7 @@ enum class WeeksSide {
   HIDDEN,
 };
 
-enum class CldMode {
-  MONTH,
-  YEAR
-};
+enum class CldMode { MONTH, YEAR };
 
 class Clock : public ALabel {
  public:
@@ -47,9 +44,9 @@ class Clock : public ALabel {
   WeeksSide cldWPos_{WeeksSide::HIDDEN};
   std::map<int, std::string const> fmtMap_;
   CldMode cldMode_{CldMode::MONTH};
-  uint cldMonCols_{3}; // Count of the month in the row
-  int cldMonColLen_{20}; // Length of the month column
-  int cldWnLen_{3}; // Length of the week number
+  uint cldMonCols_{3};    // Count of the month in the row
+  int cldMonColLen_{20};  // Length of the month column
+  int cldWnLen_{3};       // Length of the week number
   date::year_month_day cldYearShift_;
   date::year_month cldMonShift_;
   date::months cldCurrShift_{0};
@@ -57,8 +54,8 @@ class Clock : public ALabel {
   std::string cldYearCached_{};
   std::string cldMonCached_{};
   /*Calendar functions*/
-  auto get_calendar(const date::zoned_seconds& now,
-                    const date::zoned_seconds& wtime) -> std::string;
+  auto get_calendar(const date::zoned_seconds& now, const date::zoned_seconds& wtime)
+      -> std::string;
   void cldModeSwitch();
 };
 }  // namespace waybar::modules

@@ -44,18 +44,13 @@ auto waybar::modules::Image::update() -> void {
   util::command::res output_;
 
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-  if(config_["path"].isString())
-  {
+  if (config_["path"].isString()) {
     path_ = config_["path"].asString();
-  }
-  else if(config_["exec"].isString())
-  {
+  } else if (config_["exec"].isString()) {
     output_ = util::command::exec(config_["exec"].asString());
-    path_ =output_.out;
-  }
-  else
-  {
-    path_="";
+    path_ = output_.out;
+  } else {
+    path_ = "";
   }
   if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS))
     pixbuf = Gdk::Pixbuf::create_from_file(path_, size_, size_);
