@@ -8,6 +8,11 @@
     "modules-center": ["clock"],
     "modules-right": ["gammastep","idle_inhibitor", "custom/gammastep", "pulseaudio", "network", "bluetooth", "battery"],
 
+    "gammastep": {
+        "margin": 17,
+        "anchor": "1 1 0 0"
+    },
+
 	"custom/power_menu": {
 		"format": "⌘",
 		"on-click": "/home/manuel/.config/wofi/power_menu.sh",

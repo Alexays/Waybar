@@ -14,6 +14,7 @@
 #include "gtk-layer-shell.h"
 #include <gtkmm/application.h>
 #include <gtkmm/button.h>
+#include <gtkmm/togglebutton.h>
 #include <gtkmm/box.h>
 #include <gtkmm.h>
 #include <glibmm/refptr.h>
@@ -28,35 +29,55 @@ namespace waybar::modules {
 
 class Settings {
 public:
-	Settings();
+	struct settings_margins {
+		uint top = 0;
+		uint right = 0;
+		uint bottom = 0;
+		uint left = 0;
+	};
+	struct settings_anchors {
+		bool top = true;
+		bool right = true;
+		bool bottom = false;
+		bool left = false;
+	};
+
+	Settings(const Json::Value&);
 	virtual ~Settings();
+	static Settings* create(const Json::Value&);
+
 	int run();
-	static Settings* create();
+	void close();
+protected:
+	void set_margins(const Json::Value&);
+	void set_anchors(const Json::Value&);
+private:
 	Glib::RefPtr<Gtk::Application> app_;
 	Gtk::Window window_;
-protected:
 	Gtk::Box box_;
-	Gtk::HeaderBar header_;
 	Gtk::Label label_;
+	const Json::Value& config_;
 };
 
-class GammaButton : public Gtk::Button {
+class SettingsButton : public Gtk::ToggleButton {
 public:
-	GammaButton();
-	virtual ~GammaButton();
-	void handle_clicked();
-protected:
-	const std::string command_reset = "killall gammastep";
-	const std::string command_start = "gammastep -m wayland -O 3000 &";
-};
-
-class SettingsButton : public Gtk::Button {
-public:
-	SettingsButton();
+	SettingsButton(const Json::Value&);
 	virtual ~SettingsButton();
-	void handle_clicked();
+	void handle_toggled();
 private:
 	Settings* settings_;
+	const Json::Value& config_;
+};
+
+class GammaButton : public Gtk::ToggleButton {
+public:
+	GammaButton(const Json::Value&);
+	virtual ~GammaButton();
+	void handle_toggled();
+private:
+	const std::string command_reset = "killall gammastep";
+	const std::string command_start = "gammastep -m wayland -O 3000 &";
+	const Json::Value& config_;
 };
 	
 class Gammastep : public ALabel {
@@ -64,7 +85,6 @@ public:
 	Gammastep(const waybar::Bar&, const std::string&, const Json::Value&);
 	virtual ~Gammastep();
 	auto update() -> void;
-	static void show_settings();
 private:
 	Gtk::Box box_;
 	GammaButton gamma_button;
