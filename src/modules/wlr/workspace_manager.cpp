@@ -169,7 +169,7 @@ WorkspaceManager::~WorkspaceManager() {
 
   wl_display *display = Client::inst()->wl_display;
 
-  // Send `stop` request and wait for one roundtrip. This is not quite correct as 
+  // Send `stop` request and wait for one roundtrip. This is not quite correct as
   // the protocol encourages us to wait for the .finished event, but it should work
   // with wlroots workspace manager implementation.
   zext_workspace_manager_v1_stop(workspace_manager_);
@@ -379,7 +379,7 @@ Workspace::~Workspace() {
 }
 
 auto Workspace::update() -> void {
-  label_.set_markup(fmt::format(format_, fmt::arg("name", name_),
+  label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("name", name_),
                                 fmt::arg("icon", with_icon_ ? get_icon() : "")));
 }
 

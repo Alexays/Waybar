@@ -1,7 +1,7 @@
 #pragma once
 
 #include <json/json.h>
-#ifdef HAVE_LIBDATE
+#if defined(HAVE_CHRONO_TIMEZONES) || defined(HAVE_LIBDATE)
 #include "modules/clock.hpp"
 #else
 #include "modules/simpleclock.hpp"

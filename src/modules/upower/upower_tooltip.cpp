@@ -29,7 +29,7 @@ UPowerTooltip::~UPowerTooltip() {}
 uint UPowerTooltip::updateTooltip(Devices& devices) {
   // Removes all old devices
   for (auto child : contentBox->get_children()) {
-    child->~Widget();
+    delete child;
   }
 
   uint deviceCount = 0;

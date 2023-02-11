@@ -19,6 +19,7 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
 
   // register for hyprland ipc
   gIPC->registerForIPC("submap", this);
+  dp.emit();
 }
 
 Submap::~Submap() {
@@ -33,7 +34,7 @@ auto Submap::update() -> void {
   if (submap_.empty()) {
     event_box_.hide();
   } else {
-    label_.set_markup(fmt::format(format_, submap_));
+    label_.set_markup(fmt::format(fmt::runtime(format_), submap_));
     if (tooltipEnabled()) {
       label_.set_tooltip_text(submap_);
     }

@@ -43,3 +43,4 @@ packagecache
 *.exe
 *.out
 *.app
+/.direnv/

@@ -101,6 +101,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
     }
+    if (ref == "image") {
+      return new waybar::modules::Image(id, config_[name]);
+    }
 #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
@@ -159,8 +162,6 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name]);
-    } else if (ref.compare(0, 6, "image/") == 0 && ref.size() > 6) {
-      return new waybar::modules::Image(ref.substr(6), id, config_[name]);
     }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());

@@ -15,6 +15,7 @@ class AModule : public IModule {
           bool enable_scroll = false);
   virtual ~AModule();
   virtual auto update() -> void;
+  virtual auto refresh(int) -> void{};
   virtual operator Gtk::Widget &();
 
   Glib::Dispatcher dp;

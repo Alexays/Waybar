@@ -49,22 +49,22 @@ auto Language::update() -> void {
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  auto kbName = ev.substr(ev.find_last_of('>') + 1, ev.find_first_of(','));
+  std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
   auto layoutName = ev.substr(ev.find_first_of(',') + 1);
 
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
 
+  layoutName = waybar::util::sanitize_string(layoutName);
+
   const auto briefName = getShortFrom(layoutName);
 
   if (config_.isMember("format-" + briefName)) {
     const auto propName = "format-" + briefName;
-    layoutName = fmt::format(format_, config_[propName].asString());
+    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
   } else {
-    layoutName = fmt::format(format_, layoutName);
+    layoutName = fmt::format(fmt::runtime(format_), layoutName);
   }
-
-  layoutName = waybar::util::sanitize_string(layoutName);
 
   if (layoutName == layoutName_) return;
 
@@ -87,17 +87,17 @@ void Language::initLanguage() {
     searcher = searcher.substr(searcher.find("keymap:") + 8);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 
+    searcher = waybar::util::sanitize_string(searcher);
+
     auto layoutName = std::string{};
     const auto briefName = getShortFrom(searcher);
 
     if (config_.isMember("format-" + briefName)) {
       const auto propName = "format-" + briefName;
-      layoutName = fmt::format(format_, config_[propName].asString());
+      layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
     } else {
-      layoutName = fmt::format(format_, searcher);
+      layoutName = fmt::format(fmt::runtime(format_), searcher);
     }
-
-    layoutName = waybar::util::sanitize_string(layoutName);
 
     layoutName_ = layoutName;
 
