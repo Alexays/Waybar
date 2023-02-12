@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 #include <iostream>
+#include <string>
 #include <memory>
 
 #include "gtk-layer-shell.h"
@@ -16,8 +17,9 @@
 #include <gtkmm/button.h>
 #include <gtkmm/togglebutton.h>
 #include <gtkmm/box.h>
-#include <gtkmm.h>
 #include <glibmm/refptr.h>
+#include <gdkmm/event.h>
+#include <gtkmm.h>
 #include <glib.h>
 
 
@@ -26,6 +28,8 @@
 #define SETTINGS_STRING "⚙"
 
 namespace waybar::modules {
+
+class GammaButton;
 
 class Settings {
 public:
@@ -42,42 +46,54 @@ public:
 		bool left = false;
 	};
 
-	Settings(const Json::Value&);
+	Settings(Json::Value&, GammaButton&);
 	virtual ~Settings();
-	static Settings* create(const Json::Value&);
+	static Settings* create(Json::Value&, GammaButton&);
 
 	int run();
 	void close();
 protected:
 	void set_margins(const Json::Value&);
 	void set_anchors(const Json::Value&);
+	void on_value_changed();
+	bool on_button_released(GdkEventButton*);
 private:
 	Glib::RefPtr<Gtk::Application> app_;
 	Gtk::Window window_;
 	Gtk::Box box_;
-	Gtk::Label label_;
-	const Json::Value& config_;
+
+	Gtk::Box H1_box_;
+	Gtk::Label label_temp_;
+	Gtk::Label label_title_;
+	Glib::RefPtr<Gtk::Adjustment> adj_temp_;
+	Gtk::Scale scale_temp_;
+
+	Json::Value& config_;
+	GammaButton& gamma_button_;
 };
 
 class SettingsButton : public Gtk::ToggleButton {
 public:
-	SettingsButton(const Json::Value&);
+	SettingsButton(Json::Value&, GammaButton&);
 	virtual ~SettingsButton();
 	void handle_toggled();
 private:
 	Settings* settings_;
-	const Json::Value& config_;
+	Json::Value& config_;
+	GammaButton& gamma_button_;
 };
 
 class GammaButton : public Gtk::ToggleButton {
 public:
-	GammaButton(const Json::Value&);
+	GammaButton(Json::Value&);
 	virtual ~GammaButton();
 	void handle_toggled();
+	void set_command_start(unsigned);
+	const std::string& get_command_start();
 private:
 	const std::string command_reset = "killall gammastep";
-	const std::string command_start = "gammastep -m wayland -O 3000 &";
-	const Json::Value& config_;
+	std::string command_start = "gammastep -m wayland -O ";
+	Json::Value& config_;
 };
 	
 class Gammastep : public ALabel {
@@ -86,10 +102,14 @@ public:
 	virtual ~Gammastep();
 	auto update() -> void;
 private:
+	Json::Value config_;
+
 	Gtk::Box box_;
 	GammaButton gamma_button;
 	SettingsButton settings_button;
 };
+
+
 
 } // namespace waybar::module 
 

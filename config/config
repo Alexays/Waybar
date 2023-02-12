@@ -10,7 +10,8 @@
 
     "gammastep": {
         "margin": 17,
-        "anchor": "1 1 0 0"
+        "anchor": "1 1 0 0",
+        "temperature": 3000
     },
 
 	"custom/power_menu": {

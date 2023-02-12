@@ -2,13 +2,30 @@
 
 using namespace waybar::modules;
 
-GammaButton::GammaButton(const Json::Value& config) : 
+void GammaButton::set_command_start(unsigned temp) {
+	command_start = "gammastep -m wayland -O " + std::to_string(temp) + " &";
+
+	// spdlog::info("command changed: <{}>", command_start);
+}
+
+const std::string& GammaButton::get_command_start() {
+	return command_start;
+}
+
+GammaButton::GammaButton(Json::Value& config) : 
 	Gtk::ToggleButton((Glib::ustring)(SUN_STRING)),
 	config_(config) {
 
 	this->signal_toggled().connect(
 		sigc::mem_fun(*this, &GammaButton::handle_toggled)
 	);
+
+	if (!config["temperature"].isNull()) {
+		int t = std::stoi(config["temperature"].asString(), nullptr, 10);
+		command_start += std::to_string(t) + " &";
+	} else
+		command_start += " 3500 &";
+	spdlog::info("commad: <{}>", command_start);
 }
 
 GammaButton::~GammaButton() {
@@ -27,7 +44,6 @@ void GammaButton::handle_toggled() {
 		system(this->command_reset.c_str());
 		spdlog::info("gammastep killed");
 	}
-
 }
 
 void Settings::set_margins(const Json::Value& config) {
@@ -132,17 +148,44 @@ void Settings::set_anchors(const Json::Value& config) {
 	gtk_layer_set_anchor (c_window_, GTK_LAYER_SHELL_EDGE_LEFT, anchors_.left);
 }
 
-Settings::Settings(const Json::Value& config) :
+void Settings::on_value_changed() {
+	// double t = scale_temp_.get_value();
+	// spdlog::info("Temperature changed");
+}
+
+bool Settings::on_button_released(GdkEventButton* event) {
+	spdlog::info("Button released");
+
+	config_["temperature"] = (int)scale_temp_.get_value();
+	gamma_button_.set_command_start(config_["temperature"].asUInt());
+
+	if (gamma_button_.get_active()) {
+		std::string command =  gamma_button_.get_command_start();
+		system("killall gammastep");
+		system(command.c_str());
+	}
+
+    return false;
+}
+
+
+Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	app_(Gtk::Application::create("gamma.setting", Gio::APPLICATION_FLAGS_NONE)),
-	box_(Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0)),
-	label_("Gamma Settings"),
-	config_(config) {
+	box_(Gtk::ORIENTATION_VERTICAL, 0),
+	H1_box_(Gtk::ORIENTATION_HORIZONTAL, 0),
+	label_temp_("Temperature"),
+	label_title_("Gamma Settings"),
+	adj_temp_(Gtk::Adjustment::create(3500, 1700, 15001, 1.0, 1.0, 1.0)),
+	scale_temp_(adj_temp_, Gtk::ORIENTATION_HORIZONTAL),
+	config_(config),
+	gamma_button_(gamma_button) {
 
 	GtkWindow *c_window_ = window_.gobj();
 	
 	// setup
 	gtk_layer_init_for_window(c_window_);
 	gtk_layer_set_layer(c_window_, GTK_LAYER_SHELL_LAYER_TOP);
+	gtk_layer_set_keyboard_mode(c_window_, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
 
 	//margins
 	set_margins(config_);
@@ -150,8 +193,32 @@ Settings::Settings(const Json::Value& config) :
 	//anchors
 	set_anchors(config_);
 
-	box_.pack_start(label_);
-	window_.set_border_width(15);
+	label_title_.set_justify(Gtk::JUSTIFY_CENTER);
+	label_title_.set_margin_top(5);
+	label_title_.set_margin_bottom(5);
+
+	scale_temp_.set_digits(0);
+	scale_temp_.set_value(3500);
+	scale_temp_.set_value_pos(Gtk::POS_LEFT);
+	scale_temp_.set_draw_value(true);
+	scale_temp_.set_margin_right(15);
+	scale_temp_.signal_value_changed().connect(
+		sigc::mem_fun(*this, &Settings::on_value_changed)
+	);
+
+	scale_temp_.add_events(Gdk::BUTTON_RELEASE_MASK);
+	scale_temp_.signal_button_release_event().connect(
+		sigc::mem_fun(*this, &Settings::on_button_released)
+		, false);
+
+	H1_box_.pack_start(label_temp_);
+	H1_box_.pack_end(scale_temp_);
+
+	box_.pack_start(label_title_);
+	box_.pack_end(H1_box_);
+	box_.set_homogeneous(false);
+	box_.set_size_request(400, -1);
+	// window_.set_border_width(15);
 	window_.add(box_);
 	window_.show_all_children();
 }
@@ -164,18 +231,19 @@ int Settings::run() {
 	return app_->run(window_);
 }
 
-Settings* Settings::create(const Json::Value& config) {
-	return new Settings(config);
+Settings* Settings::create(Json::Value& config, GammaButton& gamma_button) {
+	return new Settings(config, gamma_button);
 }
 
 void Settings::close() {
 	this->window_.close();
 }
 
-SettingsButton::SettingsButton(const Json::Value& config) : 
+SettingsButton::SettingsButton(Json::Value& config, GammaButton& gamma_button) : 
 	Gtk::ToggleButton((Glib::ustring)(SETTINGS_STRING)),
 	settings_(nullptr),
-	config_(config) {
+	config_(config),
+	gamma_button_(gamma_button) {
 
 	this->signal_toggled().connect(
 		sigc::mem_fun(*this, &SettingsButton::handle_toggled)
@@ -192,7 +260,7 @@ void SettingsButton::handle_toggled() {
 		settings_->close();
 	} else {
 		spdlog::info("Settings panel opened");
-		settings_ = Settings::create(config_);
+		settings_ = Settings::create(config_, gamma_button_);
 		settings_->run();
 	}
 
@@ -202,9 +270,10 @@ void SettingsButton::handle_toggled() {
 Gammastep::Gammastep(
 	const waybar::Bar &bar, const std::string& id, const Json::Value& config) :	
 		ALabel(config, "gammastep", id, "", 60, false, true, false),
+		config_(config),
 		box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
-		gamma_button(config),
-		settings_button(config) {
+		gamma_button(config_),
+		settings_button(config_, gamma_button) {
 	
 	box_.set_homogeneous(false);
 	box_.pack_start(gamma_button);
