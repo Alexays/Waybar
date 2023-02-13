@@ -27,6 +27,8 @@
 #define SUN_STRING "\xf0\x9f\x8c\x9e"
 #define SETTINGS_STRING "⚙"
 
+#define TEMPERATURE_DEFAULT 3500
+
 namespace waybar::modules {
 
 class GammaButton;
@@ -67,6 +69,7 @@ private:
 	Gtk::Label label_title_;
 	Glib::RefPtr<Gtk::Adjustment> adj_temp_;
 	Gtk::Scale scale_temp_;
+	unsigned int last_temp = 0;
 
 	Json::Value& config_;
 	GammaButton& gamma_button_;
@@ -88,6 +91,7 @@ public:
 	GammaButton(Json::Value&);
 	virtual ~GammaButton();
 	void handle_toggled();
+
 	void set_command_start(unsigned);
 	const std::string& get_command_start();
 private:

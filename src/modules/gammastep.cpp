@@ -20,12 +20,13 @@ GammaButton::GammaButton(Json::Value& config) :
 		sigc::mem_fun(*this, &GammaButton::handle_toggled)
 	);
 
-	if (!config["temperature"].isNull()) {
-		int t = std::stoi(config["temperature"].asString(), nullptr, 10);
+	if (config_["temperature"].isUInt()) {
+		unsigned int t = config_["temperature"].asUInt();
 		command_start += std::to_string(t) + " &";
-	} else
-		command_start += " 3500 &";
-	spdlog::info("commad: <{}>", command_start);
+	} else {
+		config_["temperature"] = TEMPERATURE_DEFAULT;
+		command_start += " " + std::to_string(config_["temperature"].asUInt()) + " &";
+	}
 }
 
 GammaButton::~GammaButton() {
@@ -37,7 +38,7 @@ void GammaButton::handle_toggled() {
 	if (this->get_label() == (Glib::ustring)(SUN_STRING)) {
 		this->set_label((Glib::ustring)(MOON_STRING));
 		system(this->command_start.c_str());
-		spdlog::info("gammastep activated");
+		spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
 	} 
 	else {
 		this->set_label((Glib::ustring)(SUN_STRING));
@@ -149,20 +150,36 @@ void Settings::set_anchors(const Json::Value& config) {
 }
 
 void Settings::on_value_changed() {
-	// double t = scale_temp_.get_value();
-	// spdlog::info("Temperature changed");
-}
+	/* unsigned int t = (unsigned int)scale_temp_.get_value();
+	if (t == last_temp)
+		return;
 
-bool Settings::on_button_released(GdkEventButton* event) {
-	spdlog::info("Button released");
-
-	config_["temperature"] = (int)scale_temp_.get_value();
-	gamma_button_.set_command_start(config_["temperature"].asUInt());
+	config_["temperature"] = t;
+	last_temp = t;
+	gamma_button_.set_command_start(t);
 
 	if (gamma_button_.get_active()) {
 		std::string command =  gamma_button_.get_command_start();
 		system("killall gammastep");
 		system(command.c_str());
+		spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
+	} */
+}
+
+bool Settings::on_button_released(GdkEventButton* event) {
+	unsigned int t = (unsigned int)scale_temp_.get_value();
+	if (t == last_temp)
+		return false;
+
+	config_["temperature"] = t;
+	last_temp = t;
+	gamma_button_.set_command_start(t);
+
+	if (gamma_button_.get_active()) {
+		std::string command =  gamma_button_.get_command_start();
+		system("killall gammastep");
+		system(command.c_str());
+		spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
 	}
 
     return false;
@@ -175,10 +192,12 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	H1_box_(Gtk::ORIENTATION_HORIZONTAL, 0),
 	label_temp_("Temperature"),
 	label_title_("Gamma Settings"),
-	adj_temp_(Gtk::Adjustment::create(3500, 1700, 15001, 1.0, 1.0, 1.0)),
+	adj_temp_(Gtk::Adjustment::create(config["temperature"].isUInt() ? config["temperature"].asUInt() : TEMPERATURE_DEFAULT, 1700, 15001, 50.0, 100.0, 1.0)),
 	scale_temp_(adj_temp_, Gtk::ORIENTATION_HORIZONTAL),
 	config_(config),
 	gamma_button_(gamma_button) {
+
+	last_temp = config_["temperature"].isUInt() ? config_["temperature"].asUInt() : TEMPERATURE_DEFAULT;
 
 	GtkWindow *c_window_ = window_.gobj();
 	
@@ -198,18 +217,21 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	label_title_.set_margin_bottom(5);
 
 	scale_temp_.set_digits(0);
-	scale_temp_.set_value(3500);
 	scale_temp_.set_value_pos(Gtk::POS_LEFT);
 	scale_temp_.set_draw_value(true);
 	scale_temp_.set_margin_right(15);
+
+	// temp_scale_ events
 	scale_temp_.signal_value_changed().connect(
-		sigc::mem_fun(*this, &Settings::on_value_changed)
+		sigc::mem_fun(*this, &Settings::on_value_changed),
+		false
 	);
 
 	scale_temp_.add_events(Gdk::BUTTON_RELEASE_MASK);
 	scale_temp_.signal_button_release_event().connect(
-		sigc::mem_fun(*this, &Settings::on_button_released)
-		, false);
+		sigc::mem_fun(*this, &Settings::on_button_released),
+		false
+	);
 
 	H1_box_.pack_start(label_temp_);
 	H1_box_.pack_end(scale_temp_);
@@ -280,11 +302,6 @@ Gammastep::Gammastep(
 	box_.pack_end(settings_button);
 	event_box_.remove();
 	event_box_.add(box_);
-/* 
-	gint wx, wy;
-	event_box_.translate_coordinates(event_box_.get_parent(), 0, 0, wx, wy);
-
-	spdlog::info("Coordinates:[{},{}]", wx, wy); */
 } 
 
 Gammastep::~Gammastep() {
