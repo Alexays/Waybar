@@ -1,9 +1,12 @@
-#include "include/modules/gammastep.hpp"
+#include "include/modules/gamma_control.hpp"
 
 using namespace waybar::modules;
 
+// ! GAMMA_BUTTON
+
 void GammaButton::set_command_start(unsigned temp) {
-	command_start = "gammastep -m wayland -O " + std::to_string(temp) + " &";
+	command_start = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
+		-o /net/zoidplex/wlr_gamma_service -m net.zoidplex.wlr_gamma_service.temperature.set " + std::to_string(temp);
 
 	// spdlog::info("command changed: <{}>", command_start);
 }
@@ -22,11 +25,13 @@ GammaButton::GammaButton(Json::Value& config) :
 
 	if (config_["temperature"].isUInt()) {
 		unsigned int t = config_["temperature"].asUInt();
-		command_start += std::to_string(t) + " &";
+		command_start += std::to_string(t);
 	} else {
 		config_["temperature"] = TEMPERATURE_DEFAULT;
-		command_start += " " + std::to_string(config_["temperature"].asUInt()) + " &";
+		command_start += std::to_string(config_["temperature"].asUInt());
 	}
+
+	set_command_start(config_["temperature"].asUInt());
 }
 
 GammaButton::~GammaButton() {
@@ -38,14 +43,45 @@ void GammaButton::handle_toggled() {
 	if (this->get_label() == (Glib::ustring)(SUN_STRING)) {
 		this->set_label((Glib::ustring)(MOON_STRING));
 		system(this->command_start.c_str());
-		spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
+		spdlog::info("gamma modified: [{} K]", config_["temperature"].asUInt());
 	} 
 	else {
 		this->set_label((Glib::ustring)(SUN_STRING));
 		system(this->command_reset.c_str());
-		spdlog::info("gammastep killed");
 	}
 }
+
+// ! SETTINGS_BUTTON
+
+SettingsButton::SettingsButton(Json::Value& config, GammaButton& gamma_button) : 
+	Gtk::ToggleButton((Glib::ustring)(SETTINGS_STRING)),
+	settings_(nullptr),
+	config_(config),
+	gamma_button_(gamma_button) {
+
+	this->signal_toggled().connect(
+		sigc::mem_fun(*this, &SettingsButton::handle_toggled)
+	);
+}
+
+SettingsButton::~SettingsButton() {
+
+}
+
+void SettingsButton::handle_toggled() {
+	if (settings_ != nullptr) {
+		spdlog::info("Quitting...");
+		settings_->close();
+	} else {
+		spdlog::info("Settings panel opened");
+		settings_ = Settings::create(config_, gamma_button_);
+		settings_->run();
+	}
+
+	settings_ = nullptr;
+}
+
+// ! SETTINGS
 
 void Settings::set_margins(const Json::Value& config) {
 	struct settings_margins margins_;
@@ -150,7 +186,7 @@ void Settings::set_anchors(const Json::Value& config) {
 }
 
 void Settings::on_value_changed() {
-	/* unsigned int t = (unsigned int)scale_temp_.get_value();
+	unsigned int t = (unsigned int)scale_temp_.get_value();
 	if (t == last_temp)
 		return;
 
@@ -159,32 +195,29 @@ void Settings::on_value_changed() {
 	gamma_button_.set_command_start(t);
 
 	if (gamma_button_.get_active()) {
-		std::string command =  gamma_button_.get_command_start();
-		system("killall gammastep");
-		system(command.c_str());
+		system(gamma_button_.get_command_start().c_str());
 		spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
-	} */
+	}
 }
 
 bool Settings::on_button_released(GdkEventButton* event) {
-	unsigned int t = (unsigned int)scale_temp_.get_value();
-	if (t == last_temp)
-		return false;
+	// unsigned int t = (unsigned int)scale_temp_.get_value();
+	// if (t == last_temp)
+	// 	return false;
 
-	config_["temperature"] = t;
-	last_temp = t;
-	gamma_button_.set_command_start(t);
+	// config_["temperature"] = t;
+	// last_temp = t;
+	// gamma_button_.set_command_start(t);
 
-	if (gamma_button_.get_active()) {
-		std::string command =  gamma_button_.get_command_start();
-		system("killall gammastep");
-		system(command.c_str());
-		spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
-	}
+	// if (gamma_button_.get_active()) {
+	// 	std::string command =  gamma_button_.get_command_start();
+	// 	system("killall gammastep");
+	// 	system(command.c_str());
+	// 	spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
+	// }
 
     return false;
 }
-
 
 Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	app_(Gtk::Application::create("gamma.setting", Gio::APPLICATION_FLAGS_NONE)),
@@ -200,6 +233,7 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	last_temp = config_["temperature"].isUInt() ? config_["temperature"].asUInt() : TEMPERATURE_DEFAULT;
 
 	GtkWindow *c_window_ = window_.gobj();
+	
 	
 	// setup
 	gtk_layer_init_for_window(c_window_);
@@ -261,35 +295,7 @@ void Settings::close() {
 	this->window_.close();
 }
 
-SettingsButton::SettingsButton(Json::Value& config, GammaButton& gamma_button) : 
-	Gtk::ToggleButton((Glib::ustring)(SETTINGS_STRING)),
-	settings_(nullptr),
-	config_(config),
-	gamma_button_(gamma_button) {
-
-	this->signal_toggled().connect(
-		sigc::mem_fun(*this, &SettingsButton::handle_toggled)
-	);
-}
-
-SettingsButton::~SettingsButton() {
-
-}
-
-void SettingsButton::handle_toggled() {
-	if (settings_ != nullptr) {
-		spdlog::info("Quitting...");
-		settings_->close();
-	} else {
-		spdlog::info("Settings panel opened");
-		settings_ = Settings::create(config_, gamma_button_);
-		settings_->run();
-	}
-
-	settings_ = nullptr;
-}
-
-Gammastep::Gammastep(
+GammaControl::GammaControl(
 	const waybar::Bar &bar, const std::string& id, const Json::Value& config) :	
 		ALabel(config, "gammastep", id, "", 60, false, true, false),
 		config_(config),
@@ -297,6 +303,8 @@ Gammastep::Gammastep(
 		gamma_button(config_),
 		settings_button(config_, gamma_button) {
 	
+	system("killall wlr-gamma-service");
+	system("wlr-gamma-service &");
 	box_.set_homogeneous(false);
 	box_.pack_start(gamma_button);
 	box_.pack_end(settings_button);
@@ -304,10 +312,10 @@ Gammastep::Gammastep(
 	event_box_.add(box_);
 } 
 
-Gammastep::~Gammastep() {
+GammaControl::~GammaControl() {
 
 }
 
-void Gammastep::update() {
+void GammaControl::update() {
 
 }

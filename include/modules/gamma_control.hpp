@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef GAMMASTEP_H
-#define GAMMASTEP_H
+#ifndef GAMMA_CONTROL_H
+#define GAMMA_CONTROL_H
 
 #include "ALabel.hpp"
 #include "bar.hpp"
@@ -13,21 +13,18 @@
 #include <memory>
 
 #include "gtk-layer-shell.h"
-#include <gtkmm/application.h>
-#include <gtkmm/button.h>
-#include <gtkmm/togglebutton.h>
-#include <gtkmm/box.h>
-#include <glibmm/refptr.h>
-#include <gdkmm/event.h>
 #include <gtkmm.h>
-#include <glib.h>
-
+#include <glibmm.h>
+#include <gdk/gdk.h>
+#include <gdkmm.h>
+#include <giomm/application.h>
 
 #define MOON_STRING "\xf0\x9f\x8c\x99"
 #define SUN_STRING "\xf0\x9f\x8c\x9e"
 #define SETTINGS_STRING "⚙"
 
 #define TEMPERATURE_DEFAULT 3500
+#define TEMPERATURE_NATURAL 6500
 
 namespace waybar::modules {
 
@@ -95,15 +92,17 @@ public:
 	void set_command_start(unsigned);
 	const std::string& get_command_start();
 private:
-	const std::string command_reset = "killall gammastep";
-	std::string command_start = "gammastep -m wayland -O ";
+	std::string command_reset = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
+		-o /net/zoidplex/wlr_gamma_service -m net.zoidplex.wlr_gamma_service.temperature.set " + std::to_string(TEMPERATURE_NATURAL);
+	std::string command_start = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
+		-o /net/zoidplex/wlr_gamma_service -m net.zoidplex.wlr_gamma_service.temperature.set " + std::to_string(TEMPERATURE_DEFAULT);
 	Json::Value& config_;
 };
 	
-class Gammastep : public ALabel {
+class GammaControl : public ALabel {
 public:
-	Gammastep(const waybar::Bar&, const std::string&, const Json::Value&);
-	virtual ~Gammastep();
+	GammaControl(const waybar::Bar&, const std::string&, const Json::Value&);
+	virtual ~GammaControl();
 	auto update() -> void;
 private:
 	Json::Value config_;
@@ -114,7 +113,6 @@ private:
 };
 
 
-
 } // namespace waybar::module 
 
-#endif // ! GAMMASTEP_H
+#endif // ! GAMMA_CONTROL_H

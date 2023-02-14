@@ -6,12 +6,12 @@
 
     "modules-left": ["custom/power_menu", "wlr/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
-    "modules-right": ["gammastep","idle_inhibitor", "custom/gammastep", "pulseaudio", "network", "bluetooth", "battery"],
+    "modules-right": ["gamma_control","idle_inhibitor", "custom/gammastep", "pulseaudio", "network", "bluetooth", "battery"],
 
-    "gammastep": {
+    "gamma_control": {
         "margin": 17,
         "anchor": "1 1 0 0",
-        "temperature": 3000
+        "temperature": 2000
     },
 
 	"custom/power_menu": {

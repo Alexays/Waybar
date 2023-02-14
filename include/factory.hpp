@@ -79,8 +79,8 @@
 #ifdef HAVE_LIBWIREPLUMBER
 #include "modules/wireplumber.hpp"
 #endif
-#ifdef HAVE_GAMMASTEP
-#include "modules/gammastep.hpp"
+#ifdef HAVE_GAMMA_CONTROL
+#include "modules/gamma_control.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"

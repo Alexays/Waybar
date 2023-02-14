@@ -19,4 +19,4 @@ option('experimental', type : 'boolean', value : true, description: 'Enable expe
 option('jack', type: 'feature', value: 'auto', description: 'Enable support for JACK')
 option('wireplumber', type: 'feature', value: 'auto', description: 'Enable support for WirePlumber')
 option('wlr_hyprland', type: 'boolean', value: true, description: 'Enable support for workspaces click on Hyprland')
-option('gammastep', type: 'boolean', value: true, description: 'Enable support for the Gammastep controller')
+option('gamma_control', type: 'boolean', value: true, description: 'Enable support for the gamma controller')

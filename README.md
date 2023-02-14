@@ -24,6 +24,7 @@
 - MPD
 - Custom scripts
 - Custom image
+- Gamma control panel
 - Multiple output configuration
 - And many more customizations
 
@@ -44,7 +45,7 @@ An Ubuntu PPA with more recent versions is available
 #### Building from source
 
 ```bash
-$ git clone https://github.com/Alexays/Waybar
+$ git clone https://github.com/manueldiagostino/wlr-gamma-service
 $ cd Waybar
 $ meson build
 $ ninja -C build
@@ -76,7 +77,16 @@ libsndio [sndio module]
 libevdev [KeyboardState module]
 xkbregistry
 upower [UPower battery module]
+wlr-gamma-service [GammaControl module]
 ```
+
+> **Note on wlr-gamma-service**
+>
+> Install it from [this](https://github.com/manueldiagostino/wlr-gamma-service) fork.
+
+**Experimental features**
+
+To enable the GammaControl module, be sure to set to `true` the appropriate flag in `meson_option.txt`; the same goes for the flag (`wlr_hyprland`) which activates the click action on workspaces icons with Hyprland.
 
 **Build dependencies**
 

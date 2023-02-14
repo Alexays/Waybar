@@ -160,9 +160,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name]);
     }
-    if (ref == "gammastep") {
-      return new waybar::modules::Gammastep(bar_, id, config_[name]);
+#ifdef HAVE_GAMMA_CONTROL
+    if (ref == "gamma_control") {
+      return new waybar::modules::GammaControl(bar_, id, config_[name]);
     }
+#endif
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
     throw std::runtime_error(err);

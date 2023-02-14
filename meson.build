@@ -238,9 +238,9 @@ if get_option('wlr_hyprland')
     add_project_arguments('-DUSE_WLR_HYPRLAND', language: 'cpp')
 endif
 
-if get_option('gammastep')
-    add_project_arguments('-DHAVE_GAMMASTEP', language: 'cpp')
-    src_files += 'src/modules/gammastep.cpp'
+if get_option('gamma_control')
+    add_project_arguments('-DHAVE_GAMMA_CONTROL', language: 'cpp')
+    src_files += 'src/modules/gamma_control.cpp'
 endif
 
 if libnl.found() and libnlgen.found()
