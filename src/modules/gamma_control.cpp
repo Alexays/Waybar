@@ -1,4 +1,5 @@
 #include "include/modules/gamma_control.hpp"
+#include "config.hpp"
 
 using namespace waybar::modules;
 
@@ -277,6 +278,9 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	// window_.set_border_width(15);
 	window_.add(box_);
 	window_.show_all_children();
+
+	std::fstream config_file;
+	open_config(config_file);	
 }
 
 Settings::~Settings() {
@@ -293,6 +297,32 @@ Settings* Settings::create(Json::Value& config, GammaButton& gamma_button) {
 
 void Settings::close() {
 	this->window_.close();
+}
+
+void Settings::open_config(std::fstream& config_file) {
+	Config file;
+	std::optional<std::string> config_path_ = file.findConfigPath({"config", "config.jsonc"});
+
+	if (config_path_.has_value())
+		spdlog::info("Found config file in {}", config_path_.value());
+	else {
+		spdlog::warn("No config file found");
+		return;
+	}
+
+	config_file = std::fstream(config_path_.value());
+	if (!config_file.is_open()) {
+		spdlog::warn("Not able to open {}", config_path_.value());
+		return;
+	}
+
+	char line[1001];
+	while (config_file.getline(line, 1001, '\n') && config_file.good()) {
+		std::cout << line << std::endl;
+	}
+	std::cout << "********************************************" << std::endl;
+
+	config_file.close();
 }
 
 GammaControl::GammaControl(

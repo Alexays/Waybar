@@ -9,6 +9,7 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <memory>
 
@@ -56,6 +57,8 @@ protected:
 	void set_anchors(const Json::Value&);
 	void on_value_changed();
 	bool on_button_released(GdkEventButton*);
+
+	void open_config(std::fstream&);
 private:
 	Glib::RefPtr<Gtk::Application> app_;
 	Gtk::Window window_;
