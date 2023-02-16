@@ -50,19 +50,23 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *artist-len*: ++
 	typeof: integer ++
-	Maximum length of the Artist tag.
+	Maximum length of the Artist tag (Wide/Fullwidth Unicode characters
+	count as two).
 
 *album-len*: ++
 	typeof: integer ++
-	Maximum length of the Album tag.
+	Maximum length of the Album tag (Wide/Fullwidth Unicode characters count
+	as two).
 
 *title-len*: ++
 	typeof: integer ++
-	Maximum length of the Title tag.
+	Maximum length of the Title tag (Wide/Fullwidth Unicode characters count
+	as two).
 
 *dynamic-len*: ++
 	typeof: integer ++
-	Maximum length of the Dynamic tag.
+	Maximum length of the Dynamic tag (Wide/Fullwidth Unicode characters
+	count as two).
 
 *dynamic-priority* ++ 
 	typeof: []string ++
@@ -70,10 +74,26 @@ The *mpris* module displays currently playing media via libplayerctl.
 	Priority of the tags when truncating the Dynamic tag (absence in this
 	list means force inclusion).
 
+*truncate-hours*: ++
+	typeof: bool ++
+	default: true ++
+	Whether to truncate hours when media duration is less than an hour long
+
 *enable-tooltip-len-limits*: ++
 	typeof: bool ++
 	default: false ++
-	Option to enable the limits for the tooltip as well
+	Option to enable the length limits for the tooltip as well
+
+*ellipsis*: ++
+	typeof: string ++
+	default: "…" ++
+	Override the default ellipsis (set to empty string to simply truncate
+	the tags when needed instead).
+
+*on-click*: ++
+	typeof: string ++
+	default: play-pause ++
+	Overwrite default action toggles.
 
 *on-click*: ++
 	typeof: string ++

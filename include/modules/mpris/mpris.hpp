@@ -39,7 +39,8 @@ class Mpris : public AModule {
     std::optional<std::string> artist;
     std::optional<std::string> album;
     std::optional<std::string> title;
-    std::optional<std::string> length;  // as HH:MM:SS
+    std::optional<std::string> length;   // as HH:MM:SS
+    std::optional<std::string> position; // same format
   };
 
   auto getPlayerInfo() -> std::optional<PlayerInfo>;
@@ -48,6 +49,7 @@ class Mpris : public AModule {
   auto getAlbumStr(const PlayerInfo&, bool) -> std::string;
   auto getTitleStr(const PlayerInfo&, bool) -> std::string;
   auto getLengthStr(const PlayerInfo&, bool) -> std::string;
+  auto getPositionStr(const PlayerInfo&, bool) -> std::string;
   auto getDynamicStr(const PlayerInfo&, bool, bool) -> std::string;
 
   Gtk::Box box_;
@@ -69,7 +71,9 @@ class Mpris : public AModule {
   int title_len_;
   int dynamic_len_;
   std::vector<std::string> dynamic_prio_;
+  bool truncate_hours_;
   bool tooltip_len_limits_;
+  std::string ellipsis_;
 
   std::chrono::seconds interval_;
   std::string player_;
