@@ -12,6 +12,8 @@
 #include <fstream>
 #include <string>
 #include <memory>
+#include <filesystem>
+#include <optional>
 
 #include "gtk-layer-shell.h"
 #include <gtkmm.h>
@@ -59,6 +61,7 @@ protected:
 	bool on_button_released(GdkEventButton*);
 
 	void open_config(std::fstream&);
+	void update_config();
 private:
 	Glib::RefPtr<Gtk::Application> app_;
 	Gtk::Window window_;
@@ -72,6 +75,8 @@ private:
 	unsigned int last_temp = 0;
 
 	Json::Value& config_;
+	std::optional<std::string> config_file_path_;
+	std::fstream config_file_;
 	GammaButton& gamma_button_;
 };
 

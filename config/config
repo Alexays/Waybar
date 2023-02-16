@@ -8,11 +8,12 @@
     "modules-center": ["clock"],
     "modules-right": ["gamma_control","idle_inhibitor", "custom/gammastep", "pulseaudio", "network", "bluetooth", "battery"],
 
-    "gamma_control": {
-        "margin": 17,
-        "anchor": "1 1 0 0",
-        "temperature": 2000
-    },
+	"gamma_control": {
+		"anchor" : "1 1 0 0",
+		"margin" : 17,
+		"temperature" : 5268,
+        "save-settings": false
+},
 
 	"custom/power_menu": {
 		"format": "⌘",

@@ -279,8 +279,8 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	window_.add(box_);
 	window_.show_all_children();
 
-	std::fstream config_file;
-	open_config(config_file);	
+	if (config_["save-settings"].asBool())
+		open_config(config_file_);
 }
 
 Settings::~Settings() {
@@ -296,33 +296,89 @@ Settings* Settings::create(Json::Value& config, GammaButton& gamma_button) {
 }
 
 void Settings::close() {
+	if (config_["save-settings"].asBool())
+		update_config();
 	this->window_.close();
 }
 
 void Settings::open_config(std::fstream& config_file) {
 	Config file;
-	std::optional<std::string> config_path_ = file.findConfigPath({"config", "config.jsonc"});
+	config_file_path_ = file.findConfigPath({"config", "config.jsonc"});
+	
 
-	if (config_path_.has_value())
-		spdlog::info("Found config file in {}", config_path_.value());
+	if (config_file_path_.has_value())
+		spdlog::info("Found config file in {}", config_file_path_.value());
 	else {
 		spdlog::warn("No config file found");
 		return;
 	}
 
-	config_file = std::fstream(config_path_.value());
+	config_file = std::fstream(config_file_path_.value());
 	if (!config_file.is_open()) {
-		spdlog::warn("Not able to open {}", config_path_.value());
+		spdlog::warn("Not able to open {}", config_file_path_.value());
+		return;
+	}
+	// char line[1001];
+	// while (config_file.getline(line, 1001, '\n') && config_file.good()) {
+	// 	std::cout << line << std::endl;
+	// }
+	// std::cout << "********************************************" << std::endl;
+
+	// config_file.close();
+}
+
+void Settings::update_config() {
+
+	if (!config_file_path_.has_value())
+		return;
+
+	std::string config_file_tmp_path = config_file_path_.value() + "_tmp";
+	std::ofstream config_file_tmp_(config_file_tmp_path);
+	if (!config_file_tmp_.is_open()) {
+		spdlog::warn("Not able to open {}", config_file_tmp_path);
 		return;
 	}
 
-	char line[1001];
-	while (config_file.getline(line, 1001, '\n') && config_file.good()) {
-		std::cout << line << std::endl;
-	}
-	std::cout << "********************************************" << std::endl;
+	std::string line;
+	while (std::getline(config_file_, line) && config_file_.good()) {
 
-	config_file.close();
+		if (line.find("\"gamma_control\": {") != std::string::npos) {
+			config_file_tmp_ << "\t\"gamma_control\": ";
+
+			int brackets = 1;
+			char c;
+
+			while (brackets != 0 && config_file_.get(c)) {
+				if (c == '{')
+					brackets++;
+				else if (c == '}')
+					brackets--;
+			}
+
+			if (brackets) {
+				spdlog::warn("Error while parsing config file");
+				config_file_.close();
+				config_file_tmp_.close();
+				return;
+			}
+			
+			Json::StreamWriterBuilder wbuilder;
+			wbuilder["indentation"] = "\t\t";
+			config_file_tmp_ << Json::writeString(wbuilder, config_);
+			continue;
+		}
+
+		config_file_tmp_ << line << std::endl;
+	}
+
+	spdlog::info("Config file updated successfully");
+	config_file_.close();
+	config_file_tmp_.close();
+
+	std::filesystem::path from = config_file_tmp_path;
+	std::filesystem::path to = config_file_path_.value();
+
+	std::filesystem::rename(from, to);
 }
 
 GammaControl::GammaControl(
