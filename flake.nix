@@ -66,7 +66,7 @@
           ] ++ (map lib.getDev [
             # from buildInputs
             wayland wlroots gtkmm3 libsigcxx jsoncpp spdlog gtk-layer-shell howard-hinnant-date libxkbcommon
-            # opttional dependencies
+            # optional dependencies
             gobject-introspection glib playerctl python3.pkgs.pygobject3
             libevdev libinput libjack2 libmpdclient playerctl libnl
             libpulseaudio sndio sway libdbusmenu-gtk3 udev upower wireplumber
