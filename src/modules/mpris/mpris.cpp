@@ -21,6 +21,13 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
       label_(),
       format_(DEFAULT_FORMAT),
+      tooltip_(DEFAULT_FORMAT),
+      artist_len_(-1),
+      album_len_(-1),
+      title_len_(-1),
+      dynamic_len_(-1),
+      dynamic_prio_({"title", "length", "artist", "album"}),
+      tooltip_len_limits_(false),
       interval_(0),
       player_("playerctld"),
       manager(),
@@ -42,6 +49,46 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   if (config_["format-stopped"].isString()) {
     format_stopped_ = config_["format-stopped"].asString();
   }
+  if (tooltipEnabled()) {
+    if (config_["tooltip-format"].isString()) {
+      tooltip_ = config_["tooltip-format"].asString();
+    }
+    if (config_["tooltip-format-playing"].isString()) {
+      tooltip_playing_ = config_["tooltip-format-playing"].asString();
+    }
+    if (config_["tooltip-format-paused"].isString()) {
+      tooltip_paused_ = config_["tooltip-format-paused"].asString();
+    }
+    if (config_["tooltip-format-stopped"].isString()) {
+      tooltip_stopped_ = config_["tooltip-format-stopped"].asString();
+    }
+    if (config_["enable-tooltip-len-limits"].isBool()) {
+      tooltip_len_limits_ = config["enable-tooltip-len-limits"].asBool();
+    }
+  }
+
+  if (config["artist-len"].isUInt()) {
+    artist_len_ = config["artist-len"].asUInt();
+  }
+  if (config["album-len"].isUInt()) {
+    album_len_ = config["album-len"].asUInt();
+  }
+  if (config["title-len"].isUInt()) {
+    title_len_ = config["title-len"].asUInt();
+  }
+  if (config["dynamic-len"].isUInt()) {
+    dynamic_len_ = config["dynamic-len"].asUInt();
+  }
+  if (config_["dynamic-priority"].isArray()) {
+    dynamic_prio_.clear();
+    for (auto it = config_["dynamic-priority"].begin(); it != config_["dynamic-priority"].end();
+         ++it) {
+      if (it->isString()) {
+        dynamic_prio_.push_back(it->asString());
+      }
+    }
+  }
+
   if (config_["interval"].isUInt()) {
     interval_ = std::chrono::seconds(config_["interval"].asUInt());
   }
@@ -51,7 +98,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   if (config_["ignored-players"].isArray()) {
     for (auto it = config_["ignored-players"].begin(); it != config_["ignored-players"].end();
          ++it) {
-      ignored_players_.push_back(it->asString());
+      if (it->isString()) {
+        ignored_players_.push_back(it->asString());
+      }
     }
   }
 
@@ -127,6 +176,95 @@ auto Mpris::getIcon(const Json::Value& icons, const std::string& key) -> std::st
     }
   }
   return "";
+}
+
+auto Mpris::getArtistStr(const PlayerInfo &info, bool truncated) -> std::string {
+  std::string artist = info.artist.value_or(std::string());
+  return (truncated && artist_len_ >= 0) ? artist.substr(0, artist_len_) : artist;
+}
+
+auto Mpris::getAlbumStr(const PlayerInfo &info, bool truncated) -> std::string {
+  std::string album = info.album.value_or(std::string());
+  return (truncated && album_len_ >= 0) ? album.substr(0, album_len_) : album;
+}
+
+auto Mpris::getTitleStr(const PlayerInfo &info, bool truncated) -> std::string {
+  std::string title = info.title.value_or(std::string());
+  return (truncated && title_len_ >= 0) ? title.substr(0, title_len_) : title;
+}
+
+auto Mpris::getLengthStr(const PlayerInfo &info, bool from_dynamic) -> std::string {
+  if (info.length.has_value()) {
+    return from_dynamic ? ("[" + info.length.value() + "]") : info.length.value();
+  }
+  return std::string();
+}
+
+auto Mpris::getDynamicStr(const PlayerInfo &info, bool truncated, bool html) -> std::string {
+  std::string artist = getArtistStr(info, truncated);
+  std::string album = getAlbumStr(info, truncated);
+  std::string title = getTitleStr(info, truncated);
+  std::string length = getLengthStr(info, true);
+
+  std::stringstream dynamic;
+  bool showArtist, showAlbum, showTitle, showLength;
+  showArtist = artist.length() != 0;
+  showAlbum = album.length() != 0;
+  showTitle = title.length() != 0;
+  showLength = length.length() != 0;
+
+  if (truncated && dynamic_len_ >= 0) {
+    size_t dynamicLen = dynamic_len_;
+    size_t artistLen = showArtist ? artist.length() + 3 : 0;
+    size_t albumLen = showAlbum ? album.length() + 3 : 0;
+    size_t titleLen = title.length();
+    size_t lengthLen = showLength ? length.length() + 1 : 0;
+
+    size_t totalLen = 0;
+
+    for (auto it = dynamic_prio_.begin(); it != dynamic_prio_.end(); ++it) {
+      if (*it == "artist") {
+        if (totalLen + artistLen > dynamicLen) {
+          showArtist = false;
+        } else {
+          totalLen += artistLen;
+        }
+      } else if (*it == "album") {
+        if (totalLen + albumLen > dynamicLen) {
+          showAlbum = false;
+        } else {
+          totalLen += albumLen;
+        }
+      } else if (*it == "title") {
+        if (totalLen + titleLen > dynamicLen) {
+          showTitle = false;
+        } else {
+          totalLen += titleLen;
+        }
+      } else if (*it == "length") {
+        if (totalLen + lengthLen > dynamicLen) {
+          showLength = false;
+        } else {
+          totalLen += lengthLen;
+        }
+      }
+    }
+  }
+
+  if (showArtist) dynamic << artist << " - ";
+  if (showAlbum) dynamic << album << " - ";
+  if (showTitle) dynamic << title;
+  if (showLength) {
+    dynamic << " ";
+    if (html) {
+      dynamic << "<small>";
+    }
+    dynamic << length;
+    if (html) {
+      dynamic << "</small>";
+    }
+  }
+  return dynamic.str();
 }
 
 auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlayerName* player_name,
@@ -335,18 +473,6 @@ auto Mpris::update() -> void {
 
   spdlog::debug("mpris[{}]: running update", info.name);
 
-  // dynamic is the auto-formatted string containing a nice out-of-the-box
-  // format text
-  std::stringstream dynamic;
-  if (info.artist) dynamic << *info.artist << " - ";
-  if (info.album) dynamic << *info.album << " - ";
-  if (info.title) dynamic << *info.title;
-  if (info.length)
-    dynamic << " "
-            << "<small>"
-            << "[" << *info.length << "]"
-            << "</small>";
-
   // set css class for player status
   if (!lastStatus.empty() && box_.get_style_context()->has_class(lastStatus)) {
     box_.get_style_context()->remove_class(lastStatus);
@@ -366,25 +492,55 @@ auto Mpris::update() -> void {
   lastPlayer = info.name;
 
   auto formatstr = format_;
+  auto tooltipstr = tooltip_;
   switch (info.status) {
     case PLAYERCTL_PLAYBACK_STATUS_PLAYING:
       if (!format_playing_.empty()) formatstr = format_playing_;
+      if (!tooltip_playing_.empty()) tooltipstr = tooltip_playing_;
       break;
     case PLAYERCTL_PLAYBACK_STATUS_PAUSED:
       if (!format_paused_.empty()) formatstr = format_paused_;
+      if (!tooltip_paused_.empty()) tooltipstr = tooltip_paused_;
       break;
     case PLAYERCTL_PLAYBACK_STATUS_STOPPED:
       if (!format_stopped_.empty()) formatstr = format_stopped_;
+      if (!tooltip_stopped_.empty()) tooltipstr = tooltip_stopped_;
       break;
   }
-  auto label_format =
-      fmt::format(fmt::runtime(formatstr), fmt::arg("player", info.name),
-                  fmt::arg("status", info.status_string), fmt::arg("artist", *info.artist),
-                  fmt::arg("title", *info.title), fmt::arg("album", *info.album),
-                  fmt::arg("length", *info.length), fmt::arg("dynamic", dynamic.str()),
-                  fmt::arg("player_icon", getIcon(config_["player-icons"], info.name)),
-                  fmt::arg("status_icon", getIcon(config_["status-icons"], info.status_string)));
-  label_.set_markup(label_format);
+
+  try {
+    auto label_format = fmt::format(
+        fmt::runtime(formatstr), fmt::arg("player", info.name),
+        fmt::arg("status", info.status_string), fmt::arg("artist", getArtistStr(info, true)),
+        fmt::arg("title", getTitleStr(info, true)), fmt::arg("album", getAlbumStr(info, true)),
+        fmt::arg("length", getLengthStr(info, false)),
+        fmt::arg("dynamic", getDynamicStr(info, true, true)),
+        fmt::arg("player_icon", getIcon(config_["player-icons"], info.name)),
+        fmt::arg("status_icon", getIcon(config_["status-icons"], info.status_string)));
+
+    label_.set_markup(label_format);
+  } catch (fmt::format_error const& e) {
+    spdlog::warn("mpris: format error: {}", e.what());
+  }
+
+  if (tooltipEnabled()) {
+    try {
+      auto tooltip_text = fmt::format(
+          fmt::runtime(tooltipstr), fmt::arg("player", info.name),
+          fmt::arg("status", info.status_string),
+          fmt::arg("artist", getArtistStr(info, tooltip_len_limits_)),
+          fmt::arg("title", getTitleStr(info, tooltip_len_limits_)),
+          fmt::arg("album", getAlbumStr(info, tooltip_len_limits_)),
+          fmt::arg("length", getLengthStr(info, false)),
+          fmt::arg("dynamic", getDynamicStr(info, tooltip_len_limits_, false)),
+          fmt::arg("player_icon", getIcon(config_["player-icons"], info.name)),
+          fmt::arg("status_icon", getIcon(config_["status-icons"], info.status_string)));
+
+      label_.set_tooltip_text(tooltip_text);
+    } catch (fmt::format_error const& e) {
+      spdlog::warn("mpris: format error (tooltip): {}", e.what());
+    }
+  }
 
   event_box_.set_visible(true);
   // call parent update

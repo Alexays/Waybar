@@ -44,6 +44,11 @@ class Mpris : public AModule {
 
   auto getPlayerInfo() -> std::optional<PlayerInfo>;
   auto getIcon(const Json::Value&, const std::string&) -> std::string;
+  auto getArtistStr(const PlayerInfo&, bool) -> std::string;
+  auto getAlbumStr(const PlayerInfo&, bool) -> std::string;
+  auto getTitleStr(const PlayerInfo&, bool) -> std::string;
+  auto getLengthStr(const PlayerInfo&, bool) -> std::string;
+  auto getDynamicStr(const PlayerInfo&, bool, bool) -> std::string;
 
   Gtk::Box box_;
   Gtk::Label label_;
@@ -53,6 +58,19 @@ class Mpris : public AModule {
   std::string format_playing_;
   std::string format_paused_;
   std::string format_stopped_;
+
+  std::string tooltip_;
+  std::string tooltip_playing_;
+  std::string tooltip_paused_;
+  std::string tooltip_stopped_;
+
+  int artist_len_;
+  int album_len_;
+  int title_len_;
+  int dynamic_len_;
+  std::vector<std::string> dynamic_prio_;
+  bool tooltip_len_limits_;
+
   std::chrono::seconds interval_;
   std::string player_;
   std::vector<std::string> ignored_players_;

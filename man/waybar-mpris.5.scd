@@ -33,6 +33,48 @@ The *mpris* module displays currently playing media via libplayerctl.
 	typeof: string ++
 	The status-specific text format.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	default: {player} ({status}) {dynamic} ++
+	The tooltip text format.
+
+*tooltip-format-[status]*: ++
+	typeof: string ++
+	default: "MPD (disconnected)" ++
+	The status-specif tooltip format.
+
+*artist-len*: ++
+	typeof: integer ++
+	Maximum length of the Artist tag.
+
+*album-len*: ++
+	typeof: integer ++
+	Maximum length of the Album tag.
+
+*title-len*: ++
+	typeof: integer ++
+	Maximum length of the Title tag.
+
+*dynamic-len*: ++
+	typeof: integer ++
+	Maximum length of the Dynamic tag.
+
+*dynamic-priority* ++ 
+	typeof: []string ++
+	default: ["title", "length", "artist", "album"]
+	Priority of the tags when truncating the Dynamic tag (absence in this
+	list means force inclusion).
+
+*enable-tooltip-len-limits*: ++
+	typeof: bool ++
+	default: false ++
+	Option to enable the limits for the tooltip as well
+
 *on-click*: ++
 	typeof: string ++
 	default: play-pause ++
@@ -83,8 +125,8 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 ```
 "mpris": {
-	"format": "DEFAULT: {player_icon} {dynamic}",
-	"format-paused": "DEFAULT: {status_icon} <i>{dynamic}</i>",
+	"format": "{player_icon} {dynamic}",
+	"format-paused": "{status_icon} <i>{dynamic}</i>",
 	"player-icons": {
 		"default": "▶",
 		"mpv": "🎵"
