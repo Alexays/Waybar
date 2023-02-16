@@ -26,9 +26,9 @@
       ]);
     in
     {
-      overlays.default = _: prev: rec {
+      overlays.default = _: prev: {
         waybar = prev.callPackage ./nix/default.nix {
-          version = "0.9.16" + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+          version = prev.waybar.version + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
         };
       };
       packages = genSystems
@@ -55,10 +55,47 @@
             }
           ];
           devshell.packages = with pkgs; [
+            # from nativeBuildInputs
             clang-tools
             gdb
-          ];
+            meson
+            ninja
+            pkg-config
+            scdoc
+          ] ++ (map lib.getDev [
+            # from buildInputs
+            wayland wlroots gtkmm3 libsigcxx jsoncpp spdlog gtk-layer-shell howard-hinnant-date libxkbcommon
+            # opttional dependencies
+            gobject-introspection glib playerctl python3.pkgs.pygobject3
+            libevdev libinput libjack2 libmpdclient playerctl libnl
+            libpulseaudio sndio sway libdbusmenu-gtk3 udev upower wireplumber
+
+            # from propagated build inputs?
+            at-spi2-atk atkmm cairo cairomm catch2 fmt_8 fontconfig
+            gdk-pixbuf glibmm gtk3 harfbuzz pango pangomm wayland-protocols
+          ]);
           language.c.libraries = with pkgs; [
+            # runtime dependencies (normally handled by patchElf)
+            bzip2 celt dbus expat flac fontconfig freetype fribidi glibc
+            graphite2 gtk3 howard-hinnant-date icu json-glib libGL
+            libasyncns libcap libdatrie libepoxy libffi libgcrypt
+            libgpg-error libgudev libjpeg libogg libopus libpng
+            libselinux libsndfile libthai libvorbis libwacom libxml2 lz4
+            mtdev pcre pcre2 pipewire pixman pulseaudio sndio sqlite
+            tracker util-linux xorg.libX11 xorg.libXau
+            xorg.libXcomposite xorg.libXcursor xorg.libXdmcp
+            xorg.libXext xorg.libXfixes xorg.libXi xorg.libXinerama
+            xorg.libXrandr xorg.libXrender xorg.libxcb xz zlib zstd
+          ];
+          env = with pkgs; [
+            { name = "CPLUS_INCLUDE_PATH"; prefix = "$DEVSHELL_DIR/include"; }
+            { name = "PKG_CONFIG_PATH"; prefix = "$DEVSHELL_DIR/lib/pkgconfig"; }
+            { name = "PKG_CONFIG_PATH"; prefix = "$DEVSHELL_DIR/share/pkgconfig"; }
+            { name = "PATH"; prefix = "${wayland.bin}/bin"; }
+            { name = "LIBRARY_PATH"; prefix = "${lib.getLib sndio}/lib"; }
+            { name = "LIBRARY_PATH"; prefix = "${lib.getLib zlib}/lib"; }
+            { name = "LIBRARY_PATH"; prefix = "${lib.getLib howard-hinnant-date}/lib"; }
+            { name = "LD_LIBRARY_PATH"; prefix = "${lib.getLib pulseaudio}/lib/pulseaudio"; }
           ];
         };
     });
