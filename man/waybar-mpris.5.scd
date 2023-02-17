@@ -45,8 +45,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *tooltip-format-[status]*: ++
 	typeof: string ++
-	default: "MPD (disconnected)" ++
-	The status-specif tooltip format.
+	The status-specific tooltip format.
 
 *artist-len*: ++
 	typeof: integer ++
@@ -66,34 +65,34 @@ The *mpris* module displays currently playing media via libplayerctl.
 *dynamic-len*: ++
 	typeof: integer ++
 	Maximum length of the Dynamic tag (Wide/Fullwidth Unicode characters
-	count as two).
+	count as two). The dynamic tag will not truncate any tags beyond their
+	set length limits, instead, it will attempt to fit as much of the
+	available tags as possible. It is recommended you set title-len to
+	something less than or equal to this value, so the title will always be
+	displayed.
 
 *dynamic-priority* ++ 
 	typeof: []string ++
-	default: ["title", "length", "artist", "album"]
+	default: ["title", "length", "position", "artist", "album"]
 	Priority of the tags when truncating the Dynamic tag (absence in this
 	list means force inclusion).
 
 *truncate-hours*: ++
 	typeof: bool ++
 	default: true ++
-	Whether to truncate hours when media duration is less than an hour long
+	Whether to hide hours when media duration is less than an hour long.
 
 *enable-tooltip-len-limits*: ++
 	typeof: bool ++
 	default: false ++
-	Option to enable the length limits for the tooltip as well
+	Option to enable the length limits for the tooltip as well. By default
+	the tooltip ignores all length limits.
 
 *ellipsis*: ++
 	typeof: string ++
 	default: "…" ++
-	Override the default ellipsis (set to empty string to simply truncate
-	the tags when needed instead).
-
-*on-click*: ++
-	typeof: string ++
-	default: play-pause ++
-	Overwrite default action toggles.
+	This character will be used when any of the tags exceed their maximum
+	length. If you don't want to use an ellipsis, set this to empty string.
 
 *on-click*: ++
 	typeof: string ++

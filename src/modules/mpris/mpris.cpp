@@ -206,7 +206,7 @@ size_t utf8_truncate(std::string& str, size_t width = std::string::npos) {
       return str.length();
     } else if (g_unichar_iswide(c)) {
       total_width += 2;
-    } else if (!g_unichar_iszerowidth(c)) {
+    } else if (!g_unichar_iszerowidth(c) && c != 0xAD) { // neither zero-width nor soft hyphen
       total_width += 1;
     }
 
@@ -339,6 +339,11 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   }
 
   std::stringstream dynamic;
+  if (html) {
+    artist = Glib::Markup::escape_text(artist);
+    album = Glib::Markup::escape_text(album);
+    title = Glib::Markup::escape_text(title);
+  }
   if (showArtist) dynamic << artist << " - ";
   if (showAlbum) dynamic << album << " - ";
   if (showTitle) dynamic << title;
@@ -472,21 +477,21 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
 
   if (auto artist_ = playerctl_player_get_artist(player, &error)) {
     spdlog::debug("mpris[{}]: artist = {}", info.name, artist_);
-    info.artist = Glib::Markup::escape_text(artist_);
+    info.artist = artist_;
     g_free(artist_);
   }
   if (error) goto errorexit;
 
   if (auto album_ = playerctl_player_get_album(player, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
-    info.album = Glib::Markup::escape_text(album_);
+    info.album = album_;
     g_free(album_);
   }
   if (error) goto errorexit;
 
   if (auto title_ = playerctl_player_get_title(player, &error)) {
     spdlog::debug("mpris[{}]: title = {}", info.name, title_);
-    info.title = Glib::Markup::escape_text(title_);
+    info.title = title_;
     g_free(title_);
   }
   if (error) goto errorexit;
