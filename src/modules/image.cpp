@@ -1,15 +1,16 @@
 #include "modules/image.hpp"
 
-#include <spdlog/spdlog.h>
-
-waybar::modules::Image::Image(const std::string& name, const std::string& id,
-                              const Json::Value& config)
-    : AModule(config, "image-" + name, id, "{}") {
-  event_box_.add(image_);
+waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
+    : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+  box_.pack_start(image_);
+  box_.set_name("image");
+  if (!id.empty()) {
+    box_.get_style_context()->add_class(id);
+  }
+  event_box_.add(box_);
 
   dp.emit();
 
-  path_ = config["path"].asString();
   size_ = config["size"].asInt();
 
   interval_ = config_["interval"].asInt();
@@ -40,8 +41,17 @@ void waybar::modules::Image::refresh(int sig) {
 }
 
 auto waybar::modules::Image::update() -> void {
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+  util::command::res output_;
 
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+  if (config_["path"].isString()) {
+    path_ = config_["path"].asString();
+  } else if (config_["exec"].isString()) {
+    output_ = util::command::exec(config_["exec"].asString());
+    path_ = output_.out;
+  } else {
+    path_ = "";
+  }
   if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS))
     pixbuf = Gdk::Pixbuf::create_from_file(path_, size_, size_);
   else

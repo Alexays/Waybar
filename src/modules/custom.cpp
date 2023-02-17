@@ -275,8 +275,8 @@ waybar::modules::Custom::Node waybar::modules::Custom::parseItem(Json::Value &pa
   if(!parsed["name"].asString().empty()) {
     n.name_ = name_ + parsed["name"].asString();
   }
-  if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
-    n.percentage_ = parsed["percentage"].asUInt();
+  if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
+    n.percentage_ = (int)lround(parsed["percentage"].asFloat());
   } else {
     n.percentage_ = 0;
   }

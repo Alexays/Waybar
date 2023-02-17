@@ -102,8 +102,11 @@ Glib::RefPtr<Gio::DesktopAppInfo> get_desktop_app_info(const std::string &app_id
         desktop_file = desktop_list[0][i];
       } else {
         auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
-        auto startup_class = tmp_info->get_startup_wm_class();
+        if (!tmp_info)
+          // see https://github.com/Alexays/Waybar/issues/1446
+          continue;
 
+        auto startup_class = tmp_info->get_startup_wm_class();
         if (startup_class == app_id) {
           desktop_file = desktop_list[0][i];
           break;
@@ -615,9 +618,10 @@ void Task::update() {
     app_id = Glib::Markup::escape_text(app_id);
   }
   if (!format_before_.empty()) {
-    auto txt = fmt::format(format_before_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_before_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
     if (markup)
       text_before_.set_markup(txt);
     else
@@ -625,9 +629,10 @@ void Task::update() {
     text_before_.show();
   }
   if (!format_after_.empty()) {
-    auto txt = fmt::format(format_after_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_after_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
     if (markup)
       text_after_.set_markup(txt);
     else
@@ -636,9 +641,10 @@ void Task::update() {
   }
 
   if (!format_tooltip_.empty()) {
-    auto txt = fmt::format(format_tooltip_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_tooltip_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
     if (markup)
       button_.set_tooltip_markup(txt);
     else

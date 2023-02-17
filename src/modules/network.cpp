@@ -331,7 +331,7 @@ auto waybar::modules::Network::update() -> void {
   getState(signal_strength_);
 
   auto text = fmt::format(
-      format_, fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
+      fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
       fmt::arg("signalStrength", signal_strength_),
       fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
@@ -363,8 +363,8 @@ auto waybar::modules::Network::update() -> void {
     }
     if (!tooltip_format.empty()) {
       auto tooltip_text = fmt::format(
-          tooltip_format, fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
-          fmt::arg("signalStrength", signal_strength_),
+          fmt::runtime(tooltip_format), fmt::arg("essid", essid_),
+          fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
           fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),

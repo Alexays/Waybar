@@ -130,6 +130,10 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         // In a first pass, the maximum "num" value is computed to enqueue
         // unnumbered workspaces behind numbered ones when computing the sort
         // attribute.
+        //
+        // Note: if the 'alphabetical_sort' option is true, the user is in
+        // agreement that the "workspace prev/next" commands may not follow
+        // the order displayed in Waybar.
         int max_num = -1;
         for (auto &workspace : workspaces_) {
           max_num = std::max(workspace["num"].asInt(), max_num);
@@ -143,16 +147,19 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
           }
         }
         std::sort(workspaces_.begin(), workspaces_.end(),
-                  [](const Json::Value &lhs, const Json::Value &rhs) {
+                  [this](const Json::Value &lhs, const Json::Value &rhs) {
                     auto lname = lhs["name"].asString();
                     auto rname = rhs["name"].asString();
                     int l = lhs["sort"].asInt();
                     int r = rhs["sort"].asInt();
 
-                    if (l == r) {
+                    if (l == r || config_["alphabetical_sort"].asBool()) {
                       // In case both integers are the same, lexicographical
                       // sort. The code above already ensure that this will only
                       // happend in case of explicitly numbered workspaces.
+                      //
+                      // Additionally, if the config specifies to sort workspaces
+                      // alphabetically do this here.
                       return lname < rname;
                     }
 
@@ -226,7 +233,7 @@ auto Workspaces::update() -> void {
     std::string output = (*it)["name"].asString();
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      output = fmt::format(format, fmt::arg("icon", getIcon(output, *it)),
+      output = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)),
                            fmt::arg("value", output), fmt::arg("name", trimWorkspaceName(output)),
                            fmt::arg("index", (*it)["num"].asString()));
     }
@@ -252,11 +259,9 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
       try {
         if (node["target_output"].isString()) {
           ipc_.sendCmd(IPC_COMMAND,
-                       fmt::format(workspace_switch_cmd_ + "; move workspace to output \"{}\"; " +
-                                       workspace_switch_cmd_,
-                                   "--no-auto-back-and-forth", node["name"].asString(),
-                                   node["target_output"].asString(), "--no-auto-back-and-forth",
-                                   node["name"].asString()));
+                       fmt::format(persistent_workspace_switch_cmd_, "--no-auto-back-and-forth",
+                                   node["name"].asString(), node["target_output"].asString(),
+                                   "--no-auto-back-and-forth", node["name"].asString()));
         } else {
           ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
                                                 config_["disable-auto-back-and-forth"].asBool()

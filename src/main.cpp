@@ -85,6 +85,12 @@ int main(int argc, char* argv[]) {
       waybar::Client::inst()->reset();
     });
 
+    std::signal(SIGINT, [](int /*signal*/) {
+      spdlog::info("Quitting.");
+      reload = false;
+      waybar::Client::inst()->reset();
+    });
+
     for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
       std::signal(sig, [](int sig) {
         for (auto& bar : waybar::Client::inst()->bars) {

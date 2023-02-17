@@ -49,23 +49,22 @@ auto Language::update() -> void {
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  auto layoutName = ev.substr(ev.find_last_of(',') + 1);
-  auto keebName = ev.substr(0, ev.find_last_of(','));
-  keebName = keebName.substr(keebName.find_first_of('>') + 2);
+  std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
+  auto layoutName = ev.substr(ev.find_first_of(',') + 1);
 
-  if (config_.isMember("keyboard-name") && keebName != config_["keyboard-name"].asString())
+  if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
 
-  const auto BRIEFNAME = getShortFrom(layoutName);
-
-  if (config_.isMember("format-" + BRIEFNAME)) {
-    const auto PROPNAME = "format-" + BRIEFNAME;
-    layoutName = fmt::format(format_, config_[PROPNAME].asString());
-  } else {
-    layoutName = fmt::format(format_, layoutName);
-  }
-
   layoutName = waybar::util::sanitize_string(layoutName);
+
+  const auto briefName = getShortFrom(layoutName);
+
+  if (config_.isMember("format-" + briefName)) {
+    const auto propName = "format-" + briefName;
+    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
+  } else {
+    layoutName = fmt::format(fmt::runtime(format_), layoutName);
+  }
 
   if (layoutName == layoutName_) return;
 
@@ -77,18 +76,30 @@ void Language::onEvent(const std::string& ev) {
 }
 
 void Language::initLanguage() {
-  const auto INPUTDEVICES = gIPC->getSocket1Reply("devices");
+  const auto inputDevices = gIPC->getSocket1Reply("devices");
 
-  if (!config_.isMember("keyboard-name")) return;
-
-  const auto KEEBNAME = config_["keyboard-name"].asString();
+  const auto kbName = config_["keyboard-name"].asString();
 
   try {
-    auto searcher = INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
-    searcher = searcher.substr(searcher.find("keymap:") + 7);
+    auto searcher = kbName.empty()
+                        ? inputDevices
+                        : inputDevices.substr(inputDevices.find(kbName) + kbName.length());
+    searcher = searcher.substr(searcher.find("keymap:") + 8);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 
-    layoutName_ = searcher;
+    searcher = waybar::util::sanitize_string(searcher);
+
+    auto layoutName = std::string{};
+    const auto briefName = getShortFrom(searcher);
+
+    if (config_.isMember("format-" + briefName)) {
+      const auto propName = "format-" + briefName;
+      layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
+    } else {
+      layoutName = fmt::format(fmt::runtime(format_), searcher);
+    }
+
+    layoutName_ = layoutName;
 
     spdlog::debug("hyprland language initLanguage found {}", layoutName_);
 

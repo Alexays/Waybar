@@ -22,6 +22,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::upower::UPower(id, config_[name]);
     }
 #endif
+#ifdef HAVE_MPRIS
+    if (ref == "mpris") {
+      return new waybar::modules::mpris::Mpris(id, config_[name]);
+    }
+#endif
 #ifdef HAVE_SWAY
     if (ref == "sway/mode") {
       return new waybar::modules::sway::Mode(id, config_[name]);
@@ -67,6 +72,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "hyprland/language") {
       return new waybar::modules::hyprland::Language(id, bar_, config_[name]);
     }
+    if (ref == "hyprland/submap") {
+      return new waybar::modules::hyprland::Submap(id, bar_, config_[name]);
+    }
 #endif
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
@@ -89,6 +97,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
+    }
+    if (ref == "image") {
+      return new waybar::modules::Image(id, config_[name]);
     }
 #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
@@ -148,8 +159,6 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), bar_, id, config_[name]);
-    } else if (ref.compare(0, 6, "image/") == 0 && ref.size() > 6) {
-      return new waybar::modules::Image(ref.substr(6), id, config_[name]);
     }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());

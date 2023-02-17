@@ -66,9 +66,9 @@ struct formatter<pow_format> {
     std::string string;
     switch (spec) {
       case '>':
-        return format_to(ctx.out(), "{:>{}}", fmt::format("{}", s), max_width);
+        return fmt::format_to(ctx.out(), "{:>{}}", fmt::format("{}", s), max_width);
       case '<':
-        return format_to(ctx.out(), "{:<{}}", fmt::format("{}", s), max_width);
+        return fmt::format_to(ctx.out(), "{:<{}}", fmt::format("{}", s), max_width);
       case '=':
         format = "{coefficient:<{number_width}.1f}{padding}{prefix}{unit}";
         break;
@@ -77,8 +77,8 @@ struct formatter<pow_format> {
         format = "{coefficient:.1f}{prefix}{unit}";
         break;
     }
-    return format_to(
-        ctx.out(), format, fmt::arg("coefficient", fraction),
+    return fmt::format_to(
+        ctx.out(), fmt::runtime(format), fmt::arg("coefficient", fraction),
         fmt::arg("number_width", number_width),
         fmt::arg("prefix", std::string() + units[pow] + ((s.binary_ && pow) ? "i" : "")),
         fmt::arg("unit", s.unit_),

@@ -20,15 +20,19 @@ class Wireplumber : public ALabel {
   void loadRequiredApiModules();
   void prepare();
   void activatePlugins();
-  static void updateVolume(waybar::modules::Wireplumber* self);
-  static void updateNodeName(waybar::modules::Wireplumber* self);
-  static uint32_t getDefaultNodeId(waybar::modules::Wireplumber* self);
+  static void updateVolume(waybar::modules::Wireplumber* self, uint32_t id);
+  static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
   static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
   static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
+  static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
+  static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
 
   WpCore* wp_core_;
   GPtrArray* apis_;
   WpObjectManager* om_;
+  WpPlugin* mixer_api_;
+  WpPlugin* def_nodes_api_;
+  gchar* default_node_name_;
   uint32_t pending_plugins_;
   bool muted_;
   double volume_;

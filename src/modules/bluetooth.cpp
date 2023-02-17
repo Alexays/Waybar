@@ -206,7 +206,8 @@ auto waybar::modules::Bluetooth::update() -> void {
   state_ = state;
 
   label_.set_markup(fmt::format(
-      format_, fmt::arg("status", state_), fmt::arg("num_connections", connected_devices_.size()),
+      fmt::runtime(format_), fmt::arg("status", state_),
+      fmt::arg("num_connections", connected_devices_.size()),
       fmt::arg("controller_address", cur_controller_.address),
       fmt::arg("controller_address_type", cur_controller_.address_type),
       fmt::arg("controller_alias", cur_controller_.alias),
@@ -234,7 +235,7 @@ auto waybar::modules::Bluetooth::update() -> void {
             enumerate_format = config_["tooltip-format-enumerate-connected"].asString();
           }
           ss << fmt::format(
-              enumerate_format, fmt::arg("device_address", dev.address),
+              fmt::runtime(enumerate_format), fmt::arg("device_address", dev.address),
               fmt::arg("device_address_type", dev.address_type),
               fmt::arg("device_alias", dev.alias), fmt::arg("icon", enumerate_icon),
               fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)));
@@ -247,7 +248,7 @@ auto waybar::modules::Bluetooth::update() -> void {
       }
     }
     label_.set_tooltip_text(fmt::format(
-        tooltip_format, fmt::arg("status", state_),
+        fmt::runtime(tooltip_format), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
         fmt::arg("controller_address", cur_controller_.address),
         fmt::arg("controller_address_type", cur_controller_.address_type),

@@ -1,4 +1,4 @@
-waybar-custom(5)
+waybar-image(5)
 
 # NAME
 
@@ -10,12 +10,13 @@ The *image* module displays an image from a path.
 
 # CONFIGURATION
 
-Addressed by *custom/<name>*
-
 *path*: ++
 	typeof: string ++
 	The path to the image.
-
+*exec*: ++
+	typeof: string ++
+	The path to the script, which should return image path file
+	it will only execute if the path is not set
 *size*: ++
 	typeof: integer ++
 	The width/height to render the image.
@@ -58,15 +59,15 @@ Addressed by *custom/<name>*
 
 # EXAMPLES
 
-## Spotify:
-
-## mpd:
-
 ```
-"image/album-art": {
+"image#album-art": {
 	"path": "/tmp/mpd_art",
 	"size": 32,
 	"interval": 5,
 	"on-click": "mpc toggle"
 }
 ```
+
+# STYLE
+
+- *#image*

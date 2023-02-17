@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "client.hpp"
 #include "gtkmm/widget.h"
 #include "modules/wlr/workspace_manager_binding.hpp"
 
@@ -166,8 +167,20 @@ WorkspaceManager::~WorkspaceManager() {
     return;
   }
 
-  zext_workspace_manager_v1_destroy(workspace_manager_);
-  workspace_manager_ = nullptr;
+  wl_display *display = Client::inst()->wl_display;
+
+  // Send `stop` request and wait for one roundtrip. This is not quite correct as
+  // the protocol encourages us to wait for the .finished event, but it should work
+  // with wlroots workspace manager implementation.
+  zext_workspace_manager_v1_stop(workspace_manager_);
+  wl_display_roundtrip(display);
+
+  // If the .finished handler is still not executed, destroy the workspace manager here.
+  if (workspace_manager_) {
+    spdlog::warn("Foreign toplevel manager destroyed before .finished event");
+    zext_workspace_manager_v1_destroy(workspace_manager_);
+    workspace_manager_ = nullptr;
+  }
 }
 
 auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
@@ -366,7 +379,7 @@ Workspace::~Workspace() {
 }
 
 auto Workspace::update() -> void {
-  label_.set_markup(fmt::format(format_, fmt::arg("name", name_),
+  label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("name", name_),
                                 fmt::arg("icon", with_icon_ ? get_icon() : "")));
 }
 
