@@ -24,13 +24,8 @@ GammaButton::GammaButton(Json::Value& config) :
 		sigc::mem_fun(*this, &GammaButton::handle_toggled)
 	);
 
-	if (config_["temperature"].isUInt()) {
-		unsigned int t = config_["temperature"].asUInt();
-		command_start += std::to_string(t);
-	} else {
+	if (!config_["temperature"].isUInt())
 		config_["temperature"] = TEMPERATURE_DEFAULT;
-		command_start += std::to_string(config_["temperature"].asUInt());
-	}
 
 	set_command_start(config_["temperature"].asUInt());
 }
