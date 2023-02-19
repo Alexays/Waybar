@@ -1,4 +1,4 @@
-#include "include/modules/gamma_control.hpp"
+#include "modules/gamma_control.hpp"
 #include "config.hpp"
 
 using namespace waybar::modules;
@@ -49,6 +49,7 @@ void GammaButton::handle_toggled() {
 	else {
 		this->set_label((Glib::ustring)(SUN_STRING));
 		system(this->command_reset.c_str());
+		spdlog::info("gamma modified: [{} K]", TEMPERATURE_NATURAL);
 	}
 }
 
@@ -71,10 +72,10 @@ SettingsButton::~SettingsButton() {
 
 void SettingsButton::handle_toggled() {
 	if (settings_ != nullptr) {
-		spdlog::info("Quitting...");
+		// spdlog::info("Quitting ...");
 		settings_->close();
 	} else {
-		spdlog::info("Settings panel opened");
+		// spdlog::info("Settings panel opened");
 		settings_ = Settings::create(config_, gamma_button_);
 		settings_->run();
 	}
@@ -197,26 +198,13 @@ void Settings::on_value_changed() {
 
 	if (gamma_button_.get_active()) {
 		system(gamma_button_.get_command_start().c_str());
-		spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
+		// spdlog::info("gamma modified: [{} K]", config_["temperature"].asUInt());
 	}
 }
 
 bool Settings::on_button_released(GdkEventButton* event) {
-	// unsigned int t = (unsigned int)scale_temp_.get_value();
-	// if (t == last_temp)
-	// 	return false;
-
-	// config_["temperature"] = t;
-	// last_temp = t;
-	// gamma_button_.set_command_start(t);
-
-	// if (gamma_button_.get_active()) {
-	// 	std::string command =  gamma_button_.get_command_start();
-	// 	system("killall gammastep");
-	// 	system(command.c_str());
-	// 	spdlog::info("gammastep activated: [{} K]", config_["temperature"].asUInt());
-	// }
-
+	if (gamma_button_.get_active())
+		spdlog::info("gamma modified: [{} K]", config_["temperature"].asUInt());
     return false;
 }
 
@@ -224,8 +212,9 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	app_(Gtk::Application::create("gamma.setting", Gio::APPLICATION_FLAGS_NONE)),
 	box_(Gtk::ORIENTATION_VERTICAL, 0),
 	H1_box_(Gtk::ORIENTATION_HORIZONTAL, 0),
-	label_temp_("Temperature"),
 	label_title_("Gamma Settings"),
+	label_temp_("Temperature"),
+	separator_title(Gtk::ORIENTATION_HORIZONTAL),
 	adj_temp_(Gtk::Adjustment::create(config["temperature"].isUInt() ? config["temperature"].asUInt() : TEMPERATURE_DEFAULT, 1700, 15001, 50.0, 100.0, 1.0)),
 	scale_temp_(adj_temp_, Gtk::ORIENTATION_HORIZONTAL),
 	config_(config),
@@ -250,6 +239,8 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	label_title_.set_justify(Gtk::JUSTIFY_CENTER);
 	label_title_.set_margin_top(5);
 	label_title_.set_margin_bottom(5);
+	label_title_.set_markup("<span weight='bold' size='large'>Gamma Settings</span>");
+	label_title_.set_size_request(-1, 35);
 
 	scale_temp_.set_digits(0);
 	scale_temp_.set_value_pos(Gtk::POS_LEFT);
@@ -272,6 +263,7 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	H1_box_.pack_end(scale_temp_);
 
 	box_.pack_start(label_title_);
+	box_.pack_start(separator_title);
 	box_.pack_end(H1_box_);
 	box_.set_homogeneous(false);
 	box_.set_size_request(400, -1);
@@ -279,6 +271,9 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	window_.add(box_);
 	window_.show_all_children();
 
+
+	// option to save changes in temperature
+	// TODO: save changes in the config file passed with the -c flag
 	if (config_["save-settings"].asBool())
 		open_config(config_file_);
 }
@@ -305,7 +300,6 @@ void Settings::open_config(std::fstream& config_file) {
 	Config file;
 	config_file_path_ = file.findConfigPath({"config", "config.jsonc"});
 	
-
 	if (config_file_path_.has_value())
 		spdlog::info("Found config file in {}", config_file_path_.value());
 	else {
@@ -318,17 +312,9 @@ void Settings::open_config(std::fstream& config_file) {
 		spdlog::warn("Not able to open {}", config_file_path_.value());
 		return;
 	}
-	// char line[1001];
-	// while (config_file.getline(line, 1001, '\n') && config_file.good()) {
-	// 	std::cout << line << std::endl;
-	// }
-	// std::cout << "********************************************" << std::endl;
-
-	// config_file.close();
 }
 
 void Settings::update_config() {
-
 	if (!config_file_path_.has_value())
 		return;
 
@@ -383,7 +369,7 @@ void Settings::update_config() {
 
 GammaControl::GammaControl(
 	const waybar::Bar &bar, const std::string& id, const Json::Value& config) :	
-		ALabel(config, "gammastep", id, "", 60, false, true, false),
+		ALabel(config, "GammaControl", id, "", 60, false, true, false),
 		config_(config),
 		box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
 		gamma_button(config_),
@@ -391,11 +377,13 @@ GammaControl::GammaControl(
 	
 	system("killall wlr-gamma-service");
 	system("wlr-gamma-service &");
+
 	box_.set_homogeneous(false);
 	box_.pack_start(gamma_button);
 	box_.pack_end(settings_button);
 	event_box_.remove();
 	event_box_.add(box_);
+	event_box_.set_name("gamma_control");
 } 
 
 GammaControl::~GammaControl() {

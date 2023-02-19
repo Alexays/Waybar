@@ -4,7 +4,8 @@
 	"height": 30,
 	"spacing": 4,
 
-    "modules-left": ["custom/power_menu", "wlr/workspaces", "hyprland/window"],
+    "modules-left": ["c gamma correction.
+ustom/power_menu", "wlr/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
     "modules-right": ["gamma_control","idle_inhibitor", "custom/gammastep", "pulseaudio", "network", "bluetooth", "battery"],
 

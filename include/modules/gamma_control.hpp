@@ -68,8 +68,9 @@ private:
 	Gtk::Box box_;
 
 	Gtk::Box H1_box_;
-	Gtk::Label label_temp_;
 	Gtk::Label label_title_;
+	Gtk::Label label_temp_;
+	Gtk::Separator separator_title;
 	Glib::RefPtr<Gtk::Adjustment> adj_temp_;
 	Gtk::Scale scale_temp_;
 	unsigned int last_temp = 0;
