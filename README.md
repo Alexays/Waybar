@@ -45,7 +45,7 @@ An Ubuntu PPA with more recent versions is available
 #### Building from source
 
 ```bash
-$ git clone https://github.com/manueldiagostino/wlr-gamma-service
+$ git clone https://github.com/Alexays/Waybar
 $ cd Waybar
 $ meson build
 $ ninja -C build
