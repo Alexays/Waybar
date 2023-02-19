@@ -24,7 +24,7 @@
 
 #define MOON_STRING "\xf0\x9f\x8c\x99"
 #define SUN_STRING "\xf0\x9f\x8c\x9e"
-#define SETTINGS_STRING "⚙"
+#define SETTINGS_STRING "\xe2\x9a\x99"
 
 #define TEMPERATURE_DEFAULT 3500
 #define TEMPERATURE_NATURAL 6500
