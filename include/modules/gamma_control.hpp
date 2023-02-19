@@ -49,7 +49,7 @@ public:
 	};
 
 	Settings(Json::Value&, GammaButton&);
-	virtual ~Settings();
+	~Settings() = default;
 	static Settings* create(Json::Value&, GammaButton&);
 
 	int run();
@@ -84,7 +84,7 @@ private:
 class SettingsButton : public Gtk::ToggleButton {
 public:
 	SettingsButton(Json::Value&, GammaButton&);
-	virtual ~SettingsButton();
+	~SettingsButton() = default;
 	void handle_toggled();
 private:
 	Settings* settings_;
@@ -95,7 +95,7 @@ private:
 class GammaButton : public Gtk::ToggleButton {
 public:
 	GammaButton(Json::Value&);
-	virtual ~GammaButton();
+	~GammaButton() = default;
 	void handle_toggled();
 
 	void set_command_start(unsigned);
@@ -111,7 +111,7 @@ private:
 class GammaControl : public ALabel {
 public:
 	GammaControl(const waybar::Bar&, const std::string&, const Json::Value&);
-	virtual ~GammaControl();
+	~GammaControl() = default;
 	auto update() -> void;
 private:
 	Json::Value config_;

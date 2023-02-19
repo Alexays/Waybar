@@ -30,10 +30,6 @@ GammaButton::GammaButton(Json::Value& config) :
 	set_command_start(config_["temperature"].asUInt());
 }
 
-GammaButton::~GammaButton() {
-
-}
-
 void GammaButton::handle_toggled() {
 
 	if (this->get_label() == (Glib::ustring)(SUN_STRING)) {
@@ -59,10 +55,6 @@ SettingsButton::SettingsButton(Json::Value& config, GammaButton& gamma_button) :
 	this->signal_toggled().connect(
 		sigc::mem_fun(*this, &SettingsButton::handle_toggled)
 	);
-}
-
-SettingsButton::~SettingsButton() {
-
 }
 
 void SettingsButton::handle_toggled() {
@@ -273,10 +265,6 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 		open_config(config_file_);
 }
 
-Settings::~Settings() {
-
-}
-
 int Settings::run() {
 	return app_->run(window_);
 }
@@ -380,10 +368,6 @@ GammaControl::GammaControl(
 	event_box_.add(box_);
 	event_box_.set_name("gamma_control");
 } 
-
-GammaControl::~GammaControl() {
-
-}
 
 void GammaControl::update() {
 
