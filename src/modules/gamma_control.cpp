@@ -6,14 +6,14 @@ using namespace waybar::modules;
 // ! GAMMA_BUTTON
 
 void GammaButton::set_command_start(unsigned temp) {
-	command_start = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
+	command_start_ = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
 		-o /net/zoidplex/wlr_gamma_service -m net.zoidplex.wlr_gamma_service.temperature.set " + std::to_string(temp);
 
-	// spdlog::info("command changed: <{}>", command_start);
+	// spdlog::info("command changed: <{}>", command_start_);
 }
 
 const std::string& GammaButton::get_command_start() {
-	return command_start;
+	return command_start_;
 }
 
 GammaButton::GammaButton(Json::Value& config) : 
@@ -38,12 +38,12 @@ void GammaButton::handle_toggled() {
 
 	if (this->get_label() == (Glib::ustring)(SUN_STRING)) {
 		this->set_label((Glib::ustring)(MOON_STRING));
-		system(this->command_start.c_str());
+		system(this->command_start_.c_str());
 		spdlog::info("gamma modified: [{} K]", config_["temperature"].asUInt());
 	} 
 	else {
 		this->set_label((Glib::ustring)(SUN_STRING));
-		system(this->command_reset.c_str());
+		system(this->command_reset_.c_str());
 		spdlog::info("gamma modified: [{} K]", TEMPERATURE_NATURAL);
 	}
 }
@@ -184,11 +184,11 @@ void Settings::set_anchors(const Json::Value& config) {
 
 void Settings::on_value_changed() {
 	unsigned int t = (unsigned int)scale_temp_.get_value();
-	if (t == last_temp)
+	if (t == last_temp_)
 		return;
 
 	config_["temperature"] = t;
-	last_temp = t;
+	last_temp_ = t;
 	gamma_button_.set_command_start(t);
 
 	if (gamma_button_.get_active()) {
@@ -215,7 +215,7 @@ Settings::Settings(Json::Value& config, GammaButton& gamma_button) :
 	config_(config),
 	gamma_button_(gamma_button) {
 
-	last_temp = config_["temperature"].isUInt() ? config_["temperature"].asUInt() : TEMPERATURE_DEFAULT;
+	last_temp_ = config_["temperature"].isUInt() ? config_["temperature"].asUInt() : TEMPERATURE_DEFAULT;
 
 	GtkWindow *c_window_ = window_.gobj();
 	
@@ -367,15 +367,15 @@ GammaControl::GammaControl(
 		ALabel(config, "GammaControl", id, "", 60, false, true, false),
 		config_(config),
 		box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
-		gamma_button(config_),
-		settings_button(config_, gamma_button) {
+		gamma_button_(config_),
+		settings_button_(config_, gamma_button_) {
 	
 	system("killall wlr-gamma-service");
 	system("wlr-gamma-service &");
 
 	box_.set_homogeneous(false);
-	box_.pack_start(gamma_button);
-	box_.pack_end(settings_button);
+	box_.pack_start(gamma_button_);
+	box_.pack_end(settings_button_);
 	event_box_.remove();
 	event_box_.add(box_);
 	event_box_.set_name("gamma_control");

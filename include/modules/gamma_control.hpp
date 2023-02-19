@@ -73,7 +73,7 @@ private:
 	Gtk::Separator separator_title;
 	Glib::RefPtr<Gtk::Adjustment> adj_temp_;
 	Gtk::Scale scale_temp_;
-	unsigned int last_temp = 0;
+	unsigned int last_temp_ = 0;
 
 	Json::Value& config_;
 	std::optional<std::string> config_file_path_;
@@ -101,9 +101,9 @@ public:
 	void set_command_start(unsigned);
 	const std::string& get_command_start();
 private:
-	std::string command_reset = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
+	std::string command_reset_ = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
 		-o /net/zoidplex/wlr_gamma_service -m net.zoidplex.wlr_gamma_service.temperature.set " + std::to_string(TEMPERATURE_NATURAL);
-	std::string command_start = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
+	std::string command_start_ = "gdbus call -e -d net.zoidplex.wlr_gamma_service \
 		-o /net/zoidplex/wlr_gamma_service -m net.zoidplex.wlr_gamma_service.temperature.set " + std::to_string(TEMPERATURE_DEFAULT);
 	Json::Value& config_;
 };
@@ -117,8 +117,8 @@ private:
 	Json::Value config_;
 
 	Gtk::Box box_;
-	GammaButton gamma_button;
-	SettingsButton settings_button;
+	GammaButton gamma_button_;
+	SettingsButton settings_button_;
 };
 
 

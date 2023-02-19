@@ -12,7 +12,7 @@
 		"anchor" : "1 1 0 0",
 		"margin" : 17,
 		"temperature" : 5268,
-        "save-settings": false
+        "save-settings": true
 },
 
 	"custom/power_menu": {
