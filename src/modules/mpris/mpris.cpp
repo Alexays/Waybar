@@ -348,7 +348,7 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   if (showAlbum) dynamic << album << " - ";
   if (showTitle) dynamic << title;
   if (showLength || showPos) {
-    dynamic << " ";
+    dynamic << ' ';
     if (html) dynamic << "<small>";
     dynamic << '[';
     if (showPos) {
@@ -501,7 +501,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     std::chrono::microseconds len = std::chrono::microseconds(std::strtol(length_, nullptr, 10));
     auto len_h = std::chrono::duration_cast<std::chrono::hours>(len);
     auto len_m = std::chrono::duration_cast<std::chrono::minutes>(len - len_h);
-    auto len_s = std::chrono::duration_cast<std::chrono::seconds>(len - len_m);
+    auto len_s = std::chrono::duration_cast<std::chrono::seconds>(len - len_h - len_m);
     info.length = fmt::format("{:02}:{:02}:{:02}", len_h.count(), len_m.count(), len_s.count());
     g_free(length_);
   }
@@ -518,7 +518,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       std::chrono::microseconds len = std::chrono::microseconds(position_);
       auto len_h = std::chrono::duration_cast<std::chrono::hours>(len);
       auto len_m = std::chrono::duration_cast<std::chrono::minutes>(len - len_h);
-      auto len_s = std::chrono::duration_cast<std::chrono::seconds>(len - len_m);
+      auto len_s = std::chrono::duration_cast<std::chrono::seconds>(len - len_h - len_m);
       info.position = fmt::format("{:02}:{:02}:{:02}", len_h.count(), len_m.count(), len_s.count());
     }
   }
