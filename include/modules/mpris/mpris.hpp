@@ -39,8 +39,8 @@ class Mpris : public ALabel {
     std::optional<std::string> artist;
     std::optional<std::string> album;
     std::optional<std::string> title;
-    std::optional<std::string> length;   // as HH:MM:SS
-    std::optional<std::string> position; // same format
+    std::optional<std::string> length;    // as HH:MM:SS
+    std::optional<std::string> position;  // same format
   };
 
   auto getPlayerInfo() -> std::optional<PlayerInfo>;

@@ -50,30 +50,30 @@ The *mpris* module displays currently playing media via libplayerctl.
 *artist-len*: ++
 	typeof: integer ++
 	Maximum length of the Artist tag (Wide/Fullwidth Unicode characters
-	count as two).
+	count as two). Set to zero to hide the artist in `{dynamic}` tag.
 
 *album-len*: ++
 	typeof: integer ++
 	Maximum length of the Album tag (Wide/Fullwidth Unicode characters count
-	as two).
+	as two). Set to zero to hide the album in `{dynamic}` tag.
 
 *title-len*: ++
 	typeof: integer ++
 	Maximum length of the Title tag (Wide/Fullwidth Unicode characters count
-	as two).
+	as two). Set to zero to hide the title in `{dynamic}` tag.
 
 *dynamic-len*: ++
 	typeof: integer ++
-	Maximum length of the Dynamic tag (Wide/Fullwidth Unicode characters
-	count as two). The dynamic tag will not truncate any tags beyond their
-	set length limits, instead, it will attempt to fit as much of the
-	available tags as possible. It is recommended you set title-len to
-	something less than or equal to this value, so the title will always be
+	Maximum length of the Dynamic tag (Wide/Fullwidth Unicode characters ++
+	count as two). The dynamic tag will not truncate any tags beyond their ++
+	set length limits, instead, it will attempt to fit as much of the ++
+	available tags as possible. It is recommended you set title-len to ++
+	something less than or equal to this value, so the title will always be ++
 	displayed.
 
-*dynamic-priority* ++ 
+*dynamic-priority*: ++
 	typeof: []string ++
-	default: ["title", "length", "position", "artist", "album"]
+	default: ["title", "length", "position", "artist", "album"] ++
 	Priority of the tags when truncating the Dynamic tag (absence in this
 	list means force inclusion).
 
@@ -108,7 +108,8 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned.
+	If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++
@@ -126,11 +127,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 	Overwrite default action toggles.
 
 *player-icons*: ++
-	typeof: map[string]string
+	typeof: map[string]string ++
 	Allows setting _{player-icon}_ based on player-name property.
 
 *status-icons*: ++
-	typeof: map[string]string
+	typeof: map[string]string ++
 	Allows setting _{status-icon}_ based on player status (playing, paused,
 	stopped).
 

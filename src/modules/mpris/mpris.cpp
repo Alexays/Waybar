@@ -32,7 +32,6 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       player_("playerctld"),
       manager(),
       player() {
-
   if (config_["format-playing"].isString()) {
     format_playing_ = config_["format-playing"].asString();
   }
@@ -192,12 +191,13 @@ size_t utf8_truncate(std::string& str, size_t width = std::string::npos) {
       return str.length();
     } else if (g_unichar_iswide(c)) {
       total_width += 2;
-    } else if (!g_unichar_iszerowidth(c) && c != 0xAD) { // neither zero-width nor soft hyphen
+    } else if (!g_unichar_iszerowidth(c) && c != 0xAD) {  // neither zero-width nor soft hyphen
       total_width += 1;
     }
 
     data = g_utf8_find_next_char(data, end);
-    if (width != std::string::npos && total_width <= width) trunc_end = data;
+    if (width != std::string::npos && total_width <= width && !g_unichar_isspace(c))
+      trunc_end = data;
   }
 
   if (trunc_end) str.resize(trunc_end - str.data());
