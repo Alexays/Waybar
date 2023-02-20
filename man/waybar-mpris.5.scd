@@ -94,6 +94,22 @@ The *mpris* module displays currently playing media via libplayerctl.
 	This character will be used when any of the tags exceed their maximum
 	length. If you don't want to use an ellipsis, set this to empty string.
 
+*rotate*: ++
+	typeof: integer ++
+	Positive value to rotate the text label.
+
+*max-length*: ++
+	typeof: integer ++
+	The maximum length in character the module should display.
+
+*min-length*: ++
+	typeof: integer ++
+	The minimum length in characters the module should take up.
+
+*align*: ++
+	typeof: float ++
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
 *on-click*: ++
 	typeof: string ++
 	default: play-pause ++

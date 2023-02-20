@@ -18,10 +18,7 @@ namespace waybar::modules::mpris {
 const std::string DEFAULT_FORMAT = "{player} ({status}): {dynamic}";
 
 Mpris::Mpris(const std::string& id, const Json::Value& config)
-    : AModule(config, "mpris", id),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      label_(),
-      format_(DEFAULT_FORMAT),
+    : ALabel(config, "mpris", id, DEFAULT_FORMAT, 5, false, true),
       tooltip_(DEFAULT_FORMAT),
       artist_len_(-1),
       album_len_(-1),
@@ -32,18 +29,10 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       tooltip_len_limits_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_(u8"\u2026"),
-      interval_(0),
       player_("playerctld"),
       manager(),
       player() {
-  box_.pack_start(label_);
-  box_.set_name(name_);
-  event_box_.add(box_);
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Mpris::handleToggle));
 
-  if (config_["format"].isString()) {
-    format_ = config_["format"].asString();
-  }
   if (config_["format-playing"].isString()) {
     format_playing_ = config_["format-playing"].asString();
   }
@@ -98,9 +87,6 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 
   if (config_["truncate-hours"].isBool()) {
     truncate_hours_ = config["truncate-hours"].asBool();
-  }
-  if (config_["interval"].isUInt()) {
-    interval_ = std::chrono::seconds(config_["interval"].asUInt());
   }
   if (config_["player"].isString()) {
     player_ = config_["player"].asString();
@@ -177,7 +163,7 @@ Mpris::~Mpris() {
   if (player != NULL) g_object_unref(player);
 }
 
-auto Mpris::getIcon(const Json::Value& icons, const std::string& key) -> std::string {
+auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) -> std::string {
   if (icons.isObject()) {
     if (icons[key].isString()) {
       return icons[key].asString();
@@ -239,26 +225,26 @@ void truncate(std::string& s, const std::string& ellipsis, size_t max_len) {
 }
 
 auto Mpris::getArtistStr(const PlayerInfo& info, bool truncated) -> std::string {
-  std::string artist = info.artist.value_or(std::string());
+  auto artist = info.artist.value_or(std::string());
   if (truncated && artist_len_ >= 0) truncate(artist, ellipsis_, artist_len_);
   return artist;
 }
 
 auto Mpris::getAlbumStr(const PlayerInfo& info, bool truncated) -> std::string {
-  std::string album = info.album.value_or(std::string());
+  auto album = info.album.value_or(std::string());
   if (truncated && album_len_ >= 0) truncate(album, ellipsis_, album_len_);
   return album;
 }
 
 auto Mpris::getTitleStr(const PlayerInfo& info, bool truncated) -> std::string {
-  std::string title = info.title.value_or(std::string());
+  auto title = info.title.value_or(std::string());
   if (truncated && title_len_ >= 0) truncate(title, ellipsis_, title_len_);
   return title;
 }
 
 auto Mpris::getLengthStr(const PlayerInfo& info, bool truncated) -> std::string {
   if (info.length.has_value()) {
-    std::string length = info.length.value();
+    auto length = info.length.value();
     return (truncated && length.substr(0, 3) == "00:") ? length.substr(3) : length;
   }
   return std::string();
@@ -266,19 +252,19 @@ auto Mpris::getLengthStr(const PlayerInfo& info, bool truncated) -> std::string 
 
 auto Mpris::getPositionStr(const PlayerInfo& info, bool truncated) -> std::string {
   if (info.position.has_value()) {
-    std::string position = info.position.value();
+    auto position = info.position.value();
     return (truncated && position.substr(0, 3) == "00:") ? position.substr(3) : position;
   }
   return std::string();
 }
 
 auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> std::string {
-  std::string artist = getArtistStr(info, truncated);
-  std::string album = getAlbumStr(info, truncated);
-  std::string title = getTitleStr(info, truncated);
-  std::string length = getLengthStr(info, truncated && truncate_hours_);
+  auto artist = getArtistStr(info, truncated);
+  auto album = getAlbumStr(info, truncated);
+  auto title = getTitleStr(info, truncated);
+  auto length = getLengthStr(info, truncated && truncate_hours_);
   // keep position format same as length format
-  std::string position = getPositionStr(info, truncated && truncate_hours_ && length.length() < 6);
+  auto position = getPositionStr(info, truncated && truncate_hours_ && length.length() < 6);
 
   size_t artistLen = utf8_width(artist);
   size_t albumLen = utf8_width(album);
@@ -305,32 +291,32 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
       if (*it == "artist") {
         if (totalLen + artistLen > dynamicLen) {
           showArtist = false;
-        } else {
+        } else if (showArtist) {
           totalLen += artistLen;
         }
       } else if (*it == "album") {
         if (totalLen + albumLen > dynamicLen) {
           showAlbum = false;
-        } else {
+        } else if (showAlbum) {
           totalLen += albumLen;
         }
       } else if (*it == "title") {
         if (totalLen + titleLen > dynamicLen) {
           showTitle = false;
-        } else {
+        } else if (showTitle) {
           totalLen += titleLen;
         }
       } else if (*it == "length") {
         if (totalLen + lengthLen > dynamicLen) {
           showLength = false;
-        } else {
+        } else if (showLength) {
           totalLen += lengthLen;
           posLen = std::max((size_t)2, posLen) - 2;
         }
       } else if (*it == "position") {
         if (totalLen + posLen > dynamicLen) {
           showPos = false;
-        } else {
+        } else if (showPos) {
           totalLen += posLen;
           lengthLen = std::max((size_t)2, lengthLen) - 2;
         }
@@ -541,19 +527,19 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
     switch (e->button) {
       case 1:  // left-click
         if (config_["on-click"].isString()) {
-          return AModule::handleToggle(e);
+          return ALabel::handleToggle(e);
         }
         playerctl_player_play_pause(player, &error);
         break;
       case 2:  // middle-click
         if (config_["on-middle-click"].isString()) {
-          return AModule::handleToggle(e);
+          return ALabel::handleToggle(e);
         }
         playerctl_player_previous(player, &error);
         break;
       case 3:  // right-click
         if (config_["on-right-click"].isString()) {
-          return AModule::handleToggle(e);
+          return ALabel::handleToggle(e);
         }
         playerctl_player_next(player, &error);
         break;
@@ -572,7 +558,7 @@ auto Mpris::update() -> void {
   auto opt = getPlayerInfo();
   if (!opt) {
     event_box_.set_visible(false);
-    AModule::update();
+    ALabel::update();
     return;
   }
   auto info = *opt;
@@ -585,20 +571,20 @@ auto Mpris::update() -> void {
   spdlog::debug("mpris[{}]: running update", info.name);
 
   // set css class for player status
-  if (!lastStatus.empty() && box_.get_style_context()->has_class(lastStatus)) {
-    box_.get_style_context()->remove_class(lastStatus);
+  if (!lastStatus.empty() && event_box_.get_style_context()->has_class(lastStatus)) {
+    event_box_.get_style_context()->remove_class(lastStatus);
   }
-  if (!box_.get_style_context()->has_class(info.status_string)) {
-    box_.get_style_context()->add_class(info.status_string);
+  if (!event_box_.get_style_context()->has_class(info.status_string)) {
+    event_box_.get_style_context()->add_class(info.status_string);
   }
   lastStatus = info.status_string;
 
   // set css class for player name
-  if (!lastPlayer.empty() && box_.get_style_context()->has_class(lastPlayer)) {
-    box_.get_style_context()->remove_class(lastPlayer);
+  if (!lastPlayer.empty() && event_box_.get_style_context()->has_class(lastPlayer)) {
+    event_box_.get_style_context()->remove_class(lastPlayer);
   }
-  if (!box_.get_style_context()->has_class(info.name)) {
-    box_.get_style_context()->add_class(info.name);
+  if (!event_box_.get_style_context()->has_class(info.name)) {
+    event_box_.get_style_context()->add_class(info.name);
   }
   lastPlayer = info.name;
 
@@ -634,8 +620,8 @@ auto Mpris::update() -> void {
         fmt::arg("title", getTitleStr(info, true)), fmt::arg("album", getAlbumStr(info, true)),
         fmt::arg("length", length), fmt::arg("position", position),
         fmt::arg("dynamic", getDynamicStr(info, true, true)),
-        fmt::arg("player_icon", getIcon(config_["player-icons"], info.name)),
-        fmt::arg("status_icon", getIcon(config_["status-icons"], info.status_string)));
+        fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
+        fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 
     label_.set_markup(label_format);
   } catch (fmt::format_error const& e) {
@@ -652,8 +638,8 @@ auto Mpris::update() -> void {
           fmt::arg("album", getAlbumStr(info, tooltip_len_limits_)),
           fmt::arg("length", tooltipLength), fmt::arg("position", tooltipPosition),
           fmt::arg("dynamic", getDynamicStr(info, tooltip_len_limits_, false)),
-          fmt::arg("player_icon", getIcon(config_["player-icons"], info.name)),
-          fmt::arg("status_icon", getIcon(config_["status-icons"], info.status_string)));
+          fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
+          fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 
       label_.set_tooltip_text(tooltip_text);
     } catch (fmt::format_error const& e) {
@@ -663,7 +649,7 @@ auto Mpris::update() -> void {
 
   event_box_.set_visible(true);
   // call parent update
-  AModule::update();
+  ALabel::update();
 }
 
 }  // namespace waybar::modules::mpris

@@ -16,7 +16,7 @@ extern "C" {
 
 namespace waybar::modules::mpris {
 
-class Mpris : public AModule {
+class Mpris : public ALabel {
  public:
   Mpris(const std::string&, const Json::Value&);
   virtual ~Mpris();
@@ -44,7 +44,7 @@ class Mpris : public AModule {
   };
 
   auto getPlayerInfo() -> std::optional<PlayerInfo>;
-  auto getIcon(const Json::Value&, const std::string&) -> std::string;
+  auto getIconFromJson(const Json::Value&, const std::string&) -> std::string;
   auto getArtistStr(const PlayerInfo&, bool) -> std::string;
   auto getAlbumStr(const PlayerInfo&, bool) -> std::string;
   auto getTitleStr(const PlayerInfo&, bool) -> std::string;
@@ -52,11 +52,7 @@ class Mpris : public AModule {
   auto getPositionStr(const PlayerInfo&, bool) -> std::string;
   auto getDynamicStr(const PlayerInfo&, bool, bool) -> std::string;
 
-  Gtk::Box box_;
-  Gtk::Label label_;
-
   // config
-  std::string format_;
   std::string format_playing_;
   std::string format_paused_;
   std::string format_stopped_;
@@ -75,7 +71,6 @@ class Mpris : public AModule {
   bool tooltip_len_limits_;
   std::string ellipsis_;
 
-  std::chrono::seconds interval_;
   std::string player_;
   std::vector<std::string> ignored_players_;
 
