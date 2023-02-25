@@ -156,7 +156,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                     if (l == r || config_["alphabetical_sort"].asBool()) {
                       // In case both integers are the same, lexicographical
                       // sort. The code above already ensure that this will only
-                      // happend in case of explicitly numbered workspaces.
+                      // happened in case of explicitly numbered workspaces.
                       //
                       // Additionally, if the config specifies to sort workspaces
                       // alphabetically do this here.

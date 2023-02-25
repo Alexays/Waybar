@@ -6,7 +6,7 @@
 namespace waybar::util {
 // replaces ``<>&"'`` with their encoded counterparts
 std::string sanitize_string(std::string str) {
-  // note: it's important that '&' is replaced first; therefor we *can't* use std::map
+  // note: it's important that '&' is replaced first; therefore we *can't* use std::map
   const std::pair<char, std::string> replacement_table[] = {
       {'&', "&amp;"}, {'<', "&lt;"}, {'>', "&gt;"}, {'"', "&quot;"}, {'\'', "&apos;"}};
   size_t startpoint;
