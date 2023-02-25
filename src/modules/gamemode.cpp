@@ -55,7 +55,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   }
   box_.set_spacing(iconSpacing);
 
-  // Wether to use icon or not
+  // Whether to use icon or not
   if (config_["use-icon"].isBool()) {
     useIcon = config_["use-icon"].asBool();
   }
