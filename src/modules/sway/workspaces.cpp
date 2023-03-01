@@ -231,7 +231,6 @@ auto Workspaces::update() -> void {
       box_.reorder_child(button, it - workspaces_.begin());
     }
     std::string output = (*it)["name"].asString();
-    button.get_style_context()->add_class("workspace-" + trimWorkspaceName(output));
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
       output = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)),
