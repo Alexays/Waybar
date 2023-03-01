@@ -273,6 +273,7 @@ A module group is defined by specifying a module named "group/some-group-name". 
 - *waybar-river-mode(5)*
 - *waybar-river-tags(5)*
 - *waybar-river-window(5)*
+- *waybar-river-layout(5)*
 - *waybar-states(5)*
 - *waybar-sway-mode(5)*
 - *waybar-sway-scratchpad(5)*

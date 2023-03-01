@@ -64,6 +64,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "river/window") {
       return new waybar::modules::river::Window(id, bar_, config_[name]);
     }
+    if (ref == "river/layout") {
+      return new waybar::modules::river::Layout(id, bar_, config_[name]);
+    }
 #endif
 #ifdef HAVE_HYPRLAND
     if (ref == "hyprland/window") {
