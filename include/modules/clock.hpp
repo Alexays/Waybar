@@ -15,25 +15,25 @@ enum class WeeksSide {
   HIDDEN,
 };
 
-enum class CldMode { MONTH, YEAR };
+enum class CldMode {
+  MONTH,
+  YEAR
+};
 
-class Clock : public ALabel {
+class Clock final : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
   ~Clock() = default;
   auto update() -> void;
+  auto doAction(const std::string& name) -> void override;
 
  private:
   util::SleeperThread thread_;
-  std::map<std::pair<uint, GdkEventType>, void (waybar::modules::Clock::*)()> eventMap_;
   std::locale locale_;
   std::vector<const date::time_zone*> time_zones_;
   int current_time_zone_idx_;
   bool is_calendar_in_tooltip_;
   bool is_timezoned_list_in_tooltip_;
-
-  bool handleScroll(GdkEventScroll* e);
-  bool handleToggle(GdkEventButton* const& e);
 
   auto first_day_of_week() -> date::weekday;
   const date::time_zone* current_timezone();
@@ -56,6 +56,20 @@ class Clock : public ALabel {
   /*Calendar functions*/
   auto get_calendar(const date::zoned_seconds& now, const date::zoned_seconds& wtime)
       -> std::string;
+  /*Clock actions*/
   void cldModeSwitch();
+  void cldShift_up();
+  void cldShift_down();
+  void tz_up();
+  void tz_down();
+
+  // ModuleActionMap
+  static inline std::map<const std::string, void(waybar::modules::Clock::* const)()> actionMap_{
+    {"mode", &waybar::modules::Clock::cldModeSwitch},
+    {"shift_up", &waybar::modules::Clock::cldShift_up},
+    {"shift_down", &waybar::modules::Clock::cldShift_down},
+    {"tz_up", &waybar::modules::Clock::tz_up},
+    {"tz_down", &waybar::modules::Clock::tz_down}
+  };
 };
 }  // namespace waybar::modules

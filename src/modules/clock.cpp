@@ -125,16 +125,6 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
         return false;
       });
     }
-    if (config_[kCalendarPlaceholder]["on-click-left"].isString()) {
-      if (config_[kCalendarPlaceholder]["on-click-left"].asString() == "mode")
-        eventMap_.insert({std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS),
-                          &waybar::modules::Clock::cldModeSwitch});
-    }
-    if (config_[kCalendarPlaceholder]["on-click-right"].isString()) {
-      if (config_[kCalendarPlaceholder]["on-click-right"].asString() == "mode")
-        eventMap_.insert({std::make_pair(3, GdkEventType::GDK_BUTTON_PRESS),
-                          &waybar::modules::Clock::cldModeSwitch});
-    }
   }
 
   if (config_["locale"].isString())
@@ -203,56 +193,12 @@ auto waybar::modules::Clock::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Clock::handleToggle(GdkEventButton* const& e) {
-  const std::map<std::pair<uint, GdkEventType>, void (waybar::modules::Clock::*)()>::const_iterator&
-      rec{eventMap_.find(std::pair(e->button, e->type))};
-
-  const auto callMethod{(rec != eventMap_.cend()) ? rec->second : nullptr};
-
-  if (callMethod) {
-    (this->*callMethod)();
+auto waybar::modules::Clock::doAction(const std::string& name) -> void {
+  if ((actionMap_[name])) {
+    (this->*actionMap_[name])();
+    update();
   } else
-    return ALabel::handleToggle(e);
-
-  update();
-  return true;
-}
-
-bool waybar::modules::Clock::handleScroll(GdkEventScroll* e) {
-  // defer to user commands if set
-  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
-  }
-
-  auto dir = AModule::getScrollDir(e);
-
-  // Shift calendar date
-  if (cldShift_.count() != 0) {
-    if (dir == SCROLL_DIR::UP)
-      cldCurrShift_ += ((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
-    else
-      cldCurrShift_ -= ((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
-  } else {
-    // Change time zone
-    if (dir != SCROLL_DIR::UP && dir != SCROLL_DIR::DOWN) {
-      return true;
-    }
-    if (time_zones_.size() == 1) {
-      return true;
-    }
-
-    auto nr_zones = time_zones_.size();
-    if (dir == SCROLL_DIR::UP) {
-      size_t new_idx = current_time_zone_idx_ + 1;
-      current_time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
-    } else {
-      current_time_zone_idx_ =
-          current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
-    }
-  }
-
-  update();
-  return true;
+    spdlog::error("Clock. Unsupported action \"{0}\"", name);
 }
 
 // The number of weeks in calendar month layout plus 1 more for calendar titles
@@ -461,8 +407,30 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
   return os.str();
 }
 
+/*Clock actions*/
 void waybar::modules::Clock::cldModeSwitch() {
   cldMode_ = (cldMode_ == CldMode::YEAR) ? CldMode::MONTH : CldMode::YEAR;
+}
+void waybar::modules::Clock::cldShift_up() {
+  cldCurrShift_ += ((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
+}
+void waybar::modules::Clock::cldShift_down() {
+  cldCurrShift_ -= ((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
+}
+void waybar::modules::Clock::tz_up() {
+  auto nr_zones = time_zones_.size();
+
+  if (nr_zones == 1) return;
+
+  size_t new_idx = current_time_zone_idx_ + 1;
+  current_time_zone_idx_ = new_idx == nr_zones ? 0 : new_idx;
+}
+void waybar::modules::Clock::tz_down() {
+  auto nr_zones = time_zones_.size();
+
+  if (nr_zones == 1) return;
+
+  current_time_zone_idx_ = current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
 }
 
 auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point* now)

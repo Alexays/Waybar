@@ -32,6 +32,18 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
+
+  // Configure module action Map
+  const Json::Value actions{config_["actions"]};
+  for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
+    if (it.key().isString() && it->isString())
+      if (eventActionMap_.count(it.key().asString()) == 0)
+        eventActionMap_.insert({it.key().asString(), it->asString()});
+      else
+        spdlog::warn("Dublicate action is ignored: {0}", it.key().asString());
+    else
+      spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
+  }
 }
 
 AModule::~AModule() {
@@ -48,19 +60,33 @@ auto AModule::update() -> void {
     pid_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
 }
+// Get mapping between event name and module action name
+// Then call overrided doAction in order to call appropriate module action
+auto AModule::doAction(const std::string& name) -> void {
+  if (!name.empty()) {
+    const std::map<std::string, std::string>::const_iterator& recA{eventActionMap_.find(name)};
+    // Call overrided action if derrived class has implemented it
+    if (recA != eventActionMap_.cend() && name != recA->second) this->doAction(recA->second);
+  }
+}
 
 bool AModule::handleToggle(GdkEventButton* const& e) {
+  std::string format{};
   const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
       eventMap_.find(std::pair(e->button, e->type))};
-  std::string format{(rec != eventMap_.cend()) ? rec->second : std::string{""}};
+  if (rec != eventMap_.cend()) {
+    // First call module actions
+    this->AModule::doAction(rec->second);
 
+    format = rec->second;
+  }
+  // Second call user scripts
   if (!format.empty()) {
     if (config_[format].isString())
       format = config_[format].asString();
     else
       format.clear();
   }
-
   if (!format.empty()) {
     pid_.push_back(util::command::forkExec(format));
   }
@@ -122,11 +148,19 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
 
 bool AModule::handleScroll(GdkEventScroll* e) {
   auto dir = getScrollDir(e);
-  if (dir == SCROLL_DIR::UP && config_["on-scroll-up"].isString()) {
-    pid_.push_back(util::command::forkExec(config_["on-scroll-up"].asString()));
-  } else if (dir == SCROLL_DIR::DOWN && config_["on-scroll-down"].isString()) {
-    pid_.push_back(util::command::forkExec(config_["on-scroll-down"].asString()));
-  }
+  std::string eventName{};
+
+  if (dir == SCROLL_DIR::UP)
+    eventName = "on-scroll-up";
+  else if (dir == SCROLL_DIR::DOWN)
+    eventName = "on-scroll-down";
+
+  // First call module actions
+  this->AModule::doAction(eventName);
+  // Second call user scripts
+  if (config_[eventName].isString())
+    pid_.push_back(util::command::forkExec(config_[eventName].asString()));
+
   dp.emit();
   return true;
 }
