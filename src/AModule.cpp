@@ -12,6 +12,20 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       config_(std::move(config)),
       distance_scrolled_y_(0.0),
       distance_scrolled_x_(0.0) {
+  // Configure module action Map
+  const Json::Value actions{config_["actions"]};
+  for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
+    if (it.key().isString() && it->isString())
+      if (eventActionMap_.count(it.key().asString()) == 0) {
+        eventActionMap_.insert({it.key().asString(), it->asString()});
+        enable_click = true;
+        enable_scroll = true;
+      } else
+        spdlog::warn("Dublicate action is ignored: {0}", it.key().asString());
+    else
+      spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
+  }
+
   // configure events' user commands
   if (enable_click) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
@@ -31,18 +45,6 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() || enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
-  }
-
-  // Configure module action Map
-  const Json::Value actions{config_["actions"]};
-  for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
-    if (it.key().isString() && it->isString())
-      if (eventActionMap_.count(it.key().asString()) == 0)
-        eventActionMap_.insert({it.key().asString(), it->asString()});
-      else
-        spdlog::warn("Dublicate action is ignored: {0}", it.key().asString());
-    else
-      spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
 }
 
