@@ -17,8 +17,8 @@ namespace waybar::modules {
 class Cpu : public ALabel {
  public:
   Cpu(const std::string&, const Json::Value&);
-  ~Cpu() = default;
-  auto update() -> void;
+  virtual ~Cpu() = default;
+  auto update() -> void override;
 
  private:
   double getCpuLoad();

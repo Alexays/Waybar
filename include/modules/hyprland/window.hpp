@@ -12,14 +12,14 @@ namespace waybar::modules::hyprland {
 class Window : public waybar::ALabel, public EventHandler {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
-  ~Window();
+  virtual ~Window();
 
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   int getActiveWorkspaceID(std::string);
   std::string getLastWindowTitle(int);
-  void onEvent(const std::string&);
+  void onEvent(const std::string&) override;
 
   bool separate_outputs;
   std::mutex mutex_;

@@ -29,8 +29,8 @@ namespace fs = std::filesystem;
 class Battery : public ALabel {
  public:
   Battery(const std::string&, const Json::Value&);
-  ~Battery();
-  auto update() -> void;
+  virtual ~Battery();
+  auto update() -> void override;
 
  private:
   static inline const fs::path data_dir_ = "/sys/class/power_supply/";

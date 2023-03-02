@@ -13,8 +13,8 @@ namespace waybar::modules {
 class Wireplumber : public ALabel {
  public:
   Wireplumber(const std::string&, const Json::Value&);
-  ~Wireplumber();
-  auto update() -> void;
+  virtual ~Wireplumber();
+  auto update() -> void override;
 
  private:
   void loadRequiredApiModules();

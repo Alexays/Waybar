@@ -17,8 +17,9 @@ namespace waybar::modules {
 class Image : public AModule {
  public:
   Image(const std::string&, const Json::Value&);
-  auto update() -> void;
-  void refresh(int /*signal*/);
+  virtual ~Image() = default;
+  auto update() -> void override;
+  void refresh(int /*signal*/) override;
 
  private:
   void delayWorker();
