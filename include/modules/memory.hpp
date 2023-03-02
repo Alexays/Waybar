@@ -13,8 +13,8 @@ namespace waybar::modules {
 class Memory : public ALabel {
  public:
   Memory(const std::string&, const Json::Value&);
-  ~Memory() = default;
-  auto update() -> void;
+  virtual ~Memory() = default;
+  auto update() -> void override;
 
  private:
   void parseMeminfo();

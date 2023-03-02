@@ -15,8 +15,8 @@ namespace waybar::modules::sway {
 class Scratchpad : public ALabel {
  public:
   Scratchpad(const std::string&, const Json::Value&);
-  ~Scratchpad() = default;
-  auto update() -> void;
+  virtual ~Scratchpad() = default;
+  auto update() -> void override;
 
  private:
   auto getTree() -> void;

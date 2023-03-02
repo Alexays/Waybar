@@ -19,9 +19,9 @@ namespace waybar::modules::mpris {
 class Mpris : public AModule {
  public:
   Mpris(const std::string&, const Json::Value&);
-  ~Mpris();
-  auto update() -> void;
-  bool handleToggle(GdkEventButton* const&);
+  virtual ~Mpris();
+  auto update() -> void override;
+  bool handleToggle(GdkEventButton* const&) override;
 
  private:
   static auto onPlayerNameAppeared(PlayerctlPlayerManager*, PlayerctlPlayerName*, gpointer) -> void;

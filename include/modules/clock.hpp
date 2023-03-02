@@ -23,8 +23,8 @@ enum class CldMode {
 class Clock final : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
-  ~Clock() = default;
-  auto update() -> void;
+  virtual ~Clock() = default;
+  auto update() -> void override;
   auto doAction(const std::string& name) -> void override;
 
  private:

@@ -13,7 +13,7 @@ namespace waybar::modules::river {
 class Window : public waybar::ALabel {
  public:
   Window(const std::string &, const waybar::Bar &, const Json::Value &);
-  ~Window();
+  virtual ~Window();
 
   // Handlers for wayland events
   void handle_focused_view(const char *title);

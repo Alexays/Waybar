@@ -10,12 +10,12 @@ namespace waybar::modules::hyprland {
 class Submap : public waybar::ALabel, public EventHandler {
  public:
   Submap(const std::string&, const waybar::Bar&, const Json::Value&);
-  ~Submap();
+  virtual ~Submap();
 
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
-  void onEvent(const std::string&);
+  void onEvent(const std::string&) override;
 
   std::mutex mutex_;
   const Bar& bar_;

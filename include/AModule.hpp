@@ -12,10 +12,10 @@ namespace waybar {
 class AModule : public IModule {
  public:
   virtual ~AModule();
-  virtual auto update() -> void;
+  auto update() -> void override;
   virtual auto refresh(int) -> void{};
-  virtual operator Gtk::Widget &();
-  virtual auto doAction(const std::string& name) -> void;
+  operator Gtk::Widget &() override;
+  auto doAction(const std::string& name) -> void override;
 
   Glib::Dispatcher dp;
 

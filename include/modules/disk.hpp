@@ -14,8 +14,8 @@ namespace waybar::modules {
 class Disk : public ALabel {
  public:
   Disk(const std::string&, const Json::Value&);
-  ~Disk() = default;
-  auto update() -> void;
+  virtual ~Disk() = default;
+  auto update() -> void override;
 
  private:
   util::SleeperThread thread_;
