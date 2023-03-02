@@ -22,11 +22,10 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       is_timezoned_list_in_tooltip_(false) {
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
     for (const auto& zone_name : config_["timezones"]) {
-      if (!zone_name.isString() || zone_name.asString().empty())
-        continue;
+      if (!zone_name.isString() || zone_name.asString().empty()) continue;
       try {
         time_zones_.push_back(date::locate_zone(zone_name.asString()));
-      } catch(const std::exception& e) {
+      } catch (const std::exception& e) {
         spdlog::warn("Timezone: {0}. {1}", zone_name.asString(), e.what());
       }
     }
