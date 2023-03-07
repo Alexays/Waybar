@@ -122,7 +122,10 @@ void waybar::modules::MPD::setLabel() {
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
-  if (stopped()) {
+  bool no_song = song_.get() == nullptr;
+  if (stopped() || no_song ) {
+    if (no_song)
+      spdlog::warn("Bug in mpd: no current song but state is not stopped.");
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
     label_.get_style_context()->add_class("stopped");
