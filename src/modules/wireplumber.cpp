@@ -173,7 +173,7 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   spdlog::debug(
       "[{}]: (onDefaultNodesApiChanged) - Default node changed to -> Node(name: {}, id: {})",
       self->name_, default_node_name, default_node_id);
-  
+
   g_free(self->default_node_name_);
   self->default_node_name_ = g_strdup(default_node_name);
   updateVolume(self, default_node_id);
