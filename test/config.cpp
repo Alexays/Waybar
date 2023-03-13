@@ -114,5 +114,5 @@ TEST_CASE("Load multiple bar config with include", "[config]") {
   auto& data = conf.getConfig();
   REQUIRE(data.isArray());
   REQUIRE(data.size() == 4);
-  REQUIRE(data[0]["output"].asString() == "OUT-0");
+  REQUIRE(data[0]["output"].asString() == "OUT-0/.*");
 }

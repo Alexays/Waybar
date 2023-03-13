@@ -1,4 +1,4 @@
 {
-  "output": "OUT-1",
+  "output": "OUT-1/.*",
   "height": 22
 }

@@ -27,9 +27,9 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Decide if the bar is displayed in front (*top*) of the windows or behind (*bottom*)
 	them.
 
-*output* ++
-	typeof: string|array ++
-	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
+*output*
+	typeof: string ++
+Specifies on which screen this bar will be displayed. String is a regular expression used to match each output *name*/*identifier* (this is the actual format of the string matched). Regular expression follows ECMA-script rules.
 
 *position* ++
 	typeof: string ++
@@ -180,7 +180,7 @@ A minimal *config* file could look like this:
 ```
 {
 	"layer": "top",
-	"output": "eDP-1",
+	"output": "eDP-1/.*",
 	"modules-left": ["sway/workspaces", "sway/mode"],
 	...
 
@@ -191,7 +191,7 @@ A minimal *config* file could look like this:
 ```
 {
 	"layer": "top",
-	"output": ["eDP-1", "VGA"],
+	"output": "(eDP-1|VGA)/.*",
 	"modules-left": ["sway/workspaces", "sway/mode"],
 	...
 }
@@ -205,12 +205,12 @@ Don't specify an output to create multiple bars on the same screen.
 ```
 [{
 	"layer": "top",
-	"output": "eDP-1",
+	"output": "eDP-1/.*",
 	"modules-left": ["sway/workspaces", "sway/mode"],
 	...
 }, {
 	"layer": "top",
-	"output": "VGA",
+	"output": "VGA/.*",
 	"modules-right": ["clock"],
 	...
 }]
