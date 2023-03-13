@@ -30,6 +30,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *output* ++
 	typeof: string|array ++
 	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
+	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
 
 *position* ++
 	typeof: string ++
