@@ -29,4 +29,4 @@ jobs:
       - name: build
         run: ninja -C build
       - name: test
-        run: meson test -C build --no-rebuild --verbose --suite waybar
+        run: make test
