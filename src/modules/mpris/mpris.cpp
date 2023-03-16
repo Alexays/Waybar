@@ -338,10 +338,10 @@ auto Mpris::update() -> void {
   // dynamic is the auto-formatted string containing a nice out-of-the-box
   // format text
   std::stringstream dynamic;
-  if (info.artist) dynamic << *info.artist << " - ";
-  if (info.album) dynamic << *info.album << " - ";
-  if (info.title) dynamic << *info.title;
-  if (info.length)
+  if (info.artist && !info.artist.value().empty()) dynamic << *info.artist << " - ";
+  if (info.album && !info.album.value().empty()) dynamic << *info.album << " - ";
+  if (info.title && !info.title.value().empty()) dynamic << *info.title;
+  if (info.length && !info.length.value().empty())
     dynamic << " "
             << "<small>"
             << "[" << *info.length << "]"
