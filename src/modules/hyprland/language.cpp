@@ -68,7 +68,7 @@ void Language::onEvent(const std::string& ev) {
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
-  layout_ = *getLayout(layoutName);
+  layout_ = getLayout(layoutName);
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -89,7 +89,7 @@ void Language::initLanguage() {
 
     searcher = waybar::util::sanitize_string(searcher);
 
-    layout_ = *getLayout(searcher);
+    layout_ = getLayout(searcher);
 
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
@@ -100,7 +100,7 @@ void Language::initLanguage() {
   }
 }
 
-auto Language::getLayout(const std::string& fullName) -> Layout* {
+auto Language::getLayout(const std::string& fullName) -> Layout {
   const auto CONTEXT = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
   rxkb_context_parse_default_ruleset(CONTEXT);
 
@@ -121,7 +121,7 @@ auto Language::getLayout(const std::string& fullName) -> Layout* {
     std::string short_description =
         short_description_ == nullptr ? "" : std::string(short_description_);
 
-    Layout* info = new Layout{nameOfLayout, name, variant, short_description};
+    Layout info = Layout{nameOfLayout, name, variant, short_description};
 
     rxkb_context_unref(CONTEXT);
 
@@ -130,7 +130,9 @@ auto Language::getLayout(const std::string& fullName) -> Layout* {
 
   rxkb_context_unref(CONTEXT);
 
-  return NULL;
+  spdlog::debug("hyprland language didn't find matching layout");
+
+  return Layout {"", "", "", ""};
 }
 
 }  // namespace waybar::modules::hyprland
