@@ -87,7 +87,7 @@ Addressed by *sway/window*
 	
 *rewrite*: ++
 	typeof: object ++
-	Rules to rewrite window title. See *rewrite rules*.
+	Rules to rewrite the module format output. See *rewrite rules*.
 
 *icon*: ++
 	typeof: bool ++
@@ -116,7 +116,7 @@ captures of the expression.
 
 Regular expression and replacement follow ECMA-script rules.
 
-If no expression matches, the title is left unchanged.
+If no expression matches, the format output is left unchanged.
 
 Invalid expressions (e.g., mismatched parentheses) are skipped.
 
