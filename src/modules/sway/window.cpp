@@ -204,10 +204,10 @@ auto Window::update() -> void {
     old_app_id_ = app_id_;
   }
 
-  label_.set_markup(
-      fmt::format(fmt::runtime(format_),
-                  fmt::arg("title", waybar::util::rewriteString(window_, config_["rewrite"])),
-                  fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
+  label_.set_markup(waybar::util::rewriteString(
+      fmt::format(fmt::runtime(format_), fmt::arg("title", window_), fmt::arg("app_id", app_id_),
+                  fmt::arg("shell", shell_)),
+      config_["rewrite"]));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);
   }
