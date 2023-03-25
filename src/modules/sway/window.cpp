@@ -12,7 +12,7 @@
 #include <regex>
 #include <string>
 
-#include "util/rewrite_title.hpp"
+#include "util/rewrite_string.hpp"
 
 namespace waybar::modules::sway {
 
@@ -206,7 +206,7 @@ auto Window::update() -> void {
 
   label_.set_markup(
       fmt::format(fmt::runtime(format_),
-                  fmt::arg("title", waybar::util::rewriteTitle(window_, config_["rewrite"])),
+                  fmt::arg("title", waybar::util::rewriteString(window_, config_["rewrite"])),
                   fmt::arg("app_id", app_id_), fmt::arg("shell", shell_)));
   if (tooltipEnabled()) {
     label_.set_tooltip_text(window_);

@@ -8,7 +8,7 @@
 #include "modules/hyprland/backend.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
-#include "util/rewrite_title.hpp"
+#include "util/rewrite_string.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -41,7 +41,7 @@ auto Window::update() -> void {
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(fmt::format(fmt::runtime(format_),
-                                  waybar::util::rewriteTitle(lastView, config_["rewrite"])));
+                                  waybar::util::rewriteString(lastView, config_["rewrite"])));
   } else {
     label_.hide();
   }
