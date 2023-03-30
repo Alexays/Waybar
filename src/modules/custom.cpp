@@ -88,6 +88,7 @@ void waybar::modules::Custom::continuousWorker() {
       output_ = {0, output};
       dp.emit();
     }
+    free(buff);
   };
 }
 
