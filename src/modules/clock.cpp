@@ -162,6 +162,9 @@ auto waybar::modules::Clock::update() -> void {
   auto ztime = date::zoned_time{time_zone, date::floor<std::chrono::seconds>(now)};
 
   auto shifted_date = date::year_month_day{date::floor<date::days>(now)} + cldCurrShift_;
+  if (cldCurrShift_.count()) {
+    shifted_date = date::year_month_day(shifted_date.year(), shifted_date.month(), date::day(1));
+  }
   auto now_shifted = date::sys_days{shifted_date} + (now - date::floor<date::days>(now));
   auto shifted_ztime = date::zoned_time{time_zone, date::floor<std::chrono::seconds>(now_shifted)};
 
