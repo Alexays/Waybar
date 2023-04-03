@@ -18,10 +18,10 @@
 #include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
+#include "modules/river/layout.hpp"
 #include "modules/river/mode.hpp"
 #include "modules/river/tags.hpp"
 #include "modules/river/window.hpp"
-#include "modules/river/layout.hpp"
 #endif
 #ifdef HAVE_HYPRLAND
 #include "modules/hyprland/backend.hpp"

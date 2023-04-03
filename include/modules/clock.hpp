@@ -15,10 +15,7 @@ enum class WeeksSide {
   HIDDEN,
 };
 
-enum class CldMode {
-  MONTH,
-  YEAR
-};
+enum class CldMode { MONTH, YEAR };
 
 class Clock final : public ALabel {
  public:
@@ -64,12 +61,11 @@ class Clock final : public ALabel {
   void tz_down();
 
   // ModuleActionMap
-  static inline std::map<const std::string, void(waybar::modules::Clock::* const)()> actionMap_{
-    {"mode", &waybar::modules::Clock::cldModeSwitch},
-    {"shift_up", &waybar::modules::Clock::cldShift_up},
-    {"shift_down", &waybar::modules::Clock::cldShift_down},
-    {"tz_up", &waybar::modules::Clock::tz_up},
-    {"tz_down", &waybar::modules::Clock::tz_down}
-  };
+  static inline std::map<const std::string, void (waybar::modules::Clock::*const)()> actionMap_{
+      {"mode", &waybar::modules::Clock::cldModeSwitch},
+      {"shift_up", &waybar::modules::Clock::cldShift_up},
+      {"shift_down", &waybar::modules::Clock::cldShift_down},
+      {"tz_up", &waybar::modules::Clock::tz_up},
+      {"tz_down", &waybar::modules::Clock::tz_down}};
 };
 }  // namespace waybar::modules

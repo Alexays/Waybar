@@ -1,10 +1,10 @@
+#include "modules/mpris/mpris.hpp"
+
 #include <fmt/core.h>
 
 #include <optional>
 #include <sstream>
 #include <string>
-
-#include "modules/mpris/mpris.hpp"
 
 extern "C" {
 #include <playerctl/playerctl.h>
