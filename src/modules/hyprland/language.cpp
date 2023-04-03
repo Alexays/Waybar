@@ -132,7 +132,7 @@ auto Language::getLayout(const std::string& fullName) -> Layout {
 
   spdlog::debug("hyprland language didn't find matching layout");
 
-  return Layout {"", "", "", ""};
+  return Layout{"", "", "", ""};
 }
 
 }  // namespace waybar::modules::hyprland
