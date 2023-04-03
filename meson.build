@@ -172,7 +172,7 @@ src_files = files(
     'src/group.cpp',
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
-    'src/util/rewrite_title.cpp'
+    'src/util/rewrite_string.cpp'
 )
 
 if is_linux
