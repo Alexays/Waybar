@@ -240,6 +240,10 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .name = player_name,
       .status = player_playback_status,
       .status_string = player_status,
+      .artist = std::nullopt,
+      .album = std::nullopt,
+      .title = std::nullopt,
+      .length = std::nullopt,
   };
 
   if (auto artist_ = playerctl_player_get_artist(player, &error)) {
