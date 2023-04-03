@@ -185,7 +185,7 @@ size_t utf8_truncate(std::string& str, size_t width = std::string::npos) {
 
   for (gchar *data = str.data(), *end = data + str.size(); data;) {
     gunichar c = g_utf8_get_char_validated(data, end - data);
-    if (c == -1 || c == -2) {
+    if (c == -1U || c == -2U) {
       // invalid unicode, treat string as ascii
       if (width != std::string::npos && str.length() > width) str.resize(width);
       return str.length();
