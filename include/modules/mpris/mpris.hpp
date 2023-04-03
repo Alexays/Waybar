@@ -16,7 +16,7 @@ extern "C" {
 
 namespace waybar::modules::mpris {
 
-class Mpris : public AModule {
+class Mpris : public ALabel {
  public:
   Mpris(const std::string&, const Json::Value&);
   virtual ~Mpris();
@@ -39,21 +39,38 @@ class Mpris : public AModule {
     std::optional<std::string> artist;
     std::optional<std::string> album;
     std::optional<std::string> title;
-    std::optional<std::string> length;  // as HH:MM:SS
+    std::optional<std::string> length;    // as HH:MM:SS
+    std::optional<std::string> position;  // same format
   };
 
   auto getPlayerInfo() -> std::optional<PlayerInfo>;
-  auto getIcon(const Json::Value&, const std::string&) -> std::string;
-
-  Gtk::Box box_;
-  Gtk::Label label_;
+  auto getIconFromJson(const Json::Value&, const std::string&) -> std::string;
+  auto getArtistStr(const PlayerInfo&, bool) -> std::string;
+  auto getAlbumStr(const PlayerInfo&, bool) -> std::string;
+  auto getTitleStr(const PlayerInfo&, bool) -> std::string;
+  auto getLengthStr(const PlayerInfo&, bool) -> std::string;
+  auto getPositionStr(const PlayerInfo&, bool) -> std::string;
+  auto getDynamicStr(const PlayerInfo&, bool, bool) -> std::string;
 
   // config
-  std::string format_;
   std::string format_playing_;
   std::string format_paused_;
   std::string format_stopped_;
-  std::chrono::seconds interval_;
+
+  std::string tooltip_;
+  std::string tooltip_playing_;
+  std::string tooltip_paused_;
+  std::string tooltip_stopped_;
+
+  int artist_len_;
+  int album_len_;
+  int title_len_;
+  int dynamic_len_;
+  std::vector<std::string> dynamic_prio_;
+  bool truncate_hours_;
+  bool tooltip_len_limits_;
+  std::string ellipsis_;
+
   std::string player_;
   std::vector<std::string> ignored_players_;
 
