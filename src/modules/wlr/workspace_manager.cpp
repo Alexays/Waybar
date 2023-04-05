@@ -236,7 +236,7 @@ auto WorkspaceGroup::create_persistent_workspaces() -> void {
     auto new_id = ++workspace_global_id;
     workspaces_.push_back(
         std::make_unique<Workspace>(bar_, config_, *this, nullptr, new_id, p_w_name));
-    spdlog::info("Workspace {} created", new_id);
+    spdlog::debug("Workspace {} created", new_id);
   }
 }
 
@@ -531,7 +531,7 @@ auto Workspace::handle_name(const std::string &name) -> void {
     workspace_group_.set_need_to_sort();
   }
   name_ = name;
-  spdlog::info("Workspace {} added to group {}", name, workspace_group_.id());
+  spdlog::debug("Workspace {} added to group {}", name, workspace_group_.id());
 
   make_persistent();
   handle_duplicate();
