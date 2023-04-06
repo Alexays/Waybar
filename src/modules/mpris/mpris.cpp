@@ -619,9 +619,12 @@ auto Mpris::update() -> void {
 
   try {
     auto label_format = fmt::format(
-        fmt::runtime(formatstr), fmt::arg("player", info.name),
-        fmt::arg("status", info.status_string), fmt::arg("artist", getArtistStr(info, true)),
-        fmt::arg("title", getTitleStr(info, true)), fmt::arg("album", getAlbumStr(info, true)),
+        fmt::runtime(formatstr),
+        fmt::arg("player", std::string(Glib::Markup::escape_text(info.name))),
+        fmt::arg("status", info.status_string),
+        fmt::arg("artist", std::string(Glib::Markup::escape_text(getArtistStr(info, true)))),
+        fmt::arg("title", std::string(Glib::Markup::escape_text(getTitleStr(info, true)))),
+        fmt::arg("album", std::string(Glib::Markup::escape_text(getAlbumStr(info, true)))),
         fmt::arg("length", length), fmt::arg("position", position),
         fmt::arg("dynamic", getDynamicStr(info, true, true)),
         fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
