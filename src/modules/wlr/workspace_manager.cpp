@@ -209,7 +209,7 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value 
 }
 
 auto WorkspaceGroup::fill_persistent_workspaces() -> void {
-  if (config_["persistent_workspaces"].isObject()) {
+  if (config_["persistent_workspaces"].isObject() && !workspace_manager_.all_outputs()) {
     const Json::Value &p_workspaces = config_["persistent_workspaces"];
     const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
