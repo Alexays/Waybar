@@ -26,6 +26,7 @@ class Pulseaudio : public ALabel {
   static void volumeModifyCb(pa_context*, int, void*);
 
   bool handleScroll(GdkEventScroll* e) override;
+  bool handleToggle(GdkEventButton *const &e) override;
   const std::vector<std::string> getPulseIcon() const;
 
   pa_threaded_mainloop* mainloop_;

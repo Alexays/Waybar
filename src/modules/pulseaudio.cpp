@@ -124,6 +124,23 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   return true;
 }
 
+bool waybar::modules::Pulseaudio::handleToggle(GdkEventButton *const &e) { 
+  // In muted, do not respond to alt-click events
+  if (muted_ && config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
+    std::string format_name = "format";
+    if (monitor_.find("a2dp_sink") != std::string::npos ||  // PulseAudio
+        monitor_.find("a2dp-sink") != std::string::npos ||  // PipeWire
+        monitor_.find("bluez") != std::string::npos) {
+      format_name = format_name + "-bluetooth";
+    }
+    if (config_[format_name + "-muted"].isString()){
+      return true;
+    }
+  }
+
+  return ALabel::handleToggle(e);
+}
+
 /*
  * Called when an event we subscribed to occurs.
  */
