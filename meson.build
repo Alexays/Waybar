@@ -228,6 +228,11 @@ if true
 endif
 
 if true
+    add_project_arguments('-DHAVE_DWL', language: 'cpp')
+    src_files += 'src/modules/dwl/tags.cpp'
+endif
+
+if true
     add_project_arguments('-DHAVE_HYPRLAND', language: 'cpp')
     src_files += 'src/modules/hyprland/backend.cpp'
     src_files += 'src/modules/hyprland/window.cpp'

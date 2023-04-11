@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+This is largely ripped from somebar's ipc patchset; just with some personal modifications.
+I would probably just submit raphi's patchset but I don't think that would be polite.
+-->
+<protocol name="dwl_bar_ipc_unstable_v1">
+  <description summary="inter-proccess-communication about dwl's state">
+      This protocol allows clients to get updates from dwl and vice versa.
+
+      Warning! The protocol described in this file is experimental and
+      backward incompatible changes may be made. Backward compatible
+      changes may be added together with the corresponding interface
+      version bump.
+      Backward incompatible changes are done by bumping the version
+      number in the protocol and interface names and resetting the
+      interface version. Once the protocol is to be declared stable,
+      the 'z' prefix and the version number in the protocol and
+      interface names are removed and the interface version number is
+      reset.
+  </description>
+
+  <interface name="zdwl_manager_v1" version="3">
+    <description summary="manage dwl state">
+      This interface is exposed as a global in wl_registry.
+
+      Clients can use this interface to get a dwl_output.
+      After binding the client will revieve dwl_manager.tag and dwl_manager.layout events.
+      The dwl_manager.tag and dwl_manager.layout events expose tags and layouts to the client.
+    </description>
+
+    <request name="release" type="destructor">
+      <description summary="release dwl_manager">
+        Indicates that the client will not the dwl_manager object anymore.
+        Objects created through this instance are not affected.
+      </description>
+    </request>
+
+    <request name="get_output">
+      <description summary="get a dwl_output for a wl_output">
+        Get a dwl_output for the specified wl_output.
+      </description>
+      <arg name="id" type="new_id" interface="zdwl_output_v1"/>
+      <arg name="output" type="object" interface="wl_output"/>
+    </request>
+
+    <event name="tag">
+      <description summary="Announces a tag">
+        This event is sent after binding.
+        A roundtrip after binding guarantees the client recieved all tags.
+      </description>
+      <arg name="name" type="string"/>
+    </event>
+
+    <event name="layout">
+      <description summary="Announces a layout">
+        This event is sent after binding.
+        A roundtrip after binding guarantees the client recieved all layouts.
+      </description>
+      <arg name="name" type="string"/>
+    </event>
+  </interface>
+
+  <interface name="zdwl_output_v1" version="3">
+    <description summary="control dwl output">
+      Observe and control a dwl output.
+
+      Events are double-buffered:
+      Clients should cache events and redraw when a dwl_output.done event is sent.
+
+      Request are not double-buffered:
+      The compositor will update immediately upon request.
+    </description>
+
+    <enum name="tag_state">
+      <entry name="none" value="0" summary="no state"/>
+      <entry name="active" value="1" summary="tag is active"/>
+      <entry name="urgent" value="2" summary="tag has at least one urgent client"/>
+    </enum>
+
+    <request name="release" type="destructor">
+      <description summary="release dwl_output">
+        Indicates to that the client no longer needs this dwl_output.
+      </description>
+    </request>
+
+    <event name="toggle_visibility">
+      <description summary="Toggle client visibilty">
+        Indicates the client should hide or show themselves.
+        If the client is visible then hide, if hidden then show.
+      </description>
+    </event>
+
+    <event name="active">
+      <description summary="Update the selected output.">
+        Indicates if the output is active. Zero is invalid, nonzero is valid.
+      </description>
+      <arg name="active" type="uint"/>
+    </event>
+
+    <event name="tag">
+      <description summary="Update the state of a tag.">
+        Indicates that a tag has been updated.
+      </description>
+      <arg name="tag" type="uint" summary="Index of the tag"/>
+      <arg name="state" type="uint" enum="tag_state" summary="The state of the tag."/>
+      <arg name="clients" type="uint" summary="The number of clients in the tag."/>
+      <arg name="focused" type="uint" summary="If there is a focused client. Nonzero being valid, zero being invalid."/>
+    </event>
+
+    <event name="layout">
+      <description summary="Update the layout.">
+        Indicates a new layout is selected.
+      </description>
+      <arg name="layout" type="uint" summary="Index of the layout."/>
+    </event>
+
+    <event name="title">
+      <description summary="Update the title.">
+        Indicates the title has changed.
+      </description>
+      <arg name="title" type="string" summary="The new title name."/>
+    </event>
+
+    <event name="appid" since="2">
+      <description summary="Update the appid.">
+        Indicates the appid has changed.
+      </description>
+      <arg name="appid" type="string" summary="The new appid."/>
+    </event>
+
+    <event name="layout_symbol" since="3">
+      <description summary="Update the current layout symbol">
+          Indicates the layout has changed. Since layout symbols are now dynamic.
+          As opposed to the zdwl_manager_v1.layout event, this should take precendence when displaying.
+          This also means ignoring the zdwl_output_v1.layout event.
+      </description>
+      <arg name="layout" type="string" summary="The new layout"/>
+    </event>
+
+
+    <event name="frame">
+      <description summary="The update sequence is done.">
+        Indicates that a sequence of status updates have finished and the client should redraw.
+      </description>
+    </event>
+
+    <request name="set_layout">
+      <description summary="Set the layout of this output"/>
+      <arg name="index" type="uint" summary="index of a layout recieved by dwl_manager.layout"/>
+    </request>
+
+    <request name="set_tags">
+      <description summary="Set the active tags of this output"/>
+      <arg name="tagmask" type="uint" summary="bitmask of the tags that should be set."/>
+      <arg name="toggle_tagset" type="uint" summary="toggle the selected tagset, zero for invalid, nonzero for valid."/>
+    </request>
+
+    <request name="set_client_tags">
+      <description summary="Set the tags of the focused client.">
+        The tags are updated as follows:
+        new_tags = (current_tags AND and_tags) XOR xor_tags
+      </description>
+      <arg name="and_tags" type="uint"/>
+      <arg name="xor_tags" type="uint"/>
+    </request>
+  </interface>
+</protocol>

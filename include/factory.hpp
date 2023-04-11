@@ -23,6 +23,9 @@
 #include "modules/river/tags.hpp"
 #include "modules/river/window.hpp"
 #endif
+#ifdef HAVE_DWL
+#include "modules/dwl/tags.hpp"
+#endif
 #ifdef HAVE_HYPRLAND
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/language.hpp"
