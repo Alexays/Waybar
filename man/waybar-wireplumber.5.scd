@@ -15,7 +15,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
     default: *{volume}%* ++
     The format, how information should be displayed. This format is used when other formats aren't specified.
 
- *format-muted*: ++
+*format-muted*: ++
     typeof: string ++
     This format is used when the sound is muted.
 
