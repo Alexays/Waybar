@@ -66,37 +66,11 @@ static const zdwl_output_v1_listener output_status_listener_impl {
     .frame = dwl_frame,
 };
 
-void add_layout(void* data, zdwl_manager_v1* zdwl_manager_v1, const char* name) {
-  void* temp = wl_array_add(&layouts, sizeof(char**));
-  if (!temp)
-    return;
-
-  char* dup = strdup(name);
-
-  memcpy(temp, &dup, sizeof(char**));
-}
-
-void add_tag(void* data, zdwl_manager_v1* zdwl_manager_v1, const char* name) {
-  void* temp = wl_array_add(&tags, sizeof(char**));
-  if (!temp)
-    return;
-
-  char* dup = strdup(name); /* Gain ownership of name */
-
-  memcpy(temp, &dup, sizeof(char**)); /* Copy a pointer of it into the array */;
-}
-
-static const struct zdwl_manager_v1_listener dwl_listener = {
-  .tag = add_tag,
-  .layout = add_layout,
-};
-
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
                           const char *interface, uint32_t version) {
   if (std::strcmp(interface, zdwl_manager_v1_interface.name) == 0) {
     static_cast<Tags *>(data)->status_manager_ = static_cast<struct zdwl_manager_v1 *>(
         (zdwl_manager_v1*)wl_registry_bind(registry, name, &zdwl_manager_v1_interface, 3));
-        zdwl_manager_v1_add_listener(static_cast<Tags *>(data)->status_manager_, &dwl_listener, NULL);
   }
   if (std::strcmp(interface, wl_seat_interface.name) == 0) {
     version = std::min<uint32_t>(version, 1);

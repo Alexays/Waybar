@@ -48,7 +48,7 @@ I would probably just submit raphi's patchset but I don't think that would be po
         This event is sent after binding.
         A roundtrip after binding guarantees the client recieved all tags.
       </description>
-      <arg name="name" type="string"/>
+      <arg name="tag" type="int"/>
     </event>
 
     <event name="layout">
