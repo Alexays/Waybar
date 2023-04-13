@@ -9,12 +9,12 @@
 #include <utility>
 #include <vector>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Load : public AButton {
+class Load : public ALabel {
  public:
   Load(const std::string&, const Json::Value&);
   ~Load() = default;

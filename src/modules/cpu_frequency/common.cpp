@@ -10,7 +10,7 @@
 #endif
 
 waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::Value& config)
-    : AButton(config, "cpu_frequency", id, "{avg_frequency}", 10) {
+    : ALabel(config, "cpu_frequency", id, "{avg_frequency}", 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -24,7 +24,7 @@ auto waybar::modules::CpuFrequency::update() -> void {
     auto tooltip =
         fmt::format("Minimum frequency: {}\nAverage frequency: {}\nMaximum frequency: {}\n",
                     min_frequency, avg_frequency, max_frequency);
-    button_.set_tooltip_text(tooltip);
+    label_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto state = getState(avg_frequency);
@@ -42,11 +42,11 @@ auto waybar::modules::CpuFrequency::update() -> void {
     store.push_back(fmt::arg("max_frequency", max_frequency));
     store.push_back(fmt::arg("min_frequency", min_frequency));
     store.push_back(fmt::arg("avg_frequency", avg_frequency));
-    label_->set_markup(fmt::vformat(format, store));
+    label_.set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 std::tuple<float, float, float> waybar::modules::CpuFrequency::getCpuFrequency() {

@@ -10,7 +10,7 @@
 #endif
 
 waybar::modules::Load::Load(const std::string& id, const Json::Value& config)
-    : AButton(config, "load", id, "{load1}", 10) {
+    : ALabel(config, "load", id, "{load1}", 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -22,7 +22,7 @@ auto waybar::modules::Load::update() -> void {
   auto [load1, load5, load15] = getLoad();
   if (tooltipEnabled()) {
     auto tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
-    button_.set_tooltip_text(tooltip);
+    label_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto state = getState(load1);
@@ -42,11 +42,11 @@ auto waybar::modules::Load::update() -> void {
     store.push_back(fmt::arg("icon1", getIcon(load1, icons)));
     store.push_back(fmt::arg("icon5", getIcon(load5, icons)));
     store.push_back(fmt::arg("icon15", getIcon(load15, icons)));
-    label_->set_markup(fmt::vformat(format, store));
+    label_.set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 std::tuple<double, double, double> waybar::modules::Load::getLoad() {
@@ -57,5 +57,5 @@ std::tuple<double, double, double> waybar::modules::Load::getLoad() {
     double load15 = std::ceil(load[2] * 100.0) / 100.0;
     return {load1, load5, load15};
   }
-  throw std::runtime_error("Can't get Cpu load");
+  throw std::runtime_error("Can't get Load");
 }

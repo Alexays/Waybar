@@ -10,7 +10,7 @@
 #endif
 
 waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& config)
-    : AButton(config, "cpu_usage", id, "{usage}%", 10) {
+    : ALabel(config, "cpu_usage", id, "{usage}%", 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -21,7 +21,7 @@ auto waybar::modules::CpuUsage::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [cpu_usage, tooltip] = getCpuUsage();
   if (tooltipEnabled()) {
-    button_.set_tooltip_text(tooltip);
+    label_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
@@ -45,11 +45,11 @@ auto waybar::modules::CpuUsage::update() -> void {
       auto icon_format = fmt::format("icon{}", core_i);
       store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
     }
-    label_->set_markup(fmt::vformat(format, store));
+    label_.set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpuUsage() {
