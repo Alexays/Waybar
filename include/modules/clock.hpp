@@ -50,6 +50,7 @@ class Clock final : public ALabel {
   date::months cldShift_{0};
   std::string cldYearCached_{};
   std::string cldMonCached_{};
+  date::day cldBaseDay_{0};
   /*Calendar functions*/
   auto get_calendar(const date::zoned_seconds& now, const date::zoned_seconds& wtime)
       -> std::string;

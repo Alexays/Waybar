@@ -93,9 +93,11 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       fmtMap_.insert({1, config_[kCalendarPlaceholder]["format"]["weekdays"].asString()});
     else
       fmtMap_.insert({1, "{}"});
-    if (config_[kCalendarPlaceholder]["format"]["today"].isString())
+    if (config_[kCalendarPlaceholder]["format"]["today"].isString()) {
       fmtMap_.insert({3, config_[kCalendarPlaceholder]["format"]["today"].asString()});
-    else
+      cldBaseDay_ =
+          date::year_month_day{date::floor<date::days>(std::chrono::system_clock::now())}.day();
+    } else
       fmtMap_.insert({3, "{}"});
     if (config_[kCalendarPlaceholder]["mode"].isString()) {
       const std::string cfgMode{(config_[kCalendarPlaceholder]["mode"].isString())
@@ -315,6 +317,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
   const auto ymd{date::year_month_day{daypoint}};
   const auto ym{ymd.year() / ymd.month()};
   const auto y{ymd.year()};
+  const auto d{ymd.day()};
   const auto firstdow = first_day_of_week();
   const auto maxRows{12 / cldMonCols_};
   std::ostringstream os;
@@ -325,13 +328,19 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
 
   if (cldMode_ == CldMode::YEAR) {
     if (y / date::month{1} / 1 == cldYearShift_)
-      return cldYearCached_;
+      if (d == cldBaseDay_ || (uint)cldBaseDay_ == 0u)
+        return cldYearCached_;
+      else
+        cldBaseDay_ = d;
     else
       cldYearShift_ = y / date::month{1} / 1;
   }
   if (cldMode_ == CldMode::MONTH) {
     if (ym == cldMonShift_)
-      return cldMonCached_;
+      if (d == cldBaseDay_ || (uint)cldBaseDay_ == 0u)
+        return cldMonCached_;
+      else
+        cldBaseDay_ = d;
     else
       cldMonShift_ = ym;
   }
