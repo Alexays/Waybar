@@ -148,10 +148,11 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   zdwl_output_v1_add_listener(output_status_, &output_status_listener_impl, this);
 
   zdwl_manager_v1_destroy(status_manager_);
+  status_manager_ = nullptr;
 }
 
 Tags::~Tags() {
-  if (output_status_) {
+  if (status_manager_) {
     zdwl_manager_v1_destroy(status_manager_);
   }
 }
