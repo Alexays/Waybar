@@ -120,11 +120,11 @@ void waybar::modules::Wireplumber::onMixerChanged(waybar::modules::Wireplumber* 
 
   const gchar* name = wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
 
-  if (g_strcmp0(self->default_node_name_, name) != 0) {
+  if (self->node_id_ != id) {
     spdlog::debug(
         "[{}]: (onMixerChanged) - ignoring mixer update for node: id: {}, name: {} as it is not "
-        "the default node: {}",
-        self->name_, id, name, self->default_node_name_);
+        "the default node: {} with id: {}",
+        self->name_, id, name, self->default_node_name_, self->node_id_);
     return;
   }
 
@@ -176,6 +176,7 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
 
   g_free(self->default_node_name_);
   self->default_node_name_ = g_strdup(default_node_name);
+  self->node_id_ = default_node_id;
   updateVolume(self, default_node_id);
   updateNodeName(self, default_node_id);
 }
@@ -197,18 +198,17 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
     throw std::runtime_error("Mixer api is not loaded\n");
   }
 
-  uint32_t default_node_id;
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Sink",
                         &self->default_node_name_);
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Sink", &default_node_id);
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Sink", &self->node_id_);
 
   if (self->default_node_name_) {
     spdlog::debug("[{}]: (onObjectManagerInstalled) - default configured node name: {} and id: {}",
-                  self->name_, self->default_node_name_, default_node_id);
+                  self->name_, self->default_node_name_, self->node_id_);
   }
 
-  updateVolume(self, default_node_id);
-  updateNodeName(self, default_node_id);
+  updateVolume(self, self->node_id_);
+  updateNodeName(self, self->node_id_);
 
   g_signal_connect_swapped(self->mixer_api_, "changed", (GCallback)onMixerChanged, self);
   g_signal_connect_swapped(self->def_nodes_api_, "changed", (GCallback)onDefaultNodesApiChanged,

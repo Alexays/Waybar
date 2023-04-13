@@ -435,6 +435,7 @@ if scdoc.found()
         'waybar-bluetooth.5.scd',
         'waybar-sndio.5.scd',
         'waybar-upower.5.scd',
+        'waybar-wireplumber.5.scd',
     ]
 
     if (giounix.found() and not get_option('logind').disabled())
