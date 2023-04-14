@@ -80,6 +80,9 @@
 #ifdef HAVE_LIBWIREPLUMBER
 #include "modules/wireplumber.hpp"
 #endif
+#ifdef HAVE_LIBCAVA
+#include "modules/cava.hpp"
+#endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
