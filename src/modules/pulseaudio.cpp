@@ -279,7 +279,12 @@ auto waybar::modules::Pulseaudio::update() -> void {
       label_.get_style_context()->remove_class("muted");
       label_.get_style_context()->remove_class("sink-muted");
     }
-    format = config_[format_name].isString() ? config_[format_name].asString() : format;
+    auto state = getState(volume_, true);
+    if (!state.empty() && config_[format_name + "-" + state].isString()) {
+      format = config_[format_name + "-" + state].asString();
+    } else if (config_[format_name].isString()) {
+      format = config_[format_name].asString();
+    }
   }
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
@@ -305,7 +310,6 @@ auto waybar::modules::Pulseaudio::update() -> void {
     label_.set_markup(text);
     label_.show();
   }
-  getState(volume_);
 
   if (tooltipEnabled()) {
     if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
