@@ -132,16 +132,16 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
-  
+
   struct addrinfo ai_hints;
-  struct addrinfo *ai_res = NULL;
+  struct addrinfo* ai_res = NULL;
   const auto SERVERSOCKET = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (SERVERSOCKET < 0) {
     spdlog::error("Hyprland IPC: Couldn't open a socket (1)");
     return "";
   }
-  
+
   memset(&ai_hints, 0, sizeof(struct addrinfo));
   ai_hints.ai_family = AF_UNSPEC;
   ai_hints.ai_socktype = SOCK_STREAM;
