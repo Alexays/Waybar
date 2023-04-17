@@ -21,41 +21,43 @@ wl_array tags, layouts;
 
 static uint num_tags = 0;
 
-void toggle_visibility(void* data, zdwl_output_v1* zdwl_output_v1) {
+void toggle_visibility(void *data, zdwl_output_v1 *zdwl_output_v1) {
   // Intentionally empty
 }
 
-void active(void* data, zdwl_output_v1* zdwl_output_v1, uint32_t active) {
+void active(void *data, zdwl_output_v1 *zdwl_output_v1, uint32_t active) {
   // Intentionally empty
 }
 
-static void set_tag(void* data, zdwl_output_v1* zdwl_output_v1, uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
+static void set_tag(void *data, zdwl_output_v1 *zdwl_output_v1, uint32_t tag, uint32_t state,
+                    uint32_t clients, uint32_t focused) {
   static_cast<Tags *>(data)->handle_view_tags(tag, state, clients, focused);
 
-  num_tags = (state & ZDWL_OUTPUT_V1_TAG_STATE_ACTIVE) ? num_tags | (1 << tag) : num_tags & ~(1 << tag);
+  num_tags =
+      (state & ZDWL_OUTPUT_V1_TAG_STATE_ACTIVE) ? num_tags | (1 << tag) : num_tags & ~(1 << tag);
 }
 
-void set_layout_symbol(void* data, zdwl_output_v1* zdwl_output_v1, const char *layout) {
+void set_layout_symbol(void *data, zdwl_output_v1 *zdwl_output_v1, const char *layout) {
   // Intentionally empty
 }
 
-void title(void* data, zdwl_output_v1* zdwl_output_v1, const char* title) {
+void title(void *data, zdwl_output_v1 *zdwl_output_v1, const char *title) {
   // Intentionally empty
 }
 
-void dwl_frame(void* data, zdwl_output_v1* zdwl_output_v1) {
+void dwl_frame(void *data, zdwl_output_v1 *zdwl_output_v1) {
   // Intentionally empty
 }
 
-static void set_layout(void* data, zdwl_output_v1* zdwl_output_v1, uint32_t layout) {
+static void set_layout(void *data, zdwl_output_v1 *zdwl_output_v1, uint32_t layout) {
   // Intentionally empty
 }
 
-static void appid(void *data, zdwl_output_v1 *zdwl_output_v1, const char *appid) {
-  // Intentionally empty
+static void appid(void *data, zdwl_output_v1 *zdwl_output_v1, const char *appid){
+    // Intentionally empty
 };
 
-static const zdwl_output_v1_listener output_status_listener_impl {
+static const zdwl_output_v1_listener output_status_listener_impl{
     .toggle_visibility = toggle_visibility,
     .active = active,
     .tag = set_tag,
@@ -70,7 +72,7 @@ static void handle_global(void *data, struct wl_registry *registry, uint32_t nam
                           const char *interface, uint32_t version) {
   if (std::strcmp(interface, zdwl_manager_v1_interface.name) == 0) {
     static_cast<Tags *>(data)->status_manager_ = static_cast<struct zdwl_manager_v1 *>(
-        (zdwl_manager_v1*)wl_registry_bind(registry, name, &zdwl_manager_v1_interface, 3));
+        (zdwl_manager_v1 *)wl_registry_bind(registry, name, &zdwl_manager_v1_interface, 3));
   }
   if (std::strcmp(interface, wl_seat_interface.name) == 0) {
     version = std::min<uint32_t>(version, 1);
@@ -165,13 +167,11 @@ void Tags::handle_primary_clicked(uint32_t tag) {
 
 bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
   if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
-
     if (!output_status_) return true;
     zdwl_output_v1_set_tags(output_status_, num_tags ^ tag, 0);
   }
   return true;
 }
-
 
 void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
   // First clear all occupied state
@@ -183,17 +183,16 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
   }
 
   if (state & TAG_ACTIVE) {
-      button.get_style_context()->add_class("focused");
+    button.get_style_context()->add_class("focused");
   } else {
-      button.get_style_context()->remove_class("focused");
+    button.get_style_context()->remove_class("focused");
   }
 
   if (state & TAG_URGENT) {
-      button.get_style_context()->add_class("urgent");
+    button.get_style_context()->add_class("urgent");
   } else {
-      button.get_style_context()->remove_class("urgent");
+    button.get_style_context()->remove_class("urgent");
   }
-
 }
 
 } /* namespace waybar::modules::dwl */
