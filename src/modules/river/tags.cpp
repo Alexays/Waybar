@@ -53,7 +53,7 @@ static const zriver_command_callback_v1_listener command_callback_listener_impl{
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
                           const char *interface, uint32_t version) {
   if (std::strcmp(interface, zriver_status_manager_v1_interface.name) == 0) {
-    version = std::min<uint32_t>(version, 2);
+    version = std::min(version, 2u);
     if (version < ZRIVER_OUTPUT_STATUS_V1_URGENT_TAGS_SINCE_VERSION) {
       spdlog::warn("river server does not support urgent tags");
     }
@@ -62,13 +62,13 @@ static void handle_global(void *data, struct wl_registry *registry, uint32_t nam
   }
 
   if (std::strcmp(interface, zriver_control_v1_interface.name) == 0) {
-    version = std::min<uint32_t>(version, 1);
+    version = std::min(version, 1u);
     static_cast<Tags *>(data)->control_ = static_cast<struct zriver_control_v1 *>(
         wl_registry_bind(registry, name, &zriver_control_v1_interface, version));
   }
 
   if (std::strcmp(interface, wl_seat_interface.name) == 0) {
-    version = std::min<uint32_t>(version, 1);
+    version = std::min(version, 1u);
     static_cast<Tags *>(data)->seat_ = static_cast<struct wl_seat *>(
         wl_registry_bind(registry, name, &wl_seat_interface, version));
   }
@@ -114,33 +114,39 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   event_box_.add(box_);
 
   // Default to 9 tags, cap at 32
-  const uint32_t num_tags =
-      config["num-tags"].isUInt() ? std::min<uint32_t>(32, config_["num-tags"].asUInt()) : 9;
+  const int num_tags =
+      config["num-tags"].isUInt() ? std::min<int>(32, config_["num-tags"].asUInt()) : 9;
 
-  std::vector<std::string> tag_labels(num_tags);
-  for (uint32_t tag = 0; tag < num_tags; ++tag) {
-    tag_labels[tag] = std::to_string(tag + 1);
-  }
-  const Json::Value custom_labels = config["tag-labels"];
-  if (custom_labels.isArray() && !custom_labels.empty()) {
-    for (uint32_t tag = 0; tag < std::min(num_tags, custom_labels.size()); ++tag) {
-      tag_labels[tag] = custom_labels[tag].asString();
+  const auto tag_labels = config["tag-labels"];
+  const auto set_tags = config["set-tags"];
+  const auto toggle_tags = config["toggle-tags"];
+  for (int tag = 0; tag < num_tags; ++tag) {
+    if (tag_labels.isArray() && !tag_labels.empty()) {
+      buttons_.emplace_back(tag_labels[tag].asString());
+    } else {
+      // default name is the tag value
+      buttons_.emplace_back(std::to_string(tag + 1));
     }
-  }
 
-  uint32_t i = 1;
-  for (const auto &tag_label : tag_labels) {
-    Gtk::Button &button = buttons_.emplace_back(tag_label);
+    auto &button = buttons_[tag];
     button.set_relief(Gtk::RELIEF_NONE);
     box_.pack_start(button, false, false, 0);
+
     if (!config_["disable-click"].asBool()) {
-      button.signal_clicked().connect(
-          sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), i));
-      button.signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
+      if (set_tags.isArray() && !set_tags.empty())
+        button.signal_clicked().connect(sigc::bind(
+            sigc::mem_fun(*this, &Tags::handle_primary_clicked), set_tags[tag].asUInt()));
+      else
+        button.signal_clicked().connect(
+            sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), (1 << tag)));
+      if (toggle_tags.isArray() && !toggle_tags.empty())
+        button.signal_button_press_event().connect(sigc::bind(
+            sigc::mem_fun(*this, &Tags::handle_button_press), toggle_tags[tag].asUInt()));
+      else
+        button.signal_button_press_event().connect(
+            sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), (1 << tag)));
     }
     button.show();
-    i <<= 1;
   }
 
   struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
@@ -182,45 +188,38 @@ bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {
-  uint32_t i = 0;
-  for (auto &button : buttons_) {
+  for (size_t i = 0; i < buttons_.size(); ++i) {
     if ((1 << i) & tags) {
-      button.get_style_context()->add_class("focused");
+      buttons_[i].get_style_context()->add_class("focused");
     } else {
-      button.get_style_context()->remove_class("focused");
+      buttons_[i].get_style_context()->remove_class("focused");
     }
-    ++i;
   }
 }
 
 void Tags::handle_view_tags(struct wl_array *view_tags) {
-  // First clear all occupied state
-  for (auto &button : buttons_) {
-    button.get_style_context()->remove_class("occupied");
+  uint32_t tags = 0;
+  auto view_tag = reinterpret_cast<uint32_t *>(view_tags->data);
+  auto end = view_tag + (view_tags->size / sizeof(uint32_t));
+  for (; view_tag < end; ++view_tag) {
+    tags |= *view_tag;
   }
-
-  // Set tags with a view to occupied
-  uint32_t *start = static_cast<uint32_t *>(view_tags->data);
-  for (uint32_t *tags = start; tags < start + view_tags->size / sizeof(uint32_t); ++tags) {
-    uint32_t i = 0;
-    for (auto &button : buttons_) {
-      if (*tags & (1 << i)) {
-        button.get_style_context()->add_class("occupied");
-      }
-      ++i;
+  for (size_t i = 0; i < buttons_.size(); ++i) {
+    if ((1 << i) & tags) {
+      buttons_[i].get_style_context()->add_class("occupied");
+    } else {
+      buttons_[i].get_style_context()->remove_class("occupied");
     }
   }
 }
 
 void Tags::handle_urgent_tags(uint32_t tags) {
-  uint32_t i = 0;
-  for (auto &button : buttons_) {
+  for (size_t i = 0; i < buttons_.size(); ++i) {
     if ((1 << i) & tags) {
-      button.get_style_context()->add_class("urgent");
+      buttons_[i].get_style_context()->add_class("urgent");
     } else {
-      button.get_style_context()->remove_class("urgent");
+      buttons_[i].get_style_context()->remove_class("urgent");
     }
-    ++i;
   }
 }
 

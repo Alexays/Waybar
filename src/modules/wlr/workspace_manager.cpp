@@ -208,6 +208,38 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value 
   add_workspace_group_listener(workspace_group_handle, this);
 }
 
+auto WorkspaceGroup::fill_persistent_workspaces() -> void {
+  if (config_["persistent_workspaces"].isObject() && !workspace_manager_.all_outputs()) {
+    const Json::Value &p_workspaces = config_["persistent_workspaces"];
+    const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
+
+    for (const std::string &p_w_name : p_workspaces_names) {
+      const Json::Value &p_w = p_workspaces[p_w_name];
+      if (p_w.isArray() && !p_w.empty()) {
+        // Adding to target outputs
+        for (const Json::Value &output : p_w) {
+          if (output.asString() == bar_.output->name) {
+            persistent_workspaces_.push_back(p_w_name);
+            break;
+          }
+        }
+      } else {
+        // Adding to all outputs
+        persistent_workspaces_.push_back(p_w_name);
+      }
+    }
+  }
+}
+
+auto WorkspaceGroup::create_persistent_workspaces() -> void {
+  for (const std::string &p_w_name : persistent_workspaces_) {
+    auto new_id = ++workspace_global_id;
+    workspaces_.push_back(
+        std::make_unique<Workspace>(bar_, config_, *this, nullptr, new_id, p_w_name));
+    spdlog::debug("Workspace {} created", new_id);
+  }
+}
+
 auto WorkspaceGroup::active_only() const -> bool { return workspace_manager_.active_only(); }
 auto WorkspaceGroup::creation_delayed() const -> bool {
   return workspace_manager_.creation_delayed();
@@ -228,8 +260,13 @@ WorkspaceGroup::~WorkspaceGroup() {
 
 auto WorkspaceGroup::handle_workspace_create(zext_workspace_handle_v1 *workspace) -> void {
   auto new_id = ++workspace_global_id;
-  workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace, new_id));
+  workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace, new_id, ""));
   spdlog::debug("Workspace {} created", new_id);
+  if (!persistent_created_) {
+    fill_persistent_workspaces();
+    create_persistent_workspaces();
+    persistent_created_ = true;
+  }
 }
 
 auto WorkspaceGroup::handle_remove() -> void {
@@ -328,13 +365,16 @@ auto WorkspaceGroup::sort_workspaces() -> void {
 auto WorkspaceGroup::remove_button(Gtk::Button &button) -> void { box_.remove(button); }
 
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-                     zext_workspace_handle_v1 *workspace, uint32_t id)
+                     zext_workspace_handle_v1 *workspace, uint32_t id, std::string name)
     : bar_(bar),
       config_(config),
       workspace_group_(workspace_group),
       workspace_handle_(workspace),
-      id_(id) {
-  add_workspace_listener(workspace, this);
+      id_(id),
+      name_(name) {
+  if (workspace) {
+    add_workspace_listener(workspace, this);
+  }
 
   auto config_format = config["format"];
 
@@ -401,9 +441,13 @@ auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
 }
 
 auto Workspace::handle_remove() -> void {
-  zext_workspace_handle_v1_destroy(workspace_handle_);
-  workspace_handle_ = nullptr;
-  workspace_group_.remove_workspace(id_);
+  if (workspace_handle_) {
+    zext_workspace_handle_v1_destroy(workspace_handle_);
+    workspace_handle_ = nullptr;
+  }
+  if (!persistent_) {
+    workspace_group_.remove_workspace(id_);
+  }
 }
 
 auto add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition,
@@ -487,6 +531,29 @@ auto Workspace::handle_name(const std::string &name) -> void {
     workspace_group_.set_need_to_sort();
   }
   name_ = name;
+  spdlog::debug("Workspace {} added to group {}", name, workspace_group_.id());
+
+  make_persistent();
+  handle_duplicate();
+}
+
+auto Workspace::make_persistent() -> void {
+  auto p_workspaces = workspace_group_.persistent_workspaces();
+
+  if (std::find(p_workspaces.begin(), p_workspaces.end(), name_) != p_workspaces.end()) {
+    persistent_ = true;
+  }
+}
+
+auto Workspace::handle_duplicate() -> void {
+  auto duplicate =
+      std::find_if(workspace_group_.workspaces().begin(), workspace_group_.workspaces().end(),
+                   [this](const std::unique_ptr<Workspace> &g) {
+                     return g->get_name() == name_ && g->id() != id_;
+                   });
+  if (duplicate != workspace_group_.workspaces().end()) {
+    workspace_group_.remove_workspace(duplicate->get()->id());
+  }
 }
 
 auto Workspace::handle_coordinates(const std::vector<uint32_t> &coordinates) -> void {

@@ -133,6 +133,8 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
+  struct addrinfo ai_hints;
+  struct addrinfo* ai_res = NULL;
   const auto SERVERSOCKET = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (SERVERSOCKET < 0) {
@@ -140,7 +142,10 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     return "";
   }
 
-  const auto SERVER = gethostbyname("localhost");
+  memset(&ai_hints, 0, sizeof(struct addrinfo));
+  ai_hints.ai_family = AF_UNSPEC;
+  ai_hints.ai_socktype = SOCK_STREAM;
+  const auto SERVER = getaddrinfo("localhost", NULL, &ai_hints, &ai_res);
 
   if (!SERVER) {
     spdlog::error("Hyprland IPC: Couldn't get host (2)");
