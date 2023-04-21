@@ -41,14 +41,12 @@ void waybar::modules::Image::refresh(int sig) {
 }
 
 auto waybar::modules::Image::update() -> void {
-  util::command::res output_;
-
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;
   if (config_["path"].isString()) {
     path_ = config_["path"].asString();
   } else if (config_["exec"].isString()) {
     output_ = util::command::exec(config_["exec"].asString());
-    path_ = output_.out;
+    parseOutputRaw();
   } else {
     path_ = "";
   }
@@ -58,6 +56,11 @@ auto waybar::modules::Image::update() -> void {
     pixbuf = {};
 
   if (pixbuf) {
+    if (tooltipEnabled() && !tooltip_.empty()) {
+      if (box_.get_tooltip_markup() != tooltip_) {
+        box_.set_tooltip_markup(tooltip_);
+      }
+    }
     image_.set(pixbuf);
     image_.show();
   } else {
@@ -66,4 +69,20 @@ auto waybar::modules::Image::update() -> void {
   }
 
   AModule::update();
+}
+
+void waybar::modules::Image::parseOutputRaw() {
+  std::istringstream output(output_.out);
+  std::string line;
+  int i = 0;
+  while (getline(output, line)) {
+    if (i == 0) {
+      path_ = line;
+    } else if (i == 1) {
+      tooltip_ = line;
+    } else {
+      break;
+    }
+    i++;
+  }
 }
