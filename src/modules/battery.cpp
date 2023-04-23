@@ -533,6 +533,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       }
     }
 
+    // Handle weighted-average
+    if ((config_["weighted-average"].isBool() ? config_["weighted-average"].asBool() : false) &&
+        total_energy_exists && total_energy_full_exists) {
+      if (total_energy_full > 0.0f)
+        calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
+    }
+
     // Handle design-capacity
     if ((config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) &&
         total_energy_exists && total_energy_full_design_exists) {
