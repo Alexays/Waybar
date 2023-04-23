@@ -145,9 +145,8 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   memset(&ai_hints, 0, sizeof(struct addrinfo));
   ai_hints.ai_family = AF_UNSPEC;
   ai_hints.ai_socktype = SOCK_STREAM;
-  const auto SERVER = getaddrinfo("localhost", NULL, &ai_hints, &ai_res);
 
-  if (!SERVER) {
+  if (getaddrinfo("localhost", NULL, &ai_hints, &ai_res) != 0) {
     spdlog::error("Hyprland IPC: Couldn't get host (2)");
     return "";
   }
