@@ -62,6 +62,7 @@ class Network : public ALabel {
   bool want_link_dump_;
   bool want_addr_dump_;
   bool dump_in_progress_;
+  bool is_p2p_;
 
   unsigned long long bandwidth_down_total_;
   unsigned long long bandwidth_up_total_;
