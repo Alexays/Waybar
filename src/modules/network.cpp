@@ -497,8 +497,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
           net->ifname_ = new_ifname;
           net->ifid_ = ifi->ifi_index;
-          if (ifi->ifi_flags & IFF_POINTOPOINT)
-            net->is_p2p_ = true;
+          if (ifi->ifi_flags & IFF_POINTOPOINT) net->is_p2p_ = true;
           if (carrier.has_value()) {
             net->carrier_ = carrier.value();
           }
@@ -543,8 +542,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       for (; RTA_OK(ifa_rta, attrlen); ifa_rta = RTA_NEXT(ifa_rta, attrlen)) {
         switch (ifa_rta->rta_type) {
           case IFA_ADDRESS:
-            if (net->is_p2p_)
-              continue;
+            if (net->is_p2p_) continue;
           case IFA_LOCAL:
             char ipaddr[INET6_ADDRSTRLEN];
             if (!is_del_event) {
