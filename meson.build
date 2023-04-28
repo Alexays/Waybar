@@ -341,13 +341,11 @@ if get_option('experimental')
     add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
 endif
 
-cava = compiler.find_library('cava',
-                             required: get_option('cava'))
-if not cava.found() and not get_option('cava').disabled()
-   cava = dependency('cava',
-                     required: false,
-                     fallback: [ 'cava', 'cava_dep' ])
-endif
+cava = dependency('cava',
+                  version : '>=0.8.4',
+                  required: get_option('cava'),
+                  fallback : ['cava', 'cava_dep'],
+                  not_found_message: 'cava is not found. Building waybar without cava')
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
