@@ -30,6 +30,7 @@ class Workspace {
   auto is_active() const -> bool { return state_ & static_cast<uint32_t>(State::ACTIVE); }
   auto is_urgent() const -> bool { return state_ & static_cast<uint32_t>(State::URGENT); }
   auto is_hidden() const -> bool { return state_ & static_cast<uint32_t>(State::HIDDEN); }
+  auto is_empty() const -> bool { return state_ & static_cast<uint32_t>(State::EMPTY); }
   auto is_persistent() const -> bool { return persistent_; }
   // wlr stuff
   auto handle_name(const std::string &name) -> void;
@@ -51,6 +52,7 @@ class Workspace {
     ACTIVE = (1 << 0),
     URGENT = (1 << 1),
     HIDDEN = (1 << 2),
+    EMPTY = (1 << 3),
   };
 
  private:
