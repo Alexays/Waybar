@@ -57,6 +57,10 @@ def on_player_appeared(manager, player, selected_player=None):
 
 def on_player_vanished(manager, player):
     logger.info('Player has vanished')
+    if len(manager.props.players) > 0:
+        player = manager.props.players[0]
+        on_metadata(player, player.props.metadata, manager)
+        return
     sys.stdout.write('\n')
     sys.stdout.flush()
 
