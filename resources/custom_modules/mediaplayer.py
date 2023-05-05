@@ -129,7 +129,6 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-    signal.signal(signal.SIGUSR1, lambda *args: shift_signal_handler(*args, manager))
 
     # use dbus to shift player (e.g. after playerctld shift)
     bus = dbus.SessionBus(mainloop=DBusGMainLoop())
