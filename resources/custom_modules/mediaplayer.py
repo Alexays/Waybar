@@ -132,10 +132,10 @@ def main():
 
     # use dbus to shift player (e.g. after playerctld shift)
     DBusGMainLoop(set_as_default=True)
-    bus = dbus.SystemBus()
+    bus = dbus.SessionBus()
     bus.add_signal_receiver(lambda *args, **kwargs: dbus_signal_handler(*args, **kwargs, manager=manager),
                             signal_name='Shift',
-                            dbus_interface='org.waybar.Media')
+                            dbus_interface='org.waybar.Player')
 
     for player in manager.props.player_names:
         if arguments.player is not None and arguments.player != player.name:
