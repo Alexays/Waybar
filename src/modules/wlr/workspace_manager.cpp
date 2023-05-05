@@ -495,6 +495,13 @@ auto Workspace::get_icon() -> std::string {
     return named_icon_it->second;
   }
 
+  if (is_empty()) {
+    auto persistent_icon_it = icons_map_.find("persistent");
+    if (persistent_icon_it != icons_map_.end()) {
+      return persistent_icon_it->second;
+    }
+  }
+
   auto default_icon_it = icons_map_.find("default");
   if (default_icon_it != icons_map_.end()) {
     return default_icon_it->second;
