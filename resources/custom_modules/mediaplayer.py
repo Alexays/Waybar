@@ -5,8 +5,10 @@ import sys
 import signal
 import gi
 import json
+import dbus
 gi.require_version('Playerctl', '2.0')
 from gi.repository import Playerctl, GLib
+from dbus.mainloop.glib import DBusGMainLoop
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,17 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 
+def dbus_signal_handler(*args, manager, **kwargs):
+    # there is no implicit way to get current player,
+    # so we need to create a new manager to get the right order of players
+    new_manager = Playerctl.PlayerManager()
+    if len(new_manager.props.player_names) > 0:
+        current_player_name = new_manager.props.player_names[0].name
+        for player in manager.props.players:
+            if player.props.player_name == current_player_name:
+                on_metadata(player, player.props.metadata, manager)
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
@@ -111,6 +124,14 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    signal.signal(signal.SIGUSR1, lambda *args: shift_signal_handler(*args, manager))
+
+    # use dbus to shift player (e.g. after playerctld shift)
+    DBusGMainLoop(set_as_default=True)
+    bus = dbus.SystemBus()
+    bus.add_signal_receiver(lambda *args, **kwargs: dbus_signal_handler(*args, **kwargs, manager=manager),
+                            signal_name='Shift',
+                            dbus_interface='org.waybar.Media')
 
     for player in manager.props.player_names:
         if arguments.player is not None and arguments.player != player.name:
