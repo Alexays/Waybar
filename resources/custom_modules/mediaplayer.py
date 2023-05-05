@@ -6,6 +6,7 @@ import signal
 import gi
 import json
 import dbus
+import dbus.service
 gi.require_version('Playerctl', '2.0')
 from gi.repository import Playerctl, GLib
 from dbus.mainloop.glib import DBusGMainLoop
@@ -131,11 +132,12 @@ def main():
     signal.signal(signal.SIGUSR1, lambda *args: shift_signal_handler(*args, manager))
 
     # use dbus to shift player (e.g. after playerctld shift)
-    DBusGMainLoop(set_as_default=True)
-    bus = dbus.SessionBus()
+    bus = dbus.SessionBus(mainloop=DBusGMainLoop())
     bus.add_signal_receiver(lambda *args, **kwargs: dbus_signal_handler(*args, **kwargs, manager=manager),
                             signal_name='Shift',
                             dbus_interface='org.waybar.Player')
+    # register well-known bus name
+    bus.request_name('org.waybar.Player')
 
     for player in manager.props.player_names:
         if arguments.player is not None and arguments.player != player.name:
