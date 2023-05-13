@@ -153,9 +153,9 @@ The *mpris* module displays currently playing media via libplayerctl.
 *{dynamic}*: Use _{artist}_, _{album}_, _{title}_ and _{length}_, automatically omit++
            empty values
 
-*{player-icon}*: Chooses an icon from _player-icons_ based on _{player}_
+*{player_icon}*: Chooses an icon from _player-icons_ based on _{player}_
 
-*{status-icon}*: Chooses an icon from _status-icons_ based on _{status}_
+*{status_icon}*: Chooses an icon from _status-icons_ based on _{status}_
 
 # EXAMPLES
 
