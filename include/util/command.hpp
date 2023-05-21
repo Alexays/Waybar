@@ -82,6 +82,8 @@ inline FILE* open(const std::string& cmd, int& pid) {
 
   if (child_pid < 0) {
     spdlog::error("Unable to exec cmd {}, error {}", cmd.c_str(), strerror(errno));
+    ::close(fd[0]);
+    ::close(fd[1]);
     return nullptr;
   }
 
