@@ -188,7 +188,7 @@ void waybar::modules::Network::createEventSocket() {
     throw std::runtime_error("Can't create epoll");
   }
   {
-    ev_fd_ = eventfd(0, EFD_NONBLOCK);
+    ev_fd_ = eventfd(0, EFD_NONBLOCK|EFD_CLOEXEC);
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.events = EPOLLIN | EPOLLET;
