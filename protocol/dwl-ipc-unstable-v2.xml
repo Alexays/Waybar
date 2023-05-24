@@ -3,9 +3,9 @@
 This is largely ripped from somebar's ipc patchset; just with some personal modifications.
 I would probably just submit raphi's patchset but I don't think that would be polite.
 -->
-<protocol name="dwl_bar_ipc_unstable_v1">
+<protocol name="dwl_ipc_unstable_v2">
   <description summary="inter-proccess-communication about dwl's state">
-      This protocol allows clients to get updates from dwl and vice versa.
+      This protocol allows clients to update and get updates from dwl.
 
       Warning! The protocol described in this file is experimental and
       backward incompatible changes may be made. Backward compatible
@@ -19,36 +19,36 @@ I would probably just submit raphi's patchset but I don't think that would be po
       reset.
   </description>
 
-  <interface name="zdwl_manager_v1" version="3">
+  <interface name="zdwl_ipc_manager_v2" version="1">
     <description summary="manage dwl state">
       This interface is exposed as a global in wl_registry.
 
-      Clients can use this interface to get a dwl_output.
-      After binding the client will revieve dwl_manager.tag and dwl_manager.layout events.
-      The dwl_manager.tag and dwl_manager.layout events expose tags and layouts to the client.
+      Clients can use this interface to get a dwl_ipc_output.
+      After binding the client will recieve the dwl_ipc_manager.tags and dwl_ipc_manager.layout events.
+      The dwl_ipc_manager.tags and dwl_ipc_manager.layout events expose tags and layouts to the client.
     </description>
 
     <request name="release" type="destructor">
-      <description summary="release dwl_manager">
-        Indicates that the client will not the dwl_manager object anymore.
+      <description summary="release dwl_ipc_manager">
+        Indicates that the client will not the dwl_ipc_manager object anymore.
         Objects created through this instance are not affected.
       </description>
     </request>
 
     <request name="get_output">
-      <description summary="get a dwl_output for a wl_output">
-        Get a dwl_output for the specified wl_output.
+      <description summary="get a dwl_ipc_outout for a wl_output">
+        Get a dwl_ipc_outout for the specified wl_output.
       </description>
-      <arg name="id" type="new_id" interface="zdwl_output_v1"/>
+      <arg name="id" type="new_id" interface="zdwl_ipc_output_v2"/>
       <arg name="output" type="object" interface="wl_output"/>
     </request>
 
-    <event name="tag">
-      <description summary="Announces a tag">
+    <event name="tags">
+      <description summary="Announces tag amount">
         This event is sent after binding.
         A roundtrip after binding guarantees the client recieved all tags.
       </description>
-      <arg name="tag" type="int"/>
+      <arg name="amount" type="uint"/>
     </event>
 
     <event name="layout">
@@ -60,12 +60,12 @@ I would probably just submit raphi's patchset but I don't think that would be po
     </event>
   </interface>
 
-  <interface name="zdwl_output_v1" version="3">
+  <interface name="zdwl_ipc_output_v2" version="1">
     <description summary="control dwl output">
       Observe and control a dwl output.
 
       Events are double-buffered:
-      Clients should cache events and redraw when a dwl_output.done event is sent.
+      Clients should cache events and redraw when a dwl_ipc_output.frame event is sent.
 
       Request are not double-buffered:
       The compositor will update immediately upon request.
@@ -78,8 +78,8 @@ I would probably just submit raphi's patchset but I don't think that would be po
     </enum>
 
     <request name="release" type="destructor">
-      <description summary="release dwl_output">
-        Indicates to that the client no longer needs this dwl_output.
+      <description summary="release dwl_ipc_outout">
+        Indicates to that the client no longer needs this dwl_ipc_output.
       </description>
     </request>
 
@@ -121,33 +121,27 @@ I would probably just submit raphi's patchset but I don't think that would be po
       <arg name="title" type="string" summary="The new title name."/>
     </event>
 
-    <event name="appid" since="2">
+    <event name="appid" since="1">
       <description summary="Update the appid.">
         Indicates the appid has changed.
       </description>
       <arg name="appid" type="string" summary="The new appid."/>
     </event>
 
-    <event name="layout_symbol" since="3">
+    <event name="layout_symbol" since="1">
       <description summary="Update the current layout symbol">
-          Indicates the layout has changed. Since layout symbols are now dynamic.
-          As opposed to the zdwl_manager_v1.layout event, this should take precendence when displaying.
-          This also means ignoring the zdwl_output_v1.layout event.
+          Indicates the layout has changed. Since layout symbols are dynamic.
+          As opposed to the zdwl_ipc_manager.layout event, this should take precendence when displaying.
+          You can ignore the zdwl_ipc_output.layout event.
       </description>
       <arg name="layout" type="string" summary="The new layout"/>
     </event>
-
 
     <event name="frame">
       <description summary="The update sequence is done.">
         Indicates that a sequence of status updates have finished and the client should redraw.
       </description>
     </event>
-
-    <request name="set_layout">
-      <description summary="Set the layout of this output"/>
-      <arg name="index" type="uint" summary="index of a layout recieved by dwl_manager.layout"/>
-    </request>
 
     <request name="set_tags">
       <description summary="Set the active tags of this output"/>
@@ -162,6 +156,11 @@ I would probably just submit raphi's patchset but I don't think that would be po
       </description>
       <arg name="and_tags" type="uint"/>
       <arg name="xor_tags" type="uint"/>
+    </request>
+
+    <request name="set_layout">
+      <description summary="Set the layout of this output"/>
+      <arg name="index" type="uint" summary="index of a layout recieved by dwl_ipc_manager.layout"/>
     </request>
   </interface>
 </protocol>
