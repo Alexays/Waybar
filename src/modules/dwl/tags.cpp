@@ -21,42 +21,43 @@ wl_array tags, layouts;
 
 static uint num_tags = 0;
 
-
-void toggle_visibility(void* data, zdwl_ipc_output_v2* zdwl_output_v2) {
+void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
 }
 
-void active(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t active) {
+void active(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t active) {
   // Intentionally empty
 }
 
-static void set_tag(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
+static void set_tag(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t tag, uint32_t state,
+                    uint32_t clients, uint32_t focused) {
   static_cast<Tags *>(data)->handle_view_tags(tag, state, clients, focused);
 
-  num_tags = (state & ZDWL_IPC_OUTPUT_V2_TAG_STATE_ACTIVE) ? num_tags | (1 << tag) : num_tags & ~(1 << tag);
+  num_tags = (state & ZDWL_IPC_OUTPUT_V2_TAG_STATE_ACTIVE) ? num_tags | (1 << tag)
+                                                           : num_tags & ~(1 << tag);
 }
 
-void set_layout_symbol(void* data, zdwl_ipc_output_v2* zdwl_output_v2, const char *layout) {
+void set_layout_symbol(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *layout) {
   // Intentionally empty
 }
 
-void title(void* data, zdwl_ipc_output_v2* zdwl_output_v2, const char* title) {
+void title(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *title) {
   // Intentionally empty
 }
 
-void dwl_frame(void* data, zdwl_ipc_output_v2* zdwl_output_v2) {
+void dwl_frame(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
 }
 
-static void set_layout(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t layout) {
+static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t layout) {
   // Intentionally empty
 }
 
-static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid) {
-  // Intentionally empty
+static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid){
+    // Intentionally empty
 };
 
-static const zdwl_ipc_output_v2_listener output_status_listener_impl {
+static const zdwl_ipc_output_v2_listener output_status_listener_impl{
     .toggle_visibility = toggle_visibility,
     .active = active,
     .tag = set_tag,
