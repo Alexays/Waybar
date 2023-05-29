@@ -8,7 +8,7 @@
 #include <algorithm>
 
 #include "client.hpp"
-#include "dwl-bar-ipc-unstable-v1-client-protocol.h"
+#include "dwl-ipc-unstable-v2-client-protocol.h"
 
 #define TAG_INACTIVE 0
 #define TAG_ACTIVE 1
@@ -21,43 +21,43 @@ wl_array tags, layouts;
 
 static uint num_tags = 0;
 
-void toggle_visibility(void *data, zdwl_output_v1 *zdwl_output_v1) {
+void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
 }
 
-void active(void *data, zdwl_output_v1 *zdwl_output_v1, uint32_t active) {
+void active(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t active) {
   // Intentionally empty
 }
 
-static void set_tag(void *data, zdwl_output_v1 *zdwl_output_v1, uint32_t tag, uint32_t state,
+static void set_tag(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t tag, uint32_t state,
                     uint32_t clients, uint32_t focused) {
   static_cast<Tags *>(data)->handle_view_tags(tag, state, clients, focused);
 
-  num_tags =
-      (state & ZDWL_OUTPUT_V1_TAG_STATE_ACTIVE) ? num_tags | (1 << tag) : num_tags & ~(1 << tag);
+  num_tags = (state & ZDWL_IPC_OUTPUT_V2_TAG_STATE_ACTIVE) ? num_tags | (1 << tag)
+                                                           : num_tags & ~(1 << tag);
 }
 
-void set_layout_symbol(void *data, zdwl_output_v1 *zdwl_output_v1, const char *layout) {
+void set_layout_symbol(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *layout) {
   // Intentionally empty
 }
 
-void title(void *data, zdwl_output_v1 *zdwl_output_v1, const char *title) {
+void title(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *title) {
   // Intentionally empty
 }
 
-void dwl_frame(void *data, zdwl_output_v1 *zdwl_output_v1) {
+void dwl_frame(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
 }
 
-static void set_layout(void *data, zdwl_output_v1 *zdwl_output_v1, uint32_t layout) {
+static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t layout) {
   // Intentionally empty
 }
 
-static void appid(void *data, zdwl_output_v1 *zdwl_output_v1, const char *appid){
+static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid){
     // Intentionally empty
 };
 
-static const zdwl_output_v1_listener output_status_listener_impl{
+static const zdwl_ipc_output_v2_listener output_status_listener_impl{
     .toggle_visibility = toggle_visibility,
     .active = active,
     .tag = set_tag,
@@ -70,9 +70,9 @@ static const zdwl_output_v1_listener output_status_listener_impl{
 
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
                           const char *interface, uint32_t version) {
-  if (std::strcmp(interface, zdwl_manager_v1_interface.name) == 0) {
-    static_cast<Tags *>(data)->status_manager_ = static_cast<struct zdwl_manager_v1 *>(
-        (zdwl_manager_v1 *)wl_registry_bind(registry, name, &zdwl_manager_v1_interface, 3));
+  if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
+    static_cast<Tags *>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2 *>(
+        (zdwl_ipc_manager_v2 *)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 3));
   }
   if (std::strcmp(interface, wl_seat_interface.name) == 0) {
     version = std::min<uint32_t>(version, 1);
@@ -101,7 +101,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   wl_display_roundtrip(display);
 
   if (!status_manager_) {
-    spdlog::error("dwl_status_manager_v1 not advertised");
+    spdlog::error("dwl_status_manager_v2 not advertised");
     return;
   }
 
@@ -146,29 +146,29 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   }
 
   struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-  output_status_ = zdwl_manager_v1_get_output(status_manager_, output);
-  zdwl_output_v1_add_listener(output_status_, &output_status_listener_impl, this);
+  output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
+  zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
 
-  zdwl_manager_v1_destroy(status_manager_);
+  zdwl_ipc_manager_v2_destroy(status_manager_);
   status_manager_ = nullptr;
 }
 
 Tags::~Tags() {
   if (status_manager_) {
-    zdwl_manager_v1_destroy(status_manager_);
+    zdwl_ipc_manager_v2_destroy(status_manager_);
   }
 }
 
 void Tags::handle_primary_clicked(uint32_t tag) {
   if (!output_status_) return;
 
-  zdwl_output_v1_set_tags(output_status_, tag, 1);
+  zdwl_ipc_output_v2_set_tags(output_status_, tag, 1);
 }
 
 bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
   if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
     if (!output_status_) return true;
-    zdwl_output_v1_set_tags(output_status_, num_tags ^ tag, 0);
+    zdwl_ipc_output_v2_set_tags(output_status_, num_tags ^ tag, 0);
   }
   return true;
 }
