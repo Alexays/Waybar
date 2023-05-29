@@ -1,10 +1,10 @@
 #pragma once
 
+#include <fcntl.h>
 #include <giomm.h>
 #include <spdlog/spdlog.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #ifdef __linux__
 #include <sys/prctl.h>
