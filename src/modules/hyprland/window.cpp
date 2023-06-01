@@ -92,6 +92,11 @@ void Window::onEvent(const std::string& ev) {
   if (windowName == lastView) return;
 
   lastView = windowName;
+  if (windowName[0] == '\0') {
+    label_.get_style_context()->add_class("empty");
+  } else {
+    label_.get_style_context()->remove_class("empty");
+  }
 
   spdlog::debug("hyprland window onevent with {}", windowName);
 
