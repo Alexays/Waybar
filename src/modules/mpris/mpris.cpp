@@ -24,7 +24,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       album_len_(-1),
       title_len_(-1),
       dynamic_len_(-1),
-      dynamic_prio_({"title", "length", "position", "artist", "album"}),
+      dynamic_prio_({"title", "artist", "album", "position", "length"}),
+      dynamic_order_({"title", "artist", "album", "position", "length"}),
+      dynamic_separator_(" - "),
       truncate_hours_(true),
       tooltip_len_limits_(false),
       // this character is used in Gnome so it's fine to use it here
@@ -43,6 +45,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
   if (config_["ellipsis"].isString()) {
     ellipsis_ = config_["ellipsis"].asString();
+  }
+  if (config_["dynamic-separator"].isString()) {
+    dynamic_separator_ = config_["dynamic-separator"].asString();
   }
   if (tooltipEnabled()) {
     if (config_["tooltip-format"].isString()) {
@@ -80,6 +85,14 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
          ++it) {
       if (it->isString()) {
         dynamic_prio_.push_back(it->asString());
+      }
+    }
+  }
+  if (config_["dynamic-order"].isArray()) {
+    dynamic_order_.clear();
+    for (auto it = config_["dynamic-order"].begin(); it != config_["dynamic-order"].end(); ++it) {
+      if (it->isString()) {
+        dynamic_order_.push_back(it->asString());
       }
     }
   }
@@ -272,18 +285,28 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   size_t lengthLen = length.length();
   size_t posLen = position.length();
 
-  bool showArtist = artistLen != 0;
-  bool showAlbum = albumLen != 0;
-  bool showTitle = titleLen != 0;
-  bool showLength = lengthLen != 0;
-  bool showPos = posLen != 0;
+  bool showArtist = (artistLen != 0) && (std::find(dynamic_order_.begin(), dynamic_order_.end(),
+                                                   "artist") != dynamic_order_.end());
+  bool showAlbum = (albumLen != 0) && (std::find(dynamic_order_.begin(), dynamic_order_.end(),
+                                                 "album") != dynamic_order_.end());
+  bool showTitle = (titleLen != 0) && (std::find(dynamic_order_.begin(), dynamic_order_.end(),
+                                                 "title") != dynamic_order_.end());
+  bool showLength = (lengthLen != 0) && (std::find(dynamic_order_.begin(), dynamic_order_.end(),
+                                                   "length") != dynamic_order_.end());
+  bool showPos = (posLen != 0) && (std::find(dynamic_order_.begin(), dynamic_order_.end(),
+                                             "position") != dynamic_order_.end());
 
   if (truncated && dynamic_len_ >= 0) {
-    size_t dynamicLen = dynamic_len_;
-    if (showArtist) artistLen += 3;
-    if (showAlbum) albumLen += 3;
-    if (showLength) lengthLen += 3;
-    if (showPos) posLen += 3;
+    //Since the first element doesn't present a separator and we don't know a priori which one
+    //it will be, we add a "virtual separatorLen" to the dynamicLen, since we are adding the
+    //separatorLen to all the other lengths.
+    size_t separatorLen = utf8_width(dynamic_separator_);
+    size_t dynamicLen = dynamic_len_ + separatorLen;
+    if (showArtist) artistLen += separatorLen;
+    if (showAlbum) albumLen += separatorLen;
+    if (showTitle) albumLen += separatorLen;
+    if (showLength) lengthLen += separatorLen;
+    if (showPos) posLen += separatorLen;
 
     size_t totalLen = 0;
 
@@ -330,20 +353,47 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
     album = Glib::Markup::escape_text(album);
     title = Glib::Markup::escape_text(title);
   }
-  if (showArtist) dynamic << artist << " - ";
-  if (showAlbum) dynamic << album << " - ";
-  if (showTitle) dynamic << title;
-  if (showLength || showPos) {
-    dynamic << ' ';
-    if (html) dynamic << "<small>";
-    dynamic << '[';
-    if (showPos) {
-      dynamic << position;
-      if (showLength) dynamic << '/';
+
+  bool lengthOrPositionShown = false;
+  bool previousShown = false;
+  std::string previousOrder = "";
+
+  for (const std::string& order : dynamic_order_) {
+    if ((order == "artist" && showArtist) ||
+        (order == "album" && showAlbum) ||
+        (order == "title" && showTitle)) {
+      if (previousShown &&
+          previousOrder != "length" &&
+          previousOrder != "position") {
+        dynamic << dynamic_separator_;
+      }
+
+      if (order == "artist") {
+        dynamic << artist;
+      } else if (order == "album") {
+        dynamic << album;
+      } else if (order == "title") {
+        dynamic << title;
+      }
+
+      previousShown = true;
+    } else if (order == "length" || order == "position") {
+      if (!lengthOrPositionShown && (showLength || showPos)) {
+        if (html) dynamic << "<small>";
+        if (previousShown) dynamic << ' ';
+        dynamic << '[';
+        if (showPos) {
+          dynamic << position;
+          if (showLength) dynamic << '/';
+        }
+        if (showLength) dynamic << length;
+        dynamic << ']';
+        if (!dynamic.str().empty()) dynamic << ' ';
+        if (html) dynamic << "</small>";
+        lengthOrPositionShown = true;
+      }
     }
-    if (showLength) dynamic << length;
-    dynamic << ']';
-    if (html) dynamic << "</small>";
+    previousOrder = order;
   }
   return dynamic.str();
 }
