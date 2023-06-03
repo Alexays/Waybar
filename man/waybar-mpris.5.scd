@@ -80,11 +80,12 @@ The *mpris* module displays currently playing media via libplayerctl.
 	declaration of the first among the two tags. Absence in this list means ++
 	force exclusion.
 
-*dynamic-priority*: ++
+*dynamic-importance-order*: ++
 	typeof: []string ++
-	default: ["title", "length", "position", "artist", "album"] ++
-	Priority of the tags when truncating the Dynamic tag (absence in this
-	list means force inclusion).
+	default: ["title", "artist", "album", "position", "length"] ++
+	Priority of the tags when truncating the Dynamic tag. The final ones ++
+	will be the first to be truncated. Absence in this list means force ++
+	inclusion.
 
 *dynamic-separator*: ++
 	typeof: string ++

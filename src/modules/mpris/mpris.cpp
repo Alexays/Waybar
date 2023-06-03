@@ -79,12 +79,13 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   if (config["dynamic-len"].isUInt()) {
     dynamic_len_ = config["dynamic-len"].asUInt();
   }
-  if (config_["dynamic-priority"].isArray()) {
+  // "dynamic-priority" has been kept for backward compatibility
+  if (config_["dynamic-importance-order"].isArray() || config_["dynamic-priority"].isArray()) {
     dynamic_prio_.clear();
-    for (auto it = config_["dynamic-priority"].begin(); it != config_["dynamic-priority"].end();
-         ++it) {
-      if (it->isString()) {
-        dynamic_prio_.push_back(it->asString());
+    const auto& dynamic_priority = config_["dynamic-importance-order"].isArray() ? config_["dynamic-importance-order"] : config_["dynamic-priority"];
+    for (const auto& value : dynamic_priority) {
+      if (value.isString()) {
+        dynamic_prio_.push_back(value.asString());
       }
     }
   }
