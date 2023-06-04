@@ -72,7 +72,7 @@ static void handle_global(void *data, struct wl_registry *registry, uint32_t nam
                           const char *interface, uint32_t version) {
   if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
     static_cast<Tags *>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2 *>(
-        (zdwl_ipc_manager_v2 *)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 3));
+        (zdwl_ipc_manager_v2 *)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
   }
   if (std::strcmp(interface, wl_seat_interface.name) == 0) {
     version = std::min<uint32_t>(version, 1);
