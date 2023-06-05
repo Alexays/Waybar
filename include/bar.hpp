@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "AModule.hpp"
+#include "services/DBusService.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {
@@ -120,6 +121,7 @@ class Bar {
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
   std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
+  std::vector<std::shared_ptr<waybar::services::DBusService>> dbus_services_all_;
 };
 
 }  // namespace waybar

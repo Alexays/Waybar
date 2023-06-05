@@ -8,7 +8,7 @@ namespace waybar {
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
              bool vertical)
-    : AModule(config, name, id, false, false),
+    : AModule(config, name, id, "", false, false),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   box.set_name(name_);
   if (!id.empty()) {

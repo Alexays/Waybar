@@ -737,6 +737,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
       try {
         auto ref = name.asString();
         AModule* module;
+        services::DBusService* dbusService{nullptr};
 
         if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
           auto hash_pos = ref.find('#');
@@ -749,11 +750,18 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           getModules(factory, ref, &group_module->box);
           module = group_module;
         } else {
+          dbusService = factory.makeDBusService(ref);
           module = factory.makeModule(ref);
         }
 
+        std::shared_ptr<services::DBusService> dbusService_sp(dbusService);
         std::shared_ptr<AModule> module_sp(module);
+
+        if (dbusService_sp) {
+          dbus_services_all_.emplace_back(dbusService_sp);
+        }
         modules_all_.emplace_back(module_sp);
+
         if (group) {
           group->pack_start(*module, false, false);
         } else {

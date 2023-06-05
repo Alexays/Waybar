@@ -313,11 +313,11 @@ auto waybar::modules::Network::update() -> void {
       label_.get_style_context()->remove_class(state_);
     }
     if (config_["format-" + state].isString()) {
-      default_format_ = config_["format-" + state].asString();
+      format_default_ = config_["format-" + state].asString();
     } else if (config_["format"].isString()) {
-      default_format_ = config_["format"].asString();
+      format_default_ = config_["format"].asString();
     } else {
-      default_format_ = DEFAULT_FORMAT;
+      format_default_ = DEFAULT_FORMAT;
     }
     if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
@@ -325,7 +325,7 @@ auto waybar::modules::Network::update() -> void {
     if (!label_.get_style_context()->has_class(state)) {
       label_.get_style_context()->add_class(state);
     }
-    format_ = default_format_;
+    format_ = format_default_;
     state_ = state;
   }
   getState(signal_strength_);

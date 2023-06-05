@@ -21,7 +21,7 @@ std::map<std::string, std::string> Workspace::icons_map_;
 
 WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
                                    const Json::Value &config)
-    : waybar::AModule(config, "workspaces", id, false, false),
+    : waybar::AModule(config, "workspaces", id, "", false, false),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
   auto config_sort_by_name = config_["sort-by-name"];
@@ -73,7 +73,7 @@ auto WorkspaceManager::workspace_comparator() const
       try {
         auto is_number_less = std::stoi(lhs->get_name()) < std::stoi(rhs->get_name());
         return is_number_less;
-      } catch (std::invalid_argument) {
+      } catch (const std::invalid_argument &) {
       }
     }
 

@@ -3,27 +3,28 @@
 #include <glibmm/dispatcher.h>
 #include <glibmm/markup.h>
 #include <gtkmm/eventbox.h>
-#include <json/json.h>
 
-#include "IModule.hpp"
+#include "interfaces/IModule.hpp"
+#include "interfaces/IWidget.hpp"
+#include "modules/config.hpp"
 
 namespace waybar {
 
-class AModule : public IModule {
+class AModule : public IModule, public IWidget, public modules::Config {
  public:
   virtual ~AModule();
   auto update() -> void override;
   virtual auto refresh(int) -> void{};
   operator Gtk::Widget &() override;
-  auto doAction(const std::string &name) -> void override;
+  auto doAction(const Glib::ustring &name = "") -> void override;
 
   Glib::Dispatcher dp;
 
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
-  AModule(const Json::Value &, const std::string &, const std::string &, bool enable_click = false,
-          bool enable_scroll = false);
+  AModule(const Json::Value &, const std::string &, const std::string &, const std::string & = "",
+          bool enable_click = false, bool enable_scroll = false);
 
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
@@ -31,7 +32,6 @@ class AModule : public IModule {
   bool tooltipEnabled();
 
   const std::string name_;
-  const Json::Value &config_;
   Gtk::EventBox event_box_;
 
   virtual bool handleToggle(GdkEventButton *const &ev);

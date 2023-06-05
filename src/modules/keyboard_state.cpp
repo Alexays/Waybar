@@ -80,7 +80,7 @@ auto supportsLockStates(const libevdev* dev) -> bool {
 
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
-    : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
+    : AModule(config, "keyboard-state", id, "", false, !config["disable-scroll"].asBool()),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
       numlock_label_(""),
       capslock_label_(""),

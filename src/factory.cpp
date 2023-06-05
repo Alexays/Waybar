@@ -2,6 +2,31 @@
 
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
+waybar::services::DBusService* waybar::Factory::makeDBusService(const std::string& name) const {
+  try {
+    auto hash_pos = name.find('#');
+    auto ref = name.substr(0, hash_pos);
+    auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
+
+    if (ref == "clock") {
+      return new waybar::services::Clock(id, config_[name]);
+    }
+#ifdef HAVE_LIBCAVA
+    if (ref == "cava") {
+      return new waybar::services::Cava(id, config_[name]);
+    }
+#endif
+
+  } catch (const std::exception& e) {
+    auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
+    throw std::runtime_error(err);
+  } catch (...) {
+    auto err = fmt::format("Disabling module \"{}\", Unknown reason", name);
+    throw std::runtime_error(err);
+  }
+  return nullptr;
+}
+
 waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
   try {
     auto hash_pos = name.find('#');

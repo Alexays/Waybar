@@ -157,8 +157,11 @@ endif
 src_files = files(
     'src/factory.cpp',
     'src/AModule.cpp',
+    'src/services/DBusService.cpp',
+    'src/modules/DBusClient.cpp',
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
+    'src/modules/config.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
@@ -329,9 +332,11 @@ endif
 
 if have_chrono_timezones
     add_project_arguments('-DHAVE_CHRONO_TIMEZONES', language: 'cpp')
+    src_files += 'src/services/clock.cpp'
     src_files += 'src/modules/clock.cpp'
 elif tz_dep.found()
     add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
+    src_files += 'src/services/clock.cpp'
     src_files += 'src/modules/clock.cpp'
 else
     src_files += 'src/modules/simpleclock.cpp'
@@ -341,17 +346,16 @@ if get_option('experimental')
     add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
 endif
 
-cava = compiler.find_library('cava',
-                             required: get_option('cava'))
-if not cava.found() and not get_option('cava').disabled()
-   cava = dependency('cava',
-                     required: false,
-                     fallback: [ 'cava', 'cava_dep' ])
-endif
+cava = dependency('cava',
+                  version: '>=0.8.3',
+                  native: true,
+                  required: get_option('cava'),
+                  fallback: ['cava', 'cava_dep'])
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
    src_files += 'src/modules/cava.cpp'
+   src_files += 'src/services/cava.cpp'
 endif
 
 subdir('protocol')

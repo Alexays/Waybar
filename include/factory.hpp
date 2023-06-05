@@ -3,6 +3,7 @@
 #include <json/json.h>
 #if defined(HAVE_CHRONO_TIMEZONES) || defined(HAVE_LIBDATE)
 #include "modules/clock.hpp"
+#include "services/clock.hpp"
 #else
 #include "modules/simpleclock.hpp"
 #endif
@@ -85,6 +86,7 @@
 #endif
 #ifdef HAVE_LIBCAVA
 #include "modules/cava.hpp"
+#include "services/cava.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"
@@ -98,6 +100,7 @@ class Factory {
  public:
   Factory(const Bar& bar, const Json::Value& config);
   AModule* makeModule(const std::string& name) const;
+  services::DBusService* makeDBusService(const std::string& name) const;
 
  private:
   const Bar& bar_;

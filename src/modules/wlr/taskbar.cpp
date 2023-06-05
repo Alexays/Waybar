@@ -701,7 +701,7 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
                                                             .global_remove = handle_global_remove};
 
 Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::AModule(config, "taskbar", id, false, false),
+    : waybar::AModule(config, "taskbar", id, "", false, false),
       bar_(bar),
       box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       manager_{nullptr},

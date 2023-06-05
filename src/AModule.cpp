@@ -7,9 +7,9 @@
 namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
-                 bool enable_click, bool enable_scroll)
-    : name_(std::move(name)),
-      config_(std::move(config)),
+                 const std::string& format, bool enable_click, bool enable_scroll)
+    : modules::Config(config, format),
+      name_(std::move(name)),
       distance_scrolled_y_(0.0),
       distance_scrolled_x_(0.0) {
   // Configure module action Map
@@ -64,7 +64,7 @@ auto AModule::update() -> void {
 }
 // Get mapping between event name and module action name
 // Then call overrided doAction in order to call appropriate module action
-auto AModule::doAction(const std::string& name) -> void {
+auto AModule::doAction(const Glib::ustring& name) -> void {
   if (!name.empty()) {
     const std::map<std::string, std::string>::const_iterator& recA{eventActionMap_.find(name)};
     // Call overrided action if derrived class has implemented it

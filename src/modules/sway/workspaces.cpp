@@ -25,7 +25,7 @@ int Workspaces::convertWorkspaceNameToNum(std::string name) {
 }
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
+    : AModule(config, "workspaces", id, "", false, !config["disable-scroll"].asBool()),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.set_name("workspaces");

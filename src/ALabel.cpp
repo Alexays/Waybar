@@ -1,22 +1,17 @@
 #include "ALabel.hpp"
 
-#include <fmt/format.h>
-
-#include <util/command.hpp>
-
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
                bool enable_scroll)
-    : AModule(config, name, id, config["format-alt"].isString() || enable_click, enable_scroll),
-      format_(config_["format"].isString() ? config_["format"].asString() : format),
-      interval_(config_["interval"] == "once"
+    : AModule(config, name, id, format, config["format-alt"].isString() || enable_click,
+              enable_scroll),
+      interval_(config["interval"] == "once"
                     ? std::chrono::seconds(100000000)
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
-      default_format_(format_) {
-  label_.set_name(name);
+                    : std::chrono::seconds(config["interval"].isUInt() ? config["interval"].asUInt()
+                                                                       : interval)) {
+  label_.set_name(name_);
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
@@ -51,64 +46,14 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
 }
 
-auto ALabel::update() -> void { AModule::update(); }
-
-std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
-  auto format_icons = config_["format-icons"];
-  if (format_icons.isObject()) {
-    if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
-      format_icons = format_icons[alt];
-    } else {
-      format_icons = format_icons["default"];
-    }
-  }
-  if (format_icons.isArray()) {
-    auto size = format_icons.size();
-    if (size) {
-      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
-      format_icons = format_icons[idx];
-    }
-  }
-  if (format_icons.isString()) {
-    return format_icons.asString();
-  }
-  return "";
-}
-
-std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>& alts,
-                            uint16_t max) {
-  auto format_icons = config_["format-icons"];
-  if (format_icons.isObject()) {
-    std::string _alt = "default";
-    for (const auto& alt : alts) {
-      if (!alt.empty() && (format_icons[alt].isString() || format_icons[alt].isArray())) {
-        _alt = alt;
-        break;
-      }
-    }
-    format_icons = format_icons[_alt];
-  }
-  if (format_icons.isArray()) {
-    auto size = format_icons.size();
-    if (size) {
-      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
-      format_icons = format_icons[idx];
-    }
-  }
-  if (format_icons.isString()) {
-    return format_icons.asString();
-  }
-  return "";
-}
-
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
-  if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
-    alt_ = !alt_;
-    if (alt_ && config_["format-alt"].isString()) {
-      format_ = config_["format-alt"].asString();
-    } else {
-      format_ = default_format_;
-    }
+  constexpr auto action{"format-alt-click"};
+  if (config_[action].isUInt() && e->button == config_[action].asUInt()) {
+    const auto dbusCli{dynamic_cast<DBusClient*>(this)};
+    if (dbusCli)
+      dbusCli->DBusClient::doAction(action);
+    else
+      Config::doAction(action);
   }
   return AModule::handleToggle(e);
 }

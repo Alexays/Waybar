@@ -82,7 +82,7 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
                                                             .global_remove = handle_global_remove};
 
 Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::AModule(config, "tags", id, false, false),
+    : waybar::AModule(config, "tags", id, "", false, false),
       status_manager_{nullptr},
       control_{nullptr},
       seat_{nullptr},
