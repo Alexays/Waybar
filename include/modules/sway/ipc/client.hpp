@@ -7,6 +7,7 @@
 
 #include <cstring>
 #include <memory>
+#include <stdexcept>
 #include <mutex>
 #include <string>
 
