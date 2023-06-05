@@ -296,9 +296,9 @@ auto waybar::modules::Wireplumber::update() -> void {
     }
 
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_text(
-          fmt::format(fmt::runtime(tooltip_format), fmt::arg("node_name", node_name_),
-                      fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol))));
+      label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
+                                          fmt::arg("node_name", node_name_),
+                                          fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol))));
     } else {
       label_.set_tooltip_text(node_name_);
     }
@@ -308,7 +308,7 @@ auto waybar::modules::Wireplumber::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);
   }
@@ -337,14 +337,12 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::UP) {
     if (volume_ < max_volume) {
       new_vol = volume_ + step;
-      if (new_vol > max_volume)
-        new_vol = max_volume;
+      if (new_vol > max_volume) new_vol = max_volume;
     }
   } else if (dir == SCROLL_DIR::DOWN) {
     if (volume_ > 0) {
       new_vol = volume_ - step;
-      if (new_vol < 0)
-        new_vol = 0;
+      if (new_vol < 0) new_vol = 0;
     }
   }
   if (new_vol != volume_) {
