@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.17',
+    version: '0.9.18',
     license: 'MIT',
     meson_version: '>= 0.50.0',
     default_options : [
@@ -347,10 +347,10 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version: '>=0.8.3',
-                  native: true,
+                  version : '>=0.8.4',
                   required: get_option('cava'),
-                  fallback: ['cava', 'cava_dep'])
+                  fallback : ['cava', 'cava_dep'],
+                  not_found_message: 'cava is not found. Building waybar without cava')
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')

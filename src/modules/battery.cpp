@@ -36,7 +36,8 @@ waybar::modules::Battery::~Battery() {
   }
   close(global_watch_fd_);
 
-  for (auto it = batteries_.cbegin(); it != batteries_.cend(); it++) {
+  for (auto it = batteries_.cbegin(), next_it = it; it != batteries_.cend(); it = next_it) {
+    ++next_it;
     auto watch_id = (*it).second;
     if (watch_id >= 0) {
       inotify_rm_watch(battery_watch_fd_, watch_id);

@@ -374,6 +374,8 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
       name_(name) {
   if (workspace) {
     add_workspace_listener(workspace, this);
+  } else {
+    state_ = (uint32_t)State::EMPTY;
   }
 
   auto config_format = config["format"];
@@ -447,6 +449,8 @@ auto Workspace::handle_remove() -> void {
   }
   if (!persistent_) {
     workspace_group_.remove_workspace(id_);
+  } else {
+    state_ = (uint32_t)State::EMPTY;
   }
 }
 
@@ -465,6 +469,7 @@ auto Workspace::handle_done() -> void {
   add_or_remove_class(style_context, is_active(), "active");
   add_or_remove_class(style_context, is_urgent(), "urgent");
   add_or_remove_class(style_context, is_hidden(), "hidden");
+  add_or_remove_class(style_context, is_empty(), "persistent");
 
   if (workspace_group_.creation_delayed()) {
     return;
@@ -488,6 +493,13 @@ auto Workspace::get_icon() -> std::string {
   auto named_icon_it = icons_map_.find(name_);
   if (named_icon_it != icons_map_.end()) {
     return named_icon_it->second;
+  }
+
+  if (is_empty()) {
+    auto persistent_icon_it = icons_map_.find("persistent");
+    if (persistent_icon_it != icons_map_.end()) {
+      return persistent_icon_it->second;
+    }
   }
 
   auto default_icon_it = icons_map_.find("default");

@@ -87,6 +87,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       want_link_dump_(false),
       want_addr_dump_(false),
       dump_in_progress_(false),
+      is_p2p_(false),
       cidr_(0),
       signal_strength_dbm_(0),
       signal_strength_(0),
@@ -187,7 +188,7 @@ void waybar::modules::Network::createEventSocket() {
     throw std::runtime_error("Can't create epoll");
   }
   {
-    ev_fd_ = eventfd(0, EFD_NONBLOCK);
+    ev_fd_ = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.events = EPOLLIN | EPOLLET;
@@ -456,6 +457,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
           case IFLA_IFNAME:
             ifname = static_cast<const char *>(RTA_DATA(ifla));
             ifname_len = RTA_PAYLOAD(ifla) - 1;  // minus \0
+            if (ifi->ifi_flags & IFF_POINTOPOINT && net->checkInterface(ifname))
+              net->is_p2p_ = true;
             break;
           case IFLA_CARRIER: {
             carrier = *(char *)RTA_DATA(ifla) == 1;
@@ -494,6 +497,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
           net->ifname_ = new_ifname;
           net->ifid_ = ifi->ifi_index;
+          if (ifi->ifi_flags & IFF_POINTOPOINT) net->is_p2p_ = true;
           if (carrier.has_value()) {
             net->carrier_ = carrier.value();
           }
@@ -537,7 +541,9 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
       for (; RTA_OK(ifa_rta, attrlen); ifa_rta = RTA_NEXT(ifa_rta, attrlen)) {
         switch (ifa_rta->rta_type) {
-          case IFA_ADDRESS: {
+          case IFA_ADDRESS:
+            if (net->is_p2p_) continue;
+          case IFA_LOCAL:
             char ipaddr[INET6_ADDRSTRLEN];
             if (!is_del_event) {
               net->ipaddr_ = inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
@@ -570,7 +576,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             }
             net->dp.emit();
             break;
-          }
         }
       }
       break;

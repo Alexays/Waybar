@@ -630,7 +630,12 @@ auto Mpris::update() -> void {
         fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
         fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 
-    label_.set_markup(label_format);
+    if (label_format.empty()) {
+      label_.hide();
+    } else {
+      label_.set_markup(label_format);
+      label_.show();
+    }
   } catch (fmt::format_error const& e) {
     spdlog::warn("mpris: format error: {}", e.what());
   }
