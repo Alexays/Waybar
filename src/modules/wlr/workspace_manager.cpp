@@ -73,7 +73,7 @@ auto WorkspaceManager::workspace_comparator() const
       try {
         auto is_number_less = std::stoi(lhs->get_name()) < std::stoi(rhs->get_name());
         return is_number_less;
-      } catch (std::invalid_argument) {
+      } catch (const std::invalid_argument &) {
       }
     }
 
