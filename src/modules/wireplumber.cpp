@@ -283,7 +283,7 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("muted");
   }
 
-  int vol = volume_ * 100.0;
+  int vol = round(volume_ * 100.0);
   std::string markup = fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_),
                                    fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol)));
   label_.set_markup(markup);
