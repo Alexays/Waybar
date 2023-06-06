@@ -102,7 +102,6 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
   thread_fetch_input_ = [this] {
     thread_fetch_input_.sleep_for(fetch_input_delay_);
     input_source_(&audio_data_);
-    dp.emit();
   };
 
   thread_ = [this] {
