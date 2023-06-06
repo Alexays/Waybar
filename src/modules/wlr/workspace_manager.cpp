@@ -64,7 +64,7 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
 
 auto WorkspaceManager::workspace_comparator() const
     -> std::function<bool(std::unique_ptr<Workspace> &, std::unique_ptr<Workspace> &)> {
-  return [=](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
+  return [=, this](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
     auto is_name_less = lhs->get_name() < rhs->get_name();
     auto is_name_eq = lhs->get_name() == rhs->get_name();
     auto is_coords_less = lhs->get_coords() < rhs->get_coords();
