@@ -51,12 +51,12 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should take up.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *scroll-step*: ++
 	typeof: float ++
