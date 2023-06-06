@@ -22,10 +22,6 @@ Host::~Host() {
     Gio::DBus::unwatch_name(bus_name_id_);
     bus_name_id_ = 0;
   }
-  if (watcher_id_ > 0) {
-    Gio::DBus::unwatch_name(watcher_id_);
-    watcher_id_ = 0;
-  }
   g_cancellable_cancel(cancellable_);
   g_clear_object(&cancellable_);
   g_clear_object(&watcher_);
