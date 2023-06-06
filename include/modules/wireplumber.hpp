@@ -38,7 +38,7 @@ class Wireplumber : public ALabel {
   uint32_t pending_plugins_;
   bool muted_;
   double volume_;
-  double step_;
+  double min_step_;
   uint32_t node_id_{0};
   std::string node_name_;
 };

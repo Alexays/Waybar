@@ -15,7 +15,7 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       pending_plugins_(0),
       muted_(false),
       volume_(0.0),
-      step_(0.0),
+      min_step_(0.0),
       node_id_(0) {
   wp_init(WP_INIT_PIPEWIRE);
   wp_core_ = wp_core_new(NULL, NULL);
@@ -103,7 +103,7 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
   }
 
   g_variant_lookup(variant, "volume", "d", &self->volume_);
-  g_variant_lookup(variant, "step", "d", &self->step_);
+  g_variant_lookup(variant, "step", "d", &self->min_step_);
   g_variant_lookup(variant, "mute", "b", &self->muted_);
   g_clear_pointer(&variant, g_variant_unref);
 
@@ -324,14 +324,15 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     }
   }
   double max_volume = 1;
-  double step = step_;
-  // isDouble returns true for integers as well, just in case
+  double step = 1.0 / 100.0;
   if (config_["scroll-step"].isDouble()) {
     step = config_["scroll-step"].asDouble() / 100.0;
   }
-  if (config_["max-volume"].isInt()) {
-    max_volume = config_["max-volume"].asInt() / 100.0;
+  if (config_["max-volume"].isDouble()) {
+    max_volume = config_["max-volume"].asDouble() / 100.0;
   }
+
+  if (step < min_step_) step = min_step_;
 
   double new_vol = volume_;
   if (dir == SCROLL_DIR::UP) {
