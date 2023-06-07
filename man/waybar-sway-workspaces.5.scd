@@ -77,6 +77,11 @@ Addressed by *sway/workspaces*
     typeof: bool ++
     Whether to sort workspaces alphabetically. Please note this can make "swaymsg workspace prev/next" move to workspaces inconsistent with the ordering shown in Waybar.
 
+warp-on-scroll: ++
+    typeof: bool ++
+    default: true ++
+    If set to false, you can scroll to cycle through workspaces without mouse warping being enabled. If set to true this behaviour is disabled.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, as defined by sway.
