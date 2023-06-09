@@ -278,7 +278,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
 }
 
 std::string Workspaces::getIcon(const std::string &name, const Json::Value &node) {
-  std::vector<std::string> keys = {name, "urgent", "focused", "visible", "default"};
+  std::vector<std::string> keys = {"urgent", "focused", name, "visible", "default"};
   for (auto const &key : keys) {
     if (key == "focused" || key == "visible" || key == "urgent") {
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
