@@ -6,9 +6,7 @@
 #include <string>
 
 #include "gtkmm/icontheme.h"
-#include "gtkmm/label.h"
 #include "gtkmm/tooltip.h"
-#include "modules/upower/upower_tooltip.hpp"
 
 namespace waybar::modules::upower {
 UPower::UPower(const std::string& id, const Json::Value& config)
@@ -25,6 +23,8 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   box_.set_name(name_);
   event_box_.add(box_);
 
+  // Device user wants
+  if (config_["native-path"].isString()) nativePath_ = config_["native-path"].asString();
   // Icon Size
   if (config_["icon-size"].isUInt()) {
     iconSize = config_["icon-size"].asUInt();
@@ -195,8 +195,26 @@ void UPower::addDevice(UpDevice* device) {
 
 void UPower::setDisplayDevice() {
   std::lock_guard<std::mutex> guard(m_Mutex);
-  displayDevice = up_client_get_display_device(client);
-  g_signal_connect(displayDevice, "notify", G_CALLBACK(deviceNotify_cb), this);
+
+  if (nativePath_.empty())
+    displayDevice = up_client_get_display_device(client);
+  else {
+    g_ptr_array_foreach(
+        up_client_get_devices2(client),
+        [](gpointer data, gpointer user_data) {
+          UpDevice* device{static_cast<UpDevice*>(data)};
+          UPower* thisPtr{static_cast<UPower*>(user_data)};
+          gchar* nativePath;
+          if (!thisPtr->displayDevice) {
+            g_object_get(device, "native-path", &nativePath, NULL);
+            if (!std::strcmp(nativePath, thisPtr->nativePath_.c_str()))
+              thisPtr->displayDevice = device;
+          }
+        },
+        this);
+  }
+
+  if (displayDevice) g_signal_connect(displayDevice, "notify", G_CALLBACK(deviceNotify_cb), this);
 }
 
 void UPower::removeDevices() {
@@ -278,14 +296,22 @@ auto UPower::update() -> void {
   double percentage;
   gint64 time_empty;
   gint64 time_full;
-  gchar* icon_name;
+  gchar* icon_name{(char*)'\0'};
+  std::string percentString{""};
+  std::string time_format{""};
 
-  g_object_get(displayDevice, "kind", &kind, "state", &state, "percentage", &percentage,
-               "icon-name", &icon_name, "time-to-empty", &time_empty, "time-to-full", &time_full,
-               NULL);
+  bool displayDeviceValid{false};
 
-  bool displayDeviceValid =
-      kind == UpDeviceKind::UP_DEVICE_KIND_BATTERY || kind == UpDeviceKind::UP_DEVICE_KIND_UPS;
+  if (displayDevice) {
+    g_object_get(displayDevice, "kind", &kind, "state", &state, "percentage", &percentage,
+                 "icon-name", &icon_name, "time-to-empty", &time_empty, "time-to-full", &time_full,
+                 NULL);
+    /* Every Device which is handled by Upower and which is not
+     * UP_DEVICE_KIND_UNKNOWN (0) or UP_DEVICE_KIND_LINE_POWER (1) is a Battery
+     */
+    displayDeviceValid = (kind != UpDeviceKind::UP_DEVICE_KIND_UNKNOWN &&
+                          kind != UpDeviceKind::UP_DEVICE_KIND_LINE_POWER);
+  }
 
   // CSS status class
   const std::string status = getDeviceStatus(state);
@@ -308,32 +334,30 @@ auto UPower::update() -> void {
 
   event_box_.set_visible(true);
 
-  // Tooltip
-  if (tooltip_enabled) {
-    uint tooltipCount = upower_tooltip->updateTooltip(devices);
-    // Disable the tooltip if there aren't any devices in the tooltip
-    box_.set_has_tooltip(!devices.empty() && tooltipCount > 0);
-  }
-
-  // Set percentage
-  std::string percentString = "";
   if (displayDeviceValid) {
-    percentString = std::to_string(int(percentage + 0.5)) + "%";
-  }
+    // Tooltip
+    if (tooltip_enabled) {
+      uint tooltipCount = upower_tooltip->updateTooltip(devices);
+      // Disable the tooltip if there aren't any devices in the tooltip
+      box_.set_has_tooltip(!devices.empty() && tooltipCount > 0);
+    }
 
-  // Label format
-  std::string time_format = "";
-  switch (state) {
-    case UP_DEVICE_STATE_CHARGING:
-    case UP_DEVICE_STATE_PENDING_CHARGE:
-      time_format = timeToString(time_full);
-      break;
-    case UP_DEVICE_STATE_DISCHARGING:
-    case UP_DEVICE_STATE_PENDING_DISCHARGE:
-      time_format = timeToString(time_empty);
-      break;
-    default:
-      break;
+    // Set percentage
+    percentString = std::to_string(int(percentage + 0.5)) + "%";
+
+    // Label format
+    switch (state) {
+      case UP_DEVICE_STATE_CHARGING:
+      case UP_DEVICE_STATE_PENDING_CHARGE:
+        time_format = timeToString(time_full);
+        break;
+      case UP_DEVICE_STATE_DISCHARGING:
+      case UP_DEVICE_STATE_PENDING_DISCHARGE:
+        time_format = timeToString(time_empty);
+        break;
+      default:
+        break;
+    }
   }
   std::string label_format =
       fmt::format(fmt::runtime(showAltText ? format_alt : format),

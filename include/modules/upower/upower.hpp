@@ -74,6 +74,7 @@ class UPower : public AModule {
   bool showAltText;
   bool upowerRunning;
   guint upowerWatcher_id;
+  std::string nativePath_;
 };
 
 }  // namespace waybar::modules::upower
