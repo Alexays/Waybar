@@ -91,6 +91,10 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 	typeof: double ++
 	Threshold to be used when scrolling.
 
+*reverse-scrolling*: ++
+	typeof: bool ++
+	Option to reverse the scroll direction.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
