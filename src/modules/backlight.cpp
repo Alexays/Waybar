@@ -305,14 +305,6 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
     return true;
   }
 
-  if (config_["reverse-scrolling"].asBool()) {
-    if (dir == SCROLL_DIR::UP) {
-      dir = SCROLL_DIR::DOWN;
-    } else if (dir == SCROLL_DIR::DOWN) {
-      dir = SCROLL_DIR::UP;
-    }
-  }
-
   // Get scroll step
   double step = 1;
 
