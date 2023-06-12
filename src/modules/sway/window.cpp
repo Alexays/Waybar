@@ -178,10 +178,6 @@ auto Window::update() -> void {
     } else {
       mode += 32;
     }
-    if (!app_id_.empty() && !bar_.window.get_style_context()->has_class(app_id_)) {
-      bar_.window.get_style_context()->add_class(app_id_);
-      old_app_id_ = app_id_;
-    }
   }
 
   if (!old_app_id_.empty() && ((mode & 2) == 0 || old_app_id_ != app_id_) &&
