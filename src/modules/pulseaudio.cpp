@@ -81,13 +81,6 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-  if (config_["reverse-scrolling"].asInt() == 1) {
-    if (dir == SCROLL_DIR::UP) {
-      dir = SCROLL_DIR::DOWN;
-    } else if (dir == SCROLL_DIR::DOWN) {
-      dir = SCROLL_DIR::UP;
-    }
-  }
   double volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_volume_t change = volume_tick;
   pa_cvolume pa_volume = pa_volume_;

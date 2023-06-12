@@ -97,11 +97,14 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
 }
 
 AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
+  // only affects up/down
+  bool reverse = config_["reverse-scrolling"].asBool();
+
   switch (e->direction) {
     case GDK_SCROLL_UP:
-      return SCROLL_DIR::UP;
+      return reverse ? SCROLL_DIR::DOWN : SCROLL_DIR::UP;
     case GDK_SCROLL_DOWN:
-      return SCROLL_DIR::DOWN;
+      return reverse ? SCROLL_DIR::UP : SCROLL_DIR::DOWN;
     case GDK_SCROLL_LEFT:
       return SCROLL_DIR::LEFT;
     case GDK_SCROLL_RIGHT:
