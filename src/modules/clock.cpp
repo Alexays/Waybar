@@ -22,19 +22,25 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       is_timezoned_list_in_tooltip_(false) {
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
     for (const auto& zone_name : config_["timezones"]) {
-      if (!zone_name.isString() || zone_name.asString().empty()) continue;
+      if (!zone_name.isString()) continue;
+      if (zone_name.asString().empty())
+        time_zones_.push_back(date::current_zone());
+      else
+        try {
+          time_zones_.push_back(date::locate_zone(zone_name.asString()));
+        } catch (const std::exception& e) {
+          spdlog::warn("Timezone: {0}. {1}", zone_name.asString(), e.what());
+        }
+    }
+  } else if (config_["timezone"].isString()) {
+    if (config_["timezone"].asString().empty())
+      time_zones_.push_back(date::current_zone());
+    else
       try {
-        time_zones_.push_back(date::locate_zone(zone_name.asString()));
+        time_zones_.push_back(date::locate_zone(config_["timezone"].asString()));
       } catch (const std::exception& e) {
-        spdlog::warn("Timezone: {0}. {1}", zone_name.asString(), e.what());
+        spdlog::warn("Timezone: {0}. {1}", config_["timezone"].asString(), e.what());
       }
-    }
-  } else if (config_["timezone"].isString() && !config_["timezone"].asString().empty()) {
-    try {
-      time_zones_.push_back(date::locate_zone(config_["timezone"].asString()));
-    } catch (const std::exception& e) {
-      spdlog::warn("Timezone: {0}. {1}", config_["timezone"].asString(), e.what());
-    }
   }
 
   // If all timezones are parsed and no one is good, add current time zone. nullptr in timezones
