@@ -1,104 +1,166 @@
-waybar-clock(5)
+waybar-clock(5) "waybar-clock" "User Manual"
 
 # NAME
 
-waybar - clock module
+clock
 
 # DESCRIPTION
 
-The *clock* module displays the current date and time.
+*clock* module displays current date and time
+
+# FILES
+
+$XDG_CONFIG_HOME/waybar/config ++
+    Per user configuration file
 
 # CONFIGURATION
 
-*interval*: ++
-	typeof: integer ++
-	default: 60 ++
-	The interval in which the information gets polled.
+1. Addressed by *clock*
+[- *Option*
+:- *Typeof*
+:- *Default*
+:- *Description*
+|[ *interval*
+:[ integer
+:[ 60
+:[ The interval in which the information gets polled
+|[ *format*
+:[ string
+:[ *{:%H:%M}*
+:[ The format, how the date and time should be displayed. See format options below
+|[ *timezone*
+:[ string
+:[
+:[ The timezone to display the time in, e.g. America/New_York. "" represents
+   the system's local timezone. See Wikipedia's unofficial list of timezones <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>
+|[ *timezones*
+:[ list of strings
+:[
+:[ A list of timezones (as in *timezone*) to use for time display, changed using
+  the scroll wheel. Do not specify *timezone* option when *timezones* is specified.
+   "" represents the system's local timezone
+|[ *locale*
+:[ string
+:[
+:[ A locale to be used to display the time. Intended to render times in custom
+  timezones with the proper language and format
+|[ *max-length*
+:[ integer
+:[
+:[ The maximum length in character the module should display
+|[ *rotate*
+:[ integer
+:[
+:[ Positive value to rotate the text label
+|[ *on-click*
+:[ string
+:[
+:[ Command to execute when clicked on the module
+|[ *on-click-middle*
+:[ string
+:[
+:[ Command to execute when you middle clicked on the module using mousewheel
+|[ *on-click-right*
+:[ string
+:[
+:[ Command to execute when you right clicked on the module
+|[ *on-scroll-up*
+:[ string
+:[
+:[ Command to execute when scrolling up on the module
+|[ *on-scroll-down*
+:[ string
+:[
+:[ Command to execute when scrolling down on the module
+|[ *smooth-scrolling-threshold*
+:[ double
+:[
+:[ Threshold to be used when scrolling
+|[ *tooltip*
+:[ bool
+:[ true
+:[ Option to enable tooltip on hover
+|[ *tooltip-format*
+:[ string
+:[ same as format
+:[ Tooltip on hover
 
-*format*: ++
-	typeof: string ++
-	default: {:%H:%M} ++
-	The format, how the date and time should be displayed. ++
-	It uses the format of the date library. See https://howardhinnant.github.io/date/date.html#to_stream_formatting for details.
+View all valid format options in *strftime(3)* or have a look <https://fmt.dev/latest/syntax.html#chrono-specs>
 
-*timezone*: ++
-	typeof: string ++
-	default: inferred local timezone ++
-	The timezone to display the time in, e.g. America/New_York. ++
-	This field will be ignored if *timezones* field is set and have at least one value.
+2. Addressed by *clock: calendar*
+[- *Option*
+:- *Typeof*
+:- *Default*
+:- *Description*
+|[ *mode*
+:[ string
+:[ month
+:[ Calendar view mode. Possible values: year|month
+|[ *mode-mon-col*
+:[ integer
+:[ 3
+:[ Relevant for *mode=year*. Count of months per row
+|[ *weeks-pos*
+:[ integer
+:[
+:[ The position where week numbers should be displayed. Disabled when is empty.
+  Possible values: left|right
+|[ *on-scroll*
+:[ integer
+:[ 1
+:[ Value to scroll months/years forward/backward. Can be negative. Is
+  configured under *on-scroll* option
 
-*timezones*: ++
-	typeof: list of strings ++
-	A list of timezones to use for time display, changed using the scroll wheel. ++
-	Use "" to represent the system's local timezone.  Using %Z in the format or tooltip format is useful to track which time zone is currently displayed.
+3. Adressed by *clock: calendar: format*
+[- *Option*
+:- *Typeof*
+:- *Default*
+:- *Description*
+|[ *months*
+:[ string
+:[
+:[ Format is applied to months header(January, February,...etc.)
+|[ *days*
+:[ string
+:[
+:[ Format is applied to days
+|[ *weeks*
+:[ string
+:[ *{:%U}*
+:[ Format is applied to week numbers. When weekday format is not provided then
+   is used default format: '{:%W}' when week starts with Monday, '{:%U}' otherwise
+|[ *weekdays*
+:[ string
+:[
+:[ Format is applied to weeks header(Su,Mo,...etc.)
+|[ *today*
+:[ string
+:[ *<b><u>{}</u></b>*
+:[ Format is applied to Today
 
-*locale*: ++
-	typeof: string ++
-	default: inferred from current locale ++
-	A locale to be used to display the time. Intended to render times in custom timezones with the proper language and format.
+## Actions
 
-*today-format*: ++
-	typeof: string ++
-	default: <b><u>{}</u></b> ++
-	The format of today's date in the calendar.
-
-*max-length*: ++
-	typeof: integer ++
-	The maximum length in character the module should display.
-
-*min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
-
-*align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
-
-*rotate*: ++
-	typeof: integer ++
-	Positive value to rotate the text label.
-
-*on-click*: ++
-	typeof: string ++
-	Command to execute when clicked on the module.
-
-*on-click-middle*: ++
-	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
-
-*on-click-right*: ++
-	typeof: string ++
-	Command to execute when you right clicked on the module.
-
-*on-update*: ++
-	typeof: string ++
-	Command to execute when the module is updated.
-
-*on-scroll-up*: ++
-	typeof: string ++
-	Command to execute when scrolling up on the module.
-
-*on-scroll-down*: ++
-	typeof: string ++
-	Command to execute when scrolling down on the module.
-
-*smooth-scrolling-threshold*: ++
-	typeof: double ++
-	Threshold to be used when scrolling.
-
-*tooltip*: ++
-	typeof: bool ++
-	default: true ++
-	Option to disable tooltip on hover.
-
-View all valid format options in *strftime(3)*.
+[- *String*
+:- *Action*
+|[ *mode*
+:[ Switch calendar mode between year/month
+|[ *tz_up*
+:[ Switch to the next provided time zone
+|[ *tz_down*
+:[ Switch to the previous provided time zone
+|[ *shift_up*
+:[ Switch to the next calendar month/year
+|[ *shift_down*
+:[ Switch to the previous calendar month/year
 
 # FORMAT REPLACEMENTS
 
-*{calendar}*: Current month calendar
-*{timezoned_time_list}*: List of time in the rest timezones, if more than one timezone is set in the config
+- *{calendar}*: Current month calendar
+- *{timezoned_time_list}*: List of time in the rest timezones, if more than one timezone is set in the config
 
 # EXAMPLES
+
+1. General
 
 ```
 "clock": {
@@ -108,6 +170,101 @@ View all valid format options in *strftime(3)*.
 }
 ```
 
+2. Calendar
+
+```
+"clock": {
+    "format": "{:%H:%M}  ",
+    "format-alt": "{:%A, %B %d, %Y (%R)}  ",
+    "tooltip-format": "<tt><small>{calendar}</small></tt>",
+    "calendar": {
+                "mode"          : "year",
+                "mode-mon-col"  : 3,
+                "weeks-pos"     : "right",
+                "on-scroll"     : 1,
+                "on-click-right": "mode",
+                "format": {
+                            "months":     "<span color='#ffead3'><b>{}</b></span>",
+                            "days":       "<span color='#ecc6d9'><b>{}</b></span>",
+                            "weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
+                            "weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
+                            "today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
+                            }
+                },
+    "actions":  {
+                "on-click-right": "mode",
+                "on-click-forward": "tz_up",
+                "on-click-backward": "tz_down",
+                "on-scroll-up": "shift_up",
+                "on-scroll-down": "shift_down"
+                }
+},
+```
+
+3. Full date on hover
+
+```
+"clock": {
+    "interval": 60,
+    "tooltip": true,
+    "format": "{:%H.%M}",
+    "tooltip-format": "{:%Y-%m-%d}",
+}
+```
+
 # STYLE
 
 - *#clock*
+
+# Troubleshooting
+
+If clock module is disabled at startup with locale::facet::\_S\_create\_c\_locale ++
+name not valid error message try one of the followings:
+
+- check if LC_TIME is set properly (glibc)
+- set locale to C in the config file (musl)
+
+The locale option must be set for {calendar} to use the correct start-of-week, regardless of system locale.
+
+## Calendar in Chinese. Alignment
+
+In order to have aligned Chinese calendar there are some useful recommendations:
+
+. Use "WenQuanYi Zen Hei Mono" which is provided in most Linux distributions
+. Try different font sizes and find best for you. size = 9pt should be fine
+. In case when "WenQuanYi Zen Hei Mono" font is used disable monospace font pango tag
+
+Example of working config
+
+```
+"clock": {
+        "format": "{:%H:%M}  ",
+        "format-alt": "{:%A, %B %d, %Y (%R)}  ",
+        "tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
+        "calendar": {
+                    "mode"          : "year",
+                    "mode-mon-col"  : 3,
+                    "weeks-pos"     : "right",
+                    "on-scroll"     : 1,
+                    "on-click-right": "mode",
+                    "format": {
+                              "months":     "<span color='#ffead3'><b>{}</b></span>",
+                              "days":       "<span color='#ecc6d9'><b>{}</b></span>",
+                              "weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
+                              "weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
+                              "today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
+                              }
+                    },
+        "actions":  {
+                    "on-click-right": "mode",
+                    "on-click-forward": "tz_up",
+                    "on-click-backward": "tz_down",
+                    "on-scroll-up": "shift_up",
+                    "on-scroll-down": "shift_down"
+                    }
+    },
+```
+
+# AUTHOR
+
+Alexis Rouillard <contact@arouillard.fr>
