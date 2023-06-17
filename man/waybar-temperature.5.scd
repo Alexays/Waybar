@@ -19,6 +19,8 @@ Addressed by *temperature*
 *hwmon-path*: ++
 	typeof: string ++
 	The temperature path to use, e.g. */sys/class/hwmon/hwmon2/temp1_input* instead of one in */sys/class/thermal/*.
+	This can also be an array of strings. In this case, waybar will check each item in the array and use the first valid one.
+	This is suitable if you want to share the same configuration file among different machines with different hardware configurations.
 
 *hwmon-path-abs*: ++
 	typeof: string ++
@@ -117,7 +119,7 @@ Addressed by *temperature*
 ```
  "temperature": {
 	// "thermal-zone": 2,
-	// "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
+	// "hwmon-path": ["/sys/class/hwmon/hwmon2/temp1_input", "/sys/class/thermal/thermal_zone0/temp"],
 	// "critical-threshold": 80,
 	// "format-critical": "{temperatureC}°C ",
 	"format": "{temperatureC}°C "
