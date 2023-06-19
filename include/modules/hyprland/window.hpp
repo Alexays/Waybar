@@ -16,6 +16,7 @@ class Window : public waybar::ALabel, public EventHandler {
 
  private:
   struct Workspace {
+    int id;
     int windows;
     std::string last_window;
     std::string last_window_title;
@@ -25,7 +26,6 @@ class Window : public waybar::ALabel, public EventHandler {
 
   auto getActiveWorkspace(const std::string&) -> Workspace;
   auto getActiveWorkspace() -> Workspace;
-  auto getWindowClass(const std::string&) -> std::string;
   void onEvent(const std::string&) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
@@ -38,6 +38,8 @@ class Window : public waybar::ALabel, public EventHandler {
   Workspace workspace_;
   std::string solo_class_;
   std::string last_solo_class_;
+  bool fullscreen_;
+  bool all_floating_;
 };
 
 }  // namespace waybar::modules::hyprland

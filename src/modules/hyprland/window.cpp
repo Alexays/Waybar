@@ -2,19 +2,20 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <regex>
-#include <util/sanitize_str.hpp>
 
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 #include "util/rewrite_string.hpp"
+#include <util/sanitize_str.hpp>
 
 namespace waybar::modules::hyprland {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "window", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
-  separate_outputs = config["separate-outputs"].as<bool>();
+  separate_outputs = config["separate-outputs"].asBool();
 
   if (!gIPC.get()) {
     gIPC = std::make_unique<IPC>();
@@ -27,6 +28,8 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   gIPC->registerForIPC("activewindow", this);
   gIPC->registerForIPC("closewindow", this);
   gIPC->registerForIPC("movewindow", this);
+  gIPC->registerForIPC("changefloatingmode", this);
+  gIPC->registerForIPC("fullscreen", this);
 }
 
 Window::~Window() {
@@ -62,6 +65,8 @@ auto Window::update() -> void {
 
   setClass("empty", workspace_.windows == 0);
   setClass("solo", workspace_.windows == 1);
+  setClass("fullscreen", fullscreen_);
+  setClass("floating", all_floating_);
 
   if (!last_solo_class_.empty() && solo_class_ != last_solo_class_) {
     if (bar_.window.get_style_context()->has_class(last_solo_class_)) {
@@ -71,10 +76,10 @@ auto Window::update() -> void {
   }
 
   if (!solo_class_.empty() && solo_class_ != last_solo_class_) {
-    last_solo_class_ = solo_class_;
     bar_.window.get_style_context()->add_class(solo_class_);
     spdlog::trace("Adding solo class: {}", solo_class_);
   }
+  last_solo_class_ = solo_class_;
 
   ALabel::update();
 }
@@ -94,40 +99,29 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
                               [&](Json::Value monitor) { return monitor["name"] == monitorName; });
   if (monitor == std::end(json)) {
     spdlog::warn("Monitor not found: {}", monitorName);
-    return Workspace{0, "", ""};
+    return Workspace{-1, 0, "", ""};
   }
-  const int id = (*monitor)["activeWorkspace"]["id"].as<int>();
+  const int id = (*monitor)["activeWorkspace"]["id"].asInt();
 
   const auto workspaces = gIPC->getSocket1Reply("j/workspaces");
   json = parser_.parse(workspaces);
   assert(json.isArray());
   auto workspace = std::find_if(json.begin(), json.end(),
-                              [&](Json::Value workspace) { return workspace["id"] == id; });
+                                [&](Json::Value workspace) { return workspace["id"] == id; });
   if (workspace == std::end(json)) {
     spdlog::warn("No workspace with id {}", id);
-    return Workspace{0, "", ""};
+    return Workspace{-1, 0, "", ""};
   }
   return Workspace::parse(*workspace);
 }
 
 auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
   return Workspace{
-    value["windows"].as<int>(),
-    value["lastwindow"].as<std::string>(),
-    value["lastwindowtitle"].as<std::string>()
+    value["id"].asInt(),
+    value["windows"].asInt(),
+    value["lastwindow"].asString(),
+    value["lastwindowtitle"].asString()
   };
-}
-
-auto Window::getWindowClass(const std::string& address) -> std::string {
-  const auto clients = gIPC->getSocket1Reply("j/clients");
-  Json::Value json = parser_.parse(clients);
-  assert(json.isArray());
-  auto client = std::find_if(json.begin(), json.end(),
-                              [&](Json::Value window) { return window["address"] == address; });
-  if (client == std::end(json)) {
-    return "";
-  }
-  return (*client)["class"].as<std::string>();
 }
 
 void Window::queryActiveWorkspace() {
@@ -139,10 +133,30 @@ void Window::queryActiveWorkspace() {
     workspace_ = getActiveWorkspace();
   }
 
-  if (workspace_.windows == 1) {
-    solo_class_ = getWindowClass(workspace_.last_window);
+
+  if (workspace_.windows > 0) {
+    const auto clients = gIPC->getSocket1Reply("j/clients");
+    Json::Value json = parser_.parse(clients);
+    assert(json.isArray());
+    auto active_window = std::find_if(json.begin(), json.end(),
+                                      [&](Json::Value window) { return window["address"] == workspace_.last_window; });
+    if (active_window == std::end(json)) {
+      return;
+    }
+
+    if (workspace_.windows == 1 && !(*active_window)["floating"].asBool()) {
+      solo_class_ = (*active_window)["class"].asString();
+    } else {
+      solo_class_ = "";
+    }
+    all_floating_ = std::all_of(json.begin(), json.end(),
+                                [&](Json::Value window) { return window["floating"].asBool() ||
+                                                                 window["workspace"]["id"] != workspace_.id; });
+    fullscreen_ = (*active_window)["fullscreen"].asBool();
   } else {
     solo_class_ = "";
+    all_floating_ = false;
+    fullscreen_ = false;
   }
 }
 
