@@ -22,7 +22,7 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   initLanguage();
 
   label_.hide();
-  ALabel::update();
+  update();
 
   // register for hyprland ipc
   gIPC->registerForIPC("activelayout", this);
