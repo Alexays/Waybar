@@ -6,7 +6,6 @@
 #include <util/sanitize_str.hpp>
 
 #include "modules/hyprland/backend.hpp"
-#include "util/command.hpp"
 #include "util/json.hpp"
 #include "util/rewrite_string.hpp"
 
@@ -21,11 +20,13 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     gIPC = std::make_unique<IPC>();
   }
 
-  label_.hide();
-  ALabel::update();
+  queryActiveWorkspace();
+  update();
 
   // register for hyprland ipc
   gIPC->registerForIPC("activewindow", this);
+  gIPC->registerForIPC("closewindow", this);
+  gIPC->registerForIPC("movewindow", this);
 }
 
 Window::~Window() {
@@ -38,69 +39,128 @@ auto Window::update() -> void {
   // fix ampersands
   std::lock_guard<std::mutex> lg(mutex_);
 
+  std::string window_name = waybar::util::sanitize_string(workspace_.last_window_title);
+
+  if (window_name != last_title_) {
+    if (window_name.empty()) {
+      label_.get_style_context()->add_class("empty");
+    } else {
+      label_.get_style_context()->remove_class("empty");
+    }
+    last_title_ = window_name;
+  }
+
+
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(fmt::format(fmt::runtime(format_),
-                                  waybar::util::rewriteString(lastView, config_["rewrite"])));
+                                  waybar::util::rewriteString(window_name, config_["rewrite"])));
   } else {
     label_.hide();
+  }
+
+
+  setClass("empty", workspace_.windows == 0);
+  setClass("solo", workspace_.windows == 1);
+
+  if (!last_solo_class_.empty() && solo_class_ != last_solo_class_) {
+    if (bar_.window.get_style_context()->has_class(last_solo_class_)) {
+      bar_.window.get_style_context()->remove_class(last_solo_class_);
+      spdlog::trace("Removing solo class: {}", last_solo_class_);
+    }
+  }
+
+  if (!solo_class_.empty() && solo_class_ != last_solo_class_) {
+    last_solo_class_ = solo_class_;
+    bar_.window.get_style_context()->add_class(solo_class_);
+    spdlog::trace("Adding solo class: {}", solo_class_);
   }
 
   ALabel::update();
 }
 
-int Window::getActiveWorkspaceID(std::string monitorName) {
-  auto cmd = waybar::util::command::exec("hyprctl monitors -j");
-  assert(cmd.exit_code == 0);
-  Json::Value json = parser_.parse(cmd.out);
+auto Window::getActiveWorkspace() -> Workspace {
+  const auto workspace = gIPC->getSocket1Reply("j/activeworkspace");
+  Json::Value json = parser_.parse(workspace);
+  assert(json.isObject());
+  return Workspace::parse(json);
+}
+
+auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
+  const auto monitors = gIPC->getSocket1Reply("j/monitors");
+  Json::Value json = parser_.parse(monitors);
   assert(json.isArray());
   auto monitor = std::find_if(json.begin(), json.end(),
                               [&](Json::Value monitor) { return monitor["name"] == monitorName; });
   if (monitor == std::end(json)) {
-    return 0;
+    spdlog::warn("Monitor not found: {}", monitorName);
+    return Workspace{0, "", ""};
   }
-  return (*monitor)["activeWorkspace"]["id"].as<int>();
+  const int id = (*monitor)["activeWorkspace"]["id"].as<int>();
+
+  const auto workspaces = gIPC->getSocket1Reply("j/workspaces");
+  json = parser_.parse(workspaces);
+  assert(json.isArray());
+  auto workspace = std::find_if(json.begin(), json.end(),
+                              [&](Json::Value workspace) { return workspace["id"] == id; });
+  if (workspace == std::end(json)) {
+    spdlog::warn("No workspace with id {}", id);
+    return Workspace{0, "", ""};
+  }
+  return Workspace::parse(*workspace);
 }
 
-std::string Window::getLastWindowTitle(int workspaceID) {
-  auto cmd = waybar::util::command::exec("hyprctl workspaces -j");
-  assert(cmd.exit_code == 0);
-  Json::Value json = parser_.parse(cmd.out);
-  assert(json.isArray());
-  auto workspace = std::find_if(json.begin(), json.end(), [&](Json::Value workspace) {
-    return workspace["id"].as<int>() == workspaceID;
-  });
+auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
+  return Workspace{
+    value["windows"].as<int>(),
+    value["lastwindow"].as<std::string>(),
+    value["lastwindowtitle"].as<std::string>()
+  };
+}
 
-  if (workspace == std::end(json)) {
+auto Window::getWindowClass(const std::string& address) -> std::string {
+  const auto clients = gIPC->getSocket1Reply("j/clients");
+  Json::Value json = parser_.parse(clients);
+  assert(json.isArray());
+  auto client = std::find_if(json.begin(), json.end(),
+                              [&](Json::Value window) { return window["address"] == address; });
+  if (client == std::end(json)) {
     return "";
   }
-  return (*workspace)["lastwindowtitle"].as<std::string>();
+  return (*client)["class"].as<std::string>();
+}
+
+void Window::queryActiveWorkspace() {
+  std::lock_guard<std::mutex> lg(mutex_);
+
+  if (separate_outputs) {
+    workspace_ = getActiveWorkspace(this->bar_.output->name);
+  } else {
+    workspace_ = getActiveWorkspace();
+  }
+
+  if (workspace_.windows == 1) {
+    solo_class_ = getWindowClass(workspace_.last_window);
+  } else {
+    solo_class_ = "";
+  }
 }
 
 void Window::onEvent(const std::string& ev) {
-  std::lock_guard<std::mutex> lg(mutex_);
-
-  std::string windowName;
-  if (separate_outputs) {
-    windowName = getLastWindowTitle(getActiveWorkspaceID(this->bar_.output->name));
-  } else {
-    windowName = ev.substr(ev.find_first_of(',') + 1).substr(0, 256);
-  }
-
-  windowName = waybar::util::sanitize_string(windowName);
-
-  if (windowName == lastView) return;
-
-  lastView = windowName;
-
-  if (windowName.empty()) {
-    label_.get_style_context()->add_class("empty");
-  } else {
-    label_.get_style_context()->remove_class("empty");
-  }
-
-  spdlog::debug("hyprland window onevent with {}", windowName);
+  queryActiveWorkspace();
 
   dp.emit();
 }
+
+
+void Window::setClass(const std::string& classname, bool enable) {
+  if (enable) {
+    if (!bar_.window.get_style_context()->has_class(classname)) {
+      bar_.window.get_style_context()->add_class(classname);
+    }
+  } else {
+    bar_.window.get_style_context()->remove_class(classname);
+  }
+}
+
 }  // namespace waybar::modules::hyprland

@@ -1,7 +1,5 @@
 #include <fmt/format.h>
 
-#include <tuple>
-
 #include "ALabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
@@ -17,15 +15,29 @@ class Window : public waybar::ALabel, public EventHandler {
   auto update() -> void override;
 
  private:
-  int getActiveWorkspaceID(std::string);
-  std::string getLastWindowTitle(int);
+  struct Workspace {
+    int windows;
+    std::string last_window;
+    std::string last_window_title;
+
+    static auto parse(const Json::Value&) -> Workspace;
+  };
+
+  auto getActiveWorkspace(const std::string&) -> Workspace;
+  auto getActiveWorkspace() -> Workspace;
+  auto getWindowClass(const std::string&) -> std::string;
   void onEvent(const std::string&) override;
+  void queryActiveWorkspace();
+  void setClass(const std::string&, bool enable);
 
   bool separate_outputs;
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
-  std::string lastView;
+  std::string last_title_;
+  Workspace workspace_;
+  std::string solo_class_;
+  std::string last_solo_class_;
 };
 
 }  // namespace waybar::modules::hyprland
