@@ -38,8 +38,9 @@ class Window : public waybar::ALabel, public EventHandler {
   Workspace workspace_;
   std::string solo_class_;
   std::string last_solo_class_;
-  bool fullscreen_;
+  bool solo_;
   bool all_floating_;
+  bool fullscreen_;
 };
 
 }  // namespace waybar::modules::hyprland

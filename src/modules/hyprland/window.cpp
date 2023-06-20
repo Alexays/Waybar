@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <regex>
+#include <vector>
 
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
@@ -64,7 +65,7 @@ auto Window::update() -> void {
 
 
   setClass("empty", workspace_.windows == 0);
-  setClass("solo", workspace_.windows == 1);
+  setClass("solo", solo_);
   setClass("fullscreen", fullscreen_);
   setClass("floating", all_floating_);
 
@@ -149,12 +150,18 @@ void Window::queryActiveWorkspace() {
     } else {
       solo_class_ = "";
     }
-    all_floating_ = std::all_of(json.begin(), json.end(),
-                                [&](Json::Value window) { return window["floating"].asBool() ||
-                                                                 window["workspace"]["id"] != workspace_.id; });
+    std::vector<Json::Value> workspace_windows;
+    std::copy_if(json.begin(), json.end(), std::back_inserter(workspace_windows),
+                 [&](Json::Value window) { return window["workspace"]["id"] == workspace_.id &&
+                                                  window["mapped"].asBool(); });
+    solo_ = 1 == std::count_if(workspace_windows.begin(), workspace_windows.end(),
+                               [&](Json::Value window) { return !window["floating"].asBool(); });
+    all_floating_ = std::all_of(workspace_windows.begin(), workspace_windows.end(),
+                                [&](Json::Value window) { return window["floating"].asBool(); });
     fullscreen_ = (*active_window)["fullscreen"].asBool();
   } else {
     solo_class_ = "";
+    solo_ = false;
     all_floating_ = false;
     fullscreen_ = false;
   }
