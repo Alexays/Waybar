@@ -181,17 +181,21 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   }
 
   char buffer[8192] = {0};
+  std::string response;
 
-  sizeWritten = read(SERVERSOCKET, buffer, 8192);
+  do {
+    sizeWritten = read(SERVERSOCKET, buffer, 8192);
 
-  if (sizeWritten < 0) {
-    spdlog::error("Hyprland IPC: Couldn't read (5)");
-    return "";
-  }
+    if (sizeWritten < 0) {
+      spdlog::error("Hyprland IPC: Couldn't read (5)");
+      close(SERVERSOCKET);
+      return "";
+    }
+    response.append(buffer, sizeWritten);
+  } while (sizeWritten == 8192);
 
   close(SERVERSOCKET);
-
-  return std::string(buffer);
+  return response;
 }
 
 }  // namespace waybar::modules::hyprland
