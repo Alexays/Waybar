@@ -10,6 +10,8 @@
 
 #include <memory>
 #include <vector>
+#include <atomic>
+#include <mutex>
 
 #include "AModule.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
@@ -83,6 +85,7 @@ class Bar {
   void setVisible(bool visible);
   void toggle();
   void handleSignal(int);
+  void setupAutohide();
 
   struct waybar_output *output;
   Json::Value config;
@@ -90,6 +93,7 @@ class Bar {
   bool visible = true;
   bool vertical = false;
   Gtk::Window window;
+  Gtk::Window hotspotWindow;
 
 #ifdef HAVE_SWAY
   std::string bar_id;
@@ -102,12 +106,16 @@ class Bar {
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
+  static void showMainbar(GtkWidget * widget, const gchar* h,  gpointer data);
+  static void hideMainbar(GtkWidget * widget, const gchar* h, gpointer data);
+  static void hideMainbarCallback(gpointer data);
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
   std::string last_mode_{MODE_DEFAULT};
 
   std::unique_ptr<BarSurface> surface_impl_;
+  std::unique_ptr<BarSurface> hotspotsurface_impl_;
   Gtk::Box left_;
   Gtk::Box center_;
   Gtk::Box right_;
@@ -120,6 +128,10 @@ class Bar {
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
   std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
+
+  std::atomic<unsigned int> autohide_delay_ms = 0;
+  std::mutex autohide_mutex;
+  std::atomic<guint> autohide_timeout_handle;
 };
 
 }  // namespace waybar

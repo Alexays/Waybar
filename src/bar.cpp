@@ -481,6 +481,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      hotspotWindow{Gtk::WindowType::WINDOW_TOPLEVEL},
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -491,6 +492,11 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
   window.get_style_context()->add_class(config["position"].asString());
+
+  hotspotWindow.set_opacity(0);
+  hotspotWindow.set_title("waybar-autohide");
+  hotspotWindow.set_name("waybar-autohide");
+  hotspotWindow.set_decorated(false);
 
   auto position = config["position"].asString();
 
@@ -567,10 +573,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   bool use_gls = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
   if (use_gls) {
     surface_impl_ = std::make_unique<GLSSurfaceImpl>(window, *output);
+    hotspotsurface_impl_ = std::make_unique<GLSSurfaceImpl>(hotspotWindow, *output);
   } else
 #endif
   {
     surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
+    hotspotsurface_impl_ = std::make_unique<RawSurfaceImpl>(hotspotWindow, *output);
   }
 
   surface_impl_->setMargins(margins_);
@@ -579,6 +587,13 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   // GTK layer shell anchors logic relying on the dimensions of the bar.
   surface_impl_->setPosition(position);
 
+  hotspotsurface_impl_->setMargins(margins_);
+  // Height of Hotspot is 1
+  hotspotsurface_impl_->setSize(width, 1);
+  // Position needs to be set after calculating the height due to the
+  // GTK layer shell anchors logic relying on the dimensions of the bar.
+  hotspotsurface_impl_->setPosition(position);
+
   /* Read custom modes if available */
   if (auto modes = config.get("modes", {}); modes.isObject()) {
     from_json(modes, configured_modes);
@@ -586,6 +601,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   /* Update "default" mode with the global bar options */
   from_json(config, configured_modes[MODE_DEFAULT]);
+
+  auto autohide_enabled = config["autohide"].isBool() ? config["autohide"].asBool() : false;
+  auto autohide_starthidden = autohide_enabled && ( config["autohide-starthidden"].isBool() ? config["autohide-starthidden"].asBool() : false);
 
   if (auto mode = config.get("mode", {}); mode.isString()) {
     setMode(config["mode"].asString());
@@ -613,7 +631,16 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 #endif
 
   setupWidgets();
-  window.show_all();
+
+  if(autohide_enabled) setupAutohide();
+
+  if(autohide_starthidden) {
+    window.hide();
+    hotspotWindow.show_all();
+  } else {
+    hotspotWindow.hide();
+    window.show_all();
+  }
 
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
@@ -682,6 +709,59 @@ void waybar::Bar::setVisible(bool value) {
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
+
+auto waybar::Bar::showMainbar(GtkWidget* widget, const gchar* h, gpointer user_data) -> void {
+  auto curbar = static_cast<Bar*>(user_data);
+  curbar->autohide_mutex.lock();
+
+  // Delete timeout callbacks;
+  auto tag = curbar->autohide_timeout_handle.load();
+  if(tag !=0 && g_source_remove(tag)) {
+    spdlog::debug("removed autohide timeout handle in showMainbar: {}",tag);
+    curbar->autohide_timeout_handle.store(0);
+  }
+
+  spdlog::debug("hotspot: off; bar: on");
+  if(!curbar->window.is_visible()) curbar->window.show_all();
+  if(curbar->hotspotWindow.is_visible()) curbar->hotspotWindow.hide();
+
+  curbar->autohide_mutex.unlock();
+}
+
+auto waybar::Bar::hideMainbarCallback(gpointer user_data) -> void {
+  auto curbar = static_cast<Bar*>(user_data);
+  curbar->autohide_mutex.lock();
+
+  spdlog::debug("hotspot: on; bar: off");
+  if(!curbar->hotspotWindow.is_visible()) curbar->hotspotWindow.show_all();
+  if(curbar->window.is_visible())curbar->window.hide();
+
+  curbar->autohide_timeout_handle.store(0);
+  curbar->autohide_mutex.unlock();
+}
+
+auto waybar::Bar::hideMainbar(GtkWidget* widget, const char* h, gpointer user_data) -> void {
+  auto curbar = static_cast<Bar*>(user_data);
+  curbar->autohide_mutex.lock();
+  auto tag = curbar->autohide_timeout_handle.load();
+  if(tag !=0 && g_source_remove(tag)) {
+    spdlog::debug("removed timeout handle in hideMainbar: {}",tag);
+    curbar->autohide_timeout_handle.store(0);
+  } else {
+    curbar->autohide_timeout_handle.store(g_timeout_add_once(curbar->autohide_delay_ms.load(),GSourceOnceFunc(hideMainbarCallback),curbar));
+  }
+  curbar->autohide_mutex.unlock();
+}
+
+void waybar::Bar::setupAutohide() {
+  this->autohide_timeout_handle.store(0);
+  this->autohide_delay_ms.store(config["autohide-delay"].isUInt() ? config["autohide-delay"].asUInt() : 0);
+
+  gtk_layer_set_layer(hotspotWindow.gobj(), GTK_LAYER_SHELL_LAYER_OVERLAY);
+  gtk_layer_set_exclusive_zone(hotspotWindow.gobj(), 0);
+  g_signal_connect(hotspotWindow.gobj(), "enter-notify-event", G_CALLBACK(&showMainbar), this);
+  g_signal_connect(window.gobj(), "leave-notify-event", G_CALLBACK(&hideMainbar), this);
+}
 
 // Converting string to button code rn as to avoid doing it later
 void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {

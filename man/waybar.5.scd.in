@@ -118,6 +118,22 @@ modifier-reset ++
 	typeof: string ++
 	*bar_id* for the Sway IPC. Use this if you need to override the value passed with the *-b bar_id* commandline argument for the specific bar instance.
 
+*autohide* ++
+	typeof: bool ++
+	default: false ++
+	Option to specify whether bar must autohide.
+	Use *autohide-delay* and *autohide-starthidden* to customize autohide.
+
+*autohide-delay* ++
+	typeof: integer ++
+	default: 0 ++
+	Time in milliseconds after which the bar must autohide if cursor is no longer over the bar.
+
+*autohide-starthidden* ++
+	typeof: bool ++
+	default: false ++
+	Option to specify whether the bar must start in hidden state if *autohide* option is true.
+	
 *include* ++
 	typeof: string|array ++
 	Paths to additional configuration files.
