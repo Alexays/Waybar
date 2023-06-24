@@ -210,22 +210,34 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value 
 
 auto WorkspaceGroup::fill_persistent_workspaces() -> void {
   if (config_["persistent_workspaces"].isObject() && !workspace_manager_.all_outputs()) {
-    const Json::Value &p_workspaces = config_["persistent_workspaces"];
-    const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
+    const Json::Value &pWorkspaces = config_["persistent_workspaces"];
+    const std::vector<std::string> keys = pWorkspaces.getMemberNames();
 
-    for (const std::string &p_w_name : p_workspaces_names) {
-      const Json::Value &p_w = p_workspaces[p_w_name];
-      if (p_w.isArray() && !p_w.empty()) {
-        // Adding to target outputs
-        for (const Json::Value &output : p_w) {
+    for (const std::string &key : keys) {
+      const Json::Value &value = pWorkspaces[key];
+
+      if (value.isNumeric()) {
+        // value == amount of workspaces this workspace should have
+        uint32_t monitorId = 0;  // TEMP: how to get monitor ID from output name, that matches Hyprland's ID?
+        if ((key == "*" && std::find(keys.begin(), keys.end(), bar_.output->name) == keys.end()) ||
+            key == bar_.output->name) {
+          // 1. * == default amount of workspaces (only add if the current bar's output is not in the keys)
+          // 2. or the key is the current bar's output
+          for (int i = 0; i < value.asInt(); ++i) {
+            persistent_workspaces_.push_back(std::to_string((monitorId * value.asInt()) + i + 1));
+          }
+        }
+      } else if (value.isArray() && !value.empty()) {
+        // value == array of outputs this workspace should be on
+        for (const Json::Value &output : value) {
           if (output.asString() == bar_.output->name) {
-            persistent_workspaces_.push_back(p_w_name);
+            persistent_workspaces_.push_back(key);
             break;
           }
         }
       } else {
         // Adding to all outputs
-        persistent_workspaces_.push_back(p_w_name);
+        persistent_workspaces_.push_back(key);
       }
     }
   }
