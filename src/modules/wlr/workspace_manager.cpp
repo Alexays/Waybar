@@ -216,7 +216,7 @@ auto WorkspaceGroup::fill_persistent_workspaces() -> void {
     for (const std::string &key : keys) {
       const Json::Value &value = pWorkspaces[key];
 
-      if (value.isNumeric()) {
+      if (value.isNumeric() && value.asInt() > 0) {
         // value == amount of workspaces this workspace should have
         uint32_t monitorId = 0;  // TEMP: how to get monitor ID from output name, that matches Hyprland's ID?
         if ((key == "*" && std::find(keys.begin(), keys.end(), bar_.output->name) == keys.end()) ||
