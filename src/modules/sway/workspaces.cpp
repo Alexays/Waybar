@@ -235,7 +235,8 @@ auto Workspaces::update() -> void {
       auto format = config_["format"].asString();
       output = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)),
                            fmt::arg("value", output), fmt::arg("name", trimWorkspaceName(output)),
-                           fmt::arg("index", (*it)["num"].asString()));
+                           fmt::arg("index", (*it)["num"].asString()),
+                           fmt::arg("output", (*it)["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
       static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
