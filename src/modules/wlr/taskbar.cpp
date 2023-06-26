@@ -506,11 +506,11 @@ void Task::handle_closed() {
   spdlog::debug("{} closed", repr());
   zwlr_foreign_toplevel_handle_v1_destroy(handle_);
   handle_ = nullptr;
+  tbar_->remove_task(id_);
   if (button_visible_) {
     tbar_->remove_button(button);
     button_visible_ = false;
   }
-  tbar_->remove_task(id_);
 }
 
 bool Task::handle_clicked(GdkEventButton *bt) {
@@ -710,6 +710,7 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
   struct wl_display *display = Client::inst()->wl_display;
@@ -862,11 +863,19 @@ void Taskbar::handle_finished() {
   manager_ = nullptr;
 }
 
-void Taskbar::add_button(Gtk::Button &bt) { box_.pack_start(bt, false, false); }
+void Taskbar::add_button(Gtk::Button &bt) {
+  box_.pack_start(bt, false, false);
+  box_.get_style_context()->remove_class("empty");
+}
 
 void Taskbar::move_button(Gtk::Button &bt, int pos) { box_.reorder_child(bt, pos); }
 
-void Taskbar::remove_button(Gtk::Button &bt) { box_.remove(bt); }
+void Taskbar::remove_button(Gtk::Button &bt) {
+  box_.remove(bt);
+  if (tasks_.empty()) {
+    box_.get_style_context()->add_class("empty");
+  }
+}
 
 void Taskbar::remove_task(uint32_t id) {
   auto it = std::find_if(std::begin(tasks_), std::end(tasks_),
