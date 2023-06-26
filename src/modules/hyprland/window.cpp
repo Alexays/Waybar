@@ -4,12 +4,12 @@
 
 #include <algorithm>
 #include <regex>
+#include <util/sanitize_str.hpp>
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 #include "util/rewrite_string.hpp"
-#include <util/sanitize_str.hpp>
 
 namespace waybar::modules::hyprland {
 
@@ -54,7 +54,6 @@ auto Window::update() -> void {
     last_title_ = window_name;
   }
 
-
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(fmt::format(fmt::runtime(format_),
@@ -62,7 +61,6 @@ auto Window::update() -> void {
   } else {
     label_.hide();
   }
-
 
   setClass("empty", workspace_.windows == 0);
   setClass("solo", solo_);
@@ -117,12 +115,8 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
 }
 
 auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
-  return Workspace{
-    value["id"].asInt(),
-    value["windows"].asInt(),
-    value["lastwindow"].asString(),
-    value["lastwindowtitle"].asString()
-  };
+  return Workspace{value["id"].asInt(), value["windows"].asInt(), value["lastwindow"].asString(),
+                   value["lastwindowtitle"].asString()};
 }
 
 void Window::queryActiveWorkspace() {
@@ -134,13 +128,13 @@ void Window::queryActiveWorkspace() {
     workspace_ = getActiveWorkspace();
   }
 
-
   if (workspace_.windows > 0) {
     const auto clients = gIPC->getSocket1Reply("j/clients");
     Json::Value json = parser_.parse(clients);
     assert(json.isArray());
-    auto active_window = std::find_if(json.begin(), json.end(),
-                                      [&](Json::Value window) { return window["address"] == workspace_.last_window; });
+    auto active_window = std::find_if(json.begin(), json.end(), [&](Json::Value window) {
+      return window["address"] == workspace_.last_window;
+    });
     if (active_window == std::end(json)) {
       return;
     }
@@ -152,8 +146,9 @@ void Window::queryActiveWorkspace() {
     }
     std::vector<Json::Value> workspace_windows;
     std::copy_if(json.begin(), json.end(), std::back_inserter(workspace_windows),
-                 [&](Json::Value window) { return window["workspace"]["id"] == workspace_.id &&
-                                                  window["mapped"].asBool(); });
+                 [&](Json::Value window) {
+                   return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
+                 });
     solo_ = 1 == std::count_if(workspace_windows.begin(), workspace_windows.end(),
                                [&](Json::Value window) { return !window["floating"].asBool(); });
     all_floating_ = std::all_of(workspace_windows.begin(), workspace_windows.end(),
@@ -172,7 +167,6 @@ void Window::onEvent(const std::string& ev) {
 
   dp.emit();
 }
-
 
 void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {
