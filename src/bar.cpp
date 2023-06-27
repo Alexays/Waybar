@@ -569,6 +569,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
 
+  auto autohide_enabled = config["autohide"].isBool() ? config["autohide"].asBool() : false;
+  auto autohide_starthidden = autohide_enabled && ( config["autohide-starthidden"].isBool() ? config["autohide-starthidden"].asBool() : false);
+
 #ifdef HAVE_GTK_LAYER_SHELL
   bool use_gls = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
   if (use_gls) {
@@ -579,6 +582,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   {
     surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
     hotspotsurface_impl_ = std::make_unique<RawSurfaceImpl>(hotspotWindow, *output);
+    if(autohide_enabled) {
+      spdlog::info("Autohide can't be enabled because this build isn't compiled with gtk-layer-shell");
+      autohide_enabled = false;
+    }
   }
 
   surface_impl_->setMargins(margins_);
@@ -600,9 +607,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   /* Update "default" mode with the global bar options */
   from_json(config, configured_modes[MODE_DEFAULT]);
-
-  auto autohide_enabled = config["autohide"].isBool() ? config["autohide"].asBool() : false;
-  auto autohide_starthidden = autohide_enabled && ( config["autohide-starthidden"].isBool() ? config["autohide-starthidden"].asBool() : false);
 
   if (auto mode = config.get("mode", {}); mode.isString()) {
     setMode(config["mode"].asString());
