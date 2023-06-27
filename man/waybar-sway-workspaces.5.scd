@@ -87,6 +87,8 @@ Addressed by *sway/workspaces*
 
 *{index}*: Index of the workspace.
 
+*{output}*: Output where the workspace is located.
+
 # ICONS
 
 Additional to workspace name matching, the following *format-icons* can be set.
