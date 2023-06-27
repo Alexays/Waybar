@@ -10,8 +10,6 @@
 
 #include <memory>
 #include <vector>
-#include <atomic>
-#include <mutex>
 
 #include "AModule.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
