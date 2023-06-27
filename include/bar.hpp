@@ -106,9 +106,9 @@ class Bar {
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
-  static void showMainbar(GtkWidget * widget, const gchar* h,  gpointer data);
-  static void hideMainbar(GtkWidget * widget, const gchar* h, gpointer data);
-  static void hideMainbarCallback(gpointer data);
+  void showMainbar(GdkEventCrossing* ev);
+  void hideMainbar(GdkEventCrossing* ev);
+  bool hideMainbarCallback();
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
@@ -129,9 +129,8 @@ class Bar {
 #endif
   std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
 
-  std::atomic<unsigned int> autohide_delay_ms = 0;
-  std::mutex autohide_mutex;
-  std::atomic<guint> autohide_timeout_handle;
+  unsigned int autohide_delay_ms = 0;
+  sigc::connection autohide_connection;
 };
 
 }  // namespace waybar
