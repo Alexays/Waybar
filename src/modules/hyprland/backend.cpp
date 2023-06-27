@@ -198,4 +198,8 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   return response;
 }
 
+Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
+  return parser_.parse(getSocket1Reply("j/" + rq));
+}
+
 }  // namespace waybar::modules::hyprland
