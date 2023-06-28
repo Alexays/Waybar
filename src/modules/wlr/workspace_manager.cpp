@@ -12,6 +12,8 @@
 #include "client.hpp"
 #include "gtkmm/widget.h"
 #include "modules/wlr/workspace_manager_binding.hpp"
+#include "modules/hyprland/backend.hpp"
+#include "util/json.hpp"
 
 namespace waybar::modules::wlr {
 
@@ -213,17 +215,39 @@ auto WorkspaceGroup::fill_persistent_workspaces() -> void {
     const Json::Value &pWorkspaces = config_["persistent_workspaces"];
     const std::vector<std::string> keys = pWorkspaces.getMemberNames();
 
+    if (!hyprland::gIPC){
+      hyprland::gIPC = std::make_unique<hyprland::IPC>();
+    }
+    
+    util::JsonParser jsonParser;
+
+
     for (const std::string &key : keys) {
       const Json::Value &value = pWorkspaces[key];
 
       if (value.isNumeric() && value.asInt() > 0) {
         // value == amount of workspaces this workspace should have
-        uint32_t monitorId = 0;  // TEMP: how to get monitor ID from output name, that matches Hyprland's ID?
         if ((key == "*" && std::find(keys.begin(), keys.end(), bar_.output->name) == keys.end()) ||
             key == bar_.output->name) {
           // 1. * == default amount of workspaces (only add if the current bar's output is not in the keys)
           // 2. or the key is the current bar's output
+          uint32_t monitorId = 0;
+          // get the monitorID through the hyprland IPC
+          auto monitors = hyprland::gIPC->getSocket1Reply("j/monitors");
+          auto json = jsonParser.parse(monitors);
+          assert (json.isArray());
+          auto monitorID = std::find_if(json.begin(), json.end(), 
+            [this](const Json::Value& monitor) {
+              return monitor["name"] == bar_.output->name;
+            });
+          if (monitorID == std::end(json)) {
+            spdlog::warn("Can't find monitor with name {}", bar_.output->name);
+            continue;
+          }
+          monitorId = (*monitorID)["id"].asInt();
+          spdlog::info("Monitor {} has id {}", bar_.output->name, monitorId);
           for (int i = 0; i < value.asInt(); ++i) {
+            spdlog::info("Adding workspace {} to monitor {}", (monitorId * value.asInt()) + i + 1, bar_.output->name);
             persistent_workspaces_.push_back(std::to_string((monitorId * value.asInt()) + i + 1));
           }
         }
@@ -535,7 +559,8 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
   if (action.empty())
     return true;
   else if (action == "activate") {
-    zext_workspace_handle_v1_activate(workspace_handle_);
+    const std::string command = "hyprctl dispatch workspace " + name_;
+    system(command.c_str());
   } else if (action == "close") {
     zext_workspace_handle_v1_remove(workspace_handle_);
   } else {
