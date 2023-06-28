@@ -582,10 +582,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   {
     surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
     hotspotsurface_impl_ = std::make_unique<RawSurfaceImpl>(hotspotWindow, *output);
-    if(autohide_enabled) {
-      spdlog::info("Autohide can't be enabled because this build isn't compiled with gtk-layer-shell");
-      autohide_enabled = false;
-    }
   }
 
   surface_impl_->setMargins(margins_);
@@ -736,12 +732,11 @@ void waybar::Bar::setupAutohide() {
   this->autohide_connection.disconnect();
   this->autohide_delay_ms = config["autohide-delay"].isUInt() ? config["autohide-delay"].asUInt() : 0;
 
-  gtk_layer_set_layer(hotspotWindow.gobj(), GTK_LAYER_SHELL_LAYER_OVERLAY);
-  gtk_layer_set_exclusive_zone(hotspotWindow.gobj(), 0);
+  hotspotsurface_impl_->setLayer(bar_layer::OVERLAY);
+  hotspotsurface_impl_->setExclusiveZone(true);
 
   hotspotWindow.signal_enter_notify_event().connect_notify(sigc::mem_fun(*this, &waybar::Bar::showMainbar));
   window.signal_leave_notify_event().connect_notify(sigc::mem_fun(*this, &waybar::Bar::hideMainbar));
-
 }
 
 // Converting string to button code rn as to avoid doing it later
