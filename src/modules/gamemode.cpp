@@ -16,9 +16,10 @@
 #include "glibmm/ustring.h"
 #include "glibmm/variant.h"
 #include "glibmm/varianttype.h"
-#include "gtkmm/icontheme.h"
 #include "gtkmm/label.h"
 #include "gtkmm/tooltip.h"
+
+#include "util/gtk_icon.hpp"
 
 namespace waybar::modules {
 Gamemode::Gamemode(const std::string& id, const Json::Value& config)
@@ -224,7 +225,7 @@ auto Gamemode::update() -> void {
   label_.set_markup(str);
 
   if (useIcon) {
-    if (!Gtk::IconTheme::get_default()->has_icon(iconName)) {
+    if (!DefaultGtkIconThemeWrapper::has_icon(iconName)) {
       iconName = DEFAULT_ICON_NAME;
     }
     icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
