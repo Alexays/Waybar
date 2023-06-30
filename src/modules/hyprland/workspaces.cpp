@@ -74,7 +74,7 @@ void Workspaces::onEvent(const std::string &ev) {
     int new_workspace_id;
     std::from_chars(payload.data(), payload.data() + payload.size(), new_workspace_id);
     workspaces_.push_back(new_workspace_id);
-    Gtk::Button& new_workspace_button = workspaces_.back().button();
+    Gtk::Button &new_workspace_button = workspaces_.back().button();
     box_.pack_end(new_workspace_button, false, false);
     sort_workspaces();
     new_workspace_button.show_all();
