@@ -480,6 +480,15 @@ if scdoc.found()
     endforeach
 endif
 
+catch2 = dependency(
+    'catch2',
+    version: '>=2.0.0',
+    fallback: ['catch2', 'catch2_dep'],
+    required: get_option('tests'),
+)
+if catch2.found()
+    subdir('test')
+endif
 
 clangtidy = find_program('clang-tidy', required: false)
 
