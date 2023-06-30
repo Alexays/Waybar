@@ -7,17 +7,27 @@
 
 namespace waybar::modules::hyprland {
 
+struct WorkspaceDto {
+  int id;
+
+  static WorkspaceDto parse(const Json::Value& value);
+};
+
 class Workspace {
  public:
   Workspace(int id);
-  int id() { return id_; };
+  Workspace(WorkspaceDto dto);
+  int id() const { return id_; };
+  int active() const { return active_; };
+  std::string& select_icon(std::map<std::string, std::string>& icons_map);
+  void set_active(bool value = true) { active_ = value; };
   Gtk::Button& button() { return button_; };
 
-  static Workspace parse(const Json::Value&);
-  void update();
+  void update(const std::string& format, const std::string& icon);
 
  private:
   int id_;
+  bool active_;
 
   Gtk::Button button_;
   Gtk::Box content_;
@@ -33,9 +43,13 @@ class Workspaces : public AModule, public EventHandler {
 
  private:
   void onEvent(const std::string&) override;
+  void sort_workspaces();
 
-  std::vector<Workspace> workspaces;
-
+  std::string format_;
+  std::map<std::string, std::string> icons_map_;
+  bool with_icon_;
+  int active_workspace_id;
+  std::vector<Workspace> workspaces_;
   std::mutex mutex_;
   const Bar& bar_;
   Gtk::Box box_;
