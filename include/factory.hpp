@@ -31,6 +31,7 @@
 #include "modules/hyprland/language.hpp"
 #include "modules/hyprland/submap.hpp"
 #include "modules/hyprland/window.hpp"
+#include "modules/hyprland/workspaces.hpp"
 #endif
 #if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
 #include "modules/battery.hpp"
