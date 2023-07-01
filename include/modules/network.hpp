@@ -78,7 +78,6 @@ class Network : public ALabel {
   int32_t signal_strength_dbm_;
   uint8_t signal_strength_;
   std::string signal_strength_app_;
-  float frequency_;
   uint32_t route_priority;
 
   util::SleeperThread thread_;
@@ -86,6 +85,7 @@ class Network : public ALabel {
 #ifdef WANT_RFKILL
   util::Rfkill rfkill_;
 #endif
+  float frequency_;
 };
 
 }  // namespace waybar::modules

@@ -91,11 +91,10 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       cidr_(0),
       signal_strength_dbm_(0),
       signal_strength_(0),
-      frequency_(0.0),
 #ifdef WANT_RFKILL
-      rfkill_{RFKILL_TYPE_WLAN}
+      rfkill_{RFKILL_TYPE_WLAN},
 #endif
-{
+      frequency_(0.0), {
 
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
