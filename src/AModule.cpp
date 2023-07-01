@@ -121,9 +121,9 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
       }
 
       if (distance_scrolled_y_ < -threshold) {
-        dir = SCROLL_DIR::UP;
+        dir = reverse ? SCROLL_DIR::DOWN : SCROLL_DIR::UP;
       } else if (distance_scrolled_y_ > threshold) {
-        dir = SCROLL_DIR::DOWN;
+        dir = reverse ? SCROLL_DIR::UP : SCROLL_DIR::DOWN;
       } else if (distance_scrolled_x_ > threshold) {
         dir = SCROLL_DIR::RIGHT;
       } else if (distance_scrolled_x_ < -threshold) {
