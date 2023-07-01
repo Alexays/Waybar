@@ -7,8 +7,8 @@
 
 #include <cstring>
 #include <memory>
-#include <stdexcept>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 
 #include "ipc.hpp"

@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+
 #include "util/json.hpp"
 
 namespace waybar::modules::hyprland {
