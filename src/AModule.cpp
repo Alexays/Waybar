@@ -100,6 +100,12 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
   // only affects up/down
   bool reverse = config_["reverse-scrolling"].asBool();
 
+  // ignore reverse-scrolling if event comes from a mouse wheel
+  GdkDevice* device = gdk_event_get_source_device((GdkEvent *)e);
+  if (device != NULL && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
+    reverse = false;
+  }
+
   switch (e->direction) {
     case GDK_SCROLL_UP:
       return reverse ? SCROLL_DIR::DOWN : SCROLL_DIR::UP;
