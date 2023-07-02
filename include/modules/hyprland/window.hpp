@@ -40,6 +40,7 @@ class Window : public waybar::ALabel, public EventHandler {
   std::string last_solo_class_;
   bool solo_;
   bool all_floating_;
+  bool hidden_;
   bool fullscreen_;
 };
 

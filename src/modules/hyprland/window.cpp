@@ -64,8 +64,9 @@ auto Window::update() -> void {
 
   setClass("empty", workspace_.windows == 0);
   setClass("solo", solo_);
-  setClass("fullscreen", fullscreen_);
   setClass("floating", all_floating_);
+  setClass("hidden", hidden_);
+  setClass("fullscreen", fullscreen_);
 
   if (!last_solo_class_.empty() && solo_class_ != last_solo_class_) {
     if (bar_.window.get_style_context()->has_class(last_solo_class_)) {
@@ -126,36 +127,43 @@ void Window::queryActiveWorkspace() {
   }
 
   if (workspace_.windows > 0) {
-    const auto clients = gIPC->getSocket1Reply("j/clients");
-    Json::Value json = parser_.parse(clients);
-    assert(json.isArray());
-    auto active_window = std::find_if(json.begin(), json.end(), [&](Json::Value window) {
+    const auto clients = gIPC->getSocket1JsonReply("clients");
+    assert(clients.isArray());
+    auto active_window = std::find_if(clients.begin(), clients.end(), [&](Json::Value window) {
       return window["address"] == workspace_.last_window;
     });
-    if (active_window == std::end(json)) {
+    if (active_window == std::end(clients)) {
       return;
     }
 
-    if (workspace_.windows == 1 && !(*active_window)["floating"].asBool()) {
-      solo_class_ = (*active_window)["class"].asString();
-    } else {
-      solo_class_ = "";
-    }
     std::vector<Json::Value> workspace_windows;
-    std::copy_if(json.begin(), json.end(), std::back_inserter(workspace_windows),
+    std::copy_if(clients.begin(), clients.end(), std::back_inserter(workspace_windows),
                  [&](Json::Value window) {
                    return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
                  });
     solo_ = 1 == std::count_if(workspace_windows.begin(), workspace_windows.end(),
-                               [&](Json::Value window) { return !window["floating"].asBool(); });
+                               [&](Json::Value window) { return !window["floating"].asBool() && !window["hidden"].asBool(); });
     all_floating_ = std::all_of(workspace_windows.begin(), workspace_windows.end(),
-                                [&](Json::Value window) { return window["floating"].asBool(); });
+                                [&](Json::Value window) { return window["floating"].asBool() && !window["hidden"].asBool(); });
+    hidden_ = std::any_of(workspace_windows.begin(), workspace_windows.end(),
+                                [&](Json::Value window) { return window["hidden"].asBool(); });
     fullscreen_ = (*active_window)["fullscreen"].asBool();
+
+    if (fullscreen_) {
+      solo_ = true;
+    }
+
+    if (solo_) {
+      solo_class_ = (*active_window)["class"].asString();
+    } else {
+      solo_class_ = "";
+    }
   } else {
-    solo_class_ = "";
-    solo_ = false;
     all_floating_ = false;
+    hidden_ = false;
     fullscreen_ = false;
+    solo_ = false;
+    solo_class_ = "";
   }
 }
 
