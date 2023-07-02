@@ -81,6 +81,10 @@ Addressed by *wlr/taskbar*
 	typeof: object ++
 	Dictionary of app_id to be replaced with
 
+*rewrite*: ++
+	typeof: object ++
+	Rules to rewrite the module format output. See *rewrite rules*.
+
 # FORMAT REPLACEMENTS
 
 *{icon}*: The icon of the application.
@@ -109,6 +113,18 @@ Addressed by *wlr/taskbar*
 
 *close*: Close the application.
 
+# REWRITE RULES
+
+*rewrite* is an object where keys are regular expressions and values are
+rewrite rules if the expression matches. Rules may contain references to
+captures of the expression.
+
+Regular expression and replacement follow ECMA-script rules.
+
+If no expression matches, the format output is left unchanged.
+
+Invalid expressions (e.g., mismatched parentheses) are skipped.
+
 # EXAMPLES
 
 ```
@@ -124,7 +140,11 @@ Addressed by *wlr/taskbar*
 	],
 	"app_ids-mapping": {
 		"firefoxdeveloperedition": "firefox-developer-edition"
-	}
+	},
+	"rewrite": {
+      "Firefox Web Browser": "Firefox",
+      "Foot Server": "Terminal"
+    }
 }
 ```
 
