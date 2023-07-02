@@ -15,6 +15,7 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       pending_plugins_(0),
       muted_(false),
       volume_(0.0),
+      min_step_(0.0),
       node_id_(0) {
   wp_init(WP_INIT_PIPEWIRE);
   wp_core_ = wp_core_new(NULL, NULL);
@@ -39,6 +40,9 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
   activatePlugins();
 
   dp.emit();
+
+  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Wireplumber::handleScroll));
 }
 
 waybar::modules::Wireplumber::~Wireplumber() {
@@ -83,7 +87,6 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
 
 void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* self, uint32_t id) {
   spdlog::debug("[{}]: updating volume", self->name_);
-  double vol;
   GVariant* variant = NULL;
 
   if (!isValidNodeId(id)) {
@@ -99,11 +102,11 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
     throw std::runtime_error(err);
   }
 
-  g_variant_lookup(variant, "volume", "d", &vol);
+  g_variant_lookup(variant, "volume", "d", &self->volume_);
+  g_variant_lookup(variant, "step", "d", &self->min_step_);
   g_variant_lookup(variant, "mute", "b", &self->muted_);
   g_clear_pointer(&variant, g_variant_unref);
 
-  self->volume_ = std::round(vol * 100.0F);
   self->dp.emit();
 }
 
@@ -280,11 +283,12 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("muted");
   }
 
+  int vol = round(volume_ * 100.0);
   std::string markup = fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_),
-                                   fmt::arg("volume", volume_), fmt::arg("icon", getIcon(volume_)));
+                                   fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol)));
   label_.set_markup(markup);
 
-  getState(volume_);
+  getState(vol);
 
   if (tooltipEnabled()) {
     if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
@@ -292,9 +296,9 @@ auto waybar::modules::Wireplumber::update() -> void {
     }
 
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_text(
-          fmt::format(fmt::runtime(tooltip_format), fmt::arg("node_name", node_name_),
-                      fmt::arg("volume", volume_), fmt::arg("icon", getIcon(volume_))));
+      label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
+                                          fmt::arg("node_name", node_name_),
+                                          fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol))));
     } else {
       label_.set_tooltip_text(node_name_);
     }
@@ -302,4 +306,50 @@ auto waybar::modules::Wireplumber::update() -> void {
 
   // Call parent update
   ALabel::update();
+}
+
+bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+  if (config_["reverse-scrolling"].asInt() == 1) {
+    if (dir == SCROLL_DIR::UP) {
+      dir = SCROLL_DIR::DOWN;
+    } else if (dir == SCROLL_DIR::DOWN) {
+      dir = SCROLL_DIR::UP;
+    }
+  }
+  double max_volume = 1;
+  double step = 1.0 / 100.0;
+  if (config_["scroll-step"].isDouble()) {
+    step = config_["scroll-step"].asDouble() / 100.0;
+  }
+  if (config_["max-volume"].isDouble()) {
+    max_volume = config_["max-volume"].asDouble() / 100.0;
+  }
+
+  if (step < min_step_) step = min_step_;
+
+  double new_vol = volume_;
+  if (dir == SCROLL_DIR::UP) {
+    if (volume_ < max_volume) {
+      new_vol = volume_ + step;
+      if (new_vol > max_volume) new_vol = max_volume;
+    }
+  } else if (dir == SCROLL_DIR::DOWN) {
+    if (volume_ > 0) {
+      new_vol = volume_ - step;
+      if (new_vol < 0) new_vol = 0;
+    }
+  }
+  if (new_vol != volume_) {
+    GVariant* variant = g_variant_new_double(new_vol);
+    gboolean ret;
+    g_signal_emit_by_name(mixer_api_, "set-volume", node_id_, variant, &ret);
+  }
+  return true;
 }

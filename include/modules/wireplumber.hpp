@@ -27,6 +27,8 @@ class Wireplumber : public ALabel {
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
 
+  bool handleScroll(GdkEventScroll* e) override;
+
   WpCore* wp_core_;
   GPtrArray* apis_;
   WpObjectManager* om_;
@@ -36,6 +38,7 @@ class Wireplumber : public ALabel {
   uint32_t pending_plugins_;
   bool muted_;
   double volume_;
+  double min_step_;
   uint32_t node_id_{0};
   std::string node_name_;
 };
