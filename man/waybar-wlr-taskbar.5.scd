@@ -142,9 +142,9 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 		"firefoxdeveloperedition": "firefox-developer-edition"
 	},
 	"rewrite": {
-      "Firefox Web Browser": "Firefox",
-      "Foot Server": "Terminal"
-    }
+		"Firefox Web Browser": "Firefox",
+		"Foot Server": "Terminal"
+	}
 }
 ```
 
