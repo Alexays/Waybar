@@ -68,8 +68,10 @@ void Workspaces::onEvent(const std::string &ev) {
   } else if (eventName == "destroyworkspace") {
     int deleted_workspace_id;
     std::from_chars(payload.data(), payload.data() + payload.size(), deleted_workspace_id);
-    workspaces_.erase(std::remove_if(workspaces_.begin(), workspaces_.end(),
-                                     [&](Workspace &x) { return x.id() == deleted_workspace_id; }));
+    auto workspace = std::find_if(workspaces_.begin(), workspaces_.end(),
+                                  [&](Workspace &x) { return x.id() == deleted_workspace_id; });
+    box_.remove(workspace->button());
+    workspaces_.erase(workspace);
   } else if (eventName == "createworkspace") {
     int new_workspace_id;
     std::from_chars(payload.data(), payload.data() + payload.size(), new_workspace_id);

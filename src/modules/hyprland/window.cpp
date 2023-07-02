@@ -84,30 +84,27 @@ auto Window::update() -> void {
 }
 
 auto Window::getActiveWorkspace() -> Workspace {
-  const auto workspace = gIPC->getSocket1Reply("j/activeworkspace");
-  Json::Value json = parser_.parse(workspace);
-  assert(json.isObject());
-  return Workspace::parse(json);
+  const auto workspace = gIPC->getSocket1JsonReply("activeworkspace");
+  assert(workspace.isObject());
+  return Workspace::parse(workspace);
 }
 
 auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
-  const auto monitors = gIPC->getSocket1Reply("j/monitors");
-  Json::Value json = parser_.parse(monitors);
-  assert(json.isArray());
-  auto monitor = std::find_if(json.begin(), json.end(),
+  const auto monitors = gIPC->getSocket1JsonReply("monitors");
+  assert(monitors.isArray());
+  auto monitor = std::find_if(monitors.begin(), monitors.end(),
                               [&](Json::Value monitor) { return monitor["name"] == monitorName; });
-  if (monitor == std::end(json)) {
+  if (monitor == std::end(monitors)) {
     spdlog::warn("Monitor not found: {}", monitorName);
     return Workspace{-1, 0, "", ""};
   }
   const int id = (*monitor)["activeWorkspace"]["id"].asInt();
 
-  const auto workspaces = gIPC->getSocket1Reply("j/workspaces");
-  json = parser_.parse(workspaces);
-  assert(json.isArray());
-  auto workspace = std::find_if(json.begin(), json.end(),
+  const auto workspaces = gIPC->getSocket1JsonReply("workspaces");
+  assert(workspaces.isArray());
+  auto workspace = std::find_if(monitors.begin(), monitors.end(),
                                 [&](Json::Value workspace) { return workspace["id"] == id; });
-  if (workspace == std::end(json)) {
+  if (workspace == std::end(monitors)) {
     spdlog::warn("No workspace with id {}", id);
     return Workspace{-1, 0, "", ""};
   }
