@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <memory>
 #include <string>
 
 namespace waybar::modules::hyprland {
@@ -45,22 +46,34 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 }
 
 auto Workspaces::update() -> void {
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (Workspace &workspace : workspaces_) {
-    workspace.set_active(workspace.id() == active_workspace_id);
+  for (int &workspace_to_remove : workspaces_to_remove_) {
+    remove_workspace(workspace_to_remove);
+  }
+
+  workspaces_to_remove_.clear();
+
+  for (int &workspace_to_create : workspaces_to_create_) {
+    create_workspace(workspace_to_create);
+  }
+
+  workspaces_to_create_.clear();
+
+  for (std::unique_ptr<Workspace> &workspace : workspaces_) {
+    workspace->set_active(workspace->id() == active_workspace_id);
 
     std::string &workspace_icon = icons_map_[""];
     if (with_icon_) {
-      workspace_icon = workspace.select_icon(icons_map_);
+      workspace_icon = workspace->select_icon(icons_map_);
     }
 
-    workspace.update(format_, workspace_icon);
+    workspace->update(format_, workspace_icon);
   }
 
   AModule::update();
 }
 
 void Workspaces::onEvent(const std::string &ev) {
+  std::lock_guard<std::mutex> lock(mutex_);
   std::string eventName(begin(ev), begin(ev) + ev.find_first_of('>'));
   std::string payload = ev.substr(eventName.size() + 2);
   if (eventName == "workspace") {
@@ -68,21 +81,36 @@ void Workspaces::onEvent(const std::string &ev) {
   } else if (eventName == "destroyworkspace") {
     int deleted_workspace_id;
     std::from_chars(payload.data(), payload.data() + payload.size(), deleted_workspace_id);
-    auto workspace = std::find_if(workspaces_.begin(), workspaces_.end(),
-                                  [&](Workspace &x) { return x.id() == deleted_workspace_id; });
-    box_.remove(workspace->button());
-    workspaces_.erase(workspace);
+    workspaces_to_remove_.push_back(deleted_workspace_id);
   } else if (eventName == "createworkspace") {
     int new_workspace_id;
     std::from_chars(payload.data(), payload.data() + payload.size(), new_workspace_id);
-    workspaces_.push_back(new_workspace_id);
-    Gtk::Button &new_workspace_button = workspaces_.back().button();
-    box_.pack_end(new_workspace_button, false, false);
-    sort_workspaces();
-    new_workspace_button.show_all();
+    workspaces_to_create_.push_back(new_workspace_id);
   }
 
   dp.emit();
+}
+
+void Workspaces::create_workspace(int id) {
+  workspaces_.push_back(std::make_unique<Workspace>(id));
+  Gtk::Button &new_workspace_button = workspaces_.back()->button();
+  box_.pack_start(new_workspace_button, false, false);
+  sort_workspaces();
+  new_workspace_button.show_all();
+}
+
+void Workspaces::remove_workspace(int id) {
+    auto workspace = std::find_if(
+        workspaces_.begin(), workspaces_.end(),
+        [&](std::unique_ptr<Workspace> &x) { return x->id() == id; });
+
+    if (workspace == workspaces_.end()) {
+      spdlog::warn("Can't find workspace with id {}", workspace->get()->id());
+      return;
+    }
+
+    box_.remove(workspace->get()->button());
+    workspaces_.erase(workspace);
 }
 
 void Workspaces::init() {
@@ -90,11 +118,12 @@ void Workspaces::init() {
   active_workspace_id = activeWorkspace.id;
   const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
   for (const Json::Value &workspace_json : workspaces_json) {
-    workspaces_.push_back(Workspace(WorkspaceDto::parse(workspace_json)));
+    workspaces_.push_back(
+        std::make_unique<Workspace>(Workspace(WorkspaceDto::parse(workspace_json))));
   }
 
   for (auto &workspace : workspaces_) {
-    box_.pack_start(workspace.button(), false, false);
+    box_.pack_start(workspace->button(), false, false);
   }
 
   sort_workspaces();
@@ -139,10 +168,12 @@ void Workspace::update(const std::string &format, const std::string &icon) {
 
 void Workspaces::sort_workspaces() {
   std::sort(workspaces_.begin(), workspaces_.end(),
-            [](Workspace &lhs, Workspace &rhs) { return lhs.id() < rhs.id(); });
+            [](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
+              return lhs->id() < rhs->id();
+            });
 
   for (size_t i = 0; i < workspaces_.size(); ++i) {
-    box_.reorder_child(workspaces_[i].button(), i);
+    box_.reorder_child(workspaces_[i]->button(), i);
   }
 }
 

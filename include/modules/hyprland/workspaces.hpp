@@ -1,5 +1,6 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
+#include <memory>
 
 #include "AModule.hpp"
 #include "bar.hpp"
@@ -44,12 +45,16 @@ class Workspaces : public AModule, public EventHandler {
  private:
   void onEvent(const std::string&) override;
   void sort_workspaces();
+  void create_workspace(int id);
+  void remove_workspace(int id);
 
   std::string format_;
   std::map<std::string, std::string> icons_map_;
   bool with_icon_;
   int active_workspace_id;
-  std::vector<Workspace> workspaces_;
+  std::vector<std::unique_ptr<Workspace>> workspaces_;
+  std::vector<int> workspaces_to_create_;
+  std::vector<int> workspaces_to_remove_;
   std::mutex mutex_;
   const Bar& bar_;
   Gtk::Box box_;
