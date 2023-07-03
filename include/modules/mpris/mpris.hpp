@@ -80,6 +80,7 @@ class Mpris : public ALabel {
   std::string lastPlayer;
 
   util::SleeperThread thread_;
+  std::chrono::time_point<std::chrono::system_clock> last_update_;
 };
 
 }  // namespace waybar::modules::mpris
