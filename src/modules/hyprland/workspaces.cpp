@@ -100,17 +100,16 @@ void Workspaces::create_workspace(int id) {
 }
 
 void Workspaces::remove_workspace(int id) {
-    auto workspace = std::find_if(
-        workspaces_.begin(), workspaces_.end(),
-        [&](std::unique_ptr<Workspace> &x) { return x->id() == id; });
+  auto workspace = std::find_if(workspaces_.begin(), workspaces_.end(),
+                                [&](std::unique_ptr<Workspace> &x) { return x->id() == id; });
 
-    if (workspace == workspaces_.end()) {
-      spdlog::warn("Can't find workspace with id {}", workspace->get()->id());
-      return;
-    }
+  if (workspace == workspaces_.end()) {
+    spdlog::warn("Can't find workspace with id {}", workspace->get()->id());
+    return;
+  }
 
-    box_.remove(workspace->get()->button());
-    workspaces_.erase(workspace);
+  box_.remove(workspace->get()->button());
+  workspaces_.erase(workspace);
 }
 
 void Workspaces::init() {

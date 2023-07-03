@@ -1,5 +1,6 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
+
 #include <memory>
 
 #include "AModule.hpp"
