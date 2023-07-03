@@ -155,6 +155,28 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
   return true;
 }
 
+bool isValidOutputFallback(const Json::Value &config, const std::string &name,
+                   const std::string &identifier) {
+  if (config["output-fallback"].isArray()) {
+    for (auto const &output_conf : config["output-fallback"]) {
+      if (output_conf.isString()) {
+        auto config_output = output_conf.asString();
+        if (config_output == name || config_output == identifier) {
+          return true;
+        }
+      }
+    }
+    return false;
+  } else if (config["output-fallback"].isString()) {
+    auto config_output = config["output-fallback"].asString();
+    if (!config_output.empty()) {
+      return config_output == name || config_output == identifier;
+    }
+  }
+
+  return true;
+}
+
 void Config::load(const std::string &config) {
   auto file = config.empty() ? findConfigPath({"config", "config.jsonc"}) : config;
   if (!file) {
@@ -175,6 +197,21 @@ std::vector<Json::Value> Config::getOutputConfigs(const std::string &name,
       }
     }
   } else if (isValidOutput(config_, name, identifier)) {
+    configs.push_back(config_);
+  }
+  return configs;
+}
+
+std::vector<Json::Value> Config::getOutputFallbackConfigs(const std::string &name,
+                                                  const std::string &identifier) {
+  std::vector<Json::Value> configs;
+  if (config_.isArray()) {
+    for (auto const &config : config_) {
+      if (config.isObject() && isValidOutputFallback(config, name, identifier)) {
+        configs.push_back(config);
+      }
+    }
+  } else if (isValidOutputFallback(config_, name, identifier)) {
     configs.push_back(config_);
   }
   return configs;

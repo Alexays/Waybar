@@ -28,6 +28,8 @@ class Config {
 
   std::vector<Json::Value> getOutputConfigs(const std::string &name, const std::string &identifier);
 
+  std::vector<Json::Value> getOutputFallbackConfigs(const std::string &name, const std::string &identifier);
+
  private:
   void setupConfig(Json::Value &dst, const std::string &config_file, int depth);
   void resolveConfigIncludes(Json::Value &config, int depth);

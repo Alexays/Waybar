@@ -32,6 +32,10 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
 	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
 
+*output-fallback* ++
+	typeof: string ++
+	Defines the output to be used when the specified output is not available.
+
 *position* ++
 	typeof: string ++
 	default: top ++

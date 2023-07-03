@@ -39,6 +39,7 @@ class Client {
   auto setupCss(const std::string &css_file) -> void;
   struct waybar_output &getOutput(void *);
   std::vector<Json::Value> getOutputConfigs(struct waybar_output &output);
+  std::vector<Json::Value> getOutputFallbackConfigs(struct waybar_output &output);
 
   static void handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                            const char *interface, uint32_t version);

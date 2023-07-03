@@ -64,6 +64,10 @@ std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &
   return config.getOutputConfigs(output.name, output.identifier);
 }
 
+std::vector<Json::Value> waybar::Client::getOutputFallbackConfigs(struct waybar_output &output) {
+  return config.getOutputFallbackConfigs(output.name, output.identifier);
+}
+
 void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_output*/) {
   auto client = waybar::Client::inst();
   try {
@@ -85,6 +89,15 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
       if (!configs.empty()) {
         for (const auto &config : configs) {
           client->bars.emplace_back(std::make_unique<Bar>(&output, config));
+        }
+      } else {
+        auto configs = client->getOutputFallbackConfigs(output);
+        if (!configs.empty()) {
+          for (const auto &config : configs) {
+            client->bars.emplace_back(std::make_unique<Bar>(&output, config));
+            spdlog::debug("Using output fallback: {} ({})", output.name,
+                         output.identifier);
+          }
         }
       }
     }
