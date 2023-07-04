@@ -593,6 +593,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     setMode(MODE_DEFAULT);
   }
 
+  if (config["start_hidden"].asBool()) {
+    setVisible(false);
+  }
+
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
 #if HAVE_SWAY
