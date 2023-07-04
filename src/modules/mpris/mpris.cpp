@@ -31,7 +31,8 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       ellipsis_("\u2026"),
       player_("playerctld"),
       manager(),
-      player() {
+      player(),
+      last_update_(std::chrono::system_clock::now() - interval_) {
   if (config_["format-playing"].isString()) {
     format_playing_ = config_["format-playing"].asString();
   }
@@ -559,6 +560,10 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
 }
 
 auto Mpris::update() -> void {
+  const auto now = std::chrono::system_clock::now();
+  if (now - last_update_ < interval_) return;
+  last_update_ = now;
+
   auto opt = getPlayerInfo();
   if (!opt) {
     event_box_.set_visible(false);
