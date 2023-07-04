@@ -71,11 +71,27 @@ The *mpris* module displays currently playing media via libplayerctl.
 	something less than or equal to this value, so the title will always be ++
 	displayed.
 
-*dynamic-priority*: ++
+*dynamic-order*: ++
 	typeof: []string ++
-	default: ["title", "length", "position", "artist", "album"] ++
-	Priority of the tags when truncating the Dynamic tag (absence in this
-	list means force inclusion).
+	default: ["title", "artist", "album", "position", "length"] ++
+	Order of the tags shown by Dynamic tag. The position and length tags ++
+	will always be combined in the format [{position}/{length}]. The order ++
+	of these tags in relation to other tags will be determined based on the ++
+	declaration of the first among the two tags. Absence in this list means ++
+	force exclusion.
+
+*dynamic-importance-order*: ++
+	typeof: []string ++
+	default: ["title", "artist", "album", "position", "length"] ++
+	Priority of the tags when truncating the Dynamic tag. The final ones ++
+	will be the first to be truncated. Absence in this list means force ++
+	inclusion.
+
+*dynamic-separator*: ++
+	typeof: string ++
+	default: " - " ++
+	These characters will be used to separate two different tags, except ++
+	when one of these tags is position and length.
 
 *truncate-hours*: ++
 	typeof: bool ++
