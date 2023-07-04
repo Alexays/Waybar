@@ -104,7 +104,7 @@ void Workspaces::remove_workspace(int id) {
                                 [&](std::unique_ptr<Workspace> &x) { return x->id() == id; });
 
   if (workspace == workspaces_.end()) {
-    spdlog::warn("Can't find workspace with id {}", workspace->get()->id());
+    spdlog::warn("Can't find workspace with id {}", id);
     return;
   }
 
