@@ -22,6 +22,8 @@
 #include "util/format.hpp"
 #include "util/string.hpp"
 
+#include "util/rewrite_string.hpp"
+
 namespace waybar::modules::wlr {
 
 /* Icon loading functions */
@@ -622,6 +624,9 @@ void Task::update() {
         fmt::format(fmt::runtime(format_before_), fmt::arg("title", title), fmt::arg("name", name),
                     fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true)));
+
+    txt = waybar::util::rewriteString(txt, config_["rewrite"]);
+
     if (markup)
       text_before_.set_markup(txt);
     else
@@ -633,6 +638,9 @@ void Task::update() {
         fmt::format(fmt::runtime(format_after_), fmt::arg("title", title), fmt::arg("name", name),
                     fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true)));
+
+    txt = waybar::util::rewriteString(txt, config_["rewrite"]);
+
     if (markup)
       text_after_.set_markup(txt);
     else
