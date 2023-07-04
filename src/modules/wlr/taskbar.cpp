@@ -20,9 +20,8 @@
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
-#include "util/string.hpp"
-
 #include "util/rewrite_string.hpp"
+#include "util/string.hpp"
 
 namespace waybar::modules::wlr {
 
