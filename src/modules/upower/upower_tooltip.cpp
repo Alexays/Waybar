@@ -4,7 +4,6 @@
 #include "gtkmm/enums.h"
 #include "gtkmm/image.h"
 #include "gtkmm/label.h"
-
 #include "util/gtk_icon.hpp"
 
 namespace waybar::modules::upower {

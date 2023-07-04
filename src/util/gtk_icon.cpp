@@ -5,19 +5,18 @@
  * access can cause data corruption and lead to invalid memory access and crashes.
  * Even concurrent calls that seem read only such as has_icon can cause issues because
  * the GTK lib may update the internal icon cache on this calls.
-*/
+ */
 
 std::mutex DefaultGtkIconThemeWrapper::default_theme_mutex;
 
 bool DefaultGtkIconThemeWrapper::has_icon(const std::string& value) {
-
   const std::lock_guard<std::mutex> lock(default_theme_mutex);
 
   return Gtk::IconTheme::get_default()->has_icon(value);
 }
 
-Glib::RefPtr<Gdk::Pixbuf> DefaultGtkIconThemeWrapper::load_icon(const char *name, int tmp_size, Gtk::IconLookupFlags flags) {
-
+Glib::RefPtr<Gdk::Pixbuf> DefaultGtkIconThemeWrapper::load_icon(const char* name, int tmp_size,
+                                                                Gtk::IconLookupFlags flags) {
   const std::lock_guard<std::mutex> lock(default_theme_mutex);
 
   auto default_theme = Gtk::IconTheme::get_default();

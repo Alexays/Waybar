@@ -6,7 +6,6 @@
 #include <string>
 
 #include "gtkmm/tooltip.h"
-
 #include "util/gtk_icon.hpp"
 
 namespace waybar::modules::upower {

@@ -18,7 +18,6 @@
 #include "glibmm/varianttype.h"
 #include "gtkmm/label.h"
 #include "gtkmm/tooltip.h"
-
 #include "util/gtk_icon.hpp"
 
 namespace waybar::modules {
