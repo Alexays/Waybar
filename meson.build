@@ -173,7 +173,8 @@ src_files = files(
     'src/util/prepare_for_sleep.cpp',
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
-    'src/util/rewrite_string.cpp'
+    'src/util/rewrite_string.cpp',
+    'src/util/gtk_icon.cpp'
 )
 
 inc_dirs = ['include']

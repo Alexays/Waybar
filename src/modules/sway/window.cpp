@@ -5,7 +5,6 @@
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
 #include <gtkmm/enums.h>
-#include <gtkmm/icontheme.h>
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
@@ -13,6 +12,7 @@
 #include <string>
 
 #include "util/rewrite_string.hpp"
+#include "util/gtk_icon.hpp"
 
 namespace waybar::modules::sway {
 
@@ -81,13 +81,12 @@ std::optional<Glib::ustring> getIconName(const std::string& app_id, const std::s
   if (!desktop_file_path.has_value()) {
     // Try some heuristics to find a matching icon
 
-    const auto default_icon_theme = Gtk::IconTheme::get_default();
-    if (default_icon_theme->has_icon(app_id)) {
+    if (DefaultGtkIconThemeWrapper::has_icon(app_id)) {
       return app_id;
     }
 
     const auto app_id_desktop = app_id + "-desktop";
-    if (default_icon_theme->has_icon(app_id_desktop)) {
+    if (DefaultGtkIconThemeWrapper::has_icon(app_id_desktop)) {
       return app_id_desktop;
     }
 
@@ -101,7 +100,7 @@ std::optional<Glib::ustring> getIconName(const std::string& app_id, const std::s
     const auto first_space = app_id.find_first_of(' ');
     if (first_space != std::string::npos) {
       const auto first_word = to_lower(app_id.substr(0, first_space));
-      if (default_icon_theme->has_icon(first_word)) {
+      if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }
     }
@@ -109,7 +108,7 @@ std::optional<Glib::ustring> getIconName(const std::string& app_id, const std::s
     const auto first_dash = app_id.find_first_of('-');
     if (first_dash != std::string::npos) {
       const auto first_word = to_lower(app_id.substr(0, first_dash));
-      if (default_icon_theme->has_icon(first_word)) {
+      if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }
     }
