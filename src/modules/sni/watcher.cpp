@@ -14,6 +14,10 @@ Watcher::Watcher()
       watcher_(sn_watcher_skeleton_new()) {}
 
 Watcher::~Watcher() {
+  if (hosts_ != nullptr) {
+    g_slist_free_full(hosts_, gfWatchFree);
+    hosts_ = nullptr;
+  }
   if (items_ != nullptr) {
     g_slist_free_full(items_, gfWatchFree);
     items_ = nullptr;
