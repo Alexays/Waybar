@@ -2,6 +2,8 @@
 
 #include <fcntl.h>
 
+#include <stdexcept>
+
 namespace waybar::modules::sway {
 
 Ipc::Ipc() {

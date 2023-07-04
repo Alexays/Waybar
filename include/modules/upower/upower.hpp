@@ -19,8 +19,8 @@ namespace waybar::modules::upower {
 class UPower : public AModule {
  public:
   UPower(const std::string &, const Json::Value &);
-  ~UPower();
-  auto update() -> void;
+  virtual ~UPower();
+  auto update() -> void override;
 
  private:
   typedef std::unordered_map<std::string, UpDevice *> Devices;
@@ -45,7 +45,7 @@ class UPower : public AModule {
   void resetDevices();
   void removeDevices();
   bool show_tooltip_callback(int, int, bool, const Glib::RefPtr<Gtk::Tooltip> &tooltip);
-  bool handleToggle(GdkEventButton *const &);
+  bool handleToggle(GdkEventButton *const &) override;
   std::string timeToString(gint64 time);
 
   const std::string getDeviceStatus(UpDeviceState &state);
@@ -74,6 +74,7 @@ class UPower : public AModule {
   bool showAltText;
   bool upowerRunning;
   guint upowerWatcher_id;
+  std::string nativePath_;
 };
 
 }  // namespace waybar::modules::upower

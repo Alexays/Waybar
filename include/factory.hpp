@@ -1,7 +1,7 @@
 #pragma once
 
 #include <json/json.h>
-#ifdef HAVE_LIBDATE
+#if defined(HAVE_CHRONO_TIMEZONES) || defined(HAVE_LIBDATE)
 #include "modules/clock.hpp"
 #else
 #include "modules/simpleclock.hpp"
@@ -18,14 +18,20 @@
 #include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
+#include "modules/river/layout.hpp"
 #include "modules/river/mode.hpp"
 #include "modules/river/tags.hpp"
 #include "modules/river/window.hpp"
 #endif
+#ifdef HAVE_DWL
+#include "modules/dwl/tags.hpp"
+#endif
 #ifdef HAVE_HYPRLAND
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/language.hpp"
+#include "modules/hyprland/submap.hpp"
 #include "modules/hyprland/window.hpp"
+#include "modules/hyprland/workspaces.hpp"
 #endif
 #if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
 #include "modules/battery.hpp"
@@ -40,6 +46,9 @@
 #include "modules/disk.hpp"
 #ifdef HAVE_DBUSMENU
 #include "modules/sni/tray.hpp"
+#endif
+#ifdef HAVE_MPRIS
+#include "modules/mpris/mpris.hpp"
 #endif
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
@@ -74,6 +83,9 @@
 #endif
 #ifdef HAVE_LIBWIREPLUMBER
 #include "modules/wireplumber.hpp"
+#endif
+#ifdef HAVE_LIBCAVA
+#include "modules/cava.hpp"
 #endif
 #include "bar.hpp"
 #include "modules/custom.hpp"

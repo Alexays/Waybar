@@ -14,7 +14,7 @@ namespace waybar::modules::river {
 class Tags : public waybar::AModule {
  public:
   Tags(const std::string &, const waybar::Bar &, const Json::Value &);
-  ~Tags();
+  virtual ~Tags();
 
   // Handlers for wayland events
   void handle_focused_tags(uint32_t tags);

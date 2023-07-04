@@ -20,6 +20,7 @@
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
+#include "util/rewrite_string.hpp"
 #include "util/string.hpp"
 
 namespace waybar::modules::wlr {
@@ -102,8 +103,11 @@ Glib::RefPtr<Gio::DesktopAppInfo> get_desktop_app_info(const std::string &app_id
         desktop_file = desktop_list[0][i];
       } else {
         auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
-        auto startup_class = tmp_info->get_startup_wm_class();
+        if (!tmp_info)
+          // see https://github.com/Alexays/Waybar/issues/1446
+          continue;
 
+        auto startup_class = tmp_info->get_startup_wm_class();
         if (startup_class == app_id) {
           desktop_file = desktop_list[0][i];
           break;
@@ -265,14 +269,14 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
       content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
-  button_.set_relief(Gtk::RELIEF_NONE);
+  button.set_relief(Gtk::RELIEF_NONE);
 
   content_.add(text_before_);
   content_.add(icon_);
   content_.add(text_after_);
 
   content_.show();
-  button_.add(content_);
+  button.add(content_);
 
   format_before_.clear();
   format_after_.clear();
@@ -314,20 +318,20 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
       config_["on-click-right"].isString()) {
   }
 
-  button_.add_events(Gdk::BUTTON_PRESS_MASK);
-  button_.signal_button_press_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
-  button_.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_button_release),
-                                                false);
-
-  button_.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
+  button.add_events(Gdk::BUTTON_PRESS_MASK);
+  button.signal_button_press_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
+  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_button_release),
                                                false);
 
-  button_.drag_source_set(target_entries, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
-  button_.drag_dest_set(target_entries, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
+  button.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
+                                              false);
 
-  button_.signal_drag_data_get().connect(sigc::mem_fun(*this, &Task::handle_drag_data_get), false);
-  button_.signal_drag_data_received().connect(
-      sigc::mem_fun(*this, &Task::handle_drag_data_received), false);
+  button.drag_source_set(target_entries, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
+  button.drag_dest_set(target_entries, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
+
+  button.signal_drag_data_get().connect(sigc::mem_fun(*this, &Task::handle_drag_data_get), false);
+  button.signal_drag_data_received().connect(sigc::mem_fun(*this, &Task::handle_drag_data_received),
+                                             false);
 }
 
 Task::~Task() {
@@ -336,7 +340,7 @@ Task::~Task() {
     handle_ = nullptr;
   }
   if (button_visible_) {
-    tbar_->remove_button(button_);
+    tbar_->remove_button(button);
     button_visible_ = false;
   }
 }
@@ -435,8 +439,8 @@ void Task::handle_output_enter(struct wl_output *output) {
 
   if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
     /* The task entered the output of the current bar make the button visible */
-    tbar_->add_button(button_);
-    button_.show();
+    tbar_->add_button(button);
+    button.show();
     button_visible_ = true;
     spdlog::debug("{} now visible on {}", repr(), bar_.output->name);
   }
@@ -447,8 +451,8 @@ void Task::handle_output_leave(struct wl_output *output) {
 
   if (button_visible_ && !tbar_->all_outputs() && tbar_->show_output(output)) {
     /* The task left the output of the current bar, make the button invisible */
-    tbar_->remove_button(button_);
-    button_.hide();
+    tbar_->remove_button(button);
+    button.hide();
     button_visible_ = false;
     spdlog::debug("{} now invisible on {}", repr(), bar_.output->name);
   }
@@ -470,31 +474,31 @@ void Task::handle_done() {
   spdlog::debug("{} changed", repr());
 
   if (state_ & MAXIMIZED) {
-    button_.get_style_context()->add_class("maximized");
+    button.get_style_context()->add_class("maximized");
   } else if (!(state_ & MAXIMIZED)) {
-    button_.get_style_context()->remove_class("maximized");
+    button.get_style_context()->remove_class("maximized");
   }
 
   if (state_ & MINIMIZED) {
-    button_.get_style_context()->add_class("minimized");
+    button.get_style_context()->add_class("minimized");
   } else if (!(state_ & MINIMIZED)) {
-    button_.get_style_context()->remove_class("minimized");
+    button.get_style_context()->remove_class("minimized");
   }
 
   if (state_ & ACTIVE) {
-    button_.get_style_context()->add_class("active");
+    button.get_style_context()->add_class("active");
   } else if (!(state_ & ACTIVE)) {
-    button_.get_style_context()->remove_class("active");
+    button.get_style_context()->remove_class("active");
   }
 
   if (state_ & FULLSCREEN) {
-    button_.get_style_context()->add_class("fullscreen");
+    button.get_style_context()->add_class("fullscreen");
   } else if (!(state_ & FULLSCREEN)) {
-    button_.get_style_context()->remove_class("fullscreen");
+    button.get_style_context()->remove_class("fullscreen");
   }
 
   if (config_["active-first"].isBool() && config_["active-first"].asBool() && active())
-    tbar_->move_button(button_, 0);
+    tbar_->move_button(button, 0);
 
   tbar_->dp.emit();
 }
@@ -503,11 +507,11 @@ void Task::handle_closed() {
   spdlog::debug("{} closed", repr());
   zwlr_foreign_toplevel_handle_v1_destroy(handle_);
   handle_ = nullptr;
+  tbar_->remove_task(id_);
   if (button_visible_) {
-    tbar_->remove_button(button_);
+    tbar_->remove_button(button);
     button_visible_ = false;
   }
-  tbar_->remove_task(id_);
 }
 
 bool Task::handle_clicked(GdkEventButton *bt) {
@@ -560,12 +564,12 @@ bool Task::handle_button_release(GdkEventButton *bt) {
 bool Task::handle_motion_notify(GdkEventMotion *mn) {
   if (drag_start_button == -1) return false;
 
-  if (button_.drag_check_threshold(drag_start_x, drag_start_y, mn->x, mn->y)) {
+  if (button.drag_check_threshold(drag_start_x, drag_start_y, mn->x, mn->y)) {
     /* start drag in addition to other assigned action */
     auto target_list = Gtk::TargetList::create(target_entries);
     auto refptr = Glib::RefPtr<Gtk::TargetList>(target_list);
     auto drag_context =
-        button_.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent *)mn);
+        button.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent *)mn);
   }
 
   return false;
@@ -574,7 +578,7 @@ bool Task::handle_motion_notify(GdkEventMotion *mn) {
 void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext> &context,
                                 Gtk::SelectionData &selection_data, guint info, guint time) {
   spdlog::debug("drag_data_get");
-  void *button_addr = (void *)&this->button_;
+  void *button_addr = (void *)&this->button;
 
   selection_data.set("WAYBAR_TOPLEVEL", 32, (const guchar *)&button_addr, sizeof(gpointer));
 }
@@ -585,16 +589,16 @@ void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext> &conte
   gpointer handle = *(gpointer *)selection_data.get_data();
   auto dragged_button = (Gtk::Button *)handle;
 
-  if (dragged_button == &this->button_) return;
+  if (dragged_button == &this->button) return;
 
   auto parent_of_dragged = dragged_button->get_parent();
-  auto parent_of_dest = this->button_.get_parent();
+  auto parent_of_dest = this->button.get_parent();
 
   if (parent_of_dragged != parent_of_dest) return;
 
   auto box = (Gtk::Box *)parent_of_dragged;
 
-  auto position_prop = box->child_property_position(this->button_);
+  auto position_prop = box->child_property_position(this->button);
   auto position = position_prop.get_value();
 
   box->reorder_child(*dragged_button, position);
@@ -615,9 +619,13 @@ void Task::update() {
     app_id = Glib::Markup::escape_text(app_id);
   }
   if (!format_before_.empty()) {
-    auto txt = fmt::format(format_before_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_before_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
+
+    txt = waybar::util::rewriteString(txt, config_["rewrite"]);
+
     if (markup)
       text_before_.set_markup(txt);
     else
@@ -625,9 +633,13 @@ void Task::update() {
     text_before_.show();
   }
   if (!format_after_.empty()) {
-    auto txt = fmt::format(format_after_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_after_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
+
+    txt = waybar::util::rewriteString(txt, config_["rewrite"]);
+
     if (markup)
       text_after_.set_markup(txt);
     else
@@ -636,13 +648,14 @@ void Task::update() {
   }
 
   if (!format_tooltip_.empty()) {
-    auto txt = fmt::format(format_tooltip_, fmt::arg("title", title), fmt::arg("name", name),
-                           fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
-                           fmt::arg("short_state", state_string(true)));
+    auto txt =
+        fmt::format(fmt::runtime(format_tooltip_), fmt::arg("title", title), fmt::arg("name", name),
+                    fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
+                    fmt::arg("short_state", state_string(true)));
     if (markup)
-      button_.set_tooltip_markup(txt);
+      button.set_tooltip_markup(txt);
     else
-      button_.set_tooltip_text(txt);
+      button.set_tooltip_text(txt);
   }
 }
 
@@ -704,6 +717,7 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
   struct wl_display *display = Client::inst()->wl_display;
@@ -785,6 +799,17 @@ void Taskbar::update() {
     t->update();
   }
 
+  if (config_["sort-by-app-id"].asBool()) {
+    std::stable_sort(tasks_.begin(), tasks_.end(),
+                     [](const std::unique_ptr<Task> &a, const std::unique_ptr<Task> &b) {
+                       return a->app_id() < b->app_id();
+                     });
+
+    for (unsigned long i = 0; i < tasks_.size(); i++) {
+      move_button(tasks_[i]->button, i);
+    }
+  }
+
   AModule::update();
 }
 
@@ -845,11 +870,19 @@ void Taskbar::handle_finished() {
   manager_ = nullptr;
 }
 
-void Taskbar::add_button(Gtk::Button &bt) { box_.pack_start(bt, false, false); }
+void Taskbar::add_button(Gtk::Button &bt) {
+  box_.pack_start(bt, false, false);
+  box_.get_style_context()->remove_class("empty");
+}
 
 void Taskbar::move_button(Gtk::Button &bt, int pos) { box_.reorder_child(bt, pos); }
 
-void Taskbar::remove_button(Gtk::Button &bt) { box_.remove(bt); }
+void Taskbar::remove_button(Gtk::Button &bt) {
+  box_.remove(bt);
+  if (tasks_.empty()) {
+    box_.get_style_context()->add_class("empty");
+  }
+}
 
 void Taskbar::remove_task(uint32_t id) {
   auto it = std::find_if(std::begin(tasks_), std::end(tasks_),

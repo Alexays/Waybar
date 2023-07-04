@@ -11,6 +11,12 @@ compatible devices in the tooltip.
 
 # CONFIGURATION
 
+*native-path*: ++
+    typeof: string ++
+    default: ++
+    The battery to monitor. Refer to the https://upower.freedesktop.org/docs/UpDevice.html#UpDevice--native-path ++
+    Can be obtained using `upower --dump`
+
 *icon-size*: ++
 	typeof: integer ++
 	default: 20 ++
@@ -68,6 +74,25 @@ depending on the charging state.
 	"tooltip-spacing": 20
 }
 
+```
+```
+"upower": {
+	"native-path": "/org/bluez/hci0/dev_D4_AE_41_38_D0_EF",
+	"icon-size": 20,
+	"hide-if-empty": true,
+	"tooltip": true,
+	"tooltip-spacing": 20
+}
+
+```
+```
+"upower": {
+	"native-path": "battery_sony_controller_battery_d0o27o88o32ofcoee",
+	"icon-size": 20,
+	"hide-if-empty": true,
+	"tooltip": true,
+	"tooltip-spacing": 20
+}
 ```
 
 # STYLE

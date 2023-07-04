@@ -18,7 +18,6 @@ Watcher::~Watcher() {
     g_slist_free_full(hosts_, gfWatchFree);
     hosts_ = nullptr;
   }
-
   if (items_ != nullptr) {
     g_slist_free_full(items_, gfWatchFree);
     items_ = nullptr;

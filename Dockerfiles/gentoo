@@ -6,6 +6,6 @@ RUN export FEATURES="-ipc-sandbox -network-sandbox -pid-sandbox -sandbox -usersa
 		emerge --sync && \
 		eselect news read --quiet new 1>/dev/null 2>&1 && \
 		emerge --verbose --update --deep --with-bdeps=y --backtrack=30 --newuse @world && \
-		USE="wayland gtk3 gtk -doc X" emerge dev-vcs/git dev-libs/wayland dev-libs/wayland-protocols =dev-cpp/gtkmm-3.24.6 x11-libs/libxkbcommon \
+		USE="wayland gtk3 gtk -doc X pulseaudio minimal" emerge dev-vcs/git dev-libs/wayland dev-libs/wayland-protocols =dev-cpp/gtkmm-3.24.6 x11-libs/libxkbcommon \
 		x11-libs/gtk+:3 dev-libs/libdbusmenu dev-libs/libnl sys-power/upower media-libs/libpulse dev-libs/libevdev media-libs/libmpdclient \
-		media-sound/sndio gui-libs/gtk-layer-shell app-text/scdoc
+		media-sound/sndio gui-libs/gtk-layer-shell app-text/scdoc media-sound/playerctl dev-libs/iniparser sci-libs/fftw

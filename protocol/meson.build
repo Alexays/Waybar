@@ -30,6 +30,7 @@ client_protocols = [
 	['ext-workspace-unstable-v1.xml'],
 	['river-status-unstable-v1.xml'],
 	['river-control-unstable-v1.xml'],
+	['dwl-ipc-unstable-v2.xml'],
 ]
 
 client_protos_src = []

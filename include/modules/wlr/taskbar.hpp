@@ -40,6 +40,8 @@ class Task {
     FULLSCREEN = (1 << 3),
     INVALID = (1 << 4)
   };
+  // made public so TaskBar can reorder based on configuration.
+  Gtk::Button button;
 
  private:
   static uint32_t global_id;
@@ -53,7 +55,6 @@ class Task {
 
   uint32_t id_;
 
-  Gtk::Button button_;
   Gtk::Box content_;
   Gtk::Image icon_;
   Gtk::Label text_before_;

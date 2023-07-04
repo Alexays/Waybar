@@ -2,6 +2,8 @@
 *~
 vgcore.*
 /.vscode
+/.idea
+/.cache
 *.swp
 packagecache
 /subprojects/**/
@@ -41,3 +43,4 @@ packagecache
 *.exe
 *.out
 *.app
+/.direnv/

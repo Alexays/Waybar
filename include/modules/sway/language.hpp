@@ -17,8 +17,8 @@ namespace waybar::modules::sway {
 class Language : public ALabel, public sigc::trackable {
  public:
   Language(const std::string& id, const Json::Value& config);
-  ~Language() = default;
-  auto update() -> void;
+  virtual ~Language() = default;
+  auto update() -> void override;
 
  private:
   enum class DispayedShortFlag { None = 0, ShortName = 1, ShortDescription = 1 << 1 };

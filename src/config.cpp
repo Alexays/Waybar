@@ -124,9 +124,21 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
                    const std::string &identifier) {
   if (config["output"].isArray()) {
     for (auto const &output_conf : config["output"]) {
-      if (output_conf.isString() &&
-          (output_conf.asString() == name || output_conf.asString() == identifier)) {
-        return true;
+      if (output_conf.isString()) {
+        auto config_output = output_conf.asString();
+        if (config_output.substr(0, 1) == "!") {
+          if (config_output.substr(1) == name || config_output.substr(1) == identifier) {
+            return false;
+          } else {
+            continue;
+          }
+        }
+        if (config_output == name || config_output == identifier) {
+          return true;
+        }
+        if (config_output.substr(0, 1) == "*") {
+          return true;
+        }
       }
     }
     return false;

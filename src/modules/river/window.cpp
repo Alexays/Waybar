@@ -106,7 +106,11 @@ void Window::handle_focused_view(const char *title) {
     label_.hide();  // hide empty labels or labels with empty format
   } else {
     label_.show();
-    label_.set_markup(fmt::format(format_, Glib::Markup::escape_text(title).raw()));
+    auto text = fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(title).raw());
+    label_.set_markup(text);
+    if (tooltipEnabled()) {
+      label_.set_tooltip_markup(text);
+    }
   }
 
   ALabel::update();

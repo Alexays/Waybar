@@ -88,6 +88,7 @@ void waybar::modules::Custom::continuousWorker() {
       output_ = {0, output};
       dp.emit();
     }
+    free(buff);
   };
 }
 
@@ -126,7 +127,7 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
-    auto str = fmt::format(format_, text_, fmt::arg("alt", alt_),
+    auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
     if (str.empty()) {
@@ -209,8 +210,8 @@ void waybar::modules::Custom::parseOutputJson() {
         class_.push_back(c.asString());
       }
     }
-    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isUInt()) {
-      percentage_ = parsed["percentage"].asUInt();
+    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
+      percentage_ = (int)lround(parsed["percentage"].asFloat());
     } else {
       percentage_ = 0;
     }

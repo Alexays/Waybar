@@ -18,8 +18,8 @@ namespace waybar::modules {
 class Gamemode : public AModule {
  public:
   Gamemode(const std::string &, const Json::Value &);
-  ~Gamemode();
-  auto update() -> void;
+  virtual ~Gamemode();
+  auto update() -> void override;
 
  private:
   const std::string DEFAULT_ICON_NAME = "input-gaming-symbolic";
@@ -39,7 +39,7 @@ class Gamemode : public AModule {
                  const Glib::VariantContainerBase &arguments);
 
   void getData();
-  bool handleToggle(GdkEventButton *const &);
+  bool handleToggle(GdkEventButton *const &) override;
 
   // Config
   std::string format = DEFAULT_FORMAT;

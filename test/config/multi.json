@@ -21,5 +21,9 @@
     "layer": "overlay",
     "height": 23,
     "output": "!HDMI-1"
+  },
+  {
+    "height": 24,
+    "output": ["!HDMI-0", "!HDMI-1", "*"]
   }
 ]

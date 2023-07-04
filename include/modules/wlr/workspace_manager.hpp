@@ -22,7 +22,7 @@ class WorkspaceGroup;
 class Workspace {
  public:
   Workspace(const waybar::Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-            zext_workspace_handle_v1 *workspace, uint32_t id);
+            zext_workspace_handle_v1 *workspace, uint32_t id, std::string name);
   ~Workspace();
   auto update() -> void;
 
@@ -30,11 +30,15 @@ class Workspace {
   auto is_active() const -> bool { return state_ & static_cast<uint32_t>(State::ACTIVE); }
   auto is_urgent() const -> bool { return state_ & static_cast<uint32_t>(State::URGENT); }
   auto is_hidden() const -> bool { return state_ & static_cast<uint32_t>(State::HIDDEN); }
+  auto is_empty() const -> bool { return state_ & static_cast<uint32_t>(State::EMPTY); }
+  auto is_persistent() const -> bool { return persistent_; }
   // wlr stuff
   auto handle_name(const std::string &name) -> void;
   auto handle_coordinates(const std::vector<uint32_t> &coordinates) -> void;
   auto handle_state(const std::vector<uint32_t> &state) -> void;
   auto handle_remove() -> void;
+  auto make_persistent() -> void;
+  auto handle_duplicate() -> void;
 
   auto handle_done() -> void;
   auto handle_clicked(GdkEventButton *bt) -> bool;
@@ -48,6 +52,7 @@ class Workspace {
     ACTIVE = (1 << 0),
     URGENT = (1 << 1),
     HIDDEN = (1 << 2),
+    EMPTY = (1 << 3),
   };
 
  private:
@@ -67,6 +72,7 @@ class Workspace {
   static std::map<std::string, std::string> icons_map_;
   std::string format_;
   bool with_icon_ = false;
+  bool persistent_ = false;
 
   Gtk::Button button_;
   Gtk::Box content_;
@@ -87,11 +93,14 @@ class WorkspaceGroup {
   auto active_only() const -> bool;
   auto creation_delayed() const -> bool;
   auto workspaces() -> std::vector<std::unique_ptr<Workspace>> & { return workspaces_; }
+  auto persistent_workspaces() -> std::vector<std::string> & { return persistent_workspaces_; }
 
   auto sort_workspaces() -> void;
   auto set_need_to_sort() -> void { need_to_sort = true; }
   auto add_button(Gtk::Button &button) -> void;
   auto remove_button(Gtk::Button &button) -> void;
+  auto fill_persistent_workspaces() -> void;
+  auto create_persistent_workspaces() -> void;
 
   // wlr stuff
   auto handle_workspace_create(zext_workspace_handle_v1 *workspace_handle) -> void;
@@ -115,6 +124,8 @@ class WorkspaceGroup {
   uint32_t id_;
   std::vector<std::unique_ptr<Workspace>> workspaces_;
   bool need_to_sort = false;
+  std::vector<std::string> persistent_workspaces_;
+  bool persistent_created_ = false;
 };
 
 class WorkspaceManager : public AModule {
