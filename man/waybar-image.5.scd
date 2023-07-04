@@ -57,6 +57,20 @@ The *image* module displays an image from a path.
 	typeof: double ++
 	Threshold to be used when scrolling.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to enable tooltip on hover.
+
+# SCRIPT OUTPUT
+
+Similar to the *custom* module, output values of the script is *newline* separated.
+The following is the output format:
+
+```
+$path\\n$tooltip
+```
+
 # EXAMPLES
 
 ```

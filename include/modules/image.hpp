@@ -24,12 +24,15 @@ class Image : public AModule {
  private:
   void delayWorker();
   void handleEvent();
+  void parseOutputRaw();
 
   Gtk::Box box_;
   Gtk::Image image_;
   std::string path_;
+  std::string tooltip_;
   int size_;
   int interval_;
+  util::command::res output_;
 
   util::SleeperThread thread_;
 };
