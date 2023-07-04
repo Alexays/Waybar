@@ -5,9 +5,13 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     devshell.url = "github:numtide/devshell";
     flake-utils.url = "github:numtide/flake-utils";
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
-  outputs = { self, flake-utils, devshell, nixpkgs }:
+  outputs = { self, flake-utils, devshell, nixpkgs, flake-compat }:
     let
       inherit (nixpkgs) lib;
       genSystems = lib.genAttrs [
@@ -26,9 +30,9 @@
       ]);
     in
     {
-      overlays.default = _: prev: rec {
+      overlays.default = _: prev: {
         waybar = prev.callPackage ./nix/default.nix {
-          version = "0.9.16" + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+          version = prev.waybar.version + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
         };
       };
       packages = genSystems
@@ -57,8 +61,32 @@
           devshell.packages = with pkgs; [
             clang-tools
             gdb
-          ];
-          language.c.libraries = with pkgs; [
+            # from nativeBuildInputs
+            gnumake
+            meson
+            ninja
+            pkg-config
+            scdoc
+          ] ++ (map lib.getDev [
+            # from buildInputs
+            wayland wlroots gtkmm3 libsigcxx jsoncpp spdlog gtk-layer-shell howard-hinnant-date libxkbcommon
+            # optional dependencies
+            gobject-introspection glib playerctl python3.pkgs.pygobject3
+            libevdev libinput libjack2 libmpdclient playerctl libnl
+            libpulseaudio sndio sway libdbusmenu-gtk3 udev upower wireplumber
+
+            # from propagated build inputs?
+            at-spi2-atk atkmm cairo cairomm catch2 fmt_8 fontconfig
+            gdk-pixbuf glibmm gtk3 harfbuzz pango pangomm wayland-protocols
+          ]);
+          env = with pkgs; [
+            { name = "CPLUS_INCLUDE_PATH"; prefix = "$DEVSHELL_DIR/include"; }
+            { name = "PKG_CONFIG_PATH"; prefix = "$DEVSHELL_DIR/lib/pkgconfig"; }
+            { name = "PKG_CONFIG_PATH"; prefix = "$DEVSHELL_DIR/share/pkgconfig"; }
+            { name = "PATH"; prefix = "${wayland.bin}/bin"; }
+            { name = "LIBRARY_PATH"; prefix = "${lib.getLib sndio}/lib"; }
+            { name = "LIBRARY_PATH"; prefix = "${lib.getLib zlib}/lib"; }
+            { name = "LIBRARY_PATH"; prefix = "${lib.getLib howard-hinnant-date}/lib"; }
           ];
         };
     });
