@@ -4,5 +4,5 @@
 #include <string>
 
 namespace waybar::util {
-std::string rewriteTitle(const std::string&, const Json::Value&);
+std::string rewriteString(const std::string&, const Json::Value&);
 }

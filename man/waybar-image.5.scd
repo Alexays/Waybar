@@ -1,4 +1,4 @@
-waybar-custom(5)
+waybar-image(5)
 
 # NAME
 
@@ -10,12 +10,13 @@ The *image* module displays an image from a path.
 
 # CONFIGURATION
 
-Addressed by *custom/<name>*
-
 *path*: ++
 	typeof: string ++
 	The path to the image.
-
+*exec*: ++
+	typeof: string ++
+	The path to the script, which should return image path file
+	it will only execute if the path is not set
 *size*: ++
 	typeof: integer ++
 	The width/height to render the image.
@@ -56,17 +57,31 @@ Addressed by *custom/<name>*
 	typeof: double ++
 	Threshold to be used when scrolling.
 
-# EXAMPLES
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to enable tooltip on hover.
 
-## Spotify:
+# SCRIPT OUTPUT
 
-## mpd:
+Similar to the *custom* module, output values of the script is *newline* separated.
+The following is the output format:
 
 ```
-"image/album-art": {
+$path\\n$tooltip
+```
+
+# EXAMPLES
+
+```
+"image#album-art": {
 	"path": "/tmp/mpd_art",
 	"size": 32,
 	"interval": 5,
 	"on-click": "mpc toggle"
 }
 ```
+
+# STYLE
+
+- *#image*

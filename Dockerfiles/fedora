@@ -2,11 +2,33 @@
 
 FROM fedora:latest
 
-RUN dnf install -y @c-development git-core meson scdoc 'pkgconfig(date)' \
-    'pkgconfig(dbusmenu-gtk3-0.4)' 'pkgconfig(fmt)' 'pkgconfig(gdk-pixbuf-2.0)' \
-    'pkgconfig(gio-unix-2.0)' 'pkgconfig(gtk-layer-shell-0)' 'pkgconfig(gtkmm-3.0)' \
-    'pkgconfig(jsoncpp)' 'pkgconfig(libinput)' 'pkgconfig(libmpdclient)' \
-    'pkgconfig(libnl-3.0)' 'pkgconfig(libnl-genl-3.0)' 'pkgconfig(libpulse)' \
-    'pkgconfig(libudev)' 'pkgconfig(pugixml)' 'pkgconfig(sigc++-2.0)' 'pkgconfig(spdlog)' \
-    'pkgconfig(wayland-client)' 'pkgconfig(wayland-cursor)' 'pkgconfig(wayland-protocols)' 'pkgconfig(xkbregistry)' && \
+RUN dnf install -y @c-development \
+    git-core glibc-langpack-en meson scdoc \
+    'pkgconfig(catch2)' \
+    'pkgconfig(date)' \
+    'pkgconfig(dbusmenu-gtk3-0.4)' \
+    'pkgconfig(fmt)' \
+    'pkgconfig(gdk-pixbuf-2.0)' \
+    'pkgconfig(gio-unix-2.0)' \
+    'pkgconfig(gtk-layer-shell-0)' \
+    'pkgconfig(gtkmm-3.0)' \
+    'pkgconfig(jack)' \
+    'pkgconfig(jsoncpp)' \
+    'pkgconfig(libevdev)' \
+    'pkgconfig(libinput)' \
+    'pkgconfig(libmpdclient)' \
+    'pkgconfig(libnl-3.0)' \
+    'pkgconfig(libnl-genl-3.0)' \
+    'pkgconfig(libpulse)' \
+    'pkgconfig(libudev)' \
+    'pkgconfig(playerctl)' \
+    'pkgconfig(pugixml)' \
+    'pkgconfig(sigc++-2.0)' \
+    'pkgconfig(spdlog)' \
+    'pkgconfig(upower-glib)' \
+    'pkgconfig(wayland-client)' \
+    'pkgconfig(wayland-cursor)' \
+    'pkgconfig(wayland-protocols)' \
+    'pkgconfig(wireplumber-0.4)' \
+    'pkgconfig(xkbregistry)' && \
     dnf clean all -y

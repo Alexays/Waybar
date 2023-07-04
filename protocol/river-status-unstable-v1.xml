@@ -16,7 +16,7 @@
     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
   </copyright>
 
-  <interface name="zriver_status_manager_v1" version="3">
+  <interface name="zriver_status_manager_v1" version="4">
     <description summary="manage river status objects">
       A global factory for objects that receive status information specific
       to river. It could be used to implement, for example, a status bar.
@@ -47,7 +47,7 @@
     </request>
   </interface>
 
-  <interface name="zriver_output_status_v1" version="2">
+  <interface name="zriver_output_status_v1" version="4">
     <description summary="track output tags and focus">
       This interface allows clients to receive information about the current
       windowing state of an output.
@@ -82,6 +82,21 @@
         tags with at least one urgent view changes.
       </description>
       <arg name="tags" type="uint" summary="32-bit bitfield"/>
+    </event>
+
+    <event name="layout_name" since="4">
+      <description summary="name of the layout">
+        Sent once on binding the interface should a layout name exist and again
+        whenever the name changes.
+      </description>
+      <arg name="name" type="string" summary="layout name"/>
+    </event>
+
+    <event name="layout_name_clear" since="4">
+      <description summary="name of the layout">
+        Sent when the current layout name has been removed without a new one
+        being set, for example when the active layout generator disconnects.
+      </description>
     </event>
   </interface>
 

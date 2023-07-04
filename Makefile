@@ -19,5 +19,9 @@ run: build
 debug-run: build-debug
 	./build/waybar --log-level debug
 
+test:
+	meson test -C build --no-rebuild --verbose --suite waybar
+.PHONY: test
+
 clean:
 	rm -rf build

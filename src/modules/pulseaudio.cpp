@@ -81,13 +81,6 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-  if (config_["reverse-scrolling"].asInt() == 1) {
-    if (dir == SCROLL_DIR::UP) {
-      dir = SCROLL_DIR::DOWN;
-    } else if (dir == SCROLL_DIR::DOWN) {
-      dir = SCROLL_DIR::UP;
-    }
-  }
   double volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_volume_t change = volume_tick;
   pa_cvolume pa_volume = pa_volume_;
@@ -279,7 +272,12 @@ auto waybar::modules::Pulseaudio::update() -> void {
       label_.get_style_context()->remove_class("muted");
       label_.get_style_context()->remove_class("sink-muted");
     }
-    format = config_[format_name].isString() ? config_[format_name].asString() : format;
+    auto state = getState(volume_, true);
+    if (!state.empty() && config_[format_name + "-" + state].isString()) {
+      format = config_[format_name + "-" + state].asString();
+    } else if (config_[format_name].isString()) {
+      format = config_[format_name].asString();
+    }
   }
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
@@ -294,9 +292,9 @@ auto waybar::modules::Pulseaudio::update() -> void {
       format_source = config_["format-source"].asString();
     }
   }
-  format_source = fmt::format(format_source, fmt::arg("volume", source_volume_));
+  format_source = fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_volume_));
   auto text = fmt::format(
-      format, fmt::arg("desc", desc_), fmt::arg("volume", volume_),
+      fmt::runtime(format), fmt::arg("desc", desc_), fmt::arg("volume", volume_),
       fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume_),
       fmt::arg("source_desc", source_desc_), fmt::arg("icon", getIcon(volume_, getPulseIcon())));
   if (text.empty()) {
@@ -305,7 +303,6 @@ auto waybar::modules::Pulseaudio::update() -> void {
     label_.set_markup(text);
     label_.show();
   }
-  getState(volume_);
 
   if (tooltipEnabled()) {
     if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
@@ -313,7 +310,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
     if (!tooltip_format.empty()) {
       label_.set_tooltip_text(fmt::format(
-          tooltip_format, fmt::arg("desc", desc_), fmt::arg("volume", volume_),
+          fmt::runtime(tooltip_format), fmt::arg("desc", desc_), fmt::arg("volume", volume_),
           fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume_),
           fmt::arg("source_desc", source_desc_),
           fmt::arg("icon", getIcon(volume_, getPulseIcon()))));

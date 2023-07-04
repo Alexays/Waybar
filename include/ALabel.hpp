@@ -14,7 +14,7 @@ class ALabel : public AModule {
          uint16_t interval = 0, bool ellipsize = false, bool enable_click = false,
          bool enable_scroll = false);
   virtual ~ALabel() = default;
-  virtual auto update() -> void;
+  auto update() -> void override;
   virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
   virtual std::string getIcon(uint16_t, const std::vector<std::string> &alts, uint16_t max = 0);
 
@@ -25,7 +25,7 @@ class ALabel : public AModule {
   bool alt_ = false;
   std::string default_format_;
 
-  virtual bool handleToggle(GdkEventButton *const &e);
+  bool handleToggle(GdkEventButton *const &e) override;
   virtual std::string getState(uint8_t value, bool lesser = false);
 };
 

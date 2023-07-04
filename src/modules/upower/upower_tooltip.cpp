@@ -2,9 +2,9 @@
 
 #include "gtkmm/box.h"
 #include "gtkmm/enums.h"
-#include "gtkmm/icontheme.h"
 #include "gtkmm/image.h"
 #include "gtkmm/label.h"
+#include "util/gtk_icon.hpp"
 
 namespace waybar::modules::upower {
 UPowerTooltip::UPowerTooltip(uint iconSize_, uint tooltipSpacing_, uint tooltipPadding_)
@@ -29,7 +29,7 @@ UPowerTooltip::~UPowerTooltip() {}
 uint UPowerTooltip::updateTooltip(Devices& devices) {
   // Removes all old devices
   for (auto child : contentBox->get_children()) {
-    child->~Widget();
+    delete child;
   }
 
   uint deviceCount = 0;
@@ -62,7 +62,7 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
     std::string deviceIconName = getDeviceIcon(kind);
     Gtk::Image* deviceIcon = new Gtk::Image();
     deviceIcon->set_pixel_size(iconSize);
-    if (!Gtk::IconTheme::get_default()->has_icon(deviceIconName)) {
+    if (!DefaultGtkIconThemeWrapper::has_icon(deviceIconName)) {
       deviceIconName = "battery-missing-symbolic";
     }
     deviceIcon->set_from_icon_name(deviceIconName, Gtk::ICON_SIZE_INVALID);
@@ -79,7 +79,7 @@ uint UPowerTooltip::updateTooltip(Devices& devices) {
     // Set icon
     Gtk::Image* icon = new Gtk::Image();
     icon->set_pixel_size(iconSize);
-    if (icon_name == NULL || !Gtk::IconTheme::get_default()->has_icon(icon_name)) {
+    if (icon_name == NULL || !DefaultGtkIconThemeWrapper::has_icon(icon_name)) {
       icon_name = (char*)"battery-missing-symbolic";
     }
     icon->set_from_icon_name(icon_name, Gtk::ICON_SIZE_INVALID);

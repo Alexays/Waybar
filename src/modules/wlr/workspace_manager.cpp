@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "client.hpp"
 #include "gtkmm/widget.h"
 #include "modules/wlr/workspace_manager_binding.hpp"
 
@@ -63,7 +64,7 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
 
 auto WorkspaceManager::workspace_comparator() const
     -> std::function<bool(std::unique_ptr<Workspace> &, std::unique_ptr<Workspace> &)> {
-  return [=](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
+  return [=, this](std::unique_ptr<Workspace> &lhs, std::unique_ptr<Workspace> &rhs) {
     auto is_name_less = lhs->get_name() < rhs->get_name();
     auto is_name_eq = lhs->get_name() == rhs->get_name();
     auto is_coords_less = lhs->get_coords() < rhs->get_coords();
@@ -72,7 +73,7 @@ auto WorkspaceManager::workspace_comparator() const
       try {
         auto is_number_less = std::stoi(lhs->get_name()) < std::stoi(rhs->get_name());
         return is_number_less;
-      } catch (std::invalid_argument) {
+      } catch (const std::invalid_argument &) {
       }
     }
 
@@ -166,8 +167,20 @@ WorkspaceManager::~WorkspaceManager() {
     return;
   }
 
-  zext_workspace_manager_v1_destroy(workspace_manager_);
-  workspace_manager_ = nullptr;
+  wl_display *display = Client::inst()->wl_display;
+
+  // Send `stop` request and wait for one roundtrip. This is not quite correct as
+  // the protocol encourages us to wait for the .finished event, but it should work
+  // with wlroots workspace manager implementation.
+  zext_workspace_manager_v1_stop(workspace_manager_);
+  wl_display_roundtrip(display);
+
+  // If the .finished handler is still not executed, destroy the workspace manager here.
+  if (workspace_manager_) {
+    spdlog::warn("Foreign toplevel manager destroyed before .finished event");
+    zext_workspace_manager_v1_destroy(workspace_manager_);
+    workspace_manager_ = nullptr;
+  }
 }
 
 auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
@@ -195,6 +208,38 @@ WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value 
   add_workspace_group_listener(workspace_group_handle, this);
 }
 
+auto WorkspaceGroup::fill_persistent_workspaces() -> void {
+  if (config_["persistent_workspaces"].isObject() && !workspace_manager_.all_outputs()) {
+    const Json::Value &p_workspaces = config_["persistent_workspaces"];
+    const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
+
+    for (const std::string &p_w_name : p_workspaces_names) {
+      const Json::Value &p_w = p_workspaces[p_w_name];
+      if (p_w.isArray() && !p_w.empty()) {
+        // Adding to target outputs
+        for (const Json::Value &output : p_w) {
+          if (output.asString() == bar_.output->name) {
+            persistent_workspaces_.push_back(p_w_name);
+            break;
+          }
+        }
+      } else {
+        // Adding to all outputs
+        persistent_workspaces_.push_back(p_w_name);
+      }
+    }
+  }
+}
+
+auto WorkspaceGroup::create_persistent_workspaces() -> void {
+  for (const std::string &p_w_name : persistent_workspaces_) {
+    auto new_id = ++workspace_global_id;
+    workspaces_.push_back(
+        std::make_unique<Workspace>(bar_, config_, *this, nullptr, new_id, p_w_name));
+    spdlog::debug("Workspace {} created", new_id);
+  }
+}
+
 auto WorkspaceGroup::active_only() const -> bool { return workspace_manager_.active_only(); }
 auto WorkspaceGroup::creation_delayed() const -> bool {
   return workspace_manager_.creation_delayed();
@@ -215,8 +260,13 @@ WorkspaceGroup::~WorkspaceGroup() {
 
 auto WorkspaceGroup::handle_workspace_create(zext_workspace_handle_v1 *workspace) -> void {
   auto new_id = ++workspace_global_id;
-  workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace, new_id));
+  workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace, new_id, ""));
   spdlog::debug("Workspace {} created", new_id);
+  if (!persistent_created_) {
+    fill_persistent_workspaces();
+    create_persistent_workspaces();
+    persistent_created_ = true;
+  }
 }
 
 auto WorkspaceGroup::handle_remove() -> void {
@@ -315,13 +365,18 @@ auto WorkspaceGroup::sort_workspaces() -> void {
 auto WorkspaceGroup::remove_button(Gtk::Button &button) -> void { box_.remove(button); }
 
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-                     zext_workspace_handle_v1 *workspace, uint32_t id)
+                     zext_workspace_handle_v1 *workspace, uint32_t id, std::string name)
     : bar_(bar),
       config_(config),
       workspace_group_(workspace_group),
       workspace_handle_(workspace),
-      id_(id) {
-  add_workspace_listener(workspace, this);
+      id_(id),
+      name_(name) {
+  if (workspace) {
+    add_workspace_listener(workspace, this);
+  } else {
+    state_ = (uint32_t)State::EMPTY;
+  }
 
   auto config_format = config["format"];
 
@@ -366,7 +421,7 @@ Workspace::~Workspace() {
 }
 
 auto Workspace::update() -> void {
-  label_.set_markup(fmt::format(format_, fmt::arg("name", name_),
+  label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("name", name_),
                                 fmt::arg("icon", with_icon_ ? get_icon() : "")));
 }
 
@@ -388,9 +443,15 @@ auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
 }
 
 auto Workspace::handle_remove() -> void {
-  zext_workspace_handle_v1_destroy(workspace_handle_);
-  workspace_handle_ = nullptr;
-  workspace_group_.remove_workspace(id_);
+  if (workspace_handle_) {
+    zext_workspace_handle_v1_destroy(workspace_handle_);
+    workspace_handle_ = nullptr;
+  }
+  if (!persistent_) {
+    workspace_group_.remove_workspace(id_);
+  } else {
+    state_ = (uint32_t)State::EMPTY;
+  }
 }
 
 auto add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition,
@@ -408,6 +469,7 @@ auto Workspace::handle_done() -> void {
   add_or_remove_class(style_context, is_active(), "active");
   add_or_remove_class(style_context, is_urgent(), "urgent");
   add_or_remove_class(style_context, is_hidden(), "hidden");
+  add_or_remove_class(style_context, is_empty(), "persistent");
 
   if (workspace_group_.creation_delayed()) {
     return;
@@ -431,6 +493,13 @@ auto Workspace::get_icon() -> std::string {
   auto named_icon_it = icons_map_.find(name_);
   if (named_icon_it != icons_map_.end()) {
     return named_icon_it->second;
+  }
+
+  if (is_empty()) {
+    auto persistent_icon_it = icons_map_.find("persistent");
+    if (persistent_icon_it != icons_map_.end()) {
+      return persistent_icon_it->second;
+    }
   }
 
   auto default_icon_it = icons_map_.find("default");
@@ -474,6 +543,29 @@ auto Workspace::handle_name(const std::string &name) -> void {
     workspace_group_.set_need_to_sort();
   }
   name_ = name;
+  spdlog::debug("Workspace {} added to group {}", name, workspace_group_.id());
+
+  make_persistent();
+  handle_duplicate();
+}
+
+auto Workspace::make_persistent() -> void {
+  auto p_workspaces = workspace_group_.persistent_workspaces();
+
+  if (std::find(p_workspaces.begin(), p_workspaces.end(), name_) != p_workspaces.end()) {
+    persistent_ = true;
+  }
+}
+
+auto Workspace::handle_duplicate() -> void {
+  auto duplicate =
+      std::find_if(workspace_group_.workspaces().begin(), workspace_group_.workspaces().end(),
+                   [this](const std::unique_ptr<Workspace> &g) {
+                     return g->get_name() == name_ && g->id() != id_;
+                   });
+  if (duplicate != workspace_group_.workspaces().end()) {
+    workspace_group_.remove_workspace(duplicate->get()->id());
+  }
 }
 
 auto Workspace::handle_coordinates(const std::vector<uint32_t> &coordinates) -> void {

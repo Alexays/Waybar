@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ALabel.hpp"
+#include "giomm/dbusproxy.h"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -39,8 +40,8 @@ class Backlight : public ALabel {
 
  public:
   Backlight(const std::string &, const Json::Value &);
-  ~Backlight();
-  auto update() -> void;
+  virtual ~Backlight();
+  auto update() -> void override;
 
  private:
   template <class ForwardIt>
@@ -49,6 +50,8 @@ class Backlight : public ALabel {
   static void upsert_device(ForwardIt first, ForwardIt last, Inserter inserter, udev_device *dev);
   template <class ForwardIt, class Inserter>
   static void enumerate_devices(ForwardIt first, ForwardIt last, Inserter inserter, udev *udev);
+
+  bool handleScroll(GdkEventScroll *e) override;
 
   const std::string preferred_device_;
   static constexpr int EPOLL_MAX_EVENTS = 16;
@@ -60,5 +63,7 @@ class Backlight : public ALabel {
   std::vector<BacklightDev> devices_;
   // thread must destruct before shared data
   util::SleeperThread udev_thread_;
+
+  Glib::RefPtr<Gio::DBus::Proxy> login_proxy_;
 };
 }  // namespace waybar::modules

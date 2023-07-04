@@ -16,9 +16,9 @@
 #include "glibmm/ustring.h"
 #include "glibmm/variant.h"
 #include "glibmm/varianttype.h"
-#include "gtkmm/icontheme.h"
 #include "gtkmm/label.h"
 #include "gtkmm/tooltip.h"
+#include "util/gtk_icon.hpp"
 
 namespace waybar::modules {
 Gamemode::Gamemode(const std::string& id, const Json::Value& config)
@@ -55,7 +55,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   }
   box_.set_spacing(iconSpacing);
 
-  // Wether to use icon or not
+  // Whether to use icon or not
   if (config_["use-icon"].isBool()) {
     useIcon = config_["use-icon"].asBool();
   }
@@ -213,18 +213,18 @@ auto Gamemode::update() -> void {
 
   // Tooltip
   if (tooltip) {
-    std::string text = fmt::format(tooltip_format, fmt::arg("count", gameCount));
+    std::string text = fmt::format(fmt::runtime(tooltip_format), fmt::arg("count", gameCount));
     box_.set_tooltip_text(text);
   }
 
   // Label format
-  std::string str =
-      fmt::format(showAltText ? format_alt : format, fmt::arg("glyph", useIcon ? "" : glyph),
-                  fmt::arg("count", gameCount > 0 ? std::to_string(gameCount) : ""));
+  std::string str = fmt::format(fmt::runtime(showAltText ? format_alt : format),
+                                fmt::arg("glyph", useIcon ? "" : glyph),
+                                fmt::arg("count", gameCount > 0 ? std::to_string(gameCount) : ""));
   label_.set_markup(str);
 
   if (useIcon) {
-    if (!Gtk::IconTheme::get_default()->has_icon(iconName)) {
+    if (!DefaultGtkIconThemeWrapper::has_icon(iconName)) {
       iconName = DEFAULT_ICON_NAME;
     }
     icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);

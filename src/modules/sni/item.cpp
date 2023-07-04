@@ -9,6 +9,7 @@
 #include <map>
 
 #include "util/format.hpp"
+#include "util/gtk_icon.hpp"
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
@@ -379,10 +380,8 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int reque
     return icon_theme->load_icon(name.c_str(), tmp_size,
                                  Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
   }
-  Glib::RefPtr<Gtk::IconTheme> default_theme = Gtk::IconTheme::get_default();
-  default_theme->rescan_if_needed();
-  return default_theme->load_icon(name.c_str(), tmp_size,
-                                  Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), tmp_size,
+                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
 double Item::getScaledIconSize() {

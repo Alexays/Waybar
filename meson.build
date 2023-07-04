@@ -1,8 +1,8 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.16',
+    version: '0.9.18',
     license: 'MIT',
-    meson_version: '>= 0.49.0',
+    meson_version: '>= 0.50.0',
     default_options : [
         'cpp_std=c++17',
         'buildtype=release',
@@ -86,7 +86,10 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
-giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or get_option('logind').enabled() or get_option('upower_glib').enabled()))
+giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or
+                                                get_option('logind').enabled() or
+                                                get_option('upower_glib').enabled() or
+                                                get_option('mpris').enabled()))
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 sigcpp = dependency('sigc++-2.0')
 libinotify = dependency('libinotify', required: false)
@@ -95,6 +98,7 @@ libinput = dependency('libinput', required: get_option('libinput'))
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
+playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
 libevdev = dependency('libevdev', required: get_option('libevdev'))
@@ -119,11 +123,18 @@ gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
         fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
 systemd = dependency('systemd', required: get_option('systemd'))
-tz_dep = dependency('date',
-    required: false,
-    default_options : [ 'use_system_tzdb=true' ],
-    modules : [ 'date::date', 'date::date-tz' ],
-    fallback: [ 'date', 'tz_dep' ])
+
+cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
+have_chrono_timezones = cpp_lib_chrono >= 201907
+if have_chrono_timezones
+  tz_dep = declare_dependency()
+else
+  tz_dep = dependency('date',
+      required: false,
+      default_options : [ 'use_system_tzdb=true' ],
+      modules : [ 'date::date', 'date::date-tz' ],
+      fallback: [ 'date', 'tz_dep' ])
+endif
 
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
@@ -159,10 +170,14 @@ src_files = files(
     'src/client.cpp',
     'src/config.cpp',
     'src/group.cpp',
+    'src/util/prepare_for_sleep.cpp',
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
-    'src/util/rewrite_title.cpp'
+    'src/util/rewrite_string.cpp',
+    'src/util/gtk_icon.cpp'
 )
+
+inc_dirs = ['include']
 
 if is_linux
     add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
@@ -213,6 +228,12 @@ if true
     src_files += 'src/modules/river/mode.cpp'
     src_files += 'src/modules/river/tags.cpp'
     src_files += 'src/modules/river/window.cpp'
+    src_files += 'src/modules/river/layout.cpp'
+endif
+
+if true
+    add_project_arguments('-DHAVE_DWL', language: 'cpp')
+    src_files += 'src/modules/dwl/tags.cpp'
 endif
 
 if true
@@ -220,6 +241,8 @@ if true
     src_files += 'src/modules/hyprland/backend.cpp'
     src_files += 'src/modules/hyprland/window.cpp'
     src_files += 'src/modules/hyprland/language.cpp'
+    src_files += 'src/modules/hyprland/submap.cpp'
+    src_files += 'src/modules/hyprland/workspaces.cpp'
 endif
 
 if libnl.found() and libnlgen.found()
@@ -236,6 +259,11 @@ if (upower_glib.found() and giounix.found() and not get_option('logind').disable
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
     src_files += 'src/modules/upower/upower.cpp'
     src_files += 'src/modules/upower/upower_tooltip.cpp'
+endif
+
+if (playerctl.found() and giounix.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
+    src_files += 'src/modules/mpris/mpris.cpp'
 endif
 
 if libpulse.found()
@@ -302,7 +330,10 @@ if get_option('rfkill').enabled() and is_linux
     )
 endif
 
-if tz_dep.found()
+if have_chrono_timezones
+    add_project_arguments('-DHAVE_CHRONO_TIMEZONES', language: 'cpp')
+    src_files += 'src/modules/clock.cpp'
+elif tz_dep.found()
     add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
     src_files += 'src/modules/clock.cpp'
 else
@@ -311,6 +342,17 @@ endif
 
 if get_option('experimental')
     add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
+endif
+
+cava = dependency('cava',
+                  version : '>=0.8.4',
+                  required: get_option('cava'),
+                  fallback : ['cava', 'cava_dep'],
+                  not_found_message: 'cava is not found. Building waybar without cava')
+
+if cava.found()
+   add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
+   src_files += 'src/modules/cava.cpp'
 endif
 
 subdir('protocol')
@@ -334,6 +376,7 @@ executable(
         libnl,
         libnlgen,
         upower_glib,
+        playerctl,
         libpulse,
         libjack,
         libwireplumber,
@@ -345,9 +388,10 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-		xkbregistry
+		xkbregistry,
+        cava
     ],
-    include_directories: [include_directories('include')],
+    include_directories: inc_dirs,
     install: true,
 )
 
@@ -384,14 +428,17 @@ if scdoc.found()
         'waybar-disk.5.scd',
         'waybar-gamemode.5.scd',
         'waybar-idle-inhibitor.5.scd',
+        'waybar-image.5.scd',
         'waybar-keyboard-state.5.scd',
         'waybar-memory.5.scd',
         'waybar-mpd.5.scd',
+        'waybar-mpris.5.scd',
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
         'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',
+        'waybar-river-layout.5.scd',
         'waybar-sway-language.5.scd',
         'waybar-sway-mode.5.scd',
         'waybar-sway-scratchpad.5.scd',
@@ -405,6 +452,8 @@ if scdoc.found()
         'waybar-bluetooth.5.scd',
         'waybar-sndio.5.scd',
         'waybar-upower.5.scd',
+        'waybar-wireplumber.5.scd',
+        'waybar-dwl-tags.5.scd',
     ]
 
     if (giounix.found() and not get_option('logind').disabled())
@@ -435,7 +484,7 @@ endif
 
 catch2 = dependency(
     'catch2',
-    version: '>=3.0.0',
+    version: '>=2.0.0',
     fallback: ['catch2', 'catch2_dep'],
     required: get_option('tests'),
 )

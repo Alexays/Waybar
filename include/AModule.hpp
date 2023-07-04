@@ -11,15 +11,20 @@ namespace waybar {
 
 class AModule : public IModule {
  public:
-  AModule(const Json::Value &, const std::string &, const std::string &, bool enable_click = false,
-          bool enable_scroll = false);
   virtual ~AModule();
-  virtual auto update() -> void;
-  virtual operator Gtk::Widget &();
+  auto update() -> void override;
+  virtual auto refresh(int) -> void{};
+  operator Gtk::Widget &() override;
+  auto doAction(const std::string &name) -> void override;
 
   Glib::Dispatcher dp;
 
  protected:
+  // Don't need to make an object directly
+  // Derived classes are able to use it
+  AModule(const Json::Value &, const std::string &, const std::string &, bool enable_click = false,
+          bool enable_scroll = false);
+
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
   SCROLL_DIR getScrollDir(GdkEventScroll *e);
@@ -36,6 +41,7 @@ class AModule : public IModule {
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
+  std::map<std::string, std::string> eventActionMap_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
       {std::make_pair(1, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click"},

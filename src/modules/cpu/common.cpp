@@ -39,7 +39,6 @@ auto waybar::modules::Cpu::update() -> void {
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load", cpu_load));
-    store.push_back(fmt::arg("load", cpu_load));
     store.push_back(fmt::arg("usage", total_usage));
     store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
     store.push_back(fmt::arg("max_frequency", max_frequency));

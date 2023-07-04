@@ -593,6 +593,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     setMode(MODE_DEFAULT);
   }
 
+  if (config["start_hidden"].asBool()) {
+    setVisible(false);
+  }
+
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
 #if HAVE_SWAY
@@ -725,10 +729,7 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
 
 void waybar::Bar::handleSignal(int signal) {
   for (auto& module : modules_all_) {
-    auto* custom = dynamic_cast<waybar::modules::Custom*>(module.get());
-    if (custom != nullptr) {
-      custom->refresh(signal);
-    }
+    module->refresh(signal);
   }
 }
 
@@ -742,7 +743,13 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
         AModule* module;
 
         if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
-          auto group_module = new waybar::Group(ref, *this, config[ref]);
+          auto hash_pos = ref.find('#');
+          auto id_name = ref.substr(6, hash_pos - 6);
+          auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
+
+          auto parent = group ? group : &this->box_;
+          auto vertical = parent->get_orientation() == Gtk::ORIENTATION_VERTICAL;
+          auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
           getModules(factory, ref, &group_module->box);
           module = group_module;
         } else {
@@ -764,11 +771,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
             modules_right_.emplace_back(module_sp);
           }
         }
-        module->dp.connect([module, name] {
+        module->dp.connect([module, ref] {
           try {
             module->update();
           } catch (const std::exception& e) {
-            spdlog::error("{}: {}", name.asString(), e.what());
+            spdlog::error("{}: {}", ref, e.what());
           }
         });
       } catch (const std::exception& e) {

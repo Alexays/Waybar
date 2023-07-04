@@ -15,7 +15,7 @@ Addressed by *hyprland/language*
 *format*: ++
 	typeof: string ++
 	default: {} ++
-	The format, how information should be displayed. On {} the currently selected language is displayed.
+	The format, how information should be displayed.
 
 *format-<lang>* ++
     typeof: string++
@@ -23,18 +23,28 @@ Addressed by *hyprland/language*
 
 *keyboard-name*: ++
     typeof: string ++
-    Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "AT Translated set..." is recommended.
+    Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
 
+
+# FORMAT REPLACEMENTS
+
+*{short}*: Short name of layout (e.g. "us"). Equals to {}.
+
+*{shortDescription}*: Short description of layout (e.g. "en").
+
+*{long}*: Long name of layout (e.g. "English (Dvorak)").
+
+*{variant}*: Variant of layout (e.g. "dvorak").
 
 
 # EXAMPLES
 
 ```
 "hyprland/language": {
-    "format": "Lang: {}"
-    "format-us": "AMERICA, HELL YEAH!" // For American English
-    "format-tr": "As bayrakları" // For Turkish
-    "keyboard-name": "AT Translated Set 2 keyboard"
+    "format": "Lang: {long}"
+    "format-en": "AMERICA, HELL YEAH!"
+    "format-tr": "As bayrakları"
+    "keyboard-name": "at-translated-set-2-keyboard"
 }
 ```
 

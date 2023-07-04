@@ -6,6 +6,8 @@
 #include <functional>
 #include <thread>
 
+#include "prepare_for_sleep.h"
+
 namespace waybar::util {
 
 /**
@@ -33,7 +35,11 @@ class SleeperThread {
             signal_ = false;
             func();
           }
-        }} {}
+        }} {
+    connection_ = prepare_for_sleep().connect([this](bool sleep) {
+      if (not sleep) wake_up();
+    });
+  }
 
   SleeperThread& operator=(std::function<void()> func) {
     thread_ = std::thread([this, func] {
@@ -42,6 +48,11 @@ class SleeperThread {
         func();
       }
     });
+    if (connection_.empty()) {
+      connection_ = prepare_for_sleep().connect([this](bool sleep) {
+        if (not sleep) wake_up();
+      });
+    }
     return *this;
   }
 
@@ -61,7 +72,7 @@ class SleeperThread {
     return condvar_.wait_until(lk, time_point, [this] { return signal_ || !do_run_; });
   }
 
-  auto wake_up() {
+  void wake_up() {
     {
       std::lock_guard<std::mutex> lck(mutex_);
       signal_ = true;
@@ -96,6 +107,7 @@ class SleeperThread {
   std::mutex mutex_;
   bool do_run_ = true;
   bool signal_ = false;
+  sigc::connection connection_;
 };
 
 }  // namespace waybar::util

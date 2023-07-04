@@ -87,6 +87,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
       want_link_dump_(false),
       want_addr_dump_(false),
       dump_in_progress_(false),
+      is_p2p_(false),
       cidr_(0),
       signal_strength_dbm_(0),
       signal_strength_(0),
@@ -98,7 +99,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
-  // the module start with no text, but the the event_box_ is shown.
+  // the module start with no text, but the event_box_ is shown.
   label_.set_markup("<s></s>");
 
   auto bandwidth = readBandwidthUsage();
@@ -187,7 +188,7 @@ void waybar::modules::Network::createEventSocket() {
     throw std::runtime_error("Can't create epoll");
   }
   {
-    ev_fd_ = eventfd(0, EFD_NONBLOCK);
+    ev_fd_ = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.events = EPOLLIN | EPOLLET;
@@ -331,7 +332,7 @@ auto waybar::modules::Network::update() -> void {
   getState(signal_strength_);
 
   auto text = fmt::format(
-      format_, fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
+      fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
       fmt::arg("signalStrength", signal_strength_),
       fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
@@ -363,8 +364,8 @@ auto waybar::modules::Network::update() -> void {
     }
     if (!tooltip_format.empty()) {
       auto tooltip_text = fmt::format(
-          tooltip_format, fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
-          fmt::arg("signalStrength", signal_strength_),
+          fmt::runtime(tooltip_format), fmt::arg("essid", essid_),
+          fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
           fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
           fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
@@ -456,6 +457,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
           case IFLA_IFNAME:
             ifname = static_cast<const char *>(RTA_DATA(ifla));
             ifname_len = RTA_PAYLOAD(ifla) - 1;  // minus \0
+            if (ifi->ifi_flags & IFF_POINTOPOINT && net->checkInterface(ifname))
+              net->is_p2p_ = true;
             break;
           case IFLA_CARRIER: {
             carrier = *(char *)RTA_DATA(ifla) == 1;
@@ -494,6 +497,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
           net->ifname_ = new_ifname;
           net->ifid_ = ifi->ifi_index;
+          if (ifi->ifi_flags & IFF_POINTOPOINT) net->is_p2p_ = true;
           if (carrier.has_value()) {
             net->carrier_ = carrier.value();
           }
@@ -537,7 +541,9 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
 
       for (; RTA_OK(ifa_rta, attrlen); ifa_rta = RTA_NEXT(ifa_rta, attrlen)) {
         switch (ifa_rta->rta_type) {
-          case IFA_ADDRESS: {
+          case IFA_ADDRESS:
+            if (net->is_p2p_) continue;
+          case IFA_LOCAL:
             char ipaddr[INET6_ADDRSTRLEN];
             if (!is_del_event) {
               net->ipaddr_ = inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
@@ -570,7 +576,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             }
             net->dp.emit();
             break;
-          }
         }
       }
       break;

@@ -11,8 +11,8 @@ namespace waybar::modules {
 class User : public AIconLabel {
  public:
   User(const std::string&, const Json::Value&);
-  ~User() = default;
-  auto update() -> void;
+  virtual ~User() = default;
+  auto update() -> void override;
 
   bool handleToggle(GdkEventButton* const& e) override;
 
