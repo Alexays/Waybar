@@ -78,7 +78,12 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Selects one of the preconfigured display modes. This is an equivalent of the sway-bar(5) *mode* command and supports the same values: *dock*, *hide*, *invisible*, *overlay*. ++
 	Note: *hide* and *invisible* modes may be not as useful without Sway IPC.
 
-modifier-reset ++
+*start_hidden* ++
+	typeof: bool ++
+	default: *false* ++
+	Option to start the bar hidden.
+
+*modifier-reset* ++
 	typeof: string ++
 	default: *press*
 	Defines the timing of modifier key to reset the bar visibility.
