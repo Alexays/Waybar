@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fcntl.h>
 #include <giomm.h>
 #include <spdlog/spdlog.h>
 #include <sys/wait.h>
@@ -68,7 +69,11 @@ inline int close(FILE* fp, pid_t pid) {
 inline FILE* open(const std::string& cmd, int& pid) {
   if (cmd == "") return nullptr;
   int fd[2];
-  if (pipe(fd) != 0) {
+  // Open the pipe with the close-on-exec flag set, so it will not be inherited
+  // by any other subprocesses launched by other threads (which could result in
+  // the pipe staying open after this child dies, causing us to hang when trying
+  // to read from it)
+  if (pipe2(fd, O_CLOEXEC) != 0) {
     spdlog::error("Unable to pipe fd");
     return nullptr;
   }
@@ -77,6 +82,8 @@ inline FILE* open(const std::string& cmd, int& pid) {
 
   if (child_pid < 0) {
     spdlog::error("Unable to exec cmd {}, error {}", cmd.c_str(), strerror(errno));
+    ::close(fd[0]);
+    ::close(fd[1]);
     return nullptr;
   }
 

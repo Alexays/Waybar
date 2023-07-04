@@ -7,15 +7,15 @@
 #include <algorithm>
 #include <array>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 
 namespace waybar::modules {
 
-class Pulseaudio : public AButton {
+class Pulseaudio : public ALabel {
  public:
   Pulseaudio(const std::string&, const Json::Value&);
-  ~Pulseaudio();
-  auto update() -> void;
+  virtual ~Pulseaudio();
+  auto update() -> void override;
 
  private:
   static void subscribeCb(pa_context*, pa_subscription_event_type_t, uint32_t, void*);
@@ -25,7 +25,7 @@ class Pulseaudio : public AButton {
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
   static void volumeModifyCb(pa_context*, int, void*);
 
-  bool handleScroll(GdkEventScroll* e);
+  bool handleScroll(GdkEventScroll* e) override;
   const std::vector<std::string> getPulseIcon() const;
 
   pa_threaded_mainloop* mainloop_;

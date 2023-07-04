@@ -73,6 +73,15 @@ Addressed by *sway/workspaces*
     typeof: bool ++
     Whether to disable *workspace_auto_back_and_forth* when clicking on workspaces. If this is set to *true*, clicking on a workspace you are already on won't do anything, even if *workspace_auto_back_and_forth* is enabled in the Sway configuration.
 
+*alphabetical_sort*: ++
+    typeof: bool ++
+    Whether to sort workspaces alphabetically. Please note this can make "swaymsg workspace prev/next" move to workspaces inconsistent with the ordering shown in Waybar.
+
+warp-on-scroll: ++
+    typeof: bool ++
+    default: true ++
+    If set to false, you can scroll to cycle through workspaces without mouse warping being enabled. If set to true this behaviour is disabled.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, as defined by sway.
@@ -82,6 +91,8 @@ Addressed by *sway/workspaces*
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{index}*: Index of the workspace.
+
+*{output}*: Output where the workspace is located.
 
 # ICONS
 

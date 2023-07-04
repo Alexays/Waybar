@@ -48,13 +48,13 @@ struct UdevMonitorDeleter {
 
 void check_eq(int rc, int expected, const char *message = "eq, rc was: ") {
   if (rc != expected) {
-    throw std::runtime_error(fmt::format(message, rc));
+    throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
 void check_neq(int rc, int bad_rc, const char *message = "neq, rc was: ") {
   if (rc == bad_rc) {
-    throw std::runtime_error(fmt::format(message, rc));
+    throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
@@ -62,7 +62,7 @@ void check0(int rc, const char *message = "rc wasn't 0") { check_eq(rc, 0, messa
 
 void check_gte(int rc, int gte, const char *message = "rc was: ") {
   if (rc < gte) {
-    throw std::runtime_error(fmt::format(message, rc));
+    throw std::runtime_error(fmt::format(fmt::runtime(message), rc));
   }
 }
 
@@ -73,7 +73,8 @@ void check_nn(const void *ptr, const char *message = "ptr was null") {
 }
 }  // namespace
 
-waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max, bool powered)
+waybar::modules::Backlight::BacklightDev::BacklightDev(std::string name, int actual, int max,
+                                                       bool powered)
     : name_(std::move(name)), actual_(actual), max_(max), powered_(powered) {}
 
 std::string_view waybar::modules::Backlight::BacklightDev::name() const { return name_; }
@@ -91,7 +92,7 @@ bool waybar::modules::Backlight::BacklightDev::get_powered() const { return powe
 void waybar::modules::Backlight::BacklightDev::set_powered(bool powered) { powered_ = powered; }
 
 waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
-    : AButton(config, "backlight", id, "{percent}%", 2),
+    : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : "") {
   // Get initial state
   {
@@ -104,6 +105,15 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
     }
     dp.emit();
   }
+
+  // Set up scroll handler
+  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
+
+  // Connect to the login interface
+  login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
+      Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
+      "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
 
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
@@ -180,9 +190,24 @@ auto waybar::modules::Backlight::update() -> void {
       event_box_.show();
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-      label_->set_markup(fmt::format(format_, fmt::arg("percent", std::to_string(percent)),
-                                     fmt::arg("icon", getIcon(percent))));
+      std::string desc =
+          fmt::format(fmt::runtime(format_), fmt::arg("percent", std::to_string(percent)),
+                      fmt::arg("icon", getIcon(percent)));
+      label_.set_markup(desc);
       getState(percent);
+      if (tooltipEnabled()) {
+        std::string tooltip_format;
+        if (config_["tooltip-format"].isString()) {
+          tooltip_format = config_["tooltip-format"].asString();
+        }
+        if (!tooltip_format.empty()) {
+          label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
+                                              fmt::arg("percent", std::to_string(percent)),
+                                              fmt::arg("icon", getIcon(percent))));
+        } else {
+          label_.set_tooltip_text(desc);
+        }
+      }
     } else {
       event_box_.hide();
     }
@@ -190,12 +215,12 @@ auto waybar::modules::Backlight::update() -> void {
     if (!previous_best_.has_value()) {
       return;
     }
-    label_->set_markup("");
+    label_.set_markup("");
   }
   previous_best_ = best == nullptr ? std::nullopt : std::optional{*best};
   previous_format_ = format_;
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }
 
 template <class ForwardIt>
@@ -261,4 +286,64 @@ void waybar::modules::Backlight::enumerate_devices(ForwardIt first, ForwardIt la
     check_nn(dev.get(), "dev new failed");
     upsert_device(first, last, inserter, dev.get());
   }
+}
+
+bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
+  // Check if the user has set a custom command for scrolling
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+
+  // Fail fast if the proxy could not be initialized
+  if (!login_proxy_) {
+    return true;
+  }
+
+  // Check scroll direction
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  // Get scroll step
+  double step = 1;
+
+  if (config_["scroll-step"].isDouble()) {
+    step = config_["scroll-step"].asDouble();
+  }
+
+  // Get the best device
+  decltype(devices_) devices;
+  {
+    std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
+    devices = devices_;
+  }
+  const auto best = best_device(devices.cbegin(), devices.cend(), preferred_device_);
+
+  if (best == nullptr) {
+    return true;
+  }
+
+  // Compute the absolute step
+  const auto abs_step = static_cast<int>(round(step * best->get_max() / 100.0f));
+
+  // Compute the new value
+  int new_value = best->get_actual();
+
+  if (dir == SCROLL_DIR::UP) {
+    new_value += abs_step;
+  } else if (dir == SCROLL_DIR::DOWN) {
+    new_value -= abs_step;
+  }
+
+  // Clamp the value
+  new_value = std::clamp(new_value, 0, best->get_max());
+
+  // Set the new value
+  auto call_args = Glib::VariantContainerBase(
+      g_variant_new("(ssu)", "backlight", std::string(best->name()).c_str(), new_value));
+
+  login_proxy_->call_sync("SetBrightness", call_args);
+
+  return true;
 }

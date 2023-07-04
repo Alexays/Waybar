@@ -22,6 +22,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
       return new waybar::modules::upower::UPower(id, config_[name]);
     }
 #endif
+#ifdef HAVE_MPRIS
+    if (ref == "mpris") {
+      return new waybar::modules::mpris::Mpris(id, config_[name]);
+    }
+#endif
 #ifdef HAVE_SWAY
     if (ref == "sway/mode") {
       return new waybar::modules::sway::Mode(id, config_[name]);
@@ -59,6 +64,14 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "river/window") {
       return new waybar::modules::river::Window(id, bar_, config_[name]);
     }
+    if (ref == "river/layout") {
+      return new waybar::modules::river::Layout(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_DWL
+    if (ref == "dwl/tags") {
+      return new waybar::modules::dwl::Tags(id, bar_, config_[name]);
+    }
 #endif
 #ifdef HAVE_HYPRLAND
     if (ref == "hyprland/window") {
@@ -66,6 +79,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
     if (ref == "hyprland/language") {
       return new waybar::modules::hyprland::Language(id, bar_, config_[name]);
+    }
+    if (ref == "hyprland/submap") {
+      return new waybar::modules::hyprland::Submap(id, bar_, config_[name]);
+    }
+    if (ref == "hyprland/workspaces") {
+      return new waybar::modules::hyprland::Workspaces(id, bar_, config_[name]);
     }
 #endif
     if (ref == "idle_inhibitor") {
@@ -89,6 +108,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     }
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
+    }
+    if (ref == "image") {
+      return new waybar::modules::Image(id, config_[name]);
     }
 #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
@@ -136,6 +158,16 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_LIBJACK
     if (ref == "jack") {
       return new waybar::modules::JACK(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_LIBWIREPLUMBER
+    if (ref == "wireplumber") {
+      return new waybar::modules::Wireplumber(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_LIBCAVA
+    if (ref == "cava") {
+      return new waybar::modules::Cava(id, config_[name]);
     }
 #endif
     if (ref == "temperature") {

@@ -30,6 +30,8 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *output* ++
 	typeof: string|array ++
 	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
+	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
+	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
 
 *position* ++
 	typeof: string ++
@@ -77,7 +79,12 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Selects one of the preconfigured display modes. This is an equivalent of the sway-bar(5) *mode* command and supports the same values: *dock*, *hide*, *invisible*, *overlay*. ++
 	Note: *hide* and *invisible* modes may be not as useful without Sway IPC.
 
-modifier-reset ++
+*start_hidden* ++
+	typeof: bool ++
+	default: *false* ++
+	Option to start the bar hidden.
+
+*modifier-reset* ++
 	typeof: string ++
 	default: *press*
 	Defines the timing of modifier key to reset the bar visibility.
@@ -242,6 +249,7 @@ A module group is defined by specifying a module named "group/some-group-name". 
 	"modules-right": ["group/hardware", "clock"],
 
 	"group/hardware": {
+		"orientation": "vertical",
 		"modules": [
 			"cpu",
 			"memory",
@@ -253,6 +261,8 @@ A module group is defined by specifying a module named "group/some-group-name". 
 }
 ```
 
+Valid options for the (optional) "orientation" property are: "horizontal", "vertical", "inherit", and "orthogonal" (default).
+
 # SUPPORTED MODULES
 
 - *waybar-backlight(5)*
@@ -263,20 +273,28 @@ A module group is defined by specifying a module named "group/some-group-name". 
 - *waybar-custom(5)*
 - *waybar-disk(5)*
 - *waybar-idle-inhibitor(5)*
+- *waybar-image(5)*
 - *waybar-keyboard-state(5)*
 - *waybar-memory(5)*
 - *waybar-mpd(5)*
+- *waybar-mpris(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
 - *waybar-river-mode(5)*
 - *waybar-river-tags(5)*
 - *waybar-river-window(5)*
+- *waybar-river-layout(5)*
 - *waybar-states(5)*
 - *waybar-sway-mode(5)*
 - *waybar-sway-scratchpad(5)*
 - *waybar-sway-window(5)*
 - *waybar-sway-workspaces(5)*
+- *waybar-wireplumber(5)*
 - *waybar-wlr-taskbar(5)*
 - *waybar-wlr-workspaces(5)*
 - *waybar-temperature(5)*
 - *waybar-tray(5)*
+
+# SEE ALSO
+
+*sway-output(5)*

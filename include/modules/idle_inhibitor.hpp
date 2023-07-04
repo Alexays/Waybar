@@ -2,24 +2,24 @@
 
 #include <fmt/format.h>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 
 namespace waybar::modules {
 
-class IdleInhibitor : public AButton {
+class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
 
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
-  ~IdleInhibitor();
-  auto update() -> void;
+  virtual ~IdleInhibitor();
+  auto update() -> void override;
   static std::list<waybar::AModule*> modules;
   static bool status;
 
  private:
-  bool handleToggle(GdkEventButton* const& e);
+  bool handleToggle(GdkEventButton* const& e) override;
   void toggleStatus();
 
   const Bar& bar_;

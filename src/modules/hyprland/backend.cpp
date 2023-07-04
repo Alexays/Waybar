@@ -112,13 +112,13 @@ void IPC::registerForIPC(const std::string& ev, EventHandler* ev_handler) {
 }
 
 void IPC::unregisterForIPC(EventHandler* ev_handler) {
-    if (!ev_handler) {
+  if (!ev_handler) {
     return;
   }
 
   callbackMutex.lock();
 
-  for(auto it = callbacks.begin(); it != callbacks.end(); ) {
+  for (auto it = callbacks.begin(); it != callbacks.end();) {
     auto it_current = it;
     it++;
     auto& [eventname, handler] = *it_current;
@@ -133,6 +133,8 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
+  struct addrinfo ai_hints;
+  struct addrinfo* ai_res = NULL;
   const auto SERVERSOCKET = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (SERVERSOCKET < 0) {
@@ -140,9 +142,11 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     return "";
   }
 
-  const auto SERVER = gethostbyname("localhost");
+  memset(&ai_hints, 0, sizeof(struct addrinfo));
+  ai_hints.ai_family = AF_UNSPEC;
+  ai_hints.ai_socktype = SOCK_STREAM;
 
-  if (!SERVER) {
+  if (getaddrinfo("localhost", NULL, &ai_hints, &ai_res) != 0) {
     spdlog::error("Hyprland IPC: Couldn't get host (2)");
     return "";
   }
@@ -177,17 +181,25 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   }
 
   char buffer[8192] = {0};
+  std::string response;
 
-  sizeWritten = read(SERVERSOCKET, buffer, 8192);
+  do {
+    sizeWritten = read(SERVERSOCKET, buffer, 8192);
 
-  if (sizeWritten < 0) {
-    spdlog::error("Hyprland IPC: Couldn't read (5)");
-    return "";
-  }
+    if (sizeWritten < 0) {
+      spdlog::error("Hyprland IPC: Couldn't read (5)");
+      close(SERVERSOCKET);
+      return "";
+    }
+    response.append(buffer, sizeWritten);
+  } while (sizeWritten == 8192);
 
   close(SERVERSOCKET);
+  return response;
+}
 
-  return std::string(buffer);
+Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
+  return parser_.parse(getSocket1Reply("j/" + rq));
 }
 
 }  // namespace waybar::modules::hyprland

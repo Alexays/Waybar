@@ -1,30 +1,38 @@
 #include <fmt/format.h>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::hyprland {
 
-class Language : public waybar::AButton,
-public EventHandler {
+class Language : public waybar::ALabel, public EventHandler {
  public:
   Language(const std::string&, const waybar::Bar&, const Json::Value&);
-  ~Language();
+  virtual ~Language();
 
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
-  void onEvent(const std::string&);
+  void onEvent(const std::string&) override;
 
   void initLanguage();
-  std::string getShortFrom(const std::string&);
+
+  struct Layout {
+    std::string full_name;
+    std::string short_name;
+    std::string variant;
+    std::string short_description;
+  };
+
+  auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
-  std::string layoutName_;
+
+  Layout layout_;
 };
 
 }  // namespace waybar::modules::hyprland

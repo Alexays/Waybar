@@ -4,20 +4,20 @@
 
 #include <memory>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "bar.hpp"
 
 namespace waybar::modules {
 
-class Inhibitor : public AButton {
+class Inhibitor : public ALabel {
  public:
   Inhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
-  ~Inhibitor() override;
-  auto update() -> void;
+  virtual ~Inhibitor();
+  auto update() -> void override;
   auto activated() -> bool;
 
  private:
-  auto handleToggle(::GdkEventButton* const& e) -> bool;
+  auto handleToggle(::GdkEventButton* const& e) -> bool override;
 
   const std::unique_ptr<::GDBusConnection, void (*)(::GDBusConnection*)> dbus_;
   const std::string inhibitors_;

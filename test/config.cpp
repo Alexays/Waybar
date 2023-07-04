@@ -1,6 +1,10 @@
 #include "config.hpp"
 
-#include <catch2/catch_all.hpp>
+#if __has_include(<catch2/catch_test_macros.hpp>)
+#include <catch2/catch_test_macros.hpp>
+#else
+#include <catch2/catch.hpp>
+#endif
 
 TEST_CASE("Load simple config", "[config]") {
   waybar::Config conf;
@@ -27,7 +31,7 @@ TEST_CASE("Load config with multiple bars", "[config]") {
 
   SECTION("select multiple configs #1") {
     auto data = conf.getOutputConfigs("DP-0", "Fake DisplayPort output #0");
-    REQUIRE(data.size() == 3);
+    REQUIRE(data.size() == 4);
     REQUIRE(data[0]["layer"].asString() == "bottom");
     REQUIRE(data[0]["height"].asInt() == 20);
     REQUIRE(data[1]["layer"].asString() == "top");
@@ -36,6 +40,7 @@ TEST_CASE("Load config with multiple bars", "[config]") {
     REQUIRE(data[2]["layer"].asString() == "overlay");
     REQUIRE(data[2]["position"].asString() == "right");
     REQUIRE(data[2]["height"].asInt() == 23);
+    REQUIRE(data[3]["height"].asInt() == 24);
   }
   SECTION("select multiple configs #2") {
     auto data = conf.getOutputConfigs("HDMI-0", "Fake HDMI output #0");

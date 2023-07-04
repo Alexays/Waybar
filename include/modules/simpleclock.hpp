@@ -2,16 +2,16 @@
 
 #include <fmt/chrono.h>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Clock : public AButton {
+class Clock : public ALabel {
  public:
   Clock(const std::string&, const Json::Value&);
-  ~Clock() = default;
-  auto update() -> void;
+  virtual ~Clock() = default;
+  auto update() -> void override;
 
  private:
   util::SleeperThread thread_;

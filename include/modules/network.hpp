@@ -10,7 +10,7 @@
 
 #include <optional>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
@@ -18,11 +18,11 @@
 
 namespace waybar::modules {
 
-class Network : public AButton {
+class Network : public ALabel {
  public:
   Network(const std::string&, const Json::Value&);
-  ~Network();
-  auto update() -> void;
+  virtual ~Network();
+  auto update() -> void override;
 
  private:
   static const uint8_t MAX_RETRY = 5;
@@ -62,6 +62,7 @@ class Network : public AButton {
   bool want_link_dump_;
   bool want_addr_dump_;
   bool dump_in_progress_;
+  bool is_p2p_;
 
   unsigned long long bandwidth_down_total_;
   unsigned long long bandwidth_up_total_;
@@ -77,7 +78,6 @@ class Network : public AButton {
   int32_t signal_strength_dbm_;
   uint8_t signal_strength_;
   std::string signal_strength_app_;
-  float frequency_;
   uint32_t route_priority;
 
   util::SleeperThread thread_;
@@ -85,6 +85,7 @@ class Network : public AButton {
 #ifdef WANT_RFKILL
   util::Rfkill rfkill_;
 #endif
+  float frequency_;
 };
 
 }  // namespace waybar::modules

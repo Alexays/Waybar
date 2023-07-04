@@ -6,7 +6,7 @@
 
 #include <iostream>
 waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
-    : AButton(config, "battery", id, "{capacity}%", 60) {
+    : ALabel(config, "battery", id, "{capacity}%", 60) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
@@ -36,7 +36,8 @@ waybar::modules::Battery::~Battery() {
   }
   close(global_watch_fd_);
 
-  for (auto it = batteries_.cbegin(); it != batteries_.cend(); it++) {
+  for (auto it = batteries_.cbegin(), next_it = it; it != batteries_.cend(); it = next_it) {
+    ++next_it;
     auto watch_id = (*it).second;
     if (watch_id >= 0) {
       inotify_rm_watch(battery_watch_fd_, watch_id);
@@ -107,6 +108,15 @@ void waybar::modules::Battery::refreshBatteries() {
         std::ifstream(node.path() / "type") >> type;
 
         if (!type.compare("Battery")) {
+          // Ignore non-system power supplies unless explicitly requested
+          if (!bat_defined && fs::exists(node.path() / "scope")) {
+            std::string scope;
+            std::ifstream(node.path() / "scope") >> scope;
+            if (g_ascii_strcasecmp(scope.data(), "device") == 0) {
+              continue;
+            }
+          }
+
           check_map[node.path()] = true;
           auto search = batteries_.find(node.path());
           if (search == batteries_.end()) {
@@ -233,6 +243,10 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     bool total_energy_full_design_exists = false;
     uint32_t total_capacity = 0;
     bool total_capacity_exists = false;
+    uint32_t time_to_empty_now = 0;
+    bool time_to_empty_now_exists = false;
+    uint32_t time_to_full_now = 0;
+    bool time_to_full_now_exists = false;
 
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
@@ -258,6 +272,16 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       } else if (fs::exists(bat / "current_avg")) {
         current_now_exists = true;
         std::ifstream(bat / "current_avg") >> current_now;
+      }
+
+      if (fs::exists(bat / "time_to_empty_now")) {
+        time_to_empty_now_exists = true;
+        std::ifstream(bat / "time_to_empty_now") >> time_to_empty_now;
+      }
+
+      if (fs::exists(bat / "time_to_full_now")) {
+        time_to_full_now_exists = true;
+        std::ifstream(bat / "time_to_full_now") >> time_to_full_now;
       }
 
       uint32_t voltage_now = 0;
@@ -481,8 +505,16 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     }
 
     float time_remaining{0.0f};
-    if (status == "Discharging" && total_power_exists && total_energy_exists) {
+    if (status == "Discharging" && time_to_empty_now_exists) {
+      if (time_to_empty_now != 0) time_remaining = (float)time_to_empty_now / 3600.0f;
+    } else if (status == "Discharging" && total_power_exists && total_energy_exists) {
       if (total_power != 0) time_remaining = (float)total_energy / total_power;
+    } else if (status == "Charging" && time_to_full_now_exists) {
+      if (time_to_full_now_exists && (time_to_full_now != 0))
+        time_remaining = -(float)time_to_full_now / 3600.0f;
+      // If we've turned positive it means the battery is past 100% and so just report that as no
+      // time remaining
+      if (time_remaining > 0.0f) time_remaining = 0.0f;
     } else if (status == "Charging" && total_energy_exists && total_energy_full_exists &&
                total_power_exists) {
       if (total_power != 0)
@@ -495,7 +527,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     float calculated_capacity{0.0f};
     if (total_capacity_exists) {
       if (total_capacity > 0.0f)
-        calculated_capacity = (float)total_capacity;
+        calculated_capacity = (float)total_capacity / batteries_.size();
       else if (total_energy_full_exists && total_energy_exists) {
         if (total_energy_full > 0.0f)
           calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
@@ -573,7 +605,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
     format = config_["format-time"].asString();
   }
   std::string zero_pad_minutes = fmt::format("{:02d}", minutes);
-  return fmt::format(format, fmt::arg("H", full_hours), fmt::arg("M", minutes),
+  return fmt::format(fmt::runtime(format), fmt::arg("H", full_hours), fmt::arg("M", minutes),
                      fmt::arg("m", zero_pad_minutes));
 }
 
@@ -613,14 +645,15 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    button_.set_tooltip_text(fmt::format(tooltip_format, fmt::arg("timeTo", tooltip_text_default),
-                                         fmt::arg("power", power), fmt::arg("capacity", capacity),
-                                         fmt::arg("time", time_remaining_formatted)));
+    label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
+                                        fmt::arg("timeTo", tooltip_text_default),
+                                        fmt::arg("power", power), fmt::arg("capacity", capacity),
+                                        fmt::arg("time", time_remaining_formatted)));
   }
   if (!old_status_.empty()) {
-    button_.get_style_context()->remove_class(old_status_);
+    label_.get_style_context()->remove_class(old_status_);
   }
-  button_.get_style_context()->add_class(status);
+  label_.get_style_context()->add_class(status);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
@@ -634,10 +667,10 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    label_->set_markup(fmt::format(format, fmt::arg("capacity", capacity), fmt::arg("power", power),
-                                   fmt::arg("icon", getIcon(capacity, icons)),
-                                   fmt::arg("time", time_remaining_formatted)));
+    label_.set_markup(fmt::format(
+        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
+        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted)));
   }
   // Call parent update
-  AButton::update();
+  ALabel::update();
 }

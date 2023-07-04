@@ -7,12 +7,12 @@
 #include <condition_variable>
 #include <thread>
 
-#include "AButton.hpp"
+#include "ALabel.hpp"
 #include "modules/mpd/state.hpp"
 
 namespace waybar::modules {
 
-class MPD : public AButton {
+class MPD : public ALabel {
   friend class detail::Context;
 
   // State machine
@@ -37,7 +37,7 @@ class MPD : public AButton {
  public:
   MPD(const std::string&, const Json::Value&);
   virtual ~MPD() noexcept = default;
-  auto update() -> void;
+  auto update() -> void override;
 
  private:
   std::string getTag(mpd_tag_type type, unsigned idx = 0) const;

@@ -6,12 +6,12 @@
 
 #include <util/sanitize_str.hpp>
 
-#include "modules/hyprland/backend.hpp"
+#include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AButton(config, "language", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
   if (!gIPC.get()) {
@@ -21,8 +21,8 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   // get the active layout when open
   initLanguage();
 
-  button_.hide();
-  AButton::update();
+  label_.hide();
+  update();
 
   // register for hyprland ipc
   gIPC->registerForIPC("activelayout", this);
@@ -37,39 +37,38 @@ Language::~Language() {
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
-  if (!format_.empty()) {
-    button_.show();
-    label_->set_markup(layoutName_);
+  std::string layoutName = std::string{};
+  if (config_.isMember("format-" + layout_.short_description)) {
+    const auto propName = "format-" + layout_.short_description;
+    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
   } else {
-    button_.hide();
+    layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
+                                  fmt::arg("short", layout_.short_name),
+                                  fmt::arg("shortDescription", layout_.short_description),
+                                  fmt::arg("variant", layout_.variant)));
   }
 
-  AButton::update();
+  if (!format_.empty()) {
+    label_.show();
+    label_.set_markup(layoutName);
+  } else {
+    label_.hide();
+  }
+
+  ALabel::update();
 }
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  auto layoutName = ev.substr(ev.find_last_of(',') + 1);
-  auto keebName = ev.substr(0, ev.find_last_of(','));
-  keebName = keebName.substr(keebName.find_first_of('>') + 2);
+  std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
+  auto layoutName = ev.substr(ev.find_first_of(',') + 1);
 
-  if (config_.isMember("keyboard-name") && keebName != config_["keyboard-name"].asString())
+  if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
-
-  const auto BRIEFNAME = getShortFrom(layoutName);
-
-  if (config_.isMember("format-" + BRIEFNAME)) {
-    const auto PROPNAME = "format-" + BRIEFNAME;
-    layoutName = fmt::format(format_, config_[PROPNAME].asString());
-  } else {
-    layoutName = fmt::format(format_, layoutName);
-  }
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
-  if (layoutName == layoutName_) return;
-
-  layoutName_ = layoutName;
+  layout_ = getLayout(layoutName);
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -77,21 +76,22 @@ void Language::onEvent(const std::string& ev) {
 }
 
 void Language::initLanguage() {
-  const auto INPUTDEVICES = gIPC->getSocket1Reply("devices");
+  const auto inputDevices = gIPC->getSocket1Reply("devices");
 
-  if (!config_.isMember("keyboard-name")) return;
-
-  const auto KEEBNAME = config_["keyboard-name"].asString();
+  const auto kbName = config_["keyboard-name"].asString();
 
   try {
-    auto searcher = INPUTDEVICES.substr(INPUTDEVICES.find(KEEBNAME) + KEEBNAME.length());
-    searcher = searcher.substr(searcher.find("Keyboard at"));
-    searcher = searcher.substr(searcher.find("keymap:") + 7);
+    auto searcher = kbName.empty()
+                        ? inputDevices
+                        : inputDevices.substr(inputDevices.find(kbName) + kbName.length());
+    searcher = searcher.substr(searcher.find("keymap:") + 8);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 
-    layoutName_ = searcher;
+    searcher = waybar::util::sanitize_string(searcher);
 
-    spdlog::debug("hyprland language initLanguage found {}", layoutName_);
+    layout_ = getLayout(searcher);
+
+    spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
     dp.emit();
 
@@ -100,11 +100,10 @@ void Language::initLanguage() {
   }
 }
 
-std::string Language::getShortFrom(const std::string& fullName) {
+auto Language::getLayout(const std::string& fullName) -> Layout {
   const auto CONTEXT = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
   rxkb_context_parse_default_ruleset(CONTEXT);
 
-  std::string foundName = "";
   rxkb_layout* layout = rxkb_layout_first(CONTEXT);
   while (layout) {
     std::string nameOfLayout = rxkb_layout_get_description(layout);
@@ -114,16 +113,26 @@ std::string Language::getShortFrom(const std::string& fullName) {
       continue;
     }
 
-    std::string briefName = rxkb_layout_get_brief(layout);
+    auto name = std::string(rxkb_layout_get_name(layout));
+    auto variant_ = rxkb_layout_get_variant(layout);
+    std::string variant = variant_ == nullptr ? "" : std::string(variant_);
+
+    auto short_description_ = rxkb_layout_get_brief(layout);
+    std::string short_description =
+        short_description_ == nullptr ? "" : std::string(short_description_);
+
+    Layout info = Layout{nameOfLayout, name, variant, short_description};
 
     rxkb_context_unref(CONTEXT);
 
-    return briefName;
+    return info;
   }
 
   rxkb_context_unref(CONTEXT);
 
-  return "";
+  spdlog::debug("hyprland language didn't find matching layout");
+
+  return Layout{"", "", "", ""};
 }
 
 }  // namespace waybar::modules::hyprland

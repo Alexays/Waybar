@@ -1,7 +1,7 @@
 # Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
-> Available in Arch [community](https://www.archlinux.org/packages/community/x86_64/waybar/) or
+> Available in Arch [community](https://www.archlinux.org/packages/extra/x86_64/waybar/) or
 [AUR](https://aur.archlinux.org/packages/waybar-git/), [Gentoo](https://packages.gentoo.org/packages/gui-apps/waybar), [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar), and [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=waybar).<br>
 > *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
 
@@ -9,6 +9,7 @@
 - Sway (Workspaces, Binding mode, Focused window name)
 - River (Mapping mode, Tags, Focused window name)
 - Hyprland (Focused window name)
+- DWL (Tags) [requires dwl ipc patch](https://github.com/djpohly/dwl/wiki/ipc)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
 - Battery
@@ -16,12 +17,14 @@
 - Network
 - Bluetooth
 - Pulseaudio
+- Wireplumber
 - Disk
 - Memory
 - Cpu load average
 - Temperature
 - MPD
 - Custom scripts
+- Custom image
 - Multiple output configuration
 - And many more customizations
 
