@@ -328,7 +328,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     }
   }
   if (!config_["warp-on-scroll"].asBool()) {
-      ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping none"));
+    ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping none"));
   }
   try {
     ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, "--no-auto-back-and-forth", name));
@@ -336,7 +336,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     spdlog::error("Workspaces: {}", e.what());
   }
   if (!config_["warp-on-scroll"].asBool()) {
-      ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping container"));
+    ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping container"));
   }
   return true;
 }

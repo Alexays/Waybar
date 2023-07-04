@@ -83,7 +83,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   // "dynamic-priority" has been kept for backward compatibility
   if (config_["dynamic-importance-order"].isArray() || config_["dynamic-priority"].isArray()) {
     dynamic_prio_.clear();
-    const auto& dynamic_priority = config_["dynamic-importance-order"].isArray() ? config_["dynamic-importance-order"] : config_["dynamic-priority"];
+    const auto& dynamic_priority = config_["dynamic-importance-order"].isArray()
+                                       ? config_["dynamic-importance-order"]
+                                       : config_["dynamic-priority"];
     for (const auto& value : dynamic_priority) {
       if (value.isString()) {
         dynamic_prio_.push_back(value.asString());
@@ -299,9 +301,9 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
                                              "position") != dynamic_order_.end());
 
   if (truncated && dynamic_len_ >= 0) {
-    //Since the first element doesn't present a separator and we don't know a priori which one
-    //it will be, we add a "virtual separatorLen" to the dynamicLen, since we are adding the
-    //separatorLen to all the other lengths.
+    // Since the first element doesn't present a separator and we don't know a priori which one
+    // it will be, we add a "virtual separatorLen" to the dynamicLen, since we are adding the
+    // separatorLen to all the other lengths.
     size_t separatorLen = utf8_width(dynamic_separator_);
     size_t dynamicLen = dynamic_len_ + separatorLen;
     if (showArtist) artistLen += separatorLen;
@@ -361,12 +363,9 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   std::string previousOrder = "";
 
   for (const std::string& order : dynamic_order_) {
-    if ((order == "artist" && showArtist) ||
-        (order == "album" && showAlbum) ||
+    if ((order == "artist" && showArtist) || (order == "album" && showAlbum) ||
         (order == "title" && showTitle)) {
-      if (previousShown &&
-          previousOrder != "length" &&
-          previousOrder != "position") {
+      if (previousShown && previousOrder != "length" && previousOrder != "position") {
         dynamic << dynamic_separator_;
       }
 
