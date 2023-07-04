@@ -66,9 +66,9 @@ class Mpris : public ALabel {
   int album_len_;
   int title_len_;
   int dynamic_len_;
-  std::string dynamic_separator_;
-  std::vector<std::string> dynamic_order_;
   std::vector<std::string> dynamic_prio_;
+  std::vector<std::string> dynamic_order_;
+  std::string dynamic_separator_;
   bool truncate_hours_;
   bool tooltip_len_limits_;
   std::string ellipsis_;
