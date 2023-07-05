@@ -1,6 +1,7 @@
 #include "util/prepare_for_sleep.h"
 
 #include <gio/gio.h>
+#include <spdlog/spdlog.h>
 
 namespace {
 class PrepareForSleep {
@@ -9,7 +10,7 @@ class PrepareForSleep {
     GError *error = NULL;
     login1_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
     if (!login1_connection) {
-      throw std::runtime_error("Unable to connect to the SYSTEM Bus!...");
+      spdlog::warn("Unable to connect to the SYSTEM Bus!...");
     } else {
       login1_id = g_dbus_connection_signal_subscribe(
           login1_connection, "org.freedesktop.login1", "org.freedesktop.login1.Manager",
