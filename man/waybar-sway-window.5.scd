@@ -84,7 +84,7 @@ Addressed by *sway/window*
 	typeof: bool ++
 	default: false ++
 	If the workspace itself is focused and the workspace contains nodes or floating_nodes, show the workspace name. If not set, text remains empty but styles according to nodes in the workspace are still applied.
-	
+
 *rewrite*: ++
 	typeof: object ++
 	Rules to rewrite the module format output. See *rewrite rules*.
@@ -136,6 +136,10 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 # STYLE
 
 - *#window*
+
+The following classes are applied to the entire Waybar rather than just the
+window widget:
+
 - *window#waybar.empty* When no windows are in the workspace, or screen is not focused and offscreen-css option is not set
 - *window#waybar.solo* When one tiled window is in the workspace
 - *window#waybar.floating* When there are only floating windows in the workspace
