@@ -141,12 +141,16 @@ void Window::queryActiveWorkspace() {
                  [&](Json::Value window) {
                    return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
                  });
-    solo_ = 1 == std::count_if(workspace_windows.begin(), workspace_windows.end(),
-                               [&](Json::Value window) { return !window["floating"].asBool() && !window["hidden"].asBool(); });
-    all_floating_ = std::all_of(workspace_windows.begin(), workspace_windows.end(),
-                                [&](Json::Value window) { return window["floating"].asBool() && !window["hidden"].asBool(); });
     hidden_ = std::any_of(workspace_windows.begin(), workspace_windows.end(),
-                                [&](Json::Value window) { return window["hidden"].asBool(); });
+                          [&](Json::Value window) { return window["hidden"].asBool(); });
+    std::vector<Json::Value> visible_windows;
+    std::copy_if(workspace_windows.begin(), workspace_windows.end(),
+                 std::back_inserter(visible_windows),
+                 [&](Json::Value window) { return !window["hidden"].asBool(); });
+    solo_ = 1 == std::count_if(visible_windows.begin(), visible_windows.end(),
+                               [&](Json::Value window) { return !window["floating"].asBool(); });
+    all_floating_ = std::all_of(visible_windows.begin(), visible_windows.end(),
+                                [&](Json::Value window) { return window["floating"].asBool(); });
     fullscreen_ = (*active_window)["fullscreen"].asBool();
 
     if (fullscreen_) {
