@@ -103,9 +103,9 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
 
   const auto workspaces = gIPC->getSocket1JsonReply("workspaces");
   assert(workspaces.isArray());
-  auto workspace = std::find_if(monitors.begin(), monitors.end(),
+  auto workspace = std::find_if(workspaces.begin(), workspaces.end(),
                                 [&](Json::Value workspace) { return workspace["id"] == id; });
-  if (workspace == std::end(monitors)) {
+  if (workspace == std::end(workspaces)) {
     spdlog::warn("No workspace with id {}", id);
     return Workspace{-1, 0, "", ""};
   }
