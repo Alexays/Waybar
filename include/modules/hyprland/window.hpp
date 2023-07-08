@@ -26,7 +26,7 @@ class Window : public waybar::ALabel, public EventHandler {
 
   struct WindowData {
     bool floating;
-    int monitor;
+    int monitor = -1;
     std::string class_name;
     std::string initial_class_name;
     std::string title;
@@ -46,8 +46,6 @@ class Window : public waybar::ALabel, public EventHandler {
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
-  std::string last_window_address_;
-  std::string last_title_;
   WindowData window_data_;
   Workspace workspace_;
   std::string solo_class_;
