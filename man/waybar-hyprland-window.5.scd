@@ -14,7 +14,7 @@ Addressed by *hyprland/window*
 
 *format*: ++
 	typeof: string ++
-	default: {} ++
+	default: {title} ++
 	The format, how information should be displayed. On {} the current window title is displayed.
 
 *rewrite*: ++
@@ -24,6 +24,17 @@ Addressed by *hyprland/window*
 *separate-outputs*: ++
 	typeof: bool ++
 	Show the active window of the monitor the bar belongs to, instead of the focused window.
+
+# FORMAT REPLACEMENTS
+See the output of "hyprctl clients" for examples
+
+*{title}*: The current title of the focused window.
+
+*{initial-title}*: The initial title of the focused window.
+
+*{class}*: The current class of the focused window.
+
+*{initial-class}*: The initial class of the focused window.
 
 # REWRITE RULES
 
