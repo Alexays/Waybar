@@ -122,19 +122,6 @@ auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
                    value["lastwindowtitle"].asString()};
 }
 
-auto Window::getWindowData(const std::string& window_address) -> WindowData {
-  const auto clients = gIPC->getSocket1JsonReply("clients");
-  assert(clients.isArray());
-  auto window = std::find_if(clients.begin(), clients.end(), [&](Json::Value window) {
-    return window["address"] == window_address;
-  });
-  if (window == std::end(clients)) {
-    spdlog::warn("No client with address {}", window_address);
-    return WindowData{false, -1, "", "", "", ""};
-  }
-  return WindowData::parse(*window);
-}
-
 auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
   return WindowData{value["floating"].asBool(), value["monitor"].asInt(),
                     value["class"].asString(),  value["initialClass"].asString(),

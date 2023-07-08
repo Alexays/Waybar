@@ -37,7 +37,6 @@ class Window : public waybar::ALabel, public EventHandler {
 
   auto getActiveWorkspace(const std::string&) -> Workspace;
   auto getActiveWorkspace() -> Workspace;
-  auto getWindowData(const std::string& window_id) -> WindowData;
   void onEvent(const std::string&) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
