@@ -14,7 +14,7 @@
 namespace waybar::modules::hyprland {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "window", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "window", id, "{title}", 0, true), bar_(bar) {
   modulesReady = true;
   separate_outputs = config["separate-outputs"].asBool();
 
@@ -44,6 +44,7 @@ auto Window::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   std::string window_name = waybar::util::sanitize_string(workspace_.last_window_title);
+  std::string window_address = workspace_.last_window;
 
   if (window_name != last_title_) {
     if (window_name.empty()) {
@@ -54,10 +55,19 @@ auto Window::update() -> void {
     last_title_ = window_name;
   }
 
+  if (window_address != last_window_address_) {
+    last_window_address_ = window_address;
+    window_data_ = getWindowData(window_address);
+  }
+
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(fmt::format(fmt::runtime(format_),
-                                  waybar::util::rewriteString(window_name, config_["rewrite"])));
+    label_.set_markup(waybar::util::rewriteString(
+        fmt::format(fmt::runtime(format_), fmt::arg("title", window_name),
+                    fmt::arg("initialTitle", window_data_.initial_title),
+                    fmt::arg("class", window_data_.class_name),
+                    fmt::arg("initialClass", window_data_.initial_class_name)),
+        config_["rewrite"]));
   } else {
     label_.hide();
   }
@@ -115,6 +125,25 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
 auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
   return Workspace{value["id"].asInt(), value["windows"].asInt(), value["lastwindow"].asString(),
                    value["lastwindowtitle"].asString()};
+}
+
+auto Window::getWindowData(const std::string& window_address) -> WindowData {
+  const auto clients = gIPC->getSocket1JsonReply("clients");
+  assert(clients.isArray());
+  auto window = std::find_if(clients.begin(), clients.end(), [&](Json::Value window) {
+    return window["address"] == window_address;
+  });
+  if (window == std::end(clients)) {
+    spdlog::warn("No client with address {}", window_address);
+    return WindowData{false, -1, "", "", "", ""};
+  }
+  return WindowData::parse(*window);
+}
+
+auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
+  return WindowData{value["floating"].asBool(), value["monitor"].asInt(),
+                    value["class"].asString(),  value["initialClass"].asString(),
+                    value["title"].asString(),  value["initialTitle"].asString()};
 }
 
 void Window::queryActiveWorkspace() {
