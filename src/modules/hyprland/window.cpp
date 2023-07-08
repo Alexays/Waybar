@@ -59,9 +59,9 @@ auto Window::update() -> void {
     label_.show();
     label_.set_markup(waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", window_name),
-                    fmt::arg("initial-title", window_data_.initial_title),
+                    fmt::arg("initialTitle", window_data_.initial_title),
                     fmt::arg("class", window_data_.class_name),
-                    fmt::arg("initial-class", window_data_.initial_class_name)),
+                    fmt::arg("initialClass", window_data_.initial_class_name)),
         config_["rewrite"]));
   } else {
     label_.hide();

@@ -30,11 +30,11 @@ See the output of "hyprctl clients" for examples
 
 *{title}*: The current title of the focused window.
 
-*{initial-title}*: The initial title of the focused window.
+*{initialTitle}*: The initial title of the focused window.
 
 *{class}*: The current class of the focused window.
 
-*{initial-class}*: The initial class of the focused window.
+*{initialClass}*: The initial class of the focused window.
 
 # REWRITE RULES
 
