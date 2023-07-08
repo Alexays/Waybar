@@ -327,7 +327,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
       return true;
     }
   }
-  if (!config_["warp-on-scroll"].asBool()) {
+  if (!config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool()) {
     ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping none"));
   }
   try {
@@ -335,7 +335,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }
-  if (!config_["warp-on-scroll"].asBool()) {
+  if (!config_["warp-on-scroll"].isNull() && !config_["warp-on-scroll"].asBool()) {
     ipc_.sendCmd(IPC_COMMAND, fmt::format("mouse_warping container"));
   }
   return true;
