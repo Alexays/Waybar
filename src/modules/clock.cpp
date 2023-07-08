@@ -24,7 +24,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     for (const auto& zone_name : config_["timezones"]) {
       if (!zone_name.isString()) continue;
       if (zone_name.asString().empty())
-        time_zones_.push_back(date::current_zone());
+        // nullptr means that local time should be shown
+        time_zones_.push_back(nullptr);
       else
         try {
           time_zones_.push_back(date::locate_zone(zone_name.asString()));
@@ -34,7 +35,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     }
   } else if (config_["timezone"].isString()) {
     if (config_["timezone"].asString().empty())
-      time_zones_.push_back(date::current_zone());
+      // nullptr means that local time should be shown
+      time_zones_.push_back(nullptr);
     else
       try {
         time_zones_.push_back(date::locate_zone(config_["timezone"].asString()));
@@ -43,10 +45,10 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       }
   }
 
-  // If all timezones are parsed and no one is good, add current time zone. nullptr in timezones
-  // vector means that local time should be shown
+  // If all timezones are parsed and no one is good
   if (!time_zones_.size()) {
-    time_zones_.push_back(date::current_zone());
+    // nullptr means that local time should be shown
+    time_zones_.push_back(nullptr);
   }
 
   // Check if a particular placeholder is present in the tooltip format, to know what to calculate
@@ -156,8 +158,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 const date::time_zone* waybar::modules::Clock::current_timezone() {
-  return time_zones_[current_time_zone_idx_] ? time_zones_[current_time_zone_idx_]
-                                             : date::current_zone();
+  return is_timezone_fixed() ? time_zones_[current_time_zone_idx_] : date::current_zone();
 }
 
 bool waybar::modules::Clock::is_timezone_fixed() {
