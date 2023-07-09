@@ -24,6 +24,17 @@ class Window : public waybar::ALabel, public EventHandler {
     static auto parse(const Json::Value&) -> Workspace;
   };
 
+  struct WindowData {
+    bool floating;
+    int monitor = -1;
+    std::string class_name;
+    std::string initial_class_name;
+    std::string title;
+    std::string initial_title;
+
+    static auto parse(const Json::Value&) -> WindowData;
+  };
+
   auto getActiveWorkspace(const std::string&) -> Workspace;
   auto getActiveWorkspace() -> Workspace;
   void onEvent(const std::string&) override;
@@ -34,7 +45,7 @@ class Window : public waybar::ALabel, public EventHandler {
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
-  std::string last_title_;
+  WindowData window_data_;
   Workspace workspace_;
   std::string solo_class_;
   std::string last_solo_class_;

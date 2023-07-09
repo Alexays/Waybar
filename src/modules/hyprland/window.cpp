@@ -14,7 +14,7 @@
 namespace waybar::modules::hyprland {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "window", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "window", id, "{title}", 0, true), bar_(bar) {
   modulesReady = true;
   separate_outputs = config["separate-outputs"].asBool();
 
@@ -44,20 +44,25 @@ auto Window::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   std::string window_name = waybar::util::sanitize_string(workspace_.last_window_title);
+  std::string window_address = workspace_.last_window;
 
-  if (window_name != last_title_) {
+  if (window_name != window_data_.title) {
     if (window_name.empty()) {
       label_.get_style_context()->add_class("empty");
     } else {
       label_.get_style_context()->remove_class("empty");
     }
-    last_title_ = window_name;
+    window_data_.title = window_name;
   }
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(fmt::format(fmt::runtime(format_),
-                                  waybar::util::rewriteString(window_name, config_["rewrite"])));
+    label_.set_markup(waybar::util::rewriteString(
+        fmt::format(fmt::runtime(format_), fmt::arg("title", window_name),
+                    fmt::arg("initialTitle", window_data_.initial_title),
+                    fmt::arg("class", window_data_.class_name),
+                    fmt::arg("initialClass", window_data_.initial_class_name)),
+        config_["rewrite"]));
   } else {
     label_.hide();
   }
@@ -117,6 +122,12 @@ auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
                    value["lastwindowtitle"].asString()};
 }
 
+auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
+  return WindowData{value["floating"].asBool(), value["monitor"].asInt(),
+                    value["class"].asString(),  value["initialClass"].asString(),
+                    value["title"].asString(),  value["initialTitle"].asString()};
+}
+
 void Window::queryActiveWorkspace() {
   std::lock_guard<std::mutex> lg(mutex_);
 
@@ -136,6 +147,7 @@ void Window::queryActiveWorkspace() {
       return;
     }
 
+    window_data_ = WindowData::parse(*active_window);
     std::vector<Json::Value> workspace_windows;
     std::copy_if(clients.begin(), clients.end(), std::back_inserter(workspace_windows),
                  [&](Json::Value window) {
@@ -158,11 +170,12 @@ void Window::queryActiveWorkspace() {
     }
 
     if (solo_) {
-      solo_class_ = (*active_window)["class"].asString();
+      solo_class_ = window_data_.class_name;
     } else {
       solo_class_ = "";
     }
   } else {
+    window_data_ = WindowData{};
     all_floating_ = false;
     hidden_ = false;
     fullscreen_ = false;
