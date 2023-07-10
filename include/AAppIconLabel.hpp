@@ -16,7 +16,8 @@ class AAppIconLabel : public AIconLabel {
   auto update() -> void override;
 
  protected:
-  void updateAppIconName(const std::string &app_identifier);
+  void updateAppIconName(const std::string &app_identifier,
+                         const std::string &alternative_app_identifier);
   void updateAppIcon();
   unsigned app_icon_size_{24};
   bool update_app_icon_{true};

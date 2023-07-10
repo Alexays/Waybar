@@ -24,7 +24,8 @@ AAppIconLabel::AAppIconLabel(const Json::Value& config, const std::string& name,
   image_.set_pixel_size(app_icon_size_);
 }
 
-std::optional<std::string> getDesktopFilePath(const std::string& app_identifier) {
+std::optional<std::string> getDesktopFilePath(const std::string& app_identifier,
+                                              const std::string& alternative_app_identifier) {
   const auto data_dirs = Glib::get_system_data_dirs();
   for (const auto& data_dir : data_dirs) {
     const auto data_app_dir = data_dir + "applications/";
@@ -32,12 +33,19 @@ std::optional<std::string> getDesktopFilePath(const std::string& app_identifier)
     if (std::filesystem::exists(desktop_file_path)) {
       return desktop_file_path;
     }
+    if (!alternative_app_identifier.empty()) {
+      desktop_file_path = data_app_dir + alternative_app_identifier + ".desktop";
+      if (std::filesystem::exists(desktop_file_path)) {
+        return desktop_file_path;
+      }
+    }
   }
   return {};
 }
 
-std::optional<Glib::ustring> getIconName(const std::string& app_identifier) {
-  const auto desktop_file_path = getDesktopFilePath(app_identifier);
+std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
+                                         const std::string& alternative_app_identifier) {
+  const auto desktop_file_path = getDesktopFilePath(app_identifier, alternative_app_identifier);
   if (!desktop_file_path.has_value()) {
     // Try some heuristics to find a matching icon
 
@@ -90,12 +98,13 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier) {
   return {};
 }
 
-void AAppIconLabel::updateAppIconName(const std::string& app_identifier) {
+void AAppIconLabel::updateAppIconName(const std::string& app_identifier,
+                                      const std::string& alternative_app_identifier) {
   if (!iconEnabled()) {
     return;
   }
 
-  const auto icon_name = getIconName(app_identifier);
+  const auto icon_name = getIconName(app_identifier, alternative_app_identifier);
   if (icon_name.has_value()) {
     app_icon_name_ = icon_name.value();
   } else {

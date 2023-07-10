@@ -43,7 +43,7 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
     std::tie(app_nb_, floating_count_, windowId_, window_, app_id_, app_class_, shell_, layout_) =
         getFocusedNode(payload["nodes"], output);
-    updateAppIconName(app_id_);
+    updateAppIconName(app_id_, app_class_);
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());

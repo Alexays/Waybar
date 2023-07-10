@@ -152,7 +152,7 @@ void Window::queryActiveWorkspace() {
     }
 
     window_data_ = WindowData::parse(*active_window);
-    updateAppIconName(window_data_.class_name);
+    updateAppIconName(window_data_.class_name, window_data_.initial_class_name);
     std::vector<Json::Value> workspace_windows;
     std::copy_if(clients.begin(), clients.end(), std::back_inserter(workspace_windows),
                  [&](Json::Value window) {
