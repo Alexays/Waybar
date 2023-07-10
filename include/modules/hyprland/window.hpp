@@ -1,13 +1,13 @@
 #include <fmt/format.h>
 
-#include "ALabel.hpp"
+#include "AIconLabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::hyprland {
 
-class Window : public waybar::ALabel, public EventHandler {
+class Window : public waybar::AIconLabel, public EventHandler {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~Window();
@@ -40,6 +40,8 @@ class Window : public waybar::ALabel, public EventHandler {
   void onEvent(const std::string&) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
+  void updateAppIconName();
+  void updateAppIcon();
 
   bool separate_outputs;
   std::mutex mutex_;
@@ -53,6 +55,9 @@ class Window : public waybar::ALabel, public EventHandler {
   bool all_floating_;
   bool hidden_;
   bool fullscreen_;
+  unsigned app_icon_size_{24};
+  bool update_app_icon_{true};
+  std::string app_icon_name_;
 };
 
 }  // namespace waybar::modules::hyprland
