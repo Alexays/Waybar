@@ -192,7 +192,7 @@ auto Window::update() -> void {
 
   updateAppIcon();
 
-  ALabel::update();
+  AIconLabel::update();
 }
 
 auto Window::getActiveWorkspace() -> Workspace {
