@@ -6,8 +6,6 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <filesystem>
-#include <optional>
 #include <regex>
 #include <util/sanitize_str.hpp>
 #include <vector>
@@ -20,15 +18,9 @@
 namespace waybar::modules::hyprland {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
+    : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
   modulesReady = true;
   separate_outputs = config["separate-outputs"].asBool();
-
-  // Icon size
-  if (config["icon-size"].isUInt()) {
-    app_icon_size_ = config["icon-size"].asUInt();
-  }
-  image_.set_pixel_size(app_icon_size_);
 
   if (!gIPC.get()) {
     gIPC = std::make_unique<IPC>();
@@ -49,98 +41,6 @@ Window::~Window() {
   gIPC->unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
-}
-
-std::optional<std::string> getDesktopFilePath(const std::string& app_class) {
-  const auto data_dirs = Glib::get_system_data_dirs();
-  for (const auto& data_dir : data_dirs) {
-    const auto data_app_dir = data_dir + "applications/";
-    auto desktop_file_path = data_app_dir + app_class + ".desktop";
-    if (std::filesystem::exists(desktop_file_path)) {
-      return desktop_file_path;
-    }
-  }
-  return {};
-}
-
-std::optional<Glib::ustring> getIconName(const std::string& app_class) {
-  const auto desktop_file_path = getDesktopFilePath(app_class);
-  if (!desktop_file_path.has_value()) {
-    // Try some heuristics to find a matching icon
-
-    if (DefaultGtkIconThemeWrapper::has_icon(app_class)) {
-      return app_class;
-    }
-
-    const auto app_identifier_desktop = app_class + "-desktop";
-    if (DefaultGtkIconThemeWrapper::has_icon(app_identifier_desktop)) {
-      return app_identifier_desktop;
-    }
-
-    const auto to_lower = [](const std::string& str) {
-      auto str_cpy = str;
-      std::transform(str_cpy.begin(), str_cpy.end(), str_cpy.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      return str;
-    };
-
-    const auto first_space = app_class.find_first_of(' ');
-    if (first_space != std::string::npos) {
-      const auto first_word = to_lower(app_class.substr(0, first_space));
-      if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
-        return first_word;
-      }
-    }
-
-    const auto first_dash = app_class.find_first_of('-');
-    if (first_dash != std::string::npos) {
-      const auto first_word = to_lower(app_class.substr(0, first_dash));
-      if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
-        return first_word;
-      }
-    }
-
-    return {};
-  }
-
-  try {
-    Glib::KeyFile desktop_file;
-    desktop_file.load_from_file(desktop_file_path.value());
-    return desktop_file.get_string("Desktop Entry", "Icon");
-  } catch (Glib::FileError& error) {
-    spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
-  } catch (Glib::KeyFileError& error) {
-    spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
-  }
-  return {};
-}
-
-void Window::updateAppIconName() {
-  if (!iconEnabled()) {
-    return;
-  }
-
-  const auto icon_name = getIconName(window_data_.class_name);
-  if (icon_name.has_value()) {
-    app_icon_name_ = icon_name.value();
-  } else {
-    app_icon_name_ = "";
-  }
-  update_app_icon_ = true;
-}
-
-void Window::updateAppIcon() {
-  if (update_app_icon_) {
-    update_app_icon_ = false;
-    if (app_icon_name_.empty()) {
-      image_.set_visible(false);
-    } else {
-      image_.set_from_icon_name(app_icon_name_, Gtk::ICON_SIZE_INVALID);
-      image_.set_visible(true);
-    }
-  }
 }
 
 auto Window::update() -> void {
@@ -190,9 +90,7 @@ auto Window::update() -> void {
   }
   last_solo_class_ = solo_class_;
 
-  updateAppIcon();
-
-  AIconLabel::update();
+  AAppIconLabel::update();
 }
 
 auto Window::getActiveWorkspace() -> Workspace {
@@ -254,7 +152,7 @@ void Window::queryActiveWorkspace() {
     }
 
     window_data_ = WindowData::parse(*active_window);
-    updateAppIconName();
+    updateAppIconName(window_data_.class_name);
     std::vector<Json::Value> workspace_windows;
     std::copy_if(clients.begin(), clients.end(), std::back_inserter(workspace_windows),
                  [&](Json::Value window) {
