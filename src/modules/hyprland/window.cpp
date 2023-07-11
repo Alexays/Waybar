@@ -1,5 +1,8 @@
 #include "modules/hyprland/window.hpp"
 
+#include <glibmm/fileutils.h>
+#include <glibmm/keyfile.h>
+#include <glibmm/miscutils.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -8,13 +11,14 @@
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
+#include "util/gtk_icon.hpp"
 #include "util/json.hpp"
 #include "util/rewrite_string.hpp"
 
 namespace waybar::modules::hyprland {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "window", id, "{title}", 0, true), bar_(bar) {
+    : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
   modulesReady = true;
   separate_outputs = config["separate-outputs"].asBool();
 
@@ -86,7 +90,7 @@ auto Window::update() -> void {
   }
   last_solo_class_ = solo_class_;
 
-  ALabel::update();
+  AAppIconLabel::update();
 }
 
 auto Window::getActiveWorkspace() -> Workspace {
@@ -148,6 +152,7 @@ void Window::queryActiveWorkspace() {
     }
 
     window_data_ = WindowData::parse(*active_window);
+    updateAppIconName(window_data_.class_name, window_data_.initial_class_name);
     std::vector<Json::Value> workspace_windows;
     std::copy_if(clients.begin(), clients.end(), std::back_inserter(workspace_windows),
                  [&](Json::Value window) {
