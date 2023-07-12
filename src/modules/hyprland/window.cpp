@@ -11,8 +11,6 @@
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
-#include "util/gtk_icon.hpp"
-#include "util/json.hpp"
 #include "util/rewrite_string.hpp"
 
 namespace waybar::modules::hyprland {
@@ -74,7 +72,7 @@ auto Window::update() -> void {
   setClass("empty", workspace_.windows == 0);
   setClass("solo", solo_);
   setClass("floating", all_floating_);
-  setClass("hidden", hidden_);
+  setClass("hidden-window", hidden_);
   setClass("fullscreen", fullscreen_);
 
   if (!last_solo_class_.empty() && solo_class_ != last_solo_class_) {
