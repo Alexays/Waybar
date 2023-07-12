@@ -31,6 +31,8 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
     std::string initial_class_name;
     std::string title;
     std::string initial_title;
+    bool fullscreen;
+    bool grouped;
 
     static auto parse(const Json::Value&) -> WindowData;
   };
@@ -51,7 +53,7 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   std::string last_solo_class_;
   bool solo_;
   bool all_floating_;
-  bool hidden_;
+  bool swallowing_;
   bool fullscreen_;
 };
 

@@ -72,7 +72,7 @@ auto Window::update() -> void {
   setClass("empty", workspace_.windows == 0);
   setClass("solo", solo_);
   setClass("floating", all_floating_);
-  setClass("hidden-window", hidden_);
+  setClass("swallowing", swallowing_);
   setClass("fullscreen", fullscreen_);
 
   if (!last_solo_class_.empty() && solo_class_ != last_solo_class_) {
@@ -125,9 +125,10 @@ auto Window::Workspace::parse(const Json::Value& value) -> Window::Workspace {
 }
 
 auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
-  return WindowData{value["floating"].asBool(), value["monitor"].asInt(),
-                    value["class"].asString(),  value["initialClass"].asString(),
-                    value["title"].asString(),  value["initialTitle"].asString()};
+  return WindowData{value["floating"].asBool(),   value["monitor"].asInt(),
+                    value["class"].asString(),    value["initialClass"].asString(),
+                    value["title"].asString(),    value["initialTitle"].asString(),
+                    value["fullscreen"].asBool(), !value["grouped"].empty()};
 }
 
 void Window::queryActiveWorkspace() {
@@ -156,8 +157,8 @@ void Window::queryActiveWorkspace() {
                  [&](Json::Value window) {
                    return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
                  });
-    hidden_ = std::any_of(workspace_windows.begin(), workspace_windows.end(),
-                          [&](Json::Value window) { return window["hidden"].asBool(); });
+    swallowing_ = std::any_of(workspace_windows.begin(), workspace_windows.end(),
+                              [&](Json::Value window) { return !window["swallowing"].isNull(); });
     std::vector<Json::Value> visible_windows;
     std::copy_if(workspace_windows.begin(), workspace_windows.end(),
                  std::back_inserter(visible_windows),
@@ -166,10 +167,17 @@ void Window::queryActiveWorkspace() {
                                [&](Json::Value window) { return !window["floating"].asBool(); });
     all_floating_ = std::all_of(visible_windows.begin(), visible_windows.end(),
                                 [&](Json::Value window) { return window["floating"].asBool(); });
-    fullscreen_ = (*active_window)["fullscreen"].asBool();
+    fullscreen_ = window_data_.fullscreen;
 
+    // Fullscreen windows look like they are solo
     if (fullscreen_) {
       solo_ = true;
+    }
+
+    // Grouped windows have a tab bar and therefore don't look fullscreen or solo
+    if (window_data_.grouped) {
+      fullscreen_ = false;
+      solo_ = false;
     }
 
     if (solo_) {
@@ -180,7 +188,7 @@ void Window::queryActiveWorkspace() {
   } else {
     window_data_ = WindowData{};
     all_floating_ = false;
-    hidden_ = false;
+    swallowing_ = false;
     fullscreen_ = false;
     solo_ = false;
     solo_class_ = "";
