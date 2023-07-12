@@ -76,5 +76,5 @@ window widget:
 - *window#waybar.floating* When there are only floating windows in the workspace
 - *window#waybar.fullscreen* When there is a fullscreen window in the workspace;
   useful with Hyprland's *fullscreen, 1* mode
-- *window#waybar.hidden* When there are hidden windows in the workspace; usually
-  occurs due to window swallowing
+- *window#waybar.hidden-window* When there are hidden windows in the workspace;
+  can occur due to window swallowing, *fullscreen, 1* mode, or grouped windows
