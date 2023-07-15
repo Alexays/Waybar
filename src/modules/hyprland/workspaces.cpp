@@ -163,13 +163,13 @@ Workspaces::~Workspaces() {
   std::lock_guard<std::mutex> lg(mutex_);
 }
 
-Workspace::Workspace(const Json::Value &value) {
-  id_ = value["id"].asInt();
-  name_ = value["name"].asString();
-  monitor_ = value["monitor"].asString();  // TODO:allow using monitor desc
-  windows_ = value["id"].asInt();
-  active_ = 1;
-  is_special_ = 0;
+Workspace::Workspace(const Json::Value &value)
+    : id_(value["id"].asInt()),
+      name_(value["name"].asString()),
+      monitor_(value["monitor"].asString()),  // TODO:allow using monitor desc
+      windows_(value["id"].asInt()) {
+  active_ = true;
+  is_special_ = false;
 
   if (name_.find("name:") == 0) {
     name_ = name_.substr(5);
@@ -253,16 +253,21 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
 }
 
 auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
-  if (id() > 0) {  // normal
-    system(("hyprctl dispatch workspace " + std::to_string(id()) + " &> /dev/null").c_str());
-  } else if (!is_special()) {  // named normal
-    system(("hyprctl dispatch workspace name:" + name() + " &> /dev/null").c_str());
-  } else if (id() != -99) {  // named special
-    system(("hyprctl dispatch togglespecialworkspace name:" + name() + " &> /dev/null").c_str());
-  } else {  // special
-    system("hyprctl dispatch togglespecialworkspace special &> /dev/null");
+  try {
+    if (id() > 0) {  // normal
+      gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+    } else if (!is_special()) {  // named normal
+      gIPC->getSocket1Reply("dispatch workspace name" + name());
+    } else if (id() != -99) {  // named special
+      gIPC->getSocket1Reply("dispatch togglespecialworkspace name" + name());
+    } else {  // special
+      gIPC->getSocket1Reply("dispatch togglespecialworkspace special");
+    }
+    return true;
+  } catch (const std::exception &e) {
+    spdlog::error("Failed to dispatch workspace: {}", e.what());
   }
-  return 1;
+  return false;
 }
 
 }  // namespace waybar::modules::hyprland
