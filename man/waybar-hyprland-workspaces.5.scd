@@ -50,7 +50,6 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"active": "",
 		"default": ""
 	},
-	"sort-by-number": true,
 	"all-outputs": false,
         "show-special": false
 }
