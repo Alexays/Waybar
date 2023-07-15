@@ -25,6 +25,8 @@ Addressed by *hyprland/workspaces*
 
 *{id}*: id of workspace assigned by compositor
 
+*{name}*: workspace name assigned by compositor
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 # ICONS
@@ -48,7 +50,9 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"active": "",
 		"default": ""
 	},
-	"sort-by-number": true
+	"sort-by-number": true,
+	"all-outputs": false,
+        "show-special": false
 }
 ```
 
