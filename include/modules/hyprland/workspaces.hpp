@@ -17,19 +17,19 @@ class Workspace {
 
   int id() const { return id_; };
   std::string name() const { return name_; };
-  std::string monitor() const { return monitor_; };
+  std::string output() const { return output_; };
   int active() const { return active_; };
   bool is_special() const { return is_special_; };
 
   auto handle_clicked(GdkEventButton* bt) -> bool;
-  void set_active(bool value) { active_ = value; };
+  void set_active(bool value = true) { active_ = value; };
 
   void update(const std::string& format, const std::string& icon);
 
  private:
   int id_;
   std::string name_;
-  std::string monitor_;
+  std::string output_;
   int windows_;
   bool active_;
   bool is_special_;
