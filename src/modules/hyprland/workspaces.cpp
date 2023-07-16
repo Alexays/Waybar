@@ -64,9 +64,11 @@ auto Workspaces::update() -> void {
 
   workspaces_to_remove_.clear();
 
-  for (int &workspace_to_create : workspaces_to_create_) {
+  for (Json::Value &workspace_to_create : workspaces_to_create_) {
     create_workspace(workspace_to_create);
   }
+
+  workspaces_to_create_.clear();
 
   for (auto &workspace : workspaces_) {
     workspace->set_active(workspace->name() == active_workspace_name);
@@ -92,7 +94,7 @@ void Workspaces::onEvent(const std::string &ev) {
 
   } else if (eventName == "createworkspace") {
     const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
-    for (auto &workspace_json : workspaces_json) {
+    for (Json::Value workspace_json : workspaces_json) {
       if (workspace_json["name"].asString() == payload &&
           (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
           (workspace_json["name"].asString().find("special:") != 0 || show_special()))
@@ -107,10 +109,10 @@ void Workspaces::onEvent(const std::string &ev) {
     std::string new_output = payload.substr(payload.find(",") + 1);
     if (bar_.output->name == new_output) {  // TODO: implement this better
       const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
-      for (auto &workspace_json : workspaces_json) {
+      for (Json::Value workspace_json : workspaces_json) {
         if (workspace_json["name"].asString() == workspace &&
             bar_.output->name == workspace_json["monitor"].asString()) {
-          create_workspace(workspace_json);
+          workspaces_to_create_.push_back(workspace_json);
           break;
         }
       }
@@ -122,7 +124,7 @@ void Workspaces::onEvent(const std::string &ev) {
   dp.emit();
 }
 
-void Workspaces::create_workspace(const Json::Value &value) {
+void Workspaces::create_workspace(Json::Value &value) {
   workspaces_.push_back(std::make_unique<Workspace>(value));
   Gtk::Button &new_workspace_button = workspaces_.back()->button();
   box_.pack_start(new_workspace_button, false, false);
@@ -146,7 +148,7 @@ void Workspaces::init() {
   active_workspace_name = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
 
   const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
-  for (const Json::Value &workspace_json : workspaces_json) {
+  for (Json::Value workspace_json : workspaces_json) {
     if ((all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
         (workspace_json["name"].asString().find("special") != 0 || show_special()))
       create_workspace(workspace_json);
