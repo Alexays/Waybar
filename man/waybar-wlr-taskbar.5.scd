@@ -89,7 +89,7 @@ Addressed by *wlr/taskbar*
 
 *{icon}*: The icon of the application.
 
-*{title}*: The application name as in desktop file if appropriate desktop fils found, otherwise same as {app_id}
+*{name}*: The application name as in desktop file if appropriate desktop fils found, otherwise same as {app_id}
 
 *{title}*: The title of the application.
 
