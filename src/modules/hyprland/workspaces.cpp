@@ -263,7 +263,7 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
     } else if (id() != -99) {  // named special
       gIPC->getSocket1Reply("dispatch togglespecialworkspace name" + name());
     } else {  // special
-      gIPC->getSocket1Reply("dispatch togglespecialworkspace special");
+      gIPC->getSocket1Reply("dispatch togglespecialworkspace");
     }
     return true;
   } catch (const std::exception &e) {
