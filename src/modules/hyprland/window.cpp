@@ -48,14 +48,7 @@ auto Window::update() -> void {
   std::string window_name = waybar::util::sanitize_string(workspace_.last_window_title);
   std::string window_address = workspace_.last_window;
 
-  if (window_name != window_data_.title) {
-    if (window_name.empty()) {
-      label_.get_style_context()->add_class("empty");
-    } else {
-      label_.get_style_context()->remove_class("empty");
-    }
-    window_data_.title = window_name;
-  }
+  window_data_.title = window_name;
 
   if (!format_.empty()) {
     label_.show();
