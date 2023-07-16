@@ -192,7 +192,7 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
       return "";
     }
     response.append(buffer, sizeWritten);
-  } while (sizeWritten == 8192);
+  } while (sizeWritten > 0);
 
   close(SERVERSOCKET);
   return response;
