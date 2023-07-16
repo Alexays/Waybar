@@ -54,7 +54,7 @@ class Workspaces : public AModule, public EventHandler {
  private:
   void onEvent(const std::string&) override;
   void sort_workspaces();
-  void create_workspace(const Json::Value& value);
+  void create_workspace(Json::Value& value);
   void remove_workspace(std::string name);
 
   bool all_outputs_ = false;
@@ -65,7 +65,7 @@ class Workspaces : public AModule, public EventHandler {
   bool with_icon_;
   std::string active_workspace_name;
   std::vector<std::unique_ptr<Workspace>> workspaces_;
-  std::vector<int> workspaces_to_create_;
+  std::vector<Json::Value> workspaces_to_create_;
   std::vector<std::string> workspaces_to_remove_;
   std::mutex mutex_;
   const Bar& bar_;
