@@ -190,9 +190,8 @@ auto waybar::modules::Backlight::update() -> void {
       event_box_.show();
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-      std::string desc =
-          fmt::format(fmt::runtime(format_), fmt::arg("percent", percent),
-                      fmt::arg("icon", getIcon(percent)));
+      std::string desc = fmt::format(fmt::runtime(format_), fmt::arg("percent", percent),
+                                     fmt::arg("icon", getIcon(percent)));
       label_.set_markup(desc);
       getState(percent);
       if (tooltipEnabled()) {
