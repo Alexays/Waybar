@@ -102,20 +102,20 @@ void Workspaces::onEvent(const std::string &ev) {
   } else if (eventName == "focusedmon") {
     active_workspace_name = payload.substr(payload.find(",") + 1);
 
-  } else if (eventName == "moveworkspace") {
+  } else if (eventName == "moveworkspace" && !all_outputs()) {
     std::string workspace = payload.substr(0, payload.find(","));
-    std::string new_monitor = payload.substr(payload.find(",") + 1);
-    if (all_outputs()) {
-      if (bar_.output->name == new_monitor) {  // TODO: implement this better
-        const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
-        for (auto &workspace_json : workspaces_json) {
-          if (workspace_json["name"].asString() == workspace &&
-              bar_.output->name == workspace_json["monitor"].asString())
-            create_workspace(workspace_json);
+    std::string new_output = payload.substr(payload.find(",") + 1);
+    if (bar_.output->name == new_output) {  // TODO: implement this better
+      const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
+      for (auto &workspace_json : workspaces_json) {
+        if (workspace_json["name"].asString() == workspace &&
+            bar_.output->name == workspace_json["monitor"].asString()) {
+          create_workspace(workspace_json);
+          break;
         }
-      } else {
-        workspaces_to_remove_.push_back(workspace);
       }
+    } else {
+      workspaces_to_remove_.push_back(workspace);
     }
   }
 
@@ -166,7 +166,7 @@ Workspaces::~Workspaces() {
 Workspace::Workspace(const Json::Value &value)
     : id_(value["id"].asInt()),
       name_(value["name"].asString()),
-      monitor_(value["monitor"].asString()),  // TODO:allow using monitor desc
+      output_(value["monitor"].asString()),  // TODO:allow using monitor desc
       windows_(value["id"].asInt()) {
   active_ = true;
   is_special_ = false;
@@ -177,8 +177,6 @@ Workspace::Workspace(const Json::Value &value)
     name_ = id_ == -99 ? name_ : name_.substr(13);
     is_special_ = 1;
   }
-  // spdlog::info("\nNew workspace:\n\tid:({})\n\tname:({})\n\tmonitor:({})\n\tspecial:({})\n", id_,
-  // name_, monitor_, is_special_ ? "yes" : "no"); //make less noisy
 
   button_.add_events(Gdk::BUTTON_PRESS_MASK);
   button_.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handle_clicked),
