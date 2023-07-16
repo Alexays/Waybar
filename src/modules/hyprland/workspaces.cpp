@@ -44,7 +44,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   }
   event_box_.add(box_);
   modulesReady = true;
-  if (!gIPC.get()) {
+  if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
 
@@ -104,11 +104,11 @@ void Workspaces::onEvent(const std::string &ev) {
     }
 
   } else if (eventName == "focusedmon") {
-    active_workspace_name = payload.substr(payload.find(",") + 1);
+    active_workspace_name = payload.substr(payload.find(',') + 1);
 
   } else if (eventName == "moveworkspace" && !all_outputs()) {
-    std::string workspace = payload.substr(0, payload.find(","));
-    std::string new_output = payload.substr(payload.find(",") + 1);
+    std::string workspace = payload.substr(0, payload.find(','));
+    std::string new_output = payload.substr(payload.find(',') + 1);
     if (bar_.output->name == new_output) {  // TODO: implement this better
       const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
       for (Json::Value workspace_json : workspaces_json) {
@@ -167,19 +167,18 @@ Workspaces::~Workspaces() {
   std::lock_guard<std::mutex> lg(mutex_);
 }
 
-Workspace::Workspace(const Json::Value &value)
-    : id_(value["id"].asInt()),
-      name_(value["name"].asString()),
-      output_(value["monitor"].asString()),  // TODO:allow using monitor desc
-      windows_(value["id"].asInt()) {
-  active_ = true;
-  is_special_ = false;
-
+Workspace::Workspace(const Json::Value &workspace_data)
+    : id_(workspace_data["id"].asInt()),
+      name_(workspace_data["name"].asString()),
+      output_(workspace_data["monitor"].asString()),  // TODO:allow using monitor desc
+      windows_(workspace_data["id"].asInt()),
+      active_(true),
+      is_special_(false) {
   if (name_.find("name:") == 0) {
     name_ = name_.substr(5);
   } else if (name_.find("special") == 0) {
     name_ = id_ == -99 ? name_ : name_.substr(13);
-    is_special_ = 1;
+    is_special_ = true;
   }
 
   button_.add_events(Gdk::BUTTON_PRESS_MASK);
@@ -191,7 +190,7 @@ Workspace::Workspace(const Json::Value &value)
   button_.add(content_);
 };
 
-void add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition,
+void add_or_remove_class(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
                          const std::string &class_name) {
   if (condition) {
     context->add_class(class_name);
@@ -201,7 +200,7 @@ void add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition
 }
 
 void Workspace::update(const std::string &format, const std::string &icon) {
-  Glib::RefPtr<Gtk::StyleContext> style_context = button_.get_style_context();
+  auto style_context = button_.get_style_context();
   add_or_remove_class(style_context, active(), "active");
 
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
@@ -218,9 +217,8 @@ void Workspaces::sort_workspaces() {
               if (a->id() < 0 && b->id() < 0) {
                 if ((a->is_special()) ^ (a->is_special())) {
                   return a->id() > b->id();
-                } else {
-                  return a->id() < b->id();
                 }
+                return a->id() < b->id();
               }
               if ((a->id() > 0) ^ (b->id() > 0)) {
                 return a->id() > b->id();

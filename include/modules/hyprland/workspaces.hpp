@@ -11,7 +11,7 @@ namespace waybar::modules::hyprland {
 
 class Workspace {
  public:
-  Workspace(const Json::Value& value);
+  Workspace(const Json::Value& workspace_data);
   std::string& select_icon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return button_; };
 
@@ -42,7 +42,7 @@ class Workspace {
 class Workspaces : public AModule, public EventHandler {
  public:
   Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
-  virtual ~Workspaces();
+  ~Workspaces() override;
   void update() override;
   void init();
 
