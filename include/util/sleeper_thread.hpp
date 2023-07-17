@@ -95,6 +95,7 @@ class SleeperThread {
   }
 
   ~SleeperThread() {
+    connection_.disconnect();
     stop();
     if (thread_.joinable()) {
       thread_.join();
