@@ -38,7 +38,10 @@ auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   std::string layoutName = std::string{};
-  if (config_.isMember("format-" + layout_.short_description)) {
+  if (config_.isMember("format-" + layout_.short_description + "-" + layout_.variant)) {
+    const auto propName = "format-" + layout_.short_description + "-" + layout_.variant;
+    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
+  } else if (config_.isMember("format-" + layout_.short_description)) {
     const auto propName = "format-" + layout_.short_description;
     layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
   } else {
