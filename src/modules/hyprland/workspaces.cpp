@@ -97,7 +97,7 @@ void Workspaces::onEvent(const std::string &ev) {
     for (Json::Value workspace_json : workspaces_json) {
       if (workspace_json["name"].asString() == payload &&
           (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-          (workspace_json["name"].asString().find("special:") != 0 || show_special())) {
+          (show_special() || workspace_json["name"].asString().find("special:") != 0)) {
         workspaces_to_create_.push_back(workspace_json);
         break;
       }
@@ -223,7 +223,6 @@ void Workspaces::sort_workspaces() {
               if ((a->id() > 0) ^ (b->id() > 0)) {
                 return a->id() > b->id();
               }
-              spdlog::error("huh!!?");
               return false;
             });
 
