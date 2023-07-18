@@ -156,6 +156,8 @@
         "return-type": "json",
         "max-length": 40,
         "format-icons": {
+            "Playing": "\uf144",
+			"Paused": "\uf28b",
             "spotify": "",
             "default": "🎜"
         },
