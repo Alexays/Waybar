@@ -145,7 +145,8 @@ std::pair<int, int> leafNodesInWorkspace(const Json::Value& node) {
   return {sum, floating_sum};
 }
 
-std::optional<std::reference_wrapper<const Json::Value>> getSingleChildNode(const Json::Value& node) {
+std::optional<std::reference_wrapper<const Json::Value>> getSingleChildNode(
+    const Json::Value& node) {
   auto const& nodes = node["nodes"];
   if (nodes.empty()) {
     if (node["type"].asString() == "workspace")
