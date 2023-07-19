@@ -423,6 +423,7 @@ if scdoc.found()
         main_manpage_path,
         'waybar-backlight.5.scd',
         'waybar-battery.5.scd',
+        'waybar-cava.5.scd',
         'waybar-clock.5.scd',
         'waybar-cpu.5.scd',
         'waybar-custom.5.scd',
