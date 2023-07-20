@@ -28,6 +28,11 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+  if (config["format-icons"]["high-priority-named"].isArray()) {
+    for (auto &it : config["format-icons"]["high-priority-named"]) {
+      high_priority_named_.push_back(it.asString());
+    }
+  }
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
@@ -279,9 +284,22 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
 }
 
 std::string Workspaces::getIcon(const std::string &name, const Json::Value &node) {
-  std::vector<std::string> keys = {"urgent", "focused", name, "visible", "default"};
+  std::vector<std::string> keys = {"high-priority-named", "urgent", "focused", name, "default"};
   for (auto const &key : keys) {
-    if (key == "focused" || key == "visible" || key == "urgent") {
+    if (key == "high-priority-named") {
+        auto it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
+                               [&](const std::string &member) { return member == name; });
+        if (it != high_priority_named_.end()) {
+          return config_["format-icons"][name].asString();
+        }
+
+        it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
+                               [&](const std::string &member) { return trimWorkspaceName(member) == trimWorkspaceName(name); });
+        if (it != high_priority_named_.end()) {
+          return config_["format-icons"][trimWorkspaceName(name)].asString();
+        }
+    }
+    if (key == "focused" || key == "urgent") {
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
         return config_["format-icons"][key].asString();
       }
