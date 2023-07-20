@@ -287,17 +287,19 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
   std::vector<std::string> keys = {"high-priority-named", "urgent", "focused", name, "default"};
   for (auto const &key : keys) {
     if (key == "high-priority-named") {
-        auto it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
-                               [&](const std::string &member) { return member == name; });
-        if (it != high_priority_named_.end()) {
-          return config_["format-icons"][name].asString();
-        }
+      auto it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
+                             [&](const std::string &member) { return member == name; });
+      if (it != high_priority_named_.end()) {
+        return config_["format-icons"][name].asString();
+      }
 
-        it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
-                               [&](const std::string &member) { return trimWorkspaceName(member) == trimWorkspaceName(name); });
-        if (it != high_priority_named_.end()) {
-          return config_["format-icons"][trimWorkspaceName(name)].asString();
-        }
+      it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
+                        [&](const std::string &member) {
+                          return trimWorkspaceName(member) == trimWorkspaceName(name);
+                        });
+      if (it != high_priority_named_.end()) {
+        return config_["format-icons"][trimWorkspaceName(name)].asString();
+      }
     }
     if (key == "focused" || key == "urgent") {
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
