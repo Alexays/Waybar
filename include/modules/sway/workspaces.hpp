@@ -41,6 +41,7 @@ class Workspaces : public AModule, public sigc::trackable {
 
   const Bar& bar_;
   std::vector<Json::Value> workspaces_;
+  std::vector<std::string> high_priority_named_;
   std::vector<std::string> workspaces_order_;
   Gtk::Box box_;
   util::JsonParser parser_;

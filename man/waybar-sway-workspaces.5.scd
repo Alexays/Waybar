@@ -102,6 +102,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *urgent*: Will be shown, when workspace is flagged as urgent
 - *focused*: Will be shown, when workspace is focused
 - *persistent*: Will be shown, when workspace is persistent one.
+- *high-priority-named*: Icons by names will be shown always for that workspaces, independent by state.
 
 # PERSISTENT WORKSPACES
 
@@ -134,6 +135,7 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
         "3": "",
         "4": "",
         "5": "",
+		"high-priority-named": [ "1", "2" ],
         "urgent": "",
         "focused": "",
         "default": ""
