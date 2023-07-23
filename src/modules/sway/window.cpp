@@ -145,6 +145,40 @@ std::pair<int, int> leafNodesInWorkspace(const Json::Value& node) {
   return {sum, floating_sum};
 }
 
+std::optional<std::reference_wrapper<const Json::Value>> getSingleChildNode(
+    const Json::Value& node) {
+  auto const& nodes = node["nodes"];
+  if (nodes.empty()) {
+    if (node["type"].asString() == "workspace")
+      return {};
+    else if (node["type"].asString() == "floating_con") {
+      return {};
+    } else {
+      return {std::cref(node)};
+    }
+  }
+  auto it = std::cbegin(nodes);
+  if (it == std::cend(nodes)) {
+    return {};
+  }
+  auto const& child = *it;
+  ++it;
+  if (it != std::cend(nodes)) {
+    return {};
+  }
+  return {getSingleChildNode(child)};
+}
+
+std::tuple<std::string, std::string, std::string> getWindowInfo(const Json::Value& node) {
+  const auto app_id = node["app_id"].isString() ? node["app_id"].asString()
+                                                : node["window_properties"]["instance"].asString();
+  const auto app_class = node["window_properties"]["class"].isString()
+                             ? node["window_properties"]["class"].asString()
+                             : "";
+  const auto shell = node["shell"].isString() ? node["shell"].asString() : "";
+  return {app_id, app_class, shell};
+}
+
 std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string>
 gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Value& config_,
                  const Bar& bar_, Json::Value& parentWorkspace,
@@ -181,12 +215,7 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
       // found node
       spdlog::trace("actual output {}, output found {}, node (focused) found {}", bar_.output->name,
                     output, node["name"].asString());
-      auto app_id = node["app_id"].isString() ? node["app_id"].asString()
-                                              : node["window_properties"]["instance"].asString();
-      const auto app_class = node["window_properties"]["class"].isString()
-                                 ? node["window_properties"]["class"].asString()
-                                 : "";
-      const auto shell = node["shell"].isString() ? node["shell"].asString() : "";
+      const auto [app_id, app_class, shell] = getWindowInfo(node);
       int nb = node.size();
       int floating_count = 0;
       std::string workspace_layout = "";
@@ -226,15 +255,24 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
     std::pair all_leaf_nodes = leafNodesInWorkspace(immediateParent);
     // using an empty string as default ensures that no window depending styles are set due to the
     // checks above for !name.empty()
+    std::string app_id = "";
+    std::string app_class = "";
+    std::string workspace_layout = "";
+    if (all_leaf_nodes.first == 1) {
+      const auto single_child = getSingleChildNode(immediateParent);
+      if (single_child.has_value()) {
+        std::tie(app_id, app_class, workspace_layout) = getWindowInfo(single_child.value());
+      }
+    }
     return {all_leaf_nodes.first,
             all_leaf_nodes.second,
             0,
             (all_leaf_nodes.first > 0 || all_leaf_nodes.second > 0)
                 ? config_["offscreen-css-text"].asString()
                 : "",
-            "",
-            "",
-            "",
+            app_id,
+            app_class,
+            workspace_layout,
             immediateParent["layout"].asString()};
   }
 

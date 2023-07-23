@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.19',
+    version: '0.9.20',
     license: 'MIT',
     meson_version: '>= 0.50.0',
     default_options : [
@@ -346,7 +346,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.8.4',
+                  version : '>=0.8.5',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
@@ -423,6 +423,7 @@ if scdoc.found()
         main_manpage_path,
         'waybar-backlight.5.scd',
         'waybar-battery.5.scd',
+        'waybar-cava.5.scd',
         'waybar-clock.5.scd',
         'waybar-cpu.5.scd',
         'waybar-custom.5.scd',

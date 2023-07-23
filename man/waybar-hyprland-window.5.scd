@@ -63,7 +63,7 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 # STYLE
 
 - *#window*
-- *#window.empty* When no windows are in the workspace
+- *window#waybar.empty #window* When no windows are in the workspace
 
 The following classes are applied to the entire Waybar rather than just the
 window widget:
