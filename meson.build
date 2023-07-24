@@ -4,7 +4,7 @@ project(
     license: 'MIT',
     meson_version: '>= 0.50.0',
     default_options : [
-        'cpp_std=c++17',
+        'cpp_std=c++20',
         'buildtype=release',
         'default_library=static'
     ],
