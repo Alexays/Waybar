@@ -21,9 +21,21 @@ Addressed by *hyprland/workspaces*
 	typeof: array ++
 	Based on the workspace id and state, the corresponding icon gets selected. See *icons*.
 
+*show-special*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true special workspaces will be shown.
+
+*all-outputs*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false workspaces group will be shown only in assigned output. Otherwise all workspace groups are shown.
+
 # FORMAT REPLACEMENTS
 
 *{id}*: id of workspace assigned by compositor
+
+*{name}*: workspace name assigned by compositor
 
 *{icon}*: Icon, as defined in *format-icons*.
 
@@ -48,7 +60,8 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"active": "",
 		"default": ""
 	},
-	"sort-by-number": true
+	"all-outputs": false,
+        "show-special": false
 }
 ```
 
