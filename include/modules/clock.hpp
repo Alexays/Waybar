@@ -34,11 +34,18 @@ class Clock final : public ALabel {
 
   auto first_day_of_week() -> date::weekday;
   const date::time_zone* current_timezone();
-  bool is_timezone_fixed();
-  auto timezones_text(std::chrono::system_clock::time_point* now) -> std::string;
+  auto timezones_text(std::chrono::system_clock::time_point now) -> std::string;
 
   /*Calendar properties*/
   WeeksSide cldWPos_{WeeksSide::HIDDEN};
+  /*
+    0 - calendar.format.months
+    1 - calendar.format.weekdays
+    2 - calendar.format.days
+    3 - calendar.format.today
+    4 - calendar.format.weeks
+    5 - tooltip-format
+   */
   std::map<int, std::string const> fmtMap_;
   CldMode cldMode_{CldMode::MONTH};
   uint cldMonCols_{3};    // Count of the month in the row
@@ -52,8 +59,10 @@ class Clock final : public ALabel {
   std::string cldMonCached_{};
   date::day cldBaseDay_{0};
   /*Calendar functions*/
-  auto get_calendar(const date::zoned_seconds& now, const date::zoned_seconds& wtime)
-      -> std::string;
+  auto get_calendar(const date::year_month_day& today,
+                    const date::year_month_day& ymd,
+                    const date::time_zone* tz)
+      -> const std::string;
   /*Clock actions*/
   void cldModeSwitch();
   void cldShift_up();

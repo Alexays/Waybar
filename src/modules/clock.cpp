@@ -17,15 +17,15 @@
 
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
-      current_time_zone_idx_(0),
-      is_calendar_in_tooltip_(false),
-      is_timezoned_list_in_tooltip_(false) {
+      current_time_zone_idx_{0},
+      is_calendar_in_tooltip_{false},
+      is_timezoned_list_in_tooltip_{false} {
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
     for (const auto& zone_name : config_["timezones"]) {
       if (!zone_name.isString()) continue;
       if (zone_name.asString().empty())
-        // nullptr means that local time should be shown
-        time_zones_.push_back(nullptr);
+        // local time should be shown
+        time_zones_.push_back(date::current_zone());
       else
         try {
           time_zones_.push_back(date::locate_zone(zone_name.asString()));
@@ -35,8 +35,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     }
   } else if (config_["timezone"].isString()) {
     if (config_["timezone"].asString().empty())
-      // nullptr means that local time should be shown
-      time_zones_.push_back(nullptr);
+      time_zones_.push_back(date::current_zone());
     else
       try {
         time_zones_.push_back(date::locate_zone(config_["timezone"].asString()));
@@ -47,21 +46,22 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 
   // If all timezones are parsed and no one is good
   if (!time_zones_.size()) {
-    // nullptr means that local time should be shown
-    time_zones_.push_back(nullptr);
+    time_zones_.push_back(date::current_zone());
   }
 
   // Check if a particular placeholder is present in the tooltip format, to know what to calculate
   // on update.
   if (config_["tooltip-format"].isString()) {
-    std::string trimmed_format = config_["tooltip-format"].asString();
+    std::string trimmed_format{config_["tooltip-format"].asString()};
     trimmed_format.erase(std::remove_if(trimmed_format.begin(), trimmed_format.end(),
                                         [](unsigned char x) { return std::isspace(x); }),
                          trimmed_format.end());
-    if (trimmed_format.find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
+    fmtMap_.insert({5, trimmed_format});
+
+    if (fmtMap_[5].find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
       is_calendar_in_tooltip_ = true;
     }
-    if (trimmed_format.find("{" + KTimezonedTimeListPlaceholder + "}") != std::string::npos) {
+    if (fmtMap_[5].find("{" + KTimezonedTimeListPlaceholder + "}") != std::string::npos) {
       is_timezoned_list_in_tooltip_ = true;
     }
   }
@@ -158,52 +158,33 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 const date::time_zone* waybar::modules::Clock::current_timezone() {
-  return is_timezone_fixed() ? time_zones_[current_time_zone_idx_] : date::current_zone();
-}
-
-bool waybar::modules::Clock::is_timezone_fixed() {
-  return time_zones_[current_time_zone_idx_] != nullptr;
+  return time_zones_[current_time_zone_idx_];
 }
 
 auto waybar::modules::Clock::update() -> void {
-  const auto* time_zone = current_timezone();
-  auto now = std::chrono::system_clock::now();
-  auto ztime = date::zoned_time{time_zone, date::floor<std::chrono::seconds>(now)};
+  const auto* tz{current_timezone()};
+  const date::zoned_time now{
+      tz, std::chrono::system_clock::now()};  // Define local time is based on provided time zone
+  const date::year_month_day today{
+      date::floor<date::days>(now.get_local_time())};            // Convert now to year_month_day
+  const date::year_month_day shiftedDay{today + cldCurrShift_};  // Shift today
+  // Define shift local time
+  const auto shiftedNow{date::make_zoned(
+      tz, date::local_days(shiftedDay) +
+              (now.get_local_time() - date::floor<date::days>(now.get_local_time())))};
 
-  auto shifted_date = date::year_month_day{date::floor<date::days>(now)} + cldCurrShift_;
-  if (cldCurrShift_.count()) {
-    shifted_date = date::year_month_day(shifted_date.year(), shifted_date.month(), date::day(1));
-  }
-  auto now_shifted = date::sys_days{shifted_date} + (now - date::floor<date::days>(now));
-  auto shifted_ztime = date::zoned_time{time_zone, date::floor<std::chrono::seconds>(now_shifted)};
-
-  std::string text{""};
-  if (!is_timezone_fixed()) {
-    // As date dep is not fully compatible, prefer fmt
-    tzset();
-    auto localtime = fmt::localtime(std::chrono::system_clock::to_time_t(now));
-    text = fmt::format(locale_, fmt::runtime(format_), localtime);
-  } else {
-    text = fmt::format(locale_, fmt::runtime(format_), ztime);
-  }
-  label_.set_markup(text);
+  label_.set_markup(fmt::format(locale_, fmt::runtime(format_), now));
 
   if (tooltipEnabled()) {
-    if (config_["tooltip-format"].isString()) {
-      std::string calendar_lines{""};
-      std::string timezoned_time_lines{""};
-      if (is_calendar_in_tooltip_) {
-        calendar_lines = get_calendar(ztime, shifted_ztime);
-      }
-      if (is_timezoned_list_in_tooltip_) {
-        timezoned_time_lines = timezones_text(&now);
-      }
-      auto tooltip_format = config_["tooltip-format"].asString();
-      text = fmt::format(locale_, fmt::runtime(tooltip_format), shifted_ztime,
-                         fmt::arg(kCalendarPlaceholder.c_str(), calendar_lines),
-                         fmt::arg(KTimezonedTimeListPlaceholder.c_str(), timezoned_time_lines));
-      label_.set_tooltip_markup(text);
-    }
+    const std::string tz_text{(is_timezoned_list_in_tooltip_) ? timezones_text(now.get_sys_time())
+                                                              : ""};
+    const std::string cld_text{(is_calendar_in_tooltip_) ? get_calendar(today, shiftedDay, tz)
+                                                         : ""};
+
+    const std::string text{fmt::format(locale_, fmt::runtime(fmtMap_[5]), shiftedNow,
+                                       fmt::arg(KTimezonedTimeListPlaceholder.c_str(), tz_text),
+                                       fmt::arg(kCalendarPlaceholder.c_str(), cld_text))};
+    label_.set_tooltip_markup(text);
   }
 
   // Call parent update
@@ -219,15 +200,15 @@ auto waybar::modules::Clock::doAction(const std::string& name) -> void {
 }
 
 // The number of weeks in calendar month layout plus 1 more for calendar titles
-unsigned cldRowsInMonth(date::year_month const ym, date::weekday const firstdow) {
+const unsigned cldRowsInMonth(const date::year_month& ym, const date::weekday& firstdow) {
   using namespace date;
   return static_cast<unsigned>(
              ceil<weeks>((weekday{ym / 1} - firstdow) + ((ym / last).day() - day{0})).count()) +
          2;
 }
 
-auto cldGetWeekForLine(date::year_month const ym, date::weekday const firstdow, unsigned const line)
-    -> const date::year_month_weekday {
+auto cldGetWeekForLine(const date::year_month& ym, const date::weekday& firstdow,
+                       unsigned const line) -> const date::year_month_weekday {
   unsigned index = line - 2;
   auto sd = date::sys_days{ym / 1};
   if (date::weekday{sd} == firstdow) ++index;
@@ -235,8 +216,8 @@ auto cldGetWeekForLine(date::year_month const ym, date::weekday const firstdow, 
   return ymdw;
 }
 
-auto getCalendarLine(date::year_month_day const currDate, date::year_month const ym,
-                     unsigned const line, date::weekday const firstdow,
+auto getCalendarLine(const date::year_month_day& currDate, const date::year_month ym,
+                     const unsigned line, const date::weekday& firstdow,
                      const std::locale* const locale_) -> std::string {
   using namespace date::literals;
   std::ostringstream res;
@@ -318,10 +299,9 @@ auto getCalendarLine(date::year_month_day const currDate, date::year_month const
   return res.str();
 }
 
-auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
-                                          const date::zoned_seconds& wtime) -> std::string {
-  auto daypoint = date::floor<date::days>(wtime.get_local_time());
-  const auto ymd{date::year_month_day{daypoint}};
+auto waybar::modules::Clock::get_calendar(const date::year_month_day& today,
+                                          const date::year_month_day& ymd,
+                                          const date::time_zone* tz) -> const std::string {
   const auto ym{ymd.year() / ymd.month()};
   const auto y{ymd.year()};
   const auto d{ymd.day()};
@@ -329,9 +309,6 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
   const auto maxRows{12 / cldMonCols_};
   std::ostringstream os;
   std::ostringstream tmp;
-  // get currdate
-  daypoint = date::floor<date::days>(now.get_local_time());
-  const auto currDate{date::year_month_day{daypoint}};
 
   if (cldMode_ == CldMode::YEAR) {
     if (y / date::month{1} / 1 == cldYearShift_)
@@ -361,6 +338,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
     else
       m = 0u;
   }
+
   for (auto row{0u}; row < maxRows; ++row) {
     const auto lines = *std::max_element(std::begin(ml) + (row * cldMonCols_),
                                          std::begin(ml) + ((row + 1) * cldMonCols_));
@@ -377,8 +355,9 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
               if (line < ml[static_cast<unsigned>(ymTmp.month()) - 1u])
                 os << fmt::format(fmt::runtime(fmtMap_[4]),
                                   (line == 2)
-                                      ? date::sys_days{ymTmp / 1}
-                                      : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)})
+                                      ? date::zoned_seconds{tz, date::local_days{ymTmp / 1}}
+                                      : date::zoned_seconds{tz, date::local_days{cldGetWeekForLine(
+                                                                    ymTmp, firstdow, line)}})
                    << ' ';
               else
                 os << std::string(cldWnLen_, ' ');
@@ -387,7 +366,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
 
           os << fmt::format(
               fmt::runtime((cldWPos_ != WeeksSide::LEFT || line == 0) ? "{:<{}}" : "{:>{}}"),
-              getCalendarLine(currDate, ymTmp, line, firstdow, &locale_),
+              getCalendarLine(today, ymTmp, line, firstdow, &locale_),
               (cldMonColLen_ + ((line < 2) ? cldWnLen_ : 0)));
 
           // Week numbers on the right
@@ -397,8 +376,9 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
                 os << ' '
                    << fmt::format(fmt::runtime(fmtMap_[4]),
                                   (line == 2)
-                                      ? date::sys_days{ymTmp / 1}
-                                      : date::sys_days{cldGetWeekForLine(ymTmp, firstdow, line)});
+                                      ? date::zoned_seconds{tz, date::local_days{ymTmp / 1}}
+                                      : date::zoned_seconds{tz, date::local_days{cldGetWeekForLine(
+                                                                    ymTmp, firstdow, line)}});
               else
                 os << std::string(cldWnLen_, ' ');
             }
@@ -421,7 +401,7 @@ auto waybar::modules::Clock::get_calendar(const date::zoned_seconds& now,
   os << fmt::format(  // Apply days format
       fmt::runtime(fmt::format(fmt::runtime(fmtMap_[2]), tmp.str())),
       // Apply today format
-      fmt::arg("today", fmt::format(fmt::runtime(fmtMap_[3]), date::format("%e", ymd.day()))));
+      fmt::arg("today", fmt::format(fmt::runtime(fmtMap_[3]), date::format("%e", d))));
 
   if (cldMode_ == CldMode::YEAR)
     cldYearCached_ = os.str();
@@ -457,7 +437,7 @@ void waybar::modules::Clock::tz_down() {
   current_time_zone_idx_ = current_time_zone_idx_ == 0 ? nr_zones - 1 : current_time_zone_idx_ - 1;
 }
 
-auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point* now)
+auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_point now)
     -> std::string {
   if (time_zones_.size() == 1) {
     return "";
@@ -471,7 +451,7 @@ auto waybar::modules::Clock::timezones_text(std::chrono::system_clock::time_poin
     if (!timezone) {
       timezone = date::current_zone();
     }
-    auto ztime = date::zoned_time{timezone, date::floor<std::chrono::seconds>(*now)};
+    auto ztime = date::zoned_time{timezone, date::floor<std::chrono::seconds>(now)};
     os << fmt::format(locale_, fmt::runtime(format_), ztime) << '\n';
   }
   return os.str();
