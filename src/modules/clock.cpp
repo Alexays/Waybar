@@ -164,7 +164,9 @@ const date::time_zone* waybar::modules::Clock::current_timezone() {
 auto waybar::modules::Clock::update() -> void {
   const auto* tz{current_timezone()};
   const date::zoned_time now{
-      tz, std::chrono::system_clock::now()};  // Define local time is based on provided time zone
+      tz,
+      date::floor<std::chrono::seconds>(
+          std::chrono::system_clock::now())};  // Define local time is based on provided time zone
   const date::year_month_day today{
       date::floor<date::days>(now.get_local_time())};            // Convert now to year_month_day
   const date::year_month_day shiftedDay{today + cldCurrShift_};  // Shift today
