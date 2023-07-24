@@ -24,8 +24,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     for (const auto& zone_name : config_["timezones"]) {
       if (!zone_name.isString()) continue;
       if (zone_name.asString().empty())
-        // nullptr means that local time should be shown
-        time_zones_.push_back(nullptr);
+        // local time should be shown
+        time_zones_.push_back(date::current_zone());
       else
         try {
           time_zones_.push_back(date::locate_zone(zone_name.asString()));
@@ -46,7 +46,6 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 
   // If all timezones are parsed and no one is good
   if (!time_zones_.size()) {
-    // nullptr means that local time should be shown
     time_zones_.push_back(date::current_zone());
   }
 
