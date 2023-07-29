@@ -57,5 +57,5 @@ std::tuple<double, double, double> waybar::modules::Load::getLoad() {
     double load15 = std::ceil(load[2] * 100.0) / 100.0;
     return {load1, load5, load15};
   }
-  throw std::runtime_error("Can't get Load");
+  throw std::runtime_error("Can't get system load");
 }

@@ -17,8 +17,8 @@ namespace waybar::modules {
 class Load : public ALabel {
  public:
   Load(const std::string&, const Json::Value&);
-  ~Load() = default;
-  auto update() -> void;
+  virtual ~Load() = default;
+  auto update() -> void override;
 
  private:
   std::tuple<double, double, double> getLoad();
