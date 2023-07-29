@@ -26,6 +26,7 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 
   queryActiveWorkspace();
   update();
+  dp.emit();
 
   // register for hyprland ipc
   gIPC->registerForIPC("activewindow", this);

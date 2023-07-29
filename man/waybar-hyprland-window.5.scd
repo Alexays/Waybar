@@ -25,6 +25,16 @@ Addressed by *hyprland/window*
 	typeof: bool ++
 	Show the active window of the monitor the bar belongs to, instead of the focused window.
 
+*icon*: ++
+	typeof: bool ++
+	default: false ++
+	Option to hide the application icon.
+
+*icon-size*: ++
+	typeof: integer ++
+	default: 24 ++
+	Option to change the size of the application icon.
+
 # FORMAT REPLACEMENTS
 See the output of "hyprctl clients" for examples
 
