@@ -111,7 +111,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 :[ Value to scroll months/years forward/backward. Can be negative. Is
   configured under *on-scroll* option
 
-3. Adressed by *clock: calendar: format*
+3. Addressed by *clock: calendar: format*
 [- *Option*
 :- *Typeof*
 :- *Default*
