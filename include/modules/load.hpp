@@ -20,8 +20,10 @@ class Load : public ALabel {
   virtual ~Load() = default;
   auto update() -> void override;
 
+  // This is a static member because it is also used by the cpu module.
+  static std::tuple<double, double, double> getLoad();
+
  private:
-  std::tuple<double, double, double> getLoad();
 
   util::SleeperThread thread_;
 };

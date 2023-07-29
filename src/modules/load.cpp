@@ -19,7 +19,7 @@ waybar::modules::Load::Load(const std::string& id, const Json::Value& config)
 
 auto waybar::modules::Load::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
-  auto [load1, load5, load15] = getLoad();
+  auto [load1, load5, load15] = Load::getLoad();
   if (tooltipEnabled()) {
     auto tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
     label_.set_tooltip_text(tooltip);

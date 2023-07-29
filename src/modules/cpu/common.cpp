@@ -1,6 +1,7 @@
 #include "modules/cpu.hpp"
 #include "modules/cpu_frequency.hpp"
 #include "modules/cpu_usage.hpp"
+#include "modules/load.hpp"
 
 // In the 80000 version of fmt library authors decided to optimize imports
 // and moved declarations required for fmt::dynamic_format_arg_store in new
@@ -21,7 +22,7 @@ waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
 
 auto waybar::modules::Cpu::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
-  auto cpu_load = getCpuLoad();
+  auto [load1, load5, load15] = Load::getLoad();
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
   if (tooltipEnabled()) {
@@ -40,7 +41,7 @@ auto waybar::modules::Cpu::update() -> void {
     event_box_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
-    store.push_back(fmt::arg("load", cpu_load));
+    store.push_back(fmt::arg("load", load1));
     store.push_back(fmt::arg("usage", total_usage));
     store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
     store.push_back(fmt::arg("max_frequency", max_frequency));
@@ -58,12 +59,4 @@ auto waybar::modules::Cpu::update() -> void {
 
   // Call parent update
   ALabel::update();
-}
-
-double waybar::modules::Cpu::getCpuLoad() {
-  double load[1];
-  if (getloadavg(load, 1) != -1) {
-    return std::ceil(load[0] * 100.0) / 100.0;
-  }
-  throw std::runtime_error("Can't get Cpu load");
 }
