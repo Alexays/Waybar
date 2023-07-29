@@ -20,9 +20,11 @@ class CpuFrequency : public ALabel {
   virtual ~CpuFrequency() = default;
   auto update() -> void override;
 
+  // This is a static member because it is also used by the cpu module.
+  static std::tuple<float, float, float> getCpuFrequency();
+
  private:
-  std::tuple<float, float, float> getCpuFrequency();
-  std::vector<float> parseCpuFrequencies();
+  static std::vector<float> parseCpuFrequencies();
 
   util::SleeperThread thread_;
 };
