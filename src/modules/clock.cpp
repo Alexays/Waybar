@@ -53,15 +53,15 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   // on update.
   if (config_["tooltip-format"].isString()) {
     std::string trimmed_format{config_["tooltip-format"].asString()};
+    fmtMap_.insert({5, trimmed_format});
     trimmed_format.erase(std::remove_if(trimmed_format.begin(), trimmed_format.end(),
                                         [](unsigned char x) { return std::isspace(x); }),
                          trimmed_format.end());
-    fmtMap_.insert({5, trimmed_format});
 
-    if (fmtMap_[5].find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
+    if (trimmed_format.find("{" + kCalendarPlaceholder + "}") != std::string::npos) {
       is_calendar_in_tooltip_ = true;
     }
-    if (fmtMap_[5].find("{" + KTimezonedTimeListPlaceholder + "}") != std::string::npos) {
+    if (trimmed_format.find("{" + KTimezonedTimeListPlaceholder + "}") != std::string::npos) {
       is_timezoned_list_in_tooltip_ = true;
     }
   }
