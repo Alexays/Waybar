@@ -20,9 +20,11 @@ class CpuUsage : public ALabel {
   virtual ~CpuUsage() = default;
   auto update() -> void override;
 
+  // This is a static member because it is also used by the cpu module.
+  static std::tuple<std::vector<uint16_t>, std::string> getCpuUsage(std::vector<std::tuple<size_t, size_t>>&);
+
  private:
-  std::tuple<std::vector<uint16_t>, std::string> getCpuUsage();
-  std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
+  static std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
 
   std::vector<std::tuple<size_t, size_t>> prev_times_;
 

@@ -19,7 +19,7 @@ waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& co
 
 auto waybar::modules::CpuUsage::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
-  auto [cpu_usage, tooltip] = getCpuUsage();
+  auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
   }
@@ -52,17 +52,17 @@ auto waybar::modules::CpuUsage::update() -> void {
   ALabel::update();
 }
 
-std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpuUsage() {
-  if (prev_times_.empty()) {
-    prev_times_ = parseCpuinfo();
+std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpuUsage(std::vector<std::tuple<size_t, size_t>>& prev_times) {
+  if (prev_times.empty()) {
+    prev_times = CpuUsage::parseCpuinfo();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
-  std::vector<std::tuple<size_t, size_t>> curr_times = parseCpuinfo();
+  std::vector<std::tuple<size_t, size_t>> curr_times = CpuUsage::parseCpuinfo();
   std::string tooltip;
   std::vector<uint16_t> usage;
   for (size_t i = 0; i < curr_times.size(); ++i) {
     auto [curr_idle, curr_total] = curr_times[i];
-    auto [prev_idle, prev_total] = prev_times_[i];
+    auto [prev_idle, prev_total] = prev_times[i];
     const float delta_idle = curr_idle - prev_idle;
     const float delta_total = curr_total - prev_total;
     uint16_t tmp = 100 * (1 - delta_idle / delta_total);
@@ -73,6 +73,6 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpu
     }
     usage.push_back(tmp);
   }
-  prev_times_ = curr_times;
+  prev_times = curr_times;
   return {usage, tooltip};
 }

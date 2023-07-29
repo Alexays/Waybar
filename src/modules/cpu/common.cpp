@@ -1,5 +1,6 @@
 #include "modules/cpu.hpp"
 #include "modules/cpu_frequency.hpp"
+#include "modules/cpu_usage.hpp"
 
 // In the 80000 version of fmt library authors decided to optimize imports
 // and moved declarations required for fmt::dynamic_format_arg_store in new
@@ -21,7 +22,7 @@ waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
 auto waybar::modules::Cpu::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto cpu_load = getCpuLoad();
-  auto [cpu_usage, tooltip] = getCpuUsage();
+  auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
   if (tooltipEnabled()) {
     label_.set_tooltip_text(tooltip);
@@ -65,29 +66,4 @@ double waybar::modules::Cpu::getCpuLoad() {
     return std::ceil(load[0] * 100.0) / 100.0;
   }
   throw std::runtime_error("Can't get Cpu load");
-}
-
-std::tuple<std::vector<uint16_t>, std::string> waybar::modules::Cpu::getCpuUsage() {
-  if (prev_times_.empty()) {
-    prev_times_ = parseCpuinfo();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-  std::vector<std::tuple<size_t, size_t>> curr_times = parseCpuinfo();
-  std::string tooltip;
-  std::vector<uint16_t> usage;
-  for (size_t i = 0; i < curr_times.size(); ++i) {
-    auto [curr_idle, curr_total] = curr_times[i];
-    auto [prev_idle, prev_total] = prev_times_[i];
-    const float delta_idle = curr_idle - prev_idle;
-    const float delta_total = curr_total - prev_total;
-    uint16_t tmp = 100 * (1 - delta_idle / delta_total);
-    if (i == 0) {
-      tooltip = fmt::format("Total: {}%", tmp);
-    } else {
-      tooltip = tooltip + fmt::format("\nCore{}: {}%", i - 1, tmp);
-    }
-    usage.push_back(tmp);
-  }
-  prev_times_ = curr_times;
-  return {usage, tooltip};
 }

@@ -22,8 +22,6 @@ class Cpu : public ALabel {
 
  private:
   double getCpuLoad();
-  std::tuple<std::vector<uint16_t>, std::string> getCpuUsage();
-  std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
 
   std::vector<std::tuple<size_t, size_t>> prev_times_;
 
