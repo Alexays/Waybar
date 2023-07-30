@@ -2,7 +2,7 @@ waybar-clock(5) "waybar-clock" "User Manual"
 
 # NAME
 
-clock
+waybar - clock module
 
 # DESCRIPTION
 
