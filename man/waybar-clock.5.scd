@@ -37,13 +37,13 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ list of strings
 :[
 :[ A list of timezones (as in *timezone*) to use for time display, changed using
-  the scroll wheel. Do not specify *timezone* option when *timezones* is specified.
+   the scroll wheel. Do not specify *timezone* option when *timezones* is specified.
    "" represents the system's local timezone
 |[ *locale*
 :[ string
 :[
 :[ A locale to be used to display the time. Intended to render times in custom
-  timezones with the proper language and format
+   timezones with the proper language and format
 |[ *max-length*
 :[ integer
 :[
@@ -104,14 +104,14 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 :[ integer
 :[
 :[ The position where week numbers should be displayed. Disabled when is empty.
-  Possible values: left|right
+   Possible values: left|right
 |[ *on-scroll*
 :[ integer
 :[ 1
 :[ Value to scroll months/years forward/backward. Can be negative. Is
-  configured under *on-scroll* option
+   configured under *on-scroll* option
 
-3. Adressed by *clock: calendar: format*
+3. Addressed by *clock: calendar: format*
 [- *Option*
 :- *Typeof*
 :- *Default*
