@@ -1,5 +1,9 @@
 waybar-states(5)
 
+# NAME
+
+waybar - states property
+
 # OVERVIEW
 
 Some modules support 'states' which allows percentage values to be used as styling triggers to

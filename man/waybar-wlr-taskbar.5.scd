@@ -2,7 +2,7 @@ waybar-wlr-taskbar(5)
 
 # NAME
 
-wlroots - Taskbar module
+waybar - wlr taskbar module
 
 # DESCRIPTION
 

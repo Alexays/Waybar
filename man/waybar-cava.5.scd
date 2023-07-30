@@ -2,7 +2,7 @@ waybar-cava(5) "waybar-cava" "User Manual"
 
 # NAME
 
-cava
+waybar - cava module
 
 # DESCRIPTION
 

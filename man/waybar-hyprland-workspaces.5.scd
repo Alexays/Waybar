@@ -1,4 +1,4 @@
-waybar-wlr-workspaces(5)
+waybar-hyprland-workspaces(5)
 
 # NAME
 
