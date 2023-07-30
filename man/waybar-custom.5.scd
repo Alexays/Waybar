@@ -1,5 +1,4 @@
 waybar-custom(5)
-
 # NAME
 
 waybar - custom module
@@ -19,14 +18,13 @@ Addressed by *custom/<name>*
 
 *exec-if*: ++
 	typeof: string ++
-	The path to a script, which determines if the script in *exec* should be executed.
+	The path to a script, which determines if the script in *exec* should be executed. ++
 	*exec* will be executed if the exit code of *exec-if* equals 0.
 
 *exec-on-event*: ++
 	typeof: bool ++
 	default: true ++
-	If an event command is set (e.g. *on-click* or *on-scroll-up*) then re-execute the script after
-	executing the event command.
+	If an event command is set (e.g. *on-click* or *on-scroll-up*) then re-execute the script after executing the event command.
 
 *return-type*: ++
 	typeof: string ++
@@ -34,20 +32,19 @@ Addressed by *custom/<name>*
 
 *interval*: ++
 	typeof: integer ++
-	The interval (in seconds) in which the information gets polled.
-	Use *once* if you want to execute the module only on startup.
-	You can update it manually with a signal. If no *interval* is defined,
-	it is assumed that the out script loops it self.
+	The interval (in seconds) in which the information gets polled. ++
+	Use *once* if you want to execute the module only on startup. ++
+	You can update it manually with a signal. If no *interval* is defined, it is assumed that the out script loops it self.
 
 *restart-interval*: ++
 	typeof: integer ++
-	The restart interval (in seconds).
-	Can't be used with the *interval* option, so only with continuous scripts.
+	The restart interval (in seconds). ++
+	Can't be used with the *interval* option, so only with continuous scripts. ++
 	Once the script exit, it'll be re-executed after the *restart-interval*.
 
 *signal*: ++
 	typeof: integer ++
-	The signal number used to update the module.
+	The signal number used to update the module. ++
 	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*.
 
 *format*: ++
@@ -68,12 +65,12 @@ Addressed by *custom/<name>*
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should take up.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++

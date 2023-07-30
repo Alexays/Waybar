@@ -29,9 +29,8 @@ Addressed by *wlr/workspaces*
 *sort-by-coordinates*: ++
 	typeof: bool ++
 	default: true ++
-	Should workspaces be sorted by coordinates.
-	Note that if both  *sort-by-name* and *sort-by-coordinates* are true sort by name will be first.
-	If both are false - sort by id will be performed.
+	Should workspaces be sorted by coordinates. ++
+	Note that if both  *sort-by-name* and *sort-by-coordinates* are true sort by name will be first. If both are false - sort by id will be performed.
 
 *sort-by-number*: ++
 	typeof: bool ++

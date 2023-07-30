@@ -62,11 +62,11 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 
 ```
 "hyprland/window": {
-    "format": "{}",
-    "rewrite": {
-      "(.*) - Mozilla Firefox": "🌎 $1",
-      "(.*) - zsh": "> [$1]"
-    }
+	"format": "{}",
+	"rewrite": {
+		"(.*) - Mozilla Firefox": "🌎 $1",
+		"(.*) - zsh": "> [$1]"
+	}
 }
 ```
 

@@ -27,12 +27,12 @@ cursor is over the module, and clicking on the module toggles mute.
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should take up.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *scroll-step*: ++
 	typeof: int ++
@@ -58,12 +58,12 @@ cursor is over the module, and clicking on the module toggles mute.
 
 *on-scroll-up*: ++
 	typeof: string ++
-	Command to execute when scrolling up on the module.
+	Command to execute when scrolling up on the module. ++
 	This replaces the default behaviour of volume control.
 
 *on-scroll-down*: ++
 	typeof: string ++
-	Command to execute when scrolling down on the module.
+	Command to execute when scrolling down on the module. ++
 	This replaces the default behaviour of volume control.
 
 *smooth-scrolling-threshold*: ++
@@ -80,8 +80,8 @@ cursor is over the module, and clicking on the module toggles mute.
 
 ```
 "sndio": {
-    "format": "{raw_value} 🎜",
-    "scroll-step": 3
+	"format": "{raw_value} 🎜",
+	"scroll-step": 3
 }
 ```
 

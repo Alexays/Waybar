@@ -13,74 +13,74 @@ The *workspaces* module displays the currently used workspaces in Sway.
 Addressed by *sway/workspaces*
 
 *all-outputs*: ++
-    typeof: bool ++
-    default: false ++
-    If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
+	typeof: bool ++
+	default: false ++
+	If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
 
 *format*: ++
-    typeof: string ++
-    default: {value} ++
-    The format, how information should be displayed.
+	typeof: string ++
+	default: {value} ++
+	The format, how information should be displayed.
 
 *format-icons*: ++
-    typeof: array ++
-    Based on the workspace name and state, the corresponding icon gets selected. See *icons*.
+	typeof: array ++
+	Based on the workspace name and state, the corresponding icon gets selected. See *icons*.
 
 *disable-scroll*: ++
-    typeof: bool ++
-    default: false ++
-    If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
+	typeof: bool ++
+	default: false ++
+	If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
 
 *disable-click*: ++
-    typeof: bool ++
-    default: false ++
-    If set to false, you can click to change workspace. If set to true this behaviour is disabled.
+	typeof: bool ++
+	default: false ++
+	If set to false, you can click to change workspace. If set to true this behaviour is disabled.
 
 *smooth-scrolling-threshold*: ++
-    typeof: double ++
-    Threshold to be used when scrolling.
+	typeof: double ++
+	Threshold to be used when scrolling.
 
 *disable-scroll-wraparound*: ++
-    typeof: bool ++
-    default: false ++
-    If set to false, scrolling on the workspace indicator will wrap around to the first workspace when reading the end, and vice versa. If set to true this behavior is disabled.
+	typeof: bool ++
+	default: false ++
+	If set to false, scrolling on the workspace indicator will wrap around to the first workspace when reading the end, and vice versa. If set to true this behavior is disabled.
 
 *enable-bar-scroll*: ++
-    typeof: bool ++
-    default: false ++
-    If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
 
 *disable-markup*: ++
-    typeof: bool ++
-    default: false ++
-    If set to true, button label will escape pango markup.
+	typeof: bool ++
+	default: false ++
+	If set to true, button label will escape pango markup.
 
 *current-only*: ++
-    typeof: bool ++
-    default: false ++
-    If set to true. Only focused workspaces will be shown.
+	typeof: bool ++
+	default: false ++
+	If set to true. Only focused workspaces will be shown.
 
 *persistent_workspaces*: ++
-    typeof: json (see below) ++
-    default: empty ++
-    Lists workspaces that should always be shown, even when non existent
+	typeof: json (see below) ++
+	default: empty ++
+	Lists workspaces that should always be shown, even when non existent
 
 *on-update*: ++
-    typeof: string ++
-    Command to execute when the module is updated.
+	typeof: string ++
+	Command to execute when the module is updated.
 
 *disable-auto-back-and-forth*: ++
-    typeof: bool ++
-    Whether to disable *workspace_auto_back_and_forth* when clicking on workspaces. If this is set to *true*, clicking on a workspace you are already on won't do anything, even if *workspace_auto_back_and_forth* is enabled in the Sway configuration.
+	typeof: bool ++
+	Whether to disable *workspace_auto_back_and_forth* when clicking on workspaces. If this is set to *true*, clicking on a workspace you are already on won't do anything, even if *workspace_auto_back_and_forth* is enabled in the Sway configuration.
 
 *alphabetical_sort*: ++
-    typeof: bool ++
-    Whether to sort workspaces alphabetically. Please note this can make "swaymsg workspace prev/next" move to workspaces inconsistent with the ordering shown in Waybar.
+	typeof: bool ++
+	Whether to sort workspaces alphabetically. Please note this can make "swaymsg workspace prev/next" move to workspaces inconsistent with the ordering shown in Waybar.
 
 warp-on-scroll: ++
-    typeof: bool ++
-    default: true ++
-    If set to false, you can scroll to cycle through workspaces without mouse warping being enabled. If set to true this behaviour is disabled.
+	typeof: bool ++
+	default: true ++
+	If set to false, you can scroll to cycle through workspaces without mouse warping being enabled. If set to true this behaviour is disabled.
 
 # FORMAT REPLACEMENTS
 
@@ -112,11 +112,11 @@ an empty list denoting all outputs.
 
 ```
 "sway/workspaces": {
-    "persistent_workspaces": {
-        "3": [], // Always show a workspace with name '3', on all outputs if it does not exists
-        "4": ["eDP-1"], // Always show a workspace with name '4', on output 'eDP-1' if it does not exists
-        "5": ["eDP-1", "DP-2"] // Always show a workspace with name '5', on outputs 'eDP-1' and 'DP-2' if it does not exists
-    }
+	"persistent_workspaces": {
+		"3": [], // Always show a workspace with name '3', on all outputs if it does not exists
+		"4": ["eDP-1"], // Always show a workspace with name '4', on output 'eDP-1' if it does not exists
+		"5": ["eDP-1", "DP-2"] // Always show a workspace with name '5', on outputs 'eDP-1' and 'DP-2' if it does not exists
+	}
 }
 ```
 
@@ -126,20 +126,20 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 
 ```
 "sway/workspaces": {
-    "disable-scroll": true,
-    "all-outputs": true,
-    "format": "{name}: {icon}",
-    "format-icons": {
-        "1": "",
-        "2": "",
-        "3": "",
-        "4": "",
-        "5": "",
+	"disable-scroll": true,
+	"all-outputs": true,
+	"format": "{name}: {icon}",
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
 		"high-priority-named": [ "1", "2" ],
-        "urgent": "",
-        "focused": "",
-        "default": ""
-    }
+		"urgent": "",
+		"focused": "",
+		"default": ""
+	}
 }
 ```
 

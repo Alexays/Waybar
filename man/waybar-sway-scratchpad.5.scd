@@ -50,11 +50,11 @@ Addressed by *sway/scratchpad*
 
 ```
 "sway/scratchpad": {
-    "format": "{icon} {count}",
-    "show-empty": false,
-    "format-icons": ["", ""],
-    "tooltip": true,
-    "tooltip-format": "{app}: {title}"
+	"format": "{icon} {count}",
+	"show-empty": false,
+	"format-icons": ["", ""],
+	"tooltip": true,
+	"tooltip-format": "{app}: {title}"
 }
 ```
 

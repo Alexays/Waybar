@@ -85,8 +85,8 @@ See *systemd-inhibit*(1) for more information.
 	"what": "handle-lid-switch",
 	"format": "{icon}",
 	"format-icons": {
-	    "activated": "",
-	    "deactivated": ""
+		"activated": "",
+		"deactivated": ""
 	}
 }
 ```

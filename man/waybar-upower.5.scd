@@ -12,10 +12,10 @@ compatible devices in the tooltip.
 # CONFIGURATION
 
 *native-path*: ++
-    typeof: string ++
-    default: ++
-    The battery to monitor. Refer to the https://upower.freedesktop.org/docs/UpDevice.html#UpDevice--native-path ++
-    Can be obtained using `upower --dump`
+	typeof: string ++
+	default: ++
+	The battery to monitor. Refer to the https://upower.freedesktop.org/docs/UpDevice.html#UpDevice--native-path ++
+	Can be obtained using `upower --dump`
 
 *icon-size*: ++
 	typeof: integer ++
