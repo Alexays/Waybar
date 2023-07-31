@@ -18,11 +18,15 @@ class Workspace {
   int id() const { return id_; };
   std::string name() const { return name_; };
   std::string output() const { return output_; };
-  int active() const { return active_; };
+  bool active() const { return active_; };
   bool is_special() const { return is_special_; };
+  bool is_persistent() const { return is_persistent_; };
+  bool is_empty() const { return windows_ == 0; };
 
   auto handle_clicked(GdkEventButton* bt) -> bool;
   void set_active(bool value = true) { active_ = value; };
+  void set_persistent(bool value = true) { is_persistent_ = value; };
+  void set_windows(uint value) { windows_ = value; };
 
   void update(const std::string& format, const std::string& icon);
 
@@ -30,9 +34,10 @@ class Workspace {
   int id_;
   std::string name_;
   std::string output_;
-  int windows_;
-  bool active_;
-  bool is_special_;
+  uint windows_;
+  bool active_ = false;
+  bool is_special_ = false;
+  bool is_persistent_ = false;
 
   Gtk::Button button_;
   Gtk::Box content_;
@@ -53,6 +58,7 @@ class Workspaces : public AModule, public EventHandler {
 
  private:
   void onEvent(const std::string&) override;
+  void update_window_count();
   void sort_workspaces();
   void create_workspace(Json::Value& value);
   void remove_workspace(std::string name);
@@ -60,10 +66,16 @@ class Workspaces : public AModule, public EventHandler {
   bool all_outputs_ = false;
   bool show_special_ = false;
 
+  void fill_persistent_workspaces();
+  void create_persistent_workspaces();
+  std::vector<std::string> persistent_workspaces_to_create_;
+  bool persistent_created_ = false;
+
   std::string format_;
   std::map<std::string, std::string> icons_map_;
   bool with_icon_;
-  std::string active_workspace_name;
+  uint64_t monitor_id_;
+  std::string active_workspace_name_;
   std::vector<std::unique_ptr<Workspace>> workspaces_;
   std::vector<Json::Value> workspaces_to_create_;
   std::vector<std::string> workspaces_to_remove_;
