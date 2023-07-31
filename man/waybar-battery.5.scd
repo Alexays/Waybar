@@ -23,9 +23,9 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	Define the max percentage of the battery, for when you've set the battery to stop charging at a lower level to save it. For example, if you've set the battery to stop at 80% that will become the new 100%.
 
 *design-capacity*: ++
-    typeof: bool ++
-    default: false ++
-    Option to use the battery design capacity instead of it's current maximal capacity.
+	typeof: bool ++
+	default: false ++
+	Option to use the battery design capacity instead of it's current maximal capacity.
 
 *interval*: ++
 	typeof: integer ++
@@ -56,12 +56,12 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should take up.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *rotate*: ++
 	typeof: integer++
@@ -132,8 +132,8 @@ The *battery* module allows one to define custom formats based on up to two fact
 # STATES
 
 - Every entry (*state*) consists of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
-	- The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.	Each class gets activated when the current capacity is equal or below the configured *<value>*.
-	- Also each state can have its own *format*. Those con be configured via *format-<name>*. Or if you want to differentiate a bit more even as *format-<status>-<state>*. For more information see *custom-formats*.
+- The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.	Each class gets activated when the current capacity is equal or below the configured *<value>*.
+- Also each state can have its own *format*. Those con be configured via *format-<name>*. Or if you want to differentiate a bit more even as *format-<status>-<state>*. For more information see *custom-formats*.
 
 
 
@@ -141,15 +141,15 @@ The *battery* module allows one to define custom formats based on up to two fact
 
 ```
 "battery": {
-    "bat": "BAT2",
-    "interval": 60,
-    "states": {
-        "warning": 30,
-        "critical": 15
-    },
-    "format": "{capacity}% {icon}",
-    "format-icons": ["", "", "", "", ""],
-    "max-length": 25
+	"bat": "BAT2",
+	"interval": 60,
+	"states": {
+		"warning": 30,
+		"critical": 15
+	},
+	"format": "{capacity}% {icon}",
+	"format-icons": ["", "", "", "", ""],
+	"max-length": 25
 }
 ```
 

@@ -28,12 +28,12 @@ screensaving, also known as "presentation mode".
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should take up.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
 	typeof: string ++
@@ -64,9 +64,9 @@ screensaving, also known as "presentation mode".
 	Threshold to be used when scrolling.
 
 *start-activated*: ++
-  typeof: bool ++
-  default: *false* ++
-  Whether the inhibit should be activated when starting waybar.
+	typeof: bool ++
+	default: *false* ++
+	Whether the inhibit should be activated when starting waybar.
 
 *timeout*: ++
 	typeof: double ++
@@ -97,8 +97,8 @@ screensaving, also known as "presentation mode".
 "idle_inhibitor": {
 	"format": "{icon}",
 	"format-icons": {
-	    "activated": "",
-	    "deactivated": ""
+		"activated": "",
+		"deactivated": ""
 	},
 	"timeout": 30.5
 }

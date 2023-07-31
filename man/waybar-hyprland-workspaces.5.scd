@@ -61,7 +61,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"default": ""
 	},
 	"all-outputs": false,
-        "show-special": false
+	"show-special": false
 }
 ```
 

@@ -93,9 +93,9 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 ```
 "wireplumber": {
-    "format": "{volume}%",
-    "format-muted": "",
-    "on-click": "helvum"
+	"format": "{volume}%",
+	"format-muted": "",
+	"on-click": "helvum"
 }
 ```
 

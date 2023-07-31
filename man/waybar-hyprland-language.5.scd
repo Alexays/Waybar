@@ -18,12 +18,12 @@ Addressed by *hyprland/language*
 	The format, how information should be displayed.
 
 *format-<lang>* ++
-    typeof: string++
-    Provide an alternative name to display per language where <lang> is the language of your choosing. Can be passed multiple times with multiple languages as shown by the example below.
+	typeof: string++
+	Provide an alternative name to display per language where <lang> is the language of your choosing. Can be passed multiple times with multiple languages as shown by the example below.
 
 *keyboard-name*: ++
-    typeof: string ++
-    Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
+	typeof: string ++
+	Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
 
 
 # FORMAT REPLACEMENTS
@@ -41,10 +41,10 @@ Addressed by *hyprland/language*
 
 ```
 "hyprland/language": {
-    "format": "Lang: {long}"
-    "format-en": "AMERICA, HELL YEAH!"
-    "format-tr": "As bayrakları"
-    "keyboard-name": "at-translated-set-2-keyboard"
+	"format": "Lang: {long}"
+	"format-en": "AMERICA, HELL YEAH!"
+	"format-tr": "As bayrakları"
+	"keyboard-name": "at-translated-set-2-keyboard"
 }
 ```
 

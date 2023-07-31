@@ -12,7 +12,7 @@ waybar - cava module
 # FILES
 
 $XDG_CONFIG_HOME/waybar/config ++
-    Per user configuration file
+	Per user configuration file
 
 # ADDITIONAL FILES
 
@@ -139,10 +139,10 @@ Configuration can be provided as:
 . On start Waybar throws an exception "error while loading shared libraries: libcava.so: cannot open shared object file: No such file or directory".
   It might happen when libcava for some reason hasn't been registered in the system. sudo ldconfig should help
 . Waybar is starting but cava module doesn't react on the music
-    1. In such case for at first need to make sure usual cava application is working as well
-    2. If so, need to comment all configuration options. Uncomment cava_config and provide the path to the working cava config
-    3. You might set too huge or too small input_delay. Try to setup to 4 seconds, restart waybar and check again 4 seconds past. Usual even on weak machines it should be enough
-    4. You might accidentally switched action mode to pause mode
+	1. In such case for at first need to make sure usual cava application is working as well
+	2. If so, need to comment all configuration options. Uncomment cava_config and provide the path to the working cava config
+	3. You might set too huge or too small input_delay. Try to setup to 4 seconds, restart waybar and check again 4 seconds past. Usual even on weak machines it should be enough
+	4. You might accidentally switched action mode to pause mode
 
 # RISING ISSUES
 
@@ -158,25 +158,25 @@ In case when cava releases new version and you're wanna get it, it should be rai
 
 ```
 "cava": {
-//        "cava_config": "$XDG_CONFIG_HOME/cava/cava.conf",
-        "framerate": 30,
-        "autosens": 1,
-//        "sensitivity": 100,
-        "bars": 14,
-        "lower_cutoff_freq": 50,
-        "higher_cutoff_freq": 10000,
-        "method": "pulse",
-        "source": "auto",
-        "stereo": true,
-        "reverse": false,
-        "bar_delimiter": 0,
-        "monstercat": false,
-        "waves": false,
-        "noise_reduction": 0.77,
-        "input_delay": 2,
-        "format-icons" : ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" ],
-        "actions": {
-                   "on-click-right": "mode"
-                   }
-    },
+	//"cava_config": "$XDG_CONFIG_HOME/cava/cava.conf",
+	"framerate": 30,
+	"autosens": 1,
+	//"sensitivity": 100,
+	"bars": 14,
+	"lower_cutoff_freq": 50,
+	"higher_cutoff_freq": 10000,
+	"method": "pulse",
+	"source": "auto",
+	"stereo": true,
+	"reverse": false,
+	"bar_delimiter": 0,
+	"monstercat": false,
+	"waves": false,
+	"noise_reduction": 0.77,
+	"input_delay": 2,
+	"format-icons" : ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" ],
+	"actions": {
+		"on-click-right": "mode"
+	}
+},
 ```

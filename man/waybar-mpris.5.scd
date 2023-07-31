@@ -13,8 +13,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 *player*: ++
 	typeof: string ++
 	default: playerctld ++
-	Name of the MPRIS player to attach to. Using the default value always
-	follows the currenly active player.
+	Name of the MPRIS player to attach to. Using the default value always follows the currenly active player.
 
 *ignored-players*: ++
 	typeof: []string ++
@@ -49,18 +48,15 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *artist-len*: ++
 	typeof: integer ++
-	Maximum length of the Artist tag (Wide/Fullwidth Unicode characters
-	count as two). Set to zero to hide the artist in `{dynamic}` tag.
+	Maximum length of the Artist tag (Wide/Fullwidth Unicode characters count as two). Set to zero to hide the artist in `{dynamic}` tag.
 
 *album-len*: ++
 	typeof: integer ++
-	Maximum length of the Album tag (Wide/Fullwidth Unicode characters count
-	as two). Set to zero to hide the album in `{dynamic}` tag.
+	Maximum length of the Album tag (Wide/Fullwidth Unicode characters count as two). Set to zero to hide the album in `{dynamic}` tag.
 
 *title-len*: ++
 	typeof: integer ++
-	Maximum length of the Title tag (Wide/Fullwidth Unicode characters count
-	as two). Set to zero to hide the title in `{dynamic}` tag.
+	Maximum length of the Title tag (Wide/Fullwidth Unicode characters count as two). Set to zero to hide the title in `{dynamic}` tag.
 
 *dynamic-len*: ++
 	typeof: integer ++
@@ -101,14 +97,12 @@ The *mpris* module displays currently playing media via libplayerctl.
 *enable-tooltip-len-limits*: ++
 	typeof: bool ++
 	default: false ++
-	Option to enable the length limits for the tooltip as well. By default
-	the tooltip ignores all length limits.
+	Option to enable the length limits for the tooltip as well. By default the tooltip ignores all length limits.
 
 *ellipsis*: ++
 	typeof: string ++
 	default: "…" ++
-	This character will be used when any of the tags exceed their maximum
-	length. If you don't want to use an ellipsis, set this to empty string.
+	This character will be used when any of the tags exceed their maximum length. If you don't want to use an ellipsis, set this to empty string.
 
 *rotate*: ++
 	typeof: integer ++
@@ -124,7 +118,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned.
+	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. ++
 	If the module is rotated, it will follow the flow of the text.
 
 *on-click*: ++
@@ -148,8 +142,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *status-icons*: ++
 	typeof: map[string]string ++
-	Allows setting _{status-icon}_ based on player status (playing, paused,
-	stopped).
+	Allows setting _{status-icon}_ based on player status (playing, paused, stopped).
 
 
 # FORMAT REPLACEMENTS
@@ -167,7 +160,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 *{length}*: Length of the track, formatted as HH:MM:SS
 
 *{dynamic}*: Use _{artist}_, _{album}_, _{title}_ and _{length}_, automatically omit++
-           empty values
+	empty values
 
 *{player_icon}*: Chooses an icon from _player-icons_ based on _{player}_
 

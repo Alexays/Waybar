@@ -65,13 +65,13 @@ The following *format-icons* can be set.
 
 ```
 "keyboard-state": {
-    "numlock": true,
-    "capslock": true,
-    "format": "{name} {icon}",
-    "format-icons": {
-        "locked": "",
-        "unlocked": ""
-    }
+	"numlock": true,
+	"capslock": true,
+	"format": "{name} {icon}",
+	"format-icons": {
+		"locked": "",
+		"unlocked": ""
+	}
 }
 ```
 

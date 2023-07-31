@@ -43,11 +43,11 @@ Addressed by *sway/language*
 
 ```
 "sway/language": {
-    "format": "{}",
+	"format": "{}",
 },
 
 "sway/language": {
-    "format": "{short} {variant}",
+	"format": "{short} {variant}",
 }
 ```
 
