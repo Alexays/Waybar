@@ -130,12 +130,12 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     }
   }
 
-  createEventSocket();
-  createInfoSocket();
-
   if (!ping_servers_.empty()) {
     startPingCheckThread();
   }
+
+  createEventSocket();
+  createInfoSocket();
 
   dp.emit();
   // Ask for a dump of interfaces and then addresses to populate our
@@ -299,7 +299,7 @@ const std::string waybar::modules::Network::getNetworkState() const {
   if (!carrier_) return "disconnected";
   if (ipaddr_.empty()) return "linked";
   if (essid_.empty() && has_internet_access_) return "ethernet";
-  else if (essid_.empty() && !has_internet_access_) return "ethernet-no-internet";
+  if (essid_.empty() && !has_internet_access_) return "ethernet-no-internet";
   if (!has_internet_access_) return "wifi-no-internet";
   return "wifi";
 }
