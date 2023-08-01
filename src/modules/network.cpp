@@ -122,8 +122,20 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
     want_addr_dump_ = true;
   }
 
+  if (config_["ping-servers"].isArray()) {
+    for (auto &server : config_["ping-servers"]) {
+      if (server.isString()) {
+        ping_servers_.push_back(server.asString());
+      }
+    }
+  }
+
   createEventSocket();
   createInfoSocket();
+
+  if (!ping_servers_.empty()) {
+    startPingCheckThread();
+  }
 
   dp.emit();
   // Ask for a dump of interfaces and then addresses to populate our
@@ -286,7 +298,9 @@ const std::string waybar::modules::Network::getNetworkState() const {
   }
   if (!carrier_) return "disconnected";
   if (ipaddr_.empty()) return "linked";
-  if (essid_.empty()) return "ethernet";
+  if (essid_.empty() && has_internet_access_) return "ethernet";
+  else if (essid_.empty() && !has_internet_access_) return "ethernet-no-internet";
+  if (!has_internet_access_) return "wifi-no-internet";
   return "wifi";
 }
 
@@ -411,6 +425,7 @@ void waybar::modules::Network::clearIface() {
   gwaddr_.clear();
   netmask_.clear();
   carrier_ = false;
+  has_internet_access_ = true;
   cidr_ = 0;
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
@@ -906,3 +921,25 @@ bool waybar::modules::Network::wildcardMatch(const std::string &pattern,
 
   return p == P;
 }
+
+bool waybar::modules::Network::pingServer(const std::vector<std::string>& servers) {
+  for (const auto& server : servers) {
+    std::string command = "ping -c 1 " + server + " > /dev/null 2>&1";
+    if (system(command.c_str()) == 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void waybar::modules::Network::startPingCheckThread() {
+  thread_ping_ = [this] {
+    while (true) {
+      has_internet_access_ = pingServer(ping_servers_);
+      dp.emit();
+      thread_ping_.sleep_for(interval_);
+    }
+  };
+}
+
