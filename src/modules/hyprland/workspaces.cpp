@@ -100,7 +100,7 @@ void Workspaces::onEvent(const std::string &ev) {
     for (Json::Value workspace_json : workspaces_json) {
       if (workspace_json["name"].asString() == payload &&
           (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-          (show_special() || workspace_json["name"].asString().starts_with("special"))) {
+          (show_special() || !workspace_json["name"].asString().starts_with("special"))) {
         workspaces_to_create_.push_back(workspace_json);
         break;
       }
@@ -266,7 +266,7 @@ void Workspaces::init() {
   const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
   for (Json::Value workspace_json : workspaces_json) {
     if ((all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-        (workspace_json["name"].asString().starts_with("special") || show_special()))
+        (!workspace_json["name"].asString().starts_with("special") || show_special()))
       create_workspace(workspace_json);
   }
 
@@ -325,7 +325,8 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   add_or_remove_class(style_context, is_empty(), "persistent");
 
   label_.set_markup(
-      fmt::format(fmt::runtime(format), fmt::arg("name", name()), fmt::arg("icon", icon)));
+      fmt::format(fmt::runtime(format), fmt::arg("id", id()),
+                  fmt::arg("name", name()), fmt::arg("icon", icon)));
 }
 
 void Workspaces::sort_workspaces() {
