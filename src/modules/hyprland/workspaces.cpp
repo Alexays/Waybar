@@ -16,7 +16,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
   Json::Value config_format = config["format"];
 
-  format_ = config_format.isString() ? config_format.asString() : "{id}";
+  format_ = config_format.isString() ? config_format.asString() : "{name}";
   with_icon_ = format_.find("{icon}") != std::string::npos;
 
   if (with_icon_ && icons_map_.empty()) {
@@ -325,8 +325,7 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   add_or_remove_class(style_context, is_empty(), "persistent");
 
   label_.set_markup(
-      fmt::format(fmt::runtime(format), fmt::arg("id", id()),
-                  fmt::arg("name", name()), fmt::arg("icon", icon)));
+      fmt::format(fmt::runtime(format), fmt::arg("name", name()), fmt::arg("icon", icon)));
 }
 
 void Workspaces::sort_workspaces() {
