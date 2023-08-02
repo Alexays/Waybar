@@ -30,14 +30,14 @@
       ]);
     in
     {
-      overlays.default = _: prev: {
-        waybar = prev.callPackage ./nix/default.nix {
+      overlays.default = final: prev: {
+        waybar = final.callPackage ./nix/default.nix {
           version = prev.waybar.version + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
         };
       };
       packages = genSystems
         (system:
-          (self.overlays.default null pkgsFor.${system})
+          (self.overlays.default pkgsFor.${system} pkgsFor.${system})
           // {
             default = self.packages.${system}.waybar;
           });
