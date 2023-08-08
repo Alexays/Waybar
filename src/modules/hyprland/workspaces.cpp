@@ -325,7 +325,8 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   add_or_remove_class(style_context, is_empty(), "persistent");
 
   label_.set_markup(
-      fmt::format(fmt::runtime(format), fmt::arg("name", name()), fmt::arg("icon", icon)));
+      fmt::format(fmt::runtime(format), fmt::arg("id", id()),
+                  fmt::arg("name", name()), fmt::arg("icon", icon)));
 }
 
 void Workspaces::sort_workspaces() {
