@@ -14,9 +14,11 @@
 
 namespace waybar::modules::hyprland {
 
+class Workspaces;
+
 class Workspace {
  public:
-  explicit Workspace(const Json::Value& workspace_data);
+  explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager);
   std::string& select_icon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return button_; };
 
@@ -26,6 +28,7 @@ class Workspace {
   bool active() const { return active_; };
   bool is_special() const { return is_special_; };
   bool is_persistent() const { return is_persistent_; };
+  bool is_visible() const { return is_visible_; };
   bool is_empty() const { return windows_ == 0; };
   bool is_urgent() const { return is_urgent_; };
 
@@ -33,12 +36,15 @@ class Workspace {
   void set_active(bool value = true) { active_ = value; };
   void set_persistent(bool value = true) { is_persistent_ = value; };
   void set_urgent(bool value = true) { is_urgent_ = value; };
+  void set_visible(bool value = true) { is_visible_ = value; };
   void set_windows(uint value) { windows_ = value; };
   void set_name(std::string value) { name_ = value; };
 
   void update(const std::string& format, const std::string& icon);
 
  private:
+  Workspaces& workspace_manager_;
+
   int id_;
   std::string name_;
   std::string output_;
@@ -47,6 +53,7 @@ class Workspace {
   bool is_special_ = false;
   bool is_persistent_ = false;
   bool is_urgent_ = false;
+  bool is_visible_ = false;
 
   Gtk::Button button_;
   Gtk::Box content_;
@@ -62,6 +69,7 @@ class Workspaces : public AModule, public EventHandler {
 
   auto all_outputs() const -> bool { return all_outputs_; }
   auto show_special() const -> bool { return show_special_; }
+  auto active_only() const -> bool { return active_only_; }
 
   auto get_bar_output() const -> std::string { return bar_.output->name; }
 
@@ -75,6 +83,7 @@ class Workspaces : public AModule, public EventHandler {
 
   bool all_outputs_ = false;
   bool show_special_ = false;
+  bool active_only_ = false;
 
   void fill_persistent_workspaces();
   void create_persistent_workspaces();

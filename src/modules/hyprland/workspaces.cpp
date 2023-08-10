@@ -38,6 +38,11 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     show_special_ = config_show_special.asBool();
   }
 
+  auto config_active_only = config_["active-only"];
+  if (config_active_only.isBool()) {
+    active_only_ = config_active_only.asBool();
+  }
+
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
@@ -75,11 +80,29 @@ auto Workspaces::update() -> void {
 
   workspaces_to_create_.clear();
 
+  // get all active workspaces
+  auto monitors = gIPC->getSocket1JsonReply("monitors");
+  std::vector<std::string> visible_workspaces;
+  for (Json::Value &monitor : monitors) {
+    auto ws = monitor["activeWorkspace"];
+    if (ws.isObject() && (ws["name"].isString())) {
+      visible_workspaces.push_back(ws["name"].asString());
+    }
+  }
+
   for (auto &workspace : workspaces_) {
+    // active
     workspace->set_active(workspace->name() == active_workspace_name_);
-    if (workspace->name() == active_workspace_name_ && workspace.get()->is_urgent()) {
+    // disable urgency if workspace is active
+    if (workspace->name() == active_workspace_name_ && workspace->is_urgent()) {
       workspace->set_urgent(false);
     }
+
+    // visible
+    workspace->set_visible(std::find(visible_workspaces.begin(), visible_workspaces.end(),
+                                     workspace->name()) != visible_workspaces.end());
+
+    // set workspace icon
     std::string &workspace_icon = icons_map_[""];
     if (with_icon_) {
       workspace_icon = workspace->select_icon(icons_map_);
@@ -103,9 +126,10 @@ void Workspaces::onEvent(const std::string &ev) {
   } else if (eventName == "createworkspace") {
     const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
     for (Json::Value workspace_json : workspaces_json) {
-      if (workspace_json["name"].asString() == payload &&
+      std::string name = workspace_json["name"].asString();
+      if (name == payload &&
           (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-          (show_special() || !workspace_json["name"].asString().starts_with("special"))) {
+          (show_special() || !name.starts_with("special"))) {
         workspaces_to_create_.push_back(workspace_json);
         break;
       }
@@ -120,8 +144,8 @@ void Workspaces::onEvent(const std::string &ev) {
     if (bar_.output->name == new_output) {  // TODO: implement this better
       const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
       for (Json::Value workspace_json : workspaces_json) {
-        if (workspace_json["name"].asString() == workspace &&
-            bar_.output->name == workspace_json["monitor"].asString()) {
+        std::string name = workspace_json["name"].asString();
+        if (name == workspace && bar_.output->name == workspace_json["monitor"].asString()) {
           workspaces_to_create_.push_back(workspace_json);
           break;
         }
@@ -154,15 +178,15 @@ void Workspaces::update_window_count() {
     auto workspace_json = std::find_if(
         workspaces_json.begin(), workspaces_json.end(),
         [&](Json::Value const &x) { return x["name"].asString() == workspace->name(); });
+    uint32_t count = 0;
     if (workspace_json != workspaces_json.end()) {
       try {
-        workspace->set_windows((*workspace_json)["windows"].asUInt());
+        count = (*workspace_json)["windows"].asUInt();
       } catch (const std::exception &e) {
         spdlog::error("Failed to update window count: {}", e.what());
       }
-    } else {
-      workspace->set_windows(0);
     }
+    workspace->set_windows(count);
   }
 }
 
@@ -181,7 +205,7 @@ void Workspaces::create_workspace(Json::Value &value) {
   }
 
   // create new workspace
-  workspaces_.emplace_back(std::make_unique<Workspace>(value));
+  workspaces_.emplace_back(std::make_unique<Workspace>(value, *this));
   Gtk::Button &new_workspace_button = workspaces_.back()->button();
   box_.pack_start(new_workspace_button, false, false);
   sort_workspaces();
@@ -207,7 +231,7 @@ void Workspaces::remove_workspace(std::string name) {
 }
 
 void Workspaces::fill_persistent_workspaces() {
-  if (config_["persistent_workspaces"].isObject() && !all_outputs()) {
+  if (config_["persistent_workspaces"].isObject()) {
     const Json::Value persistent_workspaces = config_["persistent_workspaces"];
     const std::vector<std::string> keys = persistent_workspaces.getMemberNames();
 
@@ -297,8 +321,9 @@ void Workspaces::init() {
   const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
   for (Json::Value workspace_json : workspaces_json) {
     if ((all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-        (!workspace_json["name"].asString().starts_with("special") || show_special()))
+        (!workspace_json["name"].asString().starts_with("special") || show_special())) {
       create_workspace(workspace_json);
+    }
   }
 
   update_window_count();
@@ -314,8 +339,9 @@ Workspaces::~Workspaces() {
   std::lock_guard<std::mutex> lg(mutex_);
 }
 
-Workspace::Workspace(const Json::Value &workspace_data)
-    : id_(workspace_data["id"].asInt()),
+Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_manager)
+    : workspace_manager_(workspace_manager),
+      id_(workspace_data["id"].asInt()),
       name_(workspace_data["name"].asString()),
       output_(workspace_data["monitor"].asString()),  // TODO:allow using monitor desc
       windows_(workspace_data["windows"].asInt()),
@@ -350,12 +376,26 @@ void add_or_remove_class(const Glib::RefPtr<Gtk::StyleContext> &context, bool co
 }
 
 void Workspace::update(const std::string &format, const std::string &icon) {
+  // clang-format off
+  if (this->workspace_manager_.active_only() && \
+     !this->active() && \
+     !this->is_persistent() && \
+     !this->is_visible() && \
+     !this->is_special()) {
+    // clang-format on
+    // if active_only is true, hide if not active, persistent, visible or special
+    button_.hide();
+    return;
+  }
+  button_.show();
+
   auto style_context = button_.get_style_context();
   add_or_remove_class(style_context, active(), "active");
   add_or_remove_class(style_context, is_special(), "special");
   add_or_remove_class(style_context, is_empty(), "empty");
   add_or_remove_class(style_context, is_persistent(), "persistent");
   add_or_remove_class(style_context, is_urgent(), "urgent");
+  add_or_remove_class(style_context, is_visible(), "visible");
 
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
                                 fmt::arg("name", name()), fmt::arg("icon", icon)));
@@ -418,6 +458,13 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
   auto named_icon_it = icons_map.find(name());
   if (named_icon_it != icons_map.end()) {
     return named_icon_it->second;
+  }
+
+  if (is_visible()) {
+    auto visible_icon_it = icons_map.find("visible");
+    if (visible_icon_it != icons_map.end()) {
+      return visible_icon_it->second;
+    }
   }
 
   if (is_empty()) {
