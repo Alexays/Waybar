@@ -383,7 +383,7 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
     }
   }
 
-  auto named_icon_it = icons_map.find(std::to_string(id()));
+  auto named_icon_it = icons_map.find(name());
   if (named_icon_it != icons_map.end()) {
     return named_icon_it->second;
   }
