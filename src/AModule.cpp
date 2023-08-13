@@ -34,9 +34,15 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator it{eventMap_.cbegin()};
     while (it != eventMap_.cend()) {
       if (config_[it->second].isString()) {
-        event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-        event_box_.signal_button_press_event().connect(
+        if (it->first.second == GdkEventType::GDK_BUTTON_RELEASE) {
+          event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
+          event_box_.signal_button_release_event().connect(
             sigc::mem_fun(*this, &AModule::handleToggle));
+        } else {
+          event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
+          event_box_.signal_button_press_event().connect(
+            sigc::mem_fun(*this, &AModule::handleToggle));
+        }
         break;
       }
       ++it;
