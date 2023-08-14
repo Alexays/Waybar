@@ -27,20 +27,18 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   }
 
   // configure events' user commands
-  if (enable_click) {
+
+  bool hasEvent = std::find_if(eventMap_.cbegin(), eventMap_.cend(),
+    [&config](const auto& eventEntry) {
+      return config[eventEntry.second].isString();
+    }) != eventMap_.cend();
+  
+  if (enable_click || hasEvent) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
-  } else {
-    std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator it{eventMap_.cbegin()};
-    while (it != eventMap_.cend()) {
-      if (config_[it->second].isString()) {
-        event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-        event_box_.signal_button_press_event().connect(
-            sigc::mem_fun(*this, &AModule::handleToggle));
-        break;
-      }
-      ++it;
-    }
+    // register key release
+    event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
+    event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
   }
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() || enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
