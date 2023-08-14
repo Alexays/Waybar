@@ -45,11 +45,13 @@ Additional to workspace name matching, the following *format-icons* can be set.
 
 - *default*: Will be shown, when no string match is found.
 - *active*: Will be shown, when workspace is active
+- *special*: Will be shown on non-active special workspaces
+- *persistent*: Will be shown on non-active persistent workspaces
 
 # EXAMPLES
 
 ```
-"wlr/workspaces": {
+"hyprland/workspaces": {
 	"format": "{name}: {icon}",
 	"format-icons": {
 		"1": "",
@@ -60,8 +62,10 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"active": "",
 		"default": ""
 	},
-	"all-outputs": false,
-	"show-special": false
+	"persistent_workspaces": {
+		"*": 5, // 5 workspaces by default on every monitor
+		"HDMI-A-1": 3 // but only three on HDMI-A-1
+	}
 }
 ```
 
@@ -70,3 +74,5 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces*
 - *#workspaces button*
 - *#workspaces button.active*
+- *#workspaces button.persistent*
+- *#workspaces button.special*
