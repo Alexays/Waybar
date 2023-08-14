@@ -59,10 +59,8 @@ class Clock final : public ALabel {
   std::string cldMonCached_{};
   date::day cldBaseDay_{0};
   /*Calendar functions*/
-  auto get_calendar(const date::year_month_day& today,
-                    const date::year_month_day& ymd,
-                    const date::time_zone* tz)
-      -> const std::string;
+  auto get_calendar(const date::year_month_day& today, const date::year_month_day& ymd,
+                    const date::time_zone* tz) -> const std::string;
   /*Clock actions*/
   void cldModeSwitch();
   void cldShift_up();

@@ -28,11 +28,11 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // configure events' user commands
 
-  bool hasEvent = std::find_if(eventMap_.cbegin(), eventMap_.cend(),
-    [&config](const auto& eventEntry) {
-      return config[eventEntry.second].isString();
-    }) != eventMap_.cend();
-  
+  bool hasEvent =
+      std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
+        return config[eventEntry.second].isString();
+      }) != eventMap_.cend();
+
   if (enable_click || hasEvent) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
