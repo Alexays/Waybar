@@ -93,7 +93,7 @@ template <>
 struct formatter<Glib::ustring> : formatter<std::string> {
   template <typename FormatContext>
   auto format(const Glib::ustring& value, FormatContext& ctx) {
-    return formatter<std::string>::format(value, ctx);
+    return formatter<std::string>::format(static_cast<std::string>(value), ctx);
   }
 };
 }  // namespace fmt
