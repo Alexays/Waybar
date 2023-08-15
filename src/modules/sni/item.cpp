@@ -22,7 +22,7 @@ struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
   template <typename FormatContext>
   auto format(const Glib::VariantBase& value, FormatContext& ctx) {
     if (is_printable(value)) {
-      return formatter<std::string>::format(value.print(), ctx);
+      return formatter<std::string>::format(static_cast<std::string>(value.print()), ctx);
     } else {
       return formatter<std::string>::format(value.get_type_string(), ctx);
     }
