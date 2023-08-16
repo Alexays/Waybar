@@ -42,6 +42,10 @@ Addressed by *bluetooth*
 	typeof: string ++
 	This format is used when the displayed controller is connected to at least 1 device.
 
+*format-no-controller*: ++
+	typeof: string ++
+	This format is used when no bluetooth controller could be found
+
 *format-icons*: ++
 	typeof: array/object ++
 	Based on the current battery percentage (see section *EXPERIMENTAL BATTERY PERCENTAGE FEATURE*), the corresponding icon gets selected. ++
@@ -112,6 +116,10 @@ Addressed by *bluetooth*
 *tooltip-format-connected*: ++
 	typeof: string ++
 	This format is used when the displayed controller is connected to at least 1 device.
+
+*tooltip-format-no-controller*: ++
+	typeof: string ++
+	This format is used when no bluetooth controller could be found
 
 *tooltip-format-enumerate-connected*: ++
 	typeof: string ++
