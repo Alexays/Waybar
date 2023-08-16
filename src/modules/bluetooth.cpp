@@ -101,11 +101,8 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
     } else {
       spdlog::error("findCurController() failed: no bluetooth controller found");
     }
-    event_box_.hide();
     update();
-    return;
-  }
-  if (cur_controller_) {
+  } else {
     // These calls only make sense if a controller could be found
     findConnectedDevices(cur_controller_->path, connected_devices_);
     g_signal_connect(manager_.get(), "interface-proxy-properties-changed",
@@ -114,11 +111,11 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
                      this);
     g_signal_connect(manager_.get(), "interface-removed", G_CALLBACK(onInterfaceAddedOrRemoved),
                      this);
-  }
 
 #ifdef WANT_RFKILL
-  rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Bluetooth::update)));
+    rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Bluetooth::update)));
 #endif
+  }
 
   dp.emit();
 }
@@ -196,8 +193,6 @@ auto waybar::modules::Bluetooth::update() -> void {
     tooltip_format = config_["tooltip-format"].asString();
   }
 
-  format_.empty() ? event_box_.hide() : event_box_.show();
-
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
     if (in_next_state && !label_.get_style_context()->has_class(style_class)) {
       label_.get_style_context()->add_class(style_class);
@@ -214,16 +209,23 @@ auto waybar::modules::Bluetooth::update() -> void {
   update_style_context(state, true);
   state_ = state;
 
-  label_.set_markup(fmt::format(
-      fmt::runtime(format_), fmt::arg("status", state_),
-      fmt::arg("num_connections", connected_devices_.size()),
-      fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
-      fmt::arg("controller_address_type", cur_controller_ ? cur_controller_->address_type : "null"),
-      fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
-      fmt::arg("device_address", cur_focussed_device_.address),
-      fmt::arg("device_address_type", cur_focussed_device_.address_type),
-      fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
-      fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0))));
+  if (format_.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+    label_.set_markup(fmt::format(
+        fmt::runtime(format_), fmt::arg("status", state_),
+        fmt::arg("num_connections", connected_devices_.size()),
+        fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
+        fmt::arg("controller_address_type",
+                 cur_controller_ ? cur_controller_->address_type : "null"),
+        fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
+        fmt::arg("device_address", cur_focussed_device_.address),
+        fmt::arg("device_address_type", cur_focussed_device_.address_type),
+        fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
+        fmt::arg("device_battery_percentage",
+                 cur_focussed_device_.battery_percentage.value_or(0))));
+  }
 
   if (tooltipEnabled()) {
     bool tooltip_enumerate_connections_ = config_["tooltip-format-enumerate-connected"].isString();
