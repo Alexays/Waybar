@@ -27,11 +27,12 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   }
 
   // configure events' user commands
-  // hasUserEvent is true if any element from eventMap_ is satisfying the condition in the lambda function
+  // hasUserEvent is true if any element from eventMap_ is satisfying the condition in the lambda
   bool hasUserEvent =
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
-        //True if there is any non-release type event
-        return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE && config[eventEntry.second].isString();
+        // True if there is any non-release type event
+        return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
+               config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
   if (enable_click || hasUserEvent) {
@@ -41,8 +42,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   bool hasReleaseEvent =
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
-        //True if there is any non-release type event
-        return eventEntry.first.second == GdkEventType::GDK_BUTTON_RELEASE && config[eventEntry.second].isString();
+        // True if there is any non-release type event
+        return eventEntry.first.second == GdkEventType::GDK_BUTTON_RELEASE &&
+               config[eventEntry.second].isString();
       }) != eventMap_.cend();
   if (hasReleaseEvent) {
     event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
@@ -78,13 +80,9 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-bool AModule::handleToggle(GdkEventButton* const& e) {
-  return handleUserEvent(e);
-}
+bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
 
-bool AModule::handleRelease(GdkEventButton* const& e) {
-  return handleUserEvent(e);
-}
+bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
 
 bool AModule::handleUserEvent(GdkEventButton* const& e) {
   std::string format{};
