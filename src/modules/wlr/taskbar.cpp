@@ -517,7 +517,7 @@ void Task::handle_closed() {
 bool Task::handle_clicked(GdkEventButton *bt) {
   /* filter out additional events for double/triple clicks */
   if (bt->type == GDK_BUTTON_PRESS) {
-    /* save where the button press ocurred in case it becomes a drag */
+    /* save where the button press occurred in case it becomes a drag */
     drag_start_button = bt->button;
     drag_start_x = bt->x;
     drag_start_y = bt->y;
