@@ -36,8 +36,11 @@ class AModule : public IModule {
 
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
+  virtual bool handleRelease(GdkEventButton *const &ev);
 
  private:
+  bool handleUserEvent(GdkEventButton *const &ev);
+
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;

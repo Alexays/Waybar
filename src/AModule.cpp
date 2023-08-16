@@ -38,6 +38,16 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
   }
+
+  bool hasReleaseEvent =
+      std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
+        //True if there is any non-release type event
+        return eventEntry.first.second == GdkEventType::GDK_BUTTON_RELEASE && config[eventEntry.second].isString();
+      }) != eventMap_.cend();
+  if (hasReleaseEvent) {
+    event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
+    event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
+  }
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() || enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
@@ -69,6 +79,14 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) {
+  return handleUserEvent(e);
+}
+
+bool AModule::handleRelease(GdkEventButton* const& e) {
+  return handleUserEvent(e);
+}
+
+bool AModule::handleUserEvent(GdkEventButton* const& e) {
   std::string format{};
   const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
       eventMap_.find(std::pair(e->button, e->type))};
