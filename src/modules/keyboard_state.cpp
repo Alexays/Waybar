@@ -142,6 +142,21 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
     }
   }
 
+  auto keys = config_["binding-keys"];
+  if (keys.isArray()) {
+    for (const auto& key : keys) {
+      if (key.isInt()) {
+        binding_keys.insert(key.asInt());
+      } else {
+        spdlog::warn("Cannot read key binding {} as int.", key.asString());
+      }
+    }
+  } else {
+    binding_keys.insert(KEY_CAPSLOCK);
+    binding_keys.insert(KEY_NUMLOCK);
+    binding_keys.insert(KEY_SCROLLLOCK);
+  }
+
   DIR* dev_dir = opendir(devices_path_.c_str());
   if (dev_dir == nullptr) {
     throw errno_error(errno, "Failed to open " + devices_path_);
@@ -171,14 +186,8 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
           auto state = libinput_event_keyboard_get_key_state(keyboard_event);
           if (state == LIBINPUT_KEY_STATE_RELEASED) {
             uint32_t key = libinput_event_keyboard_get_key(keyboard_event);
-            switch (key) {
-              case KEY_CAPSLOCK:
-              case KEY_NUMLOCK:
-              case KEY_SCROLLLOCK:
-                dp.emit();
-                break;
-              default:
-                break;
+            if (binding_keys.contains(key)) {
+              dp.emit();
             }
           }
         }
