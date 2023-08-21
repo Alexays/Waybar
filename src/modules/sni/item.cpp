@@ -39,7 +39,8 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()) {
+      icon_theme(Gtk::IconTheme::create()),
+      bar_(bar) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -410,7 +411,8 @@ void Item::makeMenu() {
 
 bool Item::handleClick(GdkEventButton* const& ev) {
   auto parameters = Glib::VariantContainerBase::create_tuple(
-      {Glib::Variant<int>::create(ev->x), Glib::Variant<int>::create(ev->y)});
+      {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
+       Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     makeMenu();
     if (gtk_menu != nullptr) {

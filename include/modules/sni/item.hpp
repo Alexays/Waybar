@@ -84,6 +84,8 @@ class Item : public sigc::trackable {
   // visibility of items with Status == Passive
   bool show_passive_ = false;
 
+  const Bar& bar_;
+
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
   std::set<std::string_view> update_pending_;
