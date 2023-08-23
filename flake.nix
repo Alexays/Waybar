@@ -47,17 +47,12 @@
         let pkgs = import nixpkgs {
           inherit system;
 
-          overlays = [ devshell.overlay ];
+          overlays = [ devshell.overlays.default ];
         };
         in
         pkgs.devshell.mkShell {
           imports = [ "${pkgs.devshell.extraModulesDir}/language/c.nix" ];
-          commands = [
-            {
-              package = pkgs.devshell.cli;
-              help = "Per project developer environments";
-            }
-          ];
+
           devshell.packages = with pkgs; [
             clang-tools
             gdb
@@ -79,6 +74,7 @@
             at-spi2-atk atkmm cairo cairomm catch2 fmt_8 fontconfig
             gdk-pixbuf glibmm gtk3 harfbuzz pango pangomm wayland-protocols
           ]);
+
           env = with pkgs; [
             { name = "CPLUS_INCLUDE_PATH"; prefix = "$DEVSHELL_DIR/include"; }
             { name = "PKG_CONFIG_PATH"; prefix = "$DEVSHELL_DIR/lib/pkgconfig"; }
