@@ -76,3 +76,4 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.active*
 - *#workspaces button.persistent*
 - *#workspaces button.special*
+- *#workspaces button.urgent*
