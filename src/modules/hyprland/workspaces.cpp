@@ -58,6 +58,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   gIPC->registerForIPC("openwindow", this);
   gIPC->registerForIPC("closewindow", this);
   gIPC->registerForIPC("movewindow", this);
+  gIPC->registerForIPC("urgent", this);
 }
 
 auto Workspaces::update() -> void {
@@ -75,6 +76,9 @@ auto Workspaces::update() -> void {
 
   for (auto &workspace : workspaces_) {
     workspace->set_active(workspace->name() == active_workspace_name_);
+    if (workspace->name() == active_workspace_name_ && workspace.get()->is_urgent()) {
+      workspace->set_urgent(false);
+    }
     std::string &workspace_icon = icons_map_[""];
     if (with_icon_) {
       workspace_icon = workspace->select_icon(icons_map_);
@@ -126,6 +130,8 @@ void Workspaces::onEvent(const std::string &ev) {
     }
   } else if (eventName == "openwindow" || eventName == "closewindow" || eventName == "movewindow") {
     update_window_count();
+  } else if (eventName == "urgent") {
+    set_urgent_workspace(payload);
   }
 
   dp.emit();
@@ -323,6 +329,7 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   add_or_remove_class(style_context, active(), "active");
   add_or_remove_class(style_context, is_special(), "special");
   add_or_remove_class(style_context, is_empty(), "persistent");
+  add_or_remove_class(style_context, is_urgent(), "urgent");
 
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
                                 fmt::arg("name", name()), fmt::arg("icon", icon)));
@@ -417,6 +424,25 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
     spdlog::error("Failed to dispatch workspace: {}", e.what());
   }
   return false;
+}
+
+void Workspaces::set_urgent_workspace(std::string windowaddress) {
+  const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
+  int workspace_id;
+
+  for (Json::Value client_json : clients_json) {
+    if (client_json["address"].asString().ends_with(windowaddress)) {
+      workspace_id = client_json["workspace"]["id"].asInt();
+      break;
+    }
+  }
+
+  auto workspace =
+      std::find_if(workspaces_.begin(), workspaces_.end(),
+                   [&](std::unique_ptr<Workspace> &x) { return x->id() == workspace_id; });
+  if (workspace->get() != nullptr) {
+    workspace->get()->set_urgent();
+  }
 }
 
 }  // namespace waybar::modules::hyprland

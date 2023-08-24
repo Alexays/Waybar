@@ -22,10 +22,12 @@ class Workspace {
   bool is_special() const { return is_special_; };
   bool is_persistent() const { return is_persistent_; };
   bool is_empty() const { return windows_ == 0; };
+  bool is_urgent() const { return is_urgent_; };
 
   auto handle_clicked(GdkEventButton* bt) -> bool;
   void set_active(bool value = true) { active_ = value; };
   void set_persistent(bool value = true) { is_persistent_ = value; };
+  void set_urgent(bool value = true) { is_urgent_ = value; };
   void set_windows(uint value) { windows_ = value; };
 
   void update(const std::string& format, const std::string& icon);
@@ -38,6 +40,7 @@ class Workspace {
   bool active_ = false;
   bool is_special_ = false;
   bool is_persistent_ = false;
+  bool is_urgent_ = false;
 
   Gtk::Button button_;
   Gtk::Box content_;
@@ -62,6 +65,7 @@ class Workspaces : public AModule, public EventHandler {
   void sort_workspaces();
   void create_workspace(Json::Value& value);
   void remove_workspace(std::string name);
+  void set_urgent_workspace(std::string windowaddress);
 
   bool all_outputs_ = false;
   bool show_special_ = false;
