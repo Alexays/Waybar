@@ -83,6 +83,7 @@ class Bar {
   void setVisible(bool visible);
   void toggle();
   void handleSignal(int);
+  void setupAutohide();
 
   struct waybar_output *output;
   Json::Value config;
@@ -90,6 +91,7 @@ class Bar {
   bool visible = true;
   bool vertical = false;
   Gtk::Window window;
+  Gtk::Window hotspotWindow;
 
 #ifdef HAVE_SWAY
   std::string bar_id;
@@ -102,12 +104,16 @@ class Bar {
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
+  void showMainbar(GdkEventCrossing* ev);
+  void hideMainbar(GdkEventCrossing* ev);
+  bool hideMainbarCallback();
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
   std::string last_mode_{MODE_DEFAULT};
 
   std::unique_ptr<BarSurface> surface_impl_;
+  std::unique_ptr<BarSurface> hotspotsurface_impl_;
   Gtk::Box left_;
   Gtk::Box center_;
   Gtk::Box right_;
@@ -120,6 +126,9 @@ class Bar {
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
   std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
+
+  unsigned int autohide_delay_ms = 0;
+  sigc::connection autohide_connection;
 };
 
 }  // namespace waybar

@@ -481,6 +481,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      hotspotWindow{Gtk::WindowType::WINDOW_TOPLEVEL},
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -491,6 +492,11 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
   window.get_style_context()->add_class(config["position"].asString());
+
+  hotspotWindow.set_opacity(0);
+  hotspotWindow.set_title("waybar-autohide");
+  hotspotWindow.set_name("waybar-autohide");
+  hotspotWindow.set_decorated(false);
 
   auto position = config["position"].asString();
 
@@ -563,14 +569,19 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
 
+  auto autohide_enabled = config["autohide"].isBool() ? config["autohide"].asBool() : false;
+  auto autohide_starthidden = autohide_enabled && ( config["autohide-starthidden"].isBool() ? config["autohide-starthidden"].asBool() : false);
+
 #ifdef HAVE_GTK_LAYER_SHELL
   bool use_gls = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
   if (use_gls) {
     surface_impl_ = std::make_unique<GLSSurfaceImpl>(window, *output);
+    hotspotsurface_impl_ = std::make_unique<GLSSurfaceImpl>(hotspotWindow, *output);
   } else
 #endif
   {
     surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
+    hotspotsurface_impl_ = std::make_unique<RawSurfaceImpl>(hotspotWindow, *output);
   }
 
   surface_impl_->setMargins(margins_);
@@ -578,6 +589,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   // Position needs to be set after calculating the height due to the
   // GTK layer shell anchors logic relying on the dimensions of the bar.
   surface_impl_->setPosition(position);
+
+  // Height of Hotspot is 1
+  hotspotsurface_impl_->setSize(width, 1);
+  // Position needs to be set after calculating the height due to the
+  // GTK layer shell anchors logic relying on the dimensions of the bar.
+  hotspotsurface_impl_->setPosition(position);
 
   /* Read custom modes if available */
   if (auto modes = config.get("modes", {}); modes.isObject()) {
@@ -617,7 +634,16 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 #endif
 
   setupWidgets();
-  window.show_all();
+
+  if(autohide_enabled) setupAutohide();
+
+  if(autohide_starthidden) {
+    window.hide();
+    hotspotWindow.show_all();
+  } else {
+    hotspotWindow.hide();
+    window.show_all();
+  }
 
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
@@ -686,6 +712,36 @@ void waybar::Bar::setVisible(bool value) {
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
+
+void waybar::Bar::showMainbar(GdkEventCrossing* ev) {
+  spdlog::debug("hotspot: off; bar: on");
+  this->autohide_connection.disconnect();
+  if(!this->window.is_visible()) this->window.show_all();
+  if(this->hotspotWindow.is_visible()) this->hotspotWindow.hide();
+}
+
+bool waybar::Bar::hideMainbarCallback() {
+  spdlog::debug("hotspot: on; bar: off");
+  if(!this->hotspotWindow.is_visible()) this->hotspotWindow.show_all();
+  if(this->window.is_visible())this->window.hide();
+  return false;
+}
+
+void waybar::Bar::hideMainbar(GdkEventCrossing* ev)  {
+  this->autohide_connection.disconnect();
+  this->autohide_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this,&Bar::hideMainbarCallback), this->autohide_delay_ms);
+}
+
+void waybar::Bar::setupAutohide() {
+  this->autohide_connection.disconnect();
+  this->autohide_delay_ms = config["autohide-delay"].isUInt() ? config["autohide-delay"].asUInt() : 0;
+
+  hotspotsurface_impl_->setLayer(bar_layer::OVERLAY);
+  hotspotsurface_impl_->setExclusiveZone(true);
+
+  hotspotWindow.signal_enter_notify_event().connect_notify(sigc::mem_fun(*this, &waybar::Bar::showMainbar));
+  window.signal_leave_notify_event().connect_notify(sigc::mem_fun(*this, &waybar::Bar::hideMainbar));
+}
 
 // Converting string to button code rn as to avoid doing it later
 void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
