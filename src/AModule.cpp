@@ -49,7 +49,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 }
 
 AModule::~AModule() {
-  for (const auto& pid : pid_) {
+  for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
     }
@@ -59,7 +59,7 @@ AModule::~AModule() {
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
-    pid_.push_back(util::command::forkExec(config_["on-update"].asString()));
+    pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
 }
 // Get mapping between event name and module action name
@@ -90,7 +90,7 @@ bool AModule::handleToggle(GdkEventButton* const& e) {
       format.clear();
   }
   if (!format.empty()) {
-    pid_.push_back(util::command::forkExec(format));
+    pid_children_.push_back(util::command::forkExec(format));
   }
   dp.emit();
   return true;
@@ -171,7 +171,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   this->AModule::doAction(eventName);
   // Second call user scripts
   if (config_[eventName].isString())
-    pid_.push_back(util::command::forkExec(config_[eventName].asString()));
+    pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
 
   dp.emit();
   return true;

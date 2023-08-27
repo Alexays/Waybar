@@ -30,6 +30,7 @@ class AModule : public IModule {
   SCROLL_DIR getScrollDir(GdkEventScroll *e);
   bool tooltipEnabled();
 
+  std::vector<int> pid_children_;
   const std::string name_;
   const Json::Value &config_;
   Gtk::EventBox event_box_;
@@ -38,7 +39,6 @@ class AModule : public IModule {
   virtual bool handleScroll(GdkEventScroll *);
 
  private:
-  std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
   std::map<std::string, std::string> eventActionMap_;
