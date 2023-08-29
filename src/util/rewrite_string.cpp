@@ -6,23 +6,27 @@
 
 namespace waybar::util {
 std::string rewriteString(const std::string& value, const Json::Value& rules) {
-  if (!rules.isObject()) {
+  if (rules.isObject()) {
+    // TODO: convert objects to the array structure to accept existing configs.
+  }
+
+  if (!rules.isArray()) {
     return value;
   }
 
   std::string res = value;
 
-  for (auto it = rules.begin(); it != rules.end(); ++it) {
-    if (it.key().isString() && it->isString()) {
+  for (Json::Value::ArrayIndex i = 0; i != rules.size(); i++) {
+    if (rules[i].isArray() && rules[i][0].isString() && rules[i][1].isString()) {
       try {
-        // malformated regexes will cause an exception.
+        // malformed regexes will cause an exception.
         // in this case, log error and try the next rule.
-        const std::regex rule{it.key().asString()};
-        if (std::regex_match(value, rule)) {
-          res = std::regex_replace(res, rule, it->asString());
+        const std::regex rule{rules[i][0].asString()};
+        if (std::regex_match(res, rule)) {
+          res = std::regex_replace(res, rule, rules[i][1].asString());
         }
       } catch (const std::regex_error& e) {
-        spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
+        spdlog::error("Invalid rule {}: {}", rules[i][0].asString(), e.what());
       }
     }
   }
