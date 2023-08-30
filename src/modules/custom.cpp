@@ -122,14 +122,14 @@ auto waybar::modules::Custom::update() -> void {
       (output_.out.empty() || output_.exit_code != 0)) {
     event_box_.hide();
   } else {
+    fields_.clear();
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
     } else {
       parseOutputRaw();
     }
-    auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
-                           fmt::arg("icon", getIcon(percentage_, alt_)),
-                           fmt::arg("percentage", percentage_));
+    auto str = fmt::vformat(format_, fields_);
+
     if (str.empty()) {
       event_box_.hide();
     } else {
@@ -173,6 +173,7 @@ void waybar::modules::Custom::parseOutputRaw() {
       } else {
         text_ = line;
       }
+      fields_.push_back(text_);
       tooltip_ = line;
       class_.clear();
     } else if (i == 1) {
@@ -189,32 +190,46 @@ void waybar::modules::Custom::parseOutputRaw() {
 void waybar::modules::Custom::parseOutputJson() {
   std::istringstream output(output_.out);
   std::string line;
+  getline(output, line);
   class_.clear();
-  while (getline(output, line)) {
-    auto parsed = parser_.parse(line);
+  auto parsed = parser_.parse(line);
+  parsed = parser_.parse(line);
+
+  // Preserve order so that first "{}" is resolved to "text" for backwards compatability
+  if (parsed["text"].isString()) {
+    auto str = parsed["text"].asString();
     if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      text_ = Glib::Markup::escape_text(parsed["text"].asString());
-    } else {
-      text_ = parsed["text"].asString();
+      str = Glib::Markup::escape_text(str);
     }
+    fields_.push_back(str);
+  }
+
+  for (auto const& key : parsed.getMemberNames()) {
+    if (!parsed[key].isString()) continue;
+    auto str = parsed[key].asString();
     if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
-    } else {
-      alt_ = parsed["alt"].asString();
+      str = Glib::Markup::escape_text(str);
     }
-    tooltip_ = parsed["tooltip"].asString();
-    if (parsed["class"].isString()) {
-      class_.push_back(parsed["class"].asString());
-    } else if (parsed["class"].isArray()) {
-      for (auto const& c : parsed["class"]) {
-        class_.push_back(c.asString());
-      }
+    fields_.push_back(fmt::arg(key.c_str(), str));
+  }
+
+  tooltip_ = parsed["tooltip"].asString();
+  if (parsed["class"].isString()) {
+    class_.push_back(parsed["class"].asString());
+  } else if (parsed["class"].isArray()) {
+    for (auto const& c : parsed["class"]) {
+      class_.push_back(c.asString());
     }
-    if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
-      percentage_ = (int)lround(parsed["percentage"].asFloat());
-    } else {
-      percentage_ = 0;
-    }
-    break;
+  }
+
+  if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
+    percentage_ = (int)lround(parsed["percentage"].asFloat());
+  } else {
+    percentage_ = 0;
+  }
+
+  // Allow overriding icon from json, otherwise use percentage based icon
+  if (parsed["icon"].isNull()) {
+    fields_.push_back(fmt::arg("icon", getIcon(percentage_, alt_)));
   }
 }
