@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <fmt/args.h>
 
 #include <csignal>
 #include <string>
@@ -36,6 +37,7 @@ class Custom : public ALabel {
   std::string alt_;
   std::string tooltip_;
   std::vector<std::string> class_;
+  fmt::dynamic_format_arg_store<fmt::format_context> fields_;
   int percentage_;
   FILE* fp_;
   int pid_;
