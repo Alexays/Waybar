@@ -201,14 +201,17 @@ void Workspaces::fill_persistent_workspaces() {
     const std::vector<std::string> keys = persistent_workspaces.getMemberNames();
 
     for (const std::string &key : keys) {
+      // only add if either:
+      // 1. key is "*" and this monitor is not already defined in the config
+      // 2. key is the current monitor name
+      bool can_create =
+          (key == "*" && std::find(keys.begin(), keys.end(), bar_.output->name) == keys.end()) ||
+          key == bar_.output->name;
       const Json::Value &value = persistent_workspaces[key];
+
       if (value.isInt()) {
         // value is a number => create that many workspaces for this monitor
-        // only add if either:
-        // 1. key is "*" and this monitor is not already defined in the config
-        // 2. key is the current monitor name
-        if ((key == "*" && std::find(keys.begin(), keys.end(), bar_.output->name) == keys.end()) ||
-            key == bar_.output->name) {
+        if (can_create) {
           int amount = value.asInt();
           spdlog::debug("Creating {} persistent workspaces for monitor {}", amount,
                         bar_.output->name);
@@ -217,14 +220,22 @@ void Workspaces::fill_persistent_workspaces() {
                 std::to_string(monitor_id_ * amount + i + 1));
           }
         }
-
       } else if (value.isArray() && !value.empty()) {
-        // value is an array => key is a workspace name
-        // values are monitor names this workspace should be shown on
-        for (const Json::Value &monitor : value) {
-          if (monitor.isString() && monitor.asString() == bar_.output->name) {
-            persistent_workspaces_to_create_.emplace_back(key);
-            break;
+        // value is an array => create defined workspaces for this monitor
+        if (can_create) {
+          for (const Json::Value &workspace : value) {
+            if (workspace.isInt()) {
+              spdlog::debug("Creating workspace {} on monitor {}", workspace, bar_.output->name);
+              persistent_workspaces_to_create_.emplace_back(std::to_string(workspace.asInt()));
+            }
+          }
+        } else {
+          // key is the workspace and value is array of monitors to create on
+          for (const Json::Value &monitor : value) {
+            if (monitor.isString() && monitor.asString() == bar_.output->name) {
+              persistent_workspaces_to_create_.emplace_back(key);
+              break;
+            }
           }
         }
       } else {

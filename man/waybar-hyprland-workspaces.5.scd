@@ -70,6 +70,25 @@ Additional to workspace name matching, the following *format-icons* can be set.
 }
 ```
 
+```
+"hyprland/workspaces": {
+	"format": "{name}: {icon}",
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"active": "",
+		"default": ""
+	},
+	"persistent_workspaces": {
+		"*": [ 2,3,4,5 ], // 2-5 on every monitor
+		"HDMI-A-1": [ 1 ] // but only workspace 1 on HDMI-A-1
+	}
+}
+```
+
 # Style
 
 - *#workspaces*
