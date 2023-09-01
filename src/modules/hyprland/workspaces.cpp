@@ -227,6 +227,9 @@ void Workspaces::fill_persistent_workspaces() {
             break;
           }
         }
+      } else {
+        // this workspace should be displayed on all monitors
+        persistent_workspaces_to_create_.emplace_back(key);
       }
     }
   }
