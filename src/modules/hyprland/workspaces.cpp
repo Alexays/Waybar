@@ -331,7 +331,8 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   auto style_context = button_.get_style_context();
   add_or_remove_class(style_context, active(), "active");
   add_or_remove_class(style_context, is_special(), "special");
-  add_or_remove_class(style_context, is_empty(), "persistent");
+  add_or_remove_class(style_context, is_empty(), "empty");
+  add_or_remove_class(style_context, is_persistent(), "persistent");
   add_or_remove_class(style_context, is_urgent(), "urgent");
 
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
@@ -395,6 +396,13 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
   auto named_icon_it = icons_map.find(name());
   if (named_icon_it != icons_map.end()) {
     return named_icon_it->second;
+  }
+
+  if (is_empty()) {
+    auto empty_icon_it = icons_map.find("empty");
+    if (empty_icon_it != icons_map.end()) {
+      return empty_icon_it->second;
+    }
   }
 
   if (is_persistent()) {

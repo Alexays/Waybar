@@ -46,7 +46,8 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *default*: Will be shown, when no string match is found.
 - *active*: Will be shown, when workspace is active
 - *special*: Will be shown on non-active special workspaces
-- *persistent*: Will be shown on non-active persistent workspaces
+- *empty*: Will be shown on empty persistent workspaces
+- *persistent*: Will be shown on non-empty persistent workspaces
 
 # EXAMPLES
 
@@ -74,6 +75,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces*
 - *#workspaces button*
 - *#workspaces button.active*
+- *#workspaces button.empty*
 - *#workspaces button.persistent*
 - *#workspaces button.special*
 - *#workspaces button.urgent*
