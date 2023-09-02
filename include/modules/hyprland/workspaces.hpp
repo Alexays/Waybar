@@ -1,7 +1,12 @@
+#pragma once
+
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 
+#include <map>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "AModule.hpp"
 #include "bar.hpp"
@@ -11,7 +16,7 @@ namespace waybar::modules::hyprland {
 
 class Workspace {
  public:
-  Workspace(const Json::Value& workspace_data);
+  explicit Workspace(const Json::Value& workspace_data);
   std::string& select_icon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return button_; };
 
