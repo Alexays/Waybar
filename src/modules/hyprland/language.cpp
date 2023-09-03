@@ -1,12 +1,10 @@
-#include "modules/hyprland/language.hpp"
-
 #include <spdlog/spdlog.h>
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbregistry.h>
 
-#include <util/sanitize_str.hpp>
-
+#include "util/sanitize_str.hpp"
 #include "util/string.hpp"
+#include "modules/hyprland/language.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -97,7 +95,6 @@ void Language::initLanguage() {
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
     dp.emit();
-
   } catch (std::exception& e) {
     spdlog::error("hyprland language initLanguage failed with {}", e.what());
   }

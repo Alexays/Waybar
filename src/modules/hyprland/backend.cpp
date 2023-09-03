@@ -1,5 +1,3 @@
-#include "modules/hyprland/backend.hpp"
-
 #include <ctype.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -16,6 +14,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+
+#include "modules/hyprland/backend.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -172,7 +172,7 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     return "";
   }
 
-  if (connect(SERVERSOCKET, (sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+  if (connect(SERVERSOCKET, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress)) < 0) {
     spdlog::error("Hyprland IPC: Couldn't connect to " + socketPath + ". (3)");
     return "";
   }

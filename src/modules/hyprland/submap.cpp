@@ -1,8 +1,7 @@
-#include "modules/hyprland/submap.hpp"
-
 #include <spdlog/spdlog.h>
 
-#include <util/sanitize_str.hpp>
+#include "util/sanitize_str.hpp"
+#include "modules/hyprland/submap.hpp"
 
 namespace waybar::modules::hyprland {
 
