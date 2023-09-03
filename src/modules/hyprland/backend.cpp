@@ -167,12 +167,14 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   std::string socketPath = "/tmp/hypr/" + instanceSigStr + "/.socket.sock";
 
   // Use snprintf to copy the socketPath string into serverAddress.sun_path
-  if (snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str()) < 0) {
+  if (snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str()) <
+      0) {
     spdlog::error("Hyprland IPC: Couldn't copy socket path (6)");
     return "";
   }
 
-  if (connect(SERVERSOCKET, (sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+  if (connect(SERVERSOCKET, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress)) <
+      0) {
     spdlog::error("Hyprland IPC: Couldn't connect to " + socketPath + ". (3)");
     return "";
   }

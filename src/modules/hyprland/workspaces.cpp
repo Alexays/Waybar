@@ -327,7 +327,7 @@ Workspace::Workspace(const Json::Value &workspace_data)
   button_.set_relief(Gtk::RELIEF_NONE);
   content_.set_center_widget(label_);
   button_.add(content_);
-};
+}
 
 void add_or_remove_class(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
                          const std::string &class_name) {
