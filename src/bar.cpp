@@ -481,6 +481,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      x_global(0),
+      y_global(0),
+      margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -515,8 +518,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   uint32_t height = config["height"].isUInt() ? config["height"].asUInt() : 0;
   uint32_t width = config["width"].isUInt() ? config["width"].asUInt() : 0;
-
-  struct bar_margins margins_;
 
   if (config["margin-top"].isInt() || config["margin-right"].isInt() ||
       config["margin-bottom"].isInt() || config["margin-left"].isInt()) {
@@ -562,6 +563,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     auto gaps = config["margin"].asInt();
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
+
+  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
+  output->monitor->property_geometry().signal_changed().connect(
+      sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
 #ifdef HAVE_GTK_LAYER_SHELL
   bool use_gls = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
@@ -674,6 +679,7 @@ void waybar::Bar::onMap(GdkEventAny*) {
    */
   auto gdk_window = window.get_window()->gobj();
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
+  configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
 }
 
 void waybar::Bar::setVisible(bool value) {
@@ -814,4 +820,48 @@ auto waybar::Bar::setupWidgets() -> void {
   for (auto const& module : modules_right_) {
     right_.pack_end(*module, false, false);
   }
+}
+
+void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
+  configureGlobalOffset(ev->width, ev->height);
+}
+
+void waybar::Bar::configureGlobalOffset(int width, int height) {
+  auto monitor_geometry = *output->monitor->property_geometry().get_value().gobj();
+  auto position = config["position"].asString();
+  int x;
+  int y;
+  if (position == "bottom") {
+    if (width + margins_.left + margins_.right >= monitor_geometry.width)
+      x = margins_.left;
+    else
+      x = (monitor_geometry.width - width) / 2;
+    y = monitor_geometry.height - height - margins_.bottom;
+  } else if (position == "left") {
+    x = margins_.left;
+    if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+      y = margins_.top;
+    else
+      y = (monitor_geometry.height - height) / 2;
+  } else if (position == "right") {
+    x = monitor_geometry.width - width - margins_.right;
+    if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+      y = margins_.top;
+    else
+      y = (monitor_geometry.height - height) / 2;
+  } else {
+    // position is top
+    if (width + margins_.left + margins_.right >= monitor_geometry.width)
+      x = margins_.left;
+    else
+      x = (monitor_geometry.width - width) / 2;
+    y = margins_.top;
+  }
+
+  x_global = x + monitor_geometry.x;
+  y_global = y + monitor_geometry.y;
+}
+
+void waybar::Bar::onOutputGeometryChanged() {
+  configureGlobalOffset(window.get_width(), window.get_height());
 }
