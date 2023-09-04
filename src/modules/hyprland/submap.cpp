@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include <util/sanitize_str.hpp>
+#include "util/sanitize_str.hpp"
 
 namespace waybar::modules::hyprland {
 

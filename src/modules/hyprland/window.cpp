@@ -6,12 +6,11 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <regex>
-#include <util/sanitize_str.hpp>
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
 #include "util/rewrite_string.hpp"
+#include "util/sanitize_str.hpp"
 
 namespace waybar::modules::hyprland {
 
