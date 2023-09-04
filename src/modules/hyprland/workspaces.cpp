@@ -450,7 +450,7 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
 
 void Workspaces::set_urgent_workspace(std::string windowaddress) {
   const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
-  int workspace_id;
+  int workspace_id = -1;
 
   for (Json::Value client_json : clients_json) {
     if (client_json["address"].asString().ends_with(windowaddress)) {
@@ -462,7 +462,7 @@ void Workspaces::set_urgent_workspace(std::string windowaddress) {
   auto workspace =
       std::find_if(workspaces_.begin(), workspaces_.end(),
                    [&](std::unique_ptr<Workspace> &x) { return x->id() == workspace_id; });
-  if (workspace->get() != nullptr) {
+  if (workspace != workspaces_.end()) {
     workspace->get()->set_urgent();
   }
 }
