@@ -79,9 +79,18 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                                   : true;
                      });
 
+        if (config_["persistent_workspaces"].isObject()) {
+          spdlog::warn(
+              "persistent_workspaces is deprecated. Please change config to use "
+              "persistent-workspaces.");
+        }
+
         // adding persistent workspaces (as per the config file)
-        if (config_["persistent-workspaces"].isObject()) {
-          const Json::Value &p_workspaces = config_["persistent-workspaces"];
+        if (config_["persistent-workspaces"].isObject() ||
+            config_["persistent_workspaces"].isObject()) {
+          const Json::Value &p_workspaces = config_["persistent-workspaces"].isObject()
+                                                ? config_["persistent-workspaces"]
+                                                : config_["persistent_workspaces"];
           const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
           for (const std::string &p_w_name : p_workspaces_names) {
