@@ -55,6 +55,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   gIPC->registerForIPC("destroyworkspace", this);
   gIPC->registerForIPC("focusedmon", this);
   gIPC->registerForIPC("moveworkspace", this);
+  gIPC->registerForIPC("renameworkspace", this);
   gIPC->registerForIPC("openwindow", this);
   gIPC->registerForIPC("closewindow", this);
   gIPC->registerForIPC("movewindow", this);
@@ -132,6 +133,16 @@ void Workspaces::onEvent(const std::string &ev) {
     update_window_count();
   } else if (eventName == "urgent") {
     set_urgent_workspace(payload);
+  } else if (eventName == "renameworkspace") {
+    std::string workspace_id_str = payload.substr(0, payload.find(','));
+    int workspace_id = workspace_id_str == "special" ? -99 : std::stoi(workspace_id_str);
+    std::string new_name = payload.substr(payload.find(',') + 1);
+    for (auto &workspace : workspaces_) {
+      if (workspace->id() == workspace_id) {
+        workspace->set_name(new_name);
+        break;
+      }
+    }
   }
 
   dp.emit();
