@@ -34,6 +34,7 @@ class Workspace {
   void set_persistent(bool value = true) { is_persistent_ = value; };
   void set_urgent(bool value = true) { is_urgent_ = value; };
   void set_windows(uint value) { windows_ = value; };
+  void set_name(std::string value) { name_ = value; };
 
   void update(const std::string& format, const std::string& icon);
 
