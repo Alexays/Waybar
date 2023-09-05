@@ -231,8 +231,8 @@ void Workspaces::remove_workspace(std::string name) {
 }
 
 void Workspaces::fill_persistent_workspaces() {
-  if (config_["persistent_workspaces"].isObject()) {
-    const Json::Value persistent_workspaces = config_["persistent_workspaces"];
+  if (config_["persistent-workspaces"].isObject()) {
+    const Json::Value persistent_workspaces = config_["persistent-workspaces"];
     const std::vector<std::string> keys = persistent_workspaces.getMemberNames();
 
     for (const std::string &key : keys) {
