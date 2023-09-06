@@ -408,7 +408,7 @@ void Workspaces::sort_workspaces() {
 
               // both normal (includes numbered persistent) => sort by ID
               if (a->id() > 0 && b->id() > 0) {
-                return a->id() < b->id();
+                return std:stoi(a->id()) < std:stoi(b->id());
               }
 
               // one normal, one special => normal first
