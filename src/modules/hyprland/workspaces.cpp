@@ -441,6 +441,13 @@ void Workspaces::sort_workspaces() {
 }
 
 std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_map) {
+  if (is_urgent()) {
+    auto urgent_icon_it = icons_map.find("urgent");
+    if (urgent_icon_it != icons_map.end()) {
+      return urgent_icon_it->second;
+    }
+  }
+
   if (active()) {
     auto active_icon_it = icons_map.find("active");
     if (active_icon_it != icons_map.end()) {
