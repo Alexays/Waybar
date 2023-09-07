@@ -236,7 +236,6 @@ void waybar::modules::Custom::parseOutputJson() {
   getline(output, line);
   class_.clear();
   auto parsed = parser_.parse(line);
-  parsed = parser_.parse(line);
 
   // Preserve order so that first "{}" is resolved to "text" for backwards compatability
   if (parsed["text"].isString()) {
