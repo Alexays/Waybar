@@ -231,11 +231,8 @@ void waybar::modules::Custom::parseOutputRaw() {
 }
 
 void waybar::modules::Custom::parseOutputJson() {
-  std::istringstream output(output_.out);
-  std::string line;
-  getline(output, line);
   class_.clear();
-  auto parsed = parser_.parse(line);
+  auto parsed = parser_.parse(output_.out);
 
   // Preserve order so that first "{}" is resolved to "text" for backwards compatability
   if (parsed["text"].isString()) {
