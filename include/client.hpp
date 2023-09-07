@@ -47,7 +47,6 @@ class Client {
   static void handleOutputDone(void *, struct zxdg_output_v1 *);
   static void handleOutputName(void *, struct zxdg_output_v1 *, const char *);
   static void handleOutputDescription(void *, struct zxdg_output_v1 *, const char *);
-  void handleAppearanceChanged(waybar::Appearance appearance);
   void handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor);
   void handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
   void handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor);

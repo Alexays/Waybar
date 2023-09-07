@@ -154,9 +154,7 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
 const std::string waybar::Client::getStyle(const std::string &style,
                                            std::optional<Appearance> appearance = std::nullopt) {
   std::optional<std::string> css_file;
-  if (!style.empty()) {
-    css_file = style;
-  } else {
+  if (style.empty()) {
     std::vector<std::string> search_files;
     switch (appearance.value_or(portal->getAppearance())) {
       case waybar::Appearance::LIGHT:
@@ -170,6 +168,8 @@ const std::string waybar::Client::getStyle(const std::string &style,
     }
     search_files.push_back("style.css");
     css_file = Config::findConfigPath(search_files);
+  } else {
+    css_file = style;
   }
   if (!css_file) {
     throw std::runtime_error("Missing required resource files");
