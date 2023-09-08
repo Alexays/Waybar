@@ -163,6 +163,9 @@ void Workspaces::onEvent(const std::string &ev) {
     std::string new_name = payload.substr(payload.find(',') + 1);
     for (auto &workspace : workspaces_) {
       if (workspace->id() == workspace_id) {
+        if (workspace->name() == active_workspace_name_) {
+          active_workspace_name_ = new_name;
+        }
         workspace->set_name(new_name);
         break;
       }
