@@ -86,6 +86,7 @@ class Workspaces : public AModule, public EventHandler {
   bool all_outputs_ = false;
   bool show_special_ = false;
   bool active_only_ = false;
+  std::string sort_by = "default";
 
   void fill_persistent_workspaces();
   void create_persistent_workspaces();
