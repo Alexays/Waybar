@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 
 const std::string WHITESPACE = " \n\r\t\f\v";
@@ -15,3 +16,10 @@ inline std::string rtrim(const std::string& s) {
 }
 
 inline std::string trim(const std::string& s) { return rtrim(ltrim(s)); }
+
+inline std::string capitalize(const std::string& str) {
+  std::string result = str;
+  std::transform(result.begin(), result.end(), result.begin(),
+                 [](unsigned char c) { return std::toupper(c); });
+  return result;
+}
