@@ -273,28 +273,39 @@ Valid options for the (optional) "orientation" property are: "horizontal", "vert
 - *waybar-cpu(5)*
 - *waybar-custom(5)*
 - *waybar-disk(5)*
+- *waybar-dwl-tags(5)*
+- *waybar-gamemode(5)*
+- *waybar-hyprland-language(5)*
+- *waybar-hyprland-submap(5)*
+- *waybar-hyprland-window(5)*
+- *waybar-hyprland-workspaces(5)*
 - *waybar-idle-inhibitor(5)*
 - *waybar-image(5)*
+- *waybar-inhibitor(5)*
+- *waybar-jack(5)*
 - *waybar-keyboard-state(5)*
 - *waybar-memory(5)*
 - *waybar-mpd(5)*
 - *waybar-mpris(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
+- *waybar-river-layout(5)*
 - *waybar-river-mode(5)*
 - *waybar-river-tags(5)*
 - *waybar-river-window(5)*
-- *waybar-river-layout(5)*
+- *waybar-sndio(5)*
 - *waybar-states(5)*
+- *waybar-sway-language(5)*
 - *waybar-sway-mode(5)*
 - *waybar-sway-scratchpad(5)*
 - *waybar-sway-window(5)*
 - *waybar-sway-workspaces(5)*
+- *waybar-temperature(5)*
+- *waybar-tray(5)*
+- *waybar-upower(5)*
 - *waybar-wireplumber(5)*
 - *waybar-wlr-taskbar(5)*
 - *waybar-wlr-workspaces(5)*
-- *waybar-temperature(5)*
-- *waybar-tray(5)*
 
 # SEE ALSO
 
