@@ -61,7 +61,7 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
   if (config_sort_by.isString()) {
     auto sort_by_str = config_sort_by.asString();
     try {
-      sort_by_ = enum_parser_.sortStringToEnum(sort_by_str, sort_map_);
+      sort_by_ = enum_parser_.parseStringToEnum(sort_by_str, sort_map_);
     } catch (const std::invalid_argument &e) {
       // Handle the case where the string is not a valid enum representation.
       sort_by_ = SORT_METHOD::DEFAULT;

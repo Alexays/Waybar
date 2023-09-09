@@ -12,20 +12,19 @@ template <typename EnumType>
 struct EnumParser {
   EnumParser() {}
 
-  EnumType sortStringToEnum(const std::string& str,
-                            const std::map<std::string, EnumType>& enumMap) {
+  EnumType parseStringToEnum(const std::string& str,
+                             const std::map<std::string, EnumType>& enumMap) {
     // Convert the input string to uppercase
-    std::string uppercaseStr;
-    for (char c : str) {
-      uppercaseStr += std::toupper(c);
-    }
+    std::string uppercaseStr = str;
+    std::transform(uppercaseStr.begin(), uppercaseStr.end(), uppercaseStr.begin(),
+                   [](unsigned char c) { return std::toupper(c); });
 
+    // Return enum match of string
     auto it = enumMap.find(uppercaseStr);
-    if (it != enumMap.end()) {
-      return it->second;
-    } else {
-      throw std::invalid_argument("Invalid string representation for enum");
-    }
+    if (it != enumMap.end()) return it->second;
+
+    // Throw error if it doesnt return
+    throw std::invalid_argument("Invalid string representation for enum");
   }
 
   ~EnumParser() = default;
