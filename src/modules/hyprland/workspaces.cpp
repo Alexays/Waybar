@@ -61,10 +61,10 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
   if (config_sort_by.isString()) {
     auto sort_by_str = config_sort_by.asString();
     try {
-      sort_by_ = enum_parser_.sortStringToEnum(sort_by_str);
+      sort_by_ = enum_parser_.sortStringToEnum(sort_by_str, sort_map_);
     } catch (const std::invalid_argument &e) {
       // Handle the case where the string is not a valid enum representation.
-      sort_by_ = util::EnumParser::SORT_METHOD::DEFAULT;
+      sort_by_ = SORT_METHOD::DEFAULT;
       g_warning("Invalid string representation for sort-by. Falling back to default sort method.");
     }
   }
@@ -435,18 +435,18 @@ void Workspaces::sort_workspaces() {
               auto is_number_less = std::stoi(a->name()) < std::stoi(b->name());
 
               switch (sort_by_) {
-                case util::EnumParser::SORT_METHOD::ID:
+                case SORT_METHOD::ID:
                   return is_id_less;
-                case util::EnumParser::SORT_METHOD::NAME:
+                case SORT_METHOD::NAME:
                   return is_name_less;
-                case util::EnumParser::SORT_METHOD::NUMBER:
+                case SORT_METHOD::NUMBER:
                   try {
                     return is_number_less;
                   } catch (const std::invalid_argument &) {
                     // Handle the exception if necessary.
                     break;
                   }
-                case util::EnumParser::SORT_METHOD::DEFAULT:
+                case SORT_METHOD::DEFAULT:
                 default:
                   // Handle the default case here.
                   // normal -> named persistent -> named -> special -> named special

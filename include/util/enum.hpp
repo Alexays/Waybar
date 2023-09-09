@@ -1,25 +1,24 @@
 #pragma once
 
+#include <cctype>
 #include <iostream>
 #include <map>
+#include <stdexcept>
 #include <string>
 
 namespace waybar::util {
 
+template <typename EnumType>
 struct EnumParser {
   EnumParser() {}
 
-  enum SORT_METHOD { ID, NAME, NUMBER, DEFAULT };
-
-  SORT_METHOD sortStringToEnum(const std::string& str) {
-    // Convert the input string to uppercase (make it lenient on config input)
+  EnumType sortStringToEnum(const std::string& str,
+                            const std::map<std::string, EnumType>& enumMap) {
+    // Convert the input string to uppercase
     std::string uppercaseStr;
     for (char c : str) {
-        uppercaseStr += std::toupper(c);
+      uppercaseStr += std::toupper(c);
     }
-
-    static const std::map<std::string, SORT_METHOD> enumMap = {
-        {"ID", ID}, {"NAME", NAME}, {"NUMBER", NUMBER}, {"DEFAULT", DEFAULT}};
 
     auto it = enumMap.find(uppercaseStr);
     if (it != enumMap.end()) {
