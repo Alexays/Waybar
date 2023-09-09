@@ -80,6 +80,8 @@ class Workspaces : public AModule, public EventHandler {
   void create_workspace(Json::Value& value);
   void remove_workspace(std::string name);
   void set_urgent_workspace(std::string windowaddress);
+  void parse_config(const Json::Value& config);
+  void register_ipc();
 
   bool all_outputs_ = false;
   bool show_special_ = false;

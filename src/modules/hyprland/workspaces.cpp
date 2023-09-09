@@ -14,6 +14,20 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     : AModule(config, "workspaces", id, false, false),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+  parse_config(config);
+
+  box_.set_name("workspaces");
+  if (!id.empty()) {
+    box_.get_style_context()->add_class(id);
+  }
+  event_box_.add(box_);
+
+  register_ipc();
+
+  init();
+}
+
+auto Workspaces::parse_config(const Json::Value &config) -> void {
   Json::Value config_format = config["format"];
 
   format_ = config_format.isString() ? config_format.asString() : "{name}";
@@ -43,17 +57,18 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     active_only_ = config_active_only.asBool();
   }
 
-  box_.set_name("workspaces");
-  if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+  auto config_sort_by = config_["sort-by"];
+  if (config_sort_by.isString()) {
+    sort_by = config_sort_by.asString();
   }
-  event_box_.add(box_);
+}
+
+auto Workspaces::register_ipc() -> void {
   modulesReady = true;
+
   if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
-
-  init();
 
   gIPC->registerForIPC("workspace", this);
   gIPC->registerForIPC("createworkspace", this);
