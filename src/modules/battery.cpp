@@ -100,9 +100,11 @@ void waybar::modules::Battery::refreshBatteries() {
       }
       auto dir_name = node.path().filename();
       auto bat_defined = config_["bat"].isString();
+      bool bat_compatibility = config_["bat-compatibility"].asBool();
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
           (fs::exists(node.path() / "capacity") || fs::exists(node.path() / "charge_now")) &&
-          fs::exists(node.path() / "uevent") && fs::exists(node.path() / "status") &&
+          fs::exists(node.path() / "uevent") &&
+          (fs::exists(node.path() / "status") || bat_compatibility) &&
           fs::exists(node.path() / "type")) {
         std::string type;
         std::ifstream(node.path() / "type") >> type;
