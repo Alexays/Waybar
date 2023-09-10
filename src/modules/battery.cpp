@@ -254,7 +254,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     for (auto const& item : batteries_) {
       auto bat = item.first;
       std::string _status;
-      std::getline(std::ifstream(bat / "status"), _status);
+
+      /* Check for adapter status if battery is not available */
+      if(!std::ifstream(bat / "status")) {
+        std::getline(std::ifstream(adapter_ / "status"), _status);
+      } else {
+        std::getline(std::ifstream(bat / "status"), _status);
+      }
 
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
