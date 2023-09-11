@@ -257,7 +257,14 @@ void Workspaces::remove_workspace(std::string name) {
 
 void Workspaces::fill_persistent_workspaces() {
   if (config_["persistent_workspaces"].isObject()) {
-    const Json::Value persistent_workspaces = config_["persistent_workspaces"];
+    spdlog::warn(
+        "persistent_workspaces is deprecated. Please change config to use persistent-workspaces.");
+  }
+
+  if (config_["persistent-workspaces"].isObject() || config_["persistent_workspaces"].isObject()) {
+    const Json::Value persistent_workspaces = config_["persistent-workspaces"].isObject()
+                                                  ? config_["persistent-workspaces"]
+                                                  : config_["persistent_workspaces"];
     const std::vector<std::string> keys = persistent_workspaces.getMemberNames();
 
     for (const std::string &key : keys) {

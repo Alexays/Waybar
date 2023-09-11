@@ -77,7 +77,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"active": "",
 		"default": ""
 	},
-	"persistent_workspaces": {
+	"persistent-workspaces": {
 		"*": 5, // 5 workspaces by default on every monitor
 		"HDMI-A-1": 3 // but only three on HDMI-A-1
 	}
@@ -96,7 +96,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"active": "",
 		"default": ""
 	},
-	"persistent_workspaces": {
+	"persistent-workspaces": {
 		"*": [ 2,3,4,5 ], // 2-5 on every monitor
 		"HDMI-A-1": [ 1 ] // but only workspace 1 on HDMI-A-1
 	}

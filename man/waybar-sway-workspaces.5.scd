@@ -60,7 +60,7 @@ Addressed by *sway/workspaces*
 	default: false ++
 	If set to true. Only focused workspaces will be shown.
 
-*persistent_workspaces*: ++
+*persistent-workspaces*: ++
 	typeof: json (see below) ++
 	default: empty ++
 	Lists workspaces that should always be shown, even when non existent
@@ -112,7 +112,7 @@ an empty list denoting all outputs.
 
 ```
 "sway/workspaces": {
-	"persistent_workspaces": {
+	"persistent-workspaces": {
 		"3": [], // Always show a workspace with name '3', on all outputs if it does not exists
 		"4": ["eDP-1"], // Always show a workspace with name '4', on output 'eDP-1' if it does not exists
 		"5": ["eDP-1", "DP-2"] // Always show a workspace with name '5', on outputs 'eDP-1' and 'DP-2' if it does not exists
