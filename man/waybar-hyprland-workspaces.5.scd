@@ -36,6 +36,14 @@ Addressed by *hyprland/workspaces*
 	default: false ++
 	If set to true, only the active workspace will be shown.
 
+*sort-by*: ++
+	typeof: string ++
+	default: "default" ++
+	If set to number, workspaces will sort by number.
+	If set to name, workspaces will sort by name.
+	If set to id, workspaces will sort by id.
+	If none of those, workspaces will sort with default behavior.
+
 # FORMAT REPLACEMENTS
 
 *{id}*: id of workspace assigned by compositor

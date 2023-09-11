@@ -11,6 +11,7 @@
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
+#include "util/enum.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -80,10 +81,20 @@ class Workspaces : public AModule, public EventHandler {
   void create_workspace(Json::Value& value);
   void remove_workspace(std::string name);
   void set_urgent_workspace(std::string windowaddress);
+  void parse_config(const Json::Value& config);
+  void register_ipc();
 
   bool all_outputs_ = false;
   bool show_special_ = false;
   bool active_only_ = false;
+
+  enum class SORT_METHOD { ID, NAME, NUMBER, DEFAULT };
+  util::EnumParser<SORT_METHOD> enum_parser_;
+  SORT_METHOD sort_by_ = SORT_METHOD::DEFAULT;
+  std::map<std::string, SORT_METHOD> sort_map_ = {{"ID", SORT_METHOD::ID},
+                                                  {"NAME", SORT_METHOD::NAME},
+                                                  {"NUMBER", SORT_METHOD::NUMBER},
+                                                  {"DEFAULT", SORT_METHOD::DEFAULT}};
 
   void fill_persistent_workspaces();
   void create_persistent_workspaces();

@@ -14,6 +14,20 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     : AModule(config, "workspaces", id, false, false),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+  parse_config(config);
+
+  box_.set_name("workspaces");
+  if (!id.empty()) {
+    box_.get_style_context()->add_class(id);
+  }
+  event_box_.add(box_);
+
+  register_ipc();
+
+  init();
+}
+
+auto Workspaces::parse_config(const Json::Value &config) -> void {
   Json::Value config_format = config["format"];
 
   format_ = config_format.isString() ? config_format.asString() : "{name}";
@@ -43,17 +57,25 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     active_only_ = config_active_only.asBool();
   }
 
-  box_.set_name("workspaces");
-  if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+  auto config_sort_by = config_["sort-by"];
+  if (config_sort_by.isString()) {
+    auto sort_by_str = config_sort_by.asString();
+    try {
+      sort_by_ = enum_parser_.parseStringToEnum(sort_by_str, sort_map_);
+    } catch (const std::invalid_argument &e) {
+      // Handle the case where the string is not a valid enum representation.
+      sort_by_ = SORT_METHOD::DEFAULT;
+      g_warning("Invalid string representation for sort-by. Falling back to default sort method.");
+    }
   }
-  event_box_.add(box_);
+}
+
+auto Workspaces::register_ipc() -> void {
   modulesReady = true;
+
   if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
-
-  init();
 
   gIPC->registerForIPC("workspace", this);
   gIPC->registerForIPC("createworkspace", this);
@@ -406,36 +428,62 @@ void Workspace::update(const std::string &format, const std::string &icon) {
 
 void Workspaces::sort_workspaces() {
   std::sort(workspaces_.begin(), workspaces_.end(),
-            [](std::unique_ptr<Workspace> &a, std::unique_ptr<Workspace> &b) {
-              // normal -> named persistent -> named -> special -> named special
+            [&](std::unique_ptr<Workspace> &a, std::unique_ptr<Workspace> &b) {
+              // Helper comparisons
+              auto is_id_less = a->id() < b->id();
+              auto is_name_less = a->name() < b->name();
+              auto is_number_less = std::stoi(a->name()) < std::stoi(b->name());
 
-              // both normal (includes numbered persistent) => sort by ID
-              if (a->id() > 0 && b->id() > 0) {
-                return a->id() < b->id();
+              switch (sort_by_) {
+                case SORT_METHOD::ID:
+                  return is_id_less;
+                case SORT_METHOD::NAME:
+                  return is_name_less;
+                case SORT_METHOD::NUMBER:
+                  try {
+                    return is_number_less;
+                  } catch (const std::invalid_argument &) {
+                    // Handle the exception if necessary.
+                    break;
+                  }
+                case SORT_METHOD::DEFAULT:
+                default:
+                  // Handle the default case here.
+                  // normal -> named persistent -> named -> special -> named special
+
+                  // both normal (includes numbered persistent) => sort by ID
+                  if (a->id() > 0 && b->id() > 0) {
+                    return is_id_less;
+                  }
+
+                  // one normal, one special => normal first
+                  if ((a->is_special()) ^ (b->is_special())) {
+                    return b->is_special();
+                  }
+
+                  // only one normal, one named
+                  if ((a->id() > 0) ^ (b->id() > 0)) {
+                    return a->id() > 0;
+                  }
+
+                  // both special
+                  if (a->is_special() && b->is_special()) {
+                    // if one is -99 => put it last
+                    if (a->id() == -99 || b->id() == -99) {
+                      return b->id() == -99;
+                    }
+                    // both are 0 (not yet named persistents) / both are named specials (-98 <= ID
+                    // <=-1)
+                    return is_name_less;
+                  }
+
+                  // sort non-special named workspaces by name (ID <= -1377)
+                  return is_name_less;
+                  break;
               }
 
-              // one normal, one special => normal first
-              if ((a->is_special()) ^ (b->is_special())) {
-                return b->is_special();
-              }
-
-              // only one normal, one named
-              if ((a->id() > 0) ^ (b->id() > 0)) {
-                return a->id() > 0;
-              }
-
-              // both special
-              if (a->is_special() && b->is_special()) {
-                // if one is -99 => put it last
-                if (a->id() == -99 || b->id() == -99) {
-                  return b->id() == -99;
-                }
-                // both are 0 (not yet named persistents) / both are named specials (-98 <= ID <=-1)
-                return a->name() < b->name();
-              }
-
-              // sort non-special named workspaces by name (ID <= -1377)
-              return a->name() < b->name();
+              // Return a default value if none of the cases match.
+              return is_name_less;  // You can adjust this to your specific needs.
             });
 
   for (size_t i = 0; i < workspaces_.size(); ++i) {
