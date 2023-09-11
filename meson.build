@@ -172,6 +172,7 @@ src_files = files(
     'src/config.cpp',
     'src/group.cpp',
     'src/util/portal.cpp',
+    'src/util/enum.cpp',
     'src/util/prepare_for_sleep.cpp',
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',

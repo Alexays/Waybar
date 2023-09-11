@@ -14,6 +14,20 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     : AModule(config, "workspaces", id, false, false),
       bar_(bar),
       box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+  parse_config(config);
+
+  box_.set_name("workspaces");
+  if (!id.empty()) {
+    box_.get_style_context()->add_class(id);
+  }
+  event_box_.add(box_);
+
+  register_ipc();
+
+  init();
+}
+
+auto Workspaces::parse_config(const Json::Value &config) -> void {
   Json::Value config_format = config["format"];
 
   format_ = config_format.isString() ? config_format.asString() : "{name}";
@@ -38,23 +52,37 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     show_special_ = config_show_special.asBool();
   }
 
-  box_.set_name("workspaces");
-  if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+  auto config_active_only = config_["active-only"];
+  if (config_active_only.isBool()) {
+    active_only_ = config_active_only.asBool();
   }
-  event_box_.add(box_);
+
+  auto config_sort_by = config_["sort-by"];
+  if (config_sort_by.isString()) {
+    auto sort_by_str = config_sort_by.asString();
+    try {
+      sort_by_ = enum_parser_.parseStringToEnum(sort_by_str, sort_map_);
+    } catch (const std::invalid_argument &e) {
+      // Handle the case where the string is not a valid enum representation.
+      sort_by_ = SORT_METHOD::DEFAULT;
+      g_warning("Invalid string representation for sort-by. Falling back to default sort method.");
+    }
+  }
+}
+
+auto Workspaces::register_ipc() -> void {
   modulesReady = true;
+
   if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
-
-  init();
 
   gIPC->registerForIPC("workspace", this);
   gIPC->registerForIPC("createworkspace", this);
   gIPC->registerForIPC("destroyworkspace", this);
   gIPC->registerForIPC("focusedmon", this);
   gIPC->registerForIPC("moveworkspace", this);
+  gIPC->registerForIPC("renameworkspace", this);
   gIPC->registerForIPC("openwindow", this);
   gIPC->registerForIPC("closewindow", this);
   gIPC->registerForIPC("movewindow", this);
@@ -74,11 +102,29 @@ auto Workspaces::update() -> void {
 
   workspaces_to_create_.clear();
 
+  // get all active workspaces
+  auto monitors = gIPC->getSocket1JsonReply("monitors");
+  std::vector<std::string> visible_workspaces;
+  for (Json::Value &monitor : monitors) {
+    auto ws = monitor["activeWorkspace"];
+    if (ws.isObject() && (ws["name"].isString())) {
+      visible_workspaces.push_back(ws["name"].asString());
+    }
+  }
+
   for (auto &workspace : workspaces_) {
+    // active
     workspace->set_active(workspace->name() == active_workspace_name_);
-    if (workspace->name() == active_workspace_name_ && workspace.get()->is_urgent()) {
+    // disable urgency if workspace is active
+    if (workspace->name() == active_workspace_name_ && workspace->is_urgent()) {
       workspace->set_urgent(false);
     }
+
+    // visible
+    workspace->set_visible(std::find(visible_workspaces.begin(), visible_workspaces.end(),
+                                     workspace->name()) != visible_workspaces.end());
+
+    // set workspace icon
     std::string &workspace_icon = icons_map_[""];
     if (with_icon_) {
       workspace_icon = workspace->select_icon(icons_map_);
@@ -102,9 +148,10 @@ void Workspaces::onEvent(const std::string &ev) {
   } else if (eventName == "createworkspace") {
     const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
     for (Json::Value workspace_json : workspaces_json) {
-      if (workspace_json["name"].asString() == payload &&
+      std::string name = workspace_json["name"].asString();
+      if (name == payload &&
           (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-          (show_special() || !workspace_json["name"].asString().starts_with("special"))) {
+          (show_special() || !name.starts_with("special"))) {
         workspaces_to_create_.push_back(workspace_json);
         break;
       }
@@ -119,8 +166,8 @@ void Workspaces::onEvent(const std::string &ev) {
     if (bar_.output->name == new_output) {  // TODO: implement this better
       const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
       for (Json::Value workspace_json : workspaces_json) {
-        if (workspace_json["name"].asString() == workspace &&
-            bar_.output->name == workspace_json["monitor"].asString()) {
+        std::string name = workspace_json["name"].asString();
+        if (name == workspace && bar_.output->name == workspace_json["monitor"].asString()) {
           workspaces_to_create_.push_back(workspace_json);
           break;
         }
@@ -132,6 +179,19 @@ void Workspaces::onEvent(const std::string &ev) {
     update_window_count();
   } else if (eventName == "urgent") {
     set_urgent_workspace(payload);
+  } else if (eventName == "renameworkspace") {
+    std::string workspace_id_str = payload.substr(0, payload.find(','));
+    int workspace_id = workspace_id_str == "special" ? -99 : std::stoi(workspace_id_str);
+    std::string new_name = payload.substr(payload.find(',') + 1);
+    for (auto &workspace : workspaces_) {
+      if (workspace->id() == workspace_id) {
+        if (workspace->name() == active_workspace_name_) {
+          active_workspace_name_ = new_name;
+        }
+        workspace->set_name(new_name);
+        break;
+      }
+    }
   }
 
   dp.emit();
@@ -143,15 +203,15 @@ void Workspaces::update_window_count() {
     auto workspace_json = std::find_if(
         workspaces_json.begin(), workspaces_json.end(),
         [&](Json::Value const &x) { return x["name"].asString() == workspace->name(); });
+    uint32_t count = 0;
     if (workspace_json != workspaces_json.end()) {
       try {
-        workspace->set_windows((*workspace_json)["windows"].asUInt());
+        count = (*workspace_json)["windows"].asUInt();
       } catch (const std::exception &e) {
         spdlog::error("Failed to update window count: {}", e.what());
       }
-    } else {
-      workspace->set_windows(0);
     }
+    workspace->set_windows(count);
   }
 }
 
@@ -170,7 +230,7 @@ void Workspaces::create_workspace(Json::Value &value) {
   }
 
   // create new workspace
-  workspaces_.emplace_back(std::make_unique<Workspace>(value));
+  workspaces_.emplace_back(std::make_unique<Workspace>(value, *this));
   Gtk::Button &new_workspace_button = workspaces_.back()->button();
   box_.pack_start(new_workspace_button, false, false);
   sort_workspaces();
@@ -196,8 +256,15 @@ void Workspaces::remove_workspace(std::string name) {
 }
 
 void Workspaces::fill_persistent_workspaces() {
-  if (config_["persistent_workspaces"].isObject() && !all_outputs()) {
-    const Json::Value persistent_workspaces = config_["persistent_workspaces"];
+  if (config_["persistent_workspaces"].isObject()) {
+    spdlog::warn(
+        "persistent_workspaces is deprecated. Please change config to use persistent-workspaces.");
+  }
+
+  if (config_["persistent-workspaces"].isObject() || config_["persistent_workspaces"].isObject()) {
+    const Json::Value persistent_workspaces = config_["persistent-workspaces"].isObject()
+                                                  ? config_["persistent-workspaces"]
+                                                  : config_["persistent_workspaces"];
     const std::vector<std::string> keys = persistent_workspaces.getMemberNames();
 
     for (const std::string &key : keys) {
@@ -286,8 +353,9 @@ void Workspaces::init() {
   const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
   for (Json::Value workspace_json : workspaces_json) {
     if ((all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-        (!workspace_json["name"].asString().starts_with("special") || show_special()))
+        (!workspace_json["name"].asString().starts_with("special") || show_special())) {
       create_workspace(workspace_json);
+    }
   }
 
   update_window_count();
@@ -303,8 +371,9 @@ Workspaces::~Workspaces() {
   std::lock_guard<std::mutex> lg(mutex_);
 }
 
-Workspace::Workspace(const Json::Value &workspace_data)
-    : id_(workspace_data["id"].asInt()),
+Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_manager)
+    : workspace_manager_(workspace_manager),
+      id_(workspace_data["id"].asInt()),
       name_(workspace_data["name"].asString()),
       output_(workspace_data["monitor"].asString()),  // TODO:allow using monitor desc
       windows_(workspace_data["windows"].asInt()),
@@ -327,7 +396,7 @@ Workspace::Workspace(const Json::Value &workspace_data)
   button_.set_relief(Gtk::RELIEF_NONE);
   content_.set_center_widget(label_);
   button_.add(content_);
-};
+}
 
 void add_or_remove_class(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
                          const std::string &class_name) {
@@ -339,12 +408,26 @@ void add_or_remove_class(const Glib::RefPtr<Gtk::StyleContext> &context, bool co
 }
 
 void Workspace::update(const std::string &format, const std::string &icon) {
+  // clang-format off
+  if (this->workspace_manager_.active_only() && \
+     !this->active() && \
+     !this->is_persistent() && \
+     !this->is_visible() && \
+     !this->is_special()) {
+    // clang-format on
+    // if active_only is true, hide if not active, persistent, visible or special
+    button_.hide();
+    return;
+  }
+  button_.show();
+
   auto style_context = button_.get_style_context();
   add_or_remove_class(style_context, active(), "active");
   add_or_remove_class(style_context, is_special(), "special");
   add_or_remove_class(style_context, is_empty(), "empty");
   add_or_remove_class(style_context, is_persistent(), "persistent");
   add_or_remove_class(style_context, is_urgent(), "urgent");
+  add_or_remove_class(style_context, is_visible(), "visible");
 
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
                                 fmt::arg("name", name()), fmt::arg("icon", icon)));
@@ -352,36 +435,62 @@ void Workspace::update(const std::string &format, const std::string &icon) {
 
 void Workspaces::sort_workspaces() {
   std::sort(workspaces_.begin(), workspaces_.end(),
-            [](std::unique_ptr<Workspace> &a, std::unique_ptr<Workspace> &b) {
-              // normal -> named persistent -> named -> special -> named special
+            [&](std::unique_ptr<Workspace> &a, std::unique_ptr<Workspace> &b) {
+              // Helper comparisons
+              auto is_id_less = a->id() < b->id();
+              auto is_name_less = a->name() < b->name();
+              auto is_number_less = std::stoi(a->name()) < std::stoi(b->name());
 
-              // both normal (includes numbered persistent) => sort by ID
-              if (a->id() > 0 && b->id() > 0) {
-                return a->id() < b->id();
+              switch (sort_by_) {
+                case SORT_METHOD::ID:
+                  return is_id_less;
+                case SORT_METHOD::NAME:
+                  return is_name_less;
+                case SORT_METHOD::NUMBER:
+                  try {
+                    return is_number_less;
+                  } catch (const std::invalid_argument &) {
+                    // Handle the exception if necessary.
+                    break;
+                  }
+                case SORT_METHOD::DEFAULT:
+                default:
+                  // Handle the default case here.
+                  // normal -> named persistent -> named -> special -> named special
+
+                  // both normal (includes numbered persistent) => sort by ID
+                  if (a->id() > 0 && b->id() > 0) {
+                    return is_id_less;
+                  }
+
+                  // one normal, one special => normal first
+                  if ((a->is_special()) ^ (b->is_special())) {
+                    return b->is_special();
+                  }
+
+                  // only one normal, one named
+                  if ((a->id() > 0) ^ (b->id() > 0)) {
+                    return a->id() > 0;
+                  }
+
+                  // both special
+                  if (a->is_special() && b->is_special()) {
+                    // if one is -99 => put it last
+                    if (a->id() == -99 || b->id() == -99) {
+                      return b->id() == -99;
+                    }
+                    // both are 0 (not yet named persistents) / both are named specials (-98 <= ID
+                    // <=-1)
+                    return is_name_less;
+                  }
+
+                  // sort non-special named workspaces by name (ID <= -1377)
+                  return is_name_less;
+                  break;
               }
 
-              // one normal, one special => normal first
-              if ((a->is_special()) ^ (b->is_special())) {
-                return b->is_special();
-              }
-
-              // only one normal, one named
-              if ((a->id() > 0) ^ (b->id() > 0)) {
-                return a->id() > 0;
-              }
-
-              // both special
-              if (a->is_special() && b->is_special()) {
-                // if one is -99 => put it last
-                if (a->id() == -99 || b->id() == -99) {
-                  return b->id() == -99;
-                }
-                // both are 0 (not yet named persistents) / both are named specials (-98 <= ID <=-1)
-                return a->name() < b->name();
-              }
-
-              // sort non-special named workspaces by name (ID <= -1377)
-              return a->name() < b->name();
+              // Return a default value if none of the cases match.
+              return is_name_less;  // You can adjust this to your specific needs.
             });
 
   for (size_t i = 0; i < workspaces_.size(); ++i) {
@@ -390,6 +499,13 @@ void Workspaces::sort_workspaces() {
 }
 
 std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_map) {
+  if (is_urgent()) {
+    auto urgent_icon_it = icons_map.find("urgent");
+    if (urgent_icon_it != icons_map.end()) {
+      return urgent_icon_it->second;
+    }
+  }
+
   if (active()) {
     auto active_icon_it = icons_map.find("active");
     if (active_icon_it != icons_map.end()) {
@@ -407,6 +523,13 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
   auto named_icon_it = icons_map.find(name());
   if (named_icon_it != icons_map.end()) {
     return named_icon_it->second;
+  }
+
+  if (is_visible()) {
+    auto visible_icon_it = icons_map.find("visible");
+    if (visible_icon_it != icons_map.end()) {
+      return visible_icon_it->second;
+    }
   }
 
   if (is_empty()) {
@@ -450,7 +573,7 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
 
 void Workspaces::set_urgent_workspace(std::string windowaddress) {
   const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
-  int workspace_id;
+  int workspace_id = -1;
 
   for (Json::Value client_json : clients_json) {
     if (client_json["address"].asString().ends_with(windowaddress)) {
@@ -462,7 +585,7 @@ void Workspaces::set_urgent_workspace(std::string windowaddress) {
   auto workspace =
       std::find_if(workspaces_.begin(), workspaces_.end(),
                    [&](std::unique_ptr<Workspace> &x) { return x->id() == workspace_id; });
-  if (workspace->get() != nullptr) {
+  if (workspace != workspaces_.end()) {
     workspace->get()->set_urgent();
   }
 }

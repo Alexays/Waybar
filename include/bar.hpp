@@ -91,6 +91,9 @@ class Bar {
   bool vertical = false;
   Gtk::Window window;
 
+  int x_global;
+  int y_global;
+
 #ifdef HAVE_SWAY
   std::string bar_id;
 #endif
@@ -102,10 +105,15 @@ class Bar {
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
+  void onConfigure(GdkEventConfigure *ev);
+  void configureGlobalOffset(int width, int height);
+  void onOutputGeometryChanged();
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
   std::string last_mode_{MODE_DEFAULT};
+
+  struct bar_margins margins_;
 
   std::unique_ptr<BarSurface> surface_impl_;
   Gtk::Box left_;
