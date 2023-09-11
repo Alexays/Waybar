@@ -151,8 +151,26 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
   outputs_.remove_if([&monitor](const auto &output) { return output.monitor == monitor; });
 }
 
-const std::string waybar::Client::getStyle(const std::string &style) {
-  auto css_file = style.empty() ? Config::findConfigPath({"style.css"}) : style;
+const std::string waybar::Client::getStyle(const std::string &style,
+                                           std::optional<Appearance> appearance = std::nullopt) {
+  std::optional<std::string> css_file;
+  if (style.empty()) {
+    std::vector<std::string> search_files;
+    switch (appearance.value_or(portal->getAppearance())) {
+      case waybar::Appearance::LIGHT:
+        search_files.push_back("style-light.css");
+        break;
+      case waybar::Appearance::DARK:
+        search_files.push_back("style-dark.css");
+        break;
+      case waybar::Appearance::UNKNOWN:
+        break;
+    }
+    search_files.push_back("style.css");
+    css_file = Config::findConfigPath(search_files);
+  } else {
+    css_file = style;
+  }
   if (!css_file) {
     throw std::runtime_error("Missing required resource files");
   }
@@ -235,8 +253,15 @@ int waybar::Client::main(int argc, char *argv[]) {
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   config.load(config_opt);
+  if (!portal) {
+    portal = std::make_unique<waybar::Portal>();
+  }
   auto css_file = getStyle(style_opt);
   setupCss(css_file);
+  portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
+    auto css_file = getStyle(style_opt, appearance);
+    setupCss(css_file);
+  });
   bindInterfaces();
   gtk_app->hold();
   gtk_app->run();
@@ -244,4 +269,8 @@ int waybar::Client::main(int argc, char *argv[]) {
   return 0;
 }
 
-void waybar::Client::reset() { gtk_app->quit(); }
+void waybar::Client::reset() {
+  gtk_app->quit();
+  // delete signal handler for css changes
+  portal->signal_appearance_changed().clear();
+}

@@ -7,6 +7,7 @@
 
 #include "bar.hpp"
 #include "config.hpp"
+#include "util/portal.hpp"
 
 struct zwlr_layer_shell_v1;
 struct zwp_idle_inhibitor_v1;
@@ -33,7 +34,7 @@ class Client {
 
  private:
   Client() = default;
-  const std::string getStyle(const std::string &style);
+  const std::string getStyle(const std::string &style, std::optional<Appearance> appearance);
   void bindInterfaces();
   void handleOutput(struct waybar_output &output);
   auto setupCss(const std::string &css_file) -> void;
@@ -52,6 +53,7 @@ class Client {
 
   Glib::RefPtr<Gtk::StyleContext> style_context_;
   Glib::RefPtr<Gtk::CssProvider> css_provider_;
+  std::unique_ptr<Portal> portal;
   std::list<struct waybar_output> outputs_;
 };
 
