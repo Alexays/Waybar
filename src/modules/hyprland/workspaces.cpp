@@ -439,7 +439,6 @@ void Workspaces::sort_workspaces() {
               // Helper comparisons
               auto is_id_less = a->id() < b->id();
               auto is_name_less = a->name() < b->name();
-              auto is_number_less = std::stoi(a->name()) < std::stoi(b->name());
 
               switch (sort_by_) {
                 case SORT_METHOD::ID:
@@ -448,7 +447,7 @@ void Workspaces::sort_workspaces() {
                   return is_name_less;
                 case SORT_METHOD::NUMBER:
                   try {
-                    return is_number_less;
+                    return std::stoi(a->name()) < std::stoi(b->name());
                   } catch (const std::invalid_argument &) {
                     // Handle the exception if necessary.
                     break;
