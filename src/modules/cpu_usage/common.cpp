@@ -52,7 +52,8 @@ auto waybar::modules::CpuUsage::update() -> void {
   ALabel::update();
 }
 
-std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpuUsage(std::vector<std::tuple<size_t, size_t>>& prev_times) {
+std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpuUsage(
+    std::vector<std::tuple<size_t, size_t>>& prev_times) {
   if (prev_times.empty()) {
     prev_times = CpuUsage::parseCpuinfo();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

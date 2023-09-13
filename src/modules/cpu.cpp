@@ -1,4 +1,5 @@
 #include "modules/cpu.hpp"
+
 #include "modules/cpu_frequency.hpp"
 #include "modules/cpu_usage.hpp"
 #include "modules/load.hpp"
