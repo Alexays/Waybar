@@ -1,6 +1,6 @@
 #include <spdlog/spdlog.h>
 
-#include <cmath>    // NAN
+#include <cmath>  // NAN
 
 #include "modules/cpu_frequency.hpp"
 
