@@ -58,6 +58,12 @@ class SleeperThread {
 
   bool isRunning() const { return do_run_; }
 
+  auto sleep() {
+    std::unique_lock lk(mutex_);
+    CancellationGuard cancel_lock;
+    return condvar_.wait(lk);
+  }
+
   auto sleep_for(std::chrono::system_clock::duration dur) {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;

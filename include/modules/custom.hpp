@@ -22,6 +22,7 @@ class Custom : public ALabel {
  private:
   void delayWorker();
   void continuousWorker();
+  void waitingWorker();
   void parseOutputRaw();
   void parseOutputJson();
   void handleEvent();
