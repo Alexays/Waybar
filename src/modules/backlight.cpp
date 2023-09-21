@@ -244,7 +244,7 @@ void waybar::modules::Backlight::upsert_device(ForwardIt first, ForwardIt last, 
   check_nn(name);
 
   const char *actual_brightness_attr =
-      strncmp(name, "amdgpu_bl", 9) == 0 ? "brightness" : strcmp(name, "apple-panel-bl") == 0 ? "brightness" : "actual_brightness";
+      strncmp(name, "amdgpu_bl", 9) == 0 || strcmp(name, "apple-panel-bl") == 0  ? "brightness" : "actual_brightness";
 
   const char *actual = udev_device_get_sysattr_value(dev, actual_brightness_attr);
   const char *max = udev_device_get_sysattr_value(dev, "max_brightness");
