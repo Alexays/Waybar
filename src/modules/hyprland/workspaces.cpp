@@ -9,6 +9,8 @@
 #include <memory>
 #include <string>
 
+#include "util/rewrite_string.hpp"
+
 namespace waybar::modules::hyprland {
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
@@ -74,13 +76,7 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
   format_window_separator_ =
       format_window_separator.isString() ? format_window_separator.asString() : " ";
 
-  Json::Value window_rewrite_map = config["window-rewrite-map"];
-
-  if (window_rewrite_map.isObject()) {
-    for (std::string &name : window_rewrite_map.getMemberNames()) {
-      window_rewrite_rules_.emplace(name, window_rewrite_map[name].asString());
-    }
-  }
+  window_rewrite_rules_ = config["window-rewrite"];
 }
 
 auto Workspaces::register_ipc() -> void {
@@ -234,26 +230,19 @@ void Workspaces::on_window_opened(std::string payload) {
 
   std::string window_title = payload.substr(next_comma_idx + 1, payload.length() - next_comma_idx);
 
-  fmt::println("> Inserting window [{}] [{}] [{}] [{}]", window_address, workspace_name,
-               window_class, window_title);
-
   for (auto &workspace : workspaces_) {
     if (workspace->on_window_opened(window_address, workspace_name, window_class, window_title)) {
       break;
     }
   }
-
-  fmt::println("<");
 }
 
 void Workspaces::on_window_closed(std::string addr) {
-  fmt::println("> Removing window [{}]", addr);
   for (auto &workspace : workspaces_) {
     if (workspace->on_window_closed(addr)) {
       break;
     }
   }
-  fmt::println("<");
 }
 
 void Workspaces::on_window_moved(std::string payload) {
@@ -268,8 +257,6 @@ void Workspaces::on_window_moved(std::string payload) {
 
   const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
 
-  fmt::println(">> Moving window [{}] [{}]", window_address, workspace_name);
-
   for (auto &workspace : workspaces_) {
     if (workspace->on_window_moved(window_address, workspace_name, clients_json)) {
       changes++;
@@ -278,8 +265,6 @@ void Workspaces::on_window_moved(std::string payload) {
       }
     }
   }
-
-  fmt::println("<<");
 }
 
 void Workspaces::update_window_count() {
@@ -317,10 +302,13 @@ void Workspace::initialize_window_map(const Json::Value &clients_data) {
   }
 }
 
+void Workspace::insert_window(WindowAddress addr, std::string window_class) {
+  window_map_.emplace(addr, workspace_manager_.get_rewrite(window_class));
+};
+
 bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_name,
                                  const Json::Value &clients_data) {
   if (workspace_name == name()) {
-    fmt::println("\tInserting on workspace {}", id());
     for (auto client : clients_data) {
       auto client_address = client["address"].asString().substr(2, addr.length());
       if (client_address == addr) {
@@ -329,7 +317,6 @@ bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_nam
         return true;
       }
     }
-    fmt::println("\tERROR on workspace {}", id());
     return false;
   } else {
     return false;
@@ -339,7 +326,6 @@ bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_nam
 bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_name,
                                  std::string &window_class, std::string &window_title) {
   if (workspace_name == name()) {
-    fmt::println("\tInserting on workspace {}", id());
     insert_window(addr, window_class);
     return true;
   } else {
@@ -349,7 +335,6 @@ bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_nam
 
 bool Workspace::on_window_closed(WindowAddress &addr) {
   if (window_map_.contains(addr)) {
-    fmt::println("\tRemoving on workspace {}", id());
     remove_window(addr);
     return true;
   } else {
@@ -581,15 +566,22 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   add_or_remove_class(style_context, is_urgent(), "urgent");
   add_or_remove_class(style_context, is_visible(), "visible");
 
-  std::string first_letters;
+  std::string windows;
+  auto window_separator = workspace_manager_.get_window_separator();
+
+  bool is_not_first = false;
 
   for (auto &[_pid, window_repr] : window_map_) {
-    first_letters.append(window_repr.substr(0, 1));
+    if (is_not_first) {
+      windows.append(window_separator);
+    }
+    is_not_first = true;
+    windows.append(window_repr);
   }
 
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
                                 fmt::arg("name", name()), fmt::arg("icon", icon),
-                                fmt::arg("windows", first_letters)));
+                                fmt::arg("windows", windows)));
 }
 
 void Workspaces::sort_workspaces() {
@@ -746,6 +738,19 @@ void Workspaces::set_urgent_workspace(std::string windowaddress) {
   if (workspace != workspaces_.end()) {
     workspace->get()->set_urgent();
   }
+}
+
+std::string Workspaces::get_rewrite(std::string window_class) {
+  if (regex_cache_.contains(window_class)) {
+    return regex_cache_[window_class];
+  }
+
+  std::string window_class_rewrite =
+      waybar::util::rewriteString(window_class, window_rewrite_rules_);
+
+  regex_cache_.emplace(window_class, window_class_rewrite);
+
+  return window_class_rewrite;
 }
 
 }  // namespace waybar::modules::hyprland

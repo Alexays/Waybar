@@ -2,6 +2,7 @@
 
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
+#include <json/value.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -17,7 +18,6 @@
 #include "util/enum.hpp"
 
 using WindowAddress = std::string;
-using mywindowtype = std::string;
 namespace waybar::modules::hyprland {
 
 class Workspaces;
@@ -47,9 +47,7 @@ class Workspace {
   void set_windows(uint value) { windows_ = value; };
   void set_name(std::string value) { name_ = value; };
   bool contains_window(WindowAddress addr) { return window_map_.contains(addr); }
-  void insert_window(WindowAddress addr, mywindowtype window_repr) {
-    window_map_.emplace(addr, window_repr);
-  };
+  void insert_window(WindowAddress addr, std::string window_repr);
   void remove_window(WindowAddress addr) { window_map_.erase(addr); }
   void initialize_window_map(const Json::Value& clients_data);
 
@@ -77,7 +75,7 @@ class Workspace {
   bool is_urgent_ = false;
   bool is_visible_ = false;
 
-  std::map<WindowAddress, mywindowtype> window_map_;
+  std::map<WindowAddress, std::string> window_map_;
 
   Gtk::Button button_;
   Gtk::Box content_;
@@ -96,6 +94,9 @@ class Workspaces : public AModule, public EventHandler {
   auto active_only() const -> bool { return active_only_; }
 
   auto get_bar_output() const -> std::string { return bar_.output->name; }
+
+  std::string get_rewrite(std::string window_class);
+  std::string& get_window_separator() { return format_window_separator_; }
 
  private:
   void onEvent(const std::string&) override;
@@ -132,7 +133,8 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string format_;
   std::map<std::string, std::string> icons_map_;
-  std::map<std::string, std::string> window_rewrite_rules_;
+  Json::Value window_rewrite_rules_;
+  std::map<std::string, std::string> regex_cache_;
   std::string format_window_separator_;
   bool with_icon_;
   uint64_t monitor_id_;
