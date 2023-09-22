@@ -296,20 +296,32 @@ void Workspace::initialize_window_map(const Json::Value &clients_data) {
   window_map_.clear();
   for (auto client : clients_data) {
     if (client["workspace"]["id"].asInt() == id()) {
+      // substr(2, ...) is necessary because Hyprland's JSON follows this format:
+      // 0x{ADDR}
+      // While Hyprland's IPC follows this format:
+      // {ADDR}
       WindowAddress client_address = client["address"].asString();
+      client_address = client_address.substr(2, client_address.length() - 2);
       insert_window(client_address, client["class"].asString());
     }
   }
 }
 
 void Workspace::insert_window(WindowAddress addr, std::string window_class) {
-  window_map_.emplace(addr, workspace_manager_.get_rewrite(window_class));
+  auto window_repr = workspace_manager_.get_rewrite(window_class);
+  if (!window_repr.empty()) {
+    window_map_.emplace(addr, window_repr);
+  }
 };
 
 bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_name,
                                  const Json::Value &clients_data) {
   if (workspace_name == name()) {
     for (auto client : clients_data) {
+      // substr(2, ...) is necessary because Hyprland's JSON follows this format:
+      // 0x{ADDR}
+      // While Hyprland's IPC follows this format:
+      // {ADDR}
       auto client_address = client["address"].asString().substr(2, addr.length());
       if (client_address == addr) {
         std::string window_class = client["class"].asString();
