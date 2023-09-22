@@ -3,8 +3,11 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -13,13 +16,16 @@
 #include "modules/hyprland/backend.hpp"
 #include "util/enum.hpp"
 
+using WindowAddress = std::string;
+using mywindowtype = std::string;
 namespace waybar::modules::hyprland {
 
 class Workspaces;
 
 class Workspace {
  public:
-  explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager);
+  explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
+                     const Json::Value& clients_json = Json::Value::nullRef);
   std::string& select_icon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return button_; };
 
@@ -40,6 +46,21 @@ class Workspace {
   void set_visible(bool value = true) { is_visible_ = value; };
   void set_windows(uint value) { windows_ = value; };
   void set_name(std::string value) { name_ = value; };
+  bool contains_window(WindowAddress addr) { return window_map_.contains(addr); }
+  void insert_window(WindowAddress addr, mywindowtype window_repr) {
+    window_map_.emplace(addr, window_repr);
+  };
+  void remove_window(WindowAddress addr) { window_map_.erase(addr); }
+  void initialize_window_map(const Json::Value& clients_data);
+
+  bool on_window_opened(WindowAddress& addr, std::string& workspace_name,
+                        const Json::Value& clients_data);
+  bool on_window_opened(WindowAddress& addr, std::string& workspace_name, std::string& window_class,
+                        std::string& window_title);
+
+  bool on_window_closed(WindowAddress& addr);
+  bool on_window_moved(WindowAddress& addr, std::string& workspace_name,
+                       const Json::Value& clients_data);
 
   void update(const std::string& format, const std::string& icon);
 
@@ -55,6 +76,8 @@ class Workspace {
   bool is_persistent_ = false;
   bool is_urgent_ = false;
   bool is_visible_ = false;
+
+  std::map<WindowAddress, mywindowtype> window_map_;
 
   Gtk::Button button_;
   Gtk::Box content_;
@@ -77,12 +100,18 @@ class Workspaces : public AModule, public EventHandler {
  private:
   void onEvent(const std::string&) override;
   void update_window_count();
+  void initialize_window_maps();
   void sort_workspaces();
-  void create_workspace(Json::Value& value);
+  void create_workspace(Json::Value& workspace_data,
+                        const Json::Value& clients_data = Json::Value::nullRef);
   void remove_workspace(std::string name);
   void set_urgent_workspace(std::string windowaddress);
   void parse_config(const Json::Value& config);
   void register_ipc();
+
+  void on_window_opened(std::string payload);
+  void on_window_closed(std::string payload);
+  void on_window_moved(std::string payload);
 
   bool all_outputs_ = false;
   bool show_special_ = false;
@@ -103,6 +132,8 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string format_;
   std::map<std::string, std::string> icons_map_;
+  std::map<std::string, std::string> window_rewrite_rules_;
+  std::string format_window_separator_;
   bool with_icon_;
   uint64_t monitor_id_;
   std::string active_workspace_name_;
