@@ -77,6 +77,10 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
       format_window_separator.isString() ? format_window_separator.asString() : " ";
 
   window_rewrite_rules_ = config["window-rewrite"];
+
+  Json::Value window_rewrite_default = config["window-rewrite-default"];
+  window_rewrite_default_ =
+      window_rewrite_default.isString() ? window_rewrite_default.asString() : "?";
 }
 
 auto Workspaces::register_ipc() -> void {
@@ -757,8 +761,14 @@ std::string Workspaces::get_rewrite(std::string window_class) {
     return regex_cache_[window_class];
   }
 
+  bool matched_any;
+
   std::string window_class_rewrite =
-      waybar::util::rewriteString(window_class, window_rewrite_rules_);
+      waybar::util::rewriteStringOnce(window_class, window_rewrite_rules_, matched_any);
+
+  if (!matched_any) {
+    window_class_rewrite = window_rewrite_default_;
+  }
 
   regex_cache_.emplace(window_class, window_class_rewrite);
 

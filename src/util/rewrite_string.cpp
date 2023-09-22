@@ -30,4 +30,31 @@ std::string rewriteString(const std::string& value, const Json::Value& rules) {
 
   return res;
 }
+
+std::string rewriteStringOnce(const std::string& value, const Json::Value& rules,
+                              bool& matched_any) {
+  if (!rules.isObject()) {
+    return value;
+  }
+
+  matched_any = false;
+
+  std::string res = value;
+
+  for (auto it = rules.begin(); it != rules.end(); ++it) {
+    if (it.key().isString() && it->isString()) {
+      try {
+        const std::regex rule{it.key().asString(), std::regex_constants::icase};
+        if (std::regex_match(value, rule)) {
+          matched_any = true;
+          return std::regex_replace(res, rule, it->asString());
+        }
+      } catch (const std::regex_error& e) {
+        spdlog::error("Invalid rule {}: {}", it.key().asString(), e.what());
+      }
+    }
+  }
+
+  return value;
+}
 }  // namespace waybar::util

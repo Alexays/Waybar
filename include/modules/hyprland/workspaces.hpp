@@ -136,6 +136,7 @@ class Workspaces : public AModule, public EventHandler {
   Json::Value window_rewrite_rules_;
   std::map<std::string, std::string> regex_cache_;
   std::string format_window_separator_;
+  std::string window_rewrite_default_;
   bool with_icon_;
   uint64_t monitor_id_;
   std::string active_workspace_name_;
