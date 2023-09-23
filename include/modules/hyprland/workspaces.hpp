@@ -48,17 +48,14 @@ class Workspace {
   void set_name(std::string value) { name_ = value; };
   bool contains_window(WindowAddress addr) { return window_map_.contains(addr); }
   void insert_window(WindowAddress addr, std::string window_repr);
-  void remove_window(WindowAddress addr) { window_map_.erase(addr); }
+  std::string remove_window(WindowAddress addr);
   void initialize_window_map(const Json::Value& clients_data);
 
-  bool on_window_opened(WindowAddress& addr, std::string& workspace_name,
-                        const Json::Value& clients_data);
+  bool on_window_opened(WindowAddress& addr, std::string& workspace_name, std::string window_repr);
   bool on_window_opened(WindowAddress& addr, std::string& workspace_name, std::string& window_class,
                         std::string& window_title);
 
-  bool on_window_closed(WindowAddress& addr);
-  bool on_window_moved(WindowAddress& addr, std::string& workspace_name,
-                       const Json::Value& clients_data);
+  std::optional<std::string> on_window_closed(WindowAddress& addr);
 
   void update(const std::string& format, const std::string& icon);
 

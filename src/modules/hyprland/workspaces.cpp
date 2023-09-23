@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <charconv>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "util/rewrite_string.hpp"
@@ -257,16 +258,23 @@ void Workspaces::on_window_moved(std::string payload) {
   std::string workspace_name =
       payload.substr(next_comma_idx + 1, payload.length() - next_comma_idx);
 
-  int changes = 0;
+  std::string window_repr;
 
-  const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
-
+  // Take the window's representation from the old workspace...
   for (auto &workspace : workspaces_) {
-    if (workspace->on_window_moved(window_address, workspace_name, clients_json)) {
-      changes++;
-      if (changes == 2) {
-        break;
-      }
+    try {
+      window_repr = workspace->on_window_closed(window_address).value();
+      break;
+    } catch (const std::bad_optional_access &e) {
+      // window was not found in this workspace
+      continue;
+    }
+  }
+
+  // ...and add it to the new workspace
+  for (auto &workspace : workspaces_) {
+    if (workspace->on_window_opened(window_address, workspace_name, window_repr)) {
+      break;
     }
   }
 }
@@ -318,22 +326,18 @@ void Workspace::insert_window(WindowAddress addr, std::string window_class) {
   }
 };
 
+std::string Workspace::remove_window(WindowAddress addr) {
+  std::string window_repr = window_map_[addr];
+  window_map_.erase(addr);
+
+  return window_repr;
+}
+
 bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_name,
-                                 const Json::Value &clients_data) {
+                                 std::string window_repr) {
   if (workspace_name == name()) {
-    for (auto client : clients_data) {
-      // substr(2, ...) is necessary because Hyprland's JSON follows this format:
-      // 0x{ADDR}
-      // While Hyprland's IPC follows this format:
-      // {ADDR}
-      auto client_address = client["address"].asString().substr(2, addr.length());
-      if (client_address == addr) {
-        std::string window_class = client["class"].asString();
-        insert_window(addr, window_class);
-        return true;
-      }
-    }
-    return false;
+    window_map_.emplace(addr, window_repr);
+    return true;
   } else {
     return false;
   }
@@ -349,18 +353,12 @@ bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_nam
   }
 }
 
-bool Workspace::on_window_closed(WindowAddress &addr) {
+std::optional<std::string> Workspace::on_window_closed(WindowAddress &addr) {
   if (window_map_.contains(addr)) {
-    remove_window(addr);
-    return true;
+    return remove_window(addr);
   } else {
-    return false;
+    return {};
   }
-}
-
-bool Workspace::on_window_moved(WindowAddress &addr, std::string &workspace_name,
-                                const Json::Value &clients_data) {
-  return on_window_opened(addr, workspace_name, clients_data) || on_window_closed(addr);
 }
 
 void Workspaces::create_workspace(Json::Value &workspace_data, const Json::Value &clients_data) {
