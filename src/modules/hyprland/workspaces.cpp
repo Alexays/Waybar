@@ -549,7 +549,8 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
   if (default_icon_it != icons_map.end()) {
     return default_icon_it->second;
   }
-  return icons_map[""];
+
+  return name_;
 }
 
 auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
