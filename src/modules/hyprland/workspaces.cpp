@@ -134,6 +134,14 @@ auto Workspaces::update() -> void {
   AModule::update();
 }
 
+bool isDoubleSpecial(std::string &workspace_name) {
+  // Hyprland's IPC sometimes reports the creation of workspaces strangely named
+  // `special:special:<some_name>`. This function checks for that and is used
+  // to avoid creating (and then removing) such workspaces.
+  // See hyprwm/Hyprland#3424 for more info.
+  return workspace_name.find("special:special:") != std::string::npos;
+}
+
 void Workspaces::onEvent(const std::string &ev) {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string eventName(begin(ev), begin(ev) + ev.find_first_of('>'));
@@ -143,15 +151,16 @@ void Workspaces::onEvent(const std::string &ev) {
     active_workspace_name_ = payload;
 
   } else if (eventName == "destroyworkspace") {
-    workspaces_to_remove_.push_back(payload);
-
+    if (!isDoubleSpecial(payload)) {
+      workspaces_to_remove_.push_back(payload);
+    }
   } else if (eventName == "createworkspace") {
     const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
     for (Json::Value workspace_json : workspaces_json) {
       std::string name = workspace_json["name"].asString();
       if (name == payload &&
           (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-          (show_special() || !name.starts_with("special"))) {
+          (show_special() || !name.starts_with("special")) && !isDoubleSpecial(payload)) {
         workspaces_to_create_.push_back(workspace_json);
         break;
       }
