@@ -238,8 +238,10 @@ void Workspaces::create_workspace(Json::Value &value) {
 }
 
 void Workspaces::remove_workspace(std::string name) {
-  auto workspace = std::find_if(workspaces_.begin(), workspaces_.end(),
-                                [&](std::unique_ptr<Workspace> &x) { return x->name() == name; });
+  auto workspace =
+      std::find_if(workspaces_.begin(), workspaces_.end(), [&](std::unique_ptr<Workspace> &x) {
+        return (name.starts_with("special:") && name.substr(8) == x->name()) || name == x->name();
+      });
 
   if (workspace == workspaces_.end()) {
     // happens when a workspace on another monitor is destroyed
