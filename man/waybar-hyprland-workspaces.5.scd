@@ -21,6 +21,21 @@ Addressed by *hyprland/workspaces*
 	typeof: array ++
 	Based on the workspace id and state, the corresponding icon gets selected. See *icons*.
 
+*window-rewrite*: ++
+	typeof: object ++
+	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
+	Keys are the rules, while the values are the methods of representation.
+
+*window-rewrite-default*:
+	typeof: string ++
+	default: "?" ++
+	The default method of representation for a workspace's window. This will be used for windows whose classes do not match any of the rules in *window-rewrite*.
+
+*format-window-separator*: ++
+	typeof: string ++
+	default: " " ++
+	The separator to be used between windows in a workspace.
+
 *show-special*: ++
 	typeof: bool ++
 	default: false ++
@@ -99,6 +114,19 @@ Additional to workspace name matching, the following *format-icons* can be set.
 	"persistent-workspaces": {
 		"*": [ 2,3,4,5 ], // 2-5 on every monitor
 		"HDMI-A-1": [ 1 ] // but only workspace 1 on HDMI-A-1
+	}
+}
+```
+
+```
+"hyprland/workspaces": {
+	"format": "{name}\n{windows}",
+	"format-window-separator": "\n",
+	"window-rewrite-default": "",
+	"window-rewrite": {
+		"firefox": "",
+		"foot": "",
+		"code": "󰨞",
 	}
 }
 ```

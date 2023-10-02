@@ -17,7 +17,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
     delayWorker();
   } else if (config_["exec"].isString()) {
     continuousWorker();
-  } 
+  }
 }
 
 waybar::modules::Custom::~Custom() {
