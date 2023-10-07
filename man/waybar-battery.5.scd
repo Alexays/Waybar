@@ -100,6 +100,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: true ++
 	Option to disable tooltip on hover.
 
+*bat-compatibility*: ++
+	typeof: bool ++
+	default: false ++
+	Option to enable battery compatibility if not detected.
+
 # FORMAT REPLACEMENTS
 
 *{capacity}*: Capacity in percentage

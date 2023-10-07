@@ -11,7 +11,9 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       fp_(nullptr),
       pid_(-1) {
   dp.emit();
-  if (interval_.count() > 0) {
+  if (!config_["signal"].empty() && config_["interval"].empty()) {
+    waitingWorker();
+  } else if (interval_.count() > 0) {
     delayWorker();
   } else if (config_["exec"].isString()) {
     continuousWorker();
@@ -89,6 +91,26 @@ void waybar::modules::Custom::continuousWorker() {
       dp.emit();
     }
     free(buff);
+  };
+}
+
+void waybar::modules::Custom::waitingWorker() {
+  thread_ = [this] {
+    bool can_update = true;
+    if (config_["exec-if"].isString()) {
+      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      if (output_.exit_code != 0) {
+        can_update = false;
+        dp.emit();
+      }
+    }
+    if (can_update) {
+      if (config_["exec"].isString()) {
+        output_ = util::command::exec(config_["exec"].asString());
+      }
+      dp.emit();
+    }
+    thread_.sleep();
   };
 }
 

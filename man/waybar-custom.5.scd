@@ -34,7 +34,8 @@ Addressed by *custom/<name>*
 	typeof: integer ++
 	The interval (in seconds) in which the information gets polled. ++
 	Use *once* if you want to execute the module only on startup. ++
-	You can update it manually with a signal. If no *interval* is defined, it is assumed that the out script loops it self.
+	You can update it manually with a signal. If no *interval* or *signal* is defined, it is assumed that the out script loops it self. ++
+	If a *signal* is defined then the script will run once on startup and will will only update with a signal.
 
 *restart-interval*: ++
 	typeof: integer ++
@@ -45,7 +46,8 @@ Addressed by *custom/<name>*
 *signal*: ++
 	typeof: integer ++
 	The signal number used to update the module. ++
-	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*.
+	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
+	If no interval is defined then a signal will be the only way to update the module.
 
 *format*: ++
 	typeof: string ++
