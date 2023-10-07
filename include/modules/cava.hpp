@@ -36,6 +36,7 @@ class Cava final : public ALabel {
   std::chrono::seconds fetch_input_delay_{4};
   std::chrono::seconds suspend_silence_delay_{0};
   bool silence_{false};
+  bool hide_on_silence_{false};
   int sleep_counter_{0};
   // Cava method
   void pause_resume();
