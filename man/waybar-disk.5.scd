@@ -85,19 +85,29 @@ Addressed by *disk*
 	default: "{used} out of {total} used ({percentage_used}%)" ++
 	The format of the information displayed in the tooltip.
 
+*unit*: ++
+	typeof: string ++
+	Use with specific_free, specific_used, and speciifc_total to force calculation to always be in a certain unit. Accepts kB, kiB, MB, Mib, GB, GiB, TB, TiB.
+
 # FORMAT REPLACEMENTS
 
 *{percentage_used}*: Percentage of disk in use.
 
 *{percentage_free}*: Percentage of free disk space
 
-*{total}*: Total amount of space on the disk, partition or mountpoint.
+*{total}*: Total amount of space on the disk, partition or mountpoint. Automatically selects unit based on size remaining.
 
-*{used}*: Amount of used disk space.
+*{used}*: Amount of used disk space. Automatically selects unit based on size remaining.
 
-*{free}*: Amount of available disk space for normal users.
+*{free}*: Amount of available disk space for normal users. Automatically selects unit based on size remaining.
 
 *{path}*: The path specified in the configuration.
+
+*{specific_total}*: Total amount of space on the disk, partition or mountpoint in a specific unit. Deaults to bytes.
+
+*{specific_used}*: Amount of used disk space in a specific unit. Deaults to bytes.
+
+*{specific_free}*: Amount of available disk space for normal users in a specific unit. Deaults to bytes.
 
 # EXAMPLES
 
@@ -107,6 +117,14 @@ Addressed by *disk*
 	"format": "{percentage_free}% free on {path}",
 }
 ```
+
+```
+"disk": {
+	"interval": 30,
+	"format": "{specific_free:0.2f} GB out of {specific_total:0.2f} GB available. Alternatively {free} out of {total} available",
+	"unit": "GB"
+	// 1434.25 GB out of 2000.00 GB available. Alternatively 1.4TiB out of 1.9TiB available.
+}
 
 # STYLE
 
