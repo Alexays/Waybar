@@ -16,6 +16,14 @@ struct Rule {
 
 int default_priority_function(std::string& key);
 
+/* A collection of regexes and strings, with a default string to return if no regexes.
+ * When a regex is matched, the corresponding string is returned.
+ * All regexes that are matched are cached, so that the regexes are only
+ * evaluated once against a given string.
+ * Regexes may be given a higher priority than others, so that they are matched
+ * first. The priority function is given the regex string, and should return a
+ * higher number for higher priority regexes.
+ */
 class RegexCollection {
  private:
   std::vector<Rule> rules;
