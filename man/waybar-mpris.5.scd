@@ -126,12 +126,12 @@ The *mpris* module displays currently playing media via libplayerctl.
 	default: play-pause ++
 	Overwrite default action toggles.
 
-*on-middle-click*: ++
+*on-click-middle*: ++
 	typeof: string ++
 	default: previous track ++
 	Overwrite default action toggles.
 
-*on-right-click*: ++
+*on-click-right*: ++
 	typeof: string ++
 	default: next track ++
 	Overwrite default action toggles.
