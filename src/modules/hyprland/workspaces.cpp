@@ -816,7 +816,12 @@ void Workspaces::set_urgent_workspace(std::string windowaddress) {
 }
 
 std::string Workspaces::get_rewrite(std::string window_class, std::string window_title) {
-  std::string window_repr_key = fmt::format("class<{}> title<{}>", window_class, window_title);
+  std::string window_repr_key;
+  if (any_window_rewrite_rule_uses_title_) {
+    window_repr_key = fmt::format("class<{}> title<{}>", window_class, window_title);
+  } else {
+    window_repr_key = fmt::format("class<{}>", window_class);
+  }
   return window_rewrite_rules_.get(window_repr_key);
 }
 
