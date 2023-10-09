@@ -12,15 +12,17 @@
 
 namespace waybar::modules::hyprland {
 
-int window_rewrite_priority_function(std::string &window_rule) {
+int Workspaces::window_rewrite_priority_function(std::string &window_rule) {
   // Rules that match against title are prioritized
   // Rules that don't specify if they're matching against either title or class are deprioritized
   bool has_title = window_rule.find("title") != std::string::npos;
   bool has_class = window_rule.find("class") != std::string::npos;
 
   if (has_title && has_class) {
+    any_window_rewrite_rule_uses_title_ = true;
     return 3;
   } else if (has_title) {
+    any_window_rewrite_rule_uses_title_ = true;
     return 2;
   } else if (has_class) {
     return 1;
@@ -98,8 +100,10 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
   std::string window_rewrite_default =
       window_rewrite_default_config.isString() ? window_rewrite_default_config.asString() : "?";
 
-  window_rewrite_rules_ = util::RegexCollection(window_rewrite, window_rewrite_default,
-                                                window_rewrite_priority_function);
+  window_rewrite_rules_ = util::RegexCollection(
+      window_rewrite, window_rewrite_default, [this](std::string &window_rule) {
+        return this->window_rewrite_priority_function(window_rule);
+      });
 }
 
 auto Workspaces::register_ipc() -> void {
@@ -119,6 +123,13 @@ auto Workspaces::register_ipc() -> void {
   gIPC->registerForIPC("closewindow", this);
   gIPC->registerForIPC("movewindow", this);
   gIPC->registerForIPC("urgent", this);
+
+  if (any_window_rewrite_rule_uses_title_) {
+    spdlog::info(
+        "Registering for Hyprland's 'windowtitle' events because a user-defined window "
+        "rewrite rule uses the 'title' field.");
+    gIPC->registerForIPC("windowtitle", this);
+  }
 }
 
 auto Workspaces::update() -> void {
@@ -240,6 +251,25 @@ void Workspaces::onEvent(const std::string &ev) {
         break;
       }
     }
+  } else if (eventName == "windowtitle") {
+    auto window_workspace =
+        std::find_if(workspaces_.begin(), workspaces_.end(),
+                     [payload](auto &workspace) { return workspace->contains_window(payload); });
+
+    if (window_workspace != workspaces_.end()) {
+      Json::Value clients_data = gIPC->getSocket1JsonReply("clients");
+      std::string json_window_address = fmt::format("0x{}", payload);
+
+      auto client = std::find_if(clients_data.begin(), clients_data.end(),
+                                 [json_window_address](auto &client) {
+                                   return client["address"].asString() == json_window_address;
+                                 });
+
+      if (!client->empty()) {
+        (*window_workspace)
+            ->insert_window(payload, (*client)["class"].asString(), (*client)["title"].asString());
+      }
+    }
   }
 
   dp.emit();
@@ -350,7 +380,7 @@ void Workspace::insert_window(WindowAddress addr, std::string window_class,
                               std::string window_title) {
   auto window_repr = workspace_manager_.get_rewrite(window_class, window_title);
   if (!window_repr.empty()) {
-    window_map_.emplace(addr, window_repr);
+    window_map_[addr] = window_repr;
   }
 };
 
@@ -364,7 +394,7 @@ std::string Workspace::remove_window(WindowAddress addr) {
 bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_name,
                                  std::string window_repr) {
   if (workspace_name == name()) {
-    window_map_.emplace(addr, window_repr);
+    window_map_[addr] = window_repr;
     return true;
   } else {
     return false;

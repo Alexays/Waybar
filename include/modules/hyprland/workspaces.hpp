@@ -48,7 +48,7 @@ class Workspace {
   void set_visible(bool value = true) { is_visible_ = value; };
   void set_windows(uint value) { windows_ = value; };
   void set_name(std::string value) { name_ = value; };
-  bool contains_window(WindowAddress addr) { return window_map_.contains(addr); }
+  bool contains_window(WindowAddress addr) const { return window_map_.contains(addr); }
   void insert_window(WindowAddress addr, std::string window_class, std::string window_title);
   std::string remove_window(WindowAddress addr);
   void initialize_window_map(const Json::Value& clients_data);
@@ -112,6 +112,8 @@ class Workspaces : public AModule, public EventHandler {
   void on_window_opened(std::string payload);
   void on_window_closed(std::string payload);
   void on_window_moved(std::string payload);
+
+  int window_rewrite_priority_function(std::string& window_rule);
 
   bool all_outputs_ = false;
   bool show_special_ = false;
