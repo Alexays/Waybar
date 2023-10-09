@@ -25,6 +25,7 @@ Addressed by *hyprland/workspaces*
 	typeof: object ++
 	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
 	Keys are the rules, while the values are the methods of representation.
+	Rules may specify `class<...>`, `title<...>` or both in order to fine-tune the matching.
 
 *window-rewrite-default*:
 	typeof: string ++
@@ -124,8 +125,10 @@ Additional to workspace name matching, the following *format-icons* can be set.
 	"format-window-separator": "\n",
 	"window-rewrite-default": "",
 	"window-rewrite": {
-		"firefox": "",
-		"foot": "",
+		"title<.*youtube.*>": "", // Windows whose titles contain "youtube"
+		"class<firefox>": "", // Windows whose classes are "firefox"
+		"class<firefox> title<.*github.*>": "", // Windows whose class is "firefox" and title contains "github". Note that "class" always comes first.
+		"foot": "", // Windows that contain "foot" in either class or title. For optimization reasons, it will only match against a title if at least one other window explicitly matches against a title.
 		"code": "󰨞",
 	}
 }
