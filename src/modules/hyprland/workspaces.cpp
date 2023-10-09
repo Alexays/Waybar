@@ -1,18 +1,33 @@
 #include "modules/hyprland/workspaces.hpp"
 
-#include <fmt/ostream.h>
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <charconv>
 #include <memory>
-#include <optional>
 #include <string>
 
-#include "util/rewrite_string.hpp"
+#include "util/regex_collection.hpp"
 
 namespace waybar::modules::hyprland {
+
+int window_rewrite_priority_function(std::string &window_rule) {
+  // Rules that match against title are prioritized
+  // Rules that don't specify if they're matching against either title or class are deprioritized
+  bool has_title = window_rule.find("title") != std::string::npos;
+  bool has_class = window_rule.find("class") != std::string::npos;
+
+  if (has_title && has_class) {
+    return 3;
+  } else if (has_title) {
+    return 2;
+  } else if (has_class) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
     : AModule(config, "workspaces", id, false, false),
@@ -77,11 +92,14 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
   format_window_separator_ =
       format_window_separator.isString() ? format_window_separator.asString() : " ";
 
-  window_rewrite_rules_ = config["window-rewrite"];
+  Json::Value window_rewrite = config["window-rewrite"];
 
-  Json::Value window_rewrite_default = config["window-rewrite-default"];
-  window_rewrite_default_ =
-      window_rewrite_default.isString() ? window_rewrite_default.asString() : "?";
+  Json::Value window_rewrite_default_config = config["window-rewrite-default"];
+  std::string window_rewrite_default =
+      window_rewrite_default_config.isString() ? window_rewrite_default_config.asString() : "?";
+
+  window_rewrite_rules_ = util::RegexCollection(window_rewrite, window_rewrite_default,
+                                                window_rewrite_priority_function);
 }
 
 auto Workspaces::register_ipc() -> void {
@@ -323,13 +341,14 @@ void Workspace::initialize_window_map(const Json::Value &clients_data) {
       // {ADDR}
       WindowAddress client_address = client["address"].asString();
       client_address = client_address.substr(2, client_address.length() - 2);
-      insert_window(client_address, client["class"].asString());
+      insert_window(client_address, client["class"].asString(), client["title"].asString());
     }
   }
 }
 
-void Workspace::insert_window(WindowAddress addr, std::string window_class) {
-  auto window_repr = workspace_manager_.get_rewrite(window_class);
+void Workspace::insert_window(WindowAddress addr, std::string window_class,
+                              std::string window_title) {
+  auto window_repr = workspace_manager_.get_rewrite(window_class, window_title);
   if (!window_repr.empty()) {
     window_map_.emplace(addr, window_repr);
   }
@@ -355,7 +374,7 @@ bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_nam
 bool Workspace::on_window_opened(WindowAddress &addr, std::string &workspace_name,
                                  std::string &window_class, std::string &window_title) {
   if (workspace_name == name()) {
-    insert_window(addr, window_class);
+    insert_window(addr, window_class, window_title);
     return true;
   } else {
     return false;
@@ -766,23 +785,9 @@ void Workspaces::set_urgent_workspace(std::string windowaddress) {
   }
 }
 
-std::string Workspaces::get_rewrite(std::string window_class) {
-  if (regex_cache_.contains(window_class)) {
-    return regex_cache_[window_class];
-  }
-
-  bool matched_any;
-
-  std::string window_class_rewrite =
-      waybar::util::rewriteStringOnce(window_class, window_rewrite_rules_, matched_any);
-
-  if (!matched_any) {
-    window_class_rewrite = window_rewrite_default_;
-  }
-
-  regex_cache_.emplace(window_class, window_class_rewrite);
-
-  return window_class_rewrite;
+std::string Workspaces::get_rewrite(std::string window_class, std::string window_title) {
+  std::string window_repr_key = fmt::format("class<{}> title<{}>", window_class, window_title);
+  return window_rewrite_rules_.get(window_repr_key);
 }
 
 }  // namespace waybar::modules::hyprland
