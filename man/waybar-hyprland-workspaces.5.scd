@@ -51,6 +51,11 @@ Addressed by *hyprland/workspaces*
 	default: false ++
 	If set to true, only the active workspace will be shown.
 
+*ignore-workspaces*: ++
+	typeof: array ++
+	default: [] ++
+	Regexes to match against workspaces names. If there's a match, the workspace will not be shown. This takes precedence over *show-special*, *all-outputs* and *active-only*.
+
 *sort-by*: ++
 	typeof: string ++
 	default: "default" ++
@@ -128,6 +133,14 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"foot": "",
 		"code": "󰨞",
 	}
+}
+```
+
+"hyprland/workspaces": {
+	// Formatting omitted for brevity
+	"ignore-workspaces": [
+		"(special:)?chrome-sharing-indicator"
+	]
 }
 ```
 
