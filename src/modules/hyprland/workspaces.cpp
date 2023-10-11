@@ -73,6 +73,23 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
     }
   }
 
+  Json::Value ignore_workspaces = config["ignore-workspaces"];
+  if (ignore_workspaces.isArray()) {
+    for (Json::Value &workspace_regex : ignore_workspaces) {
+      if (workspace_regex.isString()) {
+        std::string rule_string = workspace_regex.asString();
+        try {
+          const std::regex rule{rule_string, std::regex_constants::icase};
+          ignore_workspaces_.emplace_back(rule);
+        } catch (const std::regex_error &e) {
+          spdlog::error("Invalid rule {}: {}", rule_string, e.what());
+        }
+      } else {
+        spdlog::error("Not a string: '{}'", workspace_regex);
+      }
+    }
+  }
+
   Json::Value format_window_separator = config["format-window-separator"];
   format_window_separator_ =
       format_window_separator.isString() ? format_window_separator.asString() : " ";
@@ -156,6 +173,17 @@ bool isDoubleSpecial(std::string &workspace_name) {
   return workspace_name.find("special:special:") != std::string::npos;
 }
 
+bool Workspaces::is_workspace_ignored(std::string &name) {
+  for (auto &rule : ignore_workspaces_) {
+    if (std::regex_match(name, rule)) {
+      return true;
+      break;
+    }
+  }
+
+  return false;
+}
+
 void Workspaces::onEvent(const std::string &ev) {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string eventName(begin(ev), begin(ev) + ev.find_first_of('>'));
@@ -170,16 +198,18 @@ void Workspaces::onEvent(const std::string &ev) {
     }
   } else if (eventName == "createworkspace") {
     const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
-    for (Json::Value workspace_json : workspaces_json) {
-      std::string name = workspace_json["name"].asString();
-      if (name == payload &&
-          (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-          (show_special() || !name.starts_with("special")) && !isDoubleSpecial(payload)) {
-        workspaces_to_create_.push_back(workspace_json);
-        break;
+
+    if (!is_workspace_ignored(payload)) {
+      for (Json::Value workspace_json : workspaces_json) {
+        std::string name = workspace_json["name"].asString();
+        if (name == payload &&
+            (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
+            (show_special() || !name.starts_with("special")) && !isDoubleSpecial(payload)) {
+          workspaces_to_create_.push_back(workspace_json);
+          break;
+        }
       }
     }
-
   } else if (eventName == "focusedmon") {
     active_workspace_name_ = payload.substr(payload.find(',') + 1);
 
@@ -511,8 +541,10 @@ void Workspaces::init() {
   const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
 
   for (Json::Value workspace_json : workspaces_json) {
+    std::string workspace_name = workspace_json["name"].asString();
     if ((all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-        (!workspace_json["name"].asString().starts_with("special") || show_special())) {
+        (!workspace_name.starts_with("special") || show_special()) &&
+        !is_workspace_ignored(workspace_name)) {
       create_workspace(workspace_json, clients_json);
     }
   }
