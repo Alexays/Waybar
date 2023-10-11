@@ -124,7 +124,7 @@ auto Workspaces::register_ipc() -> void {
   gIPC->registerForIPC("movewindow", this);
   gIPC->registerForIPC("urgent", this);
 
-  if (any_window_rewrite_rule_uses_title_) {
+  if (window_rewrite_config_uses_title()) {
     spdlog::info(
         "Registering for Hyprland's 'windowtitle' events because a user-defined window "
         "rewrite rule uses the 'title' field.");
@@ -378,7 +378,13 @@ void Workspace::initialize_window_map(const Json::Value &clients_data) {
 
 void Workspace::insert_window(WindowAddress addr, std::string window_class,
                               std::string window_title) {
+  if (window_class.empty() &&
+      (!workspace_manager_.window_rewrite_config_uses_title() || window_title.empty())) {
+    return;
+  }
+
   auto window_repr = workspace_manager_.get_rewrite(window_class, window_title);
+
   if (!window_repr.empty()) {
     window_map_[addr] = window_repr;
   }
@@ -817,7 +823,7 @@ void Workspaces::set_urgent_workspace(std::string windowaddress) {
 
 std::string Workspaces::get_rewrite(std::string window_class, std::string window_title) {
   std::string window_repr_key;
-  if (any_window_rewrite_rule_uses_title_) {
+  if (window_rewrite_config_uses_title()) {
     window_repr_key = fmt::format("class<{}> title<{}>", window_class, window_title);
   } else {
     window_repr_key = fmt::format("class<{}>", window_class);

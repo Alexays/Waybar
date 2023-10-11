@@ -97,6 +97,8 @@ class Workspaces : public AModule, public EventHandler {
   std::string get_rewrite(std::string window_class, std::string window_title);
   std::string& get_window_separator() { return format_window_separator_; }
 
+  bool window_rewrite_config_uses_title() const { return any_window_rewrite_rule_uses_title_; }
+
  private:
   void onEvent(const std::string&) override;
   void update_window_count();
