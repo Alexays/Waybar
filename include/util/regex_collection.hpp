@@ -12,6 +12,12 @@ struct Rule {
   std::regex rule;
   std::string repr;
   int priority;
+
+  // Fix for Clang < 16
+  // See https://en.cppreference.com/w/cpp/compiler_support/20 "Parenthesized initialization of
+  // aggregates"
+  Rule(std::regex rule, std::string repr, int priority)
+      : rule(rule), repr(repr), priority(priority) {}
 };
 
 int default_priority_function(std::string& key);
