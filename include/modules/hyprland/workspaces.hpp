@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -94,6 +95,7 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string get_rewrite(std::string window_class);
   std::string& get_window_separator() { return format_window_separator_; }
+  bool is_workspace_ignored(std::string& workspace_name);
 
  private:
   void onEvent(const std::string&) override;
@@ -140,6 +142,9 @@ class Workspaces : public AModule, public EventHandler {
   std::vector<std::unique_ptr<Workspace>> workspaces_;
   std::vector<Json::Value> workspaces_to_create_;
   std::vector<std::string> workspaces_to_remove_;
+
+  std::vector<std::regex> ignore_workspaces_;
+
   std::mutex mutex_;
   const Bar& bar_;
   Gtk::Box box_;
