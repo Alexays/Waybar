@@ -123,11 +123,11 @@ This should look like this:
 
 The *class* parameter also accepts an array of strings.
 
-If nothing or an invalid option is specified, Waybar expects i3blocks style output. Values are *newline* separated.
+If nothing or an invalid option is specified, Waybar expects *Tab* delemited output.
 This should look like this:
 
 ```
-$text\\n$tooltip\\n$class*
+$text\\t$tooltip\\t$class\\n*
 ```
 
 *class* is a CSS class, to apply different styles in *style.css*
