@@ -75,13 +75,11 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     revealer.add(revealer_box);
     box.pack_start(revealer);
 
-    revealer.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-    revealer.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
-    revealer.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
+    addHoverHandlerTo(revealer);
   }
 }
 
-bool Group::hangleMouseHover(GdkEventCrossing* const& e) {
+bool Group::handleMouseHover(GdkEventCrossing* const& e) {
   switch (e->type) {
     case GDK_ENTER_NOTIFY:
       revealer.set_reveal_child(true);
@@ -96,6 +94,12 @@ bool Group::hangleMouseHover(GdkEventCrossing* const& e) {
   return true;
 }
 
+void Group::addHoverHandlerTo(Gtk::Widget& widget) {
+  widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
+  widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
+  widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
+}
+
 auto Group::update() -> void {
   // noop
 }
@@ -108,9 +112,7 @@ void Group::addWidget(Gtk::Widget& widget) {
 
     if (is_first_widget) {
       // Necessary because of GTK's hitbox detection
-      widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-      widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
-      widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
+      addHoverHandlerTo(widget);
     } else {
       widget.get_style_context()->add_class(add_class_to_drawer_children);
     }
