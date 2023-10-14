@@ -35,6 +35,8 @@ auto Group::update() -> void {
   // noop
 }
 
-Group::operator Gtk::Widget&() { return box; }
+Gtk::Box& Group::getBox() { return box; }
+
+Group::operator Gtk::Widget&() { return getBox(); }
 
 }  // namespace waybar

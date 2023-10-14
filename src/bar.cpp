@@ -740,7 +740,7 @@ void waybar::Bar::handleSignal(int signal) {
 }
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
-                             Gtk::Box* group = nullptr) {
+                             waybar::Group* group = nullptr) {
   auto module_list = group ? config[pos]["modules"] : config[pos];
   if (module_list.isArray()) {
     for (const auto& name : module_list) {
@@ -753,10 +753,17 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto id_name = ref.substr(6, hash_pos - 6);
           auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
 
-          auto parent = group ? group : &this->box_;
-          auto vertical = parent->get_orientation() == Gtk::ORIENTATION_VERTICAL;
+          // auto parent = group ? group : &this->box_;
+          // auto vertical = parent->get_orientation() == Gtk::ORIENTATION_VERTICAL;
+
+          auto vertical = (
+            group ? 
+            group->getBox().get_orientation() :
+            box_.get_orientation()
+          ) == Gtk::ORIENTATION_VERTICAL;
+
           auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
-          getModules(factory, ref, &group_module->box);
+          getModules(factory, ref, group_module);
           module = group_module;
         } else {
           module = factory.makeModule(ref);
@@ -765,7 +772,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
         std::shared_ptr<AModule> module_sp(module);
         modules_all_.emplace_back(module_sp);
         if (group) {
-          group->pack_start(*module, false, false);
+          group->getBox().pack_start(*module, false, false);
         } else {
           if (pos == "modules-left") {
             modules_left_.emplace_back(module_sp);

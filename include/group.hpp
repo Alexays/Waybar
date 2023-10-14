@@ -5,8 +5,6 @@
 #include <json/json.h>
 
 #include "AModule.hpp"
-#include "bar.hpp"
-#include "factory.hpp"
 
 namespace waybar {
 
@@ -16,6 +14,10 @@ class Group : public AModule {
   ~Group() = default;
   auto update() -> void override;
   operator Gtk::Widget&() override;
+
+  virtual Gtk::Box& getBox();
+
+ protected:
   Gtk::Box box;
 };
 
