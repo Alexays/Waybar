@@ -190,6 +190,7 @@ if is_linux
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
+        'src/modules/cabi.cpp',
         'src/modules/cpu.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_frequency/linux.cpp',
@@ -202,6 +203,7 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
     src_files += files(
+        'src/modules/cabi.cpp',
         'src/modules/cpu.cpp',
         'src/modules/cpu_frequency/bsd.cpp',
         'src/modules/cpu_frequency/common.cpp',
