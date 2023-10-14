@@ -756,11 +756,8 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           // auto parent = group ? group : &this->box_;
           // auto vertical = parent->get_orientation() == Gtk::ORIENTATION_VERTICAL;
 
-          auto vertical = (
-            group ? 
-            group->getBox().get_orientation() :
-            box_.get_orientation()
-          ) == Gtk::ORIENTATION_VERTICAL;
+          auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
+                          Gtk::ORIENTATION_VERTICAL;
 
           auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
           getModules(factory, ref, group_module);
@@ -772,7 +769,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
         std::shared_ptr<AModule> module_sp(module);
         modules_all_.emplace_back(module_sp);
         if (group) {
-          group->getBox().pack_start(*module, false, false);
+          group->addWidget(*module);
         } else {
           if (pos == "modules-left") {
             modules_left_.emplace_back(module_sp);
