@@ -753,9 +753,6 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto id_name = ref.substr(6, hash_pos - 6);
           auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
 
-          // auto parent = group ? group : &this->box_;
-          // auto vertical = parent->get_orientation() == Gtk::ORIENTATION_VERTICAL;
-
           auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
                           Gtk::ORIENTATION_VERTICAL;
 

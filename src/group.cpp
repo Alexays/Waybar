@@ -1,7 +1,6 @@
 #include "group.hpp"
 
 #include <fmt/format.h>
-#include <spdlog/spdlog.h>
 
 #include <util/command.hpp>
 
@@ -9,6 +8,22 @@
 #include "gtkmm/widget.h"
 
 namespace waybar {
+
+const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical, bool left_to_right) {
+  if (is_vertical) {
+    if (left_to_right) {
+      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_DOWN;
+    } else {
+      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
+    }
+  } else {
+    if (left_to_right) {
+      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT;
+    } else {
+      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
+    }
+  }
+}
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
              bool vertical)
@@ -35,10 +50,24 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     throw std::runtime_error("Invalid orientation value: " + orientation);
   }
 
-  if (!config_["drawer"].empty() && config_["drawer"].asBool()) {
+  if (config_["drawer"].isObject()) {
     is_drawer = true;
-    revealer.set_transition_type(Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP);
-    revealer.set_transition_duration(500);
+
+    const auto& drawer_config = config_["drawer"];
+    const int transition_duration =
+        (drawer_config["transition-duration"].isInt() ? drawer_config["transition-duration"].asInt()
+                                                      : 500);
+    add_class_to_drawer_children =
+        (drawer_config["children-class"].isString() ? drawer_config["children-class"].asString()
+                                                    : "drawer-child");
+    const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
+                                    ? drawer_config["transition-left-to-right"].asBool()
+                                    : true);
+
+    auto transition_type = getPreferredTransitionType(vertical, left_to_right);
+
+    revealer.set_transition_type(transition_type);
+    revealer.set_transition_duration(transition_duration);
     revealer.set_reveal_child(false);
 
     revealer.get_style_context()->add_class("drawer");
@@ -53,19 +82,14 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 }
 
 bool Group::hangleMouseHover(GdkEventCrossing* const& e) {
-  spdlog::info("Mouse hover event");
-
   switch (e->type) {
     case GDK_ENTER_NOTIFY:
-      spdlog::info("Mouse enter event");
       revealer.set_reveal_child(true);
       break;
     case GDK_LEAVE_NOTIFY:
-      spdlog::info("Mouse leave event");
       revealer.set_reveal_child(false);
       break;
     default:
-      spdlog::warn("Unhandled mouse hover event type: {}", (int)e->type);
       break;
   }
 
@@ -79,14 +103,21 @@ auto Group::update() -> void {
 Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
 
 void Group::addWidget(Gtk::Widget& widget) {
-  widget.set_has_tooltip(false);
-  spdlog::info("Adding widget to group {}. Is first? {}", name_, is_first_widget);
-  getBox().pack_start(widget, false, false);
-  if (is_first_widget) {
-    widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-    widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
-    widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
+  if (is_drawer) {
+    getBox().pack_start(widget, false, false);
+
+    if (is_first_widget) {
+      // Necessary because of GTK's hitbox detection
+      widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
+      widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
+      widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::hangleMouseHover));
+    } else {
+      widget.get_style_context()->add_class(add_class_to_drawer_children);
+    }
+  } else {
+    getBox().pack_start(widget, false, false);
   }
+
   is_first_widget = false;
 }
 

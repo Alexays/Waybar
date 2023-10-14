@@ -27,6 +27,7 @@ class Group : public AModule {
   Gtk::Revealer revealer;
   bool is_first_widget = true;
   bool is_drawer = false;
+  std::string add_class_to_drawer_children;
 };
 
 }  // namespace waybar
