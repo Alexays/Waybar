@@ -240,7 +240,7 @@ Valid options for the "rotate" property are: 0, 90, 180 and 270.
 
 ## Grouping modules
 
-Module groups allow stacking modules in the direction orthogonal to the bar direction. When the bar is positioned on the top or bottom of the screen, modules in a group are stacked vertically. Likewise, when positioned on the left or right, modules in a group are stacked horizontally.
+Module groups allow stacking modules in any direction. By default, when the bar is positioned on the top or bottom of the screen, modules in a group are stacked vertically. Likewise, when positioned on the left or right, modules in a group are stacked horizontally. This can be changed with the "orientation" property.
 
 A module group is defined by specifying a module named "group/some-group-name". The group must also be configured with a list of contained modules. Example:
 
@@ -262,6 +262,43 @@ A module group is defined by specifying a module named "group/some-group-name". 
 ```
 
 Valid options for the (optional) "orientation" property are: "horizontal", "vertical", "inherit", and "orthogonal" (default).
+
+## Group Drawers
+
+A group may hide all but one element, showing them only on mouse hover. In order to configure this, you can use the `drawer` property, whose value is an object with the following properties:
+
+*transition-duration*: ++
+	typeof: integer ++
+	default: 500 ++
+	Defines the duration of the transition animation in milliseconds.
+
+*children-class*: ++
+	typeof: string ++
+	default: "hidden" ++
+	Defines the CSS class to be applied to the hidden elements.
+
+*transition-left-to-right*: ++
+	typeof: bool ++
+	default: true ++
+	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
+	When the bar is vertical, it reads as top-to-bottom.
+
+```
+"group/power": {
+    "orientation": "inherit",
+    "drawer": {
+        "transition-duration": 500,
+        "children-class": "not-power",
+        "transition-left-to-right": false,
+    },
+    "modules": [
+        "custom/power", // First element is the "group leader" and won't ever be hidden
+        "custom/quit",
+        "custom/lock",
+        "custom/reboot",
+    ]
+},
+```
 
 # SUPPORTED MODULES
 

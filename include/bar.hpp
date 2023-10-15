@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "AModule.hpp"
+#include "group.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {
@@ -101,7 +102,7 @@ class Bar {
  private:
   void onMap(GdkEventAny *);
   auto setupWidgets() -> void;
-  void getModules(const Factory &, const std::string &, Gtk::Box *);
+  void getModules(const Factory &, const std::string &, waybar::Group *);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
