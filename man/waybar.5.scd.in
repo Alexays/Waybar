@@ -263,7 +263,7 @@ A module group is defined by specifying a module named "group/some-group-name". 
 
 Valid options for the (optional) "orientation" property are: "horizontal", "vertical", "inherit", and "orthogonal" (default).
 
-### Group Drawers
+## Group Drawers
 
 A group may hide all but one element, showing them only on mouse hover. In order to configure this, you can use the `drawer` property, whose value is an object with the following properties:
 
