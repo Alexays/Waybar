@@ -83,6 +83,12 @@ class AudioBackend {
   std::string getSourceDesc() const { return source_desc_; }
   std::string getDefaultSourceName() const { return default_source_name_; }
 
+  void toggleSinkMute();
+  void toggleSinkMute(bool);
+
+  void toggleSourceMute();
+  void toggleSourceMute(bool);
+
   bool isBluetooth();
 };
 

@@ -241,6 +241,26 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
 }
 
+void AudioBackend::toggleSinkMute() {
+  muted_ = !muted_;
+  pa_context_set_sink_mute_by_index(context_, sink_idx_, muted_, nullptr, nullptr);
+}
+
+void AudioBackend::toggleSinkMute(bool mute) {
+  muted_ = mute;
+  pa_context_set_sink_mute_by_index(context_, sink_idx_, muted_, nullptr, nullptr);
+}
+
+void AudioBackend::toggleSourceMute() {
+  source_muted_ = !muted_;
+  pa_context_set_source_mute_by_index(context_, source_idx_, source_muted_, nullptr, nullptr);
+}
+
+void AudioBackend::toggleSourceMute(bool mute) {
+  source_muted_ = mute;
+  pa_context_set_source_mute_by_index(context_, source_idx_, source_muted_, nullptr, nullptr);
+}
+
 bool AudioBackend::isBluetooth() {
   return monitor_.find("a2dp_sink") != std::string::npos ||  // PulseAudio
          monitor_.find("a2dp-sink") != std::string::npos ||  // PipeWire
