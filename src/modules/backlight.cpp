@@ -83,7 +83,9 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
   // Check scroll direction
   auto dir = AModule::getScrollDir(e);
 
-  util::ChangeType ct;
+  // No worries, it will always be set because of the switch below. This is purely to suppress a
+  // warning
+  util::ChangeType ct = util::ChangeType::Increase;
 
   switch (dir) {
     case SCROLL_DIR::UP:
