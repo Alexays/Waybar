@@ -179,8 +179,7 @@ src_files = files(
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
     'src/util/gtk_icon.cpp',
-    'src/util/regex_collection.cpp',
-    'src/util/audio_backend.cpp'
+    'src/util/regex_collection.cpp'
 )
 
 inc_dirs = ['include']
@@ -276,6 +275,7 @@ if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += 'src/modules/pulseaudio.cpp'
     src_files += 'src/modules/pulseaudio_slider.cpp'
+    src_files += 'src/util/audio_backend.cpp'
 endif
 
 if libjack.found()
