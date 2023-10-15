@@ -56,8 +56,10 @@ class BacklightBackend {
 
   void set_previous_best_device(const BacklightDevice *device);
 
-  void set_brightness(std::string preferred_device, int brightness);
   void set_brightness(std::string preferred_device, ChangeType change_type, double step);
+
+  void set_scaled_brightness(std::string preferred_device, int brightness);
+  int get_scaled_brightness(std::string preferred_device);
 
   template <class ForwardIt, class Inserter>
   static void upsert_device(ForwardIt first, ForwardIt last, Inserter inserter, udev_device *dev);

@@ -4,6 +4,10 @@
 #include "modules/pulseaudio_slider.hpp"
 #endif
 
+#ifdef HAVE_LIBUDEV
+#include "modules/backlight_slider.hpp"
+#endif
+
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
 waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
@@ -129,6 +133,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_LIBUDEV
     if (ref == "backlight") {
       return new waybar::modules::Backlight(id, config_[name]);
+    }
+    if (ref == "backlight/slider") {
+      return new waybar::modules::BacklightSlider(id, config_[name]);
     }
 #endif
 #ifdef HAVE_LIBEVDEV

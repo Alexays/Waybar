@@ -188,11 +188,13 @@ void BacklightBackend::set_previous_best_device(const BacklightDevice *device) {
   }
 }
 
-void BacklightBackend::set_brightness(std::string preferred_device, int brightness) {
+void BacklightBackend::set_scaled_brightness(std::string preferred_device, int brightness) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
-    set_brightness_internal(best->name(), brightness, best->get_max());
+    const auto max = best->get_max();
+    const auto abs_val = static_cast<int>(round(brightness * max / 100.0f));
+    set_brightness_internal(best->name(), abs_val, best->get_max());
   }
 }
 
@@ -219,6 +221,16 @@ void BacklightBackend::set_brightness_internal(std::string device_name, int brig
       g_variant_new("(ssu)", "backlight", device_name.c_str(), brightness));
 
   login_proxy_->call_sync("SetBrightness", call_args);
+}
+
+int BacklightBackend::get_scaled_brightness(std::string preferred_device) {
+  GET_BEST_DEVICE(best, (*this), preferred_device);
+
+  if (best != nullptr) {
+    return best->get_actual() * 100 / best->get_max();
+  }
+
+  return 0;
 }
 
 template <class ForwardIt, class Inserter>

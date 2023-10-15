@@ -301,6 +301,7 @@ endif
 if libudev.found() and (is_linux or libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
+    src_files += 'src/modules/backlight_slider.cpp'
     src_files += 'src/util/backlight_backend.cpp'
 endif
 
@@ -429,6 +430,7 @@ if scdoc.found()
     man_files = [
         main_manpage_path,
         'waybar-backlight.5.scd',
+        'waybar-backlight-slider.5.scd',
         'waybar-battery.5.scd',
         'waybar-cava.5.scd',
         'waybar-clock.5.scd',
