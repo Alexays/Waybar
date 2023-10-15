@@ -17,8 +17,10 @@
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "util/enum.hpp"
+#include "util/regex_collection.hpp"
 
 using WindowAddress = std::string;
+
 namespace waybar::modules::hyprland {
 
 class Workspaces;
@@ -47,8 +49,8 @@ class Workspace {
   void set_visible(bool value = true) { is_visible_ = value; };
   void set_windows(uint value) { windows_ = value; };
   void set_name(std::string value) { name_ = value; };
-  bool contains_window(WindowAddress addr) { return window_map_.contains(addr); }
-  void insert_window(WindowAddress addr, std::string window_repr);
+  bool contains_window(WindowAddress addr) const { return window_map_.contains(addr); }
+  void insert_window(WindowAddress addr, std::string window_class, std::string window_title);
   std::string remove_window(WindowAddress addr);
   void initialize_window_map(const Json::Value& clients_data);
 
@@ -93,9 +95,11 @@ class Workspaces : public AModule, public EventHandler {
 
   auto get_bar_output() const -> std::string { return bar_.output->name; }
 
-  std::string get_rewrite(std::string window_class);
+  std::string get_rewrite(std::string window_class, std::string window_title);
   std::string& get_window_separator() { return format_window_separator_; }
   bool is_workspace_ignored(std::string& workspace_name);
+
+  bool window_rewrite_config_uses_title() const { return any_window_rewrite_rule_uses_title_; }
 
  private:
   void onEvent(const std::string&) override;
@@ -112,6 +116,8 @@ class Workspaces : public AModule, public EventHandler {
   void on_window_opened(std::string payload);
   void on_window_closed(std::string payload);
   void on_window_moved(std::string payload);
+
+  int window_rewrite_priority_function(std::string& window_rule);
 
   bool all_outputs_ = false;
   bool show_special_ = false;
@@ -131,11 +137,12 @@ class Workspaces : public AModule, public EventHandler {
   bool persistent_created_ = false;
 
   std::string format_;
+
   std::map<std::string, std::string> icons_map_;
-  Json::Value window_rewrite_rules_;
-  std::map<std::string, std::string> regex_cache_;
+  util::RegexCollection window_rewrite_rules_;
+  bool any_window_rewrite_rule_uses_title_ = false;
   std::string format_window_separator_;
-  std::string window_rewrite_default_;
+
   bool with_icon_;
   uint64_t monitor_id_;
   std::string active_workspace_name_;
