@@ -10,11 +10,9 @@
 #include <memory>
 #include <string>
 
+#include "util/backend_common.hpp"
+
 namespace waybar::util {
-
-enum class ChangeType : char { Increase, Decrease };
-
-void noop();
 
 class AudioBackend {
  private:
@@ -50,7 +48,7 @@ class AudioBackend {
 
   std::vector<std::string> ignored_sinks_;
 
-  std::function<void()> on_updated_cb_ = noop;
+  std::function<void()> on_updated_cb_ = NOOP;
 
   /* Hack to keep constructor inaccessible but still public.
    * This is required to be able to use std::make_shared.
@@ -61,7 +59,7 @@ class AudioBackend {
   struct private_constructor_tag {};
 
  public:
-  static std::shared_ptr<AudioBackend> getInstance(std::function<void()> on_updated_cb = noop);
+  static std::shared_ptr<AudioBackend> getInstance(std::function<void()> on_updated_cb = NOOP);
 
   AudioBackend(std::function<void()> on_updated_cb, private_constructor_tag tag);
   ~AudioBackend();

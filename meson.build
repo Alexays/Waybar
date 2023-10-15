@@ -301,6 +301,7 @@ endif
 if libudev.found() and (is_linux or libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
+    src_files += 'src/util/backlight_backend.cpp'
 endif
 
 if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
