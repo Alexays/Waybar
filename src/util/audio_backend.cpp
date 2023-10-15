@@ -204,11 +204,12 @@ void AudioBackend::serverInfoCb(pa_context *context, const pa_server_info *i, vo
   pa_context_get_source_info_list(context, sourceInfoCb, data);
 }
 
-void AudioBackend::changeVolume(uint16_t volume, uint16_t max_volume) {
+void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t max_volume) {
   double volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
   pa_cvolume pa_volume = pa_volume_;
 
   volume = std::min(volume, max_volume);
+  volume = std::max(volume, min_volume);
   pa_cvolume_set(&pa_volume, pa_volume_.channels, volume * volume_tick);
 
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);

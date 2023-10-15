@@ -1,5 +1,9 @@
 #include "factory.hpp"
 
+#ifdef HAVE_LIBPULSE
+#include "modules/pulseaudio_slider.hpp"
+#endif
+
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
 waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
@@ -135,6 +139,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_LIBPULSE
     if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(id, config_[name]);
+    }
+    if (ref == "pulseaudio/slider") {
+      return new waybar::modules::PulseaudioSlider(id, config_[name]);
     }
 #endif
 #ifdef HAVE_LIBMPDCLIENT

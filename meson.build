@@ -166,6 +166,7 @@ src_files = files(
     'src/modules/image.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
+    'src/ASlider.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
@@ -274,6 +275,7 @@ endif
 if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += 'src/modules/pulseaudio.cpp'
+    src_files += 'src/modules/pulseaudio_slider.cpp'
 endif
 
 if libjack.found()
@@ -441,6 +443,7 @@ if scdoc.found()
         'waybar-mpris.5.scd',
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
+        'waybar-pulseaudio-slider.5.scd',
         'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',

@@ -66,7 +66,7 @@ class AudioBackend {
   AudioBackend(std::function<void()> on_updated_cb, private_constructor_tag tag);
   ~AudioBackend();
 
-  void changeVolume(uint16_t volume, uint16_t max_volume = 100);
+  void changeVolume(uint16_t volume, uint16_t min_volume = 0, uint16_t max_volume = 100);
   void changeVolume(ChangeType change_type, double step = 1, uint16_t max_volume = 100);
 
   void setIgnoredSinks(const Json::Value& config);
