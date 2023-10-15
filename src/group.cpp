@@ -110,10 +110,9 @@ void Group::addWidget(Gtk::Widget& widget) {
   getBox().pack_start(widget, false, false);
 
   if (is_drawer) {
-    if (is_first_widget) {
-      // Necessary because of GTK's hitbox detection
-      addHoverHandlerTo(widget);
-    } else {
+    // Necessary because of GTK's hitbox detection
+    addHoverHandlerTo(widget);
+    if (!is_first_widget) {
       widget.get_style_context()->add_class(add_class_to_drawer_children);
     }
   }
