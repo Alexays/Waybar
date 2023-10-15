@@ -64,6 +64,7 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
     prm_.noise_reduction = config_["noise_reduction"].asDouble();
   if (config_["input_delay"].isInt())
     fetch_input_delay_ = std::chrono::seconds(config_["input_delay"].asInt());
+  if (config_["hide_on_silence"].isBool()) hide_on_silence_ = config_["hide_on_silence"].asBool();
   // Make cava parameters configuration
   plan_ = new cava_plan{};
 
@@ -174,10 +175,13 @@ auto waybar::modules::Cava::update() -> void {
       }
 
       label_.set_markup(text_);
+      label_.show();
       ALabel::update();
     }
-  } else
+  } else {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
+    if (hide_on_silence_) label_.hide();
+  }
 }
 
 auto waybar::modules::Cava::doAction(const std::string& name) -> void {

@@ -35,7 +35,7 @@ libcava lives in:
 |[ *framerate*
 :[ integer
 :[ 30
-:[ rames per second. Is used as a replacement for *interval*
+:[ Frames per second. Is used as a replacement for *interval*
 |[ *autosens*
 :[ integer
 :[ 1
@@ -60,6 +60,10 @@ libcava lives in:
 :[ integer
 :[ 5
 :[ Seconds with no input before cava main thread goes to sleep mode
+|[ *hide_on_silence*
+:[ bool
+:[ false
+:[ Hides the widget if no input (after sleep_timer elapsed)
 |[ *method*
 :[ string
 :[ pulse
