@@ -587,13 +587,13 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
         playerctl_player_play_pause(player, &error);
         break;
       case 2:  // middle-click
-        if (config_["on-middle-click"].isString()) {
+        if (config_["on-click-middle"].isString()) {
           return ALabel::handleToggle(e);
         }
         playerctl_player_previous(player, &error);
         break;
       case 3:  // right-click
-        if (config_["on-right-click"].isString()) {
+        if (config_["on-click-right"].isString()) {
           return ALabel::handleToggle(e);
         }
         playerctl_player_next(player, &error);
