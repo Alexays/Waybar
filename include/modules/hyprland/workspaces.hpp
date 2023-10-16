@@ -11,6 +11,7 @@
 #include <optional>
 #include <regex>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "AModule.hpp"
@@ -24,6 +25,35 @@ using WindowAddress = std::string;
 namespace waybar::modules::hyprland {
 
 class Workspaces;
+
+class CreateWindow {
+ public:
+  CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_repr);
+  CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_class, std::string window_title);
+  CreateWindow(Json::Value& client_data);
+
+  int increment_time_spent_uncreated();
+  bool is_empty(Workspaces& workspace_manager);
+  bool repr_is_ready() const { return std::holds_alternative<Repr>(window_); }
+  std::string repr(Workspaces& workspace_manager);
+
+  std::string workspace_name() const { return workspace_name_; }
+  WindowAddress addr() const { return window_address_; }
+
+ private:
+
+  void clear_addr();
+
+  using Repr = std::string;
+  using ClassAndTitle = std::pair<std::string, std::string>;
+
+  std::variant<Repr, ClassAndTitle> window_;
+
+  WindowAddress window_address_;
+  std::string workspace_name_;
+  int time_spent_uncreated_ = 0;
+
+};
 
 class Workspace {
  public:
@@ -50,13 +80,11 @@ class Workspace {
   void set_windows(uint value) { windows_ = value; };
   void set_name(std::string value) { name_ = value; };
   bool contains_window(WindowAddress addr) const { return window_map_.contains(addr); }
-  void insert_window(WindowAddress addr, std::string window_class, std::string window_title);
+  void insert_window(CreateWindow create_window_paylod);
   std::string remove_window(WindowAddress addr);
   void initialize_window_map(const Json::Value& clients_data);
 
-  bool on_window_opened(WindowAddress& addr, std::string& workspace_name, std::string window_repr);
-  bool on_window_opened(WindowAddress& addr, std::string& workspace_name, std::string& window_class,
-                        std::string& window_title);
+  bool on_window_opened(CreateWindow create_window_paylod);
 
   std::optional<std::string> on_window_closed(WindowAddress& addr);
 
@@ -149,6 +177,7 @@ class Workspaces : public AModule, public EventHandler {
   std::vector<std::unique_ptr<Workspace>> workspaces_;
   std::vector<Json::Value> workspaces_to_create_;
   std::vector<std::string> workspaces_to_remove_;
+  std::vector<CreateWindow> windows_to_create_;
 
   std::vector<std::regex> ignore_workspaces_;
 
