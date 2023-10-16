@@ -166,6 +166,7 @@ src_files = files(
     'src/modules/image.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
+    'src/ASlider.cpp',
     'src/main.cpp',
     'src/bar.cpp',
     'src/client.cpp',
@@ -273,6 +274,8 @@ endif
 if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += 'src/modules/pulseaudio.cpp'
+    src_files += 'src/modules/pulseaudio_slider.cpp'
+    src_files += 'src/util/audio_backend.cpp'
 endif
 
 if libjack.found()
@@ -298,6 +301,8 @@ endif
 if libudev.found() and (is_linux or libepoll.found())
     add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
     src_files += 'src/modules/backlight.cpp'
+    src_files += 'src/modules/backlight_slider.cpp'
+    src_files += 'src/util/backlight_backend.cpp'
 endif
 
 if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
@@ -425,6 +430,7 @@ if scdoc.found()
     man_files = [
         main_manpage_path,
         'waybar-backlight.5.scd',
+        'waybar-backlight-slider.5.scd',
         'waybar-battery.5.scd',
         'waybar-cava.5.scd',
         'waybar-clock.5.scd',
@@ -440,6 +446,7 @@ if scdoc.found()
         'waybar-mpris.5.scd',
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
+        'waybar-pulseaudio-slider.5.scd',
         'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',
