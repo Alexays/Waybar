@@ -320,8 +320,7 @@ void Workspaces::onEvent(const std::string &ev) {
                                  });
 
       if (!client->empty()) {
-        (*window_workspace)
-            ->insert_window({*client});
+        (*window_workspace)->insert_window({*client});
       }
     }
   }
@@ -346,7 +345,8 @@ void Workspaces::on_window_opened(std::string payload) {
 
   std::string window_title = payload.substr(next_comma_idx + 1, payload.length() - next_comma_idx);
 
-  windows_to_create_.push_back({workspace_name, window_address, window_class, window_title});
+  windows_to_create_.emplace_back(
+      CreateWindow(workspace_name, window_address, window_class, window_title));
 }
 
 void Workspaces::on_window_closed(std::string addr) {
@@ -379,7 +379,7 @@ void Workspaces::on_window_moved(std::string payload) {
   }
 
   // ...and add it to the new workspace
-  windows_to_create_.push_back({workspace_name, window_address, window_repr});
+  windows_to_create_.emplace_back(CreateWindow(workspace_name, window_address, window_repr));
 }
 
 void Workspaces::update_window_count() {
@@ -854,28 +854,28 @@ std::string Workspaces::get_rewrite(std::string window_class, std::string window
   return window_rewrite_rules_.get(window_repr_key);
 }
 
-CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_repr)
-  : window_(window_repr), 
-  window_address_(window_address),
-  workspace_name_(workspace_name) {
-  clear_addr();   
+CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_address,
+                           std::string window_repr)
+    : window_(window_repr), window_address_(window_address), workspace_name_(workspace_name) {
+  clear_addr();
 }
 
-CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_class, std::string window_title)
-  : window_(std::make_pair(window_class, window_title)), 
-  window_address_(window_address),
-  workspace_name_(workspace_name) {
-  clear_addr();   
+CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_address,
+                           std::string window_class, std::string window_title)
+    : window_(std::make_pair(window_class, window_title)),
+      window_address_(window_address),
+      workspace_name_(workspace_name) {
+  clear_addr();
 }
 
-CreateWindow::CreateWindow(Json::Value& client_data) {
+CreateWindow::CreateWindow(Json::Value &client_data) {
   window_address_ = client_data["address"].asString();
   workspace_name_ = client_data["workspace"]["name"].asString();
   window_ = std::make_pair(client_data["class"].asString(), client_data["title"].asString());
   clear_addr();
 }
 
-std::string CreateWindow::repr(Workspaces& workspace_manager) {
+std::string CreateWindow::repr(Workspaces &workspace_manager) {
   if (std::holds_alternative<Repr>(window_)) {
     return std::get<Repr>(window_);
   } else if (std::holds_alternative<ClassAndTitle>(window_)) {
@@ -887,24 +887,20 @@ std::string CreateWindow::repr(Workspaces& workspace_manager) {
   }
 }
 
-bool CreateWindow::is_empty(Workspaces& workspace_manager) {
+bool CreateWindow::is_empty(Workspaces &workspace_manager) {
   if (std::holds_alternative<Repr>(window_)) {
     return std::get<Repr>(window_).empty();
   } else if (std::holds_alternative<ClassAndTitle>(window_)) {
     auto [window_class, window_title] = std::get<ClassAndTitle>(window_);
-    return (
-      window_class.empty() &&
-      (!workspace_manager.window_rewrite_config_uses_title() || window_title.empty())
-    );
+    return (window_class.empty() &&
+            (!workspace_manager.window_rewrite_config_uses_title() || window_title.empty()));
   } else {
     // Unreachable
     return true;
   }
 }
 
-int CreateWindow::increment_time_spent_uncreated() {
-  return time_spent_uncreated_++;
-}
+int CreateWindow::increment_time_spent_uncreated() { return time_spent_uncreated_++; }
 
 void CreateWindow::clear_addr() {
   // substr(2, ...) is necessary because Hyprland's JSON follows this format:

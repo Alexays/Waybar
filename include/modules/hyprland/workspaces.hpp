@@ -29,7 +29,8 @@ class Workspaces;
 class CreateWindow {
  public:
   CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_repr);
-  CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_class, std::string window_title);
+  CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_class,
+               std::string window_title);
   CreateWindow(Json::Value& client_data);
 
   int increment_time_spent_uncreated();
@@ -41,7 +42,6 @@ class CreateWindow {
   WindowAddress addr() const { return window_address_; }
 
  private:
-
   void clear_addr();
 
   using Repr = std::string;
@@ -52,7 +52,6 @@ class CreateWindow {
   WindowAddress window_address_;
   std::string workspace_name_;
   int time_spent_uncreated_ = 0;
-
 };
 
 class Workspace {
