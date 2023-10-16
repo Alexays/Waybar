@@ -43,6 +43,7 @@ class CreateWindow {
 
  private:
   void clear_addr();
+  void clear_workspace_name();
 
   using Repr = std::string;
   using ClassAndTitle = std::pair<std::string, std::string>;

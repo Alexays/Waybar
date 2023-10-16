@@ -858,6 +858,7 @@ CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_addr
                            std::string window_repr)
     : window_(window_repr), window_address_(window_address), workspace_name_(workspace_name) {
   clear_addr();
+  clear_workspace_name();
 }
 
 CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_address,
@@ -866,6 +867,7 @@ CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_addr
       window_address_(window_address),
       workspace_name_(workspace_name) {
   clear_addr();
+  clear_workspace_name();
 }
 
 CreateWindow::CreateWindow(Json::Value &client_data) {
@@ -873,6 +875,7 @@ CreateWindow::CreateWindow(Json::Value &client_data) {
   workspace_name_ = client_data["workspace"]["name"].asString();
   window_ = std::make_pair(client_data["class"].asString(), client_data["title"].asString());
   clear_addr();
+  clear_workspace_name();
 }
 
 std::string CreateWindow::repr(Workspaces &workspace_manager) {
@@ -907,8 +910,27 @@ void CreateWindow::clear_addr() {
   // 0x{ADDR}
   // While Hyprland's IPC follows this format:
   // {ADDR}
-  if (window_address_.starts_with("0x")) {
-    window_address_ = window_address_.substr(2, window_address_.length() - 2);
+  static const std::string ADDR_PREFIX = "0x";
+  static const int ADDR_PREFIX_LEN = ADDR_PREFIX.length();
+
+  if (window_address_.starts_with(ADDR_PREFIX)) {
+    window_address_ =
+        window_address_.substr(ADDR_PREFIX_LEN, window_address_.length() - ADDR_PREFIX_LEN);
+  }
+}
+
+void CreateWindow::clear_workspace_name() {
+  // The workspace name may optionally feature "special:" at the beginning.
+  // If so, we need to remove it because the workspace is saved WITHOUT the
+  // special qualifier. The reasoning is that not all of Hyprland's IPC events
+  // use this qualifier, so it's better to be consistent about our uses.
+
+  static const std::string SPECIAL_QUALIFIER_PREFIX = "special:";
+  static const int SPECIAL_QUALIFIER_PREFIX_LEN = SPECIAL_QUALIFIER_PREFIX.length();
+
+  if (workspace_name_.starts_with(SPECIAL_QUALIFIER_PREFIX)) {
+    workspace_name_ = workspace_name_.substr(
+        SPECIAL_QUALIFIER_PREFIX_LEN, workspace_name_.length() - SPECIAL_QUALIFIER_PREFIX_LEN);
   }
 }
 
