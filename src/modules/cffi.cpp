@@ -39,6 +39,9 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
       throw std::runtime_error{std::string{"Missing wbcffi_deinit function: "} + dlerror()};
     }
     // Optional functions
+    if (auto fn = reinterpret_cast<UpdateFn*>(dlsym(handle, "wbcffi_update"))) {
+      hooks_.update = fn;
+    }
     if (auto fn = reinterpret_cast<RefreshFn*>(dlsym(handle, "wbcffi_refresh"))) {
       hooks_.refresh = fn;
     }
@@ -70,8 +73,10 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   }
 
   // Call init
-  cffi_instance_ = hooks_.init(dynamic_cast<Gtk::Container*>(&event_box_)->gobj(),
-                               config_entries.data(), config_entries.size());
+  cffi_instance_ = hooks_.init(
+      dynamic_cast<Gtk::Container*>(&event_box_)->gobj(),
+      [](void* dp) { ((Glib::Dispatcher*)dp)->emit(); }, &dp, config_entries.data(),
+      config_entries.size());
 
   // Handle init failures
   if (cffi_instance_ == nullptr) {
@@ -85,6 +90,14 @@ CFFI::~CFFI() {
   }
 }
 
+auto CFFI::update() -> void {
+  assert(cffi_instance_ != nullptr);
+  hooks_.update(cffi_instance_);
+
+  // Execute the on-update command set in config
+  AModule::update();
+}
+
 auto CFFI::refresh(int signal) -> void {
   assert(cffi_instance_ != nullptr);
   hooks_.refresh(cffi_instance_, signal);
@@ -93,15 +106,7 @@ auto CFFI::refresh(int signal) -> void {
 auto CFFI::doAction(const std::string& name) -> void {
   assert(cffi_instance_ != nullptr);
   if (!name.empty()) {
-    // TODO: Make a decision
-    // Calling AModule::doAction and hooks_.doAction will execute the action twice if it is
-    // configured in AModule::eventActionMap_ and implemented in the CFFI module.
-    //
-    // Should we block AModule::doAction() if the action is implemented in hooks_.doAction() ?
-    // (doAction could return true if the action has been processed)
-    //
     hooks_.doAction(cffi_instance_, name.c_str());
-    AModule::doAction(name);
   }
 }
 

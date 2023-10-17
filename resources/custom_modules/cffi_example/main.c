@@ -19,7 +19,8 @@ void onclicked(GtkButton* button) {
 // You must
 const size_t wbcffi_version = 1;
 
-void* wbcffi_init(GtkContainer* root, const struct wbcffi_config_entry* config_entries,
+void* wbcffi_init(GtkContainer* root_widget, void (*trigger_update)(void*),
+                  void* trigger_update_arg, const struct wbcffi_config_entry* config_entries,
                   size_t config_entries_len) {
   printf("cffi_example: init config:\n");
   for (size_t i = 0; i < config_entries_len; i++) {
@@ -28,7 +29,7 @@ void* wbcffi_init(GtkContainer* root, const struct wbcffi_config_entry* config_e
 
   // Allocate the instance object
   Instance* inst = malloc(sizeof(Instance));
-  inst->root = root;
+  inst->root = root_widget;
 
   // Add a container for displaying the next widgets
   inst->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5));
@@ -51,13 +52,18 @@ void* wbcffi_init(GtkContainer* root, const struct wbcffi_config_entry* config_e
   printf("cffi_example inst=%p: init success ! (%d total instances)\n", inst, ++instance_count);
   return inst;
 }
+
 void wbcffi_deinit(void* instance) {
   printf("cffi_example inst=%p: free memory\n", instance);
   free(instance);
 }
+
+void wbcffi_update(void* instance) { printf("cffi_example inst=%p: Update request\n", instance); }
+
 void wbcffi_refresh(void* instance, int signal) {
   printf("cffi_example inst=%p: Received refresh signal %d\n", instance, signal);
 }
+
 void wbcffi_doaction(void* instance, const char* name) {
   printf("cffi_example inst=%p: doAction(%s)\n", instance, name);
 }

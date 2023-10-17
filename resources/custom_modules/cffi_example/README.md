@@ -7,6 +7,9 @@ Most language can implement the required functions and constants (C, C++, Rust,
 Go, Python, ...), meaning you can develop custom modules using your language of
 choice, as long as there's GTK bindings.
 
+Symbols to implement are documented in the
+[waybar_cffi_module.h](waybar_cffi_module.h) file.
+
 # Usage
 
 ## Building this module

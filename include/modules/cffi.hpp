@@ -22,21 +22,21 @@ class CFFI : public AModule {
   CFFI(const std::string&, const std::string&, const Json::Value&);
   virtual ~CFFI();
 
-  // virtual auto update() -> void override;
-  // virtual operator Gtk::Widget&() override;
-
   virtual auto refresh(int signal) -> void override;
   virtual auto doAction(const std::string& name) -> void override;
+  virtual auto update() -> void override;
 
  private:
   ///
   void* cffi_instance_ = nullptr;
 
-  typedef void*(InitFn)(GtkContainer*, const struct wbcffi_config_entry* config_entries,
+  typedef void*(InitFn)(GtkContainer* root_widget, const void (*trigger_update)(void*),
+                        void* trigger_update_arg, const struct wbcffi_config_entry* config_entries,
                         size_t config_entries_len);
   typedef void(DenitFn)(void* instance);
   typedef void(RefreshFn)(void* instance, int signal);
   typedef void(DoActionFn)(void* instance, const char* name);
+  typedef void(UpdateFn)(void* instance);
 
   // FFI hooks
   struct {
@@ -44,6 +44,7 @@ class CFFI : public AModule {
     std::function<DenitFn> deinit = nullptr;
     std::function<RefreshFn> refresh = [](void*, int) {};
     std::function<DoActionFn> doAction = [](void*, const char*) {};
+    std::function<UpdateFn> update = [](void*) {};
   } hooks_;
 };
 
