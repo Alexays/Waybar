@@ -8,7 +8,7 @@
 #include <cmath>    // NAN
 #include <cstdlib>  // malloc
 
-#include "modules/cpu.hpp"
+#include "modules/cpu_usage.hpp"
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/sched.h>
@@ -27,7 +27,7 @@ typedef uint64_t pcp_time_t;
 typedef long pcp_time_t;
 #endif
 
-std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
+std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo() {
   cp_time_t sum_cp_time[CPUSTATES];
   size_t sum_sz = sizeof(sum_cp_time);
   int ncpu = sysconf(_SC_NPROCESSORS_CONF);
@@ -99,14 +99,4 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
   }
   free(cp_time);
   return cpuinfo;
-}
-
-std::vector<float> waybar::modules::Cpu::parseCpuFrequencies() {
-  static std::vector<float> frequencies;
-  if (frequencies.empty()) {
-    spdlog::warn(
-        "cpu/bsd: parseCpuFrequencies is not implemented, expect garbage in {*_frequency}");
-    frequencies.push_back(NAN);
-  }
-  return frequencies;
 }

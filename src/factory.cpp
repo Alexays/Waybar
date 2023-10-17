@@ -107,6 +107,17 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);
     }
+#if defined(HAVE_CPU_LINUX)
+    if (ref == "cpu_frequency") {
+      return new waybar::modules::CpuFrequency(id, config_[name]);
+    }
+#endif
+    if (ref == "cpu_usage") {
+      return new waybar::modules::CpuUsage(id, config_[name]);
+    }
+    if (ref == "load") {
+      return new waybar::modules::Load(id, config_[name]);
+    }
 #endif
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);

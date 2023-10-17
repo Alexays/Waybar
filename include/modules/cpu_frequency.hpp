@@ -14,14 +14,17 @@
 
 namespace waybar::modules {
 
-class Cpu : public ALabel {
+class CpuFrequency : public ALabel {
  public:
-  Cpu(const std::string&, const Json::Value&);
-  virtual ~Cpu() = default;
+  CpuFrequency(const std::string&, const Json::Value&);
+  virtual ~CpuFrequency() = default;
   auto update() -> void override;
 
+  // This is a static member because it is also used by the cpu module.
+  static std::tuple<float, float, float> getCpuFrequency();
+
  private:
-  std::vector<std::tuple<size_t, size_t>> prev_times_;
+  static std::vector<float> parseCpuFrequencies();
 
   util::SleeperThread thread_;
 };
