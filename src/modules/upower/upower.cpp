@@ -289,7 +289,12 @@ auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
 
   // Don't update widget if the UPower service isn't running
-  if (!upowerRunning) return;
+  if (!upowerRunning) {
+    if (hideIfEmpty) {
+      event_box_.set_visible(false);
+    }
+    return;
+  }
 
   UpDeviceKind kind;
   UpDeviceState state;
