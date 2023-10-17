@@ -24,7 +24,6 @@ class Load : public ALabel {
   static std::tuple<double, double, double> getLoad();
 
  private:
-
   util::SleeperThread thread_;
 };
 
