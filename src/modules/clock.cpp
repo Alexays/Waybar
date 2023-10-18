@@ -175,8 +175,7 @@ auto waybar::modules::Clock::update() -> void {
       tz, date::local_days(shiftedDay) +
               (now.get_local_time() - date::floor<date::days>(now.get_local_time())))};
 
-  label_.set_markup(
-      fmt::format(locale_, fmt::runtime(format_), now.get_local_time().time_since_epoch()));
+  label_.set_markup(fmt::format(locale_, fmt::runtime(format_), now));
 
   if (tooltipEnabled()) {
     const std::string tz_text{(is_timezoned_list_in_tooltip_) ? timezones_text(now.get_sys_time())
