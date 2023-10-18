@@ -367,6 +367,15 @@ void Workspaces::on_window_moved(std::string payload) {
 
   std::string window_repr;
 
+  // If the window was still queued to be created, just change its destination
+  // and exit
+  for (auto &window : windows_to_create_) {
+    if (window.addr() == window_address) {
+      window.move_to_worksace(workspace_name);
+      return;
+    }
+  }
+
   // Take the window's representation from the old workspace...
   for (auto &workspace : workspaces_) {
     try {
@@ -379,7 +388,9 @@ void Workspaces::on_window_moved(std::string payload) {
   }
 
   // ...and add it to the new workspace
-  windows_to_create_.emplace_back(CreateWindow(workspace_name, window_address, window_repr));
+  if (!window_repr.empty()) {
+    windows_to_create_.emplace_back(CreateWindow(workspace_name, window_address, window_repr));
+  }
 }
 
 void Workspaces::update_window_count() {
@@ -932,6 +943,10 @@ void CreateWindow::clear_workspace_name() {
     workspace_name_ = workspace_name_.substr(
         SPECIAL_QUALIFIER_PREFIX_LEN, workspace_name_.length() - SPECIAL_QUALIFIER_PREFIX_LEN);
   }
+}
+
+void CreateWindow::move_to_worksace(std::string &new_workspace_name) {
+  workspace_name_ = new_workspace_name;
 }
 
 }  // namespace waybar::modules::hyprland

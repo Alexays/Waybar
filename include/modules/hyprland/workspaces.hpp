@@ -41,6 +41,8 @@ class CreateWindow {
   std::string workspace_name() const { return workspace_name_; }
   WindowAddress addr() const { return window_address_; }
 
+  void move_to_worksace(std::string& new_workspace_name);
+
  private:
   void clear_addr();
   void clear_workspace_name();
