@@ -194,6 +194,7 @@ auto Workspaces::update() -> void {
     workspace->update(format_, workspace_icon);
   }
 
+  bool any_window_created = false;
   std::vector<CreateWindow> not_created;
 
   for (auto &window_payload : windows_to_create_) {
@@ -201,6 +202,7 @@ auto Workspaces::update() -> void {
     for (auto &workspace : workspaces_) {
       if (workspace->on_window_opened(window_payload)) {
         created = true;
+        any_window_created = true;
         break;
       }
     }
@@ -210,6 +212,10 @@ auto Workspaces::update() -> void {
         not_created.push_back(window_payload);
       }
     }
+  }
+
+  if (any_window_created) {
+    dp.emit();
   }
 
   windows_to_create_.clear();
