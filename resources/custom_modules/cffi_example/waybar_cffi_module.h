@@ -10,29 +10,46 @@ extern "C" {
 /// Waybar ABI version. 1 is the latest version
 extern const size_t wbcffi_version;
 
+/// Private Waybar CFFI module
+typedef struct wbcffi_module wbcffi_module;
+
+/// Waybar module information
+typedef struct {
+  /// Waybar CFFI object pointer
+  wbcffi_module* obj;
+
+  /// Waybar version string
+  const char* waybar_version;
+
+  /// Returns the waybar widget allocated for this module
+  /// @param obj Waybar CFFI object pointer
+  GtkContainer* (*get_root_widget)(wbcffi_module* obj);
+
+  /// Queues a request for calling wbcffi_update() on the next GTK main event
+  /// loop iteration
+  /// @param obj Waybar CFFI object pointer
+  void (*queue_update)(wbcffi_module*);
+} wbcffi_init_info;
+
 /// Config key-value pair
-struct wbcffi_config_entry {
+typedef struct {
   /// Entry key
   const char* key;
   /// Entry value as string. JSON object and arrays are serialized.
   const char* value;
-};
+} wbcffi_config_entry;
 
 /// Module init/new function, called on module instantiation
 ///
 /// MANDATORY CFFI function
 ///
-/// @param root_widget        Root GTK widget instantiated by Waybar
-/// @param trigger_update     Call this function with trigger_update_arg as argument to trigger
-///                           wbcffi_update() on the next GTK main event loop iteration
-/// @param trigger_update_arg Argument for trigger_update call
+/// @param init_info          Waybar module information
 /// @param config_entries     Flat representation of the module JSON config. The data only available
 ///                           during wbcffi_init call.
 /// @param config_entries_len Number of entries in `config_entries`
 ///
 /// @return A untyped pointer to module data, NULL if the module failed to load.
-void* wbcffi_init(GtkContainer* root_widget, const void (*trigger_update)(void*),
-                  void* trigger_update_arg, const struct wbcffi_config_entry* config_entries,
+void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config_entries,
                   size_t config_entries_len);
 
 /// Module deinit/delete function, called when Waybar is closed or when the module is removed

@@ -66,17 +66,23 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   }
 
   // Prepare config_entries array
-  std::vector<struct wbcffi_config_entry> config_entries;
+  std::vector<ffi::wbcffi_config_entry> config_entries;
   for (size_t i = 0; i < keys.size(); i++) {
-    config_entries.push_back(
-        wbcffi_config_entry{keys[i].c_str(), config_entries_stringstor[i].c_str()});
+    config_entries.push_back({keys[i].c_str(), config_entries_stringstor[i].c_str()});
   }
 
+  ffi::wbcffi_init_info init_info = {
+      .obj = (ffi::wbcffi_module*)this,
+      .waybar_version = VERSION,
+      .get_root_widget =
+          [](ffi::wbcffi_module* obj) {
+            return dynamic_cast<Gtk::Container*>(&((CFFI*)obj)->event_box_)->gobj();
+          },
+      .queue_update = [](ffi::wbcffi_module* obj) { ((CFFI*)obj)->dp.emit(); },
+  };
+
   // Call init
-  cffi_instance_ = hooks_.init(
-      dynamic_cast<Gtk::Container*>(&event_box_)->gobj(),
-      [](void* dp) { ((Glib::Dispatcher*)dp)->emit(); }, &dp, config_entries.data(),
-      config_entries.size());
+  cffi_instance_ = hooks_.init(&init_info, config_entries.data(), config_entries.size());
 
   // Handle init failures
   if (cffi_instance_ == nullptr) {

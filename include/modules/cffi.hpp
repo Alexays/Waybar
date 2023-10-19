@@ -9,13 +9,23 @@
 
 namespace waybar::modules {
 
+namespace ffi {
 extern "C" {
-// C ABI representation of a config key/value pair
+typedef struct wbcffi_module wbcffi_module;
+
+typedef struct {
+  wbcffi_module* obj;
+  const char* waybar_version;
+  GtkContainer* (*get_root_widget)(wbcffi_module*);
+  void (*queue_update)(wbcffi_module*);
+} wbcffi_init_info;
+
 struct wbcffi_config_entry {
   const char* key;
   const char* value;
 };
 }
+}  // namespace ffi
 
 class CFFI : public AModule {
  public:
@@ -30,9 +40,8 @@ class CFFI : public AModule {
   ///
   void* cffi_instance_ = nullptr;
 
-  typedef void*(InitFn)(GtkContainer* root_widget, const void (*trigger_update)(void*),
-                        void* trigger_update_arg, const struct wbcffi_config_entry* config_entries,
-                        size_t config_entries_len);
+  typedef void*(InitFn)(const ffi::wbcffi_init_info* init_info,
+                        const ffi::wbcffi_config_entry* config_entries, size_t config_entries_len);
   typedef void(DenitFn)(void* instance);
   typedef void(RefreshFn)(void* instance, int signal);
   typedef void(DoActionFn)(void* instance, const char* name);

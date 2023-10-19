@@ -2,10 +2,10 @@
 #include "waybar_cffi_module.h"
 
 typedef struct {
-  GtkContainer* root;
+  wbcffi_module* waybar_module;
   GtkBox* container;
   GtkButton* button;
-} Instance;
+} ExampleMod;
 
 // This static variable is shared between all instances of this module
 static int instance_count = 0;
@@ -19,8 +19,7 @@ void onclicked(GtkButton* button) {
 // You must
 const size_t wbcffi_version = 1;
 
-void* wbcffi_init(GtkContainer* root_widget, void (*trigger_update)(void*),
-                  void* trigger_update_arg, const struct wbcffi_config_entry* config_entries,
+void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config_entries,
                   size_t config_entries_len) {
   printf("cffi_example: init config:\n");
   for (size_t i = 0; i < config_entries_len; i++) {
@@ -28,12 +27,14 @@ void* wbcffi_init(GtkContainer* root_widget, void (*trigger_update)(void*),
   }
 
   // Allocate the instance object
-  Instance* inst = malloc(sizeof(Instance));
-  inst->root = root_widget;
+  ExampleMod* inst = malloc(sizeof(ExampleMod));
+  inst->waybar_module = init_info->obj;
+
+  GtkContainer* root = init_info->get_root_widget(init_info->obj);
 
   // Add a container for displaying the next widgets
   inst->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5));
-  gtk_container_add(GTK_CONTAINER(inst->root), GTK_WIDGET(inst->container));
+  gtk_container_add(GTK_CONTAINER(root), GTK_WIDGET(inst->container));
 
   // Add a label
   GtkLabel* label = GTK_LABEL(gtk_label_new("[Example C FFI Module:"));
