@@ -562,7 +562,7 @@ void Workspaces::fill_persistent_workspaces() {
   }
 }
 
-void Workspaces::create_persistent_workspaces() {
+void Workspaces::create_persistent_workspaces(const Json::Value &clients_data) {
   for (const std::string &workspace_name : persistent_workspaces_to_create_) {
     Json::Value new_workspace;
     try {
@@ -577,7 +577,7 @@ void Workspaces::create_persistent_workspaces() {
     new_workspace["windows"] = 0;
     new_workspace["persistent"] = true;
 
-    create_workspace(new_workspace);
+    create_workspace(new_workspace, clients_data);
   }
 }
 
@@ -596,11 +596,11 @@ void Workspaces::init() {
     monitor_id_ = (*current_monitor)["id"].asInt();
   }
 
-  fill_persistent_workspaces();
-  create_persistent_workspaces();
-
   const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
   const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
+
+  fill_persistent_workspaces();
+  create_persistent_workspaces(clients_json);
 
   for (Json::Value workspace_json : workspaces_json) {
     std::string workspace_name = workspace_json["name"].asString();
