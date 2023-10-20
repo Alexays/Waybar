@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "util/scope_guard.hpp"
+
 namespace waybar::modules::SNI {
 
 Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
@@ -57,17 +59,20 @@ void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
 
 void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
+  waybar::util::scope_guard error_deleter([error]() {
+    if (error != nullptr) {
+      g_error_free(error);
+    }
+  });
   SnWatcher* watcher = sn_watcher_proxy_new_finish(res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
     spdlog::error("Host: {}", error->message);
-    g_error_free(error);
     return;
   }
   auto host = static_cast<SNI::Host*>(data);
   host->watcher_ = watcher;
   if (error != nullptr) {
     spdlog::error("Host: {}", error->message);
-    g_error_free(error);
     return;
   }
   sn_watcher_call_register_host(host->watcher_, host->object_path_.c_str(), host->cancellable_,
@@ -76,16 +81,19 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
 
 void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
+  waybar::util::scope_guard error_deleter([error]() {
+    if (error != nullptr) {
+      g_error_free(error);
+    }
+  });
   sn_watcher_call_register_host_finish(SN_WATCHER(src), res, &error);
   if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) {
     spdlog::error("Host: {}", error->message);
-    g_error_free(error);
     return;
   }
   auto host = static_cast<SNI::Host*>(data);
   if (error != nullptr) {
     spdlog::error("Host: {}", error->message);
-    g_error_free(error);
     return;
   }
   g_signal_connect(host->watcher_, "item-registered", G_CALLBACK(&Host::itemRegistered), data);

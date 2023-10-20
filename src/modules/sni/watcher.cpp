@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "util/scope_guard.hpp"
+
 using namespace waybar::modules::SNI;
 
 Watcher::Watcher()
@@ -29,6 +31,11 @@ Watcher::~Watcher() {
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
   GError* error = nullptr;
+  waybar::util::scope_guard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
   g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(watcher_), conn->gobj(),
                                    "/StatusNotifierWatcher", &error);
   if (error != nullptr) {
@@ -36,7 +43,6 @@ void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib:
     if (error->code != 2) {
       spdlog::error("Watcher: {}", error->message);
     }
-    g_error_free(error);
     return;
   }
   g_signal_connect_swapped(watcher_, "handle-register-item",

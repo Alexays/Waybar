@@ -6,12 +6,19 @@
 #include <algorithm>
 #include <sstream>
 
+#include "util/scope_guard.hpp"
+
 namespace {
 
 using GDBusManager = std::unique_ptr<GDBusObjectManager, void (*)(GDBusObjectManager*)>;
 
 auto generateManager() -> GDBusManager {
   GError* error = nullptr;
+  waybar::util::scope_guard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
   GDBusObjectManager* manager = g_dbus_object_manager_client_new_for_bus_sync(
       G_BUS_TYPE_SYSTEM,
       GDBusObjectManagerClientFlags::G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_DO_NOT_AUTO_START,
@@ -19,7 +26,6 @@ auto generateManager() -> GDBusManager {
 
   if (error) {
     spdlog::error("g_dbus_object_manager_client_new_for_bus_sync() failed: {}", error->message);
-    g_error_free(error);
   }
 
   auto destructor = [](GDBusObjectManager* manager) {
