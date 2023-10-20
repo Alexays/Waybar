@@ -161,7 +161,7 @@ class Workspaces : public AModule, public EventHandler {
                                                   {"DEFAULT", SORT_METHOD::DEFAULT}};
 
   void fill_persistent_workspaces();
-  void create_persistent_workspaces(const Json::Value& clients_data);
+  void create_persistent_workspaces();
   std::vector<std::string> persistent_workspaces_to_create_;
   bool persistent_created_ = false;
 
