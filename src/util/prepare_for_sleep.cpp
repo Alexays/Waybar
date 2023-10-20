@@ -7,8 +7,7 @@ namespace {
 class PrepareForSleep {
  private:
   PrepareForSleep() {
-    GError *error = NULL;
-    login1_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
+    login1_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
     if (!login1_connection) {
       spdlog::warn("Unable to connect to the SYSTEM Bus!...");
     } else {

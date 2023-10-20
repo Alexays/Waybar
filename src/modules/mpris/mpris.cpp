@@ -6,6 +6,8 @@
 #include <sstream>
 #include <string>
 
+#include "util/scope_guard.hpp"
+
 extern "C" {
 #include <playerctl/playerctl.h>
 }
@@ -117,6 +119,11 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   GError* error = nullptr;
+  waybar::util::scope_guard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
   manager = playerctl_player_manager_new(&error);
   if (error) {
     throw std::runtime_error(fmt::format("unable to create MPRIS client: {}", error->message));
@@ -136,9 +143,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   } else {
     GList* players = playerctl_list_players(&error);
     if (error) {
-      auto e = fmt::format("unable to list players: {}", error->message);
-      g_error_free(error);
-      throw std::runtime_error(e);
+      throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
 
     for (auto p = players; p != NULL; p = p->next) {
@@ -410,8 +415,7 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
     return;
   }
 
-  GError* error = nullptr;
-  mpris->player = playerctl_player_new_from_name(player_name, &error);
+  mpris->player = playerctl_player_new_from_name(player_name, NULL);
   g_object_connect(mpris->player, "signal::play", G_CALLBACK(onPlayerPlay), mpris, "signal::pause",
                    G_CALLBACK(onPlayerPause), mpris, "signal::stop", G_CALLBACK(onPlayerStop),
                    mpris, "signal::stop", G_CALLBACK(onPlayerStop), mpris, "signal::metadata",
@@ -478,6 +482,11 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   }
 
   GError* error = nullptr;
+  waybar::util::scope_guard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
 
   char* player_status = nullptr;
   auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
@@ -487,9 +496,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (player_name == "playerctld") {
     GList* players = playerctl_list_players(&error);
     if (error) {
-      auto e = fmt::format("unable to list players: {}", error->message);
-      g_error_free(error);
-      throw std::runtime_error(e);
+      throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
@@ -568,12 +575,16 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
 
 errorexit:
   spdlog::error("mpris[{}]: {}", info.name, error->message);
-  g_error_free(error);
   return std::nullopt;
 }
 
 bool Mpris::handleToggle(GdkEventButton* const& e) {
   GError* error = nullptr;
+  waybar::util::scope_guard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
 
   auto info = getPlayerInfo();
   if (!info) return false;
@@ -603,7 +614,6 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
   if (error) {
     spdlog::error("mpris[{}]: error running builtin on-click action: {}", (*info).name,
                   error->message);
-    g_error_free(error);
     return false;
   }
   return true;
