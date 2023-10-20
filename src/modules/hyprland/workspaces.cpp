@@ -417,13 +417,6 @@ void Workspaces::update_window_count() {
   }
 }
 
-void Workspaces::initialize_window_maps() {
-  Json::Value clients_data = gIPC->getSocket1JsonReply("clients");
-  for (auto &workspace : workspaces_) {
-    workspace->initialize_window_map(clients_data);
-  }
-}
-
 void Workspace::initialize_window_map(const Json::Value &clients_data) {
   window_map_.clear();
   for (auto client : clients_data) {

@@ -134,7 +134,6 @@ class Workspaces : public AModule, public EventHandler {
  private:
   void onEvent(const std::string&) override;
   void update_window_count();
-  void initialize_window_maps();
   void sort_workspaces();
   void create_workspace(Json::Value& workspace_data,
                         const Json::Value& clients_data = Json::Value::nullRef);
