@@ -458,11 +458,11 @@ std::optional<std::string> Workspace::on_window_closed(WindowAddress &addr) {
 
 void Workspaces::create_workspace(Json::Value &workspace_data, const Json::Value &clients_data) {
   // avoid recreating existing workspaces
+  auto workspace_name = workspace_data["name"].asString();
   auto workspace = std::find_if(
-      workspaces_.begin(), workspaces_.end(), [&](std::unique_ptr<Workspace> const &x) {
-        auto name = workspace_data["name"].asString();
-        return x->is_persistent() &&
-               ((name.starts_with("special:") && name.substr(8) == x->name()) || name == x->name());
+      workspaces_.begin(), workspaces_.end(), [&](std::unique_ptr<Workspace> const &w) {
+        return (workspace_name.starts_with("special:") && workspace_name.substr(8) == w->name()) ||
+               workspace_name == w->name();
       });
 
   if (workspace != workspaces_.end()) {
@@ -589,9 +589,6 @@ void Workspaces::init() {
     monitor_id_ = (*current_monitor)["id"].asInt();
   }
 
-  fill_persistent_workspaces();
-  create_persistent_workspaces();
-
   const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
   const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
 
@@ -603,6 +600,9 @@ void Workspaces::init() {
       create_workspace(workspace_json, clients_json);
     }
   }
+
+  fill_persistent_workspaces();
+  create_persistent_workspaces();
 
   update_window_count();
 
