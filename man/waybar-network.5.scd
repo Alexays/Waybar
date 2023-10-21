@@ -14,7 +14,7 @@ Addressed by *network*
 
 *interface*: ++
 	typeof: string ++
-	Use the defined interface instead of auto detection. Accepts wildcard.
+	Use the defined interface instead of auto-detection. Accepts wildcard.
 
 *interval*: ++
 	typeof: integer ++
@@ -41,7 +41,7 @@ Addressed by *network*
 
 *format-linked*: ++
 	typeof: string ++
-	This format is used when a linked interface with no ip address is displayed.
+	This format is used when a linked interface with no IP address is displayed.
 
 *format-disconnected*: ++
 	typeof: string ++
@@ -66,7 +66,7 @@ Addressed by *network*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -82,7 +82,7 @@ Addressed by *network*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++

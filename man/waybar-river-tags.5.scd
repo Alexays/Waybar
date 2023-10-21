@@ -24,7 +24,7 @@ Addressed by *river/tags*
 *disable-click*: ++
 	typeof: bool ++
 	default: false ++
-	If set to false, you can left click to set focused tag. Right click to toggle tag focus. If set to true this behaviour is disabled.
+	If set to false, you can left-click to set focused tag. Right-click to toggle tag focus. If set to true this behaviour is disabled.
 
 # EXAMPLE
 

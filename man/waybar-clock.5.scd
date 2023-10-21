@@ -63,7 +63,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 |[ *on-click-right*
 :[ string
 :[
-:[ Command to execute when you right clicked on the module
+:[ Command to execute when you right-click on the module
 |[ *on-scroll-up*
 :[ string
 :[
@@ -147,7 +147,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 |[ *tz_up*
 :[ Switch to the next provided time zone
 |[ *tz_down*
-:[ Switch to the previous provided time zone
+:[ Switch to the previously provided time zone
 |[ *shift_up*
 :[ Switch to the next calendar month/year
 |[ *shift_down*
@@ -219,7 +219,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 # Troubleshooting
 
 If clock module is disabled at startup with locale::facet::\_S\_create\_c\_locale ++
-name not valid error message try one of the followings:
+name not valid error message try one of the following:
 
 - check if LC_TIME is set properly (glibc)
 - set locale to C in the config file (musl)

@@ -13,7 +13,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 *player*: ++
 	typeof: string ++
 	default: playerctld ++
-	Name of the MPRIS player to attach to. Using the default value always follows the currenly active player.
+	Name of the MPRIS player to attach to. Using the default value always follows the currently active player.
 
 *ignored-players*: ++
 	typeof: []string ++
@@ -97,7 +97,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 *enable-tooltip-len-limits*: ++
 	typeof: bool ++
 	default: false ++
-	Option to enable the length limits for the tooltip as well. By default the tooltip ignores all length limits.
+	Option to enable the length limits for the tooltip as well. By default, the tooltip ignores all length limits.
 
 *ellipsis*: ++
 	typeof: string ++
@@ -114,7 +114,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++

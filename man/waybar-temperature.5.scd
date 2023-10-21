@@ -67,7 +67,7 @@ Addressed by *temperature*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -75,7 +75,7 @@ Addressed by *temperature*
 
 *on-click*: ++
 	typeof: string ++
-	Command to execute when you clicked on the module.
+	Command to execute when you click on the module.
 
 *on-click-middle*: ++
 	typeof: string ++
@@ -83,7 +83,7 @@ Addressed by *temperature*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++

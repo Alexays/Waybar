@@ -33,7 +33,7 @@ Addressed by *disk*
 
 *states*: ++
 	typeof: object ++
-	A number of disk utilization states which get activated on certain percentage thresholds (percentage_used). See *waybar-states(5)*.
+	A number of disk utilization states that get activated on certain percentage thresholds (percentage_used). See *waybar-states(5)*.
 
 *max-length*: ++
 	typeof: integer ++
@@ -41,7 +41,7 @@ Addressed by *disk*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -57,7 +57,7 @@ Addressed by *disk*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -87,7 +87,7 @@ Addressed by *disk*
 
 *unit*: ++
 	typeof: string ++
-	Use with specific_free, specific_used, and speciifc_total to force calculation to always be in a certain unit. Accepts kB, kiB, MB, Mib, GB, GiB, TB, TiB.
+	Use with specific_free, specific_used, and specific_total to force calculation to always be in a certain unit. Accepts kB, kiB, MB, Mib, GB, GiB, TB, TiB.
 
 # FORMAT REPLACEMENTS
 
@@ -95,7 +95,7 @@ Addressed by *disk*
 
 *{percentage_free}*: Percentage of free disk space
 
-*{total}*: Total amount of space on the disk, partition or mountpoint. Automatically selects unit based on size remaining.
+*{total}*: Total amount of space on the disk, partition, or mountpoint. Automatically selects unit based on size remaining.
 
 *{used}*: Amount of used disk space. Automatically selects unit based on size remaining.
 
@@ -103,11 +103,11 @@ Addressed by *disk*
 
 *{path}*: The path specified in the configuration.
 
-*{specific_total}*: Total amount of space on the disk, partition or mountpoint in a specific unit. Deaults to bytes.
+*{specific_total}*: Total amount of space on the disk, partition, or mountpoint in a specific unit. Defaults to bytes.
 
-*{specific_used}*: Amount of used disk space in a specific unit. Deaults to bytes.
+*{specific_used}*: Amount of used disk space in a specific unit. Defaults to bytes.
 
-*{specific_free}*: Amount of available disk space for normal users in a specific unit. Deaults to bytes.
+*{specific_free}*: Amount of available disk space for normal users in a specific unit. Defaults to bytes.
 
 # EXAMPLES
 

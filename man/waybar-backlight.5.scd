@@ -26,7 +26,7 @@ The *backlight* module displays the current backlight level.
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -46,11 +46,11 @@ The *backlight* module displays the current backlight level.
 
 *on-click-middle*: ++
 	typeof: string ++
-	Command to execute when middle-clicked on the module using mousewheel.
+	Command to execute when middle-clicked on the module using mouse scroll wheel.
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when the module is right clicked.
+	Command to execute when the module is right-clicked.
 
 *on-update*: ++
 	typeof: string ++
@@ -75,7 +75,7 @@ The *backlight* module displays the current backlight level.
 *scroll-step*: ++
 	typeof: float ++
 	default: 1.0 ++
-	The speed in which to change the brightness when scrolling.
+	The speed at which to change the brightness when scrolling.
 
 # EXAMPLE:
 

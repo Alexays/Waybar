@@ -6,8 +6,8 @@ waybar - idle_inhibitor module
 
 # DESCRIPTION
 
-The *idle_inhibitor* module can inhibiting the idle behavior such as screen blanking, locking, and
-screensaving, also known as "presentation mode".
+The *idle_inhibitor* module can inhibit the idle behavior such as screen blanking, locking, and
+screensaver, also known as "presentation mode".
 
 # CONFIGURATION
 
@@ -29,7 +29,7 @@ screensaving, also known as "presentation mode".
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -45,7 +45,7 @@ screensaving, also known as "presentation mode".
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -70,7 +70,7 @@ screensaving, also known as "presentation mode".
 
 *timeout*: ++
 	typeof: double ++
-	The number of minutes the inhibit should last.
+	The number of minutes the inhibition should last.
 
 *tooltip*: ++
 	typeof: bool ++

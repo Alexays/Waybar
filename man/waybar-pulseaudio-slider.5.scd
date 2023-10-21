@@ -8,7 +8,7 @@ waybar - pulseaudio slider module
 
 The *pulseaudio slider* module displays and controls the current volume of the default sink or source as a bar.
 
-The volume can be controlled by dragging the slider accross the bar, or clicking on a specific position.
+The volume can be controlled by dragging the slider across the bar or clicking on a specific position.
 
 # CONFIGURATION
 

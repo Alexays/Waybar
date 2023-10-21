@@ -17,7 +17,7 @@ Valid locations for this file are:
 - *@sysconfdir@/xdg/waybar/config*
 
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
-Also a minimal example configuration can be found on the at the bottom of this man page.
+Also, a minimal example configuration can be found at the bottom of this man page.
 
 # BAR CONFIGURATION
 
@@ -30,7 +30,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *output* ++
 	typeof: string|array ++
 	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
-	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
+	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model, and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
 	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
 
 *position* ++
@@ -68,7 +68,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 
 *spacing* ++
 	typeof: integer ++
-	Size of gaps in between of the different modules.
+	Size of gaps in between the different modules.
 
 *name* ++
 	typeof: string ++
@@ -89,7 +89,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	default: *press*
 	Defines the timing of modifier key to reset the bar visibility.
 	To reset the visibility of the bar with the press of the modifier key use *press*.
-	Use *release* to reset the visibility upon the release of the modifier key and only if no other action happened while the key was pressed. This prevents hiding the bar when the modifier is used to switch a workspace, change binding mode or start a keybinding.
+	Use *release* to reset the visibility upon the release of the modifier key and only if no other action happened while the key was pressed. This prevents hiding the bar when the modifier is used to switch a workspace, change binding mode, or start a keybinding.
 
 *exclusive* ++
 	typeof: bool ++
@@ -118,11 +118,11 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	typeof: bool ++
 	default: false ++
 	Option to subscribe to the Sway IPC bar configuration and visibility events and control waybar with *swaymsg bar* commands. ++
-	Requires *bar_id* value from sway configuration to be either passed with the *-b* commandline argument or specified with the *id* option.
+	Requires *bar_id* value from sway configuration to be either passed with the *-b* command line argument or specified with the *id* option.
 
 *id* ++
 	typeof: string ++
-	*bar_id* for the Sway IPC. Use this if you need to override the value passed with the *-b bar_id* commandline argument for the specific bar instance.
+	*bar_id* for the Sway IPC. Use this if you need to override the value passed with the *-b bar_id* command line argument for the specific bar instance.
 
 *include* ++
 	typeof: string|array ++
@@ -142,7 +142,7 @@ e.g.
 # MULTIPLE INSTANCES OF A MODULE
 
 If you want to have a second instance of a module, you can suffix it by a '#' and a custom name.
-For example if you want a second battery module, you can add *"battery#bat2"* to your modules.
+For example, if you want a second battery module, you can add *"battery#bat2"* to your modules.
 To configure the newly added module, you then also add a module configuration with the same name.
 
 This could then look something like this *(this is an incomplete example)*:
@@ -236,7 +236,7 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 }
 ```
 
-Valid options for the "rotate" property are: 0, 90, 180 and 270.
+Valid options for the "rotate" property are: 0, 90, 180, and 270.
 
 ## Grouping modules
 

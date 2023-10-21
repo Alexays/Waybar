@@ -14,7 +14,7 @@ Addressed by *bluetooth*
 
 *controller*: ++
 	typeof: string ++
-	Use the controller with the defined alias. Otherwise a random controller is used. Recommended to define when there is more than 1 controller available to the system.
+	Use the controller with the defined alias. Otherwise, a random controller is used. Recommended to define when there is more than 1 controller available to the system.
 
 *format-device-preference*: ++
 	typeof: array ++
@@ -44,7 +44,7 @@ Addressed by *bluetooth*
 
 *format-no-controller*: ++
 	typeof: string ++
-	This format is used when no bluetooth controller could be found
+	This format is used when no bluetooth controller can be found
 
 *format-icons*: ++
 	typeof: array/object ++
@@ -62,7 +62,7 @@ Addressed by *bluetooth*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -78,7 +78,7 @@ Addressed by *bluetooth*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-scroll-up*: ++
 	typeof: string ++
@@ -119,7 +119,7 @@ Addressed by *bluetooth*
 
 *tooltip-format-no-controller*: ++
 	typeof: string ++
-	This format is used when no bluetooth controller could be found
+	This format is used when no bluetooth controller can be found
 
 *tooltip-format-enumerate-connected*: ++
 	typeof: string ++
@@ -146,7 +146,7 @@ Addressed by *bluetooth*
 *{device_alias}*: Alias of the displayed device.
 
 *{device_enumerate}*: Show a list of all connected devices, each on a separate line. Define the format of each device with the *tooltip-format-enumerate-connected* ++
-and/or *tooltip-format-enumerate-connected-battery* config options. Can only be used in the tooltip related format options.
+and/or *tooltip-format-enumerate-connected-battery* config options. Can only be used in the tooltip-related format options.
 
 # EXPERIMENTAL BATTERY PERCENTAGE FEATURE
 

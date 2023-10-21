@@ -66,7 +66,7 @@ The *image* module displays an image from a path.
 
 # SCRIPT OUTPUT
 
-Similar to the *custom* module, output values of the script is *newline* separated.
+Similar to the *custom* module, output values of the script are *newline* separated.
 The following is the output format:
 
 ```
