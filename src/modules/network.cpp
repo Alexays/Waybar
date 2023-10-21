@@ -656,7 +656,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         checking route id
         **/
         if (!is_del_event &&
-            ((net->ifid_ == -1) || (priority < net->route_priority) || (net->ifid_ != temp_idx))) {
+            ((net->ifid_ == -1) || (priority < net->route_priority))) {
           // Clear if's state for the case were there is a higher priority
           // route on a different interface.
           net->clearIface();
