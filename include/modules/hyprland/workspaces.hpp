@@ -26,13 +26,13 @@ namespace waybar::modules::hyprland {
 
 class Workspaces;
 
-class WorkspaceWindow {
+class WindowCreationPayload {
  public:
-  WorkspaceWindow(std::string workspace_name, WindowAddress window_address,
-                  std::string window_repr);
-  WorkspaceWindow(std::string workspace_name, WindowAddress window_address,
-                  std::string window_class, std::string window_title);
-  WorkspaceWindow(Json::Value const& client_data);
+  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
+                        std::string window_repr);
+  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
+                        std::string window_class, std::string window_title);
+  WindowCreationPayload(Json::Value const& client_data);
 
   int increment_time_spent_uncreated();
   bool is_empty(Workspaces& workspace_manager);
@@ -83,11 +83,11 @@ class Workspace {
   void set_windows(uint value) { windows_ = value; };
   void set_name(std::string const& value) { name_ = value; };
   bool contains_window(WindowAddress const& addr) const { return window_map_.contains(addr); }
-  void insert_window(WorkspaceWindow create_window_paylod);
+  void insert_window(WindowCreationPayload create_window_paylod);
   std::string remove_window(WindowAddress const& addr);
   void initialize_window_map(const Json::Value& clients_data);
 
-  bool on_window_opened(WorkspaceWindow const& create_window_paylod);
+  bool on_window_opened(WindowCreationPayload const& create_window_paylod);
   std::optional<std::string> on_window_closed(WindowAddress const& addr);
 
   void update(const std::string& format, const std::string& icon);
@@ -178,7 +178,7 @@ class Workspaces : public AModule, public EventHandler {
   std::vector<std::unique_ptr<Workspace>> workspaces_;
   std::vector<Json::Value> workspaces_to_create_;
   std::vector<std::string> workspaces_to_remove_;
-  std::vector<WorkspaceWindow> windows_to_create_;
+  std::vector<WindowCreationPayload> windows_to_create_;
 
   std::vector<std::regex> ignore_workspaces_;
 
