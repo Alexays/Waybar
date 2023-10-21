@@ -7,8 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: DoozyX/clang-format-lint-action@v0.13
+    - uses: DoozyX/clang-format-lint-action@v0.16.2
       with:
         source: '.'
         extensions: 'hpp,h,cpp,c'
-        clangFormatVersion: 12
+        clangFormatVersion: 16
