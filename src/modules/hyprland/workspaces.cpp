@@ -225,7 +225,7 @@ auto Workspaces::update() -> void {
   AModule::update();
 }
 
-bool isDoubleSpecial(std::string &workspace_name) {
+bool isDoubleSpecial(std::string const &workspace_name) {
   // Hyprland's IPC sometimes reports the creation of workspaces strangely named
   // `special:special:<some_name>`. This function checks for that and is used
   // to avoid creating (and then removing) such workspaces.
@@ -233,7 +233,7 @@ bool isDoubleSpecial(std::string &workspace_name) {
   return workspace_name.find("special:special:") != std::string::npos;
 }
 
-bool Workspaces::is_workspace_ignored(std::string &name) {
+bool Workspaces::is_workspace_ignored(std::string const &name) {
   for (auto &rule : ignore_workspaces_) {
     if (std::regex_match(name, rule)) {
       return true;
@@ -250,44 +250,15 @@ void Workspaces::onEvent(const std::string &ev) {
   std::string payload = ev.substr(eventName.size() + 2);
 
   if (eventName == "workspace") {
-    active_workspace_name_ = payload;
-
+    on_workspace_activated(payload);
   } else if (eventName == "destroyworkspace") {
-    if (!isDoubleSpecial(payload)) {
-      workspaces_to_remove_.push_back(payload);
-    }
+    on_workspace_destroyed(payload);
   } else if (eventName == "createworkspace") {
-    const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
-
-    if (!is_workspace_ignored(payload)) {
-      for (Json::Value workspace_json : workspaces_json) {
-        std::string name = workspace_json["name"].asString();
-        if (name == payload &&
-            (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
-            (show_special() || !name.starts_with("special")) && !isDoubleSpecial(payload)) {
-          workspaces_to_create_.push_back(workspace_json);
-          break;
-        }
-      }
-    }
+    on_workspace_created(payload);
   } else if (eventName == "focusedmon") {
-    active_workspace_name_ = payload.substr(payload.find(',') + 1);
-
+    on_monitor_focused(payload);
   } else if (eventName == "moveworkspace" && !all_outputs()) {
-    std::string workspace = payload.substr(0, payload.find(','));
-    std::string new_output = payload.substr(payload.find(',') + 1);
-    if (bar_.output->name == new_output) {  // TODO: implement this better
-      const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
-      for (Json::Value workspace_json : workspaces_json) {
-        std::string name = workspace_json["name"].asString();
-        if (name == workspace && bar_.output->name == workspace_json["monitor"].asString()) {
-          workspaces_to_create_.push_back(workspace_json);
-          break;
-        }
-      }
-    } else {
-      workspaces_to_remove_.push_back(workspace);
-    }
+    on_workspace_moved(payload);
   } else if (eventName == "openwindow") {
     on_window_opened(payload);
   } else if (eventName == "closewindow") {
@@ -297,39 +268,74 @@ void Workspaces::onEvent(const std::string &ev) {
   } else if (eventName == "urgent") {
     set_urgent_workspace(payload);
   } else if (eventName == "renameworkspace") {
-    std::string workspace_id_str = payload.substr(0, payload.find(','));
-    int workspace_id = workspace_id_str == "special" ? -99 : std::stoi(workspace_id_str);
-    std::string new_name = payload.substr(payload.find(',') + 1);
-    for (auto &workspace : workspaces_) {
-      if (workspace->id() == workspace_id) {
-        if (workspace->name() == active_workspace_name_) {
-          active_workspace_name_ = new_name;
-        }
-        workspace->set_name(new_name);
-        break;
-      }
-    }
+    on_workspace_renamed(payload);
   } else if (eventName == "windowtitle") {
-    auto window_workspace =
-        std::find_if(workspaces_.begin(), workspaces_.end(),
-                     [payload](auto &workspace) { return workspace->contains_window(payload); });
-
-    if (window_workspace != workspaces_.end()) {
-      Json::Value clients_data = gIPC->getSocket1JsonReply("clients");
-      std::string json_window_address = fmt::format("0x{}", payload);
-
-      auto client = std::find_if(clients_data.begin(), clients_data.end(),
-                                 [json_window_address](auto &client) {
-                                   return client["address"].asString() == json_window_address;
-                                 });
-
-      if (!client->empty()) {
-        (*window_workspace)->insert_window({*client});
-      }
-    }
+    on_window_title_event(payload);
   }
 
   dp.emit();
+}
+
+void Workspaces::on_workspace_activated(std::string const &payload) {
+  active_workspace_name_ = payload;
+}
+
+void Workspaces::on_workspace_destroyed(std::string const &payload) {
+  if (!isDoubleSpecial(payload)) {
+    workspaces_to_remove_.push_back(payload);
+  }
+}
+
+void Workspaces::on_workspace_created(std::string const &payload) {
+  const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
+
+  if (!is_workspace_ignored(payload)) {
+    for (Json::Value workspace_json : workspaces_json) {
+      std::string name = workspace_json["name"].asString();
+      if (name == payload &&
+          (all_outputs() || bar_.output->name == workspace_json["monitor"].asString()) &&
+          (show_special() || !name.starts_with("special")) && !isDoubleSpecial(payload)) {
+        workspaces_to_create_.push_back(workspace_json);
+        break;
+      }
+    }
+  }
+}
+
+void Workspaces::on_workspace_moved(std::string const &payload) {
+  std::string workspace = payload.substr(0, payload.find(','));
+  std::string new_output = payload.substr(payload.find(',') + 1);
+  if (bar_.output->name == new_output) {  // TODO: implement this better
+    const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
+    for (Json::Value workspace_json : workspaces_json) {
+      std::string name = workspace_json["name"].asString();
+      if (name == workspace && bar_.output->name == workspace_json["monitor"].asString()) {
+        workspaces_to_create_.push_back(workspace_json);
+        break;
+      }
+    }
+  } else {
+    workspaces_to_remove_.push_back(workspace);
+  }
+}
+
+void Workspaces::on_workspace_renamed(std::string const &payload) {
+  std::string workspace_id_str = payload.substr(0, payload.find(','));
+  int workspace_id = workspace_id_str == "special" ? -99 : std::stoi(workspace_id_str);
+  std::string new_name = payload.substr(payload.find(',') + 1);
+  for (auto &workspace : workspaces_) {
+    if (workspace->id() == workspace_id) {
+      if (workspace->name() == active_workspace_name_) {
+        active_workspace_name_ = new_name;
+      }
+      workspace->set_name(new_name);
+      break;
+    }
+  }
+}
+
+void Workspaces::on_monitor_focused(std::string const &payload) {
+  active_workspace_name_ = payload.substr(payload.find(',') + 1);
 }
 
 void Workspaces::on_window_opened(std::string const &payload) {
@@ -356,7 +362,7 @@ void Workspaces::on_window_opened(std::string const &payload) {
 void Workspaces::on_window_closed(std::string const &addr) {
   update_window_count();
   for (auto &workspace : workspaces_) {
-    if (workspace->on_window_closed(addr)) {
+    if (workspace->close_window(addr)) {
       break;
     }
   }
@@ -384,18 +390,35 @@ void Workspaces::on_window_moved(std::string const &payload) {
 
   // Take the window's representation from the old workspace...
   for (auto &workspace : workspaces_) {
-    try {
-      window_repr = workspace->on_window_closed(window_address).value();
+    if (auto window_addr = workspace->close_window(window_address); window_addr != std::nullopt) {
+      window_repr = window_addr.value();
       break;
-    } catch (const std::bad_optional_access &e) {
-      // window was not found in this workspace
-      continue;
     }
   }
 
   // ...and add it to the new workspace
   if (!window_repr.empty()) {
     windows_to_create_.emplace_back(workspace_name, window_address, window_repr);
+  }
+}
+
+void Workspaces::on_window_title_event(std::string const &payload) {
+  auto window_workspace =
+      std::find_if(workspaces_.begin(), workspaces_.end(),
+                   [payload](auto &workspace) { return workspace->contains_window(payload); });
+
+  if (window_workspace != workspaces_.end()) {
+    Json::Value clients_data = gIPC->getSocket1JsonReply("clients");
+    std::string json_window_address = fmt::format("0x{}", payload);
+
+    auto client =
+        std::find_if(clients_data.begin(), clients_data.end(), [json_window_address](auto &client) {
+          return client["address"].asString() == json_window_address;
+        });
+
+    if (!client->empty()) {
+      (*window_workspace)->insert_window({*client});
+    }
   }
 }
 
@@ -446,11 +469,11 @@ bool Workspace::on_window_opened(WindowCreationPayload const &create_window_payl
   return false;
 }
 
-std::optional<std::string> Workspace::on_window_closed(WindowAddress const &addr) {
+std::optional<std::string> Workspace::close_window(WindowAddress const &addr) {
   if (window_map_.contains(addr)) {
     return remove_window(addr);
   }
-  return {};
+  return std::nullopt;
 }
 
 void Workspaces::create_workspace(Json::Value const &workspace_data,

@@ -88,7 +88,7 @@ class Workspace {
   void initialize_window_map(const Json::Value& clients_data);
 
   bool on_window_opened(WindowCreationPayload const& create_window_paylod);
-  std::optional<std::string> on_window_closed(WindowAddress const& addr);
+  std::optional<std::string> close_window(WindowAddress const& addr);
 
   void update(const std::string& format, const std::string& icon);
 
@@ -127,7 +127,7 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string get_rewrite(std::string window_class, std::string window_title);
   std::string& get_window_separator() { return format_window_separator_; }
-  bool is_workspace_ignored(std::string& workspace_name);
+  bool is_workspace_ignored(std::string const& workspace_name);
 
   bool window_rewrite_config_uses_title() const { return any_window_rewrite_rule_uses_title_; }
 
@@ -142,9 +142,22 @@ class Workspaces : public AModule, public EventHandler {
   void parse_config(const Json::Value& config);
   void register_ipc();
 
+  // workspace events
+  void on_workspace_activated(std::string const& payload);
+  void on_workspace_destroyed(std::string const& payload);
+  void on_workspace_created(std::string const& payload);
+  void on_workspace_moved(std::string const& payload);
+  void on_workspace_renamed(std::string const& payload);
+
+  // monitor events
+  void on_monitor_focused(std::string const& payload);
+
+  // window events
   void on_window_opened(std::string const& payload);
   void on_window_closed(std::string const& payload);
   void on_window_moved(std::string const& payload);
+
+  void on_window_title_event(std::string const& payload);
 
   int window_rewrite_priority_function(std::string const& window_rule);
 
