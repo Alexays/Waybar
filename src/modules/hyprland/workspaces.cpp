@@ -289,13 +289,10 @@ void Workspaces::onEvent(const std::string &ev) {
       workspaces_to_remove_.push_back(workspace);
     }
   } else if (eventName == "openwindow") {
-    update_window_count();
     on_window_opened(payload);
   } else if (eventName == "closewindow") {
-    update_window_count();
     on_window_closed(payload);
   } else if (eventName == "movewindow") {
-    update_window_count();
     on_window_moved(payload);
   } else if (eventName == "urgent") {
     set_urgent_workspace(payload);
@@ -336,6 +333,7 @@ void Workspaces::onEvent(const std::string &ev) {
 }
 
 void Workspaces::on_window_opened(std::string const &payload) {
+  update_window_count();
   size_t last_comma_idx = 0;
   size_t next_comma_idx = payload.find(',');
   std::string window_address = payload.substr(last_comma_idx, next_comma_idx - last_comma_idx);
@@ -356,6 +354,7 @@ void Workspaces::on_window_opened(std::string const &payload) {
 }
 
 void Workspaces::on_window_closed(std::string const &addr) {
+  update_window_count();
   for (auto &workspace : workspaces_) {
     if (workspace->on_window_closed(addr)) {
       break;
@@ -364,6 +363,7 @@ void Workspaces::on_window_closed(std::string const &addr) {
 }
 
 void Workspaces::on_window_moved(std::string const &payload) {
+  update_window_count();
   size_t last_comma_idx = 0;
   size_t next_comma_idx = payload.find(',');
   std::string window_address = payload.substr(last_comma_idx, next_comma_idx - last_comma_idx);
