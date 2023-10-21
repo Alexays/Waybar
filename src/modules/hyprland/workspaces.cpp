@@ -14,23 +14,28 @@
 
 namespace waybar::modules::hyprland {
 
-int Workspaces::window_rewrite_priority_function(std::string &window_rule) {
+namespace {
+auto constexpr WINDOW_CREATION_TIMEOUT = 2;
+}
+
+int Workspaces::window_rewrite_priority_function(std::string const &window_rule) {
   // Rules that match against title are prioritized
   // Rules that don't specify if they're matching against either title or class are deprioritized
-  bool has_title = window_rule.find("title") != std::string::npos;
-  bool has_class = window_rule.find("class") != std::string::npos;
+  bool const has_title = window_rule.find("title") != std::string::npos;
+  bool const has_class = window_rule.find("class") != std::string::npos;
 
   if (has_title && has_class) {
     any_window_rewrite_rule_uses_title_ = true;
     return 3;
-  } else if (has_title) {
+  }
+  if (has_title) {
     any_window_rewrite_rule_uses_title_ = true;
     return 2;
-  } else if (has_class) {
-    return 1;
-  } else {
-    return 0;
   }
+  if (has_class) {
+    return 1;
+  }
+  return 0;
 }
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
@@ -51,7 +56,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 }
 
 auto Workspaces::parse_config(const Json::Value &config) -> void {
-  Json::Value config_format = config["format"];
+  const Json::Value &config_format = config["format"];
 
   format_ = config_format.isString() ? config_format.asString() : "{name}";
   with_icon_ = format_.find("{icon}") != std::string::npos;
@@ -109,13 +114,13 @@ auto Workspaces::parse_config(const Json::Value &config) -> void {
     }
   }
 
-  Json::Value format_window_separator = config["format-window-separator"];
+  const Json::Value &format_window_separator = config["format-window-separator"];
   format_window_separator_ =
       format_window_separator.isString() ? format_window_separator.asString() : " ";
 
-  Json::Value window_rewrite = config["window-rewrite"];
+  const Json::Value &window_rewrite = config["window-rewrite"];
 
-  Json::Value window_rewrite_default_config = config["window-rewrite-default"];
+  const Json::Value &window_rewrite_default_config = config["window-rewrite-default"];
   std::string window_rewrite_default =
       window_rewrite_default_config.isString() ? window_rewrite_default_config.asString() : "?";
 
@@ -152,13 +157,13 @@ auto Workspaces::register_ipc() -> void {
 }
 
 auto Workspaces::update() -> void {
-  for (std::string workspace_to_remove : workspaces_to_remove_) {
+  for (const std::string &workspace_to_remove : workspaces_to_remove_) {
     remove_workspace(workspace_to_remove);
   }
 
   workspaces_to_remove_.clear();
 
-  for (Json::Value &workspace_to_create : workspaces_to_create_) {
+  for (Json::Value const &workspace_to_create : workspaces_to_create_) {
     create_workspace(workspace_to_create);
   }
 
@@ -195,7 +200,7 @@ auto Workspaces::update() -> void {
   }
 
   bool any_window_created = false;
-  std::vector<CreateWindow> not_created;
+  std::vector<WorkspaceWindow> not_created;
 
   for (auto &window_payload : windows_to_create_) {
     bool created = false;
@@ -207,7 +212,6 @@ auto Workspaces::update() -> void {
       }
     }
     if (!created) {
-      static const int WINDOW_CREATION_TIMEOUT = 2;
       if (window_payload.increment_time_spent_uncreated() < WINDOW_CREATION_TIMEOUT) {
         not_created.push_back(window_payload);
       }
@@ -334,7 +338,7 @@ void Workspaces::onEvent(const std::string &ev) {
   dp.emit();
 }
 
-void Workspaces::on_window_opened(std::string payload) {
+void Workspaces::on_window_opened(std::string const &payload) {
   size_t last_comma_idx = 0;
   size_t next_comma_idx = payload.find(',');
   std::string window_address = payload.substr(last_comma_idx, next_comma_idx - last_comma_idx);
@@ -351,11 +355,10 @@ void Workspaces::on_window_opened(std::string payload) {
 
   std::string window_title = payload.substr(next_comma_idx + 1, payload.length() - next_comma_idx);
 
-  windows_to_create_.emplace_back(
-      CreateWindow(workspace_name, window_address, window_class, window_title));
+  windows_to_create_.emplace_back(workspace_name, window_address, window_class, window_title);
 }
 
-void Workspaces::on_window_closed(std::string addr) {
+void Workspaces::on_window_closed(std::string const &addr) {
   for (auto &workspace : workspaces_) {
     if (workspace->on_window_closed(addr)) {
       break;
@@ -363,7 +366,7 @@ void Workspaces::on_window_closed(std::string addr) {
   }
 }
 
-void Workspaces::on_window_moved(std::string payload) {
+void Workspaces::on_window_moved(std::string const &payload) {
   size_t last_comma_idx = 0;
   size_t next_comma_idx = payload.find(',');
   std::string window_address = payload.substr(last_comma_idx, next_comma_idx - last_comma_idx);
@@ -395,7 +398,7 @@ void Workspaces::on_window_moved(std::string payload) {
 
   // ...and add it to the new workspace
   if (!window_repr.empty()) {
-    windows_to_create_.emplace_back(CreateWindow(workspace_name, window_address, window_repr));
+    windows_to_create_.emplace_back(workspace_name, window_address, window_repr);
   }
 }
 
@@ -426,37 +429,35 @@ void Workspace::initialize_window_map(const Json::Value &clients_data) {
   }
 }
 
-void Workspace::insert_window(CreateWindow create_window_paylod) {
+void Workspace::insert_window(WorkspaceWindow create_window_paylod) {
   if (!create_window_paylod.is_empty(workspace_manager_)) {
     window_map_[create_window_paylod.addr()] = create_window_paylod.repr(workspace_manager_);
   }
 };
 
-std::string Workspace::remove_window(WindowAddress addr) {
+std::string Workspace::remove_window(WindowAddress const &addr) {
   std::string window_repr = window_map_[addr];
   window_map_.erase(addr);
-
   return window_repr;
 }
 
-bool Workspace::on_window_opened(CreateWindow create_window_paylod) {
+bool Workspace::on_window_opened(WorkspaceWindow const &create_window_paylod) {
   if (create_window_paylod.workspace_name() == name()) {
     insert_window(create_window_paylod);
     return true;
-  } else {
-    return false;
   }
+  return false;
 }
 
-std::optional<std::string> Workspace::on_window_closed(WindowAddress &addr) {
+std::optional<std::string> Workspace::on_window_closed(WindowAddress const &addr) {
   if (window_map_.contains(addr)) {
     return remove_window(addr);
-  } else {
-    return {};
   }
+  return {};
 }
 
-void Workspaces::create_workspace(Json::Value &workspace_data, const Json::Value &clients_data) {
+void Workspaces::create_workspace(Json::Value const &workspace_data,
+                                  Json::Value const &clients_data) {
   // avoid recreating existing workspaces
   auto workspace_name = workspace_data["name"].asString();
   auto workspace = std::find_if(
@@ -477,7 +478,7 @@ void Workspaces::create_workspace(Json::Value &workspace_data, const Json::Value
   new_workspace_button.show_all();
 }
 
-void Workspaces::remove_workspace(std::string name) {
+void Workspaces::remove_workspace(std::string const &name) {
   auto workspace =
       std::find_if(workspaces_.begin(), workspaces_.end(), [&](std::unique_ptr<Workspace> &x) {
         return (name.starts_with("special:") && name.substr(8) == x->name()) || name == x->name();
@@ -816,7 +817,7 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
   return name_;
 }
 
-auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
+bool Workspace::handle_clicked(GdkEventButton *bt) const {
   try {
     if (id() > 0) {  // normal or numbered persistent
       gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
@@ -834,7 +835,7 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
   return false;
 }
 
-void Workspaces::set_urgent_workspace(std::string windowaddress) {
+void Workspaces::set_urgent_workspace(std::string const &windowaddress) {
   const Json::Value clients_json = gIPC->getSocket1JsonReply("clients");
   int workspace_id = -1;
 
@@ -863,58 +864,62 @@ std::string Workspaces::get_rewrite(std::string window_class, std::string window
   return window_rewrite_rules_.get(window_repr_key);
 }
 
-CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_address,
-                           std::string window_repr)
-    : window_(window_repr), window_address_(window_address), workspace_name_(workspace_name) {
+WorkspaceWindow::WorkspaceWindow(std::string workspace_name, WindowAddress window_address,
+                                 std::string window_repr)
+    : window_(std::move(window_repr)),
+      window_address_(std::move(window_address)),
+      workspace_name_(std::move(workspace_name)) {
   clear_addr();
   clear_workspace_name();
 }
 
-CreateWindow::CreateWindow(std::string workspace_name, WindowAddress window_address,
-                           std::string window_class, std::string window_title)
-    : window_(std::make_pair(window_class, window_title)),
-      window_address_(window_address),
-      workspace_name_(workspace_name) {
+WorkspaceWindow::WorkspaceWindow(std::string workspace_name, WindowAddress window_address,
+                                 std::string window_class, std::string window_title)
+    : window_(std::make_pair(std::move(window_class), std::move(window_title))),
+      window_address_(std::move(window_address)),
+      workspace_name_(std::move(workspace_name)) {
   clear_addr();
   clear_workspace_name();
 }
 
-CreateWindow::CreateWindow(Json::Value &client_data) {
-  window_address_ = client_data["address"].asString();
-  workspace_name_ = client_data["workspace"]["name"].asString();
-  window_ = std::make_pair(client_data["class"].asString(), client_data["title"].asString());
+WorkspaceWindow::WorkspaceWindow(Json::Value const &client_data)
+    : window_(std::make_pair(client_data["class"].asString(), client_data["title"].asString())),
+      window_address_(client_data["address"].asString()),
+      workspace_name_(client_data["workspace"]["name"].asString()) {
   clear_addr();
   clear_workspace_name();
 }
 
-std::string CreateWindow::repr(Workspaces &workspace_manager) {
+std::string WorkspaceWindow::repr(Workspaces &workspace_manager) {
   if (std::holds_alternative<Repr>(window_)) {
     return std::get<Repr>(window_);
-  } else if (std::holds_alternative<ClassAndTitle>(window_)) {
+  }
+  if (std::holds_alternative<ClassAndTitle>(window_)) {
     auto [window_class, window_title] = std::get<ClassAndTitle>(window_);
     return workspace_manager.get_rewrite(window_class, window_title);
-  } else {
-    // Unreachable
-    return "";
   }
+  // Unreachable
+  spdlog::error("WorkspaceWindow::repr: Unreachable");
+  throw std::runtime_error("WorkspaceWindow::repr: Unreachable");
 }
 
-bool CreateWindow::is_empty(Workspaces &workspace_manager) {
+bool WorkspaceWindow::is_empty(Workspaces &workspace_manager) {
   if (std::holds_alternative<Repr>(window_)) {
     return std::get<Repr>(window_).empty();
-  } else if (std::holds_alternative<ClassAndTitle>(window_)) {
+  }
+  if (std::holds_alternative<ClassAndTitle>(window_)) {
     auto [window_class, window_title] = std::get<ClassAndTitle>(window_);
     return (window_class.empty() &&
             (!workspace_manager.window_rewrite_config_uses_title() || window_title.empty()));
-  } else {
-    // Unreachable
-    return true;
   }
+  // Unreachable
+  spdlog::error("WorkspaceWindow::is_empty: Unreachable");
+  throw std::runtime_error("WorkspaceWindow::is_empty: Unreachable");
 }
 
-int CreateWindow::increment_time_spent_uncreated() { return time_spent_uncreated_++; }
+int WorkspaceWindow::increment_time_spent_uncreated() { return time_spent_uncreated_++; }
 
-void CreateWindow::clear_addr() {
+void WorkspaceWindow::clear_addr() {
   // substr(2, ...) is necessary because Hyprland's JSON follows this format:
   // 0x{ADDR}
   // While Hyprland's IPC follows this format:
@@ -928,7 +933,7 @@ void CreateWindow::clear_addr() {
   }
 }
 
-void CreateWindow::clear_workspace_name() {
+void WorkspaceWindow::clear_workspace_name() {
   // The workspace name may optionally feature "special:" at the beginning.
   // If so, we need to remove it because the workspace is saved WITHOUT the
   // special qualifier. The reasoning is that not all of Hyprland's IPC events
@@ -943,7 +948,7 @@ void CreateWindow::clear_workspace_name() {
   }
 }
 
-void CreateWindow::move_to_worksace(std::string &new_workspace_name) {
+void WorkspaceWindow::move_to_worksace(std::string &new_workspace_name) {
   workspace_name_ = new_workspace_name;
 }
 
