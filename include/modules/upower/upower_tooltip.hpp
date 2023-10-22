@@ -2,7 +2,6 @@
 
 #include <libupower-glib/upower.h>
 
-#include <memory>
 #include <unordered_map>
 
 #include "gtkmm/box.h"
@@ -17,7 +16,7 @@ class UPowerTooltip : public Gtk::Window {
 
   const std::string getDeviceIcon(UpDeviceKind& kind);
 
-  std::unique_ptr<Gtk::Box> contentBox;
+  Gtk::Box* contentBox;
 
   uint iconSize;
   uint tooltipSpacing;
