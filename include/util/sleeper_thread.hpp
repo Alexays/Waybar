@@ -67,6 +67,12 @@ class SleeperThread {
   auto sleep_for(std::chrono::system_clock::duration dur) {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
+    using timepoint = std::chrono::system_clock::time_point;
+    static_assert(std::numeric_limits<timepoint::rep>::max() >=
+                  std::numeric_limits<decltype(dur)::rep>::max());
+    if (std::chrono::system_clock::now() >= timepoint::max() - dur) {
+      dur = timepoint::max() - std::chrono::system_clock::now() - std::chrono::seconds(1);
+    }
     return condvar_.wait_for(lk, dur, [this] { return signal_ || !do_run_; });
   }
 
