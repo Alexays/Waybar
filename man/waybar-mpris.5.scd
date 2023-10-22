@@ -21,6 +21,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *interval*: ++
 	typeof: integer ++
+	default: 0 ++
 	Refresh MPRIS information on a timer.
 
 *format*: ++
