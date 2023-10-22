@@ -9,6 +9,7 @@
 #include <cstdlib>  // malloc
 
 #include "modules/cpu_usage.hpp"
+#include "util/scope_guard.hpp"
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/sched.h>
@@ -33,6 +34,11 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo(
   int ncpu = sysconf(_SC_NPROCESSORS_CONF);
   size_t sz = CPUSTATES * (ncpu + 1) * sizeof(pcp_time_t);
   pcp_time_t *cp_time = static_cast<pcp_time_t *>(malloc(sz)), *pcp_time = cp_time;
+  waybar::util::scope_guard cp_time_deleter([cp_time]() {
+    if (cp_time) {
+      free(cp_time);
+    }
+  });
 #if defined(__NetBSD__)
   int mib[] = {
       CTL_KERN,
@@ -97,6 +103,5 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo(
     }
     cpuinfo.emplace_back(single_cp_time[CP_IDLE], total);
   }
-  free(cp_time);
   return cpuinfo;
 }
