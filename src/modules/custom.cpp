@@ -2,8 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include "util/scope_guard.hpp"
-
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config)
     : ALabel(config, "custom-" + name, id, "{}"),
@@ -59,11 +57,6 @@ void waybar::modules::Custom::continuousWorker() {
   }
   thread_ = [this, cmd] {
     char* buff = nullptr;
-    waybar::util::scope_guard buff_deleter([buff]() {
-      if (buff) {
-        free(buff);
-      }
-    });
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
@@ -97,6 +90,7 @@ void waybar::modules::Custom::continuousWorker() {
       output_ = {0, output};
       dp.emit();
     }
+    free(buff);
   };
 }
 

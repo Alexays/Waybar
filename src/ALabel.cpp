@@ -12,7 +12,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     : AModule(config, name, id, config["format-alt"].isString() || enable_click, enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds::max()
+                    ? std::chrono::seconds(100000000)
                     : std::chrono::seconds(
                           config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
       default_format_(format_) {
