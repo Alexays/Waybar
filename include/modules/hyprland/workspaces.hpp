@@ -26,12 +26,13 @@ namespace waybar::modules::hyprland {
 
 class Workspaces;
 
-class CreateWindow {
+class WindowCreationPayload {
  public:
-  CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_repr);
-  CreateWindow(std::string workspace_name, WindowAddress window_address, std::string window_class,
-               std::string window_title);
-  CreateWindow(Json::Value& client_data);
+  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
+                        std::string window_repr);
+  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
+                        std::string window_class, std::string window_title);
+  WindowCreationPayload(Json::Value const& client_data);
 
   int increment_time_spent_uncreated();
   bool is_empty(Workspaces& workspace_manager);
@@ -49,18 +50,18 @@ class CreateWindow {
 
   using Repr = std::string;
   using ClassAndTitle = std::pair<std::string, std::string>;
-
   std::variant<Repr, ClassAndTitle> window_;
 
   WindowAddress window_address_;
   std::string workspace_name_;
+
   int time_spent_uncreated_ = 0;
 };
 
 class Workspace {
  public:
   explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
-                     const Json::Value& clients_json = Json::Value::nullRef);
+                     const Json::Value& clients_data = Json::Value::nullRef);
   std::string& select_icon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return button_; };
 
@@ -74,21 +75,20 @@ class Workspace {
   bool is_empty() const { return windows_ == 0; };
   bool is_urgent() const { return is_urgent_; };
 
-  auto handle_clicked(GdkEventButton* bt) -> bool;
+  bool handle_clicked(GdkEventButton* bt) const;
   void set_active(bool value = true) { active_ = value; };
   void set_persistent(bool value = true) { is_persistent_ = value; };
   void set_urgent(bool value = true) { is_urgent_ = value; };
   void set_visible(bool value = true) { is_visible_ = value; };
   void set_windows(uint value) { windows_ = value; };
-  void set_name(std::string value) { name_ = value; };
-  bool contains_window(WindowAddress addr) const { return window_map_.contains(addr); }
-  void insert_window(CreateWindow create_window_paylod);
-  std::string remove_window(WindowAddress addr);
+  void set_name(std::string const& value) { name_ = value; };
+  bool contains_window(WindowAddress const& addr) const { return window_map_.contains(addr); }
+  void insert_window(WindowCreationPayload create_window_paylod);
+  std::string remove_window(WindowAddress const& addr);
   void initialize_window_map(const Json::Value& clients_data);
 
-  bool on_window_opened(CreateWindow create_window_paylod);
-
-  std::optional<std::string> on_window_closed(WindowAddress& addr);
+  bool on_window_opened(WindowCreationPayload const& create_window_paylod);
+  std::optional<std::string> close_window(WindowAddress const& addr);
 
   void update(const std::string& format, const std::string& icon);
 
@@ -127,26 +127,39 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string get_rewrite(std::string window_class, std::string window_title);
   std::string& get_window_separator() { return format_window_separator_; }
-  bool is_workspace_ignored(std::string& workspace_name);
+  bool is_workspace_ignored(std::string const& workspace_name);
 
   bool window_rewrite_config_uses_title() const { return any_window_rewrite_rule_uses_title_; }
 
  private:
-  void onEvent(const std::string&) override;
+  void onEvent(const std::string& e) override;
   void update_window_count();
   void sort_workspaces();
-  void create_workspace(Json::Value& workspace_data,
-                        const Json::Value& clients_data = Json::Value::nullRef);
-  void remove_workspace(std::string name);
-  void set_urgent_workspace(std::string windowaddress);
+  void create_workspace(Json::Value const& workspace_data,
+                        Json::Value const& clients_data = Json::Value::nullRef);
+  void remove_workspace(std::string const& name);
+  void set_urgent_workspace(std::string const& windowaddress);
   void parse_config(const Json::Value& config);
   void register_ipc();
 
-  void on_window_opened(std::string payload);
-  void on_window_closed(std::string payload);
-  void on_window_moved(std::string payload);
+  // workspace events
+  void on_workspace_activated(std::string const& payload);
+  void on_workspace_destroyed(std::string const& payload);
+  void on_workspace_created(std::string const& payload);
+  void on_workspace_moved(std::string const& payload);
+  void on_workspace_renamed(std::string const& payload);
 
-  int window_rewrite_priority_function(std::string& window_rule);
+  // monitor events
+  void on_monitor_focused(std::string const& payload);
+
+  // window events
+  void on_window_opened(std::string const& payload);
+  void on_window_closed(std::string const& payload);
+  void on_window_moved(std::string const& payload);
+
+  void on_window_title_event(std::string const& payload);
+
+  int window_rewrite_priority_function(std::string const& window_rule);
 
   bool all_outputs_ = false;
   bool show_special_ = false;
@@ -178,7 +191,7 @@ class Workspaces : public AModule, public EventHandler {
   std::vector<std::unique_ptr<Workspace>> workspaces_;
   std::vector<Json::Value> workspaces_to_create_;
   std::vector<std::string> workspaces_to_remove_;
-  std::vector<CreateWindow> windows_to_create_;
+  std::vector<WindowCreationPayload> windows_to_create_;
 
   std::vector<std::regex> ignore_workspaces_;
 
