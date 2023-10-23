@@ -59,7 +59,7 @@ void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
 
 void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
-  waybar::util::scope_guard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([error]() {
     if (error != nullptr) {
       g_error_free(error);
     }
@@ -81,7 +81,7 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
 
 void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
-  waybar::util::scope_guard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([error]() {
     if (error != nullptr) {
       g_error_free(error);
     }

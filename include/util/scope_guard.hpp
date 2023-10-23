@@ -5,14 +5,14 @@
 namespace waybar::util {
 
 template <typename Func>
-class scope_guard {
+class ScopeGuard {
  public:
-  explicit scope_guard(Func&& exit_function) : f{std::forward<Func>(exit_function)} {}
-  scope_guard(const scope_guard&) = delete;
-  scope_guard(scope_guard&&) = default;
-  scope_guard& operator=(const scope_guard&) = delete;
-  scope_guard& operator=(scope_guard&&) = default;
-  ~scope_guard() { f(); }
+  explicit ScopeGuard(Func&& exit_function) : f{std::forward<Func>(exit_function)} {}
+  ScopeGuard(const ScopeGuard&) = delete;
+  ScopeGuard(ScopeGuard&&) = default;
+  ScopeGuard& operator=(const ScopeGuard&) = delete;
+  ScopeGuard& operator=(ScopeGuard&&) = default;
+  ~ScopeGuard() { f(); }
 
  private:
   Func f;

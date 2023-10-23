@@ -14,7 +14,7 @@ using GDBusManager = std::unique_ptr<GDBusObjectManager, void (*)(GDBusObjectMan
 
 auto generateManager() -> GDBusManager {
   GError* error = nullptr;
-  waybar::util::scope_guard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }

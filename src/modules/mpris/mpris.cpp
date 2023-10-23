@@ -119,7 +119,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   GError* error = nullptr;
-  waybar::util::scope_guard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }
@@ -482,7 +482,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   }
 
   GError* error = nullptr;
-  waybar::util::scope_guard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }
@@ -580,7 +580,7 @@ errorexit:
 
 bool Mpris::handleToggle(GdkEventButton* const& e) {
   GError* error = nullptr;
-  waybar::util::scope_guard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }
