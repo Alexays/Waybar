@@ -27,7 +27,7 @@ Addressed by *jack*
 
 *format-xrun*: ++
 	typeof: string ++
-	This format is used for one polling interval, when the JACK server reports an xrun.
+	This format is used for one polling interval when the JACK server reports an xrun.
 
 *realtime*: ++
 	typeof: bool ++
@@ -59,7 +59,7 @@ Addressed by *jack*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -75,7 +75,7 @@ Addressed by *jack*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -87,7 +87,7 @@ Addressed by *jack*
 
 *{bufsize}*: The size of the JACK buffer.
 
-*{samplerate}*: The samplerate at which the JACK server is running.
+*{samplerate}*: The sample rate at which the JACK server is running.
 
 *{latency}*: The duration, in ms, of the current buffer size.
 

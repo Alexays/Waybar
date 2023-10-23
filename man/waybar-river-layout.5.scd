@@ -29,7 +29,7 @@ Addressed by *river/layout*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -45,7 +45,7 @@ Addressed by *river/layout*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 # EXAMPLE
 

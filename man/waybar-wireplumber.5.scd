@@ -43,7 +43,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -52,7 +52,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 *scroll-step*: ++
 	typeof: float ++
 	default: 1.0 ++
-	The speed in which to change the volume when scrolling.
+	The speed at which to change the volume when scrolling.
 
 *on-click*: ++
 	typeof: string ++
@@ -64,7 +64,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++

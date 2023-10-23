@@ -99,7 +99,7 @@ Addressed by *mpd*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -115,7 +115,7 @@ Addressed by *mpd*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -182,7 +182,7 @@ Addressed by *mpd*
 
 *{queueLength}*: The length of the current queue.
 
-*{stateIcon}*: The icon corresponding the playing or paused status of the player (see *state-icons* option)
+*{stateIcon}*: The icon corresponding to the playing or paused status of the player (see *state-icons* option)
 
 *{consumeIcon}*: The icon corresponding the "consume" option (see *consume-icons* option)
 

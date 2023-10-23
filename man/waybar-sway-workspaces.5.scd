@@ -63,7 +63,7 @@ Addressed by *sway/workspaces*
 *persistent-workspaces*: ++
 	typeof: json (see below) ++
 	default: empty ++
-	Lists workspaces that should always be shown, even when non existent
+	Lists workspaces that should always be shown, even when non-existent
 
 *on-update*: ++
 	typeof: string ++
@@ -98,11 +98,11 @@ warp-on-scroll: ++
 
 Additional to workspace name matching, the following *format-icons* can be set.
 
-- *default*: Will be shown, when no string matches is found.
+- *default*: Will be shown, when no string matches are found.
 - *urgent*: Will be shown, when workspace is flagged as urgent
 - *focused*: Will be shown, when workspace is focused
-- *persistent*: Will be shown, when workspace is persistent one.
-- *high-priority-named*: Icons by names will be shown always for that workspaces, independent by state.
+- *persistent*: Will be shown, when workspace is persistent.
+- *high-priority-named*: Icons by names will be shown always for those workspaces, independent by state.
 
 # PERSISTENT WORKSPACES
 
@@ -113,9 +113,9 @@ an empty list denoting all outputs.
 ```
 "sway/workspaces": {
 	"persistent-workspaces": {
-		"3": [], // Always show a workspace with name '3', on all outputs if it does not exists
-		"4": ["eDP-1"], // Always show a workspace with name '4', on output 'eDP-1' if it does not exists
-		"5": ["eDP-1", "DP-2"] // Always show a workspace with name '5', on outputs 'eDP-1' and 'DP-2' if it does not exists
+		"3": [], // Always show a workspace with name '3', on all outputs if it does not exist
+		"4": ["eDP-1"], // Always show a workspace with name '4', on output 'eDP-1' if it does not exist
+		"5": ["eDP-1", "DP-2"] // Always show a workspace with name '5', on outputs 'eDP-1' and 'DP-2' if it does not exist
 	}
 }
 ```

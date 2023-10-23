@@ -19,13 +19,13 @@ Addressed by *hyprland/workspaces*
 
 *format-icons*: ++
 	typeof: array ++
-	Based on the workspace id and state, the corresponding icon gets selected. See *icons*.
+	Based on the workspace ID and state, the corresponding icon gets selected. See *icons*.
 
 *window-rewrite*: ++
 	typeof: object ++
 	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
 	Keys are the rules, while the values are the methods of representation.
-	Rules may specify `class<...>`, `title<...>` or both in order to fine-tune the matching.
+	Rules may specify `class<...>`, `title<...>`, or both in order to fine-tune the matching.
 
 *window-rewrite-default*:
 	typeof: string ++
@@ -45,7 +45,7 @@ Addressed by *hyprland/workspaces*
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
-	If set to false workspaces group will be shown only in assigned output. Otherwise all workspace groups are shown.
+	If set to false workspaces group will be shown only in assigned output. Otherwise, all workspace groups are shown.
 
 *active-only*: ++
 	typeof: bool ++
@@ -55,7 +55,7 @@ Addressed by *hyprland/workspaces*
 *ignore-workspaces*: ++
 	typeof: array ++
 	default: [] ++
-	Regexes to match against workspaces names. If there's a match, the workspace will not be shown. This takes precedence over *show-special*, *all-outputs* and *active-only*.
+	Regexes to match against workspaces names. If there's a match, the workspace will not be shown. This takes precedence over *show-special*, *all-outputs*, and *active-only*.
 
 *sort-by*: ++
 	typeof: string ++

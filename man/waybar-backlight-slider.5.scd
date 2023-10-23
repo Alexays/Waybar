@@ -8,7 +8,7 @@ waybar - backlight slider module
 
 The *backlight slider* module displays and controls the current brightness of the default or preferred device.
 
-The brightness can be controlled by dragging the slider accross the bar, or clicking on a specific position.
+The brightness can be controlled by dragging the slider across the bar or clicking on a specific position.
 
 # CONFIGURATION
 

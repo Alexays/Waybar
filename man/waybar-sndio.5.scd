@@ -28,7 +28,7 @@ cursor is over the module, and clicking on the module toggles mute.
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
@@ -37,7 +37,7 @@ cursor is over the module, and clicking on the module toggles mute.
 *scroll-step*: ++
 	typeof: int ++
 	default: 5 ++
-	The speed in which to change the volume when scrolling.
+	The speed at which to change the volume when scrolling.
 
 *on-click*: ++
 	typeof: string ++
@@ -50,7 +50,7 @@ cursor is over the module, and clicking on the module toggles mute.
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
