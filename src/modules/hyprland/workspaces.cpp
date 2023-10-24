@@ -487,6 +487,9 @@ void Workspaces::create_workspace(Json::Value const &workspace_data,
       });
 
   if (workspace != workspaces_.end()) {
+    if (workspace_data["persistent"].asBool() and !(*workspace)->is_persistent()) {
+      (*workspace)->set_persistent();
+    }
     return;
   }
 
