@@ -1,6 +1,6 @@
 name: freebsd
 
-on: [ push, pull_request ]
+on: [push, pull_request]
 
 jobs:
   clang:
@@ -9,22 +9,21 @@ jobs:
     # https://github.com/actions/virtual-environments/issues/4060 - for lack of VirtualBox on MacOS 11 runners
     runs-on: macos-12
     steps:
-    - uses: actions/checkout@v3
-    - name: Test in FreeBSD VM
-      uses: vmactions/freebsd-vm@v0
-      timeout-minutes: 30
-      with:
-        mem: 2048
-        usesh: true
-        prepare: |
-          export CPPFLAGS=-isystem/usr/local/include LDFLAGS=-L/usr/local/lib # sndio
-          sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          pkg install -y git #  subprojects/date
-          pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
-            libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
-            pkgconf pulseaudio scdoc sndio spdlog wayland-protocols upower \
-            libinotify
-        run: |
-          meson build -Dman-pages=enabled
-          ninja -C build
-          meson test -C build --no-rebuild --print-errorlogs --suite waybar
+      - uses: actions/checkout@v3
+      - name: Test in FreeBSD VM
+        uses: cross-platform-actions/action@v0.19.1
+        timeout-minutes: 30
+        with:
+          operating_system: freebsd
+          version: "13.2"
+          environment_variables: CPPFLAGS=-isystem/usr/local/include LDFLAGS=-L/usr/local/lib
+          run: |
+            sudo sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
+            sudo pkg install -y git #  subprojects/date
+            sudo pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
+              libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
+              pkgconf pulseaudio scdoc sndio spdlog wayland-protocols upower \
+              libinotify
+            meson build -Dman-pages=enabled
+            ninja -C build
+            meson test -C build --no-rebuild --print-errorlogs --suite waybar
