@@ -30,6 +30,7 @@ class Privacy : public AModule {
   PrivacyItem privacy_item_audio_input;
   PrivacyItem privacy_item_audio_output;
 
+  std::mutex mutex_;
   sigc::connection visibility_conn;
 
   // Config

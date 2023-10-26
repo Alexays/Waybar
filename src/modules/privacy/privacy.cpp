@@ -67,6 +67,7 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
 }
 
 void Privacy::onPrivacyNodesChanged() {
+  mutex_.lock();
   nodes_audio_out.clear();
   nodes_audio_in.clear();
   nodes_screenshare.clear();
@@ -100,6 +101,7 @@ void Privacy::onPrivacyNodesChanged() {
     }
   }
 
+  mutex_.unlock();
   dp.emit();
 }
 
@@ -121,13 +123,17 @@ auto Privacy::update() -> void {
     if (is_visible) {
       event_box_.set_visible(true);
     } else {
-      visibility_conn = Glib::signal_timeout().connect(sigc::track_obj(
-                                                           [this] {
-                                                             event_box_.set_visible(false);
-                                                             return false;
-                                                           },
-                                                           *this),
-                                                       transition_duration);
+      visibility_conn = Glib::signal_timeout().connect(
+          sigc::track_obj(
+              [this] {
+                bool screenshare = !nodes_screenshare.empty();
+                bool audio_in = !nodes_audio_in.empty();
+                bool audio_out = !nodes_audio_out.empty();
+                event_box_.set_visible(screenshare || audio_in || audio_out);
+                return false;
+              },
+              *this),
+          transition_duration);
     }
   }
 
