@@ -68,6 +68,9 @@
 #ifdef HAVE_UPOWER
 #include "modules/upower/upower.hpp"
 #endif
+#ifdef HAVE_PIPEWIRE
+#include "modules/privacy/privacy.hpp"
+#endif
 #ifdef HAVE_LIBPULSE
 #include "modules/pulseaudio.hpp"
 #endif
@@ -101,7 +104,7 @@ namespace waybar {
 class Factory {
  public:
   Factory(const Bar& bar, const Json::Value& config);
-  AModule* makeModule(const std::string& name) const;
+  AModule* makeModule(const std::string& name, const std::string& pos) const;
 
  private:
   const Bar& bar_;
