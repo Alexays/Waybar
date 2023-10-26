@@ -37,4 +37,4 @@ class PipewireBackend {
   PipewireBackend(private_constructor_tag tag);
   ~PipewireBackend();
 };
-}  // namespace waybar::util::pipewire::PipewireBackend
+}  // namespace waybar::util::PipewireBackend

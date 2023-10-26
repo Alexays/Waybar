@@ -33,4 +33,4 @@ class PrivacyNodeInfo {
 
   ~PrivacyNodeInfo() { spa_hook_remove(&node_listener); }
 };
-}  // namespace waybar::util::pipewire::PipewireBackend
+}  // namespace waybar::util::PipewireBackend
