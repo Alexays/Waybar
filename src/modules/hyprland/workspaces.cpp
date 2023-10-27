@@ -153,17 +153,25 @@ auto Workspaces::register_ipc() -> void {
 }
 
 auto Workspaces::update() -> void {
+  //remove workspaces that wait to be removed
+  unsigned int current_remove_workspace_num = 0;
   for (const std::string &workspace_to_remove : workspaces_to_remove_) {
     remove_workspace(workspace_to_remove);
+    current_remove_workspace_num++;
+  }
+  for (unsigned int i = 0; i < current_remove_workspace_num; i++) {
+    workspaces_to_remove_.erase(workspaces_to_remove_.begin());
   }
 
-  workspaces_to_remove_.clear();
-
+  //add workspaces that wait to be created
+  unsigned int current_create_workspace_num = 0;
   for (Json::Value const &workspace_to_create : workspaces_to_create_) {
     create_workspace(workspace_to_create);
+    current_create_workspace_num++;
   }
-
-  workspaces_to_create_.clear();
+  for (unsigned int i = 0; i < current_create_workspace_num; i++) {
+    workspaces_to_create_.erase(workspaces_to_create_.begin());
+  }
 
   // get all active workspaces
   auto monitors = gIPC->getSocket1JsonReply("monitors");
