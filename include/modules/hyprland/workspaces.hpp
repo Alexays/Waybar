@@ -194,6 +194,8 @@ class Workspaces : public AModule, public EventHandler {
   std::vector<WindowCreationPayload> m_windowsToCreate;
 
   std::vector<std::regex> m_ignoreWorkspaces;
+  std::vector<int> exclude_persistence_point_; 
+  std::vector<int> prune_past_persistence_point_; 
 
   std::mutex m_mutex;
   const Bar& m_bar;
