@@ -29,7 +29,6 @@ PrivacyItem::PrivacyItem(const Json::Value& config_,
     : Gtk::Revealer(),
       privacy_type(privacy_type_),
       mutex_(),
-      signal_conn(),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
       icon_() {
   switch (privacy_type) {
@@ -75,12 +74,28 @@ PrivacyItem::PrivacyItem(const Json::Value& config_,
   }
   icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
 
+  property_child_revealed().signal_changed().connect(
+      sigc::mem_fun(*this, &PrivacyItem::on_child_revealed_changed));
+  signal_map().connect(sigc::mem_fun(*this, &PrivacyItem::on_map_changed));
+
   // Don't show by default
   set_reveal_child(true);
   set_visible(false);
 }
 
 bool PrivacyItem::is_enabled() { return enabled; }
+
+void PrivacyItem::on_child_revealed_changed() {
+  if (!this->get_child_revealed()) {
+    set_visible(false);
+  }
+}
+
+void PrivacyItem::on_map_changed() {
+  if (this->get_visible()) {
+    set_reveal_child(true);
+  }
+}
 
 void PrivacyItem::set_in_use(bool in_use) {
   mutex_.lock();
@@ -90,29 +105,19 @@ void PrivacyItem::set_in_use(bool in_use) {
   }
 
   if (init) {
-    // Disconnect any previous connection so that it doesn't get activated in
-    // the future, hiding the module when it should be visible
-    signal_conn.disconnect();
-
     this->in_use = in_use;
     if (this->in_use) {
       set_visible(true);
-      signal_conn = Glib::signal_timeout().connect(sigc::track_obj(
-                                                       [this] {
-                                                         set_reveal_child(true);
-                                                         return false;
-                                                       },
-                                                       *this),
-                                                   0);
+      // The `on_map_changed` callback will call `set_reveal_child(true)`
+      // when the widget is realized so we don't need to call that here.
+      // This fixes a bug where the revealer wouldn't start the animation
+      // due to us changing the visibility at the same time.
     } else {
       set_reveal_child(false);
-      signal_conn = Glib::signal_timeout().connect(sigc::track_obj(
-                                                       [this] {
-                                                         set_visible(false);
-                                                         return false;
-                                                       },
-                                                       *this),
-                                                   get_transition_duration());
+      // The `on_child_revealed_changed` callback will call `set_visible(false)`
+      // when the animation has finished so we don't need to call that here.
+      // We do this so that the widget gets hidden after the revealer hide animation
+      // has finished.
     }
   } else {
     set_visible(false);

@@ -29,7 +29,6 @@ class PrivacyItem : public Gtk::Revealer {
   enum util::PipewireBackend::PrivacyNodeType privacy_type;
 
   std::mutex mutex_;
-  sigc::connection signal_conn;
 
   bool init = false;
   bool in_use = false;
@@ -41,6 +40,9 @@ class PrivacyItem : public Gtk::Revealer {
 
   Gtk::Box box_;
   Gtk::Image icon_;
+
+  void on_child_revealed_changed();
+  void on_map_changed();
 };
 
 }  // namespace waybar::modules::privacy

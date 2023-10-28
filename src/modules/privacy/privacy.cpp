@@ -125,6 +125,8 @@ auto Privacy::update() -> void {
     if (is_visible) {
       event_box_.set_visible(true);
     } else {
+      // Hides the widget when all of the privacy_item revealers animations
+      // have finished animating
       visibility_conn = Glib::signal_timeout().connect(
           sigc::track_obj(
               [this] {
