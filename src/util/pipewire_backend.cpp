@@ -26,21 +26,25 @@ static void get_node_info(void *data_, const struct pw_node_info *info) {
       p_node_info->media_name = item->value;
     } else if (strcmp(item->key, PW_KEY_NODE_NAME) == 0) {
       p_node_info->node_name = item->value;
+    } else if (strcmp(item->key, PW_KEY_APP_NAME) == 0) {
+      p_node_info->application_name = item->value;
+    } else if (strcmp(item->key, "pipewire.access.portal.app_id") == 0) {
+      p_node_info->pipewire_access_portal_app_id = item->value;
+    } else if (strcmp(item->key, PW_KEY_APP_ICON_NAME) == 0) {
+      p_node_info->application_icon_name = item->value;
     }
   }
 
   if (p_node_info->type != PRIVACY_NODE_TYPE_NONE) {
     backend->mutex_.lock();
     p_node_info->changed = true;
-    backend->privacy_nodes.insert_or_assign(info->id, p_node_info);
+    backend->privacy_nodes.insert_or_assign(info->id, *p_node_info);
     backend->mutex_.unlock();
 
     backend->privacy_nodes_changed_signal_event.emit();
   } else {
     if (p_node_info->changed) {
       backend->mutex_.lock();
-      PrivacyNodeInfo *node = backend->privacy_nodes.at(info->id);
-      delete node;
       backend->privacy_nodes.erase(info->id);
       backend->mutex_.unlock();
 
@@ -64,7 +68,7 @@ static void registry_event_global(void *_data, uint32_t id, uint32_t permissions
     PrivacyNodeInfo *p_node_info;
     backend->mutex_.lock();
     if (backend->privacy_nodes.contains(id)) {
-      p_node_info = backend->privacy_nodes.at(id);
+      p_node_info = &backend->privacy_nodes.at(id);
     } else {
       p_node_info = new PrivacyNodeInfo(id, backend);
     }
@@ -78,8 +82,6 @@ static void registry_event_global_remove(void *_data, uint32_t id) {
 
   backend->mutex_.lock();
   if (backend->privacy_nodes.contains(id)) {
-    PrivacyNodeInfo *node_info = backend->privacy_nodes.at(id);
-    delete node_info;
     backend->privacy_nodes.erase(id);
   }
   backend->mutex_.unlock();
@@ -118,10 +120,6 @@ PipewireBackend::PipewireBackend(private_constructor_tag tag)
 }
 
 PipewireBackend::~PipewireBackend() {
-  for (auto &node : privacy_nodes) {
-    delete node.second;
-  }
-
   if (registry != nullptr) {
     pw_proxy_destroy((struct pw_proxy *)registry);
   }

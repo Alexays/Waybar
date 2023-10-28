@@ -23,9 +23,12 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
       nodes_screenshare(),
       nodes_audio_in(),
       nodes_audio_out(),
-      privacy_item_screenshare(config["screenshare"], PRIVACY_NODE_TYPE_VIDEO_INPUT, pos),
-      privacy_item_audio_input(config["audio-in"], PRIVACY_NODE_TYPE_AUDIO_INPUT, pos),
-      privacy_item_audio_output(config["audio-out"], PRIVACY_NODE_TYPE_AUDIO_OUTPUT, pos),
+      privacy_item_screenshare(config["screenshare"], PRIVACY_NODE_TYPE_VIDEO_INPUT,
+                               &nodes_screenshare, pos),
+      privacy_item_audio_input(config["audio-in"], PRIVACY_NODE_TYPE_AUDIO_INPUT, &nodes_audio_in,
+                               pos),
+      privacy_item_audio_output(config["audio-out"], PRIVACY_NODE_TYPE_AUDIO_OUTPUT,
+                                &nodes_audio_out, pos),
       visibility_conn(),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.set_name(name_);
@@ -74,25 +77,18 @@ void Privacy::onPrivacyNodesChanged() {
   nodes_audio_in.clear();
   nodes_screenshare.clear();
 
-  bool screenshare = false;
-  bool audio_in = false;
-  bool audio_out = false;
   for (auto& node : backend->privacy_nodes) {
-    if (screenshare && audio_in && audio_out) break;
-    switch (node.second->state) {
+    switch (node.second.state) {
       case PW_NODE_STATE_RUNNING:
-        switch (node.second->type) {
+        switch (node.second.type) {
           case PRIVACY_NODE_TYPE_VIDEO_INPUT:
-            screenshare = true;
-            nodes_screenshare.push_back(node.second);
+            nodes_screenshare.push_back(&node.second);
             break;
           case PRIVACY_NODE_TYPE_AUDIO_INPUT:
-            audio_in = true;
-            nodes_audio_in.push_back(node.second);
+            nodes_audio_in.push_back(&node.second);
             break;
           case PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
-            audio_out = true;
-            nodes_audio_out.push_back(node.second);
+            nodes_audio_out.push_back(&node.second);
             break;
           case PRIVACY_NODE_TYPE_NONE:
             continue;
@@ -108,6 +104,7 @@ void Privacy::onPrivacyNodesChanged() {
 }
 
 auto Privacy::update() -> void {
+  mutex_.lock();
   bool screenshare = !nodes_screenshare.empty();
   bool audio_in = !nodes_audio_in.empty();
   bool audio_out = !nodes_audio_out.empty();
@@ -115,6 +112,7 @@ auto Privacy::update() -> void {
   privacy_item_screenshare.set_in_use(screenshare);
   privacy_item_audio_input.set_in_use(audio_in);
   privacy_item_audio_output.set_in_use(audio_out);
+  mutex_.unlock();
 
   // Hide the whole widget if none are in use
   bool is_visible = screenshare || audio_in || audio_out;
@@ -130,9 +128,11 @@ auto Privacy::update() -> void {
       visibility_conn = Glib::signal_timeout().connect(
           sigc::track_obj(
               [this] {
+                mutex_.lock();
                 bool screenshare = !nodes_screenshare.empty();
                 bool audio_in = !nodes_audio_in.empty();
                 bool audio_out = !nodes_audio_out.empty();
+                mutex_.unlock();
                 event_box_.set_visible(screenshare || audio_in || audio_out);
                 return false;
               },
