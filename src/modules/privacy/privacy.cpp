@@ -64,6 +64,8 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
   backend = util::PipewireBackend::PipewireBackend::getInstance();
   backend->privacy_nodes_changed_signal_event.connect(
       sigc::mem_fun(*this, &Privacy::onPrivacyNodesChanged));
+
+  dp.emit();
 }
 
 void Privacy::onPrivacyNodesChanged() {
