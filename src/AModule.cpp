@@ -21,7 +21,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
         enable_click = true;
         enable_scroll = true;
       } else
-        spdlog::warn("Dublicate action is ignored: {0}", it.key().asString());
+        spdlog::warn("Duplicate action is ignored: {0}", it.key().asString());
     else
       spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
@@ -71,11 +71,11 @@ auto AModule::update() -> void {
   }
 }
 // Get mapping between event name and module action name
-// Then call overrided doAction in order to call appropriate module action
+// Then call overridden doAction in order to call appropriate module action
 auto AModule::doAction(const std::string& name) -> void {
   if (!name.empty()) {
     const std::map<std::string, std::string>::const_iterator& recA{eventActionMap_.find(name)};
-    // Call overrided action if derrived class has implemented it
+    // Call overridden action if derived class has implemented it
     if (recA != eventActionMap_.cend() && name != recA->second) this->doAction(recA->second);
   }
 }

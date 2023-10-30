@@ -65,22 +65,22 @@ void IPC::startIPC() {
       // read
 
       char buffer[1024];  // Hyprland socket2 events are max 1024 bytes
-      auto recievedCharPtr = fgets(buffer, 1024, file);
+      auto receivedCharPtr = fgets(buffer, 1024, file);
 
-      if (!recievedCharPtr) {
+      if (!receivedCharPtr) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         continue;
       }
 
       callbackMutex.lock();
 
-      std::string messageRecieved(buffer);
+      std::string messageReceived(buffer);
 
-      messageRecieved = messageRecieved.substr(0, messageRecieved.find_first_of('\n'));
+      messageReceived = messageReceived.substr(0, messageReceived.find_first_of('\n'));
 
-      spdlog::debug("hyprland IPC received {}", messageRecieved);
+      spdlog::debug("hyprland IPC received {}", messageReceived);
 
-      parseIPC(messageRecieved);
+      parseIPC(messageReceived);
 
       callbackMutex.unlock();
 
