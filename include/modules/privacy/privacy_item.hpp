@@ -32,6 +32,8 @@ class PrivacyItem : public Gtk::Revealer {
   enum PrivacyNodeType privacy_type;
   std::list<PrivacyNodeInfo *> *nodes;
 
+  sigc::connection signal_conn;
+
   Gtk::Box tooltip_window;
 
   bool init = false;
@@ -47,8 +49,6 @@ class PrivacyItem : public Gtk::Revealer {
   Gtk::Box box_;
   Gtk::Image icon_;
 
-  void on_child_revealed_changed();
-  void on_map_changed();
   void update_tooltip();
 };
 
