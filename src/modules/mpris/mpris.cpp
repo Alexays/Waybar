@@ -575,10 +575,12 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
 
 errorexit:
   std::string errorMsg = error->message;
-  //  When mpris checks for  active player sessions periodically(5 secs), NoActivePlayer error message is
-  // thrown when there are no active sessions. This error message is spamming logs without having any value
-  // addition. Log the error only if the error we recceived is not NoActivePlayer.
-  if(errorMsg.rfind("GDBus.Error:com.github.altdesktop.playerctld.NoActivePlayer") == std::string::npos){
+  //  When mpris checks for  active player sessions periodically(5 secs), NoActivePlayer error
+  //  message is
+  // thrown when there are no active sessions. This error message is spamming logs without having
+  // any value addition. Log the error only if the error we recceived is not NoActivePlayer.
+  if (errorMsg.rfind("GDBus.Error:com.github.altdesktop.playerctld.NoActivePlayer") ==
+      std::string::npos) {
     spdlog::error("mpris[{}]: {}", info.name, error->message);
   }
   return std::nullopt;

@@ -153,7 +153,7 @@ auto Workspaces::register_ipc() -> void {
 }
 
 auto Workspaces::update() -> void {
-  //remove workspaces that wait to be removed
+  // remove workspaces that wait to be removed
   unsigned int current_remove_workspace_num = 0;
   for (const std::string &workspace_to_remove : workspaces_to_remove_) {
     remove_workspace(workspace_to_remove);
@@ -163,7 +163,7 @@ auto Workspaces::update() -> void {
     workspaces_to_remove_.erase(workspaces_to_remove_.begin());
   }
 
-  //add workspaces that wait to be created
+  // add workspaces that wait to be created
   unsigned int current_create_workspace_num = 0;
   for (Json::Value const &workspace_to_create : workspaces_to_create_) {
     create_workspace(workspace_to_create);

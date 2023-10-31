@@ -7,7 +7,7 @@ namespace cava {
 extern "C" {
 #include <cava/common.h>
 }
-}
+}  // namespace cava
 
 namespace waybar::modules {
 using namespace std::literals::chrono_literals;
