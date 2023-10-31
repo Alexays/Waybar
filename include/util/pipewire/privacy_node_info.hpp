@@ -29,7 +29,8 @@ class PrivacyNodeInfo {
   std::string pipewire_access_portal_app_id;
   std::string application_icon_name;
 
-  struct spa_hook node_listener;
+  struct spa_hook object_listener;
+  struct spa_hook proxy_listener;
 
   bool changed = false;
 
@@ -37,7 +38,10 @@ class PrivacyNodeInfo {
 
   PrivacyNodeInfo(uint32_t id_, void *data_) : id(id_), data(data_) {}
 
-  ~PrivacyNodeInfo() { spa_hook_remove(&node_listener); }
+  ~PrivacyNodeInfo() {
+    spa_hook_remove(&object_listener);
+    spa_hook_remove(&proxy_listener);
+  }
 
   std::string get_name() {
     const std::vector<std::string *> names{&application_name, &node_name};

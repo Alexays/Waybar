@@ -1,5 +1,7 @@
 #include "util/pipewire/pipewire_backend.hpp"
 
+#include "util/pipewire/privacy_node_info.hpp"
+
 namespace waybar::util::PipewireBackend {
 
 // TODO: Refresh on suspend wake
@@ -58,9 +60,21 @@ static const struct pw_node_events node_events = {
     .info = get_node_info,
 };
 
+static void proxy_destroy(void *data) {
+  PrivacyNodeInfo *node = (PrivacyNodeInfo *)data;
+
+  spa_hook_remove(&node->proxy_listener);
+  spa_hook_remove(&node->object_listener);
+}
+
+static const struct pw_proxy_events proxy_events = {
+    .version = PW_VERSION_PROXY_EVENTS,
+    .destroy = proxy_destroy,
+};
+
 static void registry_event_global(void *_data, uint32_t id, uint32_t permissions, const char *type,
                                   uint32_t version, const struct spa_dict *props) {
-  if (strcmp(type, PW_TYPE_INTERFACE_Node) != 0) return;
+  if (!props || strcmp(type, PW_TYPE_INTERFACE_Node) != 0) return;
 
   PipewireBackend *backend = static_cast<PipewireBackend *>(_data);
   struct pw_proxy *proxy = (pw_proxy *)pw_registry_bind(backend->registry, id, type, version, 0);
@@ -73,7 +87,8 @@ static void registry_event_global(void *_data, uint32_t id, uint32_t permissions
       p_node_info = new PrivacyNodeInfo(id, backend);
     }
     backend->mutex_.unlock();
-    pw_proxy_add_object_listener(proxy, &p_node_info->node_listener, &node_events, p_node_info);
+    pw_proxy_add_listener(proxy, &p_node_info->proxy_listener, &proxy_events, p_node_info);
+    pw_proxy_add_object_listener(proxy, &p_node_info->object_listener, &node_events, p_node_info);
   }
 }
 
