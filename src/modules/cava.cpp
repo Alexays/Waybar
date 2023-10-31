@@ -155,7 +155,8 @@ auto waybar::modules::Cava::update() -> void {
     downThreadDelay(frame_time_milsec_, suspend_silence_delay_);
     // Process: execute cava
     pthread_mutex_lock(&audio_data_.lock);
-    cava::cava_execute(audio_data_.cava_in, audio_data_.samples_counter, audio_raw_.cava_out, plan_);
+    cava::cava_execute(audio_data_.cava_in, audio_data_.samples_counter, audio_raw_.cava_out,
+                       plan_);
     if (audio_data_.samples_counter > 0) audio_data_.samples_counter = 0;
     pthread_mutex_unlock(&audio_data_.lock);
 
