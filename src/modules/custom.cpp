@@ -155,6 +155,7 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
+
     auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
@@ -195,18 +196,23 @@ void waybar::modules::Custom::parseOutputRaw() {
   std::string line;
   int i = 0;
   while (getline(output, line)) {
+    Glib::ustring validated_line = line;
+    if(!validated_line.validate()) {
+      validated_line = validated_line.make_valid();
+    }
+
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
-        text_ = Glib::Markup::escape_text(line);
+        text_ = Glib::Markup::escape_text(validated_line);
       } else {
-        text_ = line;
+        text_ = validated_line;
       }
-      tooltip_ = line;
+      tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
-      tooltip_ = line;
+      tooltip_ = validated_line;
     } else if (i == 2) {
-      class_.push_back(line);
+      class_.push_back(validated_line);
     } else {
       break;
     }
