@@ -78,17 +78,17 @@ void Privacy::onPrivacyNodesChanged() {
   nodes_screenshare.clear();
 
   for (auto& node : backend->privacy_nodes) {
-    switch (node.second.state) {
+    switch (node.second->state) {
       case PW_NODE_STATE_RUNNING:
-        switch (node.second.type) {
+        switch (node.second->type) {
           case PRIVACY_NODE_TYPE_VIDEO_INPUT:
-            nodes_screenshare.push_back(&node.second);
+            nodes_screenshare.push_back(node.second);
             break;
           case PRIVACY_NODE_TYPE_AUDIO_INPUT:
-            nodes_audio_in.push_back(&node.second);
+            nodes_audio_in.push_back(node.second);
             break;
           case PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
-            nodes_audio_out.push_back(&node.second);
+            nodes_audio_out.push_back(node.second);
             break;
           case PRIVACY_NODE_TYPE_NONE:
             continue;

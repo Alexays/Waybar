@@ -32,16 +32,7 @@ class PrivacyNodeInfo {
   struct spa_hook object_listener;
   struct spa_hook proxy_listener;
 
-  bool changed = false;
-
   void *data;
-
-  PrivacyNodeInfo(uint32_t id_, void *data_) : id(id_), data(data_) {}
-
-  ~PrivacyNodeInfo() {
-    spa_hook_remove(&object_listener);
-    spa_hook_remove(&proxy_listener);
-  }
 
   std::string get_name() {
     const std::vector<std::string *> names{&application_name, &node_name};
@@ -59,7 +50,7 @@ class PrivacyNodeInfo {
   std::string get_icon_name() {
     const std::vector<std::string *> names{&application_icon_name, &pipewire_access_portal_app_id,
                                            &application_name, &node_name};
-    std::string name = "application-x-executable-symbolic";
+    const std::string name = "application-x-executable-symbolic";
     for (auto &name_ : names) {
       if (name_ != nullptr && name_->length() > 0 && DefaultGtkIconThemeWrapper::has_icon(*name_)) {
         return *name_;

@@ -4,7 +4,6 @@
 
 namespace waybar::util::PipewireBackend {
 
-// TODO: Refresh on suspend wake
 static void get_node_info(void *data_, const struct pw_node_info *info) {
   PrivacyNodeInfo *p_node_info = static_cast<PrivacyNodeInfo *>(data_);
   PipewireBackend *backend = (PipewireBackend *)p_node_info->data;
@@ -15,15 +14,6 @@ static void get_node_info(void *data_, const struct pw_node_info *info) {
   spa_dict_for_each(item, info->props) {
     if (strcmp(item->key, PW_KEY_CLIENT_ID) == 0) {
       p_node_info->client_id = strtoul(item->value, NULL, 10);
-    } else if (strcmp(item->key, PW_KEY_MEDIA_CLASS) == 0) {
-      p_node_info->media_class = item->value;
-      if (strcmp(p_node_info->media_class.c_str(), "Stream/Input/Video") == 0) {
-        p_node_info->type = PRIVACY_NODE_TYPE_VIDEO_INPUT;
-      } else if (strcmp(p_node_info->media_class.c_str(), "Stream/Input/Audio") == 0) {
-        p_node_info->type = PRIVACY_NODE_TYPE_AUDIO_INPUT;
-      } else if (strcmp(p_node_info->media_class.c_str(), "Stream/Output/Audio") == 0) {
-        p_node_info->type = PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
-      }
     } else if (strcmp(item->key, PW_KEY_MEDIA_NAME) == 0) {
       p_node_info->media_name = item->value;
     } else if (strcmp(item->key, PW_KEY_NODE_NAME) == 0) {
@@ -37,22 +27,7 @@ static void get_node_info(void *data_, const struct pw_node_info *info) {
     }
   }
 
-  if (p_node_info->type != PRIVACY_NODE_TYPE_NONE) {
-    backend->mutex_.lock();
-    p_node_info->changed = true;
-    backend->privacy_nodes.insert_or_assign(info->id, *p_node_info);
-    backend->mutex_.unlock();
-
-    backend->privacy_nodes_changed_signal_event.emit();
-  } else {
-    if (p_node_info->changed) {
-      backend->mutex_.lock();
-      backend->privacy_nodes.erase(info->id);
-      backend->mutex_.unlock();
-
-      backend->privacy_nodes_changed_signal_event.emit();
-    }
-  }
+  backend->privacy_nodes_changed_signal_event.emit();
 }
 
 static const struct pw_node_events node_events = {
@@ -76,27 +51,45 @@ static void registry_event_global(void *_data, uint32_t id, uint32_t permissions
                                   uint32_t version, const struct spa_dict *props) {
   if (!props || strcmp(type, PW_TYPE_INTERFACE_Node) != 0) return;
 
-  PipewireBackend *backend = static_cast<PipewireBackend *>(_data);
-  struct pw_proxy *proxy = (pw_proxy *)pw_registry_bind(backend->registry, id, type, version, 0);
-  if (proxy) {
-    PrivacyNodeInfo *p_node_info;
-    backend->mutex_.lock();
-    if (backend->privacy_nodes.contains(id)) {
-      p_node_info = &backend->privacy_nodes.at(id);
-    } else {
-      p_node_info = new PrivacyNodeInfo(id, backend);
-    }
-    backend->mutex_.unlock();
-    pw_proxy_add_listener(proxy, &p_node_info->proxy_listener, &proxy_events, p_node_info);
-    pw_proxy_add_object_listener(proxy, &p_node_info->object_listener, &node_events, p_node_info);
+  const char *lookup_str = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
+  if (!lookup_str) return;
+  std::string media_class = lookup_str;
+  enum PrivacyNodeType media_type = PRIVACY_NODE_TYPE_NONE;
+  if (media_class == "Stream/Input/Video") {
+    media_type = PRIVACY_NODE_TYPE_VIDEO_INPUT;
+  } else if (media_class == "Stream/Input/Audio") {
+    media_type = PRIVACY_NODE_TYPE_AUDIO_INPUT;
+  } else if (media_class == "Stream/Output/Audio") {
+    media_type = PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
+  } else {
+    return;
   }
+
+  PipewireBackend *backend = static_cast<PipewireBackend *>(_data);
+  struct pw_proxy *proxy =
+      (pw_proxy *)pw_registry_bind(backend->registry, id, type, version, sizeof(PrivacyNodeInfo));
+
+  if (!proxy) return;
+
+  PrivacyNodeInfo *p_node_info = (PrivacyNodeInfo *)pw_proxy_get_user_data(proxy);
+  p_node_info->id = id;
+  p_node_info->data = backend;
+  p_node_info->type = media_type;
+  p_node_info->media_class = media_class;
+
+  pw_proxy_add_listener(proxy, &p_node_info->proxy_listener, &proxy_events, p_node_info);
+
+  pw_proxy_add_object_listener(proxy, &p_node_info->object_listener, &node_events, p_node_info);
+
+  backend->privacy_nodes.insert_or_assign(id, p_node_info);
 }
 
 static void registry_event_global_remove(void *_data, uint32_t id) {
   auto backend = static_cast<PipewireBackend *>(_data);
 
   backend->mutex_.lock();
-  if (backend->privacy_nodes.contains(id)) {
+  auto iter = backend->privacy_nodes.find(id);
+  if(iter != backend->privacy_nodes.end()) {
     backend->privacy_nodes.erase(id);
   }
   backend->mutex_.unlock();
