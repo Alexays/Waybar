@@ -3,8 +3,10 @@
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
+namespace cava {
 extern "C" {
 #include <cava/common.h>
+}
 }
 
 namespace waybar::modules {
@@ -21,13 +23,13 @@ class Cava final : public ALabel {
   util::SleeperThread thread_;
   util::SleeperThread thread_fetch_input_;
 
-  struct error_s error_ {};          // cava errors
-  struct config_params prm_ {};      // cava parameters
-  struct audio_raw audio_raw_ {};    // cava handled raw audio data(is based on audio_data)
-  struct audio_data audio_data_ {};  // cava audio data
-  struct cava_plan* plan_;           //{new cava_plan{}};
+  struct cava::error_s error_ {};          // cava errors
+  struct cava::config_params prm_ {};      // cava parameters
+  struct cava::audio_raw audio_raw_ {};    // cava handled raw audio data(is based on audio_data)
+  struct cava::audio_data audio_data_ {};  // cava audio data
+  struct cava::cava_plan* plan_;           //{new cava_plan{}};
   // Cava API to read audio source
-  ptr input_source_;
+  cava::ptr input_source_;
   // Delay to handle audio source
   std::chrono::milliseconds frame_time_milsec_{1s};
   // Text to display
