@@ -25,7 +25,7 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
 
   // Override cava parameters by the user config
   prm_.inAtty = 0;
-  prm_.output = output_method::OUTPUT_RAW;
+  prm_.output = cava::output_method::OUTPUT_RAW;
   strcpy(prm_.data_format, "ascii");
   strcpy(prm_.raw_target, "/dev/stdout");
   prm_.ascii_range = config_["format-icons"].size() - 1;
@@ -34,9 +34,9 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
   prm_.bar_spacing = 0;
   prm_.bar_height = 32;
   prm_.bar_width = 1;
-  prm_.orientation = ORIENT_TOP;
-  prm_.xaxis = xaxis_scale::NONE;
-  prm_.mono_opt = AVERAGE;
+  prm_.orientation = cava::ORIENT_TOP;
+  prm_.xaxis = cava::xaxis_scale::NONE;
+  prm_.mono_opt = cava::AVERAGE;
   prm_.autobars = 0;
   prm_.gravity = 0;
   prm_.integral = 1;
@@ -51,7 +51,7 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
     prm_.upper_cut_off = config_["higher_cutoff_freq"].asLargestInt();
   if (config_["sleep_timer"].isInt()) prm_.sleep_timer = config_["sleep_timer"].asInt();
   if (config_["method"].isString())
-    prm_.input = input_method_by_name(config_["method"].asString().c_str());
+    prm_.input = cava::input_method_by_name(config_["method"].asString().c_str());
   if (config_["source"].isString()) prm_.audio_source = config_["source"].asString().data();
   if (config_["sample_rate"].isNumeric()) prm_.fifoSample = config_["sample_rate"].asLargestInt();
   if (config_["sample_bits"].isInt()) prm_.fifoSampleBits = config_["sample_bits"].asInt();
@@ -66,7 +66,7 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
     fetch_input_delay_ = std::chrono::seconds(config_["input_delay"].asInt());
   if (config_["hide_on_silence"].isBool()) hide_on_silence_ = config_["hide_on_silence"].asBool();
   // Make cava parameters configuration
-  plan_ = new cava_plan{};
+  plan_ = new cava::cava_plan{};
 
   audio_raw_.height = prm_.ascii_range;
   audio_data_.format = -1;
@@ -156,12 +156,13 @@ auto waybar::modules::Cava::update() -> void {
     downThreadDelay(frame_time_milsec_, suspend_silence_delay_);
     // Process: execute cava
     pthread_mutex_lock(&audio_data_.lock);
-    cava_execute(audio_data_.cava_in, audio_data_.samples_counter, audio_raw_.cava_out, plan_);
+    cava::cava_execute(audio_data_.cava_in, audio_data_.samples_counter, audio_raw_.cava_out,
+                       plan_);
     if (audio_data_.samples_counter > 0) audio_data_.samples_counter = 0;
     pthread_mutex_unlock(&audio_data_.lock);
 
     // Do transformation under raw data
-    audio_raw_fetch(&audio_raw_, &prm_, &rePaint_);
+    audio_raw_fetch(&audio_raw_, &prm_, &rePaint_, plan_);
 
     if (rePaint_ == 1) {
       text_.clear();
