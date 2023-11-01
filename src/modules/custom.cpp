@@ -197,7 +197,7 @@ void waybar::modules::Custom::parseOutputRaw() {
   int i = 0;
   while (getline(output, line)) {
     Glib::ustring validated_line = line;
-    if(!validated_line.validate()) {
+    if (!validated_line.validate()) {
       validated_line = validated_line.make_valid();
     }
 
