@@ -356,32 +356,15 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
-  int tmp_size = 0;
   icon_theme->rescan_if_needed();
-  auto sizes = icon_theme->get_icon_sizes(name.c_str());
 
-  for (auto const& size : sizes) {
-    // -1 == scalable
-    if (size == request_size || size == -1) {
-      tmp_size = request_size;
-      break;
-    } else if (size < request_size) {
-      tmp_size = size;
-    } else if (size > tmp_size && tmp_size > 0) {
-      tmp_size = request_size;
-      break;
-    }
-  }
-  if (tmp_size == 0) {
-    tmp_size = request_size;
-  }
   if (!icon_theme_path.empty() &&
-      icon_theme->lookup_icon(name.c_str(), tmp_size,
+      icon_theme->lookup_icon(name.c_str(), request_size,
                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
-    return icon_theme->load_icon(name.c_str(), tmp_size,
+    return icon_theme->load_icon(name.c_str(), request_size,
                                  Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
   }
-  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), tmp_size,
+  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
                                                Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
