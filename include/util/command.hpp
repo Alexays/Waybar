@@ -112,10 +112,6 @@ inline FILE* open(const std::string& cmd, int& pid) {
     execlp("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
-    reap_mtx.lock();
-    reap.push_back(child_pid);
-    reap_mtx.unlock();
-
     ::close(fd[1]);
   }
   pid = child_pid;
