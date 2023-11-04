@@ -89,7 +89,7 @@ static void registry_event_global_remove(void *_data, uint32_t id) {
 
   backend->mutex_.lock();
   auto iter = backend->privacy_nodes.find(id);
-  if(iter != backend->privacy_nodes.end()) {
+  if (iter != backend->privacy_nodes.end()) {
     backend->privacy_nodes.erase(id);
   }
   backend->mutex_.unlock();
