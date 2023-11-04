@@ -26,10 +26,6 @@ class Privacy : public AModule {
   std::list<PrivacyNodeInfo *> nodes_audio_in;     // Application is using the microphone
   std::list<PrivacyNodeInfo *> nodes_audio_out;    // Application is outputting audio
 
-  PrivacyItem privacy_item_screenshare;
-  PrivacyItem privacy_item_audio_input;
-  PrivacyItem privacy_item_audio_output;
-
   std::mutex mutex_;
   sigc::connection visibility_conn;
 

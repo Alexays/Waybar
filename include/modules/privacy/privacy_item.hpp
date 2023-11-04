@@ -20,16 +20,14 @@ namespace waybar::modules::privacy {
 class PrivacyItem : public Gtk::Revealer {
  public:
   PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
-              std::list<PrivacyNodeInfo *> *nodes, const std::string &pos);
+              std::list<PrivacyNodeInfo *> *nodes, const std::string &pos, const uint icon_size,
+              const uint transition_duration);
 
-  bool is_enabled();
+  enum PrivacyNodeType privacy_type;
 
   void set_in_use(bool in_use);
 
-  void set_icon_size(uint size);
-
  private:
-  enum PrivacyNodeType privacy_type;
   std::list<PrivacyNodeInfo *> *nodes;
 
   sigc::connection signal_conn;
@@ -41,7 +39,6 @@ class PrivacyItem : public Gtk::Revealer {
   std::string lastStatus;
 
   // Config
-  bool enabled = true;
   std::string iconName = "image-missing-symbolic";
   bool tooltip = true;
   uint tooltipIconSize = 24;

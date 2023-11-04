@@ -1,6 +1,7 @@
 #include "modules/privacy/privacy.hpp"
 
 #include <fmt/core.h>
+#include <json/value.h>
 #include <pipewire/pipewire.h>
 #include <spdlog/spdlog.h>
 
@@ -10,6 +11,7 @@
 
 #include "AModule.hpp"
 #include "gtkmm/image.h"
+#include "modules/privacy/privacy_item.hpp"
 
 namespace waybar::modules::privacy {
 
@@ -23,18 +25,9 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
       nodes_screenshare(),
       nodes_audio_in(),
       nodes_audio_out(),
-      privacy_item_screenshare(config["screenshare"], PRIVACY_NODE_TYPE_VIDEO_INPUT,
-                               &nodes_screenshare, pos),
-      privacy_item_audio_input(config["audio-in"], PRIVACY_NODE_TYPE_AUDIO_INPUT, &nodes_audio_in,
-                               pos),
-      privacy_item_audio_output(config["audio-out"], PRIVACY_NODE_TYPE_AUDIO_OUTPUT,
-                                &nodes_audio_out, pos),
       visibility_conn(),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.set_name(name_);
-  box_.add(privacy_item_screenshare);
-  box_.add(privacy_item_audio_output);
-  box_.add(privacy_item_audio_input);
 
   event_box_.add(box_);
 
@@ -48,22 +41,45 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
   if (config_["icon-size"].isUInt()) {
     iconSize = config_["icon-size"].asUInt();
   }
-  privacy_item_screenshare.set_icon_size(iconSize);
-  privacy_item_audio_output.set_icon_size(iconSize);
-  privacy_item_audio_input.set_icon_size(iconSize);
 
   // Transition Duration
   if (config_["transition-duration"].isUInt()) {
     transition_duration = config_["transition-duration"].asUInt();
   }
-  privacy_item_screenshare.set_transition_duration(transition_duration);
-  privacy_item_audio_output.set_transition_duration(transition_duration);
-  privacy_item_audio_input.set_transition_duration(transition_duration);
 
-  if (!privacy_item_screenshare.is_enabled() && !privacy_item_audio_input.is_enabled() &&
-      !privacy_item_audio_output.is_enabled()) {
-    throw std::runtime_error("No privacy modules enabled");
+  // Initialize each privacy module
+  Json::Value modules = config_["modules"];
+  // Add Screenshare and Mic usage as default modules if none are specified
+  if (!modules.isArray() || modules.size() == 0) {
+    modules = Json::Value(Json::arrayValue);
+    for (auto& type : {"screenshare", "audio-in"}) {
+      Json::Value obj = Json::Value(Json::objectValue);
+      obj["type"] = type;
+      modules.append(obj);
+    }
   }
+  for (uint i = 0; i < modules.size(); i++) {
+    const Json::Value& module_config = modules[i];
+    if (!module_config.isObject() || !module_config["type"].isString()) continue;
+    const std::string type = module_config["type"].asString();
+    if (type == "screenshare") {
+      auto item =
+          Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_VIDEO_INPUT,
+                                         &nodes_screenshare, pos, iconSize, transition_duration);
+      box_.add(*item);
+    } else if (type == "audio-in") {
+      auto item =
+          Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_AUDIO_INPUT,
+                                         &nodes_audio_in, pos, iconSize, transition_duration);
+      box_.add(*item);
+    } else if (type == "audio-out") {
+      auto item =
+          Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_AUDIO_OUTPUT,
+                                         &nodes_audio_out, pos, iconSize, transition_duration);
+      box_.add(*item);
+    }
+  }
+
   backend = util::PipewireBackend::PipewireBackend::getInstance();
   backend->privacy_nodes_changed_signal_event.connect(
       sigc::mem_fun(*this, &Privacy::onPrivacyNodesChanged));
@@ -109,9 +125,23 @@ auto Privacy::update() -> void {
   bool audio_in = !nodes_audio_in.empty();
   bool audio_out = !nodes_audio_out.empty();
 
-  privacy_item_screenshare.set_in_use(screenshare);
-  privacy_item_audio_input.set_in_use(audio_in);
-  privacy_item_audio_output.set_in_use(audio_out);
+  for (Gtk::Widget* widget : box_.get_children()) {
+    PrivacyItem* module = dynamic_cast<PrivacyItem*>(widget);
+    if (!module) continue;
+    switch (module->privacy_type) {
+      case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
+        module->set_in_use(screenshare);
+        break;
+      case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
+        module->set_in_use(audio_in);
+        break;
+      case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
+        module->set_in_use(audio_out);
+        break;
+      case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
+        break;
+    }
+  }
   mutex_.unlock();
 
   // Hide the whole widget if none are in use

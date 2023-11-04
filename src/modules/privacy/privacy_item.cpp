@@ -23,7 +23,8 @@
 namespace waybar::modules::privacy {
 
 PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
-                         std::list<PrivacyNodeInfo *> *nodes_, const std::string &pos)
+                         std::list<PrivacyNodeInfo *> *nodes_, const std::string &pos,
+                         const uint icon_size, const uint transition_duration)
     : Gtk::Revealer(),
       privacy_type(privacy_type_),
       nodes(nodes_),
@@ -46,7 +47,6 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
       break;
     default:
     case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
-      enabled = false;
       return;
   }
 
@@ -58,15 +58,12 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
   } else if (pos == "modules-right") {
     set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_LEFT);
   }
+  set_transition_duration(transition_duration);
 
   box_.set_name("privacy-item");
   box_.add(icon_);
+  icon_.set_pixel_size(icon_size);
   add(box_);
-
-  // Icon Name
-  if (config_["enabled"].isBool()) {
-    enabled = config_["enabled"].asBool();
-  }
 
   // Icon Name
   if (config_["icon-name"].isString()) {
@@ -124,8 +121,6 @@ void PrivacyItem::update_tooltip() {
   tooltip_window.show_all();
 }
 
-bool PrivacyItem::is_enabled() { return enabled; }
-
 void PrivacyItem::set_in_use(bool in_use) {
   if (in_use) {
     update_tooltip();
@@ -176,7 +171,5 @@ void PrivacyItem::set_in_use(bool in_use) {
   }
   lastStatus = status;
 }
-
-void PrivacyItem::set_icon_size(uint size) { icon_.set_pixel_size(size); }
 
 }  // namespace waybar::modules::privacy
