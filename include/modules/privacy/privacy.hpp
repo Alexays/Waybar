@@ -33,7 +33,7 @@ class Privacy : public AModule {
   Gtk::Box box_;
   uint iconSpacing = 4;
   uint iconSize = 20;
-  uint transition_duration = 500;
+  uint transition_duration = 250;
 
   std::shared_ptr<util::PipewireBackend::PipewireBackend> backend = nullptr;
 };

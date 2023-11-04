@@ -467,6 +467,7 @@ if scdoc.found()
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
         'waybar-pulseaudio-slider.5.scd',
+        'waybar-privacy.5.scd',
         'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',

@@ -158,18 +158,6 @@ void PrivacyItem::set_in_use(bool in_use) {
     set_reveal_child(false);
   }
   this->init = true;
-
-  // CSS status class
-  const std::string status = this->in_use ? "in-use" : "";
-  // Remove last status if it exists
-  if (!lastStatus.empty() && get_style_context()->has_class(lastStatus)) {
-    get_style_context()->remove_class(lastStatus);
-  }
-  // Add the new status class to the Box
-  if (!status.empty() && !get_style_context()->has_class(status)) {
-    get_style_context()->add_class(status);
-  }
-  lastStatus = status;
 }
 
 }  // namespace waybar::modules::privacy

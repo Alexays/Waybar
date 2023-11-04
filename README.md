@@ -17,6 +17,7 @@
 - Network
 - Bluetooth
 - Pulseaudio
+- Privacy Info
 - Wireplumber
 - Disk
 - Memory

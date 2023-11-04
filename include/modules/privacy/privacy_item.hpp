@@ -36,7 +36,6 @@ class PrivacyItem : public Gtk::Revealer {
 
   bool init = false;
   bool in_use = false;
-  std::string lastStatus;
 
   // Config
   std::string iconName = "image-missing-symbolic";
