@@ -173,7 +173,7 @@ auto waybar::modules::Clock::update() -> void {
   // Define shift local time
   const auto shiftedNow{date::make_zoned(
       tz, date::local_days(shiftedDay) +
-              (now.get_local_time() - date::floor<date::days>(now.get_local_time())))};
+              (now.get_sys_time() - date::floor<date::days>(now.get_sys_time())))};
 
   label_.set_markup(fmt::format(locale_, fmt::runtime(format_), now));
 
