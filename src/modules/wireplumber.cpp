@@ -81,7 +81,7 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
   auto nick = wp_properties_get(properties, "node.nick");
   auto description = wp_properties_get(properties, "node.description");
 
-  self->node_name_ = nick ? nick : description;
+  self->node_name_ = nick ? nick : description ? description : "Unknown node name";
   spdlog::debug("[{}]: Updating node name to: {}", self->name_, self->node_name_);
 }
 
