@@ -760,7 +760,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           getModules(factory, ref, group_module);
           module = group_module;
         } else {
-          module = factory.makeModule(ref);
+          module = factory.makeModule(ref, pos);
         }
 
         std::shared_ptr<AModule> module_sp(module);

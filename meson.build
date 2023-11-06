@@ -98,6 +98,7 @@ libinput = dependency('libinput', required: get_option('libinput'))
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
+pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'))
 playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
@@ -273,6 +274,14 @@ if (upower_glib.found() and giounix.found() and not get_option('logind').disable
     src_files += 'src/modules/upower/upower_tooltip.cpp'
 endif
 
+
+if (pipewire.found())
+    add_project_arguments('-DHAVE_PIPEWIRE', language: 'cpp')
+    src_files += 'src/modules/privacy/privacy.cpp'
+    src_files += 'src/modules/privacy/privacy_item.cpp'
+    src_files += 'src/util/pipewire_backend.cpp'
+endif
+
 if (playerctl.found() and giounix.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
     src_files += 'src/modules/mpris/mpris.cpp'
@@ -373,9 +382,12 @@ endif
 
 subdir('protocol')
 
+app_resources = []
+subdir('resources/icons')
+
 executable(
     'waybar',
-    src_files,
+    [src_files, app_resources],
     dependencies: [
         thread_dep,
         client_protos,
@@ -392,6 +404,7 @@ executable(
         libnl,
         libnlgen,
         upower_glib,
+        pipewire,
         playerctl,
         libpulse,
         libjack,
@@ -454,6 +467,7 @@ if scdoc.found()
         'waybar-network.5.scd',
         'waybar-pulseaudio.5.scd',
         'waybar-pulseaudio-slider.5.scd',
+        'waybar-privacy.5.scd',
         'waybar-river-mode.5.scd',
         'waybar-river-tags.5.scd',
         'waybar-river-window.5.scd',

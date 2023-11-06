@@ -4,6 +4,7 @@
 
 #include <iostream>
 
+#include "gtkmm/icontheme.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
@@ -244,6 +245,11 @@ int waybar::Client::main(int argc, char *argv[]) {
   }
   gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
                                      Gio::APPLICATION_HANDLES_COMMAND_LINE);
+
+  // Initialize Waybars GTK resources with our custom icons
+  auto theme = Gtk::IconTheme::get_default();
+  theme->add_resource_path("/fr/arouillard/waybar/icons");
+
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
     throw std::runtime_error("Can't find display");

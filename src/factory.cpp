@@ -10,7 +10,8 @@
 
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
-waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
+waybar::AModule* waybar::Factory::makeModule(const std::string& name,
+                                             const std::string& pos) const {
   try {
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
@@ -28,6 +29,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name) const {
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
       return new waybar::modules::upower::UPower(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_PIPEWIRE
+    if (ref == "privacy") {
+      return new waybar::modules::privacy::Privacy(id, config_[name], pos);
     }
 #endif
 #ifdef HAVE_MPRIS
