@@ -1,34 +1,52 @@
 #pragma once
 
-#include <fmt/format.h>
+#include <chrono>
 
 #if HAVE_CHRONO_TIMEZONES
-#include <chrono>
 #include <format>
-
-/* Compatibility layer for <date/tz.h> on top of C++20 <chrono> */
-namespace date {
-
-using namespace std::chrono;
-
-namespace literals {
-using std::chrono::last;
-}
-
-inline auto format(const std::string& spec, const auto& ztime) {
-  return spec.empty() ? "" : std::vformat("{:L" + spec + "}", std::make_format_args(ztime));
-}
-
-inline auto format(const std::locale& loc, const std::string& spec, const auto& ztime) {
-  return spec.empty() ? "" : std::vformat(loc, "{:L" + spec + "}", std::make_format_args(ztime));
-}
-
-}  // namespace date
-
 #else
 #include <date/tz.h>
+#include <fmt/format.h>
+
+#include <regex>
 #endif
 
+// Date
+namespace date {
+#if HAVE_CHRONO_TIMEZONES
+using namespace std::chrono;
+using namespace std;
+#else
+
+using system_clock = std::chrono::system_clock;
+using seconds = std::chrono::seconds;
+
+template <typename T>
+inline auto format(const char* spec, const T& arg) {
+  return date::format(std::regex_replace(spec, std::regex("\\{:L|\\}"), ""), arg);
+}
+
+template <typename T>
+inline auto format(const std::locale& loc, const char* spec, const T& arg) {
+  return date::format(loc, std::regex_replace(spec, std::regex("\\{:L|\\}"), ""), arg);
+}
+
+constexpr decltype(auto) operator""d(unsigned long long d) noexcept {
+  return date::operator""_d(d);  // very verbose, but it works
+}
+#endif
+}  // namespace date
+
+// Format
+namespace waybar::util::date::format {
+#if HAVE_CHRONO_TIMEZONES
+using namespace std;
+#else
+using namespace fmt;
+#endif
+}  // namespace waybar::util::date::format
+
+#if not HAVE_CHRONO_TIMEZONES
 template <typename Duration, typename TimeZonePtr>
 struct fmt::formatter<date::zoned_time<Duration, TimeZonePtr>> {
   std::string_view specs;
@@ -58,3 +76,6 @@ struct fmt::formatter<date::zoned_time<Duration, TimeZonePtr>> {
     return fmt::format_to(ctx.out(), "{}", date::format(fmt::to_string(specs), ztime));
   }
 };
+#endif
+
+using namespace date;
