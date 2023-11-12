@@ -40,7 +40,7 @@ class AModule : public IModule {
 
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
-
+  const bool isTooltip;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;

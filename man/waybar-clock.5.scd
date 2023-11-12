@@ -85,7 +85,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ same as format
 :[ Tooltip on hover
 
-View all valid format options in *strftime(3)* or have a look <https://fmt.dev/latest/syntax.html#chrono-specs>
+View all valid format options in *strftime(3)* or have a look https://en.cppreference.com/w/cpp/chrono/duration/formatter
 
 2. Addressed by *clock: calendar*
 [- *Option*
@@ -156,7 +156,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 # FORMAT REPLACEMENTS
 
 - *{calendar}*: Current month calendar
-- *{timezoned_time_list}*: List of time in the rest timezones, if more than one timezone is set in the config
+- *{tz_list}*: List of time in the rest timezones, if more than one timezone is set in the config
 
 # EXAMPLES
 

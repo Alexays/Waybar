@@ -126,7 +126,22 @@ gtk_layer_shell = dependency('gtk-layer-shell-0',
 systemd = dependency('systemd', required: get_option('systemd'))
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
-have_chrono_timezones = cpp_lib_chrono >= 201907
+have_chrono_timezones = cpp_lib_chrono >= 201611
+
+if have_chrono_timezones
+   code = '''
+#include <chrono>
+using namespace std::chrono;
+int main(int argc, char** argv) {
+   const time_zone* tz;
+   return 0;
+}
+'''
+   if not compiler.links(code)
+      have_chrono_timezones = false
+   endif
+endif
+
 if have_chrono_timezones
   tz_dep = declare_dependency()
 else
