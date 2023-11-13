@@ -316,15 +316,17 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
           // Week numbers on the left
           if (cldWPos_ == WS::LEFT && line > 0) {
             if (line > 1) {
-              if (line < ml[(unsigned)ymTmp.month() - 1u])
+              if (line < ml[(unsigned)ymTmp.month() - 1u]) {
                 os << fmt_lib::vformat(
                           locale_, fmtMap_[4],
                           fmt_lib::make_format_args(
-                              (line == 2) ? zoned_seconds{tz, local_days{ymTmp / 1}}
-                                          : zoned_seconds{tz, local_days{cldGetWeekForLine(
-                                                                  ymTmp, firstdow, line)}}))
+                              (line == 2)
+                                  ? static_cast<const date::zoned_seconds&&>(
+                                        zoned_seconds{tz, local_days{ymTmp / 1}})
+                                  : static_cast<const date::zoned_seconds&&>(zoned_seconds{
+                                        tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)}})))
                    << ' ';
-              else
+              } else
                 os << pads;
             }
           }
@@ -342,9 +344,11 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
                    << fmt_lib::vformat(
                           locale_, fmtMap_[4],
                           fmt_lib::make_format_args(
-                              (line == 2) ? zoned_seconds{tz, local_days{ymTmp / 1}}
-                                          : zoned_seconds{tz, local_days{cldGetWeekForLine(
-                                                                  ymTmp, firstdow, line)}}));
+                              (line == 2) ? static_cast<const date::zoned_seconds&&>(
+                                                zoned_seconds{tz, local_days{ymTmp / 1}})
+                                          : static_cast<const date::zoned_seconds&&>(
+                                                zoned_seconds{tz, local_days{cldGetWeekForLine(
+                                                                      ymTmp, firstdow, line)}})));
               else
                 os << pads;
             }
@@ -353,7 +357,9 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
       }
       // Apply user's formats
       if (line < 2)
-        tmp << fmt_lib::vformat(locale_, fmtMap_[line], fmt_lib::make_format_args(os.str()));
+        tmp << fmt_lib::vformat(
+            locale_, fmtMap_[line],
+            fmt_lib::make_format_args(static_cast<const std::string_view&&>(os.str())));
       else
         tmp << os.str();
       // Clear ostringstream
@@ -364,9 +370,12 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
   }
 
   os << std::regex_replace(
-      fmt_lib::vformat(locale_, fmtMap_[2], fmt_lib::make_format_args(tmp.str())),
+      fmt_lib::vformat(locale_, fmtMap_[2],
+                       fmt_lib::make_format_args(static_cast<const std::string_view&&>(tmp.str()))),
       std::regex("\\{today\\}"),
-      fmt_lib::vformat(locale_, fmtMap_[3], fmt_lib::make_format_args(date::format("{:L%e}", d))));
+      fmt_lib::vformat(locale_, fmtMap_[3],
+                       fmt_lib::make_format_args(
+                           static_cast<const std::string_view&&>(date::format("{:L%e}", d)))));
 
   if (cldMode_ == CldMode::YEAR)
     cldYearCached_ = os.str();
