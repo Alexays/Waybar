@@ -339,6 +339,7 @@ void Workspaces::on_workspace_renamed(std::string const &payload) {
       break;
     }
   }
+  sort_workspaces();
 }
 
 void Workspaces::on_monitor_focused(std::string const &payload) {
