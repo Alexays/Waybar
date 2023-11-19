@@ -21,8 +21,9 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo(
 
     size_t idle_time = 0;
     size_t total_time = 0;
-    if (times.size() >= 4) {
-      idle_time = times[3];
+    if (times.size() >= 5) {
+      // idle + iowait
+      idle_time = times[3] + times[4];
       total_time = std::accumulate(times.begin(), times.end(), 0);
     }
     cpuinfo.emplace_back(idle_time, total_time);
