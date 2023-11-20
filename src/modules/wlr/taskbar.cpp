@@ -22,6 +22,7 @@
 #include "util/format.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/string.hpp"
+#include "util/gtk_icon.hpp"
 
 namespace waybar::modules::wlr {
 
@@ -182,11 +183,21 @@ bool Task::image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme>
 
   try {
     pixbuf = icon_theme->load_icon(ret_icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+    spdlog::debug("{} Loaded icon '{}'", repr(), ret_icon_name);
   } catch (...) {
-    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS))
+    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS)) {
       pixbuf = load_icon_from_file(ret_icon_name, scaled_icon_size);
-    else
-      pixbuf = {};
+      spdlog::debug("{} Loaded icon from file '{}'", repr(), ret_icon_name);
+    } else {
+      try {
+        pixbuf = DefaultGtkIconThemeWrapper::load_icon("image-missing", scaled_icon_size,
+            Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+        spdlog::debug("{} Loaded icon from resource", repr());
+      } catch (...) {
+        pixbuf = {};
+        spdlog::debug("{} Unable to load icon.", repr());
+      }
+    }
   }
 
   if (pixbuf) {
@@ -304,6 +315,10 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
     with_icon_ = true;
   }
 
+  if (app_id_.empty()) {
+    handle_app_id("unknown");
+  }
+
   /* Strip spaces at the beginning and end of the format strings */
   format_tooltip_.clear();
   if (!config_["tooltip"].isBool() || config_["tooltip"].asBool()) {
@@ -392,6 +407,11 @@ void Task::hide_if_ignored() {
 }
 
 void Task::handle_app_id(const char *app_id) {
+  if (app_id_.empty()) {
+    spdlog::debug(fmt::format("Task ({}) setting app_id to {}", id_, app_id));
+  } else {
+    spdlog::debug(fmt::format("Task ({}) overwriting app_id '{}' with '{}'", id_, app_id_, app_id));
+  }
   app_id_ = app_id;
   hide_if_ignored();
 
