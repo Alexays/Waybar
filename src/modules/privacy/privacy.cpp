@@ -121,21 +121,22 @@ void Privacy::onPrivacyNodesChanged() {
 
 auto Privacy::update() -> void {
   mutex_.lock();
-  bool screenshare = !nodes_screenshare.empty();
-  bool audio_in = !nodes_audio_in.empty();
-  bool audio_out = !nodes_audio_out.empty();
+  bool screenshare, audio_in, audio_out;
 
   for (Gtk::Widget* widget : box_.get_children()) {
     PrivacyItem* module = dynamic_cast<PrivacyItem*>(widget);
     if (!module) continue;
     switch (module->privacy_type) {
       case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
+        screenshare = !nodes_screenshare.empty();
         module->set_in_use(screenshare);
         break;
       case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
+        audio_in = !nodes_audio_in.empty();
         module->set_in_use(audio_in);
         break;
       case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
+        audio_out = !nodes_audio_out.empty();
         module->set_in_use(audio_out);
         break;
       case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
