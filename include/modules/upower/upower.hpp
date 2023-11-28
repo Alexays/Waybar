@@ -72,6 +72,7 @@ class UPower : public AModule {
   std::unique_ptr<UPowerTooltip> upower_tooltip;
   std::string lastStatus;
   bool showAltText;
+  bool showIcon = true;
   bool upowerRunning;
   guint upowerWatcher_id;
   std::string nativePath_;
