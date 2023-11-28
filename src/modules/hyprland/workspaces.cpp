@@ -311,7 +311,7 @@ void Workspaces::on_workspace_created(std::string const &payload) {
 void Workspaces::on_workspace_moved(std::string const &payload) {
   std::string workspace = payload.substr(0, payload.find(','));
   std::string new_output = payload.substr(payload.find(',') + 1);
-  bool should_show = show_special() || ! workspace.starts_with("special");
+  bool should_show = show_special() || !workspace.starts_with("special");
   if (should_show && bar_.output->name == new_output) {  // TODO: implement this better
     const Json::Value workspaces_json = gIPC->getSocket1JsonReply("workspaces");
     for (Json::Value workspace_json : workspaces_json) {
@@ -849,19 +849,21 @@ std::string &Workspace::select_icon(std::map<std::string, std::string> &icons_ma
 }
 
 bool Workspace::handle_clicked(GdkEventButton *bt) const {
-  try {
-    if (id() > 0) {  // normal or numbered persistent
-      gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
-    } else if (!is_special()) {  // named
-      gIPC->getSocket1Reply("dispatch workspace name:" + name());
-    } else if (id() != -99) {  // named special
-      gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
-    } else {  // special
-      gIPC->getSocket1Reply("dispatch togglespecialworkspace");
+  if (bt->type == GDK_BUTTON_PRESS) {
+    try {
+      if (id() > 0) {  // normal or numbered persistent
+        gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+      } else if (!is_special()) {  // named
+        gIPC->getSocket1Reply("dispatch workspace name:" + name());
+      } else if (id() != -99) {  // named special
+        gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
+      } else {  // special
+        gIPC->getSocket1Reply("dispatch togglespecialworkspace");
+      }
+      return true;
+    } catch (const std::exception &e) {
+      spdlog::error("Failed to dispatch workspace: {}", e.what());
     }
-    return true;
-  } catch (const std::exception &e) {
-    spdlog::error("Failed to dispatch workspace: {}", e.what());
   }
   return false;
 }
