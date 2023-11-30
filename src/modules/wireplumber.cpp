@@ -46,6 +46,7 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 }
 
 waybar::modules::Wireplumber::~Wireplumber() {
+  wp_core_disconnect(wp_core_);
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
   g_clear_object(&wp_core_);
