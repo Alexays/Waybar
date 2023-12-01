@@ -20,9 +20,9 @@
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
+#include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/string.hpp"
-#include "util/gtk_icon.hpp"
 
 namespace waybar::modules::wlr {
 
@@ -190,8 +190,8 @@ bool Task::image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme>
       spdlog::debug("{} Loaded icon from file '{}'", repr(), ret_icon_name);
     } else {
       try {
-        pixbuf = DefaultGtkIconThemeWrapper::load_icon("image-missing", scaled_icon_size,
-            Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+        pixbuf = DefaultGtkIconThemeWrapper::load_icon(
+            "image-missing", scaled_icon_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
         spdlog::debug("{} Loaded icon from resource", repr());
       } catch (...) {
         pixbuf = {};
