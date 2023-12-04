@@ -60,7 +60,7 @@ compatible devices in the tooltip.
 *show-icon*: ++
 	typeof: bool ++
 	default: true ++
-	Option to disable battery icon
+	Option to disable battery icon.
 
 # FORMAT REPLACEMENTS
 
