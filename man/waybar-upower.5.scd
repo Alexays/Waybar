@@ -57,6 +57,11 @@ compatible devices in the tooltip.
 	typeof: string ++
 	Command to execute when clicked on the module.
 
+*show-icon*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable battery icon.
+
 # FORMAT REPLACEMENTS
 
 *{percentage}*: The battery capacity in percentage
@@ -93,6 +98,15 @@ depending on the charging state.
 	"tooltip": true,
 	"tooltip-spacing": 20
 }
+```
+```
+"upower": {
+	"show-icon": false,
+	"hide-if-empty": true,
+	"tooltip": true,
+	"tooltip-spacing": 20
+}
+
 ```
 
 # STYLE

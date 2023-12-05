@@ -18,7 +18,15 @@ UPower::UPower(const std::string& id, const Json::Value& config)
       m_Mutex(),
       client(),
       showAltText(false) {
-  box_.pack_start(icon_);
+  // Show icon only when "show-icon" isn't set to false
+  if (config_["show-icon"].isBool()) {
+    showIcon = config_["show-icon"].asBool();
+  }
+
+  if (showIcon) {
+    box_.pack_start(icon_);
+  }
+
   box_.pack_start(label_);
   box_.set_name(name_);
   event_box_.add(box_);
