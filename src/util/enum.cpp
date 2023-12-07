@@ -28,7 +28,7 @@ EnumType EnumParser<EnumType>::parseStringToEnum(const std::string& str,
   std::map<std::string, EnumType> capitalizedEnumMap;
   std::transform(
       enumMap.begin(), enumMap.end(), std::inserter(capitalizedEnumMap, capitalizedEnumMap.end()),
-      [this](const auto& pair) { return std::make_pair(capitalize(pair.first), pair.second); });
+      [](const auto& pair) { return std::make_pair(capitalize(pair.first), pair.second); });
 
   // Return enum match of string
   auto it = capitalizedEnumMap.find(uppercaseStr);
@@ -40,6 +40,6 @@ EnumType EnumParser<EnumType>::parseStringToEnum(const std::string& str,
 
 // Explicit instantiations for specific EnumType types you intend to use
 // Add explicit instantiations for all relevant EnumType types
-template struct EnumParser<modules::hyprland::Workspaces::SORT_METHOD>;
+template struct EnumParser<modules::hyprland::Workspaces::SortMethod>;
 
 }  // namespace waybar::util
