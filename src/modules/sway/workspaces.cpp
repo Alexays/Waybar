@@ -314,7 +314,7 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       if (config_["format-icons"][key].isString() && node[key].asBool()) {
         return config_["format-icons"][key].asString();
       }
-    } else if (config_["format_icons"]["persistent"].isString() &&
+    } else if (config_["format-icons"]["persistent"].isString() &&
                node["target_output"].isString()) {
       return config_["format-icons"]["persistent"].asString();
     } else if (config_["format-icons"][key].isString()) {
