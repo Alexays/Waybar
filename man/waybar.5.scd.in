@@ -6,7 +6,7 @@ waybar - configuration file
 
 # DESCRIPTION
 
-The configuration uses the JSONC file format and is named *config*.
+The configuration uses the JSONC file format and is named *config* or *config.jsonc*.
 
 Valid locations for this file are:
 
