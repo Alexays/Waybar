@@ -6,15 +6,15 @@ waybar - configuration file
 
 # DESCRIPTION
 
-The configuration uses the JSON file format and is named *config*.
+The configuration uses the JSONC file format and is named *config* or *config.jsonc*.
 
 Valid locations for this file are:
 
-- *$XDG_CONFIG_HOME/waybar/config*
-- *~/.config/waybar/config*
-- *~/waybar/config*
-- */etc/xdg/waybar/config*
-- *@sysconfdir@/xdg/waybar/config*
+- *$XDG_CONFIG_HOME/waybar/*
+- *~/.config/waybar/*
+- *~/waybar/*
+- */etc/xdg/waybar/*
+- *@sysconfdir@/xdg/waybar/*
 
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
 Also, a minimal example configuration can be found at the bottom of this man page.
