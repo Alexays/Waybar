@@ -94,6 +94,7 @@
 #include "modules/cava.hpp"
 #endif
 #include "bar.hpp"
+#include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"

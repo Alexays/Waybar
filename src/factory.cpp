@@ -207,6 +207,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name]);
     }
+    if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
+      return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);
+    }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
     throw std::runtime_error(err);

@@ -17,6 +17,7 @@ class AModule : public IModule {
   operator Gtk::Widget &() override;
   auto doAction(const std::string &name) -> void override;
 
+  /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 
  protected:

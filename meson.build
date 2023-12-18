@@ -206,6 +206,7 @@ if is_linux
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
+        'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_frequency/linux.cpp',
@@ -218,6 +219,7 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
     src_files += files(
+        'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
         'src/modules/cpu_frequency/bsd.cpp',
         'src/modules/cpu_frequency/common.cpp',
@@ -468,6 +470,7 @@ if scdoc.found()
         'waybar-backlight-slider.5.scd',
         'waybar-battery.5.scd',
         'waybar-cava.5.scd',
+        'waybar-cffi.5.scd',
         'waybar-clock.5.scd',
         'waybar-cpu.5.scd',
         'waybar-custom.5.scd',
