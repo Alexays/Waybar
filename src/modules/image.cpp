@@ -45,7 +45,7 @@ auto waybar::modules::Image::update() -> void {
   if (config_["path"].isString()) {
     path_ = config_["path"].asString();
   } else if (config_["exec"].isString()) {
-    output_ = util::command::exec(config_["exec"].asString());
+    output_ = util::command::exec(config_["exec"].asString(), "");
     parseOutputRaw();
   } else {
     path_ = "";
