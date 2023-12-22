@@ -317,13 +317,6 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-  if (config_["reverse-scrolling"].asInt() == 1) {
-    if (dir == SCROLL_DIR::UP) {
-      dir = SCROLL_DIR::DOWN;
-    } else if (dir == SCROLL_DIR::DOWN) {
-      dir = SCROLL_DIR::UP;
-    }
-  }
   double max_volume = 1;
   double step = 1.0 / 100.0;
   if (config_["scroll-step"].isDouble()) {
