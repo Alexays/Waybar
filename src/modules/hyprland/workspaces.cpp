@@ -163,7 +163,11 @@ auto Workspaces::update() -> void {
   // add workspaces that wait to be created
   unsigned int currentCreateWorkspaceNum = 0;
   for (Json::Value const &workspaceToCreate : m_workspacesToCreate) {
-    createWorkspace(workspaceToCreate);
+    if (workspaceToCreate.isMember("name")) { //the data is ready
+      createWorkspace(workspaceToCreate);
+    } else {
+      break;
+    }
     currentCreateWorkspaceNum++;
   }
   for (unsigned int i = 0; i < currentCreateWorkspaceNum; i++) {
