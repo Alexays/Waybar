@@ -24,6 +24,24 @@ int Workspaces::convertWorkspaceNameToNum(std::string name) {
   return -1;
 }
 
+int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
+  // Rules that match against title are prioritized
+  // Rules that don't specify if they're matching against either title or class are deprioritized
+  bool const hasTitle = window_rule.find("title") != std::string::npos;
+  bool const hasClass = window_rule.find("class") != std::string::npos;
+
+  if (hasTitle && hasClass) {
+    return 3;
+  }
+  if (hasTitle) {
+    return 2;
+  }
+  if (hasClass) {
+    return 1;
+  }
+  return 0;
+}
+
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
     : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
       bar_(bar),
@@ -38,10 +56,25 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     box_.get_style_context()->add_class(id);
   }
   event_box_.add(box_);
+  if (config_["format-window-separator"].isString()) {
+    m_formatWindowSeperator = config_["format-window-separator"].asString();
+  } else {
+    m_formatWindowSeperator = " ";
+  }
+  const Json::Value &windowRewrite = config["window-rewrite"];
+
+  const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
+  m_windowRewriteDefault =
+      windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
+
+  m_windowRewriteRules = waybar::util::RegexCollection(
+      windowRewrite, m_windowRewriteDefault,
+      [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
   ipc_.subscribe(R"(["workspace"])");
+  ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
-  ipc_.sendCmd(IPC_GET_WORKSPACES);
+  ipc_.sendCmd(IPC_GET_TREE);
   if (config["enable-bar-scroll"].asBool()) {
     auto &window = const_cast<Bar &>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -59,26 +92,31 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 
 void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
   try {
-    ipc_.sendCmd(IPC_GET_WORKSPACES);
+    ipc_.sendCmd(IPC_GET_TREE);
   } catch (const std::exception &e) {
     spdlog::error("Workspaces: {}", e.what());
   }
 }
 
 void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
-  if (res.type == IPC_GET_WORKSPACES) {
+  if (res.type == IPC_GET_TREE) {
     try {
       {
         std::lock_guard<std::mutex> lock(mutex_);
         auto payload = parser_.parse(res.payload);
         workspaces_.clear();
-        std::copy_if(payload.begin(), payload.end(), std::back_inserter(workspaces_),
+        std::vector<Json::Value> outputs;
+        std::copy_if(payload["nodes"].begin(), payload["nodes"].end(), std::back_inserter(outputs),
                      [&](const auto &workspace) {
                        return !config_["all-outputs"].asBool()
-                                  ? workspace["output"].asString() == bar_.output->name
+                                  ? workspace["name"].asString() == bar_.output->name
                                   : true;
                      });
 
+        for (auto &output : outputs) {
+          std::copy(output["nodes"].begin(), output["nodes"].end(),
+                    std::back_inserter(workspaces_));
+        }
         if (config_["persistent_workspaces"].isObject()) {
           spdlog::warn(
               "persistent_workspaces is deprecated. Please change config to use "
@@ -203,6 +241,35 @@ bool Workspaces::filterButtons() {
   return needReorder;
 }
 
+bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
+  if (node[flag].asBool()) {
+    return true;
+  }
+
+  if (std::ranges::any_of(node["nodes"], [&](auto const &e) { return hasFlag(e, flag); })) {
+    return true;
+  }
+  return false;
+}
+
+void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
+  auto format = config_["window-format"].asString();
+  if (node["type"].asString() == "con" && node["name"].isString()) {
+    std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
+    std::string windowClass = node["app_id"].asString();
+    std::string windowReprKey = fmt::format("class<{}> title<{}>", windowClass, title);
+    std::string window = m_windowRewriteRules.get(windowReprKey);
+    // allow result to have formatting
+    window =
+        fmt::format(fmt::runtime(window), fmt::arg("name", title), fmt::arg("class", windowClass));
+    windows.append(window);
+    windows.append(m_formatWindowSeperator);
+  }
+  for (const Json::Value &child : node["nodes"]) {
+    updateWindows(child, windows);
+  }
+}
+
 auto Workspaces::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   bool needReorder = filterButtons();
@@ -212,22 +279,25 @@ auto Workspaces::update() -> void {
       needReorder = true;
     }
     auto &button = bit == buttons_.end() ? addButton(*it) : bit->second;
-    if ((*it)["focused"].asBool()) {
+    if (needReorder) {
+      box_.reorder_child(button, it - workspaces_.begin());
+    }
+    if (hasFlag((*it), "focused")) {
       button.get_style_context()->add_class("focused");
     } else {
       button.get_style_context()->remove_class("focused");
     }
-    if ((*it)["visible"].asBool()) {
+    if (hasFlag((*it), "visible")) {
       button.get_style_context()->add_class("visible");
     } else {
       button.get_style_context()->remove_class("visible");
     }
-    if ((*it)["urgent"].asBool()) {
+    if (hasFlag((*it), "urgent")) {
       button.get_style_context()->add_class("urgent");
     } else {
       button.get_style_context()->remove_class("urgent");
     }
-    if ((*it)["target_output"].isString()) {
+    if (hasFlag((*it), "target_output")) {
       button.get_style_context()->add_class("persistent");
     } else {
       button.get_style_context()->remove_class("persistent");
@@ -241,16 +311,19 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("current_output");
     }
-    if (needReorder) {
-      box_.reorder_child(button, it - workspaces_.begin());
-    }
     std::string output = (*it)["name"].asString();
+    std::string windows = "";
+    if (config_["window-format"].isString()) {
+      updateWindows((*it), windows);
+    }
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      output = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)),
-                           fmt::arg("value", output), fmt::arg("name", trimWorkspaceName(output)),
-                           fmt::arg("index", (*it)["num"].asString()),
-                           fmt::arg("output", (*it)["output"].asString()));
+      output = fmt::format(
+          fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)), fmt::arg("value", output),
+          fmt::arg("name", trimWorkspaceName(output)), fmt::arg("index", (*it)["num"].asString()),
+          fmt::arg("windows",
+                   windows.substr(0, windows.length() - m_formatWindowSeperator.length())),
+          fmt::arg("output", (*it)["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
       static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
