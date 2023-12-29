@@ -14,7 +14,8 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       fp_(nullptr),
       pid_(-1) {
   dp.emit();
-  if (!config_["signal"].empty() && config_["interval"].empty()) {
+  if (!config_["signal"].empty() && config_["interval"].empty() &&
+      config_["restart-interval"].empty()) {
     waitingWorker();
   } else if (interval_.count() > 0) {
     delayWorker();
