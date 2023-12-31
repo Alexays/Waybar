@@ -891,7 +891,9 @@ std::string Workspaces::getRewrite(std::string window_class, std::string window_
   } else {
     windowReprKey = fmt::format("class<{}>", window_class);
   }
-  return m_windowRewriteRules.get(windowReprKey);
+  auto const rewriteRule = m_windowRewriteRules.get(windowReprKey);
+  return fmt::format(fmt::runtime(rewriteRule), fmt::arg("class", window_class),
+                     fmt::arg("title", window_title));
 }
 
 WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
