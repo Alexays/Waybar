@@ -50,8 +50,8 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     gIPC = std::make_unique<IPC>();
   }
 
-  init();
   registerIpc();
+  init();
 }
 
 auto Workspaces::parseConfig(const Json::Value &config) -> void {
@@ -179,7 +179,10 @@ void Workspaces::doUpdate() {
     }
   }
 
+  auto clientsJson = gIPC->getSocket1JsonReply("clients");
   for (auto &workspace : m_workspaces) {
+    workspace->initializeWindowMap(clientsJson);
+
     // active
     workspace->setActive(workspace->name() == m_activeWorkspaceName);
     // disable urgency if workspace is active
