@@ -1,12 +1,13 @@
 #include "modules/battery.hpp"
+#include <algorithm>
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
 #include <spdlog/spdlog.h>
 
 #include <iostream>
-waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60) {
+waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
+    : ALabel(config, "battery", id, "{capacity}%", 60), bar_(bar) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
@@ -641,6 +642,7 @@ auto waybar::modules::Battery::update() -> void {
                  [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
   auto format = format_;
   auto state = getState(capacity, true);
+  setBarClass(state);
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
   if (tooltipEnabled()) {
     std::string tooltip_text_default;
@@ -688,4 +690,37 @@ auto waybar::modules::Battery::update() -> void {
   }
   // Call parent update
   ALabel::update();
+}
+
+void waybar::modules::Battery::setBarClass(std::string& state) {
+  auto classes = bar_.window.get_style_context()->list_classes();
+  auto old_class_it = std::find_if(classes.begin(), classes.end(),
+    [](auto classname) {
+        return classname.rfind("battery-", 0) == 0;
+    });
+
+  // If the bar doesn't have any `battery-` class
+  if(old_class_it == classes.end()) {
+    if(!state.empty()) {
+        bar_.window.get_style_context()->add_class("battery-" + state);
+    }
+    return;
+  }
+
+  auto old_class = *old_class_it;
+
+  // If the bar has a `battery-` class,
+  // but `state` is empty
+  if(state.empty()) {
+    bar_.window.get_style_context()->remove_class(old_class);
+    return;
+  }
+  auto new_class = "battery-" + state;
+
+  // If the bar has a `battery-` class,
+  // and `state` is NOT empty
+  if(old_class != new_class) {
+    bar_.window.get_style_context()->remove_class(old_class);
+    bar_.window.get_style_context()->add_class("battery-" + state);
+  }
 }
