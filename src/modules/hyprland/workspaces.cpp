@@ -128,6 +128,12 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
       [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
 }
 
+void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_paylod) {
+  if (!create_window_paylod.isEmpty(*this)) {
+    m_orphanWindowMap[create_window_paylod.getAddress()] = create_window_paylod.repr(*this);
+  }
+}
+
 auto Workspaces::registerIpc() -> void {
   gIPC->registerForIPC("workspace", this);
   gIPC->registerForIPC("createworkspace", this);
@@ -215,6 +221,8 @@ void Workspaces::doUpdate() {
       static auto const WINDOW_CREATION_TIMEOUT = 2;
       if (windowPayload.incrementTimeSpentUncreated() < WINDOW_CREATION_TIMEOUT) {
         notCreated.push_back(windowPayload);
+      } else {
+        registerOrphanWindow(windowPayload);
       }
     }
   }
@@ -402,18 +410,35 @@ void Workspaces::onWindowMoved(std::string const &payload) {
     }
   }
 
-  // ...and add it to the new workspace
+  // ...if it was empty, check if the window is an orphan...
+  if (windowRepr.empty() && m_orphanWindowMap.contains(windowAddress)) {
+    windowRepr = m_orphanWindowMap[windowAddress];
+  }
+
+  // ...and then add it to the new workspace
   if (!windowRepr.empty()) {
     m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowRepr);
   }
 }
 
 void Workspaces::onWindowTitleEvent(std::string const &payload) {
-  auto windowWorkspace =
-      std::find_if(m_workspaces.begin(), m_workspaces.end(),
-                   [payload](auto &workspace) { return workspace->containsWindow(payload); });
+  std::optional<std::function<void(WindowCreationPayload)>> inserter;
 
-  if (windowWorkspace != m_workspaces.end()) {
+  if (m_orphanWindowMap.contains(payload)) {
+    inserter = [this](WindowCreationPayload wcp) { this->registerOrphanWindow(std::move(wcp)); };
+  } else {
+    auto windowWorkspace =
+        std::find_if(m_workspaces.begin(), m_workspaces.end(),
+                     [payload](auto &workspace) { return workspace->containsWindow(payload); });
+
+    if (windowWorkspace != m_workspaces.end()) {
+      inserter = [windowWorkspace](WindowCreationPayload wcp) {
+        (*windowWorkspace)->insertWindow(std::move(wcp));
+      };
+    }
+  }
+
+  if (inserter.has_value()) {
     Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
     std::string jsonWindowAddress = fmt::format("0x{}", payload);
 
@@ -423,7 +448,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
         });
 
     if (!client->empty()) {
-      (*windowWorkspace)->insertWindow({*client});
+      (*inserter)({*client});
     }
   }
 }
@@ -605,6 +630,14 @@ void Workspaces::createPersistentWorkspaces() {
   }
 }
 
+void Workspaces::extendOrphans(int workspaceId, Json::Value const &clientsJson) {
+  for (const auto &client : clientsJson) {
+    if (client["workspace"]["id"].asInt() == workspaceId) {
+      registerOrphanWindow({client});
+    }
+  }
+}
+
 void Workspaces::init() {
   m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
 
@@ -625,10 +658,13 @@ void Workspaces::init() {
 
   for (Json::Value workspaceJson : workspacesJson) {
     std::string workspaceName = workspaceJson["name"].asString();
+    spdlog::info("initing workpsace {}:{}", workspaceJson["id"], workspaceJson["name"]);
     if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
         (!workspaceName.starts_with("special") || showSpecial()) &&
         !isWorkspaceIgnored(workspaceName)) {
       createWorkspace(workspaceJson, clientsJson);
+    } else {
+      extendOrphans(workspaceJson["id"].asInt(), clientsJson);
     }
   }
 
