@@ -1,18 +1,13 @@
 #pragma once
 
 #include <gdkmm/monitor.h>
-#include <glibmm/refptr.h>
 #include <gtkmm/box.h>
 #include <gtkmm/centerbox.h>
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/window.h>
-#include <json/json.h>
-
-#include <memory>
-#include <vector>
 
 #include "AModule.hpp"
-#include "group.hpp"
+//#include "group.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {

@@ -1,9 +1,6 @@
 #pragma once
 
-#include <fmt/format.h>
-#include <gdk/gdk.h>
 #include <gdk/wayland/gdkwayland.h>
-#include <wayland-client.h>
 
 #include "bar.hpp"
 #include "config.hpp"
@@ -52,7 +49,6 @@ class Client {
   void handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
   void handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor);
 
-//  Glib::RefPtr<Gtk::StyleContext> style_context_;
   Glib::RefPtr<Gtk::CssProvider> css_provider_;
   std::unique_ptr<Portal> portal;
   std::list<struct waybar_output> outputs_;

@@ -84,7 +84,6 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 sigcpp = dependency('sigc++-3.0', version: ['>=3.4.0'])
 gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
-gtk = dependency('gtk4', version : ['>=4.10.5'])
 giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
 
@@ -122,7 +121,6 @@ executable(
     'waybar',
     [src_files],
     dependencies: [
-        gtk,
         gtk_layer_shell,
         gtkmm,
         giounix,

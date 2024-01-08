@@ -4,12 +4,10 @@
 
 #include <spdlog/spdlog.h>
 
-#include <type_traits>
-
 #include "bar.hpp"
 #include "client.hpp"
 //#include "factory.hpp"
-#include "group.hpp"
+//#include "group.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #ifdef HAVE_SWAY
