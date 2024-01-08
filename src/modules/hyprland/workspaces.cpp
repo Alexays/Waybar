@@ -170,8 +170,8 @@ void Workspaces::doUpdate() {
   m_workspacesToRemove.clear();
 
   // add workspaces that wait to be created
-  for (auto &elem : m_workspacesToCreate) {
-    createWorkspace(elem);
+  for (auto &[workspaceData, clientsData] : m_workspacesToCreate) {
+    createWorkspace(workspaceData, clientsData);
   }
   m_workspacesToCreate.clear();
 
@@ -301,16 +301,17 @@ void Workspaces::onWorkspaceDestroyed(std::string const &payload) {
   }
 }
 
-void Workspaces::onWorkspaceCreated(std::string const &payload) {
+void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
+                                    Json::Value const &clientsData) {
   const Json::Value workspacesJson = gIPC->getSocket1JsonReply("workspaces");
 
-  if (!isWorkspaceIgnored(payload)) {
+  if (!isWorkspaceIgnored(workspaceName)) {
     for (Json::Value workspaceJson : workspacesJson) {
       std::string name = workspaceJson["name"].asString();
-      if (name == payload &&
+      if (name == workspaceName &&
           (allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
-          (showSpecial() || !name.starts_with("special")) && !isDoubleSpecial(payload)) {
-        m_workspacesToCreate.push_back(workspaceJson);
+          (showSpecial() || !name.starts_with("special")) && !isDoubleSpecial(workspaceName)) {
+        m_workspacesToCreate.emplace_back(workspaceJson, clientsData);
         break;
       }
     }
@@ -318,20 +319,14 @@ void Workspaces::onWorkspaceCreated(std::string const &payload) {
 }
 
 void Workspaces::onWorkspaceMoved(std::string const &payload) {
-  std::string workspace = payload.substr(0, payload.find(','));
-  std::string newOutput = payload.substr(payload.find(',') + 1);
-  bool shouldShow = showSpecial() || !workspace.starts_with("special");
-  if (shouldShow && m_bar.output->name == newOutput) {  // TODO: implement this better
-    const Json::Value workspacesJson = gIPC->getSocket1JsonReply("workspaces");
-    for (Json::Value workspaceJson : workspacesJson) {
-      std::string name = workspaceJson["name"].asString();
-      if (name == workspace && m_bar.output->name == workspaceJson["monitor"].asString()) {
-        m_workspacesToCreate.push_back(workspaceJson);
-        break;
-      }
-    }
+  std::string workspaceName = payload.substr(0, payload.find(','));
+  std::string monitorName = payload.substr(payload.find(',') + 1);
+
+  if (m_bar.output->name == monitorName) {
+    Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
+    onWorkspaceCreated(workspaceName, clientsData);
   } else {
-    m_workspacesToRemove.push_back(workspace);
+    onWorkspaceDestroyed(workspaceName);
   }
 }
 
@@ -670,7 +665,6 @@ void Workspaces::init() {
 
   for (Json::Value workspaceJson : workspacesJson) {
     std::string workspaceName = workspaceJson["name"].asString();
-    spdlog::info("initing workpsace {}:{}", workspaceJson["id"], workspaceJson["name"]);
     if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
         (!workspaceName.starts_with("special") || showSpecial()) &&
         !isWorkspaceIgnored(workspaceName)) {
