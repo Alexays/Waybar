@@ -4,19 +4,14 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <charconv>
 #include <memory>
-#include <shared_mutex>
 #include <string>
-#include <thread>
 #include <utility>
 #include <variant>
 
 #include "util/regex_collection.hpp"
 
 namespace waybar::modules::hyprland {
-
-std::shared_mutex workspaceCreateSmtx;
 
 int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
   // Rules that match against title are prioritized
@@ -153,27 +148,26 @@ auto Workspaces::registerIpc() -> void {
   }
 }
 
-auto Workspaces::update() -> void {
+/**
+ *  Workspaces::doUpdate - update workspaces in UI thread.
+ *
+ * Note: some memberfields are modified by both UI thread and event listener thread, use m_mutex to
+ *       protect these member fields, and lock should released before calling AModule::update().
+ */
+void Workspaces::doUpdate() {
+  std::unique_lock lock(m_mutex);
+
   // remove workspaces that wait to be removed
-  unsigned int currentRemoveWorkspaceNum = 0;
-  for (const std::string &workspaceToRemove : m_workspacesToRemove) {
-    removeWorkspace(workspaceToRemove);
-    currentRemoveWorkspaceNum++;
+  for (auto &elem : m_workspacesToRemove) {
+    removeWorkspace(elem);
   }
-  for (unsigned int i = 0; i < currentRemoveWorkspaceNum; i++) {
-    m_workspacesToRemove.erase(m_workspacesToRemove.begin());
-  }
+  m_workspacesToRemove.clear();
 
   // add workspaces that wait to be created
-  std::shared_lock<std::shared_mutex> workspaceCreateShareLock(workspaceCreateSmtx);
-  unsigned int currentCreateWorkspaceNum = 0;
-  for (Json::Value const &workspaceToCreate : m_workspacesToCreate) {
-    createWorkspace(workspaceToCreate);
-    currentCreateWorkspaceNum++;
+  for (auto &elem : m_workspacesToCreate) {
+    createWorkspace(elem);
   }
-  for (unsigned int i = 0; i < currentCreateWorkspaceNum; i++) {
-    m_workspacesToCreate.erase(m_workspacesToCreate.begin());
-  }
+  m_workspacesToCreate.clear();
 
   // get all active workspaces
   auto monitors = gIPC->getSocket1JsonReply("monitors");
@@ -231,7 +225,10 @@ auto Workspaces::update() -> void {
 
   m_windowsToCreate.clear();
   m_windowsToCreate = notCreated;
+}
 
+auto Workspaces::update() -> void {
+  doUpdate();
   AModule::update();
 }
 
@@ -305,7 +302,6 @@ void Workspaces::onWorkspaceCreated(std::string const &payload) {
       if (name == payload &&
           (allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
           (showSpecial() || !name.starts_with("special")) && !isDoubleSpecial(payload)) {
-        std::unique_lock<std::shared_mutex> workspaceCreateUniqueLock(workspaceCreateSmtx);
         m_workspacesToCreate.push_back(workspaceJson);
         break;
       }
