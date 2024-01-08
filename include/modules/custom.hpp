@@ -26,8 +26,8 @@ class Custom : public ALabel {
   void parseOutputRaw();
   void parseOutputJson();
   void handleEvent();
-  bool handleScroll(GdkEventScroll* e) override;
-  bool handleToggle(GdkEventButton* const& e) override;
+//todo  bool handleScroll(GdkEventScroll* e) override;
+//todo  bool handleToggle(GdkEventButton* const& e) override;
 
   const std::string name_;
   std::string text_;

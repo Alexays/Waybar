@@ -2,7 +2,7 @@
 
 #include <glibmm/dispatcher.h>
 #include <glibmm/markup.h>
-#include <gtkmm/eventbox.h>
+//#include <gtkmm/eventbox.h>
 #include <json/json.h>
 
 #include "IModule.hpp"
@@ -28,25 +28,25 @@ class AModule : public IModule {
 
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
-  SCROLL_DIR getScrollDir(GdkEventScroll *e);
+//  SCROLL_DIR getScrollDir(GdkEventScroll *e);
   bool tooltipEnabled();
 
   const std::string name_;
   const Json::Value &config_;
-  Gtk::EventBox event_box_;
+//  Gtk::EventBox event_box_;
 
-  virtual bool handleToggle(GdkEventButton *const &ev);
-  virtual bool handleScroll(GdkEventScroll *);
-  virtual bool handleRelease(GdkEventButton *const &ev);
+//  virtual bool handleToggle(GdkEventButton *const &ev);
+//  virtual bool handleScroll(GdkEventScroll *);
+//  virtual bool handleRelease(GdkEventButton *const &ev);
 
  private:
-  bool handleUserEvent(GdkEventButton *const &ev);
+//  bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
   std::map<std::string, std::string> eventActionMap_;
-  static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
+ /* static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
       {std::make_pair(1, GdkEventType::GDK_BUTTON_RELEASE), "on-click-release"},
       {std::make_pair(1, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click"},
@@ -66,7 +66,7 @@ class AModule : public IModule {
       {std::make_pair(9, GdkEventType::GDK_BUTTON_PRESS), "on-click-forward"},
       {std::make_pair(9, GdkEventType::GDK_BUTTON_RELEASE), "on-click-forward-release"},
       {std::make_pair(9, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-forward"},
-      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"}};
+      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"}};*/
 };
 
 }  // namespace waybar

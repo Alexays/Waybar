@@ -1,5 +1,0 @@
-[wrap-file]
-directory = gtk-layer-shell-0.4.0
-source_filename = gtk-layer-shell-0.4.0.tar.gz
-source_hash = 52fd74d3161fefa5528585ca5a523c3150934961f2284ad010ae54336dad097e
-source_url = https://github.com/wmww/gtk-layer-shell/archive/v0.4.0/gtk-layer-shell-0.4.0.tar.gz

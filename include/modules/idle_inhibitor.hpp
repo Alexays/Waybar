@@ -19,7 +19,7 @@ class IdleInhibitor : public ALabel {
   static bool status;
 
  private:
-  bool handleToggle(GdkEventButton* const& e) override;
+//todo  bool handleToggle(GdkEventButton* const& e) override;
   void toggleStatus();
 
   const Bar& bar_;

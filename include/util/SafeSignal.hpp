@@ -52,7 +52,7 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
   using slot_t = decltype(std::declval<signal_t>().make_slot());
   using arg_tuple_t = std::tuple<std::decay_t<Args>...>;
   // ensure that unwrapped methods are not accessible
-  using signal_t::emit_reverse;
+  using signal_t::emit;
   using signal_t::make_slot;
 
   void handle_event() {
