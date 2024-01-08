@@ -161,6 +161,8 @@ class Workspaces : public AModule, public EventHandler {
 
   int windowRewritePriorityFunction(std::string const& window_rule);
 
+  void doUpdate();
+
   bool m_allOutputs = false;
   bool m_showSpecial = false;
   bool m_activeOnly = false;
