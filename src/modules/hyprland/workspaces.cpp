@@ -424,6 +424,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
 void Workspaces::onWindowTitleEvent(std::string const &payload) {
   std::optional<std::function<void(WindowCreationPayload)>> inserter;
 
+  // If the window was an orphan, rename it at the orphan's vector
   if (m_orphanWindowMap.contains(payload)) {
     inserter = [this](WindowCreationPayload wcp) { this->registerOrphanWindow(std::move(wcp)); };
   } else {
@@ -431,10 +432,21 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
         std::find_if(m_workspaces.begin(), m_workspaces.end(),
                      [payload](auto &workspace) { return workspace->containsWindow(payload); });
 
+    // If the window exists on a workspace, rename it at the workspace's window
+    // map
     if (windowWorkspace != m_workspaces.end()) {
       inserter = [windowWorkspace](WindowCreationPayload wcp) {
         (*windowWorkspace)->insertWindow(std::move(wcp));
       };
+    } else {
+      auto queuedWindow = std::find_if(
+          m_windowsToCreate.begin(), m_windowsToCreate.end(),
+          [payload](auto &windowPayload) { return windowPayload.getAddress() == payload; });
+
+      // If the window was queued, rename it in the queue
+      if (queuedWindow != m_windowsToCreate.end()) {
+        inserter = [queuedWindow](WindowCreationPayload wcp) { *queuedWindow = std::move(wcp); };
+      }
     }
   }
 
