@@ -678,10 +678,6 @@ void waybar::Bar::onMap() {
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
   gdk_surface_ = window.get_surface();
-  if (gdk_surface_)
-    spdlog::info("Pointer is defined\n");
-  else
-    spdlog::info("Pointer is null\n");
   surface = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
   configureGlobalOffset(gdk_surface_->get_width(), gdk_surface_->get_height());
   gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &Bar::onConfigure));
