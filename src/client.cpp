@@ -182,7 +182,6 @@ const std::string waybar::Client::getStyle(const std::string &style,
 
 auto waybar::Client::setupCss(const std::string &css_file) -> void {
   css_provider_ = Gtk::CssProvider::create();
-//todo gtkmm4  style_context_ = get_style_context();// Gtk::StyleContext::create();
 
   // Load our css file, wherever that may be hiding
   try {
@@ -191,8 +190,8 @@ auto waybar::Client::setupCss(const std::string &css_file) -> void {
     spdlog::error("{}", e.what());
   }
   // there's always only one screen
-//todo gtkmm4  style_context_->add_provider_for_screen(Gdk::Screen::get_default(), css_provider_,
-//                                          GTK_STYLE_PROVIDER_PRIORITY_USER);
+  Gtk::StyleContext::add_provider_for_display(Gdk::Display::get_default(), css_provider_,
+                                          GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void waybar::Client::bindInterfaces() {
