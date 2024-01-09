@@ -201,6 +201,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Cava(id, config_[name]);
     }
 #endif
+#ifdef HAVE_SYSTEMD_MONITOR
+    if (ref == "systemd-failed-units") {
+      return new waybar::modules::SystemdFailedUnits(id, config_[name]);
+    }
+#endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }
