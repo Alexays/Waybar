@@ -1023,6 +1023,11 @@ void WindowCreationPayload::clearWorkspaceName() {
     m_workspaceName = m_workspaceName.substr(
         SPECIAL_QUALIFIER_PREFIX_LEN, m_workspaceName.length() - SPECIAL_QUALIFIER_PREFIX_LEN);
   }
+
+  std::size_t spaceFound = m_workspaceName.find(' ');
+  if (spaceFound != std::string::npos) {
+    m_workspaceName.erase(m_workspaceName.begin() + spaceFound, m_workspaceName.end());
+  }
 }
 
 void WindowCreationPayload::moveToWorksace(std::string &new_workspace_name) {
