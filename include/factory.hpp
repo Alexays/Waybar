@@ -93,6 +93,9 @@
 #ifdef HAVE_LIBCAVA
 #include "modules/cava.hpp"
 #endif
+#ifdef HAVE_SYSTEMD_MONITOR
+#include "modules/systemd_failed_units.hpp"
+#endif
 #include "bar.hpp"
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
