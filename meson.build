@@ -1,10 +1,10 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.24',
+    version: '4.1.0',
     license: 'MIT',
-    meson_version: '>= 0.50.0',
+    meson_version: '>= 1.3.0',
     default_options : [
-        'cpp_std=c++20',
+        'cpp_std=c++23',
         'buildtype=release',
         'default_library=static'
     ],
@@ -78,78 +78,23 @@ is_freebsd = host_machine.system() == 'freebsd'
 is_netbsd = host_machine.system() == 'netbsd'
 is_openbsd = host_machine.system() == 'openbsd'
 
-thread_dep = dependency('threads')
-fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
+jsoncpp = dependency('jsoncpp', version : ['>=1.9.4'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
-gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
-dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
-giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or
-                                                get_option('logind').enabled() or
-                                                get_option('upower_glib').enabled() or
-                                                get_option('mpris').enabled()))
-jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
-sigcpp = dependency('sigc++-2.0')
-libinotify = dependency('libinotify', required: false)
-libepoll = dependency('epoll-shim', required: false)
-libinput = dependency('libinput', required: get_option('libinput'))
-libnl = dependency('libnl-3.0', required: get_option('libnl'))
-libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
-upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
-pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'))
-playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
-libpulse = dependency('libpulse', required: get_option('pulseaudio'))
-libudev = dependency('libudev', required: get_option('libudev'))
-libevdev = dependency('libevdev', required: get_option('libevdev'))
-libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
-xkbregistry = dependency('xkbregistry')
-libjack = dependency('jack', required: get_option('jack'))
-libwireplumber = dependency('wireplumber-0.4', required: get_option('wireplumber'))
+sigcpp = dependency('sigc++-3.0', version: ['>=3.4.0'])
+gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
+giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
+spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
 
-libsndio = compiler.find_library('sndio', required: get_option('sndio'))
-if libsndio.found()
-    if not compiler.has_function('sioctl_open', prefix: '#include <sndio.h>', dependencies: libsndio)
-        if get_option('sndio').enabled()
-            error('libsndio is too old, required >=1.7.0')
-        else
-            warning('libsndio is too old, required >=1.7.0')
-            libsndio = dependency('', required: false)
-        endif
-    endif
-endif
+gtk_layer_shell = dependency('gtk4-layer-shell-0',
+                             version : ['>=1.0.2'],
+                             required: get_option('gtk-layer-shell'),
+                             fallback : ['gtk4-layer-shell', 'gtk_layer_shell'],
+                             default_options : ['vapi=false'])
 
-gtk_layer_shell = dependency('gtk-layer-shell-0',
-        required: get_option('gtk-layer-shell'),
-        fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
-systemd = dependency('systemd', required: get_option('systemd'))
-
-cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
-have_chrono_timezones = cpp_lib_chrono >= 201611
-
-if have_chrono_timezones
-   code = '''
-#include <chrono>
-using namespace std::chrono;
-int main(int argc, char** argv) {
-   const time_zone* tz;
-   return 0;
-}
-'''
-   if not compiler.links(code)
-      have_chrono_timezones = false
-   endif
-endif
-
-if have_chrono_timezones
-  tz_dep = declare_dependency()
-else
-  tz_dep = dependency('date',
-      required: false,
-      default_options : [ 'use_system_tzdb=true' ],
-      modules : [ 'date::date', 'date::date-tz' ],
-      fallback: [ 'date', 'tz_dep' ])
+if gtk_layer_shell.found()
+    add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
 endif
 
 prefix = get_option('prefix')
@@ -159,47 +104,18 @@ conf_data.set('prefix', prefix)
 
 add_project_arguments('-DSYSCONFDIR="/@0@"'.format(join_paths(prefix, sysconfdir)), language : 'cpp')
 
-if systemd.found()
-  user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
-
-  configure_file(
-    configuration: conf_data,
-    input: './resources/waybar.service.in',
-    output: '@BASENAME@',
-    install_dir: user_units_dir
-  )
-endif
-
 src_files = files(
-    'src/factory.cpp',
-    'src/AModule.cpp',
-    'src/ALabel.cpp',
-    'src/AIconLabel.cpp',
-    'src/AAppIconLabel.cpp',
-    'src/modules/custom.cpp',
-    'src/modules/disk.cpp',
-    'src/modules/idle_inhibitor.cpp',
-    'src/modules/image.cpp',
-    'src/modules/load.cpp',
-    'src/modules/temperature.cpp',
-    'src/modules/user.cpp',
-    'src/ASlider.cpp',
-    'src/main.cpp',
-    'src/bar.cpp',
-    'src/client.cpp',
-    'src/config.cpp',
-    'src/group.cpp',
-    'src/util/portal.cpp',
-    'src/util/enum.cpp',
-    'src/util/prepare_for_sleep.cpp',
-    'src/util/ustring_clen.cpp',
-    'src/util/sanitize_str.cpp',
-    'src/util/rewrite_string.cpp',
-    'src/util/gtk_icon.cpp',
-    'src/util/regex_collection.cpp'
+     'src/main.cpp',
+     'src/client.cpp',
+     'src/bar.cpp',
+     'src/config.cpp',
+     'src/util/portal.cpp',
+     'src/util/prepare_for_sleep.cpp',
+#    'src/AModule.cpp',
 )
 
 inc_dirs = ['include']
+<<<<<<< HEAD
 
 if is_linux
     add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
@@ -399,45 +315,23 @@ if cava.found()
    src_files += 'src/modules/cava.cpp'
 endif
 
+=======
+>>>>>>> luka/gtk4
 subdir('protocol')
-
-app_resources = []
-subdir('resources/icons')
 
 executable(
     'waybar',
-    [src_files, app_resources],
+    [src_files],
     dependencies: [
-        thread_dep,
-        client_protos,
-        wayland_client,
-        fmt,
-        spdlog,
+        gtk_layer_shell,
+        gtkmm,
+        giounix,
         sigcpp,
         jsoncpp,
+        wayland_client,
         wayland_cursor,
-        gtkmm,
-        dbusmenu_gtk,
-        giounix,
-        libinput,
-        libnl,
-        libnlgen,
-        upower_glib,
-        pipewire,
-        playerctl,
-        libpulse,
-        libjack,
-        libwireplumber,
-        libudev,
-        libinotify,
-        libepoll,
-        libmpdclient,
-        libevdev,
-        gtk_layer_shell,
-        libsndio,
-        tz_dep,
-		xkbregistry,
-        cava
+        client_protos,
+        spdlog
     ],
     include_directories: inc_dirs,
     install: true,
@@ -448,6 +342,7 @@ install_data(
     './resources/style.css',
     install_dir: sysconfdir + '/xdg/waybar'
 )
+<<<<<<< HEAD
 
 scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
 
@@ -558,3 +453,5 @@ if clangtidy.found()
         ] + src_files)
 endif
 
+=======
+>>>>>>> luka/gtk4

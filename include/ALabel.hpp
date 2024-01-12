@@ -25,7 +25,7 @@ class ALabel : public AModule {
   bool alt_ = false;
   std::string default_format_;
 
-  bool handleToggle(GdkEventButton *const &e) override;
+//todo  bool handleToggle(GdkEventButton *const &e) override;
   virtual std::string getState(uint8_t value, bool lesser = false);
 };
 

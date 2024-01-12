@@ -1,15 +1,13 @@
 #ifdef HAVE_GTK_LAYER_SHELL
-#include <gtk-layer-shell.h>
+#include <gtk4-layer-shell.h>
 #endif
 
 #include <spdlog/spdlog.h>
 
-#include <type_traits>
-
 #include "bar.hpp"
 #include "client.hpp"
-#include "factory.hpp"
-#include "group.hpp"
+//#include "factory.hpp"
+//#include "group.hpp"
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #ifdef HAVE_SWAY
@@ -108,17 +106,16 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
 
 #ifdef HAVE_GTK_LAYER_SHELL
 struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
-  GLSSurfaceImpl(Gtk::Window& window, struct waybar_output& output) : window_{window} {
+  GLSSurfaceImpl(Gtk::Window& window, struct waybar_output& output)
+      : window_{window} {
     output_name_ = output.name;
     // this has to be executed before GtkWindow.realize
     gtk_layer_init_for_window(window_.gobj());
-    gtk_layer_set_keyboard_interactivity(window.gobj(), FALSE);
+    gtk_layer_set_keyboard_mode(window.gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
     gtk_layer_set_monitor(window_.gobj(), output.monitor->gobj());
     gtk_layer_set_namespace(window_.gobj(), "waybar");
 
-    window.signal_map_event().connect_notify(sigc::mem_fun(*this, &GLSSurfaceImpl::onMap));
-    window.signal_configure_event().connect_notify(
-        sigc::mem_fun(*this, &GLSSurfaceImpl::onConfigure));
+    window.signal_map().connect(sigc::mem_fun(*this, &GLSSurfaceImpl::onMap));
   }
 
   void setExclusiveZone(bool enable) override {
@@ -148,13 +145,12 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
 
   void setPassThrough(bool enable) override {
     passthrough_ = enable;
-    auto gdk_window = window_.get_window();
-    if (gdk_window) {
+    if (gdk_surface_) {
       Cairo::RefPtr<Cairo::Region> region;
       if (enable) {
         region = Cairo::Region::create();
       }
-      gdk_window->input_shape_combine_region(region, 0, 0);
+      gdk_surface_->set_input_region(region);
     }
   }
 
@@ -195,15 +191,19 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
 
  private:
   Gtk::Window& window_;
+  Glib::RefPtr<Gdk::Surface> gdk_surface_;
   std::string output_name_;
   uint32_t width_;
   uint32_t height_;
   bool passthrough_ = false;
   bool vertical_ = false;
 
-  void onMap(GdkEventAny* ev) { setPassThrough(passthrough_); }
+  void onMap() {
+    gdk_surface_ = window_.get_surface();
+    gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &GLSSurfaceImpl::onConfigure));
+    setPassThrough(passthrough_); }
 
-  void onConfigure(GdkEventConfigure* ev) {
+  void onConfigure(int width, int height) {
     /*
      * GTK wants new size for the window.
      * Actual resizing and management of the exclusve zone is handled within the gtk-layer-shell
@@ -213,30 +213,30 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
      * gtk-layer-shell.
      */
     if (vertical_) {
-      if (width_ > 1 && ev->width > static_cast<int>(width_)) {
-        spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
+      if (width_ > 1 && width > static_cast<int>(width_)) {
+        spdlog::warn(MIN_WIDTH_MSG, width_, width);
       }
     } else {
-      if (height_ > 1 && ev->height > static_cast<int>(height_)) {
-        spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
+      if (height_ > 1 && height > static_cast<int>(height_)) {
+        spdlog::warn(MIN_HEIGHT_MSG, height_, height);
       }
     }
-    width_ = ev->width;
-    height_ = ev->height;
+    width_ = width;
+    height_ = height;
     spdlog::info(BAR_SIZE_MSG, width_, height_, output_name_);
   }
 };
 #endif
 
 struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
-  RawSurfaceImpl(Gtk::Window& window, struct waybar_output& output) : window_{window} {
+  RawSurfaceImpl(Gtk::Window& window, struct waybar_output& output)
+      : window_{window}, gdk_surface_{window_.get_surface()} {
     output_ = gdk_wayland_monitor_get_wl_output(output.monitor->gobj());
     output_name_ = output.name;
 
-    window.signal_realize().connect_notify(sigc::mem_fun(*this, &RawSurfaceImpl::onRealize));
-    window.signal_map_event().connect_notify(sigc::mem_fun(*this, &RawSurfaceImpl::onMap));
-    window.signal_configure_event().connect_notify(
-        sigc::mem_fun(*this, &RawSurfaceImpl::onConfigure));
+    window.signal_realize().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onRealize));
+    window.signal_map().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onMap));
+    gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onConfigure));
 
     if (window.get_realized()) {
       onRealize();
@@ -294,13 +294,12 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     passthrough_ = enable;
     /* GTK overwrites any region changes applied directly to the wl_surface,
      * thus the same GTK region API as in the GLS impl has to be used. */
-    auto gdk_window = window_.get_window();
-    if (gdk_window) {
+    if (gdk_surface_) {
       Cairo::RefPtr<Cairo::Region> region;
       if (enable) {
         region = Cairo::Region::create();
       }
-      gdk_window->input_shape_combine_region(region, 0, 0);
+      gdk_surface_->set_input_region(region);
     }
   }
 
@@ -345,6 +344,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
       std::unique_ptr<zwlr_layer_surface_v1, deleter_fn<zwlr_layer_surface_v1_destroy>>;
 
   Gtk::Window& window_;
+  Glib::RefPtr<Gdk::Surface> gdk_surface_;
   std::string output_name_;
   uint32_t configured_width_ = 0;
   uint32_t configured_height_ = 0;
@@ -361,18 +361,16 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
   layer_surface_ptr layer_surface_;
 
   void onRealize() {
-    auto gdk_window = window_.get_window()->gobj();
-    gdk_wayland_window_set_use_custom_surface(gdk_window);
+    gtk_layer_init_for_window(window_.gobj());
   }
 
-  void onMap(GdkEventAny* ev) {
+  void onMap() {
     static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
         .configure = onSurfaceConfigure,
         .closed = onSurfaceClosed,
     };
     auto client = Client::inst();
-    auto gdk_window = window_.get_window()->gobj();
-    surface_ = gdk_wayland_window_get_wl_surface(gdk_window);
+    surface_ = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
 
     layer_surface_.reset(zwlr_layer_shell_v1_get_layer_surface(client->layer_shell, surface_,
                                                                output_, layer_, "waybar"));
@@ -391,7 +389,7 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
     wl_display_roundtrip(client->wl_display);
   }
 
-  void onConfigure(GdkEventConfigure* ev) {
+  void onConfigure(int width, int height) {
     /*
      * GTK wants new size for the window.
      *
@@ -401,26 +399,26 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
      */
     auto tmp_height = height_;
     auto tmp_width = width_;
-    if (ev->height > static_cast<int>(height_)) {
+    if (height > static_cast<int>(height_)) {
       // Default minimal value
       if (height_ > 1) {
-        spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
+        spdlog::warn(MIN_HEIGHT_MSG, height_, height);
       }
       if (configured_height_ > 1) {
         spdlog::info(SIZE_DEFINED, "Height");
       } else {
-        tmp_height = ev->height;
+        tmp_height = height;
       }
     }
-    if (ev->width > static_cast<int>(width_)) {
+    if (width > static_cast<int>(width_)) {
       // Default minimal value
       if (width_ > 1) {
-        spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
+        spdlog::warn(MIN_WIDTH_MSG, width_, width);
       }
       if (configured_width_ > 1) {
         spdlog::info(SIZE_DEFINED, "Width");
       } else {
-        tmp_width = ev->width;
+        tmp_width = width;
       }
     }
     if (tmp_width != width_ || tmp_height != height_) {
@@ -460,7 +458,6 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
       o->width_ = width;
       o->height_ = height;
       o->window_.set_size_request(o->width_, o->height_);
-      o->window_.resize(o->width_, o->height_);
       o->setExclusiveZone(o->exclusive_zone_);
       spdlog::info(BAR_SIZE_MSG, o->width_ == 1 ? "auto" : std::to_string(o->width_),
                    o->height_ == 1 ? "auto" : std::to_string(o->height_), o->output_name_);
@@ -480,17 +477,18 @@ struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
-      window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      window{Gtk::Window()},
       x_global(0),
       y_global(0),
       margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},
-      left_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      center_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      right_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+      left_(Gtk::Orientation::HORIZONTAL, 0),
+      center_(Gtk::Orientation::HORIZONTAL, 0),
+      right_(Gtk::Orientation::HORIZONTAL, 0),
+      box_{} {
   window.set_title("waybar");
   window.set_name("waybar");
   window.set_decorated(false);
+  window.set_child(box_);
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
   window.get_style_context()->add_class(config["position"].asString());
@@ -498,12 +496,13 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   auto position = config["position"].asString();
 
   if (position == "right" || position == "left") {
-    left_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
-    center_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
-    right_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
-    box_ = Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0);
+    left_.set_orientation(Gtk::Orientation::VERTICAL);
+    center_.set_orientation(Gtk::Orientation::VERTICAL);
+    right_.set_orientation(Gtk::Orientation::VERTICAL);
+    box_.set_orientation(Gtk::Orientation::VERTICAL);
     vertical = true;
-  }
+  } else
+    box_.set_orientation(Gtk::Orientation::HORIZONTAL);
 
   left_.get_style_context()->add_class("modules-left");
   center_.get_style_context()->add_class("modules-center");
@@ -564,7 +563,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
 
-  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
@@ -602,7 +600,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     setVisible(false);
   }
 
-  window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
+  window.signal_map().connect(sigc::mem_fun(*this, &Bar::onMap));
 
 #if HAVE_SWAY
   if (auto ipc = config["ipc"]; ipc.isBool() && ipc.asBool()) {
@@ -622,7 +620,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 #endif
 
   setupWidgets();
-  window.show_all();
+  window.show();
 
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
@@ -673,13 +671,14 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
   surface_impl_->commit();
 }
 
-void waybar::Bar::onMap(GdkEventAny*) {
+void waybar::Bar::onMap() {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto gdk_window = window.get_window()->gobj();
-  surface = gdk_wayland_window_get_wl_surface(gdk_window);
-  configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
+  gdk_surface_ = window.get_surface();
+  surface = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
+  configureGlobalOffset(gdk_surface_->get_width(), gdk_surface_->get_height());
+  gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &Bar::onConfigure));
 }
 
 void waybar::Bar::setVisible(bool value) {
@@ -739,6 +738,8 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
+// todo gtkmm4
+/*
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
   auto module_list = group ? config[pos]["modules"] : config[pos];
@@ -754,7 +755,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
 
           auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
-                          Gtk::ORIENTATION_VERTICAL;
+                          Gtk::Orientation::VERTICAL;
 
           auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
           getModules(factory, ref, group_module);
@@ -791,40 +792,39 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
     }
   }
 }
-
+*/
 auto waybar::Bar::setupWidgets() -> void {
-  window.add(box_);
-  box_.pack_start(left_, false, false);
+  box_.set_start_widget(left_);
   if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
     box_.set_center_widget(center_);
   } else {
-    box_.pack_start(center_, true, false);
+    box_.set_start_widget(center_);
   }
-  box_.pack_end(right_, false, false);
-
+  box_.set_end_widget(right_);
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
   setupAltFormatKeyForModuleList("modules-right");
   setupAltFormatKeyForModuleList("modules-center");
 
-  Factory factory(*this, config);
-  getModules(factory, "modules-left");
-  getModules(factory, "modules-center");
-  getModules(factory, "modules-right");
+// todo gtkmm4
+//  Factory factory(*this, config);
+//  getModules(factory, "modules-left");
+//  getModules(factory, "modules-center");
+//  getModules(factory, "modules-right");
   for (auto const& module : modules_left_) {
-    left_.pack_start(*module, false, false);
+    left_.prepend(*module);
   }
   for (auto const& module : modules_center_) {
-    center_.pack_start(*module, false, false);
+    center_.prepend(*module);
   }
   std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
-    right_.pack_end(*module, false, false);
+    right_.append(*module);
   }
 }
 
-void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
-  configureGlobalOffset(ev->width, ev->height);
+void waybar::Bar::onConfigure(int width, int height) {
+  configureGlobalOffset(width, height);
 }
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {

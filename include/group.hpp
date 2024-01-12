@@ -19,7 +19,7 @@ class Group : public AModule {
   virtual Gtk::Box& getBox();
   void addWidget(Gtk::Widget& widget);
 
-  bool handleMouseHover(GdkEventCrossing* const& e);
+//  bool handleMouseHover(GdkEventCrossing* const& e);
 
  protected:
   Gtk::Box box;

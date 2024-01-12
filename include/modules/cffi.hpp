@@ -16,7 +16,7 @@ typedef struct wbcffi_module wbcffi_module;
 typedef struct {
   wbcffi_module* obj;
   const char* waybar_version;
-  GtkContainer* (*get_root_widget)(wbcffi_module*);
+//todo  GtkContainer* (*get_root_widget)(wbcffi_module*);
   void (*queue_update)(wbcffi_module*);
 } wbcffi_init_info;
 
