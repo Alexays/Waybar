@@ -1,5 +1,5 @@
 {
-  description = "Highly customizable Wayland bar for Sway and Wlroots based compositors.";
+  description = "Highly customizable Wayland bar for Sway and Wlroots based compositors";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -15,7 +15,8 @@
       genSystems = func: lib.genAttrs [
         "x86_64-linux"
         "aarch64-linux"
-      ] (system: func (import nixpkgs { inherit system; }));
+      ]
+        (system: func (import nixpkgs { inherit system; }));
 
       mkDate = longDate: (lib.concatStringsSep "-" [
         (builtins.substring 0 4 longDate)
@@ -24,6 +25,27 @@
       ]);
     in
     {
+      devShells = genSystems
+        (pkgs:
+          {
+            default =
+              pkgs.mkShell
+                {
+                  name = "waybar-shell";
+
+                  # inherit attributes from upstream nixpkgs derivation
+                  inherit (pkgs.waybar) buildInputs depsBuildBuild depsBuildBuildPropagated depsBuildTarget
+                    depsBuildTargetPropagated depsHostHost depsHostHostPropagated depsTargetTarget
+                    depsTargetTargetPropagated propagatedBuildInputs propagatedNativeBuildInputs strictDeps;
+
+                  # overrides for local development
+                  nativeBuildInputs = pkgs.waybar.nativeBuildInputs ++ (with pkgs; [
+                    clang-tools
+                    gdb
+                  ]);
+                };
+          });
+
       overlays.default = final: prev: {
         waybar = final.callPackage ./nix/default.nix {
           # take the first "version: '...'" from meson.build
@@ -35,27 +57,11 @@
             + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
         };
       };
+
       packages = genSystems (pkgs:
         let packages = self.overlays.default pkgs pkgs;
         in packages // {
           default = packages.waybar;
         });
-    } //
-    genSystems (pkgs: {
-      devShells.default =
-        pkgs.mkShell {
-          name = "waybar-shell";
-
-          # most of these aren't actually used in the waybar derivation, this is just in case
-          # they will ever start being used
-          inherit (pkgs.waybar) buildInputs depsBuildBuild depsBuildBuildPropagated depsBuildTarget
-            depsBuildTargetPropagated depsHostHost depsHostHostPropagated depsTargetTarget
-            depsTargetTargetPropagated propagatedBuildInputs propagatedNativeBuildInputs strictDeps;
-
-          nativeBuildInputs = pkgs.waybar.nativeBuildInputs ++ (with pkgs; [
-            clang-tools
-            gdb
-          ]);
-        };
-    });
+    };
 }
