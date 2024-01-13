@@ -204,6 +204,7 @@ inc_dirs = ['include']
 if is_linux
     add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
+    add_project_arguments('-DHAVE_SYSTEMD_MONITOR', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
         'src/modules/cffi.cpp',
@@ -214,6 +215,7 @@ if is_linux
         'src/modules/cpu_usage/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
+        'src/modules/systemd_failed_units.cpp',
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
@@ -495,6 +497,7 @@ if scdoc.found()
         'waybar-sway-scratchpad.5.scd',
         'waybar-sway-window.5.scd',
         'waybar-sway-workspaces.5.scd',
+        'waybar-systemd-failed-units.5.scd',
         'waybar-temperature.5.scd',
         'waybar-tray.5.scd',
         'waybar-states.5.scd',

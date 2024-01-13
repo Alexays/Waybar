@@ -145,7 +145,8 @@ class Workspaces : public AModule, public EventHandler {
   // workspace events
   void onWorkspaceActivated(std::string const& payload);
   void onWorkspaceDestroyed(std::string const& payload);
-  void onWorkspaceCreated(std::string const& payload);
+  void onWorkspaceCreated(std::string const& workspaceName,
+                          Json::Value const& clientsData = Json::Value::nullRef);
   void onWorkspaceMoved(std::string const& payload);
   void onWorkspaceRenamed(std::string const& payload);
 
@@ -163,9 +164,17 @@ class Workspaces : public AModule, public EventHandler {
 
   void doUpdate();
 
+  void extendOrphans(int workspaceId, Json::Value const& clientsJson);
+  void registerOrphanWindow(WindowCreationPayload create_window_paylod);
+
   bool m_allOutputs = false;
   bool m_showSpecial = false;
   bool m_activeOnly = false;
+
+  // Map for windows stored in workspaces not present in the current bar.
+  // This happens when the user has multiple monitors (hence, multiple bars)
+  // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
+  std::map<WindowAddress, std::string> m_orphanWindowMap;
 
   enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
   util::EnumParser<SortMethod> m_enumParser;
@@ -191,7 +200,7 @@ class Workspaces : public AModule, public EventHandler {
   uint64_t m_monitorId;
   std::string m_activeWorkspaceName;
   std::vector<std::unique_ptr<Workspace>> m_workspaces;
-  std::vector<Json::Value> m_workspacesToCreate;
+  std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
   std::vector<std::string> m_workspacesToRemove;
   std::vector<WindowCreationPayload> m_windowsToCreate;
 
