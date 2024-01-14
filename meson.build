@@ -91,7 +91,7 @@ gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              version : ['>=1.0.2'],
                              required: get_option('gtk-layer-shell'),
                              fallback : ['gtk4-layer-shell', 'gtk_layer_shell'],
-                             default_options : ['vapi=false'])
+                             default_options : ['introspection=false', 'vapi=false'])
 
 if gtk_layer_shell.found()
     add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
