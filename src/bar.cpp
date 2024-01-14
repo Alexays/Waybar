@@ -1,14 +1,11 @@
-#ifdef HAVE_GTK_LAYER_SHELL
-#include <gtk4-layer-shell.h>
-#endif
+#include "bar.hpp"
 
+#include <gtk4-layer-shell.h>
 #include <spdlog/spdlog.h>
 
-#include "bar.hpp"
 #include "client.hpp"
 //#include "factory.hpp"
 //#include "group.hpp"
-#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -22,9 +19,6 @@ static constexpr const char* MIN_WIDTH_MSG =
     "Requested width: {} is less than the minimum width: {} required by the modules";
 
 static constexpr const char* BAR_SIZE_MSG = "Bar configured (width: {}, height: {}) for output: {}";
-
-static constexpr const char* SIZE_DEFINED =
-    "{} size is defined in the config file so it will stay like that";
 
 const Bar::bar_mode_map Bar::PRESET_MODES = {  //
     {"default",
@@ -104,7 +98,6 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   }
 }
 
-#ifdef HAVE_GTK_LAYER_SHELL
 struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
   GLSSurfaceImpl(Gtk::Window& window, struct waybar_output& output)
       : window_{window} {
@@ -226,251 +219,6 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
     spdlog::info(BAR_SIZE_MSG, width_, height_, output_name_);
   }
 };
-#endif
-
-struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
-  RawSurfaceImpl(Gtk::Window& window, struct waybar_output& output)
-      : window_{window}, gdk_surface_{window_.get_surface()} {
-    output_ = gdk_wayland_monitor_get_wl_output(output.monitor->gobj());
-    output_name_ = output.name;
-
-    window.signal_realize().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onRealize));
-    window.signal_map().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onMap));
-    gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onConfigure));
-
-    if (window.get_realized()) {
-      onRealize();
-    }
-  }
-
-  void setExclusiveZone(bool enable) override {
-    exclusive_zone_ = enable;
-    if (layer_surface_) {
-      auto zone = 0;
-      if (enable) {
-        // exclusive zone already includes margin for anchored edge,
-        // only opposite margin should be added
-        if ((anchor_ & VERTICAL_ANCHOR) == VERTICAL_ANCHOR) {
-          zone += width_;
-          zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) ? margins_.right : margins_.left;
-        } else {
-          zone += height_;
-          zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) ? margins_.bottom : margins_.top;
-        }
-      }
-      spdlog::debug("Set exclusive zone {} for output {}", zone, output_name_);
-      zwlr_layer_surface_v1_set_exclusive_zone(layer_surface_.get(), zone);
-    }
-  }
-
-  void setLayer(bar_layer layer) override {
-    layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-    if (layer == bar_layer::TOP) {
-      layer_ = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
-    } else if (layer == bar_layer::OVERLAY) {
-      layer_ = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
-    }
-    // updating already mapped window
-    if (layer_surface_) {
-      if (zwlr_layer_surface_v1_get_version(layer_surface_.get()) >=
-          ZWLR_LAYER_SURFACE_V1_SET_LAYER_SINCE_VERSION) {
-        zwlr_layer_surface_v1_set_layer(layer_surface_.get(), layer_);
-      } else {
-        spdlog::warn("Unable to change layer: layer-shell implementation is too old");
-      }
-    }
-  }
-
-  void setMargins(const struct bar_margins& margins) override {
-    margins_ = margins;
-    // updating already mapped window
-    if (layer_surface_) {
-      zwlr_layer_surface_v1_set_margin(layer_surface_.get(), margins_.top, margins_.right,
-                                       margins_.bottom, margins_.left);
-    }
-  }
-
-  void setPassThrough(bool enable) override {
-    passthrough_ = enable;
-    /* GTK overwrites any region changes applied directly to the wl_surface,
-     * thus the same GTK region API as in the GLS impl has to be used. */
-    if (gdk_surface_) {
-      Cairo::RefPtr<Cairo::Region> region;
-      if (enable) {
-        region = Cairo::Region::create();
-      }
-      gdk_surface_->set_input_region(region);
-    }
-  }
-
-  void setPosition(const std::string_view& position) override {
-    anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-    if (position == "bottom") {
-      anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-    } else if (position == "left") {
-      anchor_ = VERTICAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
-    } else if (position == "right") {
-      anchor_ = VERTICAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-    }
-
-    // updating already mapped window
-    if (layer_surface_) {
-      zwlr_layer_surface_v1_set_anchor(layer_surface_.get(), anchor_);
-    }
-  }
-
-  void setSize(uint32_t width, uint32_t height) override {
-    configured_width_ = width_ = width;
-    configured_height_ = height_ = height;
-    // layer_shell.configure handler should update exclusive zone if size changes
-    window_.set_size_request(width, height);
-  };
-
-  void commit() override {
-    if (surface_) {
-      wl_surface_commit(surface_);
-    }
-  }
-
- private:
-  constexpr static uint8_t VERTICAL_ANCHOR =
-      ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-  constexpr static uint8_t HORIZONTAL_ANCHOR =
-      ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-
-  template <auto fn>
-  using deleter_fn = std::integral_constant<decltype(fn), fn>;
-  using layer_surface_ptr =
-      std::unique_ptr<zwlr_layer_surface_v1, deleter_fn<zwlr_layer_surface_v1_destroy>>;
-
-  Gtk::Window& window_;
-  Glib::RefPtr<Gdk::Surface> gdk_surface_;
-  std::string output_name_;
-  uint32_t configured_width_ = 0;
-  uint32_t configured_height_ = 0;
-  uint32_t width_ = 0;
-  uint32_t height_ = 0;
-  uint8_t anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-  bool exclusive_zone_ = true;
-  bool passthrough_ = false;
-  struct bar_margins margins_;
-
-  zwlr_layer_shell_v1_layer layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-  struct wl_output* output_ = nullptr;    // owned by GTK
-  struct wl_surface* surface_ = nullptr;  // owned by GTK
-  layer_surface_ptr layer_surface_;
-
-  void onRealize() {
-    gtk_layer_init_for_window(window_.gobj());
-  }
-
-  void onMap() {
-    static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
-        .configure = onSurfaceConfigure,
-        .closed = onSurfaceClosed,
-    };
-    auto client = Client::inst();
-    surface_ = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
-
-    layer_surface_.reset(zwlr_layer_shell_v1_get_layer_surface(client->layer_shell, surface_,
-                                                               output_, layer_, "waybar"));
-
-    zwlr_layer_surface_v1_add_listener(layer_surface_.get(), &layer_surface_listener, this);
-    zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface_.get(), false);
-    zwlr_layer_surface_v1_set_anchor(layer_surface_.get(), anchor_);
-    zwlr_layer_surface_v1_set_margin(layer_surface_.get(), margins_.top, margins_.right,
-                                     margins_.bottom, margins_.left);
-
-    setSurfaceSize(width_, height_);
-    setExclusiveZone(exclusive_zone_);
-    setPassThrough(passthrough_);
-
-    commit();
-    wl_display_roundtrip(client->wl_display);
-  }
-
-  void onConfigure(int width, int height) {
-    /*
-     * GTK wants new size for the window.
-     *
-     * Prefer configured size if it's non-default.
-     * If the size is not set and the window is smaller than requested by GTK, request resize from
-     * layer surface.
-     */
-    auto tmp_height = height_;
-    auto tmp_width = width_;
-    if (height > static_cast<int>(height_)) {
-      // Default minimal value
-      if (height_ > 1) {
-        spdlog::warn(MIN_HEIGHT_MSG, height_, height);
-      }
-      if (configured_height_ > 1) {
-        spdlog::info(SIZE_DEFINED, "Height");
-      } else {
-        tmp_height = height;
-      }
-    }
-    if (width > static_cast<int>(width_)) {
-      // Default minimal value
-      if (width_ > 1) {
-        spdlog::warn(MIN_WIDTH_MSG, width_, width);
-      }
-      if (configured_width_ > 1) {
-        spdlog::info(SIZE_DEFINED, "Width");
-      } else {
-        tmp_width = width;
-      }
-    }
-    if (tmp_width != width_ || tmp_height != height_) {
-      setSurfaceSize(tmp_width, tmp_height);
-      commit();
-    }
-  }
-
-  void setSurfaceSize(uint32_t width, uint32_t height) {
-    /* If the client is anchored to two opposite edges, layer_surface.configure will return
-     * size without margins for the axis.
-     * layer_surface.set_size, however, expects size with margins for the anchored axis.
-     * This is not specified by wlr-layer-shell and based on actual behavior of sway.
-     *
-     * If the size for unanchored axis is not set (0), change request to 1 to avoid automatic
-     * assignment by the compositor.
-     */
-    if ((anchor_ & VERTICAL_ANCHOR) == VERTICAL_ANCHOR) {
-      width = width > 0 ? width : 1;
-      if (height > 1) {
-        height += margins_.top + margins_.bottom;
-      }
-    } else {
-      height = height > 0 ? height : 1;
-      if (width > 1) {
-        width += margins_.right + margins_.left;
-      }
-    }
-    spdlog::debug("Set surface size {}x{} for output {}", width, height, output_name_);
-    zwlr_layer_surface_v1_set_size(layer_surface_.get(), width, height);
-  }
-
-  static void onSurfaceConfigure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial,
-                                 uint32_t width, uint32_t height) {
-    auto o = static_cast<RawSurfaceImpl*>(data);
-    if (width != o->width_ || height != o->height_) {
-      o->width_ = width;
-      o->height_ = height;
-      o->window_.set_size_request(o->width_, o->height_);
-      o->setExclusiveZone(o->exclusive_zone_);
-      spdlog::info(BAR_SIZE_MSG, o->width_ == 1 ? "auto" : std::to_string(o->width_),
-                   o->height_ == 1 ? "auto" : std::to_string(o->height_), o->output_name_);
-      o->commit();
-    }
-    zwlr_layer_surface_v1_ack_configure(surface, serial);
-  }
-
-  static void onSurfaceClosed(void* data, struct zwlr_layer_surface_v1* /* surface */) {
-    auto o = static_cast<RawSurfaceImpl*>(data);
-    o->layer_surface_.reset();
-  }
-};
 
 };  // namespace waybar
 
@@ -566,16 +314,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
-#ifdef HAVE_GTK_LAYER_SHELL
-  bool use_gls = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
-  if (use_gls) {
-    surface_impl_ = std::make_unique<GLSSurfaceImpl>(window, *output);
-  } else
-#endif
-  {
-    surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
-  }
-
+  surface_impl_ = std::make_unique<GLSSurfaceImpl>(window, *output);
   surface_impl_->setMargins(margins_);
   surface_impl_->setSize(width, height);
   // Position needs to be set after calculating the height due to the
