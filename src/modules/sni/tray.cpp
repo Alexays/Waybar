@@ -38,7 +38,7 @@ void Tray::onRemove(std::unique_ptr<Item>& item) {
 
 auto Tray::update() -> void {
   // Show tray only when items are available
-  box_.set_visible(!box_.get_children().empty());
+  event_box_.set_visible(!box_.get_children().empty());
   // Call parent update
   AModule::update();
 }
