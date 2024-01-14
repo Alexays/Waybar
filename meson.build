@@ -122,7 +122,8 @@ endif
 
 gtk_layer_shell = dependency('gtk-layer-shell-0',
         required: get_option('gtk-layer-shell'),
-        fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
+        default_options: ['introspection=false', 'vapi=false'],
+        fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
