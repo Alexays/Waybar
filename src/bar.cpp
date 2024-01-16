@@ -131,7 +131,7 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
     output_name_ = output.name;
     // this has to be executed before GtkWindow.realize
     gtk_layer_init_for_window(window_.gobj());
-    gtk_layer_set_keyboard_interactivity(window.gobj(), FALSE);
+    gtk_layer_set_keyboard_mode(window.gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
     gtk_layer_set_monitor(window_.gobj(), output.monitor->gobj());
     gtk_layer_set_namespace(window_.gobj(), "waybar");
 
