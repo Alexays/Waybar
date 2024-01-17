@@ -84,7 +84,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       fmtMap_.insert({3, config_[kCldPlaceholder]["format"]["today"].asString()});
       cldBaseDay_ =
           year_month_day{
-              floor<days>(zoned_time{nullptr, system_clock::now()}.get_local_time())}
+              floor<days>(zoned_time{current_zone(), system_clock::now()}.get_local_time())}
               .day();
     } else
       fmtMap_.insert({3, "{}"});
