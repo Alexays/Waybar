@@ -28,7 +28,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       if (!zone_name.isString()) continue;
       if (zone_name.asString().empty())
         // local time should be shown
-        tzList_.push_back(current_zone());
+        tzList_.push_back(nullptr);
       else
         try {
           tzList_.push_back(locate_zone(zone_name.asString()));
@@ -39,7 +39,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   } else if (config_["timezone"].isString()) {
     if (config_["timezone"].asString().empty())
       // local time should be shown
-      tzList_.push_back(current_zone());
+      tzList_.push_back(nullptr);
     else
       try {
         tzList_.push_back(locate_zone(config_["timezone"].asString()));
@@ -47,7 +47,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
         spdlog::warn("Timezone: {0}. {1}", config_["timezone"].asString(), e.what());
       }
   }
-  if (!tzList_.size()) tzList_.push_back(current_zone());
+  if (!tzList_.size()) tzList_.push_back(nullptr);
 
   // Calendar properties
   if (cldInTooltip_) {
@@ -127,7 +127,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Clock::update() -> void {
-  auto tz{tzList_[tzCurrIdx_]};
+  auto tz{tzList_[tzCurrIdx_] ?: current_zone()};
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
   label_.set_markup(fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(now)));
