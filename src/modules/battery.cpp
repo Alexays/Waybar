@@ -694,20 +694,23 @@ auto waybar::modules::Battery::update() -> void {
 
 void waybar::modules::Battery::setBarClass(std::string& state) {
   auto classes = bar_.window.get_style_context()->list_classes();
+  const std::string prefix = "battery-";
+
   auto old_class_it = std::find_if(classes.begin(), classes.end(),
-    [](auto classname) {
-        return classname.rfind("battery-", 0) == 0;
+    [&prefix](auto classname) {
+        return classname.rfind(prefix, 0) == 0;
     });
+
+  auto old_class = *old_class_it;
+  auto new_class = prefix + state;
 
   // If the bar doesn't have any `battery-` class
   if(old_class_it == classes.end()) {
     if(!state.empty()) {
-        bar_.window.get_style_context()->add_class("battery-" + state);
+        bar_.window.get_style_context()->add_class(new_class);
     }
     return;
   }
-
-  auto old_class = *old_class_it;
 
   // If the bar has a `battery-` class,
   // but `state` is empty
@@ -715,12 +718,11 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
     bar_.window.get_style_context()->remove_class(old_class);
     return;
   }
-  auto new_class = "battery-" + state;
 
   // If the bar has a `battery-` class,
   // and `state` is NOT empty
   if(old_class != new_class) {
     bar_.window.get_style_context()->remove_class(old_class);
-    bar_.window.get_style_context()->add_class("battery-" + state);
+    bar_.window.get_style_context()->add_class(new_class);
   }
 }
