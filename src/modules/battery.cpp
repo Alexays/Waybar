@@ -701,7 +701,6 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
         return classname.rfind(prefix, 0) == 0;
     });
 
-  auto old_class = *old_class_it;
   auto new_class = prefix + state;
 
   // If the bar doesn't have any `battery-` class
@@ -711,6 +710,8 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
     }
     return;
   }
+
+  auto old_class = *old_class_it;
 
   // If the bar has a `battery-` class,
   // but `state` is empty
