@@ -167,3 +167,10 @@ The *battery* module allows one to define custom formats based on up to two fact
 	- *<state>* can be defined in the *config*. For more information see *states*.
 - *#battery.<status>.<state>*
 	- Combination of both *<status>* and *<state>*.
+
+The following classes are applied to the entire Waybar rather than just the
+battery widget:
+
+- *window#waybar.battery-<state>*
+	- *<state>* can be defined in the *config*, as previously mentioned.
+
