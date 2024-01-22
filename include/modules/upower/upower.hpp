@@ -66,7 +66,7 @@ class UPower : public AModule {
   Devices devices;
   std::mutex m_Mutex;
   UpClient *client;
-  UpDevice *displayDevice;
+  UpDevice *displayDevice = nullptr;
   guint login1_id;
   GDBusConnection *login1_connection;
   std::unique_ptr<UPowerTooltip> upower_tooltip;
