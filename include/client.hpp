@@ -7,6 +7,7 @@
 
 #include "bar.hpp"
 #include "config.hpp"
+#include "util/css_reload_helper.hpp"
 #include "util/portal.hpp"
 
 struct zwlr_layer_shell_v1;
@@ -55,6 +56,8 @@ class Client {
   Glib::RefPtr<Gtk::CssProvider> css_provider_;
   std::unique_ptr<Portal> portal;
   std::list<struct waybar_output> outputs_;
+  std::unique_ptr<CssReloadHelper> m_cssReloadHelper;
+  std::string m_cssFile;
 };
 
 }  // namespace waybar

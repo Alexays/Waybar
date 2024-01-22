@@ -10,7 +10,9 @@ test_src = files(
     'main.cpp',
     'SafeSignal.cpp',
     'config.cpp',
+    'css_reload_helper.cpp',
     '../src/config.cpp',
+    '../src/util/css_reload_helper.cpp',
 )
 
 if tz_dep.found()

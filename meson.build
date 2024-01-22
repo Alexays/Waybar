@@ -196,7 +196,8 @@ src_files = files(
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
     'src/util/gtk_icon.cpp',
-    'src/util/regex_collection.cpp'
+    'src/util/regex_collection.cpp',
+    'src/util/css_reload_helper.cpp'
 )
 
 inc_dirs = ['include']
