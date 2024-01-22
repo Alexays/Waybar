@@ -527,11 +527,11 @@ void Task::handle_closed() {
   spdlog::debug("{} closed", repr());
   zwlr_foreign_toplevel_handle_v1_destroy(handle_);
   handle_ = nullptr;
-  tbar_->remove_task(id_);
   if (button_visible_) {
     tbar_->remove_button(button);
     button_visible_ = false;
   }
+  tbar_->remove_task(id_);
 }
 
 bool Task::handle_clicked(GdkEventButton *bt) {
