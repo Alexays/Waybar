@@ -269,11 +269,14 @@ int waybar::Client::main(int argc, char *argv[]) {
     auto css_file = getStyle(style_opt, appearance);
     setupCss(css_file);
   });
-  m_cssReloadHelper->monitorChanges();
+
+  if (config.getConfig()["reload_style_on_change"].asBool()) {
+    m_cssReloadHelper->monitorChanges();
+  }
   bindInterfaces();
   gtk_app->hold();
   gtk_app->run();
-  m_cssReloadHelper.reset(); // stop watching css file
+  m_cssReloadHelper.reset();  // stop watching css file
   bars.clear();
   return 0;
 }
