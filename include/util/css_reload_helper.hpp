@@ -1,12 +1,12 @@
 #pragma once
 
-#include <atomic>
-#include <condition_variable>
 #include <functional>
-#include <mutex>
 #include <string>
-#include <thread>
 #include <vector>
+
+#include "glibmm/refptr.h"
+#include "giomm/file.h"
+#include "giomm/filemonitor.h"
 
 struct pollfd;
 
@@ -15,11 +15,7 @@ class CssReloadHelper {
  public:
   CssReloadHelper(std::string cssFile, std::function<void()> callback);
 
-  ~CssReloadHelper();
-
   virtual void monitorChanges();
-
-  void stop();
 
  protected:
   std::vector<std::string> parseImports(const std::string& cssFile);
@@ -38,12 +34,16 @@ class CssReloadHelper {
 
   virtual std::string findPath(const std::string& filename);
 
+  void handleFileChange(
+        Glib::RefPtr<Gio::File> const& file,
+        Glib::RefPtr<Gio::File> const& other_type,
+        Gio::FileMonitorEvent event_type);
+
  private:
   std::string m_cssFile;
+
   std::function<void()> m_callback;
-  std::atomic<bool> m_running = false;
-  std::thread m_thread;
-  std::mutex m_mutex;
-  std::condition_variable m_cv;
+
+  std::vector<std::tuple<Glib::RefPtr<Gio::FileMonitor>>> m_fileMonitors;
 };
 }  // namespace waybar
