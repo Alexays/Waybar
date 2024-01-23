@@ -87,3 +87,4 @@ $path\\n$tooltip
 # STYLE
 
 - *#image*
+- *#image.empty*
