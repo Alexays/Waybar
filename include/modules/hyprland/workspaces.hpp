@@ -22,6 +22,9 @@
 
 using WindowAddress = std::string;
 
+static const std::string SPECIAL_QUALIFIER_PREFIX = "special:";
+static const int SPECIAL_QUALIFIER_PREFIX_LEN = SPECIAL_QUALIFIER_PREFIX.length();
+
 namespace waybar::modules::hyprland {
 
 class Workspaces;
@@ -135,6 +138,7 @@ class Workspaces : public AModule, public EventHandler {
   void onEvent(const std::string& e) override;
   void updateWindowCount();
   void sortWorkspaces();
+  auto locateWorkspace(const std::string& workspaceName);
   void createWorkspace(Json::Value const& workspace_data,
                        Json::Value const& clients_data = Json::Value::nullRef);
   void removeWorkspace(std::string const& name);
