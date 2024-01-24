@@ -63,11 +63,11 @@ auto waybar::modules::Image::update() -> void {
     }
     image_.set(pixbuf);
     image_.show();
-    image_.get_style_context()->remove_class("empty");
+    box_.get_style_context()->remove_class("empty");
   } else {
     image_.clear();
     image_.hide();
-    image_.get_style_context()->add_class("empty");
+    box_.get_style_context()->add_class("empty");
   }
 
   AModule::update();
