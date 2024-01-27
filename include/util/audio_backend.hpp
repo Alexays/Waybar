@@ -22,6 +22,7 @@ class AudioBackend {
   static void sourceInfoCb(pa_context*, const pa_source_info* i, int, void* data);
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
   static void volumeModifyCb(pa_context*, int, void*);
+  void connectContext();
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api* mainloop_api_;
