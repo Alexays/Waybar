@@ -8,10 +8,10 @@
 #include <fstream>
 #include <regex>
 #include <unordered_map>
-#include "glibmm/refptr.h"
-#include "giomm/file.h"
 
 #include "config.hpp"
+#include "giomm/file.h"
+#include "glibmm/refptr.h"
 
 namespace {
 const std::regex IMPORT_REGEX(R"(@import\s+(?:url\()?(?:"|')([^"')]+)(?:"|')\)?;)");
@@ -30,7 +30,7 @@ std::string waybar::CssReloadHelper::getFileContents(const std::string& filename
     return {};
   }
 
-  return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  return {(std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()};
 }
 
 std::string waybar::CssReloadHelper::findPath(const std::string& filename) {
