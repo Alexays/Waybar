@@ -8,6 +8,7 @@ test_dep = [
 ]
 test_src = files(
     'main.cpp',
+    'JsonParser.cpp',
     'SafeSignal.cpp',
     'config.cpp',
     '../src/config.cpp',
