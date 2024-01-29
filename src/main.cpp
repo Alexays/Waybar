@@ -7,9 +7,8 @@
 #include <mutex>
 
 #include "client.hpp"
+#include "util/command.hpp"
 
-std::mutex reap_mtx;
-std::list<pid_t> reap;
 volatile bool reload;
 
 void* signalThread(void* args) {
@@ -29,14 +28,14 @@ void* signalThread(void* args) {
       case SIGCHLD:
         spdlog::debug("Received SIGCHLD in signalThread");
         if (!reap.empty()) {
-          reap_mtx.lock();
+          reapMtx.lock();
           for (auto it = reap.begin(); it != reap.end(); ++it) {
             if (waitpid(*it, nullptr, WNOHANG) == *it) {
               spdlog::debug("Reaped child with PID: {}", *it);
               it = reap.erase(it);
             }
           }
-          reap_mtx.unlock();
+          reapMtx.unlock();
         }
         break;
       default:
