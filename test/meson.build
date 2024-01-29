@@ -12,8 +12,7 @@ test_src = files(
     'SafeSignal.cpp',
     'config.cpp',
     'css_reload_helper.cpp',
-    '../src/config.cpp',
-    '../src/util/css_reload_helper.cpp',
+    'sleeper_thread.cpp',
 )
 
 if tz_dep.found()
@@ -24,7 +23,9 @@ endif
 waybar_test = executable(
     'waybar_test',
     test_src,
-    dependencies: test_dep,
+    dependencies: [
+        waybar_lib
+    ] + test_dep + third_party_dependencies,
     include_directories: test_inc,
 )
 
