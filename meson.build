@@ -405,42 +405,55 @@ subdir('protocol')
 app_resources = []
 subdir('resources/icons')
 
-executable(
+third_party_dependencies = [
+    thread_dep,
+    client_protos,
+    wayland_client,
+    fmt,
+    spdlog,
+    sigcpp,
+    jsoncpp,
+    wayland_cursor,
+    gtkmm,
+    dbusmenu_gtk,
+    giounix,
+    libinput,
+    libnl,
+    libnlgen,
+    upower_glib,
+    pipewire,
+    playerctl,
+    libpulse,
+    libjack,
+    libwireplumber,
+    libudev,
+    libinotify,
+    libepoll,
+    libmpdclient,
+    libevdev,
+    gtk_layer_shell,
+    libsndio,
+    tz_dep,
+    xkbregistry,
+    cava,
+]
+
+waybar_lib = static_library(
     'waybar',
     [src_files, app_resources],
-    dependencies: [
-        thread_dep,
-        client_protos,
-        wayland_client,
-        fmt,
-        spdlog,
-        sigcpp,
-        jsoncpp,
-        wayland_cursor,
-        gtkmm,
-        dbusmenu_gtk,
-        giounix,
-        libinput,
-        libnl,
-        libnlgen,
-        upower_glib,
-        pipewire,
-        playerctl,
-        libpulse,
-        libjack,
-        libwireplumber,
-        libudev,
-        libinotify,
-        libepoll,
-        libmpdclient,
-        libevdev,
-        gtk_layer_shell,
-        libsndio,
-        tz_dep,
-		xkbregistry,
-        cava
-    ],
+    dependencies: third_party_dependencies,
     include_directories: inc_dirs,
+)
+waybar_lib = declare_dependency(
+    link_with: waybar_lib,
+    include_directories: inc_dirs
+)
+
+executable('waybar',
+    'src/main.cpp',
+    dependencies: [
+        waybar_lib
+    ] + third_party_dependencies,
     install: true,
 )
 
