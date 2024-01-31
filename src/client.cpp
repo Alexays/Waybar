@@ -270,11 +270,11 @@ int waybar::Client::main(int argc, char *argv[]) {
     setupCss(css_file);
   });
 
-  auto config = config.getConfig();
-  if (config.isObject() && config["reload_style_on_change"].asBool()) {
+  auto m_config = config.getConfig();
+  if (m_config.isObject() && m_config["reload_style_on_change"].asBool()) {
     m_cssReloadHelper->monitorChanges();
-  } else if (config.isArray()) {
-    for (const auto &conf : config) {
+  } else if (m_config.isArray()) {
+    for (const auto &conf : m_config) {
       if (conf["reload_style_on_change"].asBool()) {
         m_cssReloadHelper->monitorChanges();
         break;
