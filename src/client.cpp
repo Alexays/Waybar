@@ -270,9 +270,18 @@ int waybar::Client::main(int argc, char *argv[]) {
     setupCss(css_file);
   });
 
-  if (config.getConfig()["reload_style_on_change"].asBool()) {
+  auto config = config.getConfig();
+  if (config.isObject() && config["reload_style_on_change"].asBool()) {
     m_cssReloadHelper->monitorChanges();
+  } else if (config.isArray()) {
+    for (const auto &conf : config) {
+      if (conf["reload_style_on_change"].asBool()) {
+        m_cssReloadHelper->monitorChanges();
+        break;
+      }
+    }
   }
+
   bindInterfaces();
   gtk_app->hold();
   gtk_app->run();
