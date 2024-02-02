@@ -73,7 +73,13 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     revealer.get_style_context()->add_class("drawer");
 
     revealer.add(revealer_box);
-    box.pack_start(revealer);
+
+    if (left_to_right) {
+      box.pack_end(revealer);
+    }
+    else {
+      box.pack_start(revealer);
+    }
 
     addHoverHandlerTo(revealer);
   }
