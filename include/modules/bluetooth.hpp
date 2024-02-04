@@ -55,7 +55,7 @@ class Bluetooth : public ALabel {
                                                 GDBusProxy*, GVariant*, const gchar* const*,
                                                 gpointer) -> void;
 
-  auto getDeviceBatteryPercentage(GDBusObject*, GDBusProxy*) -> std::optional<unsigned char>;
+  auto getDeviceBatteryPercentage(GDBusObject*) -> std::optional<unsigned char>;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
   auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;
 

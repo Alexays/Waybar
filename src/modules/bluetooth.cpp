@@ -336,11 +336,11 @@ auto waybar::modules::Bluetooth::onInterfaceProxyPropertiesChanged(
   }
 }
 
-auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object,
-                                                            GDBusProxy* proxy_device)
+auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object)
     -> std::optional<unsigned char> {
   GDBusProxy* proxy_device_bat =
       G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Battery1"));
+  GDBusProxy* proxy_device = G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Device1"));
   if (proxy_device_bat != NULL) {
     unsigned char battery_percentage = getUcharProperty(proxy_device_bat, "Percentage");
     g_object_unref(proxy_device_bat);
@@ -392,7 +392,7 @@ auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, Device
 
     g_object_unref(proxy_device);
 
-    device_info.battery_percentage = getDeviceBatteryPercentage(object, proxy_device);
+    device_info.battery_percentage = getDeviceBatteryPercentage(object);
 
     return true;
   }
