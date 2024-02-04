@@ -446,15 +446,6 @@ auto waybar::modules::Clock::first_day_of_week() -> weekday {
 
 auto waybar::modules::Clock::get_ordinal_date(const year_month_day& today) -> std::string {
   auto day = static_cast<unsigned int>(today.day());
-  switch (day) {
-    case 11:
-      return "11th";
-    case 12:
-      return "12th";
-    case 13:
-      return "13th";
-  }
-
   std::stringstream res;
   res << day;
   if (day >= 11 && day <= 13) {
