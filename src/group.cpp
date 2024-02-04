@@ -9,19 +9,18 @@
 
 namespace waybar {
 
-const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical, bool left_to_right) {
+const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
+  /* The transition direction of a drawer is not actually determined by the transition type,
+   * but rather by the order of 'box' and 'revealer_box':
+   *   'REVEALER_TRANSITION_TYPE_SLIDE_LEFT' and 'REVEALER_TRANSITION_TYPE_SLIDE_RIGHT'
+   *   will result in the same thing.
+   * However: we still need to differentiate between vertical and horizontal transition types.
+   */
+
   if (is_vertical) {
-    if (left_to_right) {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_DOWN;
-    } else {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
-    }
+    return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
   } else {
-    if (left_to_right) {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT;
-    } else {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
-    }
+    return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
   }
 }
 
@@ -64,7 +63,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
 
-    auto transition_type = getPreferredTransitionType(vertical, left_to_right);
+    auto transition_type = getPreferredTransitionType(vertical);
 
     revealer.set_transition_type(transition_type);
     revealer.set_transition_duration(transition_duration);
