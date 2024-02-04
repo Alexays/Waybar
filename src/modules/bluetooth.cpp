@@ -1,6 +1,7 @@
 #include "modules/bluetooth.hpp"
 
 #include <fmt/format.h>
+#include <libupower-glib/upower.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -335,7 +336,8 @@ auto waybar::modules::Bluetooth::onInterfaceProxyPropertiesChanged(
   }
 }
 
-auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object)
+auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object,
+                                                            GDBusProxy* proxy_device)
     -> std::optional<unsigned char> {
   GDBusProxy* proxy_device_bat =
       G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Battery1"));
@@ -344,6 +346,29 @@ auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object)
     g_object_unref(proxy_device_bat);
 
     return battery_percentage;
+  }
+  if (proxy_device != nullptr) {
+    auto serial = getStringProperty(proxy_device, "Address");
+    std::transform(serial.begin(), serial.end(), serial.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+
+    auto* client = up_client_new();
+    if (client == nullptr) return std::nullopt;
+
+    auto* devices = up_client_get_devices2(client);
+    UpDevice* dev;
+    char* udev_serial;
+    double percentage;
+    for (int i = 0; i < devices->len; i++) {
+      dev = (UpDevice*)g_ptr_array_index(devices, i);
+      g_object_get(dev, "serial", &udev_serial, nullptr);
+      if (serial == udev_serial) {
+        g_object_get(dev, "percentage", &percentage, nullptr);
+        g_ptr_array_unref(devices);
+        g_object_unref(client);
+        return percentage;
+      }
+    }
   }
   return std::nullopt;
 }
@@ -367,7 +392,7 @@ auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, Device
 
     g_object_unref(proxy_device);
 
-    device_info.battery_percentage = getDeviceBatteryPercentage(object);
+    device_info.battery_percentage = getDeviceBatteryPercentage(object, proxy_device);
 
     return true;
   }
