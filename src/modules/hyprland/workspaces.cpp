@@ -365,6 +365,13 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
 
 void Workspaces::onMonitorFocused(std::string const &payload) {
   m_activeWorkspaceName = payload.substr(payload.find(',') + 1);
+
+  for (Json::Value &monitor : gIPC->getSocket1JsonReply("monitors")) {
+    if (monitor["name"].asString() == payload.substr(0, payload.find(','))) {
+      auto name = monitor["specialWorkspace"]["name"].asString();
+      m_activeSpecialWorkspaceName = !name.starts_with("special:") ? name : name.substr(8);
+    }
+  }
 }
 
 void Workspaces::onWindowOpened(std::string const &payload) {
