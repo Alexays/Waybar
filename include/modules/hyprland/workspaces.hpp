@@ -144,6 +144,7 @@ class Workspaces : public AModule, public EventHandler {
 
   // workspace events
   void onWorkspaceActivated(std::string const& payload);
+  void onSpecialWorkspaceActivated(std::string const& payload);
   void onWorkspaceDestroyed(std::string const& payload);
   void onWorkspaceCreated(std::string const& workspaceName,
                           Json::Value const& clientsData = Json::Value::nullRef);
@@ -199,6 +200,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_withIcon;
   uint64_t m_monitorId;
   std::string m_activeWorkspaceName;
+  std::string m_activeSpecialWorkspaceName;
   std::vector<std::unique_ptr<Workspace>> m_workspaces;
   std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
   std::vector<std::string> m_workspacesToRemove;

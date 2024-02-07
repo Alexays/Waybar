@@ -136,6 +136,7 @@ void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_paylod
 
 auto Workspaces::registerIpc() -> void {
   gIPC->registerForIPC("workspace", this);
+  gIPC->registerForIPC("activespecial", this);
   gIPC->registerForIPC("createworkspace", this);
   gIPC->registerForIPC("destroyworkspace", this);
   gIPC->registerForIPC("focusedmon", this);
@@ -187,7 +188,8 @@ void Workspaces::doUpdate() {
 
   for (auto &workspace : m_workspaces) {
     // active
-    workspace->setActive(workspace->name() == m_activeWorkspaceName);
+    workspace->setActive( workspace->name() == m_activeWorkspaceName ||
+                         workspace->name() == m_activeSpecialWorkspaceName );
     // disable urgency if workspace is active
     if (workspace->name() == m_activeWorkspaceName && workspace->isUrgent()) {
       workspace->setUrgent(false);
@@ -266,6 +268,8 @@ void Workspaces::onEvent(const std::string &ev) {
 
   if (eventName == "workspace") {
     onWorkspaceActivated(payload);
+  } else if (eventName == "activespecial") {
+    onSpecialWorkspaceActivated(payload);
   } else if (eventName == "destroyworkspace") {
     onWorkspaceDestroyed(payload);
   } else if (eventName == "createworkspace") {
@@ -293,6 +297,13 @@ void Workspaces::onEvent(const std::string &ev) {
 
 void Workspaces::onWorkspaceActivated(std::string const &payload) {
   m_activeWorkspaceName = payload;
+}
+
+void Workspaces::onSpecialWorkspaceActivated(std::string const &payload) {
+  std::string name(begin(payload), begin(payload) + payload.find_first_of(','));
+  m_activeSpecialWorkspaceName = (
+    ( name == "special" || name == "" ) ? name : name.substr(8, name.length() - 8)
+  );
 }
 
 void Workspaces::onWorkspaceDestroyed(std::string const &payload) {
