@@ -188,8 +188,8 @@ void Workspaces::doUpdate() {
 
   for (auto &workspace : m_workspaces) {
     // active
-    workspace->setActive( workspace->name() == m_activeWorkspaceName ||
-                         workspace->name() == m_activeSpecialWorkspaceName );
+    workspace->setActive(workspace->name() == m_activeWorkspaceName ||
+                         workspace->name() == m_activeSpecialWorkspaceName);
     // disable urgency if workspace is active
     if (workspace->name() == m_activeWorkspaceName && workspace->isUrgent()) {
       workspace->setUrgent(false);
