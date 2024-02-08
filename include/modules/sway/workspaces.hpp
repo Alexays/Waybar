@@ -30,6 +30,7 @@ class Workspaces : public AModule, public sigc::trackable {
 
   void onCmd(const struct Ipc::ipc_response&);
   void onEvent(const struct Ipc::ipc_response&);
+  bool isShown(const Json::Value&);
   bool filterButtons();
   Gtk::Button& addButton(const Json::Value&);
   void onButtonReady(const Json::Value&, Gtk::Button&);
