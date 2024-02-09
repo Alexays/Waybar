@@ -187,8 +187,7 @@ void Workspaces::doUpdate() {
     auto sws = monitor["specialWorkspace"];
     auto name = sws["name"].asString();
     if (sws.isObject() && (sws["name"].isString()) && !name.empty()) {
-      visibleWorkspaces.push_back(name == "special" ? "special"
-                                  : name.substr(8, name.length() - 8));
+      visibleWorkspaces.push_back(name.starts_with("special:") ? name : name.substr(8));
     }
   }
 
@@ -307,9 +306,7 @@ void Workspaces::onWorkspaceActivated(std::string const &payload) {
 
 void Workspaces::onSpecialWorkspaceActivated(std::string const &payload) {
   std::string name(begin(payload), begin(payload) + payload.find_first_of(','));
-  m_activeSpecialWorkspaceName = (
-    ( name == "special" || name == "" ) ? name : name.substr(8, name.length() - 8)
-  );
+  m_activeSpecialWorkspaceName = (!name.starts_with("special:") ? name : name.substr(8));
 }
 
 void Workspaces::onWorkspaceDestroyed(std::string const &payload) {
