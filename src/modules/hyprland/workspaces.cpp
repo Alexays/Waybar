@@ -486,7 +486,10 @@ void Workspaces::updateWindowCount() {
   for (auto &workspace : m_workspaces) {
     auto workspaceJson = std::find_if(
         workspacesJson.begin(), workspacesJson.end(),
-        [&](Json::Value const &x) { return x["name"].asString() == workspace->name(); });
+        [&](Json::Value const &x) {
+          return x["name"].asString() == workspace->name() ||
+                 (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
+        });
     uint32_t count = 0;
     if (workspaceJson != workspacesJson.end()) {
       try {
