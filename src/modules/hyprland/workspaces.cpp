@@ -484,9 +484,8 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
 void Workspaces::updateWindowCount() {
   const Json::Value workspacesJson = gIPC->getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
-    auto workspaceJson = std::find_if(
-        workspacesJson.begin(), workspacesJson.end(),
-        [&](Json::Value const &x) {
+    auto workspaceJson =
+        std::find_if(workspacesJson.begin(), workspacesJson.end(), [&](Json::Value const &x) {
           return x["name"].asString() == workspace->name() ||
                  (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
         });
