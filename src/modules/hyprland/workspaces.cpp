@@ -187,7 +187,7 @@ void Workspaces::doUpdate() {
     auto sws = monitor["specialWorkspace"];
     auto name = sws["name"].asString();
     if (sws.isObject() && (sws["name"].isString()) && !name.empty()) {
-      visibleWorkspaces.push_back(name.starts_with("special:") ? name : name.substr(8));
+      visibleWorkspaces.push_back(!name.starts_with("special:") ? name : name.substr(8));
     }
   }
 
