@@ -66,6 +66,16 @@ Addressed by *hyprland/submap*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*always-on*: ++
+	typeof: bool ++
+	default: false ++
+	Option to display the widget even when there's no active submap.
+
+*default-submap* ++
+	typeof: string ++
+	default: Default ++
+	Option to set the submap name to display when not in an active submap.
+
 
 # EXAMPLES
 
