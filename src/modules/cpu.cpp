@@ -36,6 +36,12 @@ auto waybar::modules::Cpu::update() -> void {
     format = config_["format-" + state].asString();
   }
 
+  if (!prev_state_.empty()) {
+    label_.get_style_context()->remove_class(prev_state_);
+  }
+  label_.get_style_context()->add_class(state);
+  prev_state_ = state;
+
   if (format.empty()) {
     event_box_.hide();
   } else {
