@@ -80,3 +80,4 @@ Addressed by *hyprland/submap*
 # STYLE
 
 - *#submap*
+- *#submap.<name>*
