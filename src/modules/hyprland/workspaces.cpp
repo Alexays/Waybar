@@ -43,6 +43,13 @@ void Workspaces::init() {
   m_activeWorkspaceId = m_ipc.getSocket1JsonReply("activeworkspace")["id"].asInt();
 
   initializeWorkspaces();
+
+  if (barScroll()) {
+    auto &window = const_cast<Bar &>(m_bar).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
+
   dp.emit();
 }
 
@@ -636,6 +643,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateBoolConfig(config, "persistent-only", m_persistentOnly);
   populateBoolConfig(config, "active-only", m_activeOnly);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
+  populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
@@ -1149,6 +1157,33 @@ std::optional<int> Workspaces::parseWorkspaceId(std::string const& workspaceIdSt
     spdlog::debug("Workspace \"{}\" is not bound to an id: {}", workspaceIdStr, e.what());
     return std::nullopt;
   }
+}
+
+bool Workspaces::handleScroll(GdkEventScroll *e) {
+  // Ignore emulated scroll events on window
+  if (gdk_event_get_pointer_emulated((GdkEvent *)e)) {
+    return false;
+  }
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
+    if (allOutputs()) {
+      m_ipc.getSocket1Reply("dispatch workspace e+1");
+    } else {
+      m_ipc.getSocket1Reply("dispatch workspace m+1");
+    }
+  } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
+    if (allOutputs()) {
+      m_ipc.getSocket1Reply("dispatch workspace e-1");
+    } else {
+      m_ipc.getSocket1Reply("dispatch workspace m-1");
+    }
+  }
+
+  return true;
 }
 
 }  // namespace waybar::modules::hyprland

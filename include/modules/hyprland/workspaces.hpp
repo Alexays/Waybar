@@ -43,6 +43,7 @@ class Workspaces : public AModule, public EventHandler {
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
   auto enableTaskbar() const -> bool { return m_enableTaskbar; }
   auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
+  auto barScroll() const -> bool { return m_barScroll; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
   auto formatBefore() const -> std::string { return m_formatBefore; }
@@ -122,6 +123,8 @@ class Workspaces : public AModule, public EventHandler {
   static std::pair<std::string, std::string> splitDoublePayload(std::string const& payload);
   static std::tuple<std::string, std::string, std::string> splitTriplePayload(
       std::string const& payload);
+  // scroll events
+  bool handleScroll(GdkEventScroll* e) override;
 
   // Update methods
   void doUpdate();
@@ -145,6 +148,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_specialVisibleOnly = false;
   bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
+  bool m_barScroll = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
