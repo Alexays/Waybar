@@ -85,6 +85,32 @@ void from_json(const Json::Value& j, bar_mode& m) {
   }
 }
 
+/* Deserializer for enum Gtk::PositionType */
+void from_json(const Json::Value& j, Gtk::PositionType& pos) {
+  if (j == "left") {
+    pos = Gtk::PositionType::LEFT;
+  } else if (j == "right") {
+    pos = Gtk::PositionType::RIGHT;
+  } else if (j == "top") {
+    pos = Gtk::PositionType::TOP;
+  } else if (j == "bottom") {
+    pos = Gtk::PositionType::BOTTOM;
+  }
+}
+
+Glib::ustring to_string(Gtk::PositionType pos) {
+  switch (pos) {
+    case Gtk::PositionType::LEFT:
+      return "left";
+    case Gtk::PositionType::RIGHT:
+      return "right";
+    case Gtk::PositionType::TOP:
+      return "top";
+    case Gtk::PositionType::BOTTOM:
+      return "bottom";
+  }
+}
+
 /* Deserializer for JSON Object -> map<string compatible type, Value>
  * Assumes that all the values in the object are deserializable to the same type.
  */
@@ -147,18 +173,26 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
     }
   }
 
-  void setPosition(const std::string_view& position) override {
+  void setPosition(Gtk::PositionType position) override {
     auto unanchored = GTK_LAYER_SHELL_EDGE_BOTTOM;
-    vertical_ = false;
-    if (position == "bottom") {
-      unanchored = GTK_LAYER_SHELL_EDGE_TOP;
-    } else if (position == "left") {
-      unanchored = GTK_LAYER_SHELL_EDGE_RIGHT;
-      vertical_ = true;
-    } else if (position == "right") {
-      vertical_ = true;
-      unanchored = GTK_LAYER_SHELL_EDGE_LEFT;
-    }
+    orientation_ = Gtk::Orientation::HORIZONTAL;
+    switch (position) {
+      case Gtk::PositionType::LEFT:
+        unanchored = GTK_LAYER_SHELL_EDGE_RIGHT;
+        orientation_ = Gtk::Orientation::VERTICAL;
+        break;
+      case Gtk::PositionType::RIGHT:
+        unanchored = GTK_LAYER_SHELL_EDGE_LEFT;
+        orientation_ = Gtk::Orientation::VERTICAL;
+        break;
+      case Gtk::PositionType::TOP:
+        unanchored = GTK_LAYER_SHELL_EDGE_BOTTOM;
+        break;
+      case Gtk::PositionType::BOTTOM:
+        unanchored = GTK_LAYER_SHELL_EDGE_TOP;
+        break;
+    };
+
     for (auto edge : {GTK_LAYER_SHELL_EDGE_LEFT, GTK_LAYER_SHELL_EDGE_RIGHT,
                       GTK_LAYER_SHELL_EDGE_TOP, GTK_LAYER_SHELL_EDGE_BOTTOM}) {
       gtk_layer_set_anchor(window_.gobj(), edge, unanchored != edge);
@@ -167,10 +201,10 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
     // Disable anchoring for other edges too if the width
     // or the height has been set to a value other than 'auto'
     // otherwise the bar will use all space
-    if (vertical_ && height_ > 1) {
+    if (orientation_ == Gtk::Orientation::VERTICAL && height_ > 1) {
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_BOTTOM, false);
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_TOP, false);
-    } else if (!vertical_ && width_ > 1) {
+    } else if (orientation_ == Gtk::Orientation::HORIZONTAL && width_ > 1) {
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_LEFT, false);
       gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_RIGHT, false);
     }
@@ -185,11 +219,11 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
  private:
   Gtk::Window& window_;
   Glib::RefPtr<Gdk::Surface> gdk_surface_;
+  Gtk::Orientation orientation_ = Gtk::Orientation::HORIZONTAL;
   std::string output_name_;
   uint32_t width_;
   uint32_t height_;
   bool passthrough_ = false;
-  bool vertical_ = false;
 
   void onMap() {
     gdk_surface_ = window_.get_surface();
@@ -205,7 +239,7 @@ struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
      * Note: forced resizing to a window smaller than required by GTK would not work with
      * gtk-layer-shell.
      */
-    if (vertical_) {
+    if (orientation_ == Gtk::Orientation::VERTICAL) {
       if (width_ > 1 && width > static_cast<int>(width_)) {
         spdlog::warn(MIN_WIDTH_MSG, width_, width);
       }
@@ -239,18 +273,18 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.set_child(box_);
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
-  window.get_style_context()->add_class(config["position"].asString());
 
-  auto position = config["position"].asString();
+  from_json(config["position"], position);
+  orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
+                    ? Gtk::Orientation::VERTICAL
+                    : Gtk::Orientation::HORIZONTAL;
 
-  if (position == "right" || position == "left") {
-    left_.set_orientation(Gtk::Orientation::VERTICAL);
-    center_.set_orientation(Gtk::Orientation::VERTICAL);
-    right_.set_orientation(Gtk::Orientation::VERTICAL);
-    box_.set_orientation(Gtk::Orientation::VERTICAL);
-    vertical = true;
-  } else
-    box_.set_orientation(Gtk::Orientation::HORIZONTAL);
+  window.get_style_context()->add_class(to_string(position));
+
+  left_.set_orientation(orientation);
+  center_.set_orientation(orientation);
+  right_.set_orientation(orientation);
+  box_.set_orientation(orientation);
 
   left_.get_style_context()->add_class("modules-left");
   center_.get_style_context()->add_class("modules-center");
@@ -568,34 +602,38 @@ void waybar::Bar::onConfigure(int width, int height) {
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {
   auto monitor_geometry = *output->monitor->property_geometry().get_value().gobj();
-  auto position = config["position"].asString();
   int x;
   int y;
-  if (position == "bottom") {
-    if (width + margins_.left + margins_.right >= monitor_geometry.width)
+  switch (position) {
+    case Gtk::PositionType::BOTTOM:
+      if (width + margins_.left + margins_.right >= monitor_geometry.width)
+        x = margins_.left;
+      else
+        x = (monitor_geometry.width - width) / 2;
+      y = monitor_geometry.height - height - margins_.bottom;
+      break;
+    case Gtk::PositionType::LEFT:
       x = margins_.left;
-    else
-      x = (monitor_geometry.width - width) / 2;
-    y = monitor_geometry.height - height - margins_.bottom;
-  } else if (position == "left") {
-    x = margins_.left;
-    if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+      if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+        y = margins_.top;
+      else
+        y = (monitor_geometry.height - height) / 2;
+      break;
+    case Gtk::PositionType::RIGHT:
+      x = monitor_geometry.width - width - margins_.right;
+      if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+        y = margins_.top;
+      else
+        y = (monitor_geometry.height - height) / 2;
+      break;
+    case Gtk::PositionType::TOP:
+      // position is top
+      if (width + margins_.left + margins_.right >= monitor_geometry.width)
+        x = margins_.left;
+      else
+        x = (monitor_geometry.width - width) / 2;
       y = margins_.top;
-    else
-      y = (monitor_geometry.height - height) / 2;
-  } else if (position == "right") {
-    x = monitor_geometry.width - width - margins_.right;
-    if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
-      y = margins_.top;
-    else
-      y = (monitor_geometry.height - height) / 2;
-  } else {
-    // position is top
-    if (width + margins_.left + margins_.right >= monitor_geometry.width)
-      x = margins_.left;
-    else
-      x = (monitor_geometry.width - width) / 2;
-    y = margins_.top;
+      break;
   }
 
   x_global = x + monitor_geometry.x;

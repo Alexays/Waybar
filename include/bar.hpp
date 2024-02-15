@@ -57,7 +57,7 @@ class BarSurface {
   virtual void setLayer(bar_layer layer) = 0;
   virtual void setMargins(const struct bar_margins &margins) = 0;
   virtual void setPassThrough(bool enable) = 0;
-  virtual void setPosition(const std::string_view &position) = 0;
+  virtual void setPosition(Gtk::PositionType position) = 0;
   virtual void setSize(uint32_t width, uint32_t height) = 0;
   virtual void commit(){};
 
@@ -84,9 +84,10 @@ class Bar {
   Json::Value config;
   struct wl_surface *surface;
   bool visible = true;
-  bool vertical = false;
   Gtk::Window window;
   Glib::RefPtr<Gdk::Surface> gdk_surface_;
+  Gtk::Orientation orientation = Gtk::Orientation::HORIZONTAL;
+  Gtk::PositionType position = Gtk::PositionType::TOP;
 
   int x_global;
   int y_global;
