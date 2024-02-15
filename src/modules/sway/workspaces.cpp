@@ -37,6 +37,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
   ipc_.subscribe(R"(["workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));

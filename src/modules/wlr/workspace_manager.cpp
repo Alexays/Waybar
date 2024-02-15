@@ -52,6 +52,7 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   add_registry_listener(this);

@@ -111,6 +111,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   // Default to 9 tags, cap at 32

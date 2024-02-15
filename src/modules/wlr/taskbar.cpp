@@ -737,6 +737,7 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
