@@ -34,9 +34,7 @@ int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
 }
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, false),
-      m_bar(bar),
-      m_box(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+    : AModule(config, "workspaces", id, false, false), m_bar(bar), m_box(bar.orientation, 0) {
   modulesReady = true;
   parseConfig(config);
 
