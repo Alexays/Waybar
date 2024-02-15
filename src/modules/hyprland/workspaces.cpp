@@ -42,6 +42,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   if (!id.empty()) {
     m_box.get_style_context()->add_class(id);
   }
+  m_box.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(m_box);
 
   if (!gIPC) {
