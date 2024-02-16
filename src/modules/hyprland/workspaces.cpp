@@ -513,16 +513,28 @@ std::optional<std::string> Workspace::closeWindow(WindowAddress const &addr) {
   return std::nullopt;
 }
 
+auto Workspaces::locateWorkspace(const std::string &workspaceName) {
+  bool isSpecial = workspaceName.starts_with(SPECIAL_QUALIFIER_PREFIX);
+  std::string unqualifiedWorkspaceName;
+
+  if (isSpecial) {
+    unqualifiedWorkspaceName = workspaceName.substr(SPECIAL_QUALIFIER_PREFIX_LEN);
+  }
+
+  return std::find_if(
+      m_workspaces.begin(), m_workspaces.end(),
+      [workspaceName, isSpecial, unqualifiedWorkspaceName](std::unique_ptr<Workspace> const &w) {
+        return (isSpecial && w->isSpecial() && unqualifiedWorkspaceName == w->name()) ||
+               workspaceName == w->name();
+      });
+}
+
 void Workspaces::createWorkspace(Json::Value const &workspace_data,
                                  Json::Value const &clients_data) {
   // avoid recreating existing workspaces
   auto workspaceName = workspace_data["name"].asString();
-  auto workspace = std::find_if(
-      m_workspaces.begin(), m_workspaces.end(),
-      [workspaceName](std::unique_ptr<Workspace> const &w) {
-        return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
-               workspaceName == w->name();
-      });
+
+  auto workspace = locateWorkspace(workspaceName);
 
   if (workspace != m_workspaces.end()) {
     if (workspace_data["persistent"].asBool() and !(*workspace)->isPersistent()) {
@@ -540,10 +552,7 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
 }
 
 void Workspaces::removeWorkspace(std::string const &name) {
-  auto workspace =
-      std::find_if(m_workspaces.begin(), m_workspaces.end(), [&](std::unique_ptr<Workspace> &x) {
-        return (name.starts_with("special:") && name.substr(8) == x->name()) || name == x->name();
-      });
+  auto workspace = locateWorkspace(name);
 
   if (workspace == m_workspaces.end()) {
     // happens when a workspace on another monitor is destroyed
@@ -1014,9 +1023,6 @@ void WindowCreationPayload::clearWorkspaceName() {
   // If so, we need to remove it because the workspace is saved WITHOUT the
   // special qualifier. The reasoning is that not all of Hyprland's IPC events
   // use this qualifier, so it's better to be consistent about our uses.
-
-  static const std::string SPECIAL_QUALIFIER_PREFIX = "special:";
-  static const int SPECIAL_QUALIFIER_PREFIX_LEN = SPECIAL_QUALIFIER_PREFIX.length();
 
   if (m_workspaceName.starts_with(SPECIAL_QUALIFIER_PREFIX)) {
     m_workspaceName = m_workspaceName.substr(
