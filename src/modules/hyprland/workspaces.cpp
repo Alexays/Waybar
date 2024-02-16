@@ -34,9 +34,7 @@ int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
 }
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, false),
-      m_bar(bar),
-      m_box(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+    : AModule(config, "workspaces", id, false, false), m_bar(bar), m_box(bar.orientation, 0) {
   modulesReady = true;
   parseConfig(config);
 
@@ -44,6 +42,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   if (!id.empty()) {
     m_box.get_style_context()->add_class(id);
   }
+  m_box.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(m_box);
 
   if (!gIPC) {
