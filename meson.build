@@ -22,8 +22,6 @@ endif
 
 if compiler.has_link_argument('-lc++fs')
     cpp_link_args += ['-lc++fs']
-elif compiler.has_link_argument('-lc++experimental')
-    cpp_link_args += ['-lc++experimental']
 elif compiler.has_link_argument('-lstdc++fs')
     cpp_link_args += ['-lstdc++fs']
 endif
@@ -41,15 +39,6 @@ else
         add_project_arguments('-DVERSION=@0@'.format(version), language: 'cpp')
     else
         add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
-    endif
-endif
-
-if not compiler.has_header('filesystem')
-    if compiler.has_header('experimental/filesystem')
-        add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
-    else
-        add_project_arguments('-DNO_FILESYSTEM', language: 'cpp')
-        warning('No filesystem header found, some modules may not work')
     endif
 endif
 

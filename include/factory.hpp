@@ -33,7 +33,7 @@
 #include "modules/hyprland/window.hpp"
 #include "modules/hyprland/workspaces.hpp"
 #endif
-#if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
+#if defined(__FreeBSD__) || defined(__linux__)
 #include "modules/battery.hpp"
 #endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
