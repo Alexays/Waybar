@@ -58,15 +58,15 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::sway::Scratchpad(id, config_[name]);
     }
 #endif
-#ifdef HAVE_WLR
+#ifdef HAVE_WLR_TASKBAR
     if (ref == "wlr/taskbar") {
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
     }
-#ifdef USE_EXPERIMENTAL
+#endif
+#ifdef HAVE_WLR_WORKSPACES
     if (ref == "wlr/workspaces") {
       return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
     }
-#endif
 #endif
 #ifdef HAVE_RIVER
     if (ref == "river/mode") {

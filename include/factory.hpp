@@ -13,8 +13,10 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
-#ifdef HAVE_WLR
+#ifdef HAVE_WLR_TASKBAR
 #include "modules/wlr/taskbar.hpp"
+#endif
+#ifdef HAVE_WLR_WORKSPACES
 #include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
