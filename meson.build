@@ -75,10 +75,7 @@ wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
-giounix = dependency('gio-unix-2.0', required: (get_option('dbusmenu-gtk').enabled() or
-                                                get_option('logind').enabled() or
-                                                get_option('upower_glib').enabled() or
-                                                get_option('mpris').enabled()))
+giounix = dependency('gio-unix-2.0')
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 sigcpp = dependency('sigc++-2.0')
 libinotify = dependency('libinotify', required: false)
@@ -165,6 +162,7 @@ src_files = files(
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/AAppIconLabel.cpp',
+    'src/modules/bluetooth.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
@@ -272,12 +270,13 @@ if libnl.found() and libnlgen.found()
     src_files += 'src/modules/network.cpp'
 endif
 
-if (giounix.found() and not get_option('logind').disabled())
-    add_project_arguments('-DHAVE_GAMEMODE', language: 'cpp')
+if not get_option('logind').disabled()
+    add_project_arguments('-DHAVE_GAMEMODE', '-DHAVE_LOGIND_INHIBITOR', language: 'cpp')
     src_files += 'src/modules/gamemode.cpp'
+    src_files += 'src/modules/inhibitor.cpp'
 endif
 
-if (upower_glib.found() and giounix.found() and not get_option('logind').disabled())
+if (upower_glib.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
     src_files += 'src/modules/upower/upower.cpp'
     src_files += 'src/modules/upower/upower_tooltip.cpp'
@@ -291,7 +290,7 @@ if (pipewire.found())
     src_files += 'src/util/pipewire_backend.cpp'
 endif
 
-if (playerctl.found() and giounix.found() and not get_option('logind').disabled())
+if (playerctl.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
     src_files += 'src/modules/mpris/mpris.cpp'
 endif
@@ -349,12 +348,6 @@ endif
 if libsndio.found()
     add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
     src_files += 'src/modules/sndio.cpp'
-endif
-
-if (giounix.found() and not get_option('logind').disabled())
-    add_project_arguments('-DHAVE_GIO_UNIX', language: 'cpp')
-    src_files += 'src/modules/inhibitor.cpp'
-    src_files += 'src/modules/bluetooth.cpp'
 endif
 
 if get_option('rfkill').enabled() and is_linux
@@ -500,7 +493,7 @@ if scdoc.found()
         'waybar-dwl-tags.5.scd',
     ]
 
-    if (giounix.found() and not get_option('logind').disabled())
+    if not get_option('logind').disabled()
         man_files += 'waybar-inhibitor.5.scd'
     endif
 
