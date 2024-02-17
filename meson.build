@@ -143,7 +143,7 @@ sysconfdir = get_option('sysconfdir')
 conf_data = configuration_data()
 conf_data.set('prefix', prefix)
 
-add_project_arguments('-DSYSCONFDIR="/@0@"'.format(join_paths(prefix, sysconfdir)), language : 'cpp')
+add_project_arguments('-DSYSCONFDIR="@0@"'.format(prefix / sysconfdir), language : 'cpp')
 
 if systemd.found()
   user_units_dir = systemd.get_variable(pkgconfig: 'systemduserunitdir')
@@ -429,7 +429,7 @@ executable(
 install_data(
     './resources/config',
     './resources/style.css',
-    install_dir: sysconfdir + '/xdg/waybar'
+    install_dir: sysconfdir / 'xdg/waybar'
 )
 
 scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
@@ -442,11 +442,11 @@ if scdoc.found()
         input: 'man/waybar.5.scd.in',
         output: 'waybar.5.scd',
         configuration: {
-            'sysconfdir': join_paths(prefix, sysconfdir)
+            'sysconfdir': prefix / sysconfdir
         }
     )
 
-    main_manpage_path = join_paths(meson.project_build_root(), '@0@'.format(main_manpage))
+    main_manpage_path = meson.project_build_root() / '@0@'.format(main_manpage)
 
     mandir = get_option('mandir')
     man_files = [
@@ -508,7 +508,7 @@ if scdoc.found()
         custom_target(
             output,
             # drops the 'man' if `path` is an absolute path
-            input: join_paths('man', path),
+            input: 'man' / path,
             output: output,
             command: [
                 sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.full_path(), output)
