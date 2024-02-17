@@ -2,7 +2,7 @@ project(
     'waybar', 'cpp', 'c',
     version: '0.9.24',
     license: 'MIT',
-    meson_version: '>= 0.50.0',
+    meson_version: '>= 0.56.0',
     default_options : [
         'cpp_std=c++20',
         'buildtype=release',
@@ -31,10 +31,10 @@ git = find_program('git', native: true, required: false)
 if not git.found()
     add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
 else
-    git_path = run_command([git.path(), 'rev-parse', '--show-toplevel']).stdout().strip()
-    if meson.source_root() == git_path
-        git_commit_hash = run_command([git.path(), 'describe', '--always', '--tags']).stdout().strip()
-        git_branch = run_command([git.path(), 'rev-parse', '--abbrev-ref', 'HEAD']).stdout().strip()
+    git_path = run_command(git, 'rev-parse', '--show-toplevel', check: false).stdout().strip()
+    if meson.project_source_root() == git_path
+        git_commit_hash = run_command(git, 'describe', '--always', '--tags', check: false).stdout().strip()
+        git_branch = run_command(git, 'rev-parse', '--abbrev-ref', 'HEAD', check: false).stdout().strip()
         version = '"@0@ (branch \'@1@\')"'.format(git_commit_hash, git_branch)
         add_project_arguments('-DVERSION=@0@'.format(version), language: 'cpp')
     else
@@ -146,7 +146,7 @@ conf_data.set('prefix', prefix)
 add_project_arguments('-DSYSCONFDIR="/@0@"'.format(join_paths(prefix, sysconfdir)), language : 'cpp')
 
 if systemd.found()
-  user_units_dir = systemd.get_pkgconfig_variable('systemduserunitdir')
+  user_units_dir = systemd.get_variable(pkgconfig: 'systemduserunitdir')
 
   configure_file(
     configuration: conf_data,
@@ -435,7 +435,7 @@ install_data(
 scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
 
 if scdoc.found()
-    scdoc_prog = find_program(scdoc.get_pkgconfig_variable('scdoc'), native: true)
+    scdoc_prog = find_program(scdoc.get_variable(pkgconfig: 'scdoc'), native: true)
     sh = find_program('sh', native: true)
 
     main_manpage = configure_file(
@@ -446,7 +446,7 @@ if scdoc.found()
         }
     )
 
-    main_manpage_path = join_paths(meson.build_root(), '@0@'.format(main_manpage))
+    main_manpage_path = join_paths(meson.project_build_root(), '@0@'.format(main_manpage))
 
     mandir = get_option('mandir')
     man_files = [
@@ -511,7 +511,7 @@ if scdoc.found()
             input: join_paths('man', path),
             output: output,
             command: [
-                sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.path(), output)
+                sh, '-c', '@0@ < @INPUT@ > @1@'.format(scdoc_prog.full_path(), output)
             ],
             install: true,
             install_dir: '@0@/man@1@'.format(mandir, section)
@@ -537,7 +537,7 @@ if clangtidy.found()
         command: [
             clangtidy,
             '-checks=*,-fuchsia-default-arguments',
-            '-p', meson.build_root()
+            '-p', meson.project_build_root()
         ] + src_files)
 endif
 
