@@ -212,6 +212,7 @@ if is_linux
         'src/modules/cpu_usage/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
+        'src/modules/power_profiles_daemon.cpp',
         'src/modules/systemd_failed_units.cpp',
     )
     man_files += files(

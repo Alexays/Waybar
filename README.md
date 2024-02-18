@@ -13,6 +13,7 @@
 - Local time
 - Battery
 - UPower
+- Power profiles daemon
 - Network
 - Bluetooth
 - Pulseaudio

@@ -20,6 +20,7 @@
         "idle_inhibitor",
         "pulseaudio",
         "network",
+        "power_profiles_daemon",
         "cpu",
         "memory",
         "temperature",
@@ -188,4 +189,3 @@
         // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
     }
 }
-
