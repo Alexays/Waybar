@@ -125,6 +125,20 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   m_windowRewriteRules = util::RegexCollection(
       windowRewrite, windowRewriteDefault,
       [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
+
+  Json::Value exclude_persistence_point = config["exclude-persistence-point"];
+  if (exclude_persistence_point.isArray()) {
+    for (Json::Value &ws_id : exclude_persistence_point) {
+      if (ws_id.isInt()) exclude_persistence_point_.emplace_back(ws_id.asInt());
+    }
+  }
+
+  Json::Value prune_past_persistence_point = config["prune-past-persistence-point"];
+  if (prune_past_persistence_point.isArray()) {
+    for (Json::Value &ws_id : prune_past_persistence_point) {
+      if (ws_id.isInt()) prune_past_persistence_point_.emplace_back(ws_id.asInt());
+    }
+  }
 }
 
 void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_paylod) {
@@ -183,7 +197,19 @@ void Workspaces::doUpdate() {
       visibleWorkspaces.push_back(ws["name"].asString());
     }
   }
+  int persist_point = -1;
+  if (!prune_past_persistence_point_.empty()) {
+    for (int i = m_workspaces.size() - 1; i >= 0; i--) {
+        if ((!m_workspaces[i]->isEmpty() || m_workspaces[i]->isActive() || m_workspaces[i]->isVisible()) && 
+        !m_workspaces[i]->name().starts_with("special") &&
+        std::find(exclude_persistence_point_.begin(), exclude_persistence_point_.end(), m_workspaces[i]->id()) == exclude_persistence_point_.end()) {
+          persist_point = i;
+          break;
+        }
+    }
+  }
 
+  int i = 0;
   for (auto &workspace : m_workspaces) {
     // active
     workspace->setActive(workspace->name() == m_activeWorkspaceName);
@@ -202,6 +228,15 @@ void Workspaces::doUpdate() {
       workspaceIcon = workspace->selectIcon(m_iconsMap);
     }
     workspace->update(m_format, workspaceIcon);
+
+    if (!prune_past_persistence_point_.empty() &&
+      workspace->isPersistent() &&
+      i > persist_point &&
+      std::find(prune_past_persistence_point_.begin(), prune_past_persistence_point_.end(), m_workspaces[i]->id()) != prune_past_persistence_point_.end()) {
+        workspace->button().hide();
+      }
+
+    i++;
   }
 
   bool anyWindowCreated = false;
@@ -679,6 +714,8 @@ void Workspaces::init() {
   updateWindowCount();
 
   sortWorkspaces();
+
+  update();
 
   dp.emit();
 }
