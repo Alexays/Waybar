@@ -24,12 +24,16 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
   subscribe_events.append("barconfig_update");
 
   bool has_mode = isModuleEnabled("sway/mode");
+  bool has_windows = isModuleEnabled("sway/windows");
   bool has_workspaces = isModuleEnabled("sway/workspaces");
 
   if (has_mode) {
     subscribe_events.append("mode");
   }
-  if (has_workspaces) {
+  if (has_windows) {
+    subscribe_events.append("window");
+  }
+  if (has_workspaces||has_windows) {
     subscribe_events.append("workspace");
   }
   if (has_mode || has_workspaces) {
