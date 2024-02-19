@@ -117,6 +117,7 @@ Glib::ustring to_string(Gtk::PositionType pos) {
     case Gtk::POS_BOTTOM:
       return "bottom";
   }
+  throw std::runtime_error("Invalid Gtk::PositionType");
 }
 
 /* Deserializer for JSON Object -> map<string compatible type, Value>
