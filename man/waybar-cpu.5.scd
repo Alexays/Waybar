@@ -121,3 +121,5 @@ CPU usage per core rendered as icons:
 # STYLE
 
 - *#cpu*
+- *#cpu.<state>*
+	- *<state>* can be defined in the *config*. For more information see *states*.
