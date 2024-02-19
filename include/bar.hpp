@@ -48,22 +48,6 @@ class BarIpcClient;
 }
 #endif  // HAVE_SWAY
 
-class BarSurface {
- protected:
-  BarSurface() = default;
-
- public:
-  virtual void setExclusiveZone(bool enable) = 0;
-  virtual void setLayer(bar_layer layer) = 0;
-  virtual void setMargins(const struct bar_margins &margins) = 0;
-  virtual void setPassThrough(bool enable) = 0;
-  virtual void setPosition(Gtk::PositionType position) = 0;
-  virtual void setSize(uint32_t width, uint32_t height) = 0;
-  virtual void commit(){};
-
-  virtual ~BarSurface() = default;
-};
-
 class Bar {
  public:
   using bar_mode_map = std::map<std::string, struct bar_mode>;
@@ -103,6 +87,8 @@ class Bar {
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
+  void setPassThrough(bool passthrough);
+  void setPosition(Gtk::PositionType position);
   void onConfigure(int width, int height);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
@@ -112,8 +98,9 @@ class Bar {
   std::string last_mode_{MODE_DEFAULT};
 
   struct bar_margins margins_;
+  uint32_t width_, height_;
+  bool passthrough_;
 
-  std::unique_ptr<BarSurface> surface_impl_;
   Gtk::Box left_;
   Gtk::Box center_;
   Gtk::Box right_;
