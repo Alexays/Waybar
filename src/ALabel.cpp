@@ -20,6 +20,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
+  label_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(label_);
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());

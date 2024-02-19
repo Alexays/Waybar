@@ -1,14 +1,11 @@
-#ifdef HAVE_GTK_LAYER_SHELL
-#include <gtk4-layer-shell.h>
-#endif
+#include "bar.hpp"
 
+#include <gtk4-layer-shell.h>
 #include <spdlog/spdlog.h>
 
-#include "bar.hpp"
 #include "client.hpp"
 //#include "factory.hpp"
 //#include "group.hpp"
-#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -22,9 +19,6 @@ static constexpr const char* MIN_WIDTH_MSG =
     "Requested width: {} is less than the minimum width: {} required by the modules";
 
 static constexpr const char* BAR_SIZE_MSG = "Bar configured (width: {}, height: {}) for output: {}";
-
-static constexpr const char* SIZE_DEFINED =
-    "{} size is defined in the config file so it will stay like that";
 
 const Bar::bar_mode_map Bar::PRESET_MODES = {  //
     {"default",
@@ -58,8 +52,8 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .passthrough = true,
       .visible = true}}};
 
-const std::string_view Bar::MODE_DEFAULT = "default";
-const std::string_view Bar::MODE_INVISIBLE = "invisible";
+const std::string Bar::MODE_DEFAULT = "default";
+const std::string Bar::MODE_INVISIBLE = "invisible";
 const std::string_view DEFAULT_BAR_ID = "bar-0";
 
 /* Deserializer for enum bar_layer */
@@ -91,11 +85,37 @@ void from_json(const Json::Value& j, bar_mode& m) {
   }
 }
 
+/* Deserializer for enum Gtk::PositionType */
+void from_json(const Json::Value& j, Gtk::PositionType& pos) {
+  if (j == "left") {
+    pos = Gtk::PositionType::LEFT;
+  } else if (j == "right") {
+    pos = Gtk::PositionType::RIGHT;
+  } else if (j == "top") {
+    pos = Gtk::PositionType::TOP;
+  } else if (j == "bottom") {
+    pos = Gtk::PositionType::BOTTOM;
+  }
+}
+
+Glib::ustring to_string(Gtk::PositionType pos) {
+  switch (pos) {
+    case Gtk::PositionType::LEFT:
+      return "left";
+    case Gtk::PositionType::RIGHT:
+      return "right";
+    case Gtk::PositionType::TOP:
+      return "top";
+    case Gtk::PositionType::BOTTOM:
+      return "bottom";
+  }
+}
+
 /* Deserializer for JSON Object -> map<string compatible type, Value>
  * Assumes that all the values in the object are deserializable to the same type.
  */
 template <typename Key, typename Value,
-          typename = std::enable_if_t<std::is_convertible<std::string_view, Key>::value>>
+          typename = std::enable_if_t<std::is_convertible<std::string, Key>::value>>
 void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   if (j.isObject()) {
     for (auto it = j.begin(); it != j.end(); ++it) {
@@ -103,374 +123,6 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
     }
   }
 }
-
-#ifdef HAVE_GTK_LAYER_SHELL
-struct GLSSurfaceImpl : public BarSurface, public sigc::trackable {
-  GLSSurfaceImpl(Gtk::Window& window, struct waybar_output& output)
-      : window_{window} {
-    output_name_ = output.name;
-    // this has to be executed before GtkWindow.realize
-    gtk_layer_init_for_window(window_.gobj());
-    gtk_layer_set_keyboard_mode(window.gobj(), GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
-    gtk_layer_set_monitor(window_.gobj(), output.monitor->gobj());
-    gtk_layer_set_namespace(window_.gobj(), "waybar");
-
-    window.signal_map().connect(sigc::mem_fun(*this, &GLSSurfaceImpl::onMap));
-  }
-
-  void setExclusiveZone(bool enable) override {
-    if (enable) {
-      gtk_layer_auto_exclusive_zone_enable(window_.gobj());
-    } else {
-      gtk_layer_set_exclusive_zone(window_.gobj(), 0);
-    }
-  }
-
-  void setMargins(const struct bar_margins& margins) override {
-    gtk_layer_set_margin(window_.gobj(), GTK_LAYER_SHELL_EDGE_LEFT, margins.left);
-    gtk_layer_set_margin(window_.gobj(), GTK_LAYER_SHELL_EDGE_RIGHT, margins.right);
-    gtk_layer_set_margin(window_.gobj(), GTK_LAYER_SHELL_EDGE_TOP, margins.top);
-    gtk_layer_set_margin(window_.gobj(), GTK_LAYER_SHELL_EDGE_BOTTOM, margins.bottom);
-  }
-
-  void setLayer(bar_layer value) override {
-    auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
-    if (value == bar_layer::TOP) {
-      layer = GTK_LAYER_SHELL_LAYER_TOP;
-    } else if (value == bar_layer::OVERLAY) {
-      layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
-    }
-    gtk_layer_set_layer(window_.gobj(), layer);
-  }
-
-  void setPassThrough(bool enable) override {
-    passthrough_ = enable;
-    if (gdk_surface_) {
-      Cairo::RefPtr<Cairo::Region> region;
-      if (enable) {
-        region = Cairo::Region::create();
-      }
-      gdk_surface_->set_input_region(region);
-    }
-  }
-
-  void setPosition(const std::string_view& position) override {
-    auto unanchored = GTK_LAYER_SHELL_EDGE_BOTTOM;
-    vertical_ = false;
-    if (position == "bottom") {
-      unanchored = GTK_LAYER_SHELL_EDGE_TOP;
-    } else if (position == "left") {
-      unanchored = GTK_LAYER_SHELL_EDGE_RIGHT;
-      vertical_ = true;
-    } else if (position == "right") {
-      vertical_ = true;
-      unanchored = GTK_LAYER_SHELL_EDGE_LEFT;
-    }
-    for (auto edge : {GTK_LAYER_SHELL_EDGE_LEFT, GTK_LAYER_SHELL_EDGE_RIGHT,
-                      GTK_LAYER_SHELL_EDGE_TOP, GTK_LAYER_SHELL_EDGE_BOTTOM}) {
-      gtk_layer_set_anchor(window_.gobj(), edge, unanchored != edge);
-    }
-
-    // Disable anchoring for other edges too if the width
-    // or the height has been set to a value other than 'auto'
-    // otherwise the bar will use all space
-    if (vertical_ && height_ > 1) {
-      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_BOTTOM, false);
-      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_TOP, false);
-    } else if (!vertical_ && width_ > 1) {
-      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_LEFT, false);
-      gtk_layer_set_anchor(window_.gobj(), GTK_LAYER_SHELL_EDGE_RIGHT, false);
-    }
-  }
-
-  void setSize(uint32_t width, uint32_t height) override {
-    width_ = width;
-    height_ = height;
-    window_.set_size_request(width_, height_);
-  };
-
- private:
-  Gtk::Window& window_;
-  Glib::RefPtr<Gdk::Surface> gdk_surface_;
-  std::string output_name_;
-  uint32_t width_;
-  uint32_t height_;
-  bool passthrough_ = false;
-  bool vertical_ = false;
-
-  void onMap() {
-    gdk_surface_ = window_.get_surface();
-    gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &GLSSurfaceImpl::onConfigure));
-    setPassThrough(passthrough_); }
-
-  void onConfigure(int width, int height) {
-    /*
-     * GTK wants new size for the window.
-     * Actual resizing and management of the exclusve zone is handled within the gtk-layer-shell
-     * code. This event handler only updates stored size of the window and prints some warnings.
-     *
-     * Note: forced resizing to a window smaller than required by GTK would not work with
-     * gtk-layer-shell.
-     */
-    if (vertical_) {
-      if (width_ > 1 && width > static_cast<int>(width_)) {
-        spdlog::warn(MIN_WIDTH_MSG, width_, width);
-      }
-    } else {
-      if (height_ > 1 && height > static_cast<int>(height_)) {
-        spdlog::warn(MIN_HEIGHT_MSG, height_, height);
-      }
-    }
-    width_ = width;
-    height_ = height;
-    spdlog::info(BAR_SIZE_MSG, width_, height_, output_name_);
-  }
-};
-#endif
-
-struct RawSurfaceImpl : public BarSurface, public sigc::trackable {
-  RawSurfaceImpl(Gtk::Window& window, struct waybar_output& output)
-      : window_{window}, gdk_surface_{window_.get_surface()} {
-    output_ = gdk_wayland_monitor_get_wl_output(output.monitor->gobj());
-    output_name_ = output.name;
-
-    window.signal_realize().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onRealize));
-    window.signal_map().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onMap));
-    gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &RawSurfaceImpl::onConfigure));
-
-    if (window.get_realized()) {
-      onRealize();
-    }
-  }
-
-  void setExclusiveZone(bool enable) override {
-    exclusive_zone_ = enable;
-    if (layer_surface_) {
-      auto zone = 0;
-      if (enable) {
-        // exclusive zone already includes margin for anchored edge,
-        // only opposite margin should be added
-        if ((anchor_ & VERTICAL_ANCHOR) == VERTICAL_ANCHOR) {
-          zone += width_;
-          zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT) ? margins_.right : margins_.left;
-        } else {
-          zone += height_;
-          zone += (anchor_ & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP) ? margins_.bottom : margins_.top;
-        }
-      }
-      spdlog::debug("Set exclusive zone {} for output {}", zone, output_name_);
-      zwlr_layer_surface_v1_set_exclusive_zone(layer_surface_.get(), zone);
-    }
-  }
-
-  void setLayer(bar_layer layer) override {
-    layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-    if (layer == bar_layer::TOP) {
-      layer_ = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
-    } else if (layer == bar_layer::OVERLAY) {
-      layer_ = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
-    }
-    // updating already mapped window
-    if (layer_surface_) {
-      if (zwlr_layer_surface_v1_get_version(layer_surface_.get()) >=
-          ZWLR_LAYER_SURFACE_V1_SET_LAYER_SINCE_VERSION) {
-        zwlr_layer_surface_v1_set_layer(layer_surface_.get(), layer_);
-      } else {
-        spdlog::warn("Unable to change layer: layer-shell implementation is too old");
-      }
-    }
-  }
-
-  void setMargins(const struct bar_margins& margins) override {
-    margins_ = margins;
-    // updating already mapped window
-    if (layer_surface_) {
-      zwlr_layer_surface_v1_set_margin(layer_surface_.get(), margins_.top, margins_.right,
-                                       margins_.bottom, margins_.left);
-    }
-  }
-
-  void setPassThrough(bool enable) override {
-    passthrough_ = enable;
-    /* GTK overwrites any region changes applied directly to the wl_surface,
-     * thus the same GTK region API as in the GLS impl has to be used. */
-    if (gdk_surface_) {
-      Cairo::RefPtr<Cairo::Region> region;
-      if (enable) {
-        region = Cairo::Region::create();
-      }
-      gdk_surface_->set_input_region(region);
-    }
-  }
-
-  void setPosition(const std::string_view& position) override {
-    anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-    if (position == "bottom") {
-      anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-    } else if (position == "left") {
-      anchor_ = VERTICAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
-    } else if (position == "right") {
-      anchor_ = VERTICAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-    }
-
-    // updating already mapped window
-    if (layer_surface_) {
-      zwlr_layer_surface_v1_set_anchor(layer_surface_.get(), anchor_);
-    }
-  }
-
-  void setSize(uint32_t width, uint32_t height) override {
-    configured_width_ = width_ = width;
-    configured_height_ = height_ = height;
-    // layer_shell.configure handler should update exclusive zone if size changes
-    window_.set_size_request(width, height);
-  };
-
-  void commit() override {
-    if (surface_) {
-      wl_surface_commit(surface_);
-    }
-  }
-
- private:
-  constexpr static uint8_t VERTICAL_ANCHOR =
-      ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
-  constexpr static uint8_t HORIZONTAL_ANCHOR =
-      ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
-
-  template <auto fn>
-  using deleter_fn = std::integral_constant<decltype(fn), fn>;
-  using layer_surface_ptr =
-      std::unique_ptr<zwlr_layer_surface_v1, deleter_fn<zwlr_layer_surface_v1_destroy>>;
-
-  Gtk::Window& window_;
-  Glib::RefPtr<Gdk::Surface> gdk_surface_;
-  std::string output_name_;
-  uint32_t configured_width_ = 0;
-  uint32_t configured_height_ = 0;
-  uint32_t width_ = 0;
-  uint32_t height_ = 0;
-  uint8_t anchor_ = HORIZONTAL_ANCHOR | ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
-  bool exclusive_zone_ = true;
-  bool passthrough_ = false;
-  struct bar_margins margins_;
-
-  zwlr_layer_shell_v1_layer layer_ = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
-  struct wl_output* output_ = nullptr;    // owned by GTK
-  struct wl_surface* surface_ = nullptr;  // owned by GTK
-  layer_surface_ptr layer_surface_;
-
-  void onRealize() {
-    gtk_layer_init_for_window(window_.gobj());
-  }
-
-  void onMap() {
-    static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
-        .configure = onSurfaceConfigure,
-        .closed = onSurfaceClosed,
-    };
-    auto client = Client::inst();
-    surface_ = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
-
-    layer_surface_.reset(zwlr_layer_shell_v1_get_layer_surface(client->layer_shell, surface_,
-                                                               output_, layer_, "waybar"));
-
-    zwlr_layer_surface_v1_add_listener(layer_surface_.get(), &layer_surface_listener, this);
-    zwlr_layer_surface_v1_set_keyboard_interactivity(layer_surface_.get(), false);
-    zwlr_layer_surface_v1_set_anchor(layer_surface_.get(), anchor_);
-    zwlr_layer_surface_v1_set_margin(layer_surface_.get(), margins_.top, margins_.right,
-                                     margins_.bottom, margins_.left);
-
-    setSurfaceSize(width_, height_);
-    setExclusiveZone(exclusive_zone_);
-    setPassThrough(passthrough_);
-
-    commit();
-    wl_display_roundtrip(client->wl_display);
-  }
-
-  void onConfigure(int width, int height) {
-    /*
-     * GTK wants new size for the window.
-     *
-     * Prefer configured size if it's non-default.
-     * If the size is not set and the window is smaller than requested by GTK, request resize from
-     * layer surface.
-     */
-    auto tmp_height = height_;
-    auto tmp_width = width_;
-    if (height > static_cast<int>(height_)) {
-      // Default minimal value
-      if (height_ > 1) {
-        spdlog::warn(MIN_HEIGHT_MSG, height_, height);
-      }
-      if (configured_height_ > 1) {
-        spdlog::info(SIZE_DEFINED, "Height");
-      } else {
-        tmp_height = height;
-      }
-    }
-    if (width > static_cast<int>(width_)) {
-      // Default minimal value
-      if (width_ > 1) {
-        spdlog::warn(MIN_WIDTH_MSG, width_, width);
-      }
-      if (configured_width_ > 1) {
-        spdlog::info(SIZE_DEFINED, "Width");
-      } else {
-        tmp_width = width;
-      }
-    }
-    if (tmp_width != width_ || tmp_height != height_) {
-      setSurfaceSize(tmp_width, tmp_height);
-      commit();
-    }
-  }
-
-  void setSurfaceSize(uint32_t width, uint32_t height) {
-    /* If the client is anchored to two opposite edges, layer_surface.configure will return
-     * size without margins for the axis.
-     * layer_surface.set_size, however, expects size with margins for the anchored axis.
-     * This is not specified by wlr-layer-shell and based on actual behavior of sway.
-     *
-     * If the size for unanchored axis is not set (0), change request to 1 to avoid automatic
-     * assignment by the compositor.
-     */
-    if ((anchor_ & VERTICAL_ANCHOR) == VERTICAL_ANCHOR) {
-      width = width > 0 ? width : 1;
-      if (height > 1) {
-        height += margins_.top + margins_.bottom;
-      }
-    } else {
-      height = height > 0 ? height : 1;
-      if (width > 1) {
-        width += margins_.right + margins_.left;
-      }
-    }
-    spdlog::debug("Set surface size {}x{} for output {}", width, height, output_name_);
-    zwlr_layer_surface_v1_set_size(layer_surface_.get(), width, height);
-  }
-
-  static void onSurfaceConfigure(void* data, struct zwlr_layer_surface_v1* surface, uint32_t serial,
-                                 uint32_t width, uint32_t height) {
-    auto o = static_cast<RawSurfaceImpl*>(data);
-    if (width != o->width_ || height != o->height_) {
-      o->width_ = width;
-      o->height_ = height;
-      o->window_.set_size_request(o->width_, o->height_);
-      o->setExclusiveZone(o->exclusive_zone_);
-      spdlog::info(BAR_SIZE_MSG, o->width_ == 1 ? "auto" : std::to_string(o->width_),
-                   o->height_ == 1 ? "auto" : std::to_string(o->height_), o->output_name_);
-      o->commit();
-    }
-    zwlr_layer_surface_v1_ack_configure(surface, serial);
-  }
-
-  static void onSurfaceClosed(void* data, struct zwlr_layer_surface_v1* /* surface */) {
-    auto o = static_cast<RawSurfaceImpl*>(data);
-    o->layer_surface_.reset();
-  }
-};
 
 };  // namespace waybar
 
@@ -491,18 +143,18 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.set_child(box_);
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
-  window.get_style_context()->add_class(config["position"].asString());
 
-  auto position = config["position"].asString();
+  from_json(config["position"], position);
+  orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
+                    ? Gtk::Orientation::VERTICAL
+                    : Gtk::Orientation::HORIZONTAL;
 
-  if (position == "right" || position == "left") {
-    left_.set_orientation(Gtk::Orientation::VERTICAL);
-    center_.set_orientation(Gtk::Orientation::VERTICAL);
-    right_.set_orientation(Gtk::Orientation::VERTICAL);
-    box_.set_orientation(Gtk::Orientation::VERTICAL);
-    vertical = true;
-  } else
-    box_.set_orientation(Gtk::Orientation::HORIZONTAL);
+  window.get_style_context()->add_class(to_string(position));
+
+  left_.set_orientation(orientation);
+  center_.set_orientation(orientation);
+  right_.set_orientation(orientation);
+  box_.set_orientation(orientation);
 
   left_.get_style_context()->add_class("modules-left");
   center_.get_style_context()->add_class("modules-center");
@@ -515,8 +167,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     right_.set_spacing(spacing);
   }
 
-  uint32_t height = config["height"].isUInt() ? config["height"].asUInt() : 0;
-  uint32_t width = config["width"].isUInt() ? config["width"].asUInt() : 0;
+  height_ = config["height"].isUInt() ? config["height"].asUInt() : 0;
+  width_ = config["width"].isUInt() ? config["width"].asUInt() : 0;
 
   if (config["margin-top"].isInt() || config["margin-right"].isInt() ||
       config["margin-bottom"].isInt() || config["margin-left"].isInt()) {
@@ -566,21 +218,23 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
-#ifdef HAVE_GTK_LAYER_SHELL
-  bool use_gls = config["gtk-layer-shell"].isBool() ? config["gtk-layer-shell"].asBool() : true;
-  if (use_gls) {
-    surface_impl_ = std::make_unique<GLSSurfaceImpl>(window, *output);
-  } else
-#endif
-  {
-    surface_impl_ = std::make_unique<RawSurfaceImpl>(window, *output);
-  }
+  // this has to be executed before GtkWindow.realize
+  auto* gtk_window = window.gobj();
+  gtk_layer_init_for_window(gtk_window);
+  gtk_layer_set_keyboard_mode(gtk_window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
+  gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
+  gtk_layer_set_namespace(gtk_window, "waybar");
 
-  surface_impl_->setMargins(margins_);
-  surface_impl_->setSize(width, height);
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_TOP, margins_.top);
+  gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_BOTTOM, margins_.bottom);
+
+  window.set_size_request(width_, height_);
+
   // Position needs to be set after calculating the height due to the
   // GTK layer shell anchors logic relying on the dimensions of the bar.
-  surface_impl_->setPosition(position);
+  setPosition(position);
 
   /* Read custom modes if available */
   if (auto modes = config.get("modes", {}); modes.isObject()) {
@@ -636,7 +290,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 /* Need to define it here because of forward declared members */
 waybar::Bar::~Bar() = default;
 
-void waybar::Bar::setMode(const std::string_view& mode) {
+void waybar::Bar::setMode(const std::string& mode) {
   using namespace std::literals::string_literals;
 
   auto style = window.get_style_context();
@@ -657,9 +311,23 @@ void waybar::Bar::setMode(const std::string_view& mode) {
 }
 
 void waybar::Bar::setMode(const struct bar_mode& mode) {
-  surface_impl_->setLayer(mode.layer);
-  surface_impl_->setExclusiveZone(mode.exclusive);
-  surface_impl_->setPassThrough(mode.passthrough);
+  auto* gtk_window = window.gobj();
+
+  auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
+  if (mode.layer == bar_layer::TOP) {
+    layer = GTK_LAYER_SHELL_LAYER_TOP;
+  } else if (mode.layer == bar_layer::OVERLAY) {
+    layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
+  }
+  gtk_layer_set_layer(gtk_window, layer);
+
+  if (mode.exclusive) {
+    gtk_layer_auto_exclusive_zone_enable(gtk_window);
+  } else {
+    gtk_layer_set_exclusive_zone(gtk_window, 0);
+  }
+
+  setPassThrough(passthrough_ = mode.passthrough);
 
   if (mode.visible) {
     window.get_style_context()->remove_class("hidden");
@@ -668,7 +336,57 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
     window.get_style_context()->add_class("hidden");
     window.set_opacity(0);
   }
-  surface_impl_->commit();
+}
+
+void waybar::Bar::setPassThrough(bool passthrough) {
+  if (gdk_surface_) {
+    Cairo::RefPtr<Cairo::Region> region;
+    if (passthrough) {
+      region = Cairo::Region::create();
+    }
+    gdk_surface_->set_input_region(region);
+  }
+}
+
+void waybar::Bar::setPosition(Gtk::PositionType position) {
+  std::array<gboolean, GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER> anchors;
+  anchors.fill(TRUE);
+
+  auto orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
+                         ? Gtk::Orientation::VERTICAL
+                         : Gtk::Orientation::HORIZONTAL;
+
+  switch (position) {
+    case Gtk::PositionType::LEFT:
+      anchors[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+      break;
+    case Gtk::PositionType::RIGHT:
+      anchors[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+      break;
+    case Gtk::PositionType::BOTTOM:
+      anchors[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+      break;
+    default: /* Gtk::POS_TOP */
+      anchors[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+      break;
+  };
+  // Disable anchoring for other edges too if the width
+  // or the height has been set to a value other than 'auto'
+  // otherwise the bar will use all space
+  uint32_t configured_width = config["width"].isUInt() ? config["width"].asUInt() : 0;
+  uint32_t configured_height = config["height"].isUInt() ? config["height"].asUInt() : 0;
+  if (orientation == Gtk::Orientation::VERTICAL && configured_height > 1) {
+    anchors[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
+    anchors[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
+  } else if (orientation == Gtk::Orientation::HORIZONTAL && configured_width > 1) {
+    anchors[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
+    anchors[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
+  }
+
+  for (auto edge : {GTK_LAYER_SHELL_EDGE_LEFT, GTK_LAYER_SHELL_EDGE_RIGHT, GTK_LAYER_SHELL_EDGE_TOP,
+                    GTK_LAYER_SHELL_EDGE_BOTTOM}) {
+    gtk_layer_set_anchor(window.gobj(), edge, anchors[edge]);
+  }
 }
 
 void waybar::Bar::onMap() {
@@ -679,6 +397,8 @@ void waybar::Bar::onMap() {
   surface = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
   configureGlobalOffset(gdk_surface_->get_width(), gdk_surface_->get_height());
   gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &Bar::onConfigure));
+
+  setPassThrough(passthrough_);
 }
 
 void waybar::Bar::setVisible(bool value) {
@@ -824,39 +544,63 @@ auto waybar::Bar::setupWidgets() -> void {
 }
 
 void waybar::Bar::onConfigure(int width, int height) {
+  /*
+   * GTK wants new size for the window.
+   * Actual resizing and management of the exclusve zone is handled within the gtk-layer-shell
+   * code. This event handler only updates stored size of the window and prints some warnings.
+   *
+   * Note: forced resizing to a window smaller than required by GTK would not work with
+   * gtk-layer-shell.
+   */
+  if (orientation == Gtk::Orientation::VERTICAL) {
+    if (width_ > 1 && width > static_cast<int>(width_)) {
+      spdlog::warn(MIN_WIDTH_MSG, width_, width);
+    }
+  } else {
+    if (height_ > 1 && height > static_cast<int>(height_)) {
+      spdlog::warn(MIN_HEIGHT_MSG, height_, height);
+    }
+  }
+  width_ = width;
+  height_ = height;
+
   configureGlobalOffset(width, height);
+  spdlog::info(BAR_SIZE_MSG, width, height, output->name);
 }
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {
   auto monitor_geometry = *output->monitor->property_geometry().get_value().gobj();
-  auto position = config["position"].asString();
   int x;
   int y;
-  if (position == "bottom") {
-    if (width + margins_.left + margins_.right >= monitor_geometry.width)
+  switch (position) {
+    case Gtk::PositionType::BOTTOM:
+      if (width + margins_.left + margins_.right >= monitor_geometry.width)
+        x = margins_.left;
+      else
+        x = (monitor_geometry.width - width) / 2;
+      y = monitor_geometry.height - height - margins_.bottom;
+      break;
+    case Gtk::PositionType::LEFT:
       x = margins_.left;
-    else
-      x = (monitor_geometry.width - width) / 2;
-    y = monitor_geometry.height - height - margins_.bottom;
-  } else if (position == "left") {
-    x = margins_.left;
-    if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+      if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+        y = margins_.top;
+      else
+        y = (monitor_geometry.height - height) / 2;
+      break;
+    case Gtk::PositionType::RIGHT:
+      x = monitor_geometry.width - width - margins_.right;
+      if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
+        y = margins_.top;
+      else
+        y = (monitor_geometry.height - height) / 2;
+      break;
+    default: /* Gtk::PositionType::TOP */
+      if (width + margins_.left + margins_.right >= monitor_geometry.width)
+        x = margins_.left;
+      else
+        x = (monitor_geometry.width - width) / 2;
       y = margins_.top;
-    else
-      y = (monitor_geometry.height - height) / 2;
-  } else if (position == "right") {
-    x = monitor_geometry.width - width - margins_.right;
-    if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
-      y = margins_.top;
-    else
-      y = (monitor_geometry.height - height) / 2;
-  } else {
-    // position is top
-    if (width + margins_.left + margins_.right >= monitor_geometry.width)
-      x = margins_.left;
-    else
-      x = (monitor_geometry.width - width) / 2;
-    y = margins_.top;
+      break;
   }
 
   x_global = x + monitor_geometry.x;
