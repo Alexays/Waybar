@@ -71,16 +71,16 @@ class BarSurface {
 
 class Bar {
  public:
-  using bar_mode_map = std::map<std::string_view, struct bar_mode>;
+  using bar_mode_map = std::map<std::string, struct bar_mode>;
   static const bar_mode_map PRESET_MODES;
-  static const std::string_view MODE_DEFAULT;
-  static const std::string_view MODE_INVISIBLE;
+  static const std::string MODE_DEFAULT;
+  static const std::string MODE_INVISIBLE;
 
   Bar(struct waybar_output *w_output, const Json::Value &);
   Bar(const Bar &) = delete;
   ~Bar();
 
-  void setMode(const std::string_view &);
+  void setMode(const std::string &mode);
   void setVisible(bool visible);
   void toggle();
   void handleSignal(int);

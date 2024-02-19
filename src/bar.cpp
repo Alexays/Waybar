@@ -54,8 +54,8 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .passthrough = true,
       .visible = true}}};
 
-const std::string_view Bar::MODE_DEFAULT = "default";
-const std::string_view Bar::MODE_INVISIBLE = "invisible";
+const std::string Bar::MODE_DEFAULT = "default";
+const std::string Bar::MODE_INVISIBLE = "invisible";
 const std::string_view DEFAULT_BAR_ID = "bar-0";
 
 /* Deserializer for enum bar_layer */
@@ -117,7 +117,7 @@ Glib::ustring to_string(Gtk::PositionType pos) {
  * Assumes that all the values in the object are deserializable to the same type.
  */
 template <typename Key, typename Value,
-          typename = std::enable_if_t<std::is_convertible<std::string_view, Key>::value>>
+          typename = std::enable_if_t<std::is_convertible<std::string, Key>::value>>
 void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   if (j.isObject()) {
     for (auto it = j.begin(); it != j.end(); ++it) {
@@ -409,7 +409,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 /* Need to define it here because of forward declared members */
 waybar::Bar::~Bar() = default;
 
-void waybar::Bar::setMode(const std::string_view& mode) {
+void waybar::Bar::setMode(const std::string& mode) {
   using namespace std::literals::string_literals;
 
   auto style = window.get_style_context();
