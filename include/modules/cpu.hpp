@@ -22,7 +22,6 @@ class Cpu : public ALabel {
 
  private:
   std::vector<std::tuple<size_t, size_t>> prev_times_;
-  std::string prev_state_;
 
   util::SleeperThread thread_;
 };
