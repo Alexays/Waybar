@@ -8,6 +8,7 @@ namespace waybar::modules {
 
 const std::string kCldPlaceholder{"calendar"};
 const std::string kTZPlaceholder{"tz_list"};
+const std::string kOrdPlaceholder{"ordinal_date"};
 
 enum class CldMode { MONTH, YEAR };
 enum class WS { LEFT, RIGHT, HIDDEN };
@@ -56,6 +57,11 @@ class Clock final : public ALabel {
   int tzCurrIdx_;                         // current time zone index for tzList_
   std::string tzText_{""};                // time zones text to print
   util::SleeperThread thread_;
+
+  // ordinal date in tooltip
+  const bool ordInTooltip_;
+  std::string ordText_{""};
+  auto get_ordinal_date(const year_month_day& today) -> std::string;
 
   auto getTZtext(sys_seconds now) -> std::string;
   auto first_day_of_week() -> weekday;

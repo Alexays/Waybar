@@ -2,8 +2,10 @@
 
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <iomanip>
 #include <regex>
+#include <sstream>
 
 #include "util/ustring_clen.hpp"
 
@@ -20,7 +22,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
       cldInTooltip_{tlpFmt_.find("{" + kCldPlaceholder + "}") != std::string::npos},
       tzInTooltip_{tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
-      tzCurrIdx_{0} {
+      tzCurrIdx_{0},
+      ordInTooltip_{tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos} {
   tlpText_ = tlpFmt_;
 
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
@@ -126,6 +129,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   };
 }
 
+
 auto waybar::modules::Clock::update() -> void {
   auto tz{tzList_[tzCurrIdx_] ?: current_zone()};
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
@@ -140,11 +144,13 @@ auto waybar::modules::Clock::update() -> void {
 
     if (tzInTooltip_) tzText_ = getTZtext(now.get_sys_time());
     if (cldInTooltip_) cldText_ = get_calendar(today, shiftedDay, tz);
-    if (tzInTooltip_ || cldInTooltip_) {
+    if (ordInTooltip_) ordText_ = get_ordinal_date(shiftedDay);
+    if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
       // std::vformat doesn't support named arguments.
       tlpText_ = std::regex_replace(tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
       tlpText_ =
           std::regex_replace(tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"), cldText_);
+      tlpText_ = std::regex_replace(tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
     }
 
     tlpText_ = fmt_lib::vformat(locale_, tlpText_, fmt_lib::make_format_args(shiftedNow));
@@ -436,4 +442,29 @@ auto waybar::modules::Clock::first_day_of_week() -> weekday {
   }
 #endif
   return Sunday;
+}
+
+auto waybar::modules::Clock::get_ordinal_date(const year_month_day& today) -> std::string {
+  auto day = static_cast<unsigned int>(today.day());
+  std::stringstream res;
+  res << day;
+  if (day >= 11 && day <= 13) {
+    res << "th";
+    return res.str();
+  }
+
+  switch (day % 10) {
+    case 1:
+      res << "st";
+      break;
+    case 2:
+      res << "nd";
+      break;
+    case 3:
+      res << "rd";
+      break;
+    default:
+      res << "th";
+  }
+  return res.str();
 }
