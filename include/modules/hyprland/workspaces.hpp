@@ -68,7 +68,7 @@ class Workspace {
   int id() const { return m_id; };
   std::string name() const { return m_name; };
   std::string output() const { return m_output; };
-  bool isActive() const { return m_active; };
+  bool isActive() const { return m_isActive; };
   bool isSpecial() const { return m_isSpecial; };
   bool isPersistent() const { return m_isPersistent; };
   bool isVisible() const { return m_isVisible; };
@@ -76,7 +76,7 @@ class Workspace {
   bool isUrgent() const { return m_isUrgent; };
 
   bool handleClicked(GdkEventButton* bt) const;
-  void setActive(bool value = true) { m_active = value; };
+  void setActive(bool value = true) { m_isActive = value; };
   void setPersistent(bool value = true) { m_isPersistent = value; };
   void setUrgent(bool value = true) { m_isUrgent = value; };
   void setVisible(bool value = true) { m_isVisible = value; };
@@ -99,7 +99,7 @@ class Workspace {
   std::string m_name;
   std::string m_output;
   uint m_windows;
-  bool m_active = false;
+  bool m_isActive = false;
   bool m_isSpecial = false;
   bool m_isPersistent = false;
   bool m_isUrgent = false;
@@ -135,8 +135,8 @@ class Workspaces : public AModule, public EventHandler {
   void onEvent(const std::string& e) override;
   void updateWindowCount();
   void sortWorkspaces();
-  void createWorkspace(Json::Value const& workspace_data,
-                       Json::Value const& clients_data = Json::Value::nullRef);
+  void createWorkspace(Json::Value const& workspaceData,
+                       Json::Value const& clientsData = Json::Value::nullRef);
   void removeWorkspace(std::string const& name);
   void setUrgentWorkspace(std::string const& windowaddress);
   void parseConfig(const Json::Value& config);
@@ -160,16 +160,24 @@ class Workspaces : public AModule, public EventHandler {
 
   void onWindowTitleEvent(std::string const& payload);
 
+  void onConfigReloaded();
+
   int windowRewritePriorityFunction(std::string const& window_rule);
 
   void doUpdate();
 
   void extendOrphans(int workspaceId, Json::Value const& clientsJson);
-  void registerOrphanWindow(WindowCreationPayload create_window_paylod);
+  void registerOrphanWindow(WindowCreationPayload create_window_payload);
+
+  void initializeWorkspaces();
+  void setCurrentMonitorId();
+  void loadPersistentWorkspacesFromConfig(Json::Value const& clientsJson);
+  void loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& clientsJson);
 
   bool m_allOutputs = false;
   bool m_showSpecial = false;
   bool m_activeOnly = false;
+  Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
   // This happens when the user has multiple monitors (hence, multiple bars)
@@ -183,11 +191,6 @@ class Workspaces : public AModule, public EventHandler {
                                                  {"NAME", SortMethod::NAME},
                                                  {"NUMBER", SortMethod::NUMBER},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
-
-  void fillPersistentWorkspaces();
-  void createPersistentWorkspaces();
-  std::vector<std::string> m_persistentWorkspacesToCreate;
-  bool m_persistentCreated = false;
 
   std::string m_format;
 
