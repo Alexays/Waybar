@@ -82,7 +82,9 @@
 #ifdef HAVE_LIBSNDIO
 #include "modules/sndio.hpp"
 #endif
+#if defined(__linux__)
 #include "modules/bluetooth.hpp"
+#endif
 #ifdef HAVE_LOGIND_INHIBITOR
 #include "modules/inhibitor.hpp"
 #endif

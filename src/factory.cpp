@@ -178,9 +178,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Sndio(id, config_[name]);
     }
 #endif
+#if defined(__linux__)
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
     }
+#endif
 #ifdef HAVE_LOGIND_INHIBITOR
     if (ref == "inhibitor") {
       return new waybar::modules::Inhibitor(id, bar_, config_[name]);

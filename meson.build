@@ -162,7 +162,6 @@ src_files = files(
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/AAppIconLabel.cpp',
-    'src/modules/bluetooth.cpp',
     'src/modules/custom.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
@@ -188,7 +187,6 @@ src_files = files(
 )
 
 man_files = files(
-    'man/waybar-bluetooth.5.scd',
     'man/waybar-custom.5.scd',
     'man/waybar-disk.5.scd',
     'man/waybar-idle-inhibitor.5.scd',
@@ -205,6 +203,7 @@ if is_linux
     add_project_arguments('-DHAVE_SYSTEMD_MONITOR', language: 'cpp')
     src_files += files(
         'src/modules/battery.cpp',
+        'src/modules/bluetooth.cpp',
         'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
         'src/modules/cpu_frequency/common.cpp',
@@ -217,6 +216,7 @@ if is_linux
     )
     man_files += files(
         'man/waybar-battery.5.scd',
+        'man/waybar-bluetooth.5.scd',
         'man/waybar-cffi.5.scd',
         'man/waybar-cpu.5.scd',
         'man/waybar-memory.5.scd',
