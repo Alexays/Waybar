@@ -16,7 +16,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
-#if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
+#if defined(__FreeBSD__) || defined(__linux__)
     if (ref == "battery") {
       return new waybar::modules::Battery(id, bar_, config_[name]);
     }
@@ -58,15 +58,15 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::sway::Scratchpad(id, config_[name]);
     }
 #endif
-#ifdef HAVE_WLR
+#ifdef HAVE_WLR_TASKBAR
     if (ref == "wlr/taskbar") {
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
     }
-#ifdef USE_EXPERIMENTAL
+#endif
+#ifdef HAVE_WLR_WORKSPACES
     if (ref == "wlr/workspaces") {
       return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
     }
-#endif
 #endif
 #ifdef HAVE_RIVER
     if (ref == "river/mode") {
@@ -178,10 +178,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Sndio(id, config_[name]);
     }
 #endif
-#ifdef HAVE_GIO_UNIX
+#if defined(__linux__)
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
     }
+#endif
+#ifdef HAVE_LOGIND_INHIBITOR
     if (ref == "inhibitor") {
       return new waybar::modules::Inhibitor(id, bar_, config_[name]);
     }

@@ -139,6 +139,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 }
 ```
 
+```
 "hyprland/workspaces": {
 	// Formatting omitted for brevity
 	"ignore-workspaces": [

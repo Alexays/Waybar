@@ -13,8 +13,10 @@
 #include "modules/sway/window.hpp"
 #include "modules/sway/workspaces.hpp"
 #endif
-#ifdef HAVE_WLR
+#ifdef HAVE_WLR_TASKBAR
 #include "modules/wlr/taskbar.hpp"
+#endif
+#ifdef HAVE_WLR_WORKSPACES
 #include "modules/wlr/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
@@ -33,7 +35,7 @@
 #include "modules/hyprland/window.hpp"
 #include "modules/hyprland/workspaces.hpp"
 #endif
-#if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
+#if defined(__FreeBSD__) || defined(__linux__)
 #include "modules/battery.hpp"
 #endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
@@ -80,8 +82,10 @@
 #ifdef HAVE_LIBSNDIO
 #include "modules/sndio.hpp"
 #endif
-#ifdef HAVE_GIO_UNIX
+#if defined(__linux__)
 #include "modules/bluetooth.hpp"
+#endif
+#ifdef HAVE_LOGIND_INHIBITOR
 #include "modules/inhibitor.hpp"
 #endif
 #ifdef HAVE_LIBJACK
