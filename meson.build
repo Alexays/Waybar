@@ -120,9 +120,9 @@ if libsndio.found()
     endif
 endif
 
-gtk_layer_shell = dependency('gtk-layer-shell-0',
-        required: get_option('gtk-layer-shell'),
-        fallback : ['gtk-layer-shell', 'gtk_layer_shell_dep'])
+gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.6.0'],
+        default_options: ['introspection=false', 'vapi=false'],
+        fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
@@ -351,10 +351,6 @@ if libmpdclient.found()
     add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
     src_files += 'src/modules/mpd/mpd.cpp'
     src_files += 'src/modules/mpd/state.cpp'
-endif
-
-if gtk_layer_shell.found()
-    add_project_arguments('-DHAVE_GTK_LAYER_SHELL', language: 'cpp')
 endif
 
 if libsndio.found()
