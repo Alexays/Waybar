@@ -129,7 +129,6 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   };
 }
 
-
 auto waybar::modules::Clock::update() -> void {
   auto tz{tzList_[tzCurrIdx_] ?: current_zone()};
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
@@ -150,7 +149,8 @@ auto waybar::modules::Clock::update() -> void {
       tlpText_ = std::regex_replace(tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
       tlpText_ =
           std::regex_replace(tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"), cldText_);
-      tlpText_ = std::regex_replace(tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
+      tlpText_ =
+          std::regex_replace(tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
     }
 
     tlpText_ = fmt_lib::vformat(locale_, tlpText_, fmt_lib::make_format_args(shiftedNow));
