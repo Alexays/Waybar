@@ -75,8 +75,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 
     if (left_to_right) {
       box.pack_end(revealer);
-    }
-    else {
+    } else {
       box.pack_start(revealer);
     }
 
