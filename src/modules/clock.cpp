@@ -221,22 +221,22 @@ auto getCalendarLine(const year_month_day& currDate, const year_month ym, const 
     }
     // Print first week prefixed with spaces if necessary
     case 2: {
+      auto d{day{1}};
       auto wd{weekday{ym / 1}};
       os << std::string((wd - firstdow).count() * 3, ' ');
 
-      if (currDate != ym / 1d)
-        os << date::format(*locale_, "{:L%e}", 1d);
+      if (currDate != ym / d)
+        os << date::format(*locale_, "{:L%e}", d);
       else
         os << "{today}";
 
-      auto d{2d};
       while (++wd != firstdow) {
+        ++d;
+
         if (currDate != ym / d)
           os << date::format(*locale_, " {:L%e}", d);
         else
           os << " {today}";
-
-        ++d;
       }
       break;
     }
