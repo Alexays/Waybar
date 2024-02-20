@@ -1,3 +1,9 @@
+bug:
+  - "(crash|bug|error|coredump|freeze|segfault|issue|problem)"
+
+enhancement:
+  - "(feature|enhancement|improvement|request|suggestion)"
+
 hyprland:
   - "(hyprland)"
 
