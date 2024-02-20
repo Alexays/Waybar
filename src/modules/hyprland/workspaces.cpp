@@ -1001,19 +1001,21 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
 }
 
 bool Workspace::handleClicked(GdkEventButton *bt) const {
-  try {
-    if (id() > 0) {  // normal
-      gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
-    } else if (!isSpecial()) {  // named (this includes persistent)
-      gIPC->getSocket1Reply("dispatch workspace name:" + name());
-    } else if (id() != -99) {  // named special
-      gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
-    } else {  // special
-      gIPC->getSocket1Reply("dispatch togglespecialworkspace");
+  if (bt->type == GDK_BUTTON_PRESS) {
+    try {
+      if (id() > 0) {  // normal
+        gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+      } else if (!isSpecial()) {  // named (this includes persistent)
+        gIPC->getSocket1Reply("dispatch workspace name:" + name());
+      } else if (id() != -99) {  // named special
+        gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
+      } else {  // special
+        gIPC->getSocket1Reply("dispatch togglespecialworkspace");
+      }
+      return true;
+    } catch (const std::exception &e) {
+      spdlog::error("Failed to dispatch workspace: {}", e.what());
     }
-    return true;
-  } catch (const std::exception &e) {
-    spdlog::error("Failed to dispatch workspace: {}", e.what());
   }
   return false;
 }
