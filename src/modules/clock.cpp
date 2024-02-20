@@ -130,7 +130,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Clock::update() -> void {
-  auto tz{tzList_[tzCurrIdx_] ?: current_zone()};
+  const auto* tz = tzList_[tzCurrIdx_] != nullptr ? tzList_[tzCurrIdx_] : current_zone();
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
   label_.set_markup(fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(now)));
@@ -167,7 +167,8 @@ auto waybar::modules::Clock::getTZtext(sys_seconds now) -> std::string {
   std::stringstream os;
   for (size_t tz_idx{0}; tz_idx < tzList_.size(); ++tz_idx) {
     if (static_cast<int>(tz_idx) == tzCurrIdx_) continue;
-    auto zt{zoned_time{tzList_[tz_idx], now}};
+    const auto* tz = tzList_[tz_idx] != nullptr ? tzList_[tz_idx] : current_zone();
+    auto zt{zoned_time{tz, now}};
     os << fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(zt)) << '\n';
   }
 
@@ -220,22 +221,22 @@ auto getCalendarLine(const year_month_day& currDate, const year_month ym, const 
     }
     // Print first week prefixed with spaces if necessary
     case 2: {
+      auto d{day{1}};
       auto wd{weekday{ym / 1}};
       os << std::string((wd - firstdow).count() * 3, ' ');
 
-      if (currDate != ym / 1d)
-        os << date::format(*locale_, "{:L%e}", 1d);
+      if (currDate != ym / d)
+        os << date::format(*locale_, "{:L%e}", d);
       else
         os << "{today}";
 
-      auto d{2d};
       while (++wd != firstdow) {
+        ++d;
+
         if (currDate != ym / d)
           os << date::format(*locale_, " {:L%e}", d);
         else
           os << " {today}";
-
-        ++d;
       }
       break;
     }
