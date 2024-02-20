@@ -599,8 +599,7 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
       });
 
   if (workspace != m_workspaces.end()) {
-    // don't recreate workspace, but update persistency if necessary
-    (*workspace)->setPersistent(workspace_data["persistent"].asBool());
+    // don't recreate workspace if it already exists
     return;
   }
 
