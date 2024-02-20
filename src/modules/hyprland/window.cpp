@@ -151,7 +151,7 @@ void Window::queryActiveWorkspace() {
                    return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
                  });
     swallowing_ = std::any_of(workspace_windows.begin(), workspace_windows.end(),
-                              [&](Json::Value window) { return window["swallowing"].asString() != "0x0"; });
+                              [&](Json::Value window) { return !window["swallowing"].isNull() && window["swallowing"].asString() != "0x0"; });
     std::vector<Json::Value> visible_windows;
     std::copy_if(workspace_windows.begin(), workspace_windows.end(),
                  std::back_inserter(visible_windows),
