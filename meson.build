@@ -558,7 +558,6 @@ endif
 
 catch2 = dependency(
     'catch2',
-    version: '>=3.5.1',
     default_options: [ 'tests=false' ],
     fallback: ['catch2', 'catch2_dep'],
     required: get_option('tests'),
