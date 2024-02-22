@@ -34,6 +34,9 @@ class AModule : public IModule {
 
   const std::string name_;
   const Json::Value &config_;
+
+  Glib::RefPtr<Gtk::GestureClick> handleClick_;
+  Glib::RefPtr<Gtk::EventControllerScroll> handleScroll_;
   virtual void handleToggle(int n_press, double dx, double dy);
   virtual void handleRelease(int n_press, double dx, double dy);
   virtual bool handleScroll(double dx, double dy);
@@ -43,8 +46,6 @@ class AModule : public IModule {
   std::vector<int> pid_;
   double distance_scrolled_y_{0.0};
   double distance_scrolled_x_{0.0};
-  Glib::RefPtr<Gtk::GestureClick> handleClick_;
-  Glib::RefPtr<Gtk::EventControllerScroll> handleScroll_;
   Glib::RefPtr<const Gdk::Event> currEvent_;
   std::map<std::string, std::string> eventActionMap_;
   static const inline std::map<std::pair<std::pair<uint, int>,Gdk::Event::Type>, std::string> eventMap_ {

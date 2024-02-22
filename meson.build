@@ -92,6 +92,33 @@ gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              fallback : ['gtk4-layer-shell', 'gtk_layer_shell'],
                              default_options : ['introspection=false', 'vapi=false'])
 
+cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
+have_chrono_timezones = cpp_lib_chrono >= 201611
+
+if have_chrono_timezones
+   code = '''
+#include <chrono>
+using namespace std::chrono;
+int main(int argc, char** argv) {
+   const time_zone* tz;
+   return 0;
+}
+'''
+   if not compiler.links(code)
+      have_chrono_timezones = false
+   endif
+endif
+
+if have_chrono_timezones
+  tz_dep = declare_dependency()
+else
+  tz_dep = dependency('date',
+      required: false,
+      default_options : [ 'use_system_tzdb=true' ],
+      modules : [ 'date::date', 'date::date-tz' ],
+      fallback: [ 'date', 'tz_dep' ])
+endif
+
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
 conf_data = configuration_data()
@@ -107,7 +134,32 @@ src_files = files(
      'src/util/portal.cpp',
      'src/util/prepare_for_sleep.cpp',
      'src/AModule.cpp',
+     'src/ALabel.cpp',
+     'src/factory.cpp',
+     'src/util/ustring_clen.cpp'
 )
+
+man_files = files(
+    'man/waybar-custom.5.scd',
+    'man/waybar-disk.5.scd',
+    'man/waybar-idle-inhibitor.5.scd',
+    'man/waybar-image.5.scd',
+    'man/waybar-states.5.scd',
+    'man/waybar-temperature.5.scd',
+)
+
+if have_chrono_timezones
+    add_project_arguments('-DHAVE_CHRONO_TIMEZONES', language: 'cpp')
+    src_files += files('src/modules/clock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+elif tz_dep.found()
+    add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
+    src_files += files('src/modules/clock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+else
+    src_files += files('src/modules/simpleclock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+endif
 
 inc_dirs = ['include']
 subdir('protocol')

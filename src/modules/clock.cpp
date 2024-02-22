@@ -111,13 +111,15 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       }
     } else
       cldMonCols_ = 1;
+    // gtk4 todo
+    /*
     if (config_[kCldPlaceholder]["on-scroll"].isInt()) {
       event_box_.add_events(Gdk::LEAVE_NOTIFY_MASK);
       event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
         cldCurrShift_ = months{0};
         return false;
       });
-    }
+    }*/
   }
 
   thread_ = [this] {

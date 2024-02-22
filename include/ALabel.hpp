@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <glibmm/markup.h>
 #include <gtkmm/label.h>
 #include <json/json.h>
@@ -26,6 +27,7 @@ class ALabel : public AModule {
   std::string default_format_;
 
 //todo  bool handleToggle(GdkEventButton *const &e) override;
+  void handleToggle(int n_press, double dx, double dy);
   virtual std::string getState(uint8_t value, bool lesser = false);
 };
 

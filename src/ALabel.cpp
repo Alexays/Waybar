@@ -21,13 +21,12 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     label_.get_style_context()->add_class(id);
   }
   label_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(label_);
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
-    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_ellipsize(Pango::EllipsizeMode::END);
     label_.set_single_line_mode(true);
   } else if (ellipsize && label_.get_max_width_chars() == -1) {
-    label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
+    label_.set_ellipsize(Pango::EllipsizeMode::END);
     label_.set_single_line_mode(true);
   }
 
@@ -36,11 +35,12 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
 
   uint rotate = 0;
-
+  //gtk4 todo
+  /*
   if (config_["rotate"].isUInt()) {
     rotate = config["rotate"].asUInt();
     label_.set_angle(rotate);
-  }
+  }*/
 
   if (config_["align"].isDouble()) {
     auto align = config_["align"].asFloat();
@@ -102,8 +102,8 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
-bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
-  if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
+void waybar::ALabel::handleToggle(int n_press, double dx, double dy) {
+  if (config_["format-alt-click"].isUInt() && handleClick_->get_button() == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
       format_ = config_["format-alt"].asString();
@@ -111,7 +111,8 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
       format_ = default_format_;
     }
   }
-  return AModule::handleToggle(e);
+
+  AModule::handleToggle(n_press, dx, dy);
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {
