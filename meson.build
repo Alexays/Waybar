@@ -106,7 +106,7 @@ src_files = files(
      'src/config.cpp',
      'src/util/portal.cpp',
      'src/util/prepare_for_sleep.cpp',
-#    'src/AModule.cpp',
+     'src/AModule.cpp',
 )
 
 inc_dirs = ['include']
