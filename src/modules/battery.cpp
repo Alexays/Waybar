@@ -634,6 +634,8 @@ auto waybar::modules::Battery::update() -> void {
   }
 #endif
   auto [capacity, time_remaining, status, power] = getInfos();
+
+  // This guarantees exactly 2 decimals
   std::string power_string = std::to_string((int)round(power * 100));
   power_string = power_string.insert(power_string.size() - 2, 1, '.');
 
