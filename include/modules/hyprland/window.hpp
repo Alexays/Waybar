@@ -42,7 +42,6 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   };
 
   auto getActiveWorkspace(const std::string&) -> Workspace;
-  auto getActiveWorkspace() -> Workspace;
   void onEvent(const std::string&) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
