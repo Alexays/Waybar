@@ -55,7 +55,6 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
   try {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
-    std::vector<std::string> used_layouts;
     // Display current layout of a device with a maximum count of layouts, expecting that all will
     // be OK
     Json::ArrayIndex max_id = 0, max = 0;
@@ -68,10 +67,20 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
     }
 
     for (const auto& layout : payload[max_id][XKB_LAYOUT_NAMES_KEY]) {
-      used_layouts.push_back(layout.asString());
+      if (std::find(layouts_.begin(), layouts_.end(), layout.asString()) == layouts_.end()) {
+        layouts_.push_back(layout.asString());
+      }
     }
 
-    init_layouts_map(used_layouts);
+    spdlog::debug("Language: layouts from the compositor: {}",
+                  fmt::join(layouts_.begin(), layouts_.end(), ", "));
+
+    // The configured format string does not allow distinguishing layout variants.
+    // Add numeric suffixes to the layouts with the same short name.
+    bool want_unique_names = ((visible_fields & VisibleFields::Variant) == 0) &&
+                             ((visible_fields & ~VisibleFields::Variant) != 0);
+
+    xkb_context_.initLayouts(layouts_, want_unique_names);
     set_current_layout(payload[max_id][XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
     dp.emit();
   } catch (const std::exception& e) {
@@ -86,10 +95,26 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 
   try {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto payload = parser_.parse(res.payload)["input"];
-    if (payload["type"].asString() == "keyboard") {
-      set_current_layout(payload[XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
+    auto payload = parser_.parse(res.payload);
+
+    const auto& input = payload["input"];
+    if (input["type"] != "keyboard") {
+      return;
     }
+
+    const auto& change = payload["change"];
+    if (change == "added" || change == "xkb_keymap") {
+      // Update list of configured layouts
+      for (const auto& name : input[XKB_LAYOUT_NAMES_KEY]) {
+        if (std::find(layouts_.begin(), layouts_.end(), name.asString()) == layouts_.end()) {
+          layouts_.push_back(name.asString());
+        }
+      }
+    }
+
+    const auto& layout = input[XKB_ACTIVE_LAYOUT_NAME_KEY].asString();
+    spdlog::trace("Language: set layout {} for device {}", layout, input["identifier"].asString());
+    set_current_layout(layout);
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Language: {}", e.what());
@@ -98,7 +123,7 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
-  if (hide_single_ && layouts_map_.size() <= 1) {
+  if (hide_single_ && layouts_.size() <= 1) {
     event_box_.hide();
     return;
   }
@@ -128,77 +153,87 @@ auto Language::update() -> void {
 
 auto Language::set_current_layout(std::string current_layout) -> void {
   label_.get_style_context()->remove_class(layout_.short_name);
-  layout_ = layouts_map_[current_layout];
+  layout_ = xkb_context_.getLayout(current_layout);
   label_.get_style_context()->add_class(layout_.short_name);
 }
 
-auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {
-  // First layout entry with this short name
-  std::map<std::string_view, Layout&> layout_by_short_names;
-  // Current number of layout entries with this short name
-  std::map<std::string_view, int> count_by_short_names;
-  XKBContext xkb_context;
-
-  bool want_unique_names = ((visible_fields & VisibleFields::Variant) == 0) &&
-                           ((visible_fields & ~VisibleFields::Variant) != 0);
-
-  auto* layout = xkb_context.next_layout();
-  for (; layout != nullptr; layout = xkb_context.next_layout()) {
-    if (std::find(used_layouts.begin(), used_layouts.end(), layout->full_name) ==
-        used_layouts.end()) {
-      continue;
-    }
-
-    auto [it, added] = layouts_map_.emplace(layout->full_name, *layout);
-    if (!added) continue;
-
-    if (want_unique_names) {
-      auto prev = layout_by_short_names.emplace(it->second.short_name, it->second).first;
-      switch (int number = ++count_by_short_names[it->second.short_name]; number) {
-        case 1:
-          break;
-        case 2:
-          // First duplicate appeared, add suffix to the original entry
-          prev->second.addShortNameSuffix("1");
-          G_GNUC_FALLTHROUGH;
-        default:
-          it->second.addShortNameSuffix(std::to_string(number));
-          break;
-      }
-    }
-
-    spdlog::debug("Language: new layout '{}' short='{}' variant='{}' shortDescription='{}'",
-                  it->second.full_name, it->second.short_name, it->second.variant,
-                  it->second.short_description);
-  }
-}
+const Language::Layout Language::XKBContext::fallback_;
 
 Language::XKBContext::XKBContext() {
   context_ = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
   rxkb_context_parse_default_ruleset(context_);
 }
 
-auto Language::XKBContext::next_layout() -> Layout* {
-  if (xkb_layout_ == nullptr) {
-    xkb_layout_ = rxkb_layout_first(context_);
-  } else {
-    xkb_layout_ = rxkb_layout_next(xkb_layout_);
+void Language::XKBContext::initLayouts(const std::vector<std::string>& names,
+                                       bool want_unique_names) {
+  want_unique_names_ = want_unique_names;
+
+  for (auto* xkb_layout = rxkb_layout_first(context_); xkb_layout != nullptr;
+       xkb_layout = rxkb_layout_next(xkb_layout)) {
+    const auto* short_name = rxkb_layout_get_name(xkb_layout);
+    /* Assume that we see base layout first and remember it */
+    if (const auto* brief = rxkb_layout_get_brief(xkb_layout); brief != nullptr) {
+      base_layouts_by_name_.emplace(short_name, xkb_layout);
+    }
+
+    const auto* full_name = rxkb_layout_get_description(xkb_layout);
+    if (std::find(names.begin(), names.end(), full_name) == names.end()) {
+      continue;
+    }
+
+    newCachedEntry(full_name, xkb_layout);
+  }
+}
+
+const Language::Layout& Language::XKBContext::getLayout(const std::string& name) {
+  if (auto it = cached_layouts_.find(name); it != cached_layouts_.end()) {
+    return it->second;
   }
 
-  if (xkb_layout_ == nullptr) {
-    return nullptr;
+  for (auto* xkb_layout = rxkb_layout_first(context_); xkb_layout != nullptr;
+       xkb_layout = rxkb_layout_next(xkb_layout)) {
+    if (name == rxkb_layout_get_description(xkb_layout)) {
+      return newCachedEntry(name, xkb_layout);
+    }
   }
 
-  layout_ = std::make_unique<Layout>(xkb_layout_);
+  return fallback_;
+}
 
-  if (!layout_->short_description.empty()) {
-    base_layouts_by_name_.emplace(layout_->short_name, xkb_layout_);
-  } else if (auto base = base_layouts_by_name_.find(layout_->short_name);
-             base != base_layouts_by_name_.end()) {
-    layout_->short_description = rxkb_layout_get_brief(base->second);
+Language::Layout& Language::XKBContext::newCachedEntry(const std::string& name,
+                                                       rxkb_layout* xkb_layout) {
+  auto [it, added] = cached_layouts_.try_emplace(name, xkb_layout);
+  /* Existing entry (shouldn't happen) */
+  if (!added) return it->second;
+
+  Layout& layout = it->second;
+
+  if (layout.short_description.empty()) {
+    if (auto base = base_layouts_by_name_.find(layout.short_name);
+        base != base_layouts_by_name_.end()) {
+      layout.short_description = rxkb_layout_get_brief(base->second);
+    }
   }
 
-  return layout_.get();
+  if (want_unique_names_) {
+    // Fetch and count already cached layouts with this short name
+    auto [first, last] = layouts_by_short_name_.equal_range(layout.short_name);
+    auto count = std::distance(first, last);
+    // Add the new layout before we modify its short name
+    layouts_by_short_name_.emplace(layout.short_name, layout);
+
+    if (count > 0) {
+      if (count == 1) {
+        // First duplicate appeared, add suffix to the original entry
+        first->second.addShortNameSuffix("1");
+      }
+      layout.addShortNameSuffix(std::to_string(count + 1));
+    }
+  }
+
+  spdlog::debug("Language: new layout '{}' short='{}' variant='{}' shortDescription='{}'",
+                layout.full_name, layout.short_name, layout.variant, layout.short_description);
+  return layout;
 }
 
 Language::XKBContext::~XKBContext() { rxkb_context_unref(context_); }
