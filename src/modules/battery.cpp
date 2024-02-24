@@ -634,6 +634,9 @@ auto waybar::modules::Battery::update() -> void {
   }
 #endif
   auto [capacity, time_remaining, status, power] = getInfos();
+  std::string power_string = std::to_string((int)round(power * 100));
+  power_string = power_string.insert(power_string.size() - 2, 1, '.');
+
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
@@ -686,7 +689,7 @@ auto waybar::modules::Battery::update() -> void {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(
-        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
+        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power_string),
         fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted)));
   }
   // Call parent update
