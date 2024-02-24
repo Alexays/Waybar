@@ -1,5 +1,4 @@
 #include <spdlog/spdlog.h>
-
 #include <sys/sysctl.h>
 
 #include "modules/cpu_frequency.hpp"
