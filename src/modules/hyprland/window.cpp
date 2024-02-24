@@ -99,7 +99,8 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
     spdlog::warn("Monitor not found: {}", monitorName);
     return Workspace{-1, 0, "", ""};
   }
-  const int id = (*monitor)["activeWorkspace"]["id"].asInt();
+  const int special_id = (*monitor)["specialWorkspace"]["id"].asInt();
+  const int id = special_id != 0 ? special_id : (*monitor)["activeWorkspace"]["id"].asInt();
 
   const auto workspaces = gIPC->getSocket1JsonReply("workspaces");
   assert(workspaces.isArray());
