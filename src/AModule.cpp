@@ -8,11 +8,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
                  bool enable_click, bool enable_scroll)
     : name_(std::move(name)),
       config_(std::move(config)),
-      isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
-      distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0),
-      handleClick_(Gtk::GestureClick::create()),
-      handleScroll_(Gtk::EventControllerScroll::create()){
+      controllClick_{Gtk::GestureClick::create()},
+      controllScroll_{Gtk::EventControllerScroll::create()},
+      isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true} {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
@@ -42,19 +40,19 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   }) != eventMap_.cend()};
 
   if (enable_click || hasUserPressEvent || hasUserReleaseEvent) {
-    handleClick_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
-    ((Gtk::Widget&)*this).add_controller(handleClick_);
+    controllClick_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+//    (this->operator Gtk::Widget&()).add_controller(controllClick_);
 
     if (enable_click || hasUserPressEvent)
-      handleClick_->signal_pressed().connect(sigc::mem_fun(*this, &AModule::handleToggle), after);
+      controllClick_->signal_pressed().connect(sigc::mem_fun(*this, &AModule::handleToggle), after);
     if (hasUserReleaseEvent)
-      handleClick_->signal_released().connect(sigc::mem_fun(*this, &AModule::handleRelease), after);
+      controllClick_->signal_released().connect(sigc::mem_fun(*this, &AModule::handleRelease), after);
   }
 
   if (enable_scroll || config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    handleScroll_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
-    ((Gtk::Widget&)*this).add_controller(handleScroll_);
-    handleScroll_->signal_scroll().connect(sigc::mem_fun(*this, &AModule::handleScroll), after);
+    controllScroll_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+//    ((Gtk::Widget&)*this).add_controller(controllScroll_);
+    controllScroll_->signal_scroll().connect(sigc::mem_fun(*this, &AModule::handleScroll), after);
   }
 }
 
@@ -83,10 +81,10 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 void AModule::handleToggle(int n_press, double dx, double dy) {
-  handleClickEvent(handleClick_->get_current_button(), n_press, Gdk::Event::Type::BUTTON_PRESS);
+  handleClickEvent(controllClick_->get_current_button(), n_press, Gdk::Event::Type::BUTTON_PRESS);
 }
 void AModule::handleRelease(int n_press, double dx, double dy) {
-  handleClickEvent(handleClick_->get_current_button(), n_press, Gdk::Event::Type::BUTTON_RELEASE);
+  handleClickEvent(controllClick_->get_current_button(), n_press, Gdk::Event::Type::BUTTON_RELEASE);
 }
 
 void AModule::handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype) {
@@ -176,7 +174,7 @@ const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e
 }
 
 bool AModule::handleScroll(double dx, double dy) {
-  currEvent_ = handleScroll_->get_current_event();
+  currEvent_ = controllScroll_->get_current_event();
 
   if (currEvent_) {
     std::string format{};
@@ -201,6 +199,6 @@ bool AModule::handleScroll(double dx, double dy) {
 
 bool AModule::tooltipEnabled() { return isTooltip; }
 
-AModule::operator Gtk::Widget&() { return *this; }
+AModule::operator Gtk::Widget&() { return dynamic_cast<Gtk::Widget&>(*this); }
 
 }  // namespace waybar

@@ -132,7 +132,7 @@ auto waybar::modules::Clock::update() -> void {
   auto tz{tzList_[tzCurrIdx_]};
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
-  label_.set_markup(fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(now)));
+  Gtk::Label::set_markup(fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(now)));
 
   if (tooltipEnabled()) {
     const year_month_day today{floor<days>(now.get_local_time())};
@@ -151,7 +151,7 @@ auto waybar::modules::Clock::update() -> void {
 
     tlpText_ = fmt_lib::vformat(locale_, tlpText_, fmt_lib::make_format_args(shiftedNow));
 
-    label_.set_tooltip_markup(tlpText_);
+    Gtk::Label::set_tooltip_markup(tlpText_);
   }
 
   ALabel::update();

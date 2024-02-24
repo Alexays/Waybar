@@ -136,7 +136,8 @@ src_files = files(
      'src/AModule.cpp',
      'src/ALabel.cpp',
      'src/factory.cpp',
-     'src/util/ustring_clen.cpp'
+     'src/util/ustring_clen.cpp',
+     'src/group.cpp'
 )
 
 man_files = files(

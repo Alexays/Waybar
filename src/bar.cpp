@@ -4,8 +4,7 @@
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
-//#include "factory.hpp"
-//#include "group.hpp"
+#include "factory.hpp"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -108,6 +107,8 @@ Glib::ustring to_string(Gtk::PositionType pos) {
       return "top";
     case Gtk::PositionType::BOTTOM:
       return "bottom";
+    default:
+      return "";
   }
 }
 
@@ -458,8 +459,6 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
-// todo gtkmm4
-/*
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
   auto module_list = group ? config[pos]["modules"] : config[pos];
@@ -512,7 +511,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
     }
   }
 }
-*/
+
 auto waybar::Bar::setupWidgets() -> void {
   box_.set_start_widget(left_);
   if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
@@ -526,11 +525,10 @@ auto waybar::Bar::setupWidgets() -> void {
   setupAltFormatKeyForModuleList("modules-right");
   setupAltFormatKeyForModuleList("modules-center");
 
-// todo gtkmm4
-//  Factory factory(*this, config);
-//  getModules(factory, "modules-left");
-//  getModules(factory, "modules-center");
-//  getModules(factory, "modules-right");
+  Factory factory(*this, config);
+  getModules(factory, "modules-left");
+  getModules(factory, "modules-center");
+  getModules(factory, "modules-right");
   for (auto const& module : modules_left_) {
     left_.prepend(*module);
   }
