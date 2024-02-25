@@ -10,7 +10,7 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "submap", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
-  if (!gIPC.get()) {
+  if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
 

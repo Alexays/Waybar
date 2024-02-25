@@ -14,12 +14,12 @@ namespace waybar::modules::hyprland {
 class Submap : public waybar::ALabel, public EventHandler {
  public:
   Submap(const std::string&, const waybar::Bar&, const Json::Value&);
-  virtual ~Submap();
+  ~Submap() override;
 
   auto update() -> void override;
 
  private:
-  void onEvent(const std::string&) override;
+  void onEvent(const std::string& ev) override;
 
   std::mutex mutex_;
   const Bar& bar_;
