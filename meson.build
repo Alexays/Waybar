@@ -518,8 +518,8 @@ executable(
 )
 
 install_data(
-    './resources/config',
-    './resources/style.css',
+    'resources/config.jsonc',
+    'resources/style.css',
     install_dir: sysconfdir / 'xdg/waybar'
 )
 
