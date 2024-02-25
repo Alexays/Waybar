@@ -24,18 +24,57 @@ AAppIconLabel::AAppIconLabel(const Json::Value& config, const std::string& name,
   image_.set_pixel_size(app_icon_size_);
 }
 
+std::string to_lowercase(const std::string& input) {
+  std::string result = input;
+  std::transform(result.begin(), result.end(), result.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return result;
+}
+
+std::optional<std::string> getFileBySuffix(const std::string& dir, const std::string& suffix,
+                                           bool check_lower_case) {
+  if (!std::filesystem::exists(dir)) {
+    return {};
+  }
+  for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
+    if (entry.is_regular_file()) {
+      std::string filename = entry.path().filename().string();
+      if (filename.size() < suffix.size()) {
+        continue;
+      }
+      if ((filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0) ||
+          (check_lower_case && filename.compare(filename.size() - suffix.size(), suffix.size(),
+                                                to_lowercase(suffix)) == 0)) {
+        return entry.path().string();
+      }
+    }
+  }
+
+  return {};
+}
+
+std::optional<std::string> getFileBySuffix(const std::string& dir, const std::string& suffix) {
+  return getFileBySuffix(dir, suffix, false);
+}
+
 std::optional<std::string> getDesktopFilePath(const std::string& app_identifier,
                                               const std::string& alternative_app_identifier) {
   const auto data_dirs = Glib::get_system_data_dirs();
   for (const auto& data_dir : data_dirs) {
-    const auto data_app_dir = data_dir + "applications/";
-    auto desktop_file_path = data_app_dir + app_identifier + ".desktop";
-    if (std::filesystem::exists(desktop_file_path)) {
+    const auto data_app_dir = data_dir + "/applications/";
+    auto desktop_file_suffix = app_identifier + ".desktop";
+    // searching for file by suffix catches cases like terminal emulator "foot" where class is
+    // "footclient" and desktop file is named "org.codeberg.dnkl.footclient.desktop"
+    auto desktop_file_path = getFileBySuffix(data_app_dir, desktop_file_suffix, true);
+    // "true" argument allows checking for lowercase - this catches cases where class name is
+    // "LibreWolf" and desktop file is named "librewolf.desktop"
+    if (desktop_file_path.has_value()) {
       return desktop_file_path;
     }
     if (!alternative_app_identifier.empty()) {
-      desktop_file_path = data_app_dir + alternative_app_identifier + ".desktop";
-      if (std::filesystem::exists(desktop_file_path)) {
+      desktop_file_suffix = alternative_app_identifier + ".desktop";
+      desktop_file_path = getFileBySuffix(data_app_dir, desktop_file_suffix, true);
+      if (desktop_file_path.has_value()) {
         return desktop_file_path;
       }
     }
