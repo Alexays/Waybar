@@ -16,6 +16,8 @@ class CssReloadHelper {
  public:
   CssReloadHelper(std::string cssFile, std::function<void()> callback);
 
+  virtual ~CssReloadHelper() = default;
+
   virtual void monitorChanges();
 
  protected:

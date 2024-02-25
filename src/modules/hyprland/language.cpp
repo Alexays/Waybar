@@ -13,7 +13,7 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
     : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
-  if (!gIPC.get()) {
+  if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
 
@@ -102,11 +102,11 @@ void Language::initLanguage() {
 }
 
 auto Language::getLayout(const std::string& fullName) -> Layout {
-  const auto CONTEXT = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
-  rxkb_context_parse_default_ruleset(CONTEXT);
+  auto* const context = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
+  rxkb_context_parse_default_ruleset(context);
 
-  rxkb_layout* layout = rxkb_layout_first(CONTEXT);
-  while (layout) {
+  rxkb_layout* layout = rxkb_layout_first(context);
+  while (layout != nullptr) {
     std::string nameOfLayout = rxkb_layout_get_description(layout);
 
     if (nameOfLayout != fullName) {
@@ -115,21 +115,20 @@ auto Language::getLayout(const std::string& fullName) -> Layout {
     }
 
     auto name = std::string(rxkb_layout_get_name(layout));
-    auto variant_ = rxkb_layout_get_variant(layout);
-    std::string variant = variant_ == nullptr ? "" : std::string(variant_);
+    const auto* variantPtr = rxkb_layout_get_variant(layout);
+    std::string variant = variantPtr == nullptr ? "" : std::string(variantPtr);
 
-    auto short_description_ = rxkb_layout_get_brief(layout);
-    std::string short_description =
-        short_description_ == nullptr ? "" : std::string(short_description_);
+    const auto* descriptionPtr = rxkb_layout_get_brief(layout);
+    std::string description = descriptionPtr == nullptr ? "" : std::string(descriptionPtr);
 
-    Layout info = Layout{nameOfLayout, name, variant, short_description};
+    Layout info = Layout{nameOfLayout, name, variant, description};
 
-    rxkb_context_unref(CONTEXT);
+    rxkb_context_unref(context);
 
     return info;
   }
 
-  rxkb_context_unref(CONTEXT);
+  rxkb_context_unref(context);
 
   spdlog::debug("hyprland language didn't find matching layout");
 

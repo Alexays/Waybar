@@ -82,6 +82,23 @@ warp-on-scroll: ++
 	default: true ++
 	If set to false, you can scroll to cycle through workspaces without mouse warping being enabled. If set to true this behaviour is disabled.
 
+*window-rewrite*: ++
+	typeof: object ++
+	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
+	Keys are the rules, while the values are the methods of representation.
+	Rules may specify `class<...>`, `title<...>`, or both in order to fine-tune the matching.
+
+*window-rewrite-default*:
+	typeof: string ++
+	default: "?" ++
+	The default method of representation for a workspace's window. This will be used for windows whose classes do not match any of the rules in *window-rewrite*.
+
+*format-window-separator*: ++
+	typeof: string ++
+	default: " " ++
+	The separator to be used between windows in a workspace.
+
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, as defined by sway.
@@ -93,6 +110,8 @@ warp-on-scroll: ++
 *{index}*: Index of the workspace.
 
 *{output}*: Output where the workspace is located.
+
+*{windows}*: Result from window-rewrite
 
 # ICONS
 
@@ -140,6 +159,19 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 		"focused": "",
 		"default": ""
 	}
+}
+```
+
+```
+"sway/workspaces": {
+  "format": "<span size='larger'>{name}</span> {windows}",
+  "format-window-separator": " | ",
+  "window-rewrite-default": "{name}",
+  "window-format": "<span color='#e0e0e0'>{name}</span>",
+  "window-rewrite": {
+    "class<firefox>": "",
+    "class<kitty>": "k",
+  }
 }
 ```
 

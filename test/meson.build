@@ -31,5 +31,5 @@ waybar_test = executable(
 test(
     'waybar',
     waybar_test,
-    workdir: meson.source_root(),
+    workdir: meson.project_source_root(),
 )

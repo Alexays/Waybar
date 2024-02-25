@@ -170,22 +170,30 @@ auto waybar::modules::Custom::update() -> void {
           if (label_.get_tooltip_markup() != str) {
             label_.set_tooltip_markup(str);
           }
+        } else if (config_["tooltip-format"].isString()) {
+          auto tooltip = config_["tooltip-format"].asString();
+          tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
+                                fmt::arg("icon", getIcon(percentage_, alt_)),
+                                fmt::arg("percentage", percentage_));
+          label_.set_tooltip_markup(tooltip);
         } else {
           if (label_.get_tooltip_markup() != tooltip_) {
             label_.set_tooltip_markup(tooltip_);
           }
         }
       }
-      auto classes = label_.get_style_context()->list_classes();
+      auto style = label_.get_style_context();
+      auto classes = style->list_classes();
       for (auto const& c : classes) {
         if (c == id_) continue;
-        label_.get_style_context()->remove_class(c);
+        style->remove_class(c);
       }
       for (auto const& c : class_) {
-        label_.get_style_context()->add_class(c);
+        style->add_class(c);
       }
-      label_.get_style_context()->add_class("flat");
-      label_.get_style_context()->add_class("text-button");
+      style->add_class("flat");
+      style->add_class("text-button");
+      style->add_class(MODULE_CLASS);
       event_box_.show();
     }
   }

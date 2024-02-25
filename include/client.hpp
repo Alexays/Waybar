@@ -10,7 +10,6 @@
 #include "util/css_reload_helper.hpp"
 #include "util/portal.hpp"
 
-struct zwlr_layer_shell_v1;
 struct zwp_idle_inhibitor_v1;
 struct zwp_idle_inhibit_manager_v1;
 
@@ -26,7 +25,6 @@ class Client {
   Glib::RefPtr<Gdk::Display> gdk_display;
   struct wl_display *wl_display = nullptr;
   struct wl_registry *registry = nullptr;
-  struct zwlr_layer_shell_v1 *layer_shell = nullptr;
   struct zxdg_output_manager_v1 *xdg_output_manager = nullptr;
   struct zwp_idle_inhibit_manager_v1 *idle_inhibit_manager = nullptr;
   std::vector<std::unique_ptr<Bar>> bars;

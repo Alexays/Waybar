@@ -24,11 +24,16 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
       }
     }
   } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
-    file_path_ = (*std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString()))
-                     .path()
-                     .string() +
-                 "/" + config_["input-filename"].asString();
-  } else {
+    for (const auto& hwmon :
+         std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())) {
+      if (hwmon.path().filename().string().starts_with("hwmon")) {
+        file_path_ = hwmon.path().string() + "/" + config_["input-filename"].asString();
+        break;
+      }
+    }
+  }
+
+  if (file_path_.empty()) {
     auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }

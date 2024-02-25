@@ -107,6 +107,11 @@ Addressed by *custom/<name>*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	The tooltip format. If specified, overrides any tooltip output from the script in *exec*. ++
+	Uses the same format replacements as *format*.
+
 *escape*: ++
 	typeof: bool ++
 	default: false ++

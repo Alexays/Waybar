@@ -30,10 +30,6 @@ template <typename T>
 inline auto format(const std::locale& loc, const char* spec, const T& arg) {
   return date::format(loc, std::regex_replace(spec, std::regex("\\{:L|\\}"), ""), arg);
 }
-
-constexpr decltype(auto) operator""d(unsigned long long d) noexcept {
-  return date::operator""_d(d);  // very verbose, but it works
-}
 #endif
 }  // namespace date
 

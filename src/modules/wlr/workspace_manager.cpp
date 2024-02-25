@@ -21,9 +21,7 @@ std::map<std::string, std::string> Workspace::icons_map_;
 
 WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
                                    const Json::Value &config)
-    : waybar::AModule(config, "workspaces", id, false, false),
-      bar_(bar),
-      box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0) {
+    : waybar::AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   auto config_sort_by_name = config_["sort-by-name"];
   if (config_sort_by_name.isBool()) {
     sort_by_name_ = config_sort_by_name.asBool();
@@ -54,6 +52,7 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   add_registry_listener(this);

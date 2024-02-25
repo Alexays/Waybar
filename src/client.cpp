@@ -1,5 +1,6 @@
 #include "client.hpp"
 
+#include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
 #include <iostream>
@@ -8,7 +9,6 @@
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
-#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 waybar::Client *waybar::Client::inst() {
   static auto c = new Client();
@@ -18,13 +18,8 @@ waybar::Client *waybar::Client::inst() {
 void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                                   const char *interface, uint32_t version) {
   auto client = static_cast<Client *>(data);
-  if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
-    // limit version to a highest supported by the client protocol file
-    version = std::min<uint32_t>(version, zwlr_layer_shell_v1_interface.version);
-    client->layer_shell = static_cast<struct zwlr_layer_shell_v1 *>(
-        wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version));
-  } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
-             version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
+  if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
+      version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
     client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1 *>(wl_registry_bind(
         registry, name, &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
   } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
@@ -200,7 +195,12 @@ void waybar::Client::bindInterfaces() {
   };
   wl_registry_add_listener(registry, &registry_listener, this);
   wl_display_roundtrip(wl_display);
-  if (layer_shell == nullptr || xdg_output_manager == nullptr) {
+
+  if (!gtk_layer_is_supported()) {
+    throw std::runtime_error("The Wayland compositor does not support wlr-layer-shell protocol");
+  }
+
+  if (xdg_output_manager == nullptr) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
   // add existing outputs and subscribe to updates

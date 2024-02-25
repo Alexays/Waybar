@@ -13,6 +13,7 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
   if (!id.empty()) {
     scale_.get_style_context()->add_class(id);
   }
+  scale_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(scale_);
   scale_.signal_value_changed().connect(sigc::mem_fun(*this, &ASlider::onValueChanged));
 

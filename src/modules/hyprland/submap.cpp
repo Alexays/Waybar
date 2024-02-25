@@ -12,7 +12,7 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
 
   parseConfig(config);
 
-  if (!gIPC.get()) {
+  if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
 

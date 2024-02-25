@@ -53,34 +53,18 @@ class BarIpcClient;
 }
 #endif  // HAVE_SWAY
 
-class BarSurface {
- protected:
-  BarSurface() = default;
-
- public:
-  virtual void setExclusiveZone(bool enable) = 0;
-  virtual void setLayer(bar_layer layer) = 0;
-  virtual void setMargins(const struct bar_margins &margins) = 0;
-  virtual void setPassThrough(bool enable) = 0;
-  virtual void setPosition(const std::string_view &position) = 0;
-  virtual void setSize(uint32_t width, uint32_t height) = 0;
-  virtual void commit(){};
-
-  virtual ~BarSurface() = default;
-};
-
 class Bar {
  public:
-  using bar_mode_map = std::map<std::string_view, struct bar_mode>;
+  using bar_mode_map = std::map<std::string, struct bar_mode>;
   static const bar_mode_map PRESET_MODES;
-  static const std::string_view MODE_DEFAULT;
-  static const std::string_view MODE_INVISIBLE;
+  static const std::string MODE_DEFAULT;
+  static const std::string MODE_INVISIBLE;
 
   Bar(struct waybar_output *w_output, const Json::Value &);
   Bar(const Bar &) = delete;
   ~Bar();
 
-  void setMode(const std::string_view &);
+  void setMode(const std::string &mode);
   void setVisible(bool visible);
   void toggle();
   void handleSignal(int);
@@ -89,8 +73,9 @@ class Bar {
   Json::Value config;
   struct wl_surface *surface;
   bool visible = true;
-  bool vertical = false;
   Gtk::Window window;
+  Gtk::Orientation orientation = Gtk::ORIENTATION_HORIZONTAL;
+  Gtk::PositionType position = Gtk::POS_TOP;
 
   int x_global;
   int y_global;
@@ -106,6 +91,8 @@ class Bar {
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
+  void setPassThrough(bool passthrough);
+  void setPosition(Gtk::PositionType position);
   void onConfigure(GdkEventConfigure *ev);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
@@ -115,8 +102,9 @@ class Bar {
   std::string last_mode_{MODE_DEFAULT};
 
   struct bar_margins margins_;
+  uint32_t width_, height_;
+  bool passthrough_;
 
-  std::unique_ptr<BarSurface> surface_impl_;
   Gtk::Box left_;
   Gtk::Box center_;
   Gtk::Box right_;

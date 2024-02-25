@@ -157,6 +157,7 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 
 - *{calendar}*: Current month calendar
 - *{tz_list}*: List of time in the rest timezones, if more than one timezone is set in the config
+- *{ordinal_date}*: The current day in (English) ordinal form, e.g. 21st
 
 # EXAMPLES
 

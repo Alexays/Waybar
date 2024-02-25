@@ -4,27 +4,32 @@
 , version
 }:
 let
-  catch2_3 = {
-    src = pkgs.fetchFromGitHub
-      {
-        owner = "catchorg";
-        repo = "Catch2";
-        rev = "v3.5.1";
-        hash = "sha256-OyYNUfnu6h1+MfCF8O+awQ4Usad0qrdCtdZhYgOY+Vw=";
-      };
+  libcava = rec {
+    version = "0.10.1";
+    src = pkgs.fetchFromGitHub {
+      owner = "LukashonakV";
+      repo = "cava";
+      rev = version;
+      hash = "sha256-iIYKvpOWafPJB5XhDOSIW9Mb4I3A4pcgIIPQdQYEqUw=";
+    };
   };
 in
-(waybar.overrideAttrs (oldAttrs: rec {
-  inherit version;
+(waybar.overrideAttrs (
+  oldAttrs: {
+    inherit version;
 
-  src = lib.cleanSourceWith {
-    filter = name: type: type != "regular" || !lib.hasSuffix ".nix" name;
-    src = lib.cleanSource ../.;
-  };
-})
-).override {
-  catch2_3 = pkgs.catch2_3.overrideAttrs (oldAttrs: {
-    version = "3.5.1";
-    src = catch2_3.src;
-  });
-}
+    src = lib.cleanSourceWith {
+      filter = name: type: type != "regular" || !lib.hasSuffix ".nix" name;
+      src = lib.cleanSource ../.;
+    };
+
+    mesonFlags = lib.remove "-Dgtk-layer-shell=enabled" oldAttrs.mesonFlags;
+
+    postUnpack = ''
+      pushd "$sourceRoot"
+      cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava-${libcava.version}
+      patchShebangs .
+      popd
+    '';
+  }
+))

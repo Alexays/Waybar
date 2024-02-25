@@ -2,8 +2,10 @@
 
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <iomanip>
 #include <regex>
+#include <sstream>
 
 #include "util/ustring_clen.hpp"
 
@@ -20,7 +22,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
       cldInTooltip_{tlpFmt_.find("{" + kCldPlaceholder + "}") != std::string::npos},
       tzInTooltip_{tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
-      tzCurrIdx_{0} {
+      tzCurrIdx_{0},
+      ordInTooltip_{tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos} {
   tlpText_ = tlpFmt_;
 
   if (config_["timezones"].isArray() && !config_["timezones"].empty()) {
@@ -127,7 +130,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 }
 
 auto waybar::modules::Clock::update() -> void {
-  auto tz{tzList_[tzCurrIdx_] ?: current_zone()};
+  const auto* tz = tzList_[tzCurrIdx_] != nullptr ? tzList_[tzCurrIdx_] : current_zone();
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
   label_.set_markup(fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(now)));
@@ -140,11 +143,14 @@ auto waybar::modules::Clock::update() -> void {
 
     if (tzInTooltip_) tzText_ = getTZtext(now.get_sys_time());
     if (cldInTooltip_) cldText_ = get_calendar(today, shiftedDay, tz);
-    if (tzInTooltip_ || cldInTooltip_) {
+    if (ordInTooltip_) ordText_ = get_ordinal_date(shiftedDay);
+    if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
       // std::vformat doesn't support named arguments.
       tlpText_ = std::regex_replace(tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
       tlpText_ =
           std::regex_replace(tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"), cldText_);
+      tlpText_ =
+          std::regex_replace(tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
     }
 
     tlpText_ = fmt_lib::vformat(locale_, tlpText_, fmt_lib::make_format_args(shiftedNow));
@@ -161,7 +167,8 @@ auto waybar::modules::Clock::getTZtext(sys_seconds now) -> std::string {
   std::stringstream os;
   for (size_t tz_idx{0}; tz_idx < tzList_.size(); ++tz_idx) {
     if (static_cast<int>(tz_idx) == tzCurrIdx_) continue;
-    auto zt{zoned_time{tzList_[tz_idx], now}};
+    const auto* tz = tzList_[tz_idx] != nullptr ? tzList_[tz_idx] : current_zone();
+    auto zt{zoned_time{tz, now}};
     os << fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(zt)) << '\n';
   }
 
@@ -214,22 +221,22 @@ auto getCalendarLine(const year_month_day& currDate, const year_month ym, const 
     }
     // Print first week prefixed with spaces if necessary
     case 2: {
+      auto d{day{1}};
       auto wd{weekday{ym / 1}};
       os << std::string((wd - firstdow).count() * 3, ' ');
 
-      if (currDate != ym / 1d)
-        os << date::format(*locale_, "{:L%e}", 1d);
+      if (currDate != ym / d)
+        os << date::format(*locale_, "{:L%e}", d);
       else
         os << "{today}";
 
-      auto d{2d};
       while (++wd != firstdow) {
+        ++d;
+
         if (currDate != ym / d)
           os << date::format(*locale_, " {:L%e}", d);
         else
           os << " {today}";
-
-        ++d;
       }
       break;
     }
@@ -436,4 +443,29 @@ auto waybar::modules::Clock::first_day_of_week() -> weekday {
   }
 #endif
   return Sunday;
+}
+
+auto waybar::modules::Clock::get_ordinal_date(const year_month_day& today) -> std::string {
+  auto day = static_cast<unsigned int>(today.day());
+  std::stringstream res;
+  res << day;
+  if (day >= 11 && day <= 13) {
+    res << "th";
+    return res.str();
+  }
+
+  switch (day % 10) {
+    case 1:
+      res << "st";
+      break;
+    case 2:
+      res << "nd";
+      break;
+    case 3:
+      res << "rd";
+      break;
+    default:
+      res << "th";
+  }
+  return res.str();
 }
