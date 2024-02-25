@@ -104,10 +104,8 @@ class Workspace {
   uint m_windows;
   bool m_isActive = false;
   bool m_isSpecial = false;
-  // m_isPersistentRule represents the persistent state in hyprland
-  bool m_isPersistentRule = false;
-  // m_isPersistentConfig represents the persistent state in the Waybar config
-  bool m_isPersistentConfig = false;
+  bool m_isPersistentRule = false;    // represents the persistent state in hyprland
+  bool m_isPersistentConfig = false;  // represents the persistent state in the Waybar config
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
