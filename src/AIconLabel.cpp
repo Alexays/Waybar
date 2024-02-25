@@ -10,7 +10,14 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
     : ALabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
   event_box_.remove();
   box_.set_orientation(Gtk::Orientation::ORIENTATION_HORIZONTAL);
-  box_.set_spacing(8);
+
+  // set aesthetic default spacing
+  int spacing = config_["icon-spacing"].isInt() ? config_["icon-spacing"].asInt() : -5;
+  box_.set_spacing(spacing);
+
+  int margin_top = config_["margin-top"].isInt() ? config_["margin-top"].asInt() : 6;
+  box_.set_margin_top(margin_top);
+
   box_.add(image_);
   box_.add(label_);
   event_box_.add(box_);
