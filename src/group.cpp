@@ -67,7 +67,10 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     revealer.get_style_context()->add_class("drawer");
 
     revealer.set_child(revealer_box);
-    box.prepend(revealer);
+    if (left_to_right)
+      box.append(revealer);
+    else
+      box.prepend(revealer);
 
     addHoverHandlerTo(revealer);
   }

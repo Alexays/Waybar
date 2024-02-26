@@ -162,6 +162,22 @@ else
     man_files += files('man/waybar-clock.5.scd')
 endif
 
+if get_option('experimental')
+    add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
+endif
+
+cava = dependency('cava',
+                  version : '>=0.10.1',
+                  required: get_option('cava'),
+                  fallback : ['cava', 'cava_dep'],
+                  not_found_message: 'cava is not found. Building waybar without cava')
+
+if cava.found()
+   add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
+   src_files += files('src/modules/cava.cpp')
+   man_files += files('man/waybar-cava.5.scd')
+endif
+
 inc_dirs = ['include']
 subdir('protocol')
 
@@ -177,7 +193,8 @@ executable(
         wayland_client,
         wayland_cursor,
         client_protos,
-        spdlog
+        spdlog,
+        cava
     ],
     include_directories: inc_dirs,
     install: true,

@@ -53,8 +53,8 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
   if (config_["method"].isString())
     prm_.input = cava::input_method_by_name(config_["method"].asString().c_str());
   if (config_["source"].isString()) prm_.audio_source = config_["source"].asString().data();
-  if (config_["sample_rate"].isNumeric()) prm_.fifoSample = config_["sample_rate"].asLargestInt();
-  if (config_["sample_bits"].isInt()) prm_.fifoSampleBits = config_["sample_bits"].asInt();
+  if (config_["sample_rate"].isNumeric()) prm_.samplerate = config_["sample_rate"].asLargestInt();
+  if (config_["sample_bits"].isInt()) prm_.samplebits = config_["sample_bits"].asInt();
   if (config_["stereo"].isBool()) prm_.stereo = config_["stereo"].asBool();
   if (config_["reverse"].isBool()) prm_.reverse = config_["reverse"].asBool();
   if (config_["bar_delimiter"].isInt()) prm_.bar_delim = config_["bar_delimiter"].asInt();
@@ -175,13 +175,13 @@ auto waybar::modules::Cava::update() -> void {
         if (prm_.bar_delim != 0) text_.push_back(prm_.bar_delim);
       }
 
-      label_.set_markup(text_);
-      label_.show();
+      Gtk::Label::set_markup(text_);
+      Gtk::Label::show();
       ALabel::update();
     }
   } else {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
-    if (hide_on_silence_) label_.hide();
+    if (hide_on_silence_) Gtk::Label::hide();
   }
 }
 

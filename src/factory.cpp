@@ -299,12 +299,12 @@ gtk4 todo
     if (ref == "wireplumber") {
       return new waybar::modules::Wireplumber(id, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_LIBCAVA
     if (ref == "cava") {
       return new waybar::modules::Cava(id, config_[name]);
     }
-#endif
+#endif/*
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
