@@ -1,4 +1,4 @@
-# pragma once
+#pragma once
 
 #include <fmt/format.h>
 
@@ -12,14 +12,16 @@ typedef struct {
   std::string driver;
 } Profile;
 
-class PowerProfilesDaemon : public ALabel  {
+class PowerProfilesDaemon : public ALabel {
  public:
   PowerProfilesDaemon(const std::string&, const Json::Value&);
   ~PowerProfilesDaemon();
   auto update() -> void override;
-  void profileChanged_cb( const Gio::DBus::Proxy::MapChangedProperties&, const std::vector<Glib::ustring>&);
+  void profileChanged_cb(const Gio::DBus::Proxy::MapChangedProperties&,
+                         const std::vector<Glib::ustring>&);
   void populateInitState();
   virtual bool handleToggle(GdkEventButton* const& e);
+
  private:
   // Look for a profile name in the list of available profiles and
   // switch activeProfile_ to it.
@@ -35,4 +37,4 @@ class PowerProfilesDaemon : public ALabel  {
   sigc::connection powerProfileChangeSignal_;
 };
 
-}
+}  // namespace waybar::modules

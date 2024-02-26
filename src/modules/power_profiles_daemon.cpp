@@ -9,17 +9,14 @@
 #include <fmt/core.h>
 #endif
 
-#include <spdlog/spdlog.h>
 #include <glibmm.h>
 #include <glibmm/variant.h>
-
-
+#include <spdlog/spdlog.h>
 
 namespace waybar::modules {
 
 PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Value& config)
-  : ALabel(config, "power-profiles-daemon", id, "{profile}", 0, false, true)
-{
+    : ALabel(config, "power-profiles-daemon", id, "{profile}", 0, false, true) {
   // NOTE: the DBus adresses are under migration. They should be
   // changed to org.freedesktop.UPower.PowerProfiles at some point.
   //
@@ -30,15 +27,15 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   // adresses for compatibility sake.
   //
   // Revisit this in 2026, systems should be updated by then.
-  power_profiles_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(Gio::DBus::BusType::BUS_TYPE_SYSTEM,
-                                                        "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles",
-                                                        "net.hadess.PowerProfiles");
+  power_profiles_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
+      Gio::DBus::BusType::BUS_TYPE_SYSTEM, "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles",
+      "net.hadess.PowerProfiles");
   if (!power_profiles_proxy_) {
     spdlog::error("PowerProfilesDaemon: DBus error, cannot connect to net.hasdess.PowerProfile");
   } else {
     // Connect active profile callback
-    powerProfileChangeSignal_ = power_profiles_proxy_->signal_properties_changed()
-      .connect(sigc::mem_fun(*this, &PowerProfilesDaemon::profileChanged_cb));
+    powerProfileChangeSignal_ = power_profiles_proxy_->signal_properties_changed().connect(
+        sigc::mem_fun(*this, &PowerProfilesDaemon::profileChanged_cb));
     populateInitState();
     dp.emit();
   }
@@ -67,14 +64,14 @@ void PowerProfilesDaemon::populateInitState() {
   power_profiles_proxy_->get_cached_property(profilesVariant, "Profiles");
   Glib::ustring name, driver;
   Profile profile;
-  for (auto & variantDict: profilesVariant.get()) {
+  for (auto& variantDict : profilesVariant.get()) {
     if (auto p = variantDict.find("Profile"); p != variantDict.end()) {
       name = p->second.get();
     }
     if (auto d = variantDict.find("Driver"); d != variantDict.end()) {
       driver = d->second.get();
     }
-    profile = { name, driver };
+    profile = {name, driver};
     availableProfiles_.push_back(profile);
   }
 
@@ -94,16 +91,20 @@ PowerProfilesDaemon::~PowerProfilesDaemon() {
   }
 }
 
-void PowerProfilesDaemon::profileChanged_cb(const Gio::DBus::Proxy::MapChangedProperties& changedProperties,
-                                            const std::vector<Glib::ustring>& invalidatedProperties) {
-  if (auto activeProfileVariant = changedProperties.find("ActiveProfile"); activeProfileVariant != changedProperties.end()) {
-    std::string activeProfile = Glib::VariantBase::cast_dynamic<Glib::Variant<std::string>>(activeProfileVariant->second).get();
+void PowerProfilesDaemon::profileChanged_cb(
+    const Gio::DBus::Proxy::MapChangedProperties& changedProperties,
+    const std::vector<Glib::ustring>& invalidatedProperties) {
+  if (auto activeProfileVariant = changedProperties.find("ActiveProfile");
+      activeProfileVariant != changedProperties.end()) {
+    std::string activeProfile =
+        Glib::VariantBase::cast_dynamic<Glib::Variant<std::string>>(activeProfileVariant->second)
+            .get();
     switchToProfile_(activeProfile);
     update();
   }
 }
 
-auto PowerProfilesDaemon::update () -> void {
+auto PowerProfilesDaemon::update() -> void {
   auto profile = (*activeProfile_);
   // Set label
   fmt::dynamic_format_arg_store<fmt::format_context> store;
@@ -123,7 +124,6 @@ auto PowerProfilesDaemon::update () -> void {
   ALabel::update();
 }
 
-
 bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
   if (e->type == GdkEventType::GDK_BUTTON_PRESS && power_profiles_proxy_) {
     activeProfile_++;
@@ -132,9 +132,10 @@ bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
     }
 
     using VarStr = Glib::Variant<Glib::ustring>;
-    using SetPowerProfileVar = Glib::Variant<std::tuple<Glib::ustring,Glib::ustring,VarStr>>;
+    using SetPowerProfileVar = Glib::Variant<std::tuple<Glib::ustring, Glib::ustring, VarStr>>;
     VarStr activeProfileVariant = VarStr::create(activeProfile_->name);
-    auto call_args = SetPowerProfileVar::create(std::make_tuple("net.hadess.PowerProfiles", "ActiveProfile", activeProfileVariant));
+    auto call_args = SetPowerProfileVar::create(
+        std::make_tuple("net.hadess.PowerProfiles", "ActiveProfile", activeProfileVariant));
     auto container = Glib::VariantBase::cast_dynamic<Glib::VariantContainerBase>(call_args);
     power_profiles_proxy_->call_sync("org.freedesktop.DBus.Properties.Set", container);
 
@@ -143,4 +144,4 @@ bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
   return true;
 }
 
-}
+}  // namespace waybar::modules
