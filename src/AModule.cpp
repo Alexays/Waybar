@@ -176,7 +176,6 @@ const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e
 }
 
 bool AModule::handleScroll(double dx, double dy) {
-  spdlog::info("handleScroll");
   currEvent_ = controllScroll_->get_current_event();
 
   if (currEvent_) {
