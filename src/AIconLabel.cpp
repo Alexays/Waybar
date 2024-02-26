@@ -20,6 +20,9 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
   box_.set_orientation(Gtk::Orientation::ORIENTATION_HORIZONTAL);
   box_.set_name(name);
 
+  int spacing = config_["icon-spacing"].isInt() ? config_["icon-spacing"].asInt() : 6;
+  box_.set_spacing(spacing);
+
   box_.add(image_);
   box_.add(label_);
 
