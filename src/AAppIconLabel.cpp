@@ -59,6 +59,10 @@ std::optional<std::string> getFileBySuffix(const std::string& dir, const std::st
 
 std::optional<std::string> getDesktopFilePath(const std::string& app_identifier,
                                               const std::string& alternative_app_identifier) {
+  if (app_identifier.empty()) {
+    return {};
+  }
+
   const auto data_dirs = Glib::get_system_data_dirs();
   for (const auto& data_dir : data_dirs) {
     const auto data_app_dir = data_dir + "/applications/";
