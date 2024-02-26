@@ -24,7 +24,7 @@ AAppIconLabel::AAppIconLabel(const Json::Value& config, const std::string& name,
   image_.set_pixel_size(app_icon_size_);
 }
 
-std::string to_lowercase(const std::string& input) {
+std::string toLowerCase(const std::string& input) {
   std::string result = input;
   std::transform(result.begin(), result.end(), result.begin(),
                  [](unsigned char c) { return std::tolower(c); });
@@ -44,7 +44,7 @@ std::optional<std::string> getFileBySuffix(const std::string& dir, const std::st
       }
       if ((filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0) ||
           (check_lower_case && filename.compare(filename.size() - suffix.size(), suffix.size(),
-                                                to_lowercase(suffix)) == 0)) {
+                                                toLowerCase(suffix)) == 0)) {
         return entry.path().string();
       }
     }
@@ -97,16 +97,9 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
       return app_identifier_desktop;
     }
 
-    const auto to_lower = [](const std::string& str) {
-      auto str_cpy = str;
-      std::transform(str_cpy.begin(), str_cpy.end(), str_cpy.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      return str;
-    };
-
     const auto first_space = app_identifier.find_first_of(' ');
     if (first_space != std::string::npos) {
-      const auto first_word = to_lower(app_identifier.substr(0, first_space));
+      const auto first_word = toLowerCase(app_identifier.substr(0, first_space));
       if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }
@@ -114,7 +107,7 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
 
     const auto first_dash = app_identifier.find_first_of('-');
     if (first_dash != std::string::npos) {
-      const auto first_word = to_lower(app_identifier.substr(0, first_dash));
+      const auto first_word = toLowerCase(app_identifier.substr(0, first_dash));
       if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }
