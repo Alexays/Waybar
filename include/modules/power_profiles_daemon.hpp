@@ -7,25 +7,25 @@
 
 namespace waybar::modules {
 
-typedef struct {
+struct Profile {
   std::string name;
   std::string driver;
-} Profile;
+};
 
 class PowerProfilesDaemon : public ALabel {
  public:
   PowerProfilesDaemon(const std::string&, const Json::Value&);
-  ~PowerProfilesDaemon();
+  ~PowerProfilesDaemon() override;
   auto update() -> void override;
-  void profileChanged_cb(const Gio::DBus::Proxy::MapChangedProperties&,
-                         const std::vector<Glib::ustring>&);
+  void profileChangedCb(const Gio::DBus::Proxy::MapChangedProperties&,
+                        const std::vector<Glib::ustring>&);
   void populateInitState();
-  virtual bool handleToggle(GdkEventButton* const& e);
+  bool handleToggle(GdkEventButton* const& e) override;
 
  private:
   // Look for a profile name in the list of available profiles and
   // switch activeProfile_ to it.
-  void switchToProfile_(std::string);
+  void switchToProfile(std::string const&);
   // Used to toggle/display the profiles
   std::vector<Profile> availableProfiles_;
   // Points to the active profile in the profiles list
@@ -33,7 +33,7 @@ class PowerProfilesDaemon : public ALabel {
   // Current CSS class applied to the label
   std::string currentStyle_;
   // DBus Proxy used to track the current active profile
-  Glib::RefPtr<Gio::DBus::Proxy> power_profiles_proxy_;
+  Glib::RefPtr<Gio::DBus::Proxy> powerProfilesProxy_;
   sigc::connection powerProfileChangeSignal_;
 };
 
