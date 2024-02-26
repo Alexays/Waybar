@@ -27,6 +27,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // configure events' user commands
   // hasUserEvent is true if any element from eventMap_ is satisfying the condition in the lambda
+
   const bool after{true};
   const bool hasUserPressEvent{std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
     // True if there is any non-release type event
@@ -41,7 +42,8 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   if (enable_click || hasUserPressEvent || hasUserReleaseEvent) {
     controllClick_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
-//    (this->operator Gtk::Widget&()).add_controller(controllClick_);
+    controllClick_->set_button(0);
+
 
     if (enable_click || hasUserPressEvent)
       controllClick_->signal_pressed().connect(sigc::mem_fun(*this, &AModule::handleToggle), after);
@@ -51,7 +53,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   if (enable_scroll || config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     controllScroll_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
-//    ((Gtk::Widget&)*this).add_controller(controllScroll_);
+    controllScroll_->set_flags(Gtk::EventControllerScroll::Flags::BOTH_AXES);
     controllScroll_->signal_scroll().connect(sigc::mem_fun(*this, &AModule::handleScroll), after);
   }
 }
@@ -174,6 +176,7 @@ const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e
 }
 
 bool AModule::handleScroll(double dx, double dy) {
+  spdlog::info("handleScroll");
   currEvent_ = controllScroll_->get_current_event();
 
   if (currEvent_) {
@@ -200,5 +203,10 @@ bool AModule::handleScroll(double dx, double dy) {
 bool AModule::tooltipEnabled() { return isTooltip; }
 
 AModule::operator Gtk::Widget&() { return dynamic_cast<Gtk::Widget&>(*this); }
+
+void AModule::bindEvents(Gtk::Widget& wg) {
+  wg.add_controller(controllClick_);
+  wg.add_controller(controllScroll_);
+}
 
 }  // namespace waybar

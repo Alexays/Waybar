@@ -27,21 +27,20 @@ class AModule : public IModule {
   // Derived classes are able to use it
   AModule(const Json::Value &, const std::string &, const std::string &, bool enable_click = false,
           bool enable_scroll = false);
-
-  enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
-
-  bool tooltipEnabled();
-
   const std::string name_;
   const Json::Value &config_;
-
   Glib::RefPtr<Gtk::GestureClick> controllClick_;
   Glib::RefPtr<Gtk::EventControllerScroll> controllScroll_;
+
+  void bindEvents(Gtk::Widget& wg);
+  bool tooltipEnabled();
+
   virtual void handleToggle(int n_press, double dx, double dy);
   virtual void handleRelease(int n_press, double dx, double dy);
   virtual bool handleScroll(double dx, double dy);
 
  private:
+  enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
   const bool isTooltip;
   std::vector<int> pid_;
   double distance_scrolled_x_{0.0};

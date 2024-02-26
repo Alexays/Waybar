@@ -46,6 +46,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       Gtk::Label::set_xalign(align);
     }
   }
+
+  AModule::bindEvents(*this);
 }
 
 auto ALabel::update() -> void { AModule::update(); }
@@ -99,7 +101,7 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
 }
 
 void waybar::ALabel::handleToggle(int n_press, double dx, double dy) {
-  if (config_["format-alt-click"].isUInt() && controllClick_->get_button() == config_["format-alt-click"].asUInt()) {
+  if (config_["format-alt-click"].isUInt() && controllClick_->get_current_button() == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
       format_ = config_["format-alt"].asString();
