@@ -62,6 +62,12 @@ auto Window::update() -> void {
     label_.hide();
   }
 
+  if (focused_) {
+    image_.show();
+  } else {
+    image_.hide();
+  }
+
   setClass("empty", workspace_.windows == 0);
   setClass("solo", solo_);
   setClass("floating", allFloating_);
@@ -137,13 +143,16 @@ void Window::queryActiveWorkspace() {
     workspace_ = getActiveWorkspace();
   }
 
+  focused_ = true;
   if (workspace_.windows > 0) {
     const auto clients = gIPC->getSocket1JsonReply("clients");
     assert(clients.isArray());
     auto activeWindow = std::find_if(clients.begin(), clients.end(), [&](Json::Value window) {
       return window["address"] == workspace_.last_window;
     });
+
     if (activeWindow == std::end(clients)) {
+      focused_ = false;
       return;
     }
 
@@ -185,6 +194,7 @@ void Window::queryActiveWorkspace() {
       soloClass_ = "";
     }
   } else {
+    focused_ = false;
     windowData_ = WindowData{};
     allFloating_ = false;
     swallowing_ = false;
