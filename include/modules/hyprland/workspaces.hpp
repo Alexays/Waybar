@@ -70,14 +70,17 @@ class Workspace {
   std::string output() const { return m_output; };
   bool isActive() const { return m_isActive; };
   bool isSpecial() const { return m_isSpecial; };
-  bool isPersistent() const { return m_isPersistent; };
+  bool isPersistent() const { return m_isPersistentRule || m_isPersistentConfig; };
+  bool isPersistentConfig() const { return m_isPersistentConfig; };
+  bool isPersistentRule() const { return m_isPersistentRule; };
   bool isVisible() const { return m_isVisible; };
   bool isEmpty() const { return m_windows == 0; };
   bool isUrgent() const { return m_isUrgent; };
 
   bool handleClicked(GdkEventButton* bt) const;
   void setActive(bool value = true) { m_isActive = value; };
-  void setPersistent(bool value = true) { m_isPersistent = value; };
+  void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
+  void setPersistentConfig(bool value = true) { m_isPersistentConfig = value; };
   void setUrgent(bool value = true) { m_isUrgent = value; };
   void setVisible(bool value = true) { m_isVisible = value; };
   void setWindows(uint value) { m_windows = value; };
@@ -101,7 +104,8 @@ class Workspace {
   uint m_windows;
   bool m_isActive = false;
   bool m_isSpecial = false;
-  bool m_isPersistent = false;
+  bool m_isPersistentRule = false;    // represents the persistent state in hyprland
+  bool m_isPersistentConfig = false;  // represents the persistent state in the Waybar config
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
