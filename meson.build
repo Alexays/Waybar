@@ -86,6 +86,7 @@ sigcpp = dependency('sigc++-3.0', version: ['>=3.4.0'])
 gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
 giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
+libudev = dependency('libudev', required: get_option('libudev'))
 
 gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              version : ['>=1.0.2'],
@@ -137,7 +138,8 @@ src_files = files(
      'src/ALabel.cpp',
      'src/factory.cpp',
      'src/util/ustring_clen.cpp',
-     'src/group.cpp'
+     'src/group.cpp',
+     'src/ASlider.cpp'
 )
 
 man_files = files(
@@ -166,6 +168,19 @@ if get_option('experimental')
     add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
 endif
 
+if libudev.found() and (is_linux or libepoll.found())
+    add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
+    src_files += files(
+        'src/modules/backlight.cpp',
+        'src/modules/backlight_slider.cpp',
+        'src/util/backlight_backend.cpp',
+    )
+    man_files += files(
+        'man/waybar-backlight.5.scd',
+        'man/waybar-backlight-slider.5.scd',
+    )
+endif
+
 cava = dependency('cava',
                   version : '>=0.10.1',
                   required: get_option('cava'),
@@ -189,6 +204,7 @@ executable(
         gtkmm,
         giounix,
         sigcpp,
+        libudev,
         jsoncpp,
         wayland_client,
         wayland_cursor,

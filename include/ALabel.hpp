@@ -24,7 +24,7 @@ class ALabel : public AModule, public Gtk::Label {
   bool alt_ = false;
   std::string default_format_;
 
-  void handleToggle(int n_press, double dx, double dy);
+  void handleToggle(int n_press, double dx, double dy) override;
   virtual std::string getState(uint8_t value, bool lesser = false);
 };
 

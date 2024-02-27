@@ -11,8 +11,8 @@ class ASlider : public AModule {
   virtual void onValueChanged();
 
  protected:
-  bool vertical_ = false;
-  int min_ = 0, max_ = 100, curr_ = 50;
+  bool vertical_{false};
+  int min_{0}, max_{100}, curr_{50};
   Gtk::Scale scale_;
 };
 

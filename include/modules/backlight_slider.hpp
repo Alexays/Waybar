@@ -1,13 +1,11 @@
 #pragma once
 
-#include <chrono>
-
 #include "ASlider.hpp"
 #include "util/backlight_backend.hpp"
 
 namespace waybar::modules {
 
-class BacklightSlider : public ASlider {
+class BacklightSlider final : public ASlider {
  public:
   BacklightSlider(const std::string&, const Json::Value&);
   virtual ~BacklightSlider() = default;

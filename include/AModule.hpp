@@ -31,6 +31,7 @@ class AModule : public IModule {
   const Json::Value &config_;
   Glib::RefPtr<Gtk::GestureClick> controllClick_;
   Glib::RefPtr<Gtk::EventControllerScroll> controllScroll_;
+  enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
   void bindEvents(Gtk::Widget& wg);
   bool tooltipEnabled();
@@ -38,9 +39,9 @@ class AModule : public IModule {
   virtual void handleToggle(int n_press, double dx, double dy);
   virtual void handleRelease(int n_press, double dx, double dy);
   virtual bool handleScroll(double dx, double dy);
+  const SCROLL_DIR getScrollDir(Glib::RefPtr<const Gdk::Event> e);
 
  private:
-  enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
   const bool isTooltip;
   std::vector<int> pid_;
   double distance_scrolled_x_{0.0};
@@ -70,7 +71,6 @@ class AModule : public IModule {
     {std::make_pair(std::make_pair(9u, 3), Gdk::Event::Type::BUTTON_PRESS), "on-triple-click-forward"}
   };
   void handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype);
-  const SCROLL_DIR getScrollDir(Glib::RefPtr<const Gdk::Event> e);
 };
 
 }  // namespace waybar

@@ -250,7 +250,7 @@ gtk4 todo
     if (ref == "network") {
       return new waybar::modules::Network(id, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_LIBUDEV
     if (ref == "backlight") {
       return new waybar::modules::Backlight(id, config_[name]);
@@ -258,7 +258,7 @@ gtk4 todo
     if (ref == "backlight/slider") {
       return new waybar::modules::BacklightSlider(id, config_[name]);
     }
-#endif
+#endif/*
 #ifdef HAVE_LIBEVDEV
     if (ref == "keyboard-state") {
       return new waybar::modules::KeyboardState(id, bar_, config_[name]);

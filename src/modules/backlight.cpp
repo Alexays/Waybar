@@ -1,27 +1,12 @@
 #include "modules/backlight.hpp"
 
 #include <fmt/format.h>
-#include <libudev.h>
-#include <spdlog/spdlog.h>
-#include <sys/epoll.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <chrono>
-#include <memory>
-
-#include "util/backend_common.hpp"
-#include "util/backlight_backend.hpp"
 
 waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
-    : ALabel(config, "backlight", id, "{percent}%", 2),
+    : ALabel(config, "backlight", id, "{percent}%", 2, false, false, true),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
   dp.emit();
-
-  // Set up scroll handler
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
 }
 
 auto waybar::modules::Backlight::update() -> void {
@@ -35,12 +20,12 @@ auto waybar::modules::Backlight::update() -> void {
     }
 
     if (best->get_powered()) {
-      event_box_.show();
+      Gtk::Label::show();
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
       std::string desc = fmt::format(fmt::runtime(format_), fmt::arg("percent", percent),
                                      fmt::arg("icon", getIcon(percent)));
-      label_.set_markup(desc);
+      Gtk::Label::set_markup(desc);
       getState(percent);
       if (tooltipEnabled()) {
         std::string tooltip_format;
@@ -48,31 +33,31 @@ auto waybar::modules::Backlight::update() -> void {
           tooltip_format = config_["tooltip-format"].asString();
         }
         if (!tooltip_format.empty()) {
-          label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
+          Gtk::Label::set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
                                               fmt::arg("percent", percent),
                                               fmt::arg("icon", getIcon(percent))));
         } else {
-          label_.set_tooltip_text(desc);
+          Gtk::Label::set_tooltip_text(desc);
         }
       }
     } else {
-      event_box_.hide();
+      Gtk::Label::hide();
     }
   } else {
     if (previous_best_device == nullptr) {
       return;
     }
-    label_.set_markup("");
+    Gtk::Label::set_markup("");
   }
   backend.set_previous_best_device(best);
   previous_format_ = format_;
   ALabel::update();
 }
 
-bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Backlight::handleScroll(double dx, double dy) {
   // Check if the user has set a custom command for scrolling
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
+    return AModule::handleScroll(dx, dy);
   }
 
   // Fail fast if the proxy could not be initialized
@@ -81,7 +66,7 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
   }
 
   // Check scroll direction
-  auto dir = AModule::getScrollDir(e);
+  auto dir = AModule::getScrollDir(controllScroll_->get_current_event());
 
   // No worries, it will always be set because of the switch below. This is purely to suppress a
   // warning

@@ -182,9 +182,9 @@ bool AModule::handleScroll(double dx, double dy) {
     std::string format{};
     const auto dir{getScrollDir(currEvent_)};
 
-    if (dir == SCROLL_DIR::UP)
+    if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::RIGHT)
       format = "on-scroll-up";
-    else if (dir == SCROLL_DIR::DOWN)
+    else if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::LEFT)
       format = "on-scroll-down";
 
     // First call module action

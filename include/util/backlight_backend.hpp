@@ -1,14 +1,6 @@
 #pragma once
 
 #include <libudev.h>
-#include <spdlog/spdlog.h>
-
-#include <chrono>
-#include <mutex>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <vector>
 
 #include "giomm/dbusproxy.h"
 #include "util/backend_common.hpp"
@@ -42,9 +34,9 @@ class BacklightDevice {
 
  private:
   std::string name_;
-  int actual_ = 1;
-  int max_ = 1;
-  bool powered_ = true;
+  int actual_{1};
+  int max_{1};
+  bool powered_{true};
 };
 
 class BacklightBackend {
@@ -87,7 +79,7 @@ class BacklightBackend {
 
   Glib::RefPtr<Gio::DBus::Proxy> login_proxy_;
 
-  static constexpr int EPOLL_MAX_EVENTS = 16;
+  static constexpr int EPOLL_MAX_EVENTS{16};
 };
 
 }  // namespace waybar::util

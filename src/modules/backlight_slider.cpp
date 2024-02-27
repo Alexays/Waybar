@@ -1,6 +1,5 @@
-#include "modules/backlight_slider.hpp"
-
 #include "ASlider.hpp"
+#include "modules/backlight_slider.hpp"
 
 namespace waybar::modules {
 
