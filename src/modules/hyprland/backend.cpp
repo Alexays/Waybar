@@ -188,7 +188,20 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
 }
 
 Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
-  return parser_.parse(getSocket1Reply("j/" + rq));
+  std::string response;
+  try {
+    response = getSocket1Reply("j/" + rq);
+  } catch (std::exception& e) {
+    spdlog::error("Hyprland IPC: Couldn't get JSON reply: {}", e.what());
+    return {Json::nullValue};
+  }
+  spdlog::info("Hyprland IPC: Got JSON reply: {}", response);
+  try {
+    return parser_.parse(response);
+  } catch (std::exception& e) {
+    spdlog::error("Hyprland IPC: Couldn't parse JSON: {}", e.what());
+    return {Json::nullValue};
+  }
 }
 
 }  // namespace waybar::modules::hyprland
