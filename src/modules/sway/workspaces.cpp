@@ -107,11 +107,16 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         auto payload = parser_.parse(res.payload);
         workspaces_.clear();
         std::vector<Json::Value> outputs;
+        bool alloutputs = config_["all-outputs"].asBool();
         std::copy_if(payload["nodes"].begin(), payload["nodes"].end(), std::back_inserter(outputs),
-                     [&](const auto &workspace) {
-                       return !config_["all-outputs"].asBool()
-                                  ? workspace["name"].asString() == bar_.output->name
-                                  : true;
+                     [&](const auto &output) {
+                       if (alloutputs && output["name"].asString() != "__i3") {
+                         return true;
+                       }
+                       if (output["name"].asString() == bar_.output->name) {
+                         return true;
+                       }
+                       return false;
                      });
 
         for (auto &output : outputs) {
