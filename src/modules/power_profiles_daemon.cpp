@@ -17,6 +17,18 @@ namespace waybar::modules {
 
 PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Value& config)
     : ALabel(config, "power-profiles-daemon", id, "{profile}", 0, false, true) {
+  if (config_["format"].isString()) {
+    format_ = config_["format"].asString();
+  } else {
+    format_ = "{icon}";
+  }
+
+  if (config_["tooltip-format"].isString()) {
+    tooltipFormat_ = config_["tooltip-format"].asString();
+  } else {
+    tooltipFormat_ = "Power profile: {profile}\nDriver: {driver}";
+  }
+
   // NOTE: the DBus adresses are under migration. They should be
   // changed to org.freedesktop.UPower.PowerProfiles at some point.
   //
@@ -110,9 +122,11 @@ auto PowerProfilesDaemon::update() -> void {
   // Set label
   fmt::dynamic_format_arg_store<fmt::format_context> store;
   store.push_back(fmt::arg("profile", profile.name));
-  label_.set_markup(fmt::vformat("⚡ {profile}", store));
+  store.push_back(fmt::arg("driver", profile.driver));
+  store.push_back(fmt::arg("icon", getIcon(0, profile.name)));
+  label_.set_markup(fmt::vformat(format_, store));
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(fmt::format("Driver: {}", profile.driver));
+    label_.set_tooltip_text(fmt::vformat(tooltipFormat_, store));
   }
 
   // Set CSS class

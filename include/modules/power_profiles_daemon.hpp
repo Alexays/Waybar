@@ -32,6 +32,9 @@ class PowerProfilesDaemon : public ALabel {
   std::vector<Profile>::iterator activeProfile_;
   // Current CSS class applied to the label
   std::string currentStyle_;
+  // Format strings
+  std::string labelFormat_;
+  std::string tooltipFormat_;
   // DBus Proxy used to track the current active profile
   Glib::RefPtr<Gio::DBus::Proxy> powerProfilesProxy_;
   sigc::connection powerProfileChangeSignal_;
