@@ -222,6 +222,7 @@ if is_linux
         'man/waybar-cpu.5.scd',
         'man/waybar-memory.5.scd',
         'man/waybar-systemd-failed-units.5.scd',
+        'man/waybar-power-profiles-daemon.5.scd',
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
@@ -578,4 +579,3 @@ if clangtidy.found()
             '-p', meson.project_build_root()
         ] + src_files)
 endif
-
