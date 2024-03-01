@@ -15,7 +15,6 @@ struct Profile {
 class PowerProfilesDaemon : public ALabel {
  public:
   PowerProfilesDaemon(const std::string &, const Json::Value &);
-  ~PowerProfilesDaemon() override;
   auto update() -> void override;
   void profileChangedCb(const Gio::DBus::Proxy::MapChangedProperties &,
                         const std::vector<Glib::ustring> &);
@@ -38,12 +37,10 @@ class PowerProfilesDaemon : public ALabel {
   std::vector<Profile>::iterator activeProfile_;
   // Current CSS class applied to the label
   std::string currentStyle_;
-  // Format strings
-  std::string labelFormat_;
+  // Format string
   std::string tooltipFormat_;
   // DBus Proxy used to track the current active profile
   Glib::RefPtr<Gio::DBus::Proxy> powerProfilesProxy_;
-  sigc::connection powerProfileChangeSignal_;
 };
 
 }  // namespace waybar::modules
