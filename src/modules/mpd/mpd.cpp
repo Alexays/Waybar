@@ -53,10 +53,10 @@ auto waybar::modules::MPD::update() -> void {
 
 void waybar::modules::MPD::queryMPD() {
   if (connection_ != nullptr) {
-    spdlog::debug("{}: fetching state information", module_name_);
+    spdlog::trace("{}: fetching state information", module_name_);
     try {
       fetchState();
-      spdlog::debug("{}: fetch complete", module_name_);
+      spdlog::trace("{}: fetch complete", module_name_);
     } catch (std::exception const& e) {
       spdlog::error("{}: {}", module_name_, e.what());
       state_ = MPD_STATE_UNKNOWN;
