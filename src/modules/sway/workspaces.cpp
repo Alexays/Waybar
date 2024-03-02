@@ -427,7 +427,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                           [](const auto &workspace) { return workspace["focused"].asBool(); });
+                           [](const auto &workspace) { return hasFlag(workspace, "focused"); });
     if (it == workspaces_.end()) {
       return true;
     }
