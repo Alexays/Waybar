@@ -20,7 +20,7 @@
         "idle_inhibitor",
         "pulseaudio",
         "network",
-        "power_profiles_daemon",
+        "power-profiles-daemon",
         "cpu",
         "memory",
         "temperature",
@@ -148,7 +148,7 @@
     "battery#bat2": {
         "bat": "BAT2"
     },
-    "power_profiles_daemon": {
+    "power-profiles-daemon": {
       "format": "{icon}",
       "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
       "tooltip": true,

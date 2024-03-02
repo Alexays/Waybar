@@ -42,7 +42,7 @@ $XDG_CONFIG_HOME/waybar/config
 Compact display (default config):
 
 ```
-"power_profiles_daemon": {
+"power-profiles-daemon": {
   "format": "{icon}",
   "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
   "tooltip": true,
@@ -58,7 +58,7 @@ Compact display (default config):
 Display the full profile name:
 
 ```
-"power_profiles_daemon": {
+"power-profiles-daemon": {
   "format": "{icon}   {profile}",
   "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
   "tooltip": true,

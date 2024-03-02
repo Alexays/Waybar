@@ -283,7 +283,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
     }
-    if (ref == "power_profiles_daemon") {
+    if (ref == "power-profiles-daemon") {
       return new waybar::modules::PowerProfilesDaemon(id, config_[name]);
     }
 #endif
