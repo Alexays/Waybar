@@ -140,6 +140,10 @@ button:hover {
     animation-direction: alternate;
 }
 
+#power-profiles-daemon {
+    padding-right: 15px;
+}
+
 #power-profiles-daemon.performance {
     background-color: #f53c3c;
     color: #ffffff;
