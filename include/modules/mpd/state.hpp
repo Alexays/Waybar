@@ -148,6 +148,7 @@ class Stopped : public State {
 class Disconnected : public State {
   Context* const ctx_;
   sigc::connection timer_connection_;
+  int last_interval_;
 
  public:
   Disconnected(Context* const ctx) : ctx_{ctx} {}
@@ -162,7 +163,7 @@ class Disconnected : public State {
   Disconnected(Disconnected const&) = delete;
   Disconnected& operator=(Disconnected const&) = delete;
 
-  void arm_timer(int interval) noexcept;
+  bool arm_timer(int interval) noexcept;
   void disarm_timer() noexcept;
 
   bool on_timer();
