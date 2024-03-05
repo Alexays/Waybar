@@ -50,6 +50,17 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       label_.set_xalign(align);
     }
   }
+
+  if (config_["justify"].isString()) {
+    auto justify_str = config_["justify"].asString();
+    if (justify_str == "left") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_LEFT);
+    } else if (justify_str == "right") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_RIGHT);
+    } else if (justify_str == "center") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_CENTER);
+    }
+  }
 }
 
 auto ALabel::update() -> void { AModule::update(); }
