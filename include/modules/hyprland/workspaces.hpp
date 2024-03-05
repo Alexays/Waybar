@@ -127,7 +127,6 @@ class Workspaces : public AModule, public EventHandler {
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
-  auto activePerMonitor() const -> bool { return m_activePerMonitor; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
 
@@ -185,7 +184,6 @@ class Workspaces : public AModule, public EventHandler {
   bool m_showSpecial = false;
   bool m_activeOnly = false;
   bool m_moveToMonitor = false;
-  bool m_activePerMonitor = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.

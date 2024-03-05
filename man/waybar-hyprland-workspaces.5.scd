@@ -59,14 +59,6 @@ Addressed by *hyprland/workspaces*
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
 	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
 
-*active-per-monitor*: ++
-	typeof: bool ++
-	default: false ++
-	If set to true, each bar on each monitor will show its separate active
-	workspace being the currently focused workspace on this monitor.
-	Otherwise, all bars on all monitors will show the same active workspace
-	being the currently focused workspace on the currently focused monitor.
-
 *ignore-workspaces*: ++
 	typeof: array ++
 	default: [] ++

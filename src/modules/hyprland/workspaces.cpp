@@ -88,11 +88,6 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
     m_moveToMonitor = configMoveToMonitor.asBool();
   }
 
-  auto configActivePerMonitor = config_["active-per-monitor"];
-  if (configActivePerMonitor.isBool()) {
-    m_activePerMonitor = configActivePerMonitor.asBool();
-  }
-
   auto configSortBy = config_["sort-by"];
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
@@ -331,14 +326,7 @@ void Workspaces::onEvent(const std::string &ev) {
 }
 
 void Workspaces::onWorkspaceActivated(std::string const &payload) {
-  if (!m_activePerMonitor) {
-    m_activeWorkspaceName = payload;
-    return;
-  }
-  auto activeWorkspace = gIPC->getSocket1JsonReply("activeworkspace");
-  if (m_bar.output->name == activeWorkspace["monitor"].asString()) {
-    m_activeWorkspaceName = payload;
-  }
+  m_activeWorkspaceName = payload;
 }
 
 void Workspaces::onSpecialWorkspaceActivated(std::string const &payload) {
@@ -391,16 +379,6 @@ void Workspaces::onWorkspaceMoved(std::string const &payload) {
   if (m_bar.output->name == monitorName) {
     Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
     onWorkspaceCreated(workspaceName, clientsData);
-    if (m_activePerMonitor) {
-      for (Json::Value &monitor : gIPC->getSocket1JsonReply("monitors")) {
-        if (m_bar.output->name == monitor["name"].asString()) {
-          auto ws = monitor["activeWorkspace"];
-          if (ws.isObject() && (ws["name"].isString())) {
-            m_activeWorkspaceName = ws["name"].asString();
-          }
-        }
-      }
-    }
   } else {
     spdlog::debug("Removing workspace because it was moved to another monitor: {}");
     onWorkspaceDestroyed(workspaceName);
@@ -426,13 +404,10 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
 
 void Workspaces::onMonitorFocused(std::string const &payload) {
   spdlog::trace("Monitor focused: {}", payload);
-  auto monitorName = payload.substr(0, payload.find(','));
-  if (!m_activePerMonitor || m_bar.output->name == monitorName) {
-    m_activeWorkspaceName = payload.substr(payload.find(',') + 1);
-  }
+  m_activeWorkspaceName = payload.substr(payload.find(',') + 1);
 
   for (Json::Value &monitor : gIPC->getSocket1JsonReply("monitors")) {
-    if (monitor["name"].asString() == monitorName) {
+    if (monitor["name"].asString() == payload.substr(0, payload.find(','))) {
       auto name = monitor["specialWorkspace"]["name"].asString();
       m_activeSpecialWorkspaceName = !name.starts_with("special:") ? name : name.substr(8);
     }
@@ -834,18 +809,7 @@ void Workspaces::extendOrphans(int workspaceId, Json::Value const &clientsJson) 
 }
 
 void Workspaces::init() {
-  if (!m_activePerMonitor) {
-    m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
-  } else {
-    for (Json::Value &monitor : gIPC->getSocket1JsonReply("monitors")) {
-      if (m_bar.output->name == monitor["name"].asString()) {
-        auto ws = monitor["activeWorkspace"];
-        if (ws.isObject() && (ws["name"].isString())) {
-          m_activeWorkspaceName = ws["name"].asString();
-        }
-      }
-    }
-  }
+  m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
 
   initializeWorkspaces();
   updateWindowCount();
