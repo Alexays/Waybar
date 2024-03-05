@@ -116,12 +116,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
-/* gtk4 todo
-#if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
+#if defined(__FreeBSD__) || defined(__linux__)
     if (ref == "battery") {
       return new waybar::modules::Battery(id, config_[name]);
     }
 #endif
+/* gtk4 todo
 #ifdef HAVE_GAMEMODE
     if (ref == "gamemode") {
       return new waybar::modules::Gamemode(id, config_[name]);

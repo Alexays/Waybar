@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <giomm/dbusproxy.h>
+
+#include <string>
 
 #include "ALabel.hpp"
 
@@ -9,7 +10,7 @@ namespace waybar::modules {
 
 class SystemdFailedUnits : public ALabel {
  public:
-  SystemdFailedUnits(const std::string&, const Json::Value&);
+  SystemdFailedUnits(const std::string &, const Json::Value &);
   virtual ~SystemdFailedUnits();
   auto update() -> void override;
 

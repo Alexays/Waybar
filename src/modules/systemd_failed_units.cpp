@@ -1,9 +1,10 @@
 #include "modules/systemd_failed_units.hpp"
 
-#include <cstdint>
 #include <giomm/dbusproxy.h>
 #include <glibmm/variant.h>
 #include <spdlog/spdlog.h>
+
+#include <cstdint>
 
 static const unsigned UPDATE_DEBOUNCE_TIME_MS = 1000;
 
@@ -55,23 +56,21 @@ SystemdFailedUnits::~SystemdFailedUnits() {
   if (user_proxy) user_proxy.reset();
 }
 
-auto SystemdFailedUnits::notify_cb(
-    const Glib::ustring &sender_name,
-    const Glib::ustring &signal_name,
-    const Glib::VariantContainerBase &arguments) -> void {
+auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
+                                   const Glib::ustring& signal_name,
+                                   const Glib::VariantContainerBase& arguments) -> void {
   if (signal_name == "PropertiesChanged" && !update_pending) {
     update_pending = true;
     /* The fail count may fluctuate due to restarting. */
-    Glib::signal_timeout().connect_once(
-        sigc::mem_fun(*this, &SystemdFailedUnits::updateData),
-        UPDATE_DEBOUNCE_TIME_MS);
+    Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &SystemdFailedUnits::updateData),
+                                        UPDATE_DEBOUNCE_TIME_MS);
   }
 }
 
 void SystemdFailedUnits::updateData() {
   update_pending = false;
 
-  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy> &proxy) -> uint32_t {
+  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> uint32_t {
     try {
       auto parameters = Glib::VariantContainerBase(
           g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "NFailedUnits"));
@@ -123,11 +122,9 @@ auto SystemdFailedUnits::update() -> void {
   last_status = status;
 
   label_.set_markup(fmt::format(
-      fmt::runtime(nr_failed == 0 ? format_ok : format_),
-      fmt::arg("nr_failed", nr_failed),
-      fmt::arg("nr_failed_system", nr_failed_system),
-      fmt::arg("nr_failed_user", nr_failed_user)));
+      fmt::runtime(nr_failed == 0 ? format_ok : format_), fmt::arg("nr_failed", nr_failed),
+      fmt::arg("nr_failed_system", nr_failed_system), fmt::arg("nr_failed_user", nr_failed_user)));
   ALabel::update();
 }
 
-} // namespace waybar::modules::systemd_failed_units
+}  // namespace waybar::modules
