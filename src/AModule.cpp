@@ -10,6 +10,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
                  bool enable_click, bool enable_scroll)
     : name_(std::move(name)),
       config_(std::move(config)),
+      isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       distance_scrolled_y_(0.0),
       distance_scrolled_x_(0.0) {
   // Configure module action Map
@@ -27,20 +28,28 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   }
 
   // configure events' user commands
-  if (enable_click) {
+  // hasUserEvent is true if any element from eventMap_ is satisfying the condition in the lambda
+  bool hasUserEvent =
+      std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
+        // True if there is any non-release type event
+        return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
+               config[eventEntry.second].isString();
+      }) != eventMap_.cend();
+
+  if (enable_click || hasUserEvent) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
-  } else {
-    std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator it{eventMap_.cbegin()};
-    while (it != eventMap_.cend()) {
-      if (config_[it->second].isString()) {
-        event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-        event_box_.signal_button_press_event().connect(
-            sigc::mem_fun(*this, &AModule::handleToggle));
-        break;
-      }
-      ++it;
-    }
+  }
+
+  bool hasReleaseEvent =
+      std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
+        // True if there is any non-release type event
+        return eventEntry.first.second == GdkEventType::GDK_BUTTON_RELEASE &&
+               config[eventEntry.second].isString();
+      }) != eventMap_.cend();
+  if (hasReleaseEvent) {
+    event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
+    event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
   }
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() || enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -72,7 +81,11 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-bool AModule::handleToggle(GdkEventButton* const& e) {
+bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
+
+bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
+
+bool AModule::handleUserEvent(GdkEventButton* const& e) {
   std::string format{};
   const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
       eventMap_.find(std::pair(e->button, e->type))};
@@ -177,9 +190,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-bool AModule::tooltipEnabled() {
-  return config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true;
-}
+bool AModule::tooltipEnabled() { return isTooltip; }
 
 AModule::operator Gtk::Widget&() { return event_box_; }
 

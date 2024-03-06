@@ -34,18 +34,20 @@ Addressed by *custom/<name>*
 	typeof: integer ++
 	The interval (in seconds) in which the information gets polled. ++
 	Use *once* if you want to execute the module only on startup. ++
-	You can update it manually with a signal. If no *interval* is defined, it is assumed that the out script loops it self.
+	You can update it manually with a signal. If no *interval* or *signal* is defined, it is assumed that the out script loops itself. ++
+	If a *signal* is defined then the script will run once on startup and will only update with a signal.
 
 *restart-interval*: ++
 	typeof: integer ++
 	The restart interval (in seconds). ++
 	Can't be used with the *interval* option, so only with continuous scripts. ++
-	Once the script exit, it'll be re-executed after the *restart-interval*.
+	Once the script exits, it'll be re-executed after the *restart-interval*.
 
 *signal*: ++
 	typeof: integer ++
 	The signal number used to update the module. ++
-	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*.
+	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
+	If no interval is defined then a signal will be the only way to update the module.
 
 *format*: ++
 	typeof: string ++
@@ -66,11 +68,15 @@ Addressed by *custom/<name>*
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -82,7 +88,7 @@ Addressed by *custom/<name>*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -104,6 +110,11 @@ Addressed by *custom/<name>*
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	The tooltip format. If specified, overrides any tooltip output from the script in *exec*. ++
+	Uses the same format replacements as *format*.
 
 *escape*: ++
 	typeof: bool ++
@@ -134,7 +145,7 @@ $text\\n$tooltip\\n$class*
 
 *{}*: Output of the script.
 
-*{percentage}* Percentage which can be set via a json return-type.
+*{percentage}* Percentage which can be set via a json return type.
 
 *{icon}*: An icon from 'format-icons' according to percentage.
 

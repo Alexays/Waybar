@@ -1,20 +1,35 @@
 { lib
+, pkgs
 , waybar
 , version
 }:
-
-waybar.overrideAttrs (prev: {
-  inherit version;
-  # version = "0.9.17";
-
-  src = lib.cleanSourceWith {
-    filter = name: type:
-      let
-        baseName = baseNameOf (toString name);
-      in
-        ! (
-          lib.hasSuffix ".nix" baseName
-        );
-    src = lib.cleanSource ../.;
+let
+  libcava = rec {
+    version = "0.10.1";
+    src = pkgs.fetchFromGitHub {
+      owner = "LukashonakV";
+      repo = "cava";
+      rev = version;
+      hash = "sha256-iIYKvpOWafPJB5XhDOSIW9Mb4I3A4pcgIIPQdQYEqUw=";
+    };
   };
-})
+in
+(waybar.overrideAttrs (
+  oldAttrs: {
+    inherit version;
+
+    src = lib.cleanSourceWith {
+      filter = name: type: type != "regular" || !lib.hasSuffix ".nix" name;
+      src = lib.cleanSource ../.;
+    };
+
+    mesonFlags = lib.remove "-Dgtk-layer-shell=enabled" oldAttrs.mesonFlags;
+
+    postUnpack = ''
+      pushd "$sourceRoot"
+      cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava-${libcava.version}
+      patchShebangs .
+      popd
+    '';
+  }
+))

@@ -2,16 +2,22 @@
 
 #include <spdlog/spdlog.h>
 
+#include "util/scope_guard.hpp"
+
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
-                                const Json::Value& config)
+                                const Json::Value& config, const std::string& output_name)
     : ALabel(config, "custom-" + name, id, "{}"),
       name_(name),
+      output_name_(output_name),
       id_(id),
       percentage_(0),
       fp_(nullptr),
       pid_(-1) {
   dp.emit();
-  if (interval_.count() > 0) {
+  if (!config_["signal"].empty() && config_["interval"].empty() &&
+      config_["restart-interval"].empty()) {
+    waitingWorker();
+  } else if (interval_.count() > 0) {
     delayWorker();
   } else if (config_["exec"].isString()) {
     continuousWorker();
@@ -38,7 +44,7 @@ void waybar::modules::Custom::delayWorker() {
     }
     if (can_update) {
       if (config_["exec"].isString()) {
-        output_ = util::command::exec(config_["exec"].asString());
+        output_ = util::command::exec(config_["exec"].asString(), output_name_);
       }
       dp.emit();
     }
@@ -49,12 +55,17 @@ void waybar::modules::Custom::delayWorker() {
 void waybar::modules::Custom::continuousWorker() {
   auto cmd = config_["exec"].asString();
   pid_ = -1;
-  fp_ = util::command::open(cmd, pid_);
+  fp_ = util::command::open(cmd, pid_, output_name_);
   if (!fp_) {
     throw std::runtime_error("Unable to open " + cmd);
   }
   thread_ = [this, cmd] {
     char* buff = nullptr;
+    waybar::util::ScopeGuard buff_deleter([buff]() {
+      if (buff) {
+        free(buff);
+      }
+    });
     size_t len = 0;
     if (getline(&buff, &len, fp_) == -1) {
       int exit_code = 1;
@@ -70,7 +81,7 @@ void waybar::modules::Custom::continuousWorker() {
       if (config_["restart-interval"].isUInt()) {
         pid_ = -1;
         thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
-        fp_ = util::command::open(cmd, pid_);
+        fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
         }
@@ -88,7 +99,26 @@ void waybar::modules::Custom::continuousWorker() {
       output_ = {0, output};
       dp.emit();
     }
-    free(buff);
+  };
+}
+
+void waybar::modules::Custom::waitingWorker() {
+  thread_ = [this] {
+    bool can_update = true;
+    if (config_["exec-if"].isString()) {
+      output_ = util::command::execNoRead(config_["exec-if"].asString());
+      if (output_.exit_code != 0) {
+        can_update = false;
+        dp.emit();
+      }
+    }
+    if (can_update) {
+      if (config_["exec"].isString()) {
+        output_ = util::command::exec(config_["exec"].asString(), output_name_);
+      }
+      dp.emit();
+    }
+    thread_.sleep();
   };
 }
 
@@ -127,6 +157,7 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       parseOutputRaw();
     }
+
     auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
@@ -139,22 +170,30 @@ auto waybar::modules::Custom::update() -> void {
           if (label_.get_tooltip_markup() != str) {
             label_.set_tooltip_markup(str);
           }
+        } else if (config_["tooltip-format"].isString()) {
+          auto tooltip = config_["tooltip-format"].asString();
+          tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
+                                fmt::arg("icon", getIcon(percentage_, alt_)),
+                                fmt::arg("percentage", percentage_));
+          label_.set_tooltip_markup(tooltip);
         } else {
           if (label_.get_tooltip_markup() != tooltip_) {
             label_.set_tooltip_markup(tooltip_);
           }
         }
       }
-      auto classes = label_.get_style_context()->list_classes();
+      auto style = label_.get_style_context();
+      auto classes = style->list_classes();
       for (auto const& c : classes) {
         if (c == id_) continue;
-        label_.get_style_context()->remove_class(c);
+        style->remove_class(c);
       }
       for (auto const& c : class_) {
-        label_.get_style_context()->add_class(c);
+        style->add_class(c);
       }
-      label_.get_style_context()->add_class("flat");
-      label_.get_style_context()->add_class("text-button");
+      style->add_class("flat");
+      style->add_class("text-button");
+      style->add_class(MODULE_CLASS);
       event_box_.show();
     }
   }
@@ -167,18 +206,23 @@ void waybar::modules::Custom::parseOutputRaw() {
   std::string line;
   int i = 0;
   while (getline(output, line)) {
+    Glib::ustring validated_line = line;
+    if (!validated_line.validate()) {
+      validated_line = validated_line.make_valid();
+    }
+
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
-        text_ = Glib::Markup::escape_text(line);
+        text_ = Glib::Markup::escape_text(validated_line);
       } else {
-        text_ = line;
+        text_ = validated_line;
       }
-      tooltip_ = line;
+      tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
-      tooltip_ = line;
+      tooltip_ = validated_line;
     } else if (i == 2) {
-      class_.push_back(line);
+      class_.push_back(validated_line);
     } else {
       break;
     }

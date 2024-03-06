@@ -3,8 +3,9 @@
 #include <spdlog/sinks/stdout_sinks.h>
 #include <spdlog/spdlog.h>
 
-#if __has_include(<catch2/catch_all.hpp>)
-#include <catch2/catch_all.hpp>
+#if __has_include(<catch2/catch_session.hpp>)
+#include <catch2/catch_session.hpp>
+#include <catch2/catch_version_macros.hpp>
 #include <catch2/reporters/catch_reporter_tap.hpp>
 #else
 #include <catch2/catch.hpp>

@@ -13,7 +13,7 @@ You must be a member of the input group to use this module.
 # CONFIGURATION
 
 *interval*: ++
-	Deprecated, this module use event loop now, the interval has no effect.
+	Deprecated, this module uses event loop now, the interval has no effect.
 	typeof: integer ++
 	default: 1 ++
 	The interval, in seconds, to poll the keyboard state.
@@ -47,6 +47,11 @@ You must be a member of the input group to use this module.
 	typeof: string ++
 	default: chooses first valid input device ++
 	Which libevdev input device to show the state of. Libevdev devices can be found in /dev/input. The device should support number lock, caps lock, and scroll lock events.
+
+*binding-keys*: ++
+	typeof: array ++
+	default: [58, 69, 70] ++
+	Customize the key to trigger this module, the key number can be found in /usr/include/linux/input-event-codes.h or running sudo libinput debug-events --show-keycodes.
 
 # FORMAT REPLACEMENTS
 

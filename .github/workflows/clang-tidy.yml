@@ -1,0 +1,39 @@
+name: clang-tidy
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-tidy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: alexays/waybar:debian
+    steps:
+      - uses: actions/checkout@v3
+      - name: configure
+        run: |
+          meson -Dcpp_std=c++20 build  # necessary to generate compile_commands.json
+          ninja -C build               # necessary to find certain .h files (xdg, wayland, etc.)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'   # to be kept in sync with cpp-linter-action
+          update-environment: true # the python dist installed by the action needs LD_LIBRARY_PATH to work
+      - uses: cpp-linter/cpp-linter-action@v2.9.1
+        name: clang-tidy
+        id: clang-tidy-check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PIP_NO_CACHE_DIR: false
+        with:
+          style: "" # empty string => don't do clang-format checks here, we do them in clang-format.yml
+          files-changed-only: true # only check files that have changed
+          lines-changed-only: true # only check lines that have changed
+          tidy-checks: "" # empty string => use the .clang-tidy file
+          version: "17" # clang-tools version
+          database: "build" # path to the compile_commands.json file
+      - name: Check if clang-tidy failed on any files
+        if: steps.clang-tidy-check.outputs.checks-failed > 0
+        run: echo "Some files failed the linting checks!" && exit 1

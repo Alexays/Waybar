@@ -7,6 +7,7 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   dp.emit();
@@ -45,7 +46,7 @@ auto waybar::modules::Image::update() -> void {
   if (config_["path"].isString()) {
     path_ = config_["path"].asString();
   } else if (config_["exec"].isString()) {
-    output_ = util::command::exec(config_["exec"].asString());
+    output_ = util::command::exec(config_["exec"].asString(), "");
     parseOutputRaw();
   } else {
     path_ = "";
@@ -63,9 +64,11 @@ auto waybar::modules::Image::update() -> void {
     }
     image_.set(pixbuf);
     image_.show();
+    box_.get_style_context()->remove_class("empty");
   } else {
     image_.clear();
     image_.hide();
+    box_.get_style_context()->add_class("empty");
   }
 
   AModule::update();

@@ -17,6 +17,11 @@ Addressed by *sway/language*
 	default: {} ++
 	The format, how layout should be displayed.
 
+*hide-single-layout*: ++
+	typeof: bool ++
+	default: false ++
+	Defines visibility of the module if a single layout is configured
+
 *tooltip-format*: ++
 	typeof: string ++
 	default: {} ++

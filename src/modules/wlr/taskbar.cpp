@@ -20,6 +20,7 @@
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
+#include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/string.hpp"
 
@@ -182,11 +183,21 @@ bool Task::image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme>
 
   try {
     pixbuf = icon_theme->load_icon(ret_icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+    spdlog::debug("{} Loaded icon '{}'", repr(), ret_icon_name);
   } catch (...) {
-    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS))
+    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS)) {
       pixbuf = load_icon_from_file(ret_icon_name, scaled_icon_size);
-    else
-      pixbuf = {};
+      spdlog::debug("{} Loaded icon from file '{}'", repr(), ret_icon_name);
+    } else {
+      try {
+        pixbuf = DefaultGtkIconThemeWrapper::load_icon(
+            "image-missing", scaled_icon_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+        spdlog::debug("{} Loaded icon from resource", repr());
+      } catch (...) {
+        pixbuf = {};
+        spdlog::debug("{} Unable to load icon.", repr());
+      }
+    }
   }
 
   if (pixbuf) {
@@ -266,7 +277,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
       handle_{tl_handle},
       seat_{seat},
       id_{global_id++},
-      content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
+      content_{bar.orientation, 0} {
   zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
   button.set_relief(Gtk::RELIEF_NONE);
@@ -302,6 +313,10 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
   } else {
     /* The default is to only show the icon */
     with_icon_ = true;
+  }
+
+  if (app_id_.empty()) {
+    handle_app_id("unknown");
   }
 
   /* Strip spaces at the beginning and end of the format strings */
@@ -392,6 +407,11 @@ void Task::hide_if_ignored() {
 }
 
 void Task::handle_app_id(const char *app_id) {
+  if (app_id_.empty()) {
+    spdlog::debug(fmt::format("Task ({}) setting app_id to {}", id_, app_id));
+  } else {
+    spdlog::debug(fmt::format("Task ({}) overwriting app_id '{}' with '{}'", id_, app_id_, app_id));
+  }
   app_id_ = app_id;
   hide_if_ignored();
 
@@ -507,17 +527,17 @@ void Task::handle_closed() {
   spdlog::debug("{} closed", repr());
   zwlr_foreign_toplevel_handle_v1_destroy(handle_);
   handle_ = nullptr;
-  tbar_->remove_task(id_);
   if (button_visible_) {
     tbar_->remove_button(button);
     button_visible_ = false;
   }
+  tbar_->remove_task(id_);
 }
 
 bool Task::handle_clicked(GdkEventButton *bt) {
   /* filter out additional events for double/triple clicks */
   if (bt->type == GDK_BUTTON_PRESS) {
-    /* save where the button press ocurred in case it becomes a drag */
+    /* save where the button press occurred in case it becomes a drag */
     drag_start_button = bt->button;
     drag_start_x = bt->x;
     drag_start_y = bt->y;
@@ -710,13 +730,14 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
 Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
     : waybar::AModule(config, "taskbar", id, false, false),
       bar_(bar),
-      box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
+      box_{bar.orientation, 0},
       manager_{nullptr},
       seat_{nullptr} {
   box_.set_name("taskbar");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 

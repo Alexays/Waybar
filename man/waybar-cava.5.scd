@@ -35,7 +35,7 @@ libcava lives in:
 |[ *framerate*
 :[ integer
 :[ 30
-:[ rames per second. Is used as a replacement for *interval*
+:[ Frames per second. Is used as a replacement for *interval*
 |[ *autosens*
 :[ integer
 :[ 1
@@ -60,6 +60,10 @@ libcava lives in:
 :[ integer
 :[ 5
 :[ Seconds with no input before cava main thread goes to sleep mode
+|[ *hide_on_silence*
+:[ bool
+:[ false
+:[ Hides the widget if no input (after sleep_timer elapsed)
 |[ *method*
 :[ string
 :[ pulse
@@ -91,19 +95,19 @@ libcava lives in:
 |[ *monstercat*
 :[ bool
 :[ false
-:[ Disables or enables the so-called "Monstercat smoothing" with of without "waves"
+:[ Disables or enables the so-called "Monstercat smoothing" with or without "waves"
 |[ *waves*
 :[ bool
 :[ false
-:[ Disables or enables the so-called "Monstercat smoothing" with of without "waves"
+:[ Disables or enables the so-called "Monstercat smoothing" with or without "waves"
 |[ *noise_reduction*
 :[ double
 :[ 0.77
-:[ Range between 0 - 1. The raw visualization is very noisy, this factor adjust the integral and gravity filters to keep the signal smooth. 1 - will be very slow and smooth, 0 - will be fast but noisy
+:[ Range between 0 - 1. The raw visualization is very noisy, this factor adjusts the integral and gravity filters to keep the signal smooth. 1 - will be very slow and smooth, 0 - will be fast but noisy
 |[ *input_delay*
 :[ integer
 :[ 2
-:[ Sets the delay before fetching audio source thread start working. On author machine Waybar starts much faster then pipewire audio server, and without a little delay cava module fails due to pipewire is not ready
+:[ Sets the delay before fetching audio source thread start working. On author's machine, Waybar starts much faster than pipewire audio server, and without a little delay cava module fails because pipewire is not ready
 |[ *ascii_max_range*
 :[ integer
 :[ 7
@@ -120,14 +124,14 @@ libcava lives in:
 Configuration can be provided as:
 - The only cava configuration file which is provided through *cava_config*. The rest configuration can be skipped
 - Without cava configuration file. In such case cava should be configured through provided list of the configuration option
-- Mix. When provided both And cava configuration file And configuration options. In such case waybar applies configuration file first then overrides particular options by the provided list of configuration options
+- Mix. When provided both And cava configuration file And configuration options. In such case, waybar applies configuration file first and then overrides particular options by the provided list of configuration options
 
 # ACTIONS
 
 [- *String*
 :- *Action*
 |[ *mode*
-:< Switch main cava thread and fetching audio source thread from/to pause/resume
+:< Switch main cava thread and fetch audio source thread from/to pause/resume
 
 # DEPENDENCIES
 
@@ -138,16 +142,16 @@ Configuration can be provided as:
 
 . On start Waybar throws an exception "error while loading shared libraries: libcava.so: cannot open shared object file: No such file or directory".
   It might happen when libcava for some reason hasn't been registered in the system. sudo ldconfig should help
-. Waybar is starting but cava module doesn't react on the music
-	1. In such case for at first need to make sure usual cava application is working as well
+. Waybar is starting but cava module doesn't react to the music
+	1. In such cases at first need to make sure usual cava application is working as well
 	2. If so, need to comment all configuration options. Uncomment cava_config and provide the path to the working cava config
-	3. You might set too huge or too small input_delay. Try to setup to 4 seconds, restart waybar and check again 4 seconds past. Usual even on weak machines it should be enough
-	4. You might accidentally switched action mode to pause mode
+	3. You might set too huge or too small input_delay. Try to setup to 4 seconds, restart waybar, and check again 4 seconds past. Usual even on weak machines it should be enough
+	4. You might accidentally switch action mode to pause mode
 
 # RISING ISSUES
 
-For clear understanding: this module is a cava API's consumer. So for any bugs related to cava engine you should contact to Cava upstream(https://github.com/karlstav/cava) ++
-with the one Exception. Cava upstream doesn't provide cava as a shared library. For that this module author made a fork libcava(https://github.com/LukashonakV/cava). ++
+For clear understanding: this module is a cava API's consumer. So for any bugs related to cava engine you should contact Cava upstream(https://github.com/karlstav/cava) ++
+with the one Exception. Cava upstream doesn't provide cava as a shared library. For that, this module author made a fork libcava(https://github.com/LukashonakV/cava). ++
 So the order is:
 . cava upstream
 . libcava upstream.

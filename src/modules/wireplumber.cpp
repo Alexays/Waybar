@@ -46,6 +46,7 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 }
 
 waybar::modules::Wireplumber::~Wireplumber() {
+  wp_core_disconnect(wp_core_);
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
   g_clear_object(&wp_core_);
@@ -81,7 +82,7 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
   auto nick = wp_properties_get(properties, "node.nick");
   auto description = wp_properties_get(properties, "node.description");
 
-  self->node_name_ = nick ? nick : description;
+  self->node_name_ = nick ? nick : description ? description : "Unknown node name";
   spdlog::debug("[{}]: Updating node name to: {}", self->name_, self->node_name_);
 }
 
@@ -315,13 +316,6 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
-  }
-  if (config_["reverse-scrolling"].asInt() == 1) {
-    if (dir == SCROLL_DIR::UP) {
-      dir = SCROLL_DIR::DOWN;
-    } else if (dir == SCROLL_DIR::DOWN) {
-      dir = SCROLL_DIR::UP;
-    }
   }
   double max_volume = 1;
   double step = 1.0 / 100.0;

@@ -93,7 +93,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),
-      box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
+      box_{bar.orientation, 0},
       output_status_{nullptr} {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
@@ -113,6 +113,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   // Default to 9 tags, cap at 32

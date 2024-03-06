@@ -65,11 +65,11 @@ Feral Gamemode optimizations.
 
 *{glyph}*: The string icon glyph to use instead.
 
-*{count}*: The amount of games running with gamemode optimizations.
+*{count}*: The number of games running with gamemode optimizations.
 
 # TOOLTIP FORMAT REPLACEMENTS
 
-*{count}*: The amount of games running with gamemode optimizations.
+*{count}*: The number of games running with gamemode optimizations.
 
 # EXAMPLES
 

@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include <util/sanitize_str.hpp>
+#include "util/sanitize_str.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -10,7 +10,7 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "submap", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
-  if (!gIPC.get()) {
+  if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
 
@@ -54,7 +54,13 @@ void Submap::onEvent(const std::string& ev) {
   auto submapName = ev.substr(ev.find_last_of('>') + 1);
   submapName = waybar::util::sanitize_string(submapName);
 
+  if (!submap_.empty()) {
+    label_.get_style_context()->remove_class(submap_);
+  }
+
   submap_ = submapName;
+
+  label_.get_style_context()->add_class(submap_);
 
   spdlog::debug("hyprland submap onevent with {}", submap_);
 

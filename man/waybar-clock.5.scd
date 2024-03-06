@@ -63,7 +63,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 |[ *on-click-right*
 :[ string
 :[
-:[ Command to execute when you right clicked on the module
+:[ Command to execute when you right-click on the module
 |[ *on-scroll-up*
 :[ string
 :[
@@ -85,7 +85,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ same as format
 :[ Tooltip on hover
 
-View all valid format options in *strftime(3)* or have a look <https://fmt.dev/latest/syntax.html#chrono-specs>
+View all valid format options in *strftime(3)* or have a look https://en.cppreference.com/w/cpp/chrono/duration/formatter
 
 2. Addressed by *clock: calendar*
 [- *Option*
@@ -147,7 +147,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 |[ *tz_up*
 :[ Switch to the next provided time zone
 |[ *tz_down*
-:[ Switch to the previous provided time zone
+:[ Switch to the previously provided time zone
 |[ *shift_up*
 :[ Switch to the next calendar month/year
 |[ *shift_down*
@@ -156,7 +156,8 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 # FORMAT REPLACEMENTS
 
 - *{calendar}*: Current month calendar
-- *{timezoned_time_list}*: List of time in the rest timezones, if more than one timezone is set in the config
+- *{tz_list}*: List of time in the rest timezones, if more than one timezone is set in the config
+- *{ordinal_date}*: The current day in (English) ordinal form, e.g. 21st
 
 # EXAMPLES
 
@@ -219,7 +220,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 # Troubleshooting
 
 If clock module is disabled at startup with locale::facet::\_S\_create\_c\_locale ++
-name not valid error message try one of the followings:
+name not valid error message try one of the following:
 
 - check if LC_TIME is set properly (glibc)
 - set locale to C in the config file (musl)

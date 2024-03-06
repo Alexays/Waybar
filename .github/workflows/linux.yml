@@ -2,6 +2,10 @@ name: linux
 
 on: [push, pull_request]
 
+concurrency:
+  group: ${{ github.workflow }}-linux-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     strategy:
@@ -14,9 +18,6 @@ jobs:
           - opensuse
           - gentoo
         cpp_std: [c++20]
-        include:
-          - distro: fedora
-            cpp_std: c++20
 
     runs-on: ubuntu-latest
     container:

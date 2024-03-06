@@ -3,6 +3,7 @@
 #include <fmt/chrono.h>
 #include <gtkmm/label.h>
 
+#include <set>
 #include <unordered_map>
 
 #include "AModule.hpp"
@@ -40,6 +41,7 @@ class KeyboardState : public AModule {
 
   struct libinput* libinput_;
   std::unordered_map<std::string, struct libinput_device*> libinput_devices_;
+  std::set<int> binding_keys;
 
   util::SleeperThread libinput_thread_, hotplug_thread_;
 };

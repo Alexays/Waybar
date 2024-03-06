@@ -22,7 +22,7 @@ struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
   template <typename FormatContext>
   auto format(const Glib::VariantBase& value, FormatContext& ctx) {
     if (is_printable(value)) {
-      return formatter<std::string>::format(value.print(), ctx);
+      return formatter<std::string>::format(static_cast<std::string>(value.print()), ctx);
     } else {
       return formatter<std::string>::format(value.get_type_string(), ctx);
     }
@@ -39,7 +39,8 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()) {
+      icon_theme(Gtk::IconTheme::create()),
+      bar_(bar) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -355,32 +356,15 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
-  int tmp_size = 0;
   icon_theme->rescan_if_needed();
-  auto sizes = icon_theme->get_icon_sizes(name.c_str());
 
-  for (auto const& size : sizes) {
-    // -1 == scalable
-    if (size == request_size || size == -1) {
-      tmp_size = request_size;
-      break;
-    } else if (size < request_size) {
-      tmp_size = size;
-    } else if (size > tmp_size && tmp_size > 0) {
-      tmp_size = request_size;
-      break;
-    }
-  }
-  if (tmp_size == 0) {
-    tmp_size = request_size;
-  }
   if (!icon_theme_path.empty() &&
-      icon_theme->lookup_icon(name.c_str(), tmp_size,
+      icon_theme->lookup_icon(name.c_str(), request_size,
                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
-    return icon_theme->load_icon(name.c_str(), tmp_size,
+    return icon_theme->load_icon(name.c_str(), request_size,
                                  Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
   }
-  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), tmp_size,
+  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
                                                Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
 }
 
@@ -410,7 +394,8 @@ void Item::makeMenu() {
 
 bool Item::handleClick(GdkEventButton* const& ev) {
   auto parameters = Glib::VariantContainerBase::create_tuple(
-      {Glib::Variant<int>::create(ev->x), Glib::Variant<int>::create(ev->y)});
+      {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
+       Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     makeMenu();
     if (gtk_menu != nullptr) {

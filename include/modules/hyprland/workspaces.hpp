@@ -1,47 +1,119 @@
+#pragma once
+
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
+#include <json/value.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <map>
 #include <memory>
+#include <optional>
+#include <regex>
+#include <string>
+#include <variant>
+#include <vector>
 
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
+#include "util/enum.hpp"
+#include "util/regex_collection.hpp"
+
+using WindowAddress = std::string;
 
 namespace waybar::modules::hyprland {
 
+class Workspaces;
+
+class WindowCreationPayload {
+ public:
+  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
+                        std::string window_repr);
+  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
+                        std::string window_class, std::string window_title);
+  WindowCreationPayload(Json::Value const& client_data);
+
+  int incrementTimeSpentUncreated();
+  bool isEmpty(Workspaces& workspace_manager);
+  bool reprIsReady() const { return std::holds_alternative<Repr>(m_window); }
+  std::string repr(Workspaces& workspace_manager);
+
+  std::string getWorkspaceName() const { return m_workspaceName; }
+  WindowAddress getAddress() const { return m_windowAddress; }
+
+  void moveToWorksace(std::string& new_workspace_name);
+
+ private:
+  void clearAddr();
+  void clearWorkspaceName();
+
+  using Repr = std::string;
+  using ClassAndTitle = std::pair<std::string, std::string>;
+  std::variant<Repr, ClassAndTitle> m_window;
+
+  WindowAddress m_windowAddress;
+  std::string m_workspaceName;
+
+  int m_timeSpentUncreated = 0;
+};
+
 class Workspace {
  public:
-  Workspace(const Json::Value& workspace_data);
-  std::string& select_icon(std::map<std::string, std::string>& icons_map);
-  Gtk::Button& button() { return button_; };
+  explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
+                     const Json::Value& clients_data = Json::Value::nullRef);
+  std::string& selectIcon(std::map<std::string, std::string>& icons_map);
+  Gtk::Button& button() { return m_button; };
 
-  int id() const { return id_; };
-  std::string name() const { return name_; };
-  std::string output() const { return output_; };
-  bool active() const { return active_; };
-  bool is_special() const { return is_special_; };
-  bool is_persistent() const { return is_persistent_; };
-  bool is_empty() const { return windows_ == 0; };
+  int id() const { return m_id; };
+  std::string name() const { return m_name; };
+  std::string output() const { return m_output; };
+  bool isActive() const { return m_isActive; };
+  bool isSpecial() const { return m_isSpecial; };
+  bool isPersistent() const { return m_isPersistentRule || m_isPersistentConfig; };
+  bool isPersistentConfig() const { return m_isPersistentConfig; };
+  bool isPersistentRule() const { return m_isPersistentRule; };
+  bool isVisible() const { return m_isVisible; };
+  bool isEmpty() const { return m_windows == 0; };
+  bool isUrgent() const { return m_isUrgent; };
 
-  auto handle_clicked(GdkEventButton* bt) -> bool;
-  void set_active(bool value = true) { active_ = value; };
-  void set_persistent(bool value = true) { is_persistent_ = value; };
-  void set_windows(uint value) { windows_ = value; };
+  bool handleClicked(GdkEventButton* bt) const;
+  void setActive(bool value = true) { m_isActive = value; };
+  void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
+  void setPersistentConfig(bool value = true) { m_isPersistentConfig = value; };
+  void setUrgent(bool value = true) { m_isUrgent = value; };
+  void setVisible(bool value = true) { m_isVisible = value; };
+  void setWindows(uint value) { m_windows = value; };
+  void setName(std::string const& value) { m_name = value; };
+  bool containsWindow(WindowAddress const& addr) const { return m_windowMap.contains(addr); }
+  void insertWindow(WindowCreationPayload create_window_paylod);
+  std::string removeWindow(WindowAddress const& addr);
+  void initializeWindowMap(const Json::Value& clients_data);
+
+  bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
+  std::optional<std::string> closeWindow(WindowAddress const& addr);
 
   void update(const std::string& format, const std::string& icon);
 
  private:
-  int id_;
-  std::string name_;
-  std::string output_;
-  uint windows_;
-  bool active_ = false;
-  bool is_special_ = false;
-  bool is_persistent_ = false;
+  Workspaces& m_workspaceManager;
 
-  Gtk::Button button_;
-  Gtk::Box content_;
-  Gtk::Label label_;
+  int m_id;
+  std::string m_name;
+  std::string m_output;
+  uint m_windows;
+  bool m_isActive = false;
+  bool m_isSpecial = false;
+  bool m_isPersistentRule = false;    // represents the persistent state in hyprland
+  bool m_isPersistentConfig = false;  // represents the persistent state in the Waybar config
+  bool m_isUrgent = false;
+  bool m_isVisible = false;
+
+  std::map<WindowAddress, std::string> m_windowMap;
+
+  Gtk::Button m_button;
+  Gtk::Box m_content;
+  Gtk::Label m_label;
 };
 
 class Workspaces : public AModule, public EventHandler {
@@ -51,37 +123,101 @@ class Workspaces : public AModule, public EventHandler {
   void update() override;
   void init();
 
-  auto all_outputs() const -> bool { return all_outputs_; }
-  auto show_special() const -> bool { return show_special_; }
+  auto allOutputs() const -> bool { return m_allOutputs; }
+  auto showSpecial() const -> bool { return m_showSpecial; }
+  auto activeOnly() const -> bool { return m_activeOnly; }
 
-  auto get_bar_output() const -> std::string { return bar_.output->name; }
+  auto getBarOutput() const -> std::string { return m_bar.output->name; }
+
+  std::string getRewrite(std::string window_class, std::string window_title);
+  std::string& getWindowSeparator() { return m_formatWindowSeparator; }
+  bool isWorkspaceIgnored(std::string const& workspace_name);
+
+  bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
 
  private:
-  void onEvent(const std::string&) override;
-  void update_window_count();
-  void sort_workspaces();
-  void create_workspace(Json::Value& value);
-  void remove_workspace(std::string name);
+  void onEvent(const std::string& e) override;
+  void updateWindowCount();
+  void sortWorkspaces();
+  void createWorkspace(Json::Value const& workspaceData,
+                       Json::Value const& clientsData = Json::Value::nullRef);
+  void removeWorkspace(std::string const& name);
+  void setUrgentWorkspace(std::string const& windowaddress);
+  void parseConfig(const Json::Value& config);
+  void registerIpc();
 
-  bool all_outputs_ = false;
-  bool show_special_ = false;
+  // workspace events
+  void onWorkspaceActivated(std::string const& payload);
+  void onSpecialWorkspaceActivated(std::string const& payload);
+  void onWorkspaceDestroyed(std::string const& payload);
+  void onWorkspaceCreated(std::string const& workspaceName,
+                          Json::Value const& clientsData = Json::Value::nullRef);
+  void onWorkspaceMoved(std::string const& payload);
+  void onWorkspaceRenamed(std::string const& payload);
 
-  void fill_persistent_workspaces();
-  void create_persistent_workspaces();
-  std::vector<std::string> persistent_workspaces_to_create_;
-  bool persistent_created_ = false;
+  // monitor events
+  void onMonitorFocused(std::string const& payload);
 
-  std::string format_;
-  std::map<std::string, std::string> icons_map_;
-  bool with_icon_;
-  uint64_t monitor_id_;
-  std::string active_workspace_name_;
-  std::vector<std::unique_ptr<Workspace>> workspaces_;
-  std::vector<Json::Value> workspaces_to_create_;
-  std::vector<std::string> workspaces_to_remove_;
-  std::mutex mutex_;
-  const Bar& bar_;
-  Gtk::Box box_;
+  // window events
+  void onWindowOpened(std::string const& payload);
+  void onWindowClosed(std::string const& addr);
+  void onWindowMoved(std::string const& payload);
+
+  void onWindowTitleEvent(std::string const& payload);
+
+  void onConfigReloaded();
+
+  int windowRewritePriorityFunction(std::string const& window_rule);
+
+  void doUpdate();
+
+  void extendOrphans(int workspaceId, Json::Value const& clientsJson);
+  void registerOrphanWindow(WindowCreationPayload create_window_payload);
+
+  void initializeWorkspaces();
+  void setCurrentMonitorId();
+  void loadPersistentWorkspacesFromConfig(Json::Value const& clientsJson);
+  void loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& clientsJson);
+
+  bool m_allOutputs = false;
+  bool m_showSpecial = false;
+  bool m_activeOnly = false;
+  Json::Value m_persistentWorkspaceConfig;
+
+  // Map for windows stored in workspaces not present in the current bar.
+  // This happens when the user has multiple monitors (hence, multiple bars)
+  // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
+  std::map<WindowAddress, std::string> m_orphanWindowMap;
+
+  enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
+  util::EnumParser<SortMethod> m_enumParser;
+  SortMethod m_sortBy = SortMethod::DEFAULT;
+  std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
+                                                 {"NAME", SortMethod::NAME},
+                                                 {"NUMBER", SortMethod::NUMBER},
+                                                 {"DEFAULT", SortMethod::DEFAULT}};
+
+  std::string m_format;
+
+  std::map<std::string, std::string> m_iconsMap;
+  util::RegexCollection m_windowRewriteRules;
+  bool m_anyWindowRewriteRuleUsesTitle = false;
+  std::string m_formatWindowSeparator;
+
+  bool m_withIcon;
+  uint64_t m_monitorId;
+  std::string m_activeWorkspaceName;
+  std::string m_activeSpecialWorkspaceName;
+  std::vector<std::unique_ptr<Workspace>> m_workspaces;
+  std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
+  std::vector<std::string> m_workspacesToRemove;
+  std::vector<WindowCreationPayload> m_windowsToCreate;
+
+  std::vector<std::regex> m_ignoreWorkspaces;
+
+  std::mutex m_mutex;
+  const Bar& m_bar;
+  Gtk::Box m_box;
 };
 
 }  // namespace waybar::modules::hyprland

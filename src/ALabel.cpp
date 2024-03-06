@@ -12,7 +12,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     : AModule(config, name, id, config["format-alt"].isString() || enable_click, enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds(100000000)
+                    ? std::chrono::seconds::max()
                     : std::chrono::seconds(
                           config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
       default_format_(format_) {
@@ -20,6 +20,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   if (!id.empty()) {
     label_.get_style_context()->add_class(id);
   }
+  label_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(label_);
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
@@ -47,6 +48,17 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       label_.set_yalign(align);
     } else {
       label_.set_xalign(align);
+    }
+  }
+
+  if (config_["justify"].isString()) {
+    auto justify_str = config_["justify"].asString();
+    if (justify_str == "left") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_LEFT);
+    } else if (justify_str == "right") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_RIGHT);
+    } else if (justify_str == "center") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_CENTER);
     }
   }
 }

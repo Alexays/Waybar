@@ -8,7 +8,8 @@
 #include <cmath>    // NAN
 #include <cstdlib>  // malloc
 
-#include "modules/cpu.hpp"
+#include "modules/cpu_usage.hpp"
+#include "util/scope_guard.hpp"
 
 #if defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/sched.h>
@@ -27,12 +28,17 @@ typedef uint64_t pcp_time_t;
 typedef long pcp_time_t;
 #endif
 
-std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
+std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo() {
   cp_time_t sum_cp_time[CPUSTATES];
   size_t sum_sz = sizeof(sum_cp_time);
   int ncpu = sysconf(_SC_NPROCESSORS_CONF);
   size_t sz = CPUSTATES * (ncpu + 1) * sizeof(pcp_time_t);
   pcp_time_t *cp_time = static_cast<pcp_time_t *>(malloc(sz)), *pcp_time = cp_time;
+  waybar::util::ScopeGuard cp_time_deleter([cp_time]() {
+    if (cp_time) {
+      free(cp_time);
+    }
+  });
 #if defined(__NetBSD__)
   int mib[] = {
       CTL_KERN,
@@ -97,16 +103,5 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::Cpu::parseCpuinfo() {
     }
     cpuinfo.emplace_back(single_cp_time[CP_IDLE], total);
   }
-  free(cp_time);
   return cpuinfo;
-}
-
-std::vector<float> waybar::modules::Cpu::parseCpuFrequencies() {
-  static std::vector<float> frequencies;
-  if (frequencies.empty()) {
-    spdlog::warn(
-        "cpu/bsd: parseCpuFrequencies is not implemented, expect garbage in {*_frequency}");
-    frequencies.push_back(NAN);
-  }
-  return frequencies;
 }

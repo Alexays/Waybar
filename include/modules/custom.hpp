@@ -14,7 +14,7 @@ namespace waybar::modules {
 
 class Custom : public ALabel {
  public:
-  Custom(const std::string&, const std::string&, const Json::Value&);
+  Custom(const std::string&, const std::string&, const Json::Value&, const std::string&);
   virtual ~Custom();
   auto update() -> void override;
   void refresh(int /*signal*/) override;
@@ -22,6 +22,7 @@ class Custom : public ALabel {
  private:
   void delayWorker();
   void continuousWorker();
+  void waitingWorker();
   void parseOutputRaw();
   void parseOutputJson();
   void handleEvent();
@@ -29,6 +30,7 @@ class Custom : public ALabel {
   bool handleToggle(GdkEventButton* const& e) override;
 
   const std::string name_;
+  const std::string output_name_;
   std::string text_;
   std::string id_;
   std::string alt_;

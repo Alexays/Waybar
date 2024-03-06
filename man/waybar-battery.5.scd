@@ -25,7 +25,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *design-capacity*: ++
 	typeof: bool ++
 	default: false ++
-	Option to use the battery design capacity instead of it's current maximal capacity.
+	Option to use the battery design capacity instead of its current maximal capacity.
 
 *interval*: ++
 	typeof: integer ++
@@ -57,11 +57,15 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *rotate*: ++
 	typeof: integer++
@@ -77,7 +81,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -100,6 +104,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: true ++
 	Option to disable tooltip on hover.
 
+*bat-compatibility*: ++
+	typeof: bool ++
+	default: false ++
+	Option to enable battery compatibility if not detected.
+
 # FORMAT REPLACEMENTS
 
 *{capacity}*: Capacity in percentage
@@ -121,7 +130,7 @@ The three arguments are:
 
 # CUSTOM FORMATS
 
-The *battery* module allows one to define custom formats based on up to two factors. The best fitting format will be selected.
+The *battery* module allows one to define custom formats based on up to two factors. The best-fitting format will be selected.
 
 *format-<state>*: With *states*, a custom format can be set depending on the capacity of your battery.
 
@@ -132,8 +141,8 @@ The *battery* module allows one to define custom formats based on up to two fact
 # STATES
 
 - Every entry (*state*) consists of a *<name>* (typeof: *string*) and a *<value>* (typeof: *integer*).
-- The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.	Each class gets activated when the current capacity is equal or below the configured *<value>*.
-- Also each state can have its own *format*. Those con be configured via *format-<name>*. Or if you want to differentiate a bit more even as *format-<status>-<state>*. For more information see *custom-formats*.
+- The state can be addressed as a CSS class in the *style.css*. The name of the CSS class is the *<name>* of the state.	Each class gets activated when the current capacity is equal to or below the configured *<value>*.
+- Also each state can have its own *format*. Those can be configured via *format-<name>*. Or if you want to differentiate a bit more even as *format-<status>-<state>*. For more information see *custom-formats*.
 
 
 
@@ -162,3 +171,10 @@ The *battery* module allows one to define custom formats based on up to two fact
 	- *<state>* can be defined in the *config*. For more information see *states*.
 - *#battery.<status>.<state>*
 	- Combination of both *<status>* and *<state>*.
+
+The following classes are applied to the entire Waybar rather than just the
+battery widget:
+
+- *window#waybar.battery-<state>*
+	- *<state>* can be defined in the *config*, as previously mentioned.
+

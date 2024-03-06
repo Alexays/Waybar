@@ -1,12 +1,14 @@
 #include "modules/battery.hpp"
+
+#include <algorithm>
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
 #include <spdlog/spdlog.h>
 
 #include <iostream>
-waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60) {
+waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
+    : ALabel(config, "battery", id, "{capacity}%", 60), bar_(bar) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
@@ -100,9 +102,11 @@ void waybar::modules::Battery::refreshBatteries() {
       }
       auto dir_name = node.path().filename();
       auto bat_defined = config_["bat"].isString();
+      bool bat_compatibility = config_["bat-compatibility"].asBool();
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
           (fs::exists(node.path() / "capacity") || fs::exists(node.path() / "charge_now")) &&
-          fs::exists(node.path() / "uevent") && fs::exists(node.path() / "status") &&
+          fs::exists(node.path() / "uevent") &&
+          (fs::exists(node.path() / "status") || bat_compatibility) &&
           fs::exists(node.path() / "type")) {
         std::string type;
         std::ifstream(node.path() / "type") >> type;
@@ -252,7 +256,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     for (auto const& item : batteries_) {
       auto bat = item.first;
       std::string _status;
-      std::getline(std::ifstream(bat / "status"), _status);
+
+      /* Check for adapter status if battery is not available */
+      if (!std::ifstream(bat / "status")) {
+        std::getline(std::ifstream(adapter_ / "status"), _status);
+      } else {
+        std::getline(std::ifstream(bat / "status"), _status);
+      }
 
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
@@ -534,6 +544,13 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       }
     }
 
+    // Handle weighted-average
+    if ((config_["weighted-average"].isBool() ? config_["weighted-average"].asBool() : false) &&
+        total_energy_exists && total_energy_full_exists) {
+      if (total_energy_full > 0.0f)
+        calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
+    }
+
     // Handle design-capacity
     if ((config_["design-capacity"].isBool() ? config_["design-capacity"].asBool() : false) &&
         total_energy_exists && total_energy_full_design_exists) {
@@ -626,6 +643,7 @@ auto waybar::modules::Battery::update() -> void {
                  [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
   auto format = format_;
   auto state = getState(capacity, true);
+  setBarClass(state);
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
   if (tooltipEnabled()) {
     std::string tooltip_text_default;
@@ -673,4 +691,39 @@ auto waybar::modules::Battery::update() -> void {
   }
   // Call parent update
   ALabel::update();
+}
+
+void waybar::modules::Battery::setBarClass(std::string& state) {
+  auto classes = bar_.window.get_style_context()->list_classes();
+  const std::string prefix = "battery-";
+
+  auto old_class_it = std::find_if(classes.begin(), classes.end(), [&prefix](auto classname) {
+    return classname.rfind(prefix, 0) == 0;
+  });
+
+  auto new_class = prefix + state;
+
+  // If the bar doesn't have any `battery-` class
+  if (old_class_it == classes.end()) {
+    if (!state.empty()) {
+      bar_.window.get_style_context()->add_class(new_class);
+    }
+    return;
+  }
+
+  auto old_class = *old_class_it;
+
+  // If the bar has a `battery-` class,
+  // but `state` is empty
+  if (state.empty()) {
+    bar_.window.get_style_context()->remove_class(old_class);
+    return;
+  }
+
+  // If the bar has a `battery-` class,
+  // and `state` is NOT empty
+  if (old_class != new_class) {
+    bar_.window.get_style_context()->remove_class(old_class);
+    bar_.window.get_style_context()->add_class(new_class);
+  }
 }

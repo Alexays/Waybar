@@ -8,7 +8,7 @@ waybar - pulseaudio module
 
 The *pulseaudio* module displays the current volume reported by PulseAudio.
 
-Additionally you can control the volume by scrolling *up* or *down* while the cursor is over the module.
+Additionally, you can control the volume by scrolling *up* or *down* while the cursor is over the module.
 
 # CONFIGURATION
 
@@ -36,7 +36,7 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 
 *format-icons*: ++
 	typeof: array ++
-	Based on the current port-name and volume, the corresponding icon gets selected. The order is *low* to *high*. See *Icons*.
+	Based on the current port name and volume, the corresponding icon gets selected. The order is *low* to *high*. See *Icons*.
 
 *rotate*: ++
 	typeof: integer ++
@@ -52,16 +52,20 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *scroll-step*: ++
 	typeof: float ++
 	default: 1.0 ++
-	The speed in which to change the volume when scrolling.
+	The speed at which to change the volume when scrolling.
 
 *on-click*: ++
 	typeof: string ++
@@ -73,7 +77,7 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -107,7 +111,7 @@ Additionally you can control the volume by scrolling *up* or *down* while the cu
 
 *ignored-sinks*: ++
 	typeof: array ++
-	Sinks in this list will not be shown as the active sink by Waybar. Entries should be the sink's description field.
+	Sinks in this list will not be shown as active sink by Waybar. Entries should be the sink's description field.
 
 # FORMAT REPLACEMENTS
 

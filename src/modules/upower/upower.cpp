@@ -18,7 +18,15 @@ UPower::UPower(const std::string& id, const Json::Value& config)
       m_Mutex(),
       client(),
       showAltText(false) {
-  box_.pack_start(icon_);
+  // Show icon only when "show-icon" isn't set to false
+  if (config_["show-icon"].isBool()) {
+    showIcon = config_["show-icon"].asBool();
+  }
+
+  if (showIcon) {
+    box_.pack_start(icon_);
+  }
+
   box_.pack_start(label_);
   box_.set_name(name_);
   event_box_.add(box_);
@@ -63,7 +71,7 @@ UPower::UPower(const std::string& id, const Json::Value& config)
   box_.set_has_tooltip(tooltip_enabled);
   if (tooltip_enabled) {
     // Sets the window to use when showing the tooltip
-    upower_tooltip = new UPowerTooltip(iconSize, tooltip_spacing, tooltip_padding);
+    upower_tooltip = std::make_unique<UPowerTooltip>(iconSize, tooltip_spacing, tooltip_padding);
     box_.set_tooltip_window(*upower_tooltip);
     box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::show_tooltip_callback));
   }
@@ -72,14 +80,13 @@ UPower::UPower(const std::string& id, const Json::Value& config)
                                       G_BUS_NAME_WATCHER_FLAGS_AUTO_START, upowerAppear,
                                       upowerDisappear, this, NULL);
 
-  GError* error = NULL;
-  client = up_client_new_full(NULL, &error);
+  client = up_client_new_full(NULL, NULL);
   if (client == NULL) {
     throw std::runtime_error("Unable to create UPower client!");
   }
 
   // Connect to Login1 PrepareForSleep signal
-  login1_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
+  login1_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (!login1_connection) {
     throw std::runtime_error("Unable to connect to the SYSTEM Bus!...");
   } else {
@@ -99,6 +106,7 @@ UPower::UPower(const std::string& id, const Json::Value& config)
 }
 
 UPower::~UPower() {
+  if (displayDevice != NULL) g_object_unref(displayDevice);
   if (client != NULL) g_object_unref(client);
   if (login1_id > 0) {
     g_dbus_connection_signal_unsubscribe(login1_connection, login1_id);
@@ -289,7 +297,12 @@ auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard(m_Mutex);
 
   // Don't update widget if the UPower service isn't running
-  if (!upowerRunning) return;
+  if (!upowerRunning) {
+    if (hideIfEmpty) {
+      event_box_.set_visible(false);
+    }
+    return;
+  }
 
   UpDeviceKind kind;
   UpDeviceState state;

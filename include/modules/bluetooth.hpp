@@ -59,7 +59,8 @@ class Bluetooth : public ALabel {
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
   auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;
 
-  auto findCurController(ControllerInfo&) -> bool;
+  // Returns std::nullopt if no controller could be found
+  auto findCurController() -> std::optional<ControllerInfo>;
   auto findConnectedDevices(const std::string&, std::vector<DeviceInfo>&) -> void;
 
 #ifdef WANT_RFKILL
@@ -68,7 +69,7 @@ class Bluetooth : public ALabel {
   const std::unique_ptr<GDBusObjectManager, void (*)(GDBusObjectManager*)> manager_;
 
   std::string state_;
-  ControllerInfo cur_controller_;
+  std::optional<ControllerInfo> cur_controller_;
   std::vector<DeviceInfo> connected_devices_;
   DeviceInfo cur_focussed_device_;
   std::string device_enumerate_;

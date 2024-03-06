@@ -1,13 +1,14 @@
 #include "client.hpp"
 
+#include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
 #include <iostream>
 
+#include "gtkmm/icontheme.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
-#include "wlr-layer-shell-unstable-v1-client-protocol.h"
 
 waybar::Client *waybar::Client::inst() {
   static auto c = new Client();
@@ -17,13 +18,8 @@ waybar::Client *waybar::Client::inst() {
 void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                                   const char *interface, uint32_t version) {
   auto client = static_cast<Client *>(data);
-  if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0) {
-    // limit version to a highest supported by the client protocol file
-    version = std::min<uint32_t>(version, zwlr_layer_shell_v1_interface.version);
-    client->layer_shell = static_cast<struct zwlr_layer_shell_v1 *>(
-        wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, version));
-  } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
-             version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
+  if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
+      version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
     client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1 *>(wl_registry_bind(
         registry, name, &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
   } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
@@ -151,8 +147,26 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
   outputs_.remove_if([&monitor](const auto &output) { return output.monitor == monitor; });
 }
 
-const std::string waybar::Client::getStyle(const std::string &style) {
-  auto css_file = style.empty() ? Config::findConfigPath({"style.css"}) : style;
+const std::string waybar::Client::getStyle(const std::string &style,
+                                           std::optional<Appearance> appearance = std::nullopt) {
+  std::optional<std::string> css_file;
+  if (style.empty()) {
+    std::vector<std::string> search_files;
+    switch (appearance.value_or(portal->getAppearance())) {
+      case waybar::Appearance::LIGHT:
+        search_files.push_back("style-light.css");
+        break;
+      case waybar::Appearance::DARK:
+        search_files.push_back("style-dark.css");
+        break;
+      case waybar::Appearance::UNKNOWN:
+        break;
+    }
+    search_files.push_back("style.css");
+    css_file = Config::findConfigPath(search_files);
+  } else {
+    css_file = style;
+  }
   if (!css_file) {
     throw std::runtime_error("Missing required resource files");
   }
@@ -181,7 +195,12 @@ void waybar::Client::bindInterfaces() {
   };
   wl_registry_add_listener(registry, &registry_listener, this);
   wl_display_roundtrip(wl_display);
-  if (layer_shell == nullptr || xdg_output_manager == nullptr) {
+
+  if (!gtk_layer_is_supported()) {
+    throw std::runtime_error("The Wayland compositor does not support wlr-layer-shell protocol");
+  }
+
+  if (xdg_output_manager == nullptr) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
   // add existing outputs and subscribe to updates
@@ -226,6 +245,11 @@ int waybar::Client::main(int argc, char *argv[]) {
   }
   gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
                                      Gio::APPLICATION_HANDLES_COMMAND_LINE);
+
+  // Initialize Waybars GTK resources with our custom icons
+  auto theme = Gtk::IconTheme::get_default();
+  theme->add_resource_path("/fr/arouillard/waybar/icons");
+
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
     throw std::runtime_error("Can't find display");
@@ -235,13 +259,39 @@ int waybar::Client::main(int argc, char *argv[]) {
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   config.load(config_opt);
-  auto css_file = getStyle(style_opt);
-  setupCss(css_file);
+  if (!portal) {
+    portal = std::make_unique<waybar::Portal>();
+  }
+  m_cssFile = getStyle(style_opt);
+  setupCss(m_cssFile);
+  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&]() { setupCss(m_cssFile); });
+  portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
+    auto css_file = getStyle(style_opt, appearance);
+    setupCss(css_file);
+  });
+
+  auto m_config = config.getConfig();
+  if (m_config.isObject() && m_config["reload_style_on_change"].asBool()) {
+    m_cssReloadHelper->monitorChanges();
+  } else if (m_config.isArray()) {
+    for (const auto &conf : m_config) {
+      if (conf["reload_style_on_change"].asBool()) {
+        m_cssReloadHelper->monitorChanges();
+        break;
+      }
+    }
+  }
+
   bindInterfaces();
   gtk_app->hold();
   gtk_app->run();
+  m_cssReloadHelper.reset();  // stop watching css file
   bars.clear();
   return 0;
 }
 
-void waybar::Client::reset() { gtk_app->quit(); }
+void waybar::Client::reset() {
+  gtk_app->quit();
+  // delete signal handler for css changes
+  portal->signal_appearance_changed().clear();
+}

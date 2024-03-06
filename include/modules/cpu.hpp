@@ -21,12 +21,6 @@ class Cpu : public ALabel {
   auto update() -> void override;
 
  private:
-  double getCpuLoad();
-  std::tuple<std::vector<uint16_t>, std::string> getCpuUsage();
-  std::tuple<float, float, float> getCpuFrequency();
-  std::vector<std::tuple<size_t, size_t>> parseCpuinfo();
-  std::vector<float> parseCpuFrequencies();
-
   std::vector<std::tuple<size_t, size_t>> prev_times_;
 
   util::SleeperThread thread_;
