@@ -1,14 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
-
-#include <cstdint>
-#include <fstream>
-#include <numeric>
-#include <string>
-#include <utility>
-#include <vector>
-
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -22,6 +13,7 @@ class Cpu : public ALabel {
 
  private:
   std::vector<std::tuple<size_t, size_t>> prev_times_;
+  std::string prev_state_;
 
   util::SleeperThread thread_;
 };

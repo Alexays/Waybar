@@ -1,3 +1,5 @@
+#include <fmt/format.h>
+
 #include "modules/load.hpp"
 
 // In the 80000 version of fmt library authors decided to optimize imports
@@ -22,7 +24,7 @@ auto waybar::modules::Load::update() -> void {
   auto [load1, load5, load15] = Load::getLoad();
   if (tooltipEnabled()) {
     auto tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
-    label_.set_tooltip_text(tooltip);
+    Gtk::Label::set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto state = getState(load1);
@@ -31,9 +33,9 @@ auto waybar::modules::Load::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    Gtk::Label::hide();
   } else {
-    event_box_.show();
+    Gtk::Label::show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load1", load1));
@@ -42,7 +44,7 @@ auto waybar::modules::Load::update() -> void {
     store.push_back(fmt::arg("icon1", getIcon(load1, icons)));
     store.push_back(fmt::arg("icon5", getIcon(load5, icons)));
     store.push_back(fmt::arg("icon15", getIcon(load15, icons)));
-    label_.set_markup(fmt::vformat(format, store));
+    Gtk::Label::set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update
