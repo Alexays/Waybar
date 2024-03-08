@@ -204,12 +204,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
-    }
+    }*/
 #if defined(HAVE_MEMORY_LINUX) || defined(HAVE_MEMORY_BSD)
     if (ref == "memory") {
       return new waybar::modules::Memory(id, config_[name]);
     }
-#endif*/
+#endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);

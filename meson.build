@@ -187,14 +187,18 @@ inc_dirs = ['include']
 
 if is_linux
    add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
+   add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
    src_files += files('src/modules/battery.cpp',
                       'src/modules/cpu.cpp',
                       'src/modules/cpu_frequency/common.cpp',
                       'src/modules/cpu_frequency/linux.cpp',
                       'src/modules/cpu_usage/common.cpp',
-                      'src/modules/cpu_usage/linux.cpp')
+                      'src/modules/cpu_usage/linux.cpp',
+                      'src/modules/memory/common.cpp',
+                      'src/modules/memory/linux.cpp')
    man_files += files('man/waybar-battery.5.scd',
-                      'man/waybar-cpu.5.scd')
+                      'man/waybar-cpu.5.scd',
+                      'man/waybar-memory.5.scd')
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
@@ -205,13 +209,13 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_usage/bsd.cpp',
         'src/modules/cpu_usage/common.cpp',
-#        'src/modules/memory/bsd.cpp',
-#        'src/modules/memory/common.cpp',
+        'src/modules/memory/bsd.cpp',
+        'src/modules/memory/common.cpp',
     )
     man_files += files(
 #        'man/waybar-cffi.5.scd',
         'man/waybar-cpu.5.scd',
-#        'man/waybar-memory.5.scd',
+        'man/waybar-memory.5.scd'
     )
     if is_freebsd
         src_files += files('src/modules/battery.cpp')
