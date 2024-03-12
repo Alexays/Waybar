@@ -1,9 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
-
-#include <fstream>
-
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 

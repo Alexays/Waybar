@@ -1,5 +1,8 @@
 #include "modules/temperature.hpp"
 
+#include <fmt/format.h>
+#include <fstream>
+
 #include <filesystem>
 
 #if defined(__FreeBSD__)
@@ -52,20 +55,20 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    label_.get_style_context()->add_class("critical");
+    Gtk::Label::get_style_context()->add_class("critical");
   } else {
-    label_.get_style_context()->remove_class("critical");
+    Gtk::Label::get_style_context()->remove_class("critical");
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    Gtk::Label::hide();
     return;
   } else {
-    event_box_.show();
+    Gtk::Label::show();
   }
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("temperatureC", temperature_c),
+  Gtk::Label::set_markup(fmt::format(fmt::runtime(format), fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
@@ -74,7 +77,7 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(
+    Gtk::Label::set_tooltip_text(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("temperatureC", temperature_c),
         fmt::arg("temperatureF", temperature_f), fmt::arg("temperatureK", temperature_k)));
   }

@@ -308,10 +308,10 @@ gtk4 todo
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
     }
-#endif
+#endif*/
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
-    }
+    }/*
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name);
     }

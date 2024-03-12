@@ -130,7 +130,8 @@ src_files = files(
      'src/group.cpp',
      'src/ASlider.cpp',
      'src/modules/load.cpp',
-     'src/modules/disk.cpp'
+     'src/modules/disk.cpp',
+     'src/modules/temperature.cpp'
 )
 
 man_files = files(
