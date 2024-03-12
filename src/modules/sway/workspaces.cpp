@@ -141,12 +141,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
           for (const std::string &p_w_name : p_workspaces_names) {
             const Json::Value &p_w = p_workspaces[p_w_name];
-            auto it =
-                std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
-                  return node["name"].asString() == p_w_name;
-                });
+            auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
+                                   [&p_w_name](const Json::Value &node) {
+                                     return node["name"].asString() == p_w_name;
+                                   });
 
-            if (it != payload.end()) {
+            if (it != workspaces_.end()) {
               continue;  // already displayed by some bar
             }
 
@@ -156,7 +156,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                 if (output.asString() == bar_.output->name) {
                   Json::Value v;
                   v["name"] = p_w_name;
-                  v["target_output"] = bar_.output->name;
+                  v["output"] = bar_.output->name;
                   v["num"] = convertWorkspaceNameToNum(p_w_name);
                   workspaces_.emplace_back(std::move(v));
                   break;
@@ -166,7 +166,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
               // Adding to all outputs
               Json::Value v;
               v["name"] = p_w_name;
-              v["target_output"] = "";
+              v["output"] = "";
               v["num"] = convertWorkspaceNameToNum(p_w_name);
               workspaces_.emplace_back(std::move(v));
             }
@@ -250,6 +250,9 @@ bool Workspaces::filterButtons() {
 }
 
 bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
+  if (!node[flag].isBool()) {
+    return false;
+  }
   if (node[flag].asBool()) {
     return true;
   }
