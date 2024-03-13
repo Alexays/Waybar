@@ -51,7 +51,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
     event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
   }
-  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() || enable_scroll) {
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
+      config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
+      enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
@@ -179,6 +181,10 @@ bool AModule::handleScroll(GdkEventScroll* e) {
     eventName = "on-scroll-up";
   else if (dir == SCROLL_DIR::DOWN)
     eventName = "on-scroll-down";
+  else if (dir == SCROLL_DIR::LEFT)
+    eventName = "on-scroll-left";
+  else if (dir == SCROLL_DIR::RIGHT)
+    eventName = "on-scroll-right";
 
   // First call module actions
   this->AModule::doAction(eventName);
