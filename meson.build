@@ -293,7 +293,9 @@ endif
 if true
     add_project_arguments('-DHAVE_DWL', language: 'cpp')
     src_files += files('src/modules/dwl/tags.cpp')
+    src_files += files('src/modules/dwl/window.cpp')
     man_files += files('man/waybar-dwl-tags.5.scd')
+    man_files += files('man/waybar-dwl-window.5.scd')
 endif
 
 if true
