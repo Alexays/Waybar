@@ -4,11 +4,6 @@
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
-#include <gio/gio.h>
-
-#include <optional>
-#include <string>
-#include <vector>
 
 namespace waybar::modules {
 

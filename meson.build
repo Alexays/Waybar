@@ -191,6 +191,7 @@ inc_dirs = ['include']
 if is_linux
    add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
    add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
+   add_project_arguments('-DHAVE_SYSTEMD_MONITOR', language: 'cpp')
    src_files += files('src/modules/battery.cpp',
                       'src/modules/cpu.cpp',
                       'src/modules/cpu_frequency/common.cpp',
@@ -198,8 +199,10 @@ if is_linux
                       'src/modules/cpu_usage/common.cpp',
                       'src/modules/cpu_usage/linux.cpp',
                       'src/modules/memory/common.cpp',
-                      'src/modules/memory/linux.cpp')
+                      'src/modules/memory/linux.cpp',
+                      'src/modules/bluetooth.cpp')
    man_files += files('man/waybar-battery.5.scd',
+                      'man/waybar-bluetooth.5.scd',
                       'man/waybar-cpu.5.scd',
                       'man/waybar-memory.5.scd')
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd

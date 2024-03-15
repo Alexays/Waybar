@@ -280,15 +280,15 @@ gtk4 todo
     if (ref == "sndio") {
       return new waybar::modules::Sndio(id, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_GIO_UNIX
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
-    }
+    }/*
     if (ref == "inhibitor") {
       return new waybar::modules::Inhibitor(id, bar_, config_[name]);
-    }
-#endif
+    }*/
+#endif/*
 #ifdef HAVE_LIBJACK
     if (ref == "jack") {
       return new waybar::modules::JACK(id, config_[name]);

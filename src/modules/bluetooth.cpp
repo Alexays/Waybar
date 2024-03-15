@@ -1,12 +1,7 @@
 #include "modules/bluetooth.hpp"
-
-#include <fmt/format.h>
-#include <spdlog/spdlog.h>
-
-#include <algorithm>
-#include <sstream>
-
 #include "util/scope_guard.hpp"
+
+#include <spdlog/spdlog.h>
 
 namespace {
 
@@ -200,10 +195,10 @@ auto waybar::modules::Bluetooth::update() -> void {
   }
 
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
-    if (in_next_state && !label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->add_class(style_class);
-    } else if (!in_next_state && label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->remove_class(style_class);
+    if (in_next_state && !Gtk::Label::get_style_context()->has_class(style_class)) {
+      Gtk::Label::get_style_context()->add_class(style_class);
+    } else if (!in_next_state && Gtk::Label::get_style_context()->has_class(style_class)) {
+      Gtk::Label::get_style_context()->remove_class(style_class);
     }
   };
   update_style_context("discoverable", cur_controller_ ? cur_controller_->discoverable : false);
@@ -216,10 +211,10 @@ auto waybar::modules::Bluetooth::update() -> void {
   state_ = state;
 
   if (format_.empty()) {
-    event_box_.hide();
+    Gtk::Label::hide();
   } else {
-    event_box_.show();
-    label_.set_markup(fmt::format(
+    Gtk::Label::show();
+    Gtk::Label::set_markup(fmt::format(
         fmt::runtime(format_), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
@@ -264,7 +259,7 @@ auto waybar::modules::Bluetooth::update() -> void {
         device_enumerate_.erase(0, 1);
       }
     }
-    label_.set_tooltip_text(fmt::format(
+    Gtk::Label::set_tooltip_text(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
