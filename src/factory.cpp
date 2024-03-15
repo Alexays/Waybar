@@ -311,10 +311,10 @@ gtk4 todo
 #endif*/
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
-    }/*
+    }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name);
-    }
+    }/*
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);
     }*/

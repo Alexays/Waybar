@@ -533,7 +533,7 @@ auto waybar::Bar::setupWidgets() -> void {
     left_.prepend(*module);
   }
   for (auto const& module : modules_center_) {
-    center_.prepend(*module);
+    center_.append(*module);
   }
 //  std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {

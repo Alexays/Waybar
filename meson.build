@@ -129,6 +129,7 @@ src_files = files(
      'src/util/ustring_clen.cpp',
      'src/group.cpp',
      'src/ASlider.cpp',
+     'src/modules/custom.cpp',
      'src/modules/load.cpp',
      'src/modules/disk.cpp',
      'src/modules/temperature.cpp'
