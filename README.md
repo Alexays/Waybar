@@ -37,7 +37,7 @@
 
 Waybar is available from a number of Linux distributions:
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/waybar.svg)](https://repology.org/project/waybar/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/waybar.svg?columns=3&header=Waybar%20Downstream%20Packaging)](https://repology.org/project/waybar/versions)
 
 An Ubuntu PPA with more recent versions is available
 [here](https://launchpad.net/~nschloe/+archive/ubuntu/waybar).
