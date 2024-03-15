@@ -42,6 +42,8 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SYSTEM, "net.hadess.PowerProfiles",
                                    "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles",
                                    sigc::mem_fun(*this, &PowerProfilesDaemon::busConnectedCb));
+  // Schedule update to set the initial visibility
+  dp.emit();
 }
 
 void PowerProfilesDaemon::busConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r) {
@@ -74,7 +76,6 @@ void PowerProfilesDaemon::getAllPropsCb(Glib::RefPtr<Gio::AsyncResult>& r) {
     powerProfilesProxy_->signal_properties_changed().connect(
         sigc::mem_fun(*this, &PowerProfilesDaemon::profileChangedCb));
     populateInitState();
-    dp.emit();
   } catch (const std::exception& err) {
     spdlog::error("Failed to query power-profiles-daemon via dbus: {}", err.what());
   } catch (const Glib::Error& err) {
@@ -112,8 +113,6 @@ void PowerProfilesDaemon::populateInitState() {
   // Find the index of the current activated mode (to toggle)
   std::string str = profileStr.get();
   switchToProfile(str);
-
-  update();
 }
 
 void PowerProfilesDaemon::profileChangedCb(
@@ -128,7 +127,6 @@ void PowerProfilesDaemon::profileChangedCb(
           Glib::VariantBase::cast_dynamic<Glib::Variant<std::string>>(activeProfileVariant->second)
               .get();
       switchToProfile(activeProfile);
-      update();
     }
   }
 }
@@ -145,6 +143,7 @@ void PowerProfilesDaemon::switchToProfile(std::string const& str) {
         "Power profile daemon: can't find the active profile {} in the available profiles list",
         str);
   }
+  dp.emit();
 }
 
 auto PowerProfilesDaemon::update() -> void {
@@ -195,7 +194,7 @@ bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
 void PowerProfilesDaemon::setPropCb(Glib::RefPtr<Gio::AsyncResult>& r) {
   try {
     auto _ = powerProfilesProxy_->call_finish(r);
-    update();
+    dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Failed to set the the active power profile: {}", e.what());
   } catch (const Glib::Error& e) {
