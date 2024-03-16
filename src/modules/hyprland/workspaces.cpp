@@ -872,7 +872,7 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   addOrRemoveClass(styleContext, isPersistent(), "persistent");
   addOrRemoveClass(styleContext, isUrgent(), "urgent");
   addOrRemoveClass(styleContext, isVisible(), "visible");
-  addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "onThisMonitor");
+  addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
   std::string windows;
   auto windowSeparator = m_workspaceManager.getWindowSeparator();
