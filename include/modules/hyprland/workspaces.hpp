@@ -94,7 +94,7 @@ class Workspace {
   bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
   std::optional<std::string> closeWindow(WindowAddress const& addr);
 
-  void update(const std::string& format, const std::string& icon);
+  void update(const std::string& format, const std::string& icon, const std::string &tooltipFormat);
 
  private:
   Workspaces& m_workspaceManager;
@@ -199,6 +199,7 @@ class Workspaces : public AModule, public EventHandler {
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
   std::string m_format;
+  std::string m_tooltipFormat;
 
   std::map<std::string, std::string> m_iconsMap;
   util::RegexCollection m_windowRewriteRules;

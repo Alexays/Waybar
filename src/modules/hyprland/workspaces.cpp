@@ -60,6 +60,13 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   m_format = configFormat.isString() ? configFormat.asString() : "{name}";
   m_withIcon = m_format.find("{icon}") != std::string::npos;
 
+  if (tooltipEnabled()) {
+    const Json::Value &configTooltipFormat = config["tooltip-format"];
+    m_tooltipFormat = configTooltipFormat.isString() ? configTooltipFormat.asString() : "{name}";
+  } else {
+    m_tooltipFormat = "";
+  }
+
   if (m_withIcon && m_iconsMap.empty()) {
     Json::Value formatIcons = config["format-icons"];
     for (std::string &name : formatIcons.getMemberNames()) {
@@ -237,7 +244,7 @@ void Workspaces::doUpdate() {
         });
     workspace->setOutput((*updated_workspace)["monitor"].asString());
 
-    workspace->update(m_format, workspaceIcon);
+    workspace->update(m_format, workspaceIcon, m_tooltipFormat);
   }
 
   spdlog::trace("Updating window count");
@@ -866,7 +873,7 @@ void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condi
   }
 }
 
-void Workspace::update(const std::string &format, const std::string &icon) {
+void Workspace::update(const std::string &format, const std::string &icon, const std::string &tooltipFormat) {
   // clang-format off
   if (this->m_workspaceManager.activeOnly() && \
      !this->isActive() && \
@@ -901,6 +908,10 @@ void Workspace::update(const std::string &format, const std::string &icon) {
     isNotFirst = true;
     windows.append(window_repr);
   }
+
+  m_button.set_tooltip_text(fmt::format(fmt::runtime(tooltipFormat), fmt::arg("id", id()),
+                                 fmt::arg("name", name()), fmt::arg("icon", icon),
+                                 fmt::arg("windows", windows)));
 
   m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
                                  fmt::arg("name", name()), fmt::arg("icon", icon),
