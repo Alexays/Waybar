@@ -235,7 +235,10 @@ void Workspaces::doUpdate() {
           auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
           return wName == workspace->name();
         });
-    workspace->setOutput((*updated_workspace)["monitor"].asString());
+
+    if (updated_workspace != updated_workspaces.end()) {
+      workspace->setOutput((*updated_workspace)["monitor"].asString());
+    }
 
     workspace->update(m_format, workspaceIcon);
   }
