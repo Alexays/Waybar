@@ -65,6 +65,16 @@ Addressed by *hyprland/workspaces*
 	If set to id, workspaces will sort by id.
 	If none of those, workspaces will sort with default behavior.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	default: "{name}" ++
+	The tooltip format.
+
 # FORMAT REPLACEMENTS
 
 *{id}*: id of workspace assigned by compositor
@@ -145,6 +155,25 @@ Additional to workspace name matching, the following *format-icons* can be set.
 	"ignore-workspaces": [
 		"(special:)?chrome-sharing-indicator"
 	]
+}
+```
+
+```
+"hyprland/workspaces": {
+	"format": "{icon}",
+	"format-window-separator": ", ",
+	"tooltip": true,
+	"tooltip-format": "{name}: {windows}",
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"active": "",
+		"default": ""
+	},
+	// Window rewrites omitted for brevity
 }
 ```
 
