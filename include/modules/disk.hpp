@@ -5,7 +5,7 @@
 
 namespace waybar::modules {
 
-class Disk : public ALabel {
+class Disk final : public ALabel {
  public:
   Disk(const std::string&, const Json::Value&);
   virtual ~Disk() = default;

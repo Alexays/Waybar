@@ -182,12 +182,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "river/layout") {
       return new waybar::modules::river::Layout(id, bar_, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_DWL
     if (ref == "dwl/tags") {
       return new waybar::modules::dwl::Tags(id, bar_, config_[name]);
     }
-#endif
+#endif/*
 #ifdef HAVE_HYPRLAND
     if (ref == "hyprland/window") {
       return new waybar::modules::hyprland::Window(id, bar_, config_[name]);

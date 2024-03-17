@@ -7,7 +7,7 @@
 
 namespace waybar::modules {
 
-class Memory : public ALabel {
+class Memory final : public ALabel {
  public:
   Memory(const std::string&, const Json::Value&);
   virtual ~Memory() = default;

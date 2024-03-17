@@ -229,6 +229,10 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     endif
 endif
 
+add_project_arguments('-DHAVE_DWL', language: 'cpp')
+src_files += files('src/modules/dwl/tags.cpp')
+man_files += files('man/waybar-dwl-tags.5.scd')
+
 subdir('protocol')
 
 executable(

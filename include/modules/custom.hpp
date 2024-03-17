@@ -7,7 +7,7 @@
 
 namespace waybar::modules {
 
-class Custom : public ALabel {
+class Custom final : public ALabel {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&, const std::string&);
   virtual ~Custom();
