@@ -208,6 +208,7 @@ void Workspaces::doUpdate() {
   }
 
   spdlog::trace("Updating workspace states");
+  auto updated_workspaces = gIPC->getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
     // active
     workspace->setActive(workspace->name() == m_activeWorkspaceName ||
@@ -226,6 +227,16 @@ void Workspaces::doUpdate() {
     if (m_withIcon) {
       workspaceIcon = workspace->selectIcon(m_iconsMap);
     }
+
+    // update m_output
+    auto updated_workspace =
+        std::find_if(updated_workspaces.begin(), updated_workspaces.end(), [&workspace](auto &w) {
+          auto wNameRaw = w["name"].asString();
+          auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
+          return wName == workspace->name();
+        });
+    workspace->setOutput((*updated_workspace)["monitor"].asString());
+
     workspace->update(m_format, workspaceIcon);
   }
 
@@ -876,6 +887,7 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   addOrRemoveClass(styleContext, isPersistent(), "persistent");
   addOrRemoveClass(styleContext, isUrgent(), "urgent");
   addOrRemoveClass(styleContext, isVisible(), "visible");
+  addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
   std::string windows;
   auto windowSeparator = m_workspaceManager.getWindowSeparator();
