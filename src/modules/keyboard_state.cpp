@@ -84,20 +84,13 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       box_(bar.orientation, 0),
       numlock_label_(""),
       capslock_label_(""),
-      numlock_format_(config_["format"].isString() ? config_["format"].asString()
-                      : config_["format"]["numlock"].isString()
-                          ? config_["format"]["numlock"].asString()
-                          : "{name} {icon}"),
-      capslock_format_(config_["format"].isString() ? config_["format"].asString()
-                       : config_["format"]["capslock"].isString()
-                           ? config_["format"]["capslock"].asString()
-                           : "{name} {icon}"),
-      scrolllock_format_(config_["format"].isString() ? config_["format"].asString()
-                         : config_["format"]["scrolllock"].isString()
-                             ? config_["format"]["scrolllock"].asString()
-                             : "{name} {icon}"),
-      interval_(
-          std::chrono::seconds(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1)),
+      scrolllock_label_(""),
+      numlock_format_("{name} {icon}"),
+      numlock_locked_format_("{name} {icon}"),
+      capslock_format_("{name} {icon}"),
+      capslock_locked_format_("{name} {icon}"),
+      scrolllock_format_("{name} {icon}"),
+      scrolllock_locked_format_("{name} {icon}"),
       icon_locked_(config_["format-icons"]["locked"].isString()
                        ? config_["format-icons"]["locked"].asString()
                        : "locked"),
@@ -105,6 +98,8 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
                          ? config_["format-icons"]["unlocked"].asString()
                          : "unlocked"),
       devices_path_("/dev/input/"),
+      interval_(
+          std::chrono::seconds(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1)),
       libinput_(nullptr),
       libinput_devices_({}) {
   static struct libinput_interface interface = {
@@ -115,6 +110,39 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   }
 
   libinput_ = libinput_path_create_context(&interface, NULL);
+
+  if (config_["format"].isString()) {
+    const std::string& format = config_["format"].asString();
+    numlock_format_ = format;
+    numlock_locked_format_ = format;
+    capslock_format_ = format;
+    capslock_locked_format_ = format;
+    scrolllock_format_ = format;
+    scrolllock_locked_format_ = format;
+
+  } else {
+    if (config_["format"]["numlock"].isString()) {
+      numlock_format_ = config_["format"]["numlock"].asString();
+      numlock_locked_format_ = numlock_format_;
+    }
+    if (config_["format"]["numlock-locked"].isString()) {
+      numlock_locked_format_ = config_["format"]["numlock-locked"].asString();
+    }
+    if (config_["format"]["capslock"].isString()) {
+      capslock_format_ = config_["format"]["capslock"].asString();
+      capslock_locked_format_ = capslock_format_;
+    }
+    if (config_["format"]["capslock-locked"].isString()) {
+      capslock_locked_format_ = config_["format"]["capslock-locked"].asString();
+    }
+    if (config_["format"]["scrolllock"].isString()) {
+      scrolllock_format_ = config_["format"]["scrolllock"].asString();
+      scrolllock_locked_format_ = scrolllock_format_;
+    }
+    if (config_["format"]["scrolllock-locked"].isString()) {
+      scrolllock_locked_format_ = config_["format"]["scrolllock-locked"].asString();
+    }
+  }
 
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
@@ -280,23 +308,27 @@ auto waybar::modules::KeyboardState::update() -> void {
     bool state;
     Gtk::Label& label;
     const std::string& format;
+    const std::string& format_locked;
     const char* name;
   } label_states[] = {
-      {(bool)numl, numlock_label_, numlock_format_, "Num"},
-      {(bool)capsl, capslock_label_, capslock_format_, "Caps"},
-      {(bool)scrolll, scrolllock_label_, scrolllock_format_, "Scroll"},
+      {(bool)numl, numlock_label_, numlock_format_, numlock_locked_format_, "Num"},
+      {(bool)capsl, capslock_label_, capslock_format_, capslock_locked_format_, "Caps"},
+      {(bool)scrolll, scrolllock_label_, scrolllock_format_, scrolllock_locked_format_, "Scroll"},
   };
   for (auto& label_state : label_states) {
     std::string text;
-    text = fmt::format(fmt::runtime(label_state.format),
-                       fmt::arg("icon", label_state.state ? icon_locked_ : icon_unlocked_),
-                       fmt::arg("name", label_state.name));
-    label_state.label.set_markup(text);
     if (label_state.state) {
       label_state.label.get_style_context()->add_class("locked");
+      text = fmt::format(fmt::runtime(label_state.format_locked),
+                         fmt::arg("icon", icon_locked_),
+                         fmt::arg("name", label_state.name));
     } else {
       label_state.label.get_style_context()->remove_class("locked");
+      text = fmt::format(fmt::runtime(label_state.format),
+                         fmt::arg("icon", icon_unlocked_),
+                         fmt::arg("name", label_state.name));
     }
+    label_state.label.set_markup(text);
   }
 
   AModule::update();
