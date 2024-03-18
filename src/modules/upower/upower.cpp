@@ -315,12 +315,12 @@ auto UPower::update() -> void {
     return;
   }
 
-  UpDeviceKind kind;
-  UpDeviceState state;
+  UpDeviceKind kind = UP_DEVICE_KIND_UNKNOWN;
+  UpDeviceState state = UP_DEVICE_STATE_UNKNOWN;
   UpDeviceLevel level = UP_DEVICE_LEVEL_UNKNOWN;
-  double percentage;
-  gint64 time_empty;
-  gint64 time_full;
+  double percentage = 0.0;
+  gint64 time_empty = 0;
+  gint64 time_full = 0;
   gchar* icon_name{(char*)'\0'};
   std::string percentString{""};
   std::string time_format{""};
