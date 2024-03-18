@@ -39,6 +39,7 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   // adresses for compatibility sake.
   //
   // Revisit this in 2026, systems should be updated by then.
+
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SYSTEM, "net.hadess.PowerProfiles",
                                    "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles",
                                    sigc::mem_fun(*this, &PowerProfilesDaemon::busConnectedCb));
@@ -175,9 +176,16 @@ auto PowerProfilesDaemon::update() -> void {
 
 bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
   if (e->type == GdkEventType::GDK_BUTTON_PRESS && connected_) {
-    activeProfile_++;
-    if (activeProfile_ == availableProfiles_.end()) {
-      activeProfile_ = availableProfiles_.begin();
+    if (e->button == 1) /* left click */ {
+      activeProfile_++;
+      if (activeProfile_ == availableProfiles_.end()) {
+        activeProfile_ = availableProfiles_.begin();
+      }
+    } else {
+      if (activeProfile_ == availableProfiles_.begin()) {
+        activeProfile_ = availableProfiles_.end();
+      }
+      activeProfile_--;
     }
 
     using VarStr = Glib::Variant<Glib::ustring>;
