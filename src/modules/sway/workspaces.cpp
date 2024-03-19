@@ -261,6 +261,10 @@ bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
                   [&](auto const &e) { return hasFlag(e, flag); })) {
     return true;
   }
+  if (std::any_of(node["floating_nodes"].begin(), node["floating_nodes"].end(),
+                  [&](auto const &e) { return hasFlag(e, flag); })) {
+    return true;
+  }
   return false;
 }
 
