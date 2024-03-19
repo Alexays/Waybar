@@ -79,7 +79,9 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
       box.pack_start(revealer);
     }
 
-    addHoverHandlerTo(revealer);
+    event_box.add(box);
+    event_box.set_above_child(true);
+    addHoverHandlerTo(event_box);
   }
 }
 
@@ -114,8 +116,6 @@ void Group::addWidget(Gtk::Widget& widget) {
   getBox().pack_start(widget, false, false);
 
   if (is_drawer) {
-    // Necessary because of GTK's hitbox detection
-    addHoverHandlerTo(widget);
     if (!is_first_widget) {
       widget.get_style_context()->add_class(add_class_to_drawer_children);
     }
@@ -124,6 +124,6 @@ void Group::addWidget(Gtk::Widget& widget) {
   is_first_widget = false;
 }
 
-Group::operator Gtk::Widget&() { return box; }
+Group::operator Gtk::Widget&() { return event_box; }
 
 }  // namespace waybar

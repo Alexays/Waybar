@@ -23,6 +23,7 @@ class Group : public AModule {
 
  protected:
   Gtk::Box box;
+  Gtk::EventBox event_box;
   Gtk::Box revealer_box;
   Gtk::Revealer revealer;
   bool is_first_widget = true;
