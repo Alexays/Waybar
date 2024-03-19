@@ -79,10 +79,10 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
       box.pack_start(revealer);
     }
 
-    event_box.add(box);
-    event_box.set_above_child(true);
-    addHoverHandlerTo(event_box);
+    event_box_.set_above_child(true);
+    addHoverHandlerTo(event_box_);
   }
+  event_box_.add(box);
 }
 
 bool Group::handleMouseHover(GdkEventCrossing* const& e) {
@@ -123,7 +123,5 @@ void Group::addWidget(Gtk::Widget& widget) {
 
   is_first_widget = false;
 }
-
-Group::operator Gtk::Widget&() { return event_box; }
 
 }  // namespace waybar

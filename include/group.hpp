@@ -14,7 +14,6 @@ class Group : public AModule {
   Group(const std::string&, const std::string&, const Json::Value&, bool);
   virtual ~Group() = default;
   auto update() -> void override;
-  operator Gtk::Widget&() override;
 
   virtual Gtk::Box& getBox();
   void addWidget(Gtk::Widget& widget);
@@ -23,7 +22,6 @@ class Group : public AModule {
 
  protected:
   Gtk::Box box;
-  Gtk::EventBox event_box;
   Gtk::Box revealer_box;
   Gtk::Revealer revealer;
   bool is_first_widget = true;
