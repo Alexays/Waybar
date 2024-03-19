@@ -121,7 +121,7 @@ void Privacy::onPrivacyNodesChanged() {
 
 auto Privacy::update() -> void {
   mutex_.lock();
-  bool screenshare, audio_in, audio_out;
+  bool screenshare = false, audio_in = false, audio_out = false;
 
   for (Gtk::Widget* widget : box_.get_children()) {
     PrivacyItem* module = dynamic_cast<PrivacyItem*>(widget);
