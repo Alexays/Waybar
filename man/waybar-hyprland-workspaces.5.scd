@@ -70,10 +70,9 @@ Addressed by *hyprland/workspaces*
 	default: true ++
 	Option to disable tooltip on hover.
 
-*tooltip-format*: ++
-	typeof: string ++
-	default: "{name}" ++
-	The tooltip format.
+*tooltips*: ++
+	typeof: array ++
+	Based on the workspace ID and state, the corresponding tooltip gets selected. Selection works the same as *format-icons* do. Format replacements are supported. See *icons*.
 
 # FORMAT REPLACEMENTS
 
@@ -163,7 +162,33 @@ Additional to workspace name matching, the following *format-icons* can be set.
 	"format": "{icon}",
 	"format-window-separator": ", ",
 	"tooltip": true,
-	"tooltip-format": "{name}: {windows}",
+	"tooltips": {
+		"default": "{name}: {windows}",
+		"empty": "" // Will result in no tooltip
+	}
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"active": "",
+		"default": ""
+	},
+	// Window rewrites omitted for brevity
+}
+```
+
+```
+"hyprland/workspaces": {
+	"format": "{icon}",
+	"format-window-separator": ", ",
+	"tooltip": true,
+	"tooltips": {
+		"1": "This is the first workspace",
+		"2": "This is the second",
+		"2": "And this is the third"
+	}
 	"format-icons": {
 		"1": "",
 		"2": "",
