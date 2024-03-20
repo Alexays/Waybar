@@ -250,9 +250,6 @@ bool Workspaces::filterButtons() {
 }
 
 bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
-  if (!node[flag].isBool()) {
-    return false;
-  }
   if (node[flag].asBool()) {
     return true;
   }
