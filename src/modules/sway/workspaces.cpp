@@ -156,7 +156,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                 if (output.asString() == bar_.output->name) {
                   Json::Value v;
                   v["name"] = p_w_name;
-                  v["output"] = bar_.output->name;
+                  v["target_output"] = bar_.output->name;
                   v["num"] = convertWorkspaceNameToNum(p_w_name);
                   workspaces_.emplace_back(std::move(v));
                   break;
@@ -166,7 +166,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
               // Adding to all outputs
               Json::Value v;
               v["name"] = p_w_name;
-              v["output"] = "";
+              v["target_output"] = "";
               v["num"] = convertWorkspaceNameToNum(p_w_name);
               workspaces_.emplace_back(std::move(v));
             }
@@ -261,6 +261,10 @@ bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
                   [&](auto const &e) { return hasFlag(e, flag); })) {
     return true;
   }
+  if (std::any_of(node["floating_nodes"].begin(), node["floating_nodes"].end(),
+                  [&](auto const &e) { return hasFlag(e, flag); })) {
+    return true;
+  }
   return false;
 }
 
@@ -313,7 +317,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("urgent");
     }
-    if (hasFlag((*it), "target_output")) {
+    if ((*it)["target_output"].isString()) {
       button.get_style_context()->add_class("persistent");
     } else {
       button.get_style_context()->remove_class("persistent");

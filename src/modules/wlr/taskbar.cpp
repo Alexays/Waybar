@@ -334,9 +334,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
   }
 
   button.add_events(Gdk::BUTTON_PRESS_MASK);
-  button.signal_button_press_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
-  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_button_release),
-                                               false);
+  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
 
   button.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
                                               false);
@@ -573,12 +571,8 @@ bool Task::handle_clicked(GdkEventButton *bt) {
   else
     spdlog::warn("Unknown action {}", action);
 
-  return true;
-}
-
-bool Task::handle_button_release(GdkEventButton *bt) {
   drag_start_button = -1;
-  return false;
+  return true;
 }
 
 bool Task::handle_motion_notify(GdkEventMotion *mn) {
