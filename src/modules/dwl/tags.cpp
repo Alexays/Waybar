@@ -155,6 +155,9 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
 }
 
 Tags::~Tags() {
+  if(output_status_) {
+    zdwl_ipc_output_v2_destroy(output_status_);
+  }
   if (status_manager_) {
     zdwl_ipc_manager_v2_destroy(status_manager_);
   }

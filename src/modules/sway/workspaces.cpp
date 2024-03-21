@@ -107,11 +107,16 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         auto payload = parser_.parse(res.payload);
         workspaces_.clear();
         std::vector<Json::Value> outputs;
+        bool alloutputs = config_["all-outputs"].asBool();
         std::copy_if(payload["nodes"].begin(), payload["nodes"].end(), std::back_inserter(outputs),
-                     [&](const auto &workspace) {
-                       return !config_["all-outputs"].asBool()
-                                  ? workspace["name"].asString() == bar_.output->name
-                                  : true;
+                     [&](const auto &output) {
+                       if (alloutputs && output["name"].asString() != "__i3") {
+                         return true;
+                       }
+                       if (output["name"].asString() == bar_.output->name) {
+                         return true;
+                       }
+                       return false;
                      });
 
         for (auto &output : outputs) {
@@ -136,12 +141,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
           for (const std::string &p_w_name : p_workspaces_names) {
             const Json::Value &p_w = p_workspaces[p_w_name];
-            auto it =
-                std::find_if(payload.begin(), payload.end(), [&p_w_name](const Json::Value &node) {
-                  return node["name"].asString() == p_w_name;
-                });
+            auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
+                                   [&p_w_name](const Json::Value &node) {
+                                     return node["name"].asString() == p_w_name;
+                                   });
 
-            if (it != payload.end()) {
+            if (it != workspaces_.end()) {
               continue;  // already displayed by some bar
             }
 
@@ -253,6 +258,10 @@ bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
                   [&](auto const &e) { return hasFlag(e, flag); })) {
     return true;
   }
+  if (std::any_of(node["floating_nodes"].begin(), node["floating_nodes"].end(),
+                  [&](auto const &e) { return hasFlag(e, flag); })) {
+    return true;
+  }
   return false;
 }
 
@@ -305,7 +314,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("urgent");
     }
-    if (hasFlag((*it), "target_output")) {
+    if ((*it)["target_output"].isString()) {
       button.get_style_context()->add_class("persistent");
     } else {
       button.get_style_context()->remove_class("persistent");
@@ -422,7 +431,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                           [](const auto &workspace) { return workspace["focused"].asBool(); });
+                           [](const auto &workspace) { return hasFlag(workspace, "focused"); });
     if (it == workspaces_.end()) {
       return true;
     }
