@@ -9,7 +9,6 @@
 
 #include "client.hpp"
 #include "dwl-ipc-unstable-v2-client-protocol.h"
-
 #include "util/rewrite_string.hpp"
 
 namespace waybar::modules::dwl {
@@ -43,7 +42,7 @@ static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t 
   static_cast<Window *>(data)->handle_layout(layout);
 }
 
-static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid){
+static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid) {
   static_cast<Window *>(data)->handle_appid(appid);
 };
 
@@ -73,7 +72,7 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
+Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
     : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar) {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
@@ -92,29 +91,18 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   zdwl_ipc_manager_v2_destroy(status_manager_);
 }
 
-void Window::handle_title(const char *title) {
-  title_ = title;
-}
+void Window::handle_title(const char *title) { title_ = title; }
 
-void Window::handle_appid(const char *appid) {
-  appid_ = appid;
-}
+void Window::handle_appid(const char *appid) { appid_ = appid; }
 
-void Window::handle_layout_symbol(const char *layout_symbol) {
-  layout_symbol_ = layout_symbol;
-}
+void Window::handle_layout_symbol(const char *layout_symbol) { layout_symbol_ = layout_symbol; }
 
-void Window::handle_layout(const uint32_t layout) {
-  layout_ = layout;
-}
+void Window::handle_layout(const uint32_t layout) { layout_ = layout; }
 
 void Window::handle_frame() {
   label_.set_markup(waybar::util::rewriteString(
-      fmt::format(
-        fmt::runtime(format_),
-        fmt::arg("title", title_),
-        fmt::arg("layout", layout_symbol_),
-        fmt::arg("app_id", appid_)),
+      fmt::format(fmt::runtime(format_), fmt::arg("title", title_),
+                  fmt::arg("layout", layout_symbol_), fmt::arg("app_id", appid_)),
       config_["rewrite"]));
   updateAppIconName(appid_, "");
   updateAppIcon();

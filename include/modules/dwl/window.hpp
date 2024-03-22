@@ -6,14 +6,14 @@
 
 #include "AAppIconLabel.hpp"
 #include "bar.hpp"
-#include "util/json.hpp"
 #include "dwl-ipc-unstable-v2-client-protocol.h"
+#include "util/json.hpp"
 
 namespace waybar::modules::dwl {
 
 class Window : public AAppIconLabel, public sigc::trackable {
  public:
-  Window(const std::string&, const waybar::Bar&, const Json::Value&);
+  Window(const std::string &, const waybar::Bar &, const Json::Value &);
   virtual ~Window() = default;
 
   void handle_layout(const uint32_t layout);
@@ -23,8 +23,9 @@ class Window : public AAppIconLabel, public sigc::trackable {
   void handle_frame();
 
   struct zdwl_ipc_manager_v2 *status_manager_;
+
  private:
-  const Bar& bar_;
+  const Bar &bar_;
 
   std::string title_;
   std::string appid_;
