@@ -19,12 +19,15 @@ class Submap : public waybar::ALabel, public EventHandler {
   auto update() -> void override;
 
  private:
+  auto parseConfig(const Json::Value&) -> void;
   void onEvent(const std::string& ev) override;
 
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
   std::string submap_;
+  bool always_on_ = false;
+  std::string default_submap_ = "Default";
 };
 
 }  // namespace waybar::modules::hyprland
