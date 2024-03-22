@@ -310,6 +310,7 @@ A group may hide all but one element, showing them only on mouse hover. In order
 - *waybar-custom(5)*
 - *waybar-disk(5)*
 - *waybar-dwl-tags(5)*
+- *waybar-dwl-window(5)*
 - *waybar-gamemode(5)*
 - *waybar-hyprland-language(5)*
 - *waybar-hyprland-submap(5)*
