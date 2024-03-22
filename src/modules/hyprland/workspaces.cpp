@@ -83,6 +83,11 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
     m_activeOnly = configActiveOnly.asBool();
   }
 
+  auto configMoveToMonitor = config_["move-to-monitor"];
+  if (configMoveToMonitor.isBool()) {
+    m_moveToMonitor = configMoveToMonitor.asBool();
+  }
+
   auto configSortBy = config_["sort-by"];
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
@@ -1034,9 +1039,17 @@ bool Workspace::handleClicked(GdkEventButton *bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
     try {
       if (id() > 0) {  // normal
-        gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+        if (m_workspaceManager.moveToMonitor()) {
+          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
+        } else {
+          gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+        }
       } else if (!isSpecial()) {  // named (this includes persistent)
-        gIPC->getSocket1Reply("dispatch workspace name:" + name());
+        if (m_workspaceManager.moveToMonitor()) {
+          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
+        } else {
+          gIPC->getSocket1Reply("dispatch workspace name:" + name());
+        }
       } else if (id() != -99) {  // named special
         gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
       } else {  // special

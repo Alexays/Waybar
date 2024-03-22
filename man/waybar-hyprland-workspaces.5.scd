@@ -52,6 +52,13 @@ Addressed by *hyprland/workspaces*
 	default: false ++
 	If set to true, only the active workspace will be shown.
 
+*move-to-monitor*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, open the workspace on the current monitor when clicking on a workspace button.
+	Otherwise, the workspace will open on the monitor where it was previously assigned.
+	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
+
 *ignore-workspaces*: ++
 	typeof: array ++
 	default: [] ++
