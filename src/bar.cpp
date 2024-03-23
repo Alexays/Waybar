@@ -449,7 +449,17 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
     Json::Value& modules = config[module_list_name];
     for (const Json::Value& module_name : modules) {
       if (module_name.isString()) {
-        setupAltFormatKeyForModule(module_name.asString());
+        auto ref = module_name.asString();
+        if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
+          Json::Value& group_modules = config[ref]["modules"];
+          for (const Json::Value& module_name : group_modules) {
+            if (module_name.isString()) {
+              setupAltFormatKeyForModule(module_name.asString());
+            }
+          }
+        } else {
+          setupAltFormatKeyForModule(ref);
+        }
       }
     }
   }
