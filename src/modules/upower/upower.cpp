@@ -8,6 +8,17 @@
 #include "gtkmm/tooltip.h"
 #include "util/gtk_icon.hpp"
 
+static const char* getDeviceWarningLevel(UpDeviceLevel level) {
+  switch (level) {
+    case UP_DEVICE_LEVEL_CRITICAL:
+      return "critical";
+    case UP_DEVICE_LEVEL_LOW:
+      return "low";
+    default:
+      return nullptr;
+  }
+}
+
 namespace waybar::modules::upower {
 UPower::UPower(const std::string& id, const Json::Value& config)
     : AModule(config, "upower", id),
@@ -304,11 +315,12 @@ auto UPower::update() -> void {
     return;
   }
 
-  UpDeviceKind kind;
-  UpDeviceState state;
-  double percentage;
-  gint64 time_empty;
-  gint64 time_full;
+  UpDeviceKind kind = UP_DEVICE_KIND_UNKNOWN;
+  UpDeviceState state = UP_DEVICE_STATE_UNKNOWN;
+  UpDeviceLevel level = UP_DEVICE_LEVEL_UNKNOWN;
+  double percentage = 0.0;
+  gint64 time_empty = 0;
+  gint64 time_full = 0;
   gchar* icon_name{(char*)'\0'};
   std::string percentString{""};
   std::string time_format{""};
@@ -318,7 +330,7 @@ auto UPower::update() -> void {
   if (displayDevice) {
     g_object_get(displayDevice, "kind", &kind, "state", &state, "percentage", &percentage,
                  "icon-name", &icon_name, "time-to-empty", &time_empty, "time-to-full", &time_full,
-                 NULL);
+                 "warning-level", &level, NULL);
     /* Every Device which is handled by Upower and which is not
      * UP_DEVICE_KIND_UNKNOWN (0) or UP_DEVICE_KIND_LINE_POWER (1) is a Battery
      */
@@ -337,6 +349,15 @@ auto UPower::update() -> void {
     box_.get_style_context()->add_class(status);
   }
   lastStatus = status;
+
+  const char* warning_level = getDeviceWarningLevel(level);
+  if (lastWarningLevel && box_.get_style_context()->has_class(lastWarningLevel)) {
+    box_.get_style_context()->remove_class(lastWarningLevel);
+  }
+  if (warning_level && !box_.get_style_context()->has_class(warning_level)) {
+    box_.get_style_context()->add_class(warning_level);
+  }
+  lastWarningLevel = warning_level;
 
   if (devices.size() == 0 && !displayDeviceValid && hideIfEmpty) {
     event_box_.set_visible(false);

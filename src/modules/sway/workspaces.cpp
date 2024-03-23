@@ -319,6 +319,11 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("persistent");
     }
+    if ((*it)["nodes"].size() == 0) {
+      button.get_style_context()->add_class("empty");
+    } else {
+      button.get_style_context()->remove_class("empty");
+    }
     if ((*it)["output"].isString()) {
       if (((*it)["output"].asString()) == bar_.output->name) {
         button.get_style_context()->add_class("current_output");
