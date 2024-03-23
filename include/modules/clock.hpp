@@ -41,6 +41,7 @@ class Clock final : public ALabel {
   const int cldMonColLen_{20};   // calendar month column length
   WS cldWPos_{WS::HIDDEN};       // calendar week side to print
   months cldCurrShift_{0};       // calendar months shift
+  int cldShift_{1};              // calendar months shift factor
   year_month_day cldYearShift_;  // calendar Year mode. Cached ymd
   std::string cldYearCached_;    // calendar Year mode. Cached calendar
   year_month cldMonShift_;       // calendar Month mode. Cached ym
