@@ -318,7 +318,7 @@ void Workspaces::onEvent(const std::string &ev) {
     onWorkspaceCreated(payload);
   } else if (eventName == "focusedmon") {
     onMonitorFocused(payload);
-  } else if (eventName == "moveworkspace" && !allOutputs()) {
+  } else if (eventName == "moveworkspace") {
     onWorkspaceMoved(payload);
   } else if (eventName == "openwindow") {
     onWindowOpened(payload);
@@ -389,6 +389,23 @@ void Workspaces::onWorkspaceMoved(std::string const &payload) {
   spdlog::debug("Workspace moved: {}", payload);
   std::string workspaceName = payload.substr(0, payload.find(','));
   std::string monitorName = payload.substr(payload.find(',') + 1);
+
+  if(allOutputs()) {
+    auto monitors = gIPC->getSocket1JsonReply("monitors");
+
+    for (Json::Value &monitor : monitors) {
+      if (!monitor["focused"].asBool()) {
+        continue;
+      }
+
+      auto ws = monitor["activeWorkspace"];
+      if (ws.isObject() && (ws["name"].isString())) {
+        onWorkspaceActivated(ws["name"].asString());
+      }
+    }
+
+    return;
+  }
 
   if (m_bar.output->name == monitorName) {
     Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
