@@ -162,6 +162,7 @@ void Config::load(const std::string &config) {
   }
   config_file_ = file.value();
   spdlog::info("Using configuration file {}", config_file_);
+  config_ = Json::Value();
   setupConfig(config_, config_file_, 0);
 }
 
