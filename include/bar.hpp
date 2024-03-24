@@ -65,16 +65,10 @@ class Bar {
   void handleSignal(int);
 
   struct waybar_output *output;
-  Json::Value config;
-  struct wl_surface *surface;
   bool visible = true;
   Gtk::Window window;
-  Glib::RefPtr<Gdk::Surface> gdk_surface_;
   Gtk::Orientation orientation = Gtk::Orientation::HORIZONTAL;
   Gtk::PositionType position = Gtk::PositionType::TOP;
-
-  int x_global;
-  int y_global;
 
 #ifdef HAVE_SWAY
   std::string bar_id;
@@ -92,6 +86,12 @@ class Bar {
   void onConfigure(int width, int height);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
+
+  Glib::RefPtr<Gdk::Surface> gdk_surface_;
+  struct wl_surface *surface;
+  int x_global;
+  int y_global;
+  Json::Value config;
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;

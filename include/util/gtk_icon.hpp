@@ -1,5 +1,6 @@
 #pragma once
 #include <gtkmm/icontheme.h>
+#include <gdkmm/pixbuf.h>
 
 #include <mutex>
 #include <string>

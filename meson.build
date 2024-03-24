@@ -233,6 +233,18 @@ add_project_arguments('-DHAVE_DWL', language: 'cpp')
 src_files += files('src/modules/dwl/tags.cpp')
 man_files += files('man/waybar-dwl-tags.5.scd')
 
+if not get_option('logind').disabled()
+    add_project_arguments('-DHAVE_GAMEMODE', '-DHAVE_LOGIND_INHIBITOR', language: 'cpp')
+    src_files += files(
+        'src/modules/gamemode.cpp',
+        'src/modules/inhibitor.cpp',
+    )
+    man_files += files(
+        'man/waybar-gamemode.5.scd',
+        'man/waybar-inhibitor.5.scd',
+    )
+endif
+
 subdir('protocol')
 
 executable(

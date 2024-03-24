@@ -108,7 +108,7 @@
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
 
-waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
+waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_{bar}, config_{config} {}
 
 waybar::AModule* waybar::Factory::makeModule(const std::string& name,
                                              const std::string& pos) const {
@@ -121,12 +121,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Battery(id, config_[name]);
     }
 #endif
-/* gtk4 todo
 #ifdef HAVE_GAMEMODE
     if (ref == "gamemode") {
       return new waybar::modules::Gamemode(id, config_[name]);
     }
 #endif
+/* gtk4 todo
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
       return new waybar::modules::upower::UPower(id, config_[name]);
