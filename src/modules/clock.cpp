@@ -115,6 +115,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     } else
       cldMonCols_ = 1;
     if (config_[kCldPlaceholder]["on-scroll"].isInt()) {
+      cldShift_ = config_[kCldPlaceholder]["on-scroll"].asInt();
       event_box_.add_events(Gdk::LEAVE_NOTIFY_MASK);
       event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
         cldCurrShift_ = months{0};
@@ -405,10 +406,10 @@ void waybar::modules::Clock::cldModeSwitch() {
   cldMode_ = (cldMode_ == CldMode::YEAR) ? CldMode::MONTH : CldMode::YEAR;
 }
 void waybar::modules::Clock::cldShift_up() {
-  cldCurrShift_ += (months)((cldMode_ == CldMode::YEAR) ? 12 : 1);
+  cldCurrShift_ += (months)((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
 }
 void waybar::modules::Clock::cldShift_down() {
-  cldCurrShift_ -= (months)((cldMode_ == CldMode::YEAR) ? 12 : 1);
+  cldCurrShift_ -= (months)((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
 }
 void waybar::modules::Clock::tz_up() {
   const auto tzSize{tzList_.size()};
