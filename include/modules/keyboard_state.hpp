@@ -32,12 +32,15 @@ class KeyboardState : public AModule {
   Gtk::Label scrolllock_label_;
 
   std::string numlock_format_;
+  std::string numlock_locked_format_;
   std::string capslock_format_;
+  std::string capslock_locked_format_;
   std::string scrolllock_format_;
-  const std::chrono::seconds interval_;
+  std::string scrolllock_locked_format_;
   std::string icon_locked_;
   std::string icon_unlocked_;
   std::string devices_path_;
+  const std::chrono::seconds interval_;
 
   struct libinput* libinput_;
   std::unordered_map<std::string, struct libinput_device*> libinput_devices_;
