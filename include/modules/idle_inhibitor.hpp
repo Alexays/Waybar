@@ -1,14 +1,12 @@
 #pragma once
 
-#include <fmt/format.h>
-
 #include "ALabel.hpp"
 #include "bar.hpp"
 #include "client.hpp"
 
 namespace waybar::modules {
 
-class IdleInhibitor : public ALabel {
+class IdleInhibitor final : public ALabel {
   sigc::connection timeout_;
 
  public:
@@ -19,7 +17,7 @@ class IdleInhibitor : public ALabel {
   static bool status;
 
  private:
-//todo  bool handleToggle(GdkEventButton* const& e) override;
+  void handleToggle(int n_press, double dx, double dy);
   void toggleStatus();
 
   const Bar& bar_;

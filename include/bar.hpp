@@ -65,6 +65,7 @@ class Bar {
   void handleSignal(int);
 
   struct waybar_output *output;
+  struct wl_surface *surface;
   bool visible = true;
   Gtk::Window window;
   Gtk::Orientation orientation = Gtk::Orientation::HORIZONTAL;
@@ -88,7 +89,6 @@ class Bar {
   void onOutputGeometryChanged();
 
   Glib::RefPtr<Gdk::Surface> gdk_surface_;
-  struct wl_surface *surface;
   Json::Value config;
   int x_global;
   int y_global;

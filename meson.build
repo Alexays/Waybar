@@ -132,7 +132,8 @@ src_files = files(
      'src/modules/custom.cpp',
      'src/modules/load.cpp',
      'src/modules/disk.cpp',
-     'src/modules/temperature.cpp'
+     'src/modules/temperature.cpp',
+     'src/modules/idle_inhibitor.cpp'
 )
 
 man_files = files(
