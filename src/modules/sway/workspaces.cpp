@@ -304,7 +304,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("focused");
     }
-    if (hasFlag((*it), "visible")) {
+    if (hasFlag((*it), "visible") || ((*it)["output"].isString() && (*it)["nodes"].size() == 0)) {
       button.get_style_context()->add_class("visible");
     } else {
       button.get_style_context()->remove_class("visible");
