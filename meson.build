@@ -22,8 +22,6 @@ endif
 
 if compiler.has_link_argument('-lc++fs')
     cpp_link_args += ['-lc++fs']
-elif compiler.has_link_argument('-lc++experimental')
-    cpp_link_args += ['-lc++experimental']
 elif compiler.has_link_argument('-lstdc++fs')
     cpp_link_args += ['-lstdc++fs']
 endif
@@ -41,15 +39,6 @@ else
         add_project_arguments('-DVERSION=@0@'.format(version), language: 'cpp')
     else
         add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()), language: 'cpp')
-    endif
-endif
-
-if not compiler.has_header('filesystem')
-    if compiler.has_header('experimental/filesystem')
-        add_project_arguments('-DFILESYSTEM_EXPERIMENTAL', language: 'cpp')
-    else
-        add_project_arguments('-DNO_FILESYSTEM', language: 'cpp')
-        warning('No filesystem header found, some modules may not work')
     endif
 endif
 
@@ -86,11 +75,39 @@ sigcpp = dependency('sigc++-3.0', version: ['>=3.4.0'])
 gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
 giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
+libudev = dependency('libudev', required: get_option('libudev'))
 
 gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              version : ['>=1.0.2'],
                              fallback : ['gtk4-layer-shell', 'gtk_layer_shell'],
                              default_options : ['introspection=false', 'vapi=false'])
+
+cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
+have_chrono_timezones = cpp_lib_chrono >= 201611
+
+if have_chrono_timezones
+   code = '''
+#include <chrono>
+using namespace std::chrono;
+int main(int argc, char** argv) {
+   const time_zone* tz;
+   return 0;
+}
+'''
+   if not compiler.links(code)
+      have_chrono_timezones = false
+   endif
+endif
+
+if have_chrono_timezones
+  tz_dep = declare_dependency()
+else
+  tz_dep = dependency('date',
+      required: false,
+      default_options : [ 'use_system_tzdb=true' ],
+      modules : [ 'date::date', 'date::date-tz' ],
+      fallback: [ 'date', 'tz_dep' ])
+endif
 
 prefix = get_option('prefix')
 sysconfdir = get_option('sysconfdir')
@@ -106,10 +123,129 @@ src_files = files(
      'src/config.cpp',
      'src/util/portal.cpp',
      'src/util/prepare_for_sleep.cpp',
-#    'src/AModule.cpp',
+     'src/AModule.cpp',
+     'src/ALabel.cpp',
+     'src/factory.cpp',
+     'src/util/ustring_clen.cpp',
+     'src/group.cpp',
+     'src/ASlider.cpp',
+     'src/modules/custom.cpp',
+     'src/modules/load.cpp',
+     'src/modules/disk.cpp',
+     'src/modules/temperature.cpp',
+     'src/modules/idle_inhibitor.cpp'
 )
 
+man_files = files(
+    'man/waybar-custom.5.scd',
+    'man/waybar-disk.5.scd',
+    'man/waybar-idle-inhibitor.5.scd',
+    'man/waybar-image.5.scd',
+    'man/waybar-states.5.scd',
+    'man/waybar-temperature.5.scd',
+)
+
+if have_chrono_timezones
+    add_project_arguments('-DHAVE_CHRONO_TIMEZONES', language: 'cpp')
+    src_files += files('src/modules/clock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+elif tz_dep.found()
+    add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
+    src_files += files('src/modules/clock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+else
+    src_files += files('src/modules/simpleclock.cpp')
+    man_files += files('man/waybar-clock.5.scd')
+endif
+
+if get_option('experimental')
+    add_project_arguments('-DUSE_EXPERIMENTAL', language: 'cpp')
+endif
+
+if libudev.found() and (is_linux or libepoll.found())
+    add_project_arguments('-DHAVE_LIBUDEV', language: 'cpp')
+    src_files += files(
+        'src/modules/backlight.cpp',
+        'src/modules/backlight_slider.cpp',
+        'src/util/backlight_backend.cpp',
+    )
+    man_files += files(
+        'man/waybar-backlight.5.scd',
+        'man/waybar-backlight-slider.5.scd',
+    )
+endif
+
+cava = dependency('cava',
+                  version : '>=0.10.1',
+                  required: get_option('cava'),
+                  fallback : ['cava', 'cava_dep'],
+                  not_found_message: 'cava is not found. Building waybar without cava')
+
+if cava.found()
+   add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
+   src_files += files('src/modules/cava.cpp')
+   man_files += files('man/waybar-cava.5.scd')
+endif
+
 inc_dirs = ['include']
+
+if is_linux
+   add_project_arguments('-DHAVE_CPU_LINUX', language: 'cpp')
+   add_project_arguments('-DHAVE_MEMORY_LINUX', language: 'cpp')
+   add_project_arguments('-DHAVE_SYSTEMD_MONITOR', language: 'cpp')
+   src_files += files('src/modules/battery.cpp',
+                      'src/modules/cpu.cpp',
+                      'src/modules/cpu_frequency/common.cpp',
+                      'src/modules/cpu_frequency/linux.cpp',
+                      'src/modules/cpu_usage/common.cpp',
+                      'src/modules/cpu_usage/linux.cpp',
+                      'src/modules/memory/common.cpp',
+                      'src/modules/memory/linux.cpp',
+                      'src/modules/bluetooth.cpp')
+   man_files += files('man/waybar-battery.5.scd',
+                      'man/waybar-bluetooth.5.scd',
+                      'man/waybar-cpu.5.scd',
+                      'man/waybar-memory.5.scd')
+elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
+    add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
+    add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
+    src_files += files(
+#        'src/modules/cffi.cpp',
+        'src/modules/cpu.cpp',
+        'src/modules/cpu_frequency/bsd.cpp',
+        'src/modules/cpu_frequency/common.cpp',
+        'src/modules/cpu_usage/bsd.cpp',
+        'src/modules/cpu_usage/common.cpp',
+        'src/modules/memory/bsd.cpp',
+        'src/modules/memory/common.cpp',
+    )
+    man_files += files(
+#        'man/waybar-cffi.5.scd',
+        'man/waybar-cpu.5.scd',
+        'man/waybar-memory.5.scd'
+    )
+    if is_freebsd
+        src_files += files('src/modules/battery.cpp')
+        man_files += files('man/waybar-battery.5.scd')
+    endif
+endif
+
+add_project_arguments('-DHAVE_DWL', language: 'cpp')
+src_files += files('src/modules/dwl/tags.cpp')
+man_files += files('man/waybar-dwl-tags.5.scd')
+
+if not get_option('logind').disabled()
+    add_project_arguments('-DHAVE_GAMEMODE', '-DHAVE_LOGIND_INHIBITOR', language: 'cpp')
+    src_files += files(
+        'src/modules/gamemode.cpp',
+        'src/modules/inhibitor.cpp',
+    )
+    man_files += files(
+        'man/waybar-gamemode.5.scd',
+        'man/waybar-inhibitor.5.scd',
+    )
+endif
+
 subdir('protocol')
 
 executable(
@@ -120,11 +256,13 @@ executable(
         gtkmm,
         giounix,
         sigcpp,
+        libudev,
         jsoncpp,
         wayland_client,
         wayland_cursor,
         client_protos,
-        spdlog
+        spdlog,
+        cava
     ],
     include_directories: inc_dirs,
     install: true,

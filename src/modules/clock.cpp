@@ -1,11 +1,9 @@
 #include "modules/clock.hpp"
+#include "util/ustring_clen.hpp"
 
+#include <regex>
 #include <spdlog/spdlog.h>
 
-#include <iomanip>
-#include <regex>
-
-#include "util/ustring_clen.hpp"
 
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>
@@ -17,6 +15,7 @@ namespace fmt_lib = waybar::util::date::format;
 waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       locale_{std::locale(config_["locale"].isString() ? config_["locale"].asString() : "")},
+      controllMot_{Gtk::EventControllerMotion::create()},
       tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
       cldInTooltip_{tlpFmt_.find("{" + kCldPlaceholder + "}") != std::string::npos},
       tzInTooltip_{tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
@@ -111,12 +110,11 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       }
     } else
       cldMonCols_ = 1;
+
     if (config_[kCldPlaceholder]["on-scroll"].isInt()) {
-      event_box_.add_events(Gdk::LEAVE_NOTIFY_MASK);
-      event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
-        cldCurrShift_ = months{0};
-        return false;
-      });
+      controllMot_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+      controllMot_->signal_leave().connect([this](){ cldCurrShift_ = months{0}; });
+      label_.add_controller(controllMot_);
     }
   }
 

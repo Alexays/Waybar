@@ -1,10 +1,9 @@
 #pragma once
 
-#include <gtkmm/box.h>
-#include <gtkmm/widget.h>
-#include <json/json.h>
-
 #include "AModule.hpp"
+
+#include <gtkmm/box.h>
+#include <gtkmm/eventcontrollermotion.h>
 #include "gtkmm/revealer.h"
 
 namespace waybar {
@@ -19,17 +18,19 @@ class Group : public AModule {
   virtual Gtk::Box& getBox();
   void addWidget(Gtk::Widget& widget);
 
-//  bool handleMouseHover(GdkEventCrossing* const& e);
-
  protected:
   Gtk::Box box;
   Gtk::Box revealer_box;
   Gtk::Revealer revealer;
-  bool is_first_widget = true;
-  bool is_drawer = false;
+  bool is_first_widget{true};
+  bool is_drawer{false};
   std::string add_class_to_drawer_children;
 
+ private:
+  Glib::RefPtr<Gtk::EventControllerMotion> controllMotion_;
   void addHoverHandlerTo(Gtk::Widget& widget);
+  void onMotionEnter(double x, double y);
+  void onMotionLeave();
 };
 
 }  // namespace waybar

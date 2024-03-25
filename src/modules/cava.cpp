@@ -53,8 +53,8 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
   if (config_["method"].isString())
     prm_.input = cava::input_method_by_name(config_["method"].asString().c_str());
   if (config_["source"].isString()) prm_.audio_source = config_["source"].asString().data();
-  if (config_["sample_rate"].isNumeric()) prm_.fifoSample = config_["sample_rate"].asLargestInt();
-  if (config_["sample_bits"].isInt()) prm_.fifoSampleBits = config_["sample_bits"].asInt();
+  if (config_["sample_rate"].isNumeric()) prm_.samplerate = config_["sample_rate"].asLargestInt();
+  if (config_["sample_bits"].isInt()) prm_.samplebits = config_["sample_bits"].asInt();
   if (config_["stereo"].isBool()) prm_.stereo = config_["stereo"].asBool();
   if (config_["reverse"].isBool()) prm_.reverse = config_["reverse"].asBool();
   if (config_["bar_delimiter"].isInt()) prm_.bar_delim = config_["bar_delimiter"].asInt();

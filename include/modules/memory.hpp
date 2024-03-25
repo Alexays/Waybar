@@ -1,8 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
-
-#include <fstream>
 #include <unordered_map>
 
 #include "ALabel.hpp"
@@ -10,7 +7,7 @@
 
 namespace waybar::modules {
 
-class Memory : public ALabel {
+class Memory final : public ALabel {
  public:
   Memory(const std::string&, const Json::Value&);
   virtual ~Memory() = default;

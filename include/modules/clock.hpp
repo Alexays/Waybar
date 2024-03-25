@@ -4,6 +4,8 @@
 #include "util/date.hpp"
 #include "util/sleeper_thread.hpp"
 
+#include <gtkmm/eventcontrollermotion.h>
+
 namespace waybar::modules {
 
 const std::string kCldPlaceholder{"calendar"};
@@ -21,6 +23,7 @@ class Clock final : public ALabel {
 
  private:
   const std::locale locale_;
+  Glib::RefPtr<Gtk::EventControllerMotion> controllMot_;
   // tooltip
   const std::string tlpFmt_;
   std::string tlpText_{""};  // tooltip text to print

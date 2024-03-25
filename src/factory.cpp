@@ -1,14 +1,114 @@
 #include "factory.hpp"
 
-#ifdef HAVE_LIBPULSE
-#include "modules/pulseaudio_slider.hpp"
-#endif
+#include "bar.hpp"
 
+#if defined(HAVE_CHRONO_TIMEZONES) || defined(HAVE_LIBDATE)
+#include "modules/clock.hpp"
+#else
+#include "modules/simpleclock.hpp"
+#endif
+#ifdef HAVE_SWAY
+#include "modules/sway/language.hpp"
+#include "modules/sway/mode.hpp"
+#include "modules/sway/scratchpad.hpp"
+#include "modules/sway/window.hpp"
+#include "modules/sway/workspaces.hpp"
+#endif
+#ifdef HAVE_WLR_TASKBAR
+#include "modules/wlr/taskbar.hpp"
+#endif
+#ifdef HAVE_WLR_WORKSPACES
+#include "modules/wlr/workspace_manager.hpp"
+#endif
+#ifdef HAVE_RIVER
+#include "modules/river/layout.hpp"
+#include "modules/river/mode.hpp"
+#include "modules/river/tags.hpp"
+#include "modules/river/window.hpp"
+#endif
+#ifdef HAVE_DWL
+#include "modules/dwl/tags.hpp"
+#endif
+#ifdef HAVE_HYPRLAND
+#include "modules/hyprland/language.hpp"
+#include "modules/hyprland/submap.hpp"
+#include "modules/hyprland/window.hpp"
+#include "modules/hyprland/workspaces.hpp"
+#endif
+#if defined(__FreeBSD__) || defined(__linux__)
+#include "modules/battery.hpp"
+#endif
+#if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
+#include "modules/cpu.hpp"
+#include "modules/cpu_frequency.hpp"
+#include "modules/cpu_usage.hpp"
+#include "modules/load.hpp"
+#endif
+#include "modules/idle_inhibitor.hpp"
+#if defined(HAVE_MEMORY_LINUX) || defined(HAVE_MEMORY_BSD)
+#include "modules/memory.hpp"
+#endif
+#include "modules/disk.hpp"
+#ifdef HAVE_DBUSMENU
+#include "modules/sni/tray.hpp"
+#endif
+#ifdef HAVE_MPRIS
+#include "modules/mpris/mpris.hpp"
+#endif
+#ifdef HAVE_LIBNL
+#include "modules/network.hpp"
+#endif
 #ifdef HAVE_LIBUDEV
+#include "modules/backlight.hpp"
 #include "modules/backlight_slider.hpp"
 #endif
+#ifdef HAVE_LIBEVDEV
+#include "modules/keyboard_state.hpp"
+#endif
+#ifdef HAVE_GAMEMODE
+#include "modules/gamemode.hpp"
+#endif
+#ifdef HAVE_UPOWER
+#include "modules/upower/upower.hpp"
+#endif
+#ifdef HAVE_PIPEWIRE
+#include "modules/privacy/privacy.hpp"
+#endif
+#ifdef HAVE_LIBPULSE
+#include "modules/pulseaudio.hpp"
+#include "modules/pulseaudio_slider.hpp"
+#endif
+#ifdef HAVE_LIBMPDCLIENT
+#include "modules/mpd/mpd.hpp"
+#endif
+#ifdef HAVE_LIBSNDIO
+#include "modules/sndio.hpp"
+#endif
+#if defined(__linux__)
+#include "modules/bluetooth.hpp"
+#endif
+#ifdef HAVE_LOGIND_INHIBITOR
+#include "modules/inhibitor.hpp"
+#endif
+#ifdef HAVE_LIBJACK
+#include "modules/jack.hpp"
+#endif
+#ifdef HAVE_LIBWIREPLUMBER
+#include "modules/wireplumber.hpp"
+#endif
+#ifdef HAVE_LIBCAVA
+#include "modules/cava.hpp"
+#endif
+#ifdef HAVE_SYSTEMD_MONITOR
+#include "modules/systemd_failed_units.hpp"
+#endif
+#include "modules/cffi.hpp"
+#include "modules/custom.hpp"
+#include "modules/image.hpp"
+#include "modules/temperature.hpp"
+#include "modules/user.hpp"
 
-waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
+waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_{bar}, config_{config} {}
 
 waybar::AModule* waybar::Factory::makeModule(const std::string& name,
                                              const std::string& pos) const {
@@ -16,7 +116,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
-#if defined(__FreeBSD__) || (defined(__linux__) && !defined(NO_FILESYSTEM))
+#if defined(__FreeBSD__) || defined(__linux__)
     if (ref == "battery") {
       return new waybar::modules::Battery(id, config_[name]);
     }
@@ -26,6 +126,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Gamemode(id, config_[name]);
     }
 #endif
+/* gtk4 todo
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
       return new waybar::modules::upower::UPower(id, config_[name]);
@@ -81,12 +182,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "river/layout") {
       return new waybar::modules::river::Layout(id, bar_, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_DWL
     if (ref == "dwl/tags") {
       return new waybar::modules::dwl::Tags(id, bar_, config_[name]);
     }
-#endif
+#endif/*
 #ifdef HAVE_HYPRLAND
     if (ref == "hyprland/window") {
       return new waybar::modules::hyprland::Window(id, bar_, config_[name]);
@@ -100,7 +201,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "hyprland/workspaces") {
       return new waybar::modules::hyprland::Workspaces(id, bar_, config_[name]);
     }
-#endif
+#endif*/
     if (ref == "idle_inhibitor") {
       return new waybar::modules::IdleInhibitor(id, bar_, config_[name]);
     }
@@ -128,12 +229,14 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
+/**
+gtk4 todo
     if (ref == "user") {
       return new waybar::modules::User(id, config_[name]);
-    }
+    }*/
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
-    }
+    }/*
     if (ref == "image") {
       return new waybar::modules::Image(id, config_[name]);
     }
@@ -146,7 +249,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "network") {
       return new waybar::modules::Network(id, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_LIBUDEV
     if (ref == "backlight") {
       return new waybar::modules::Backlight(id, config_[name]);
@@ -154,7 +257,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "backlight/slider") {
       return new waybar::modules::BacklightSlider(id, config_[name]);
     }
-#endif
+#endif/*
 #ifdef HAVE_LIBEVDEV
     if (ref == "keyboard-state") {
       return new waybar::modules::KeyboardState(id, bar_, config_[name]);
@@ -177,15 +280,15 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "sndio") {
       return new waybar::modules::Sndio(id, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_GIO_UNIX
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
-    }
+    }/*
     if (ref == "inhibitor") {
       return new waybar::modules::Inhibitor(id, bar_, config_[name]);
-    }
-#endif
+    }*/
+#endif/*
 #ifdef HAVE_LIBJACK
     if (ref == "jack") {
       return new waybar::modules::JACK(id, config_[name]);
@@ -195,26 +298,26 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "wireplumber") {
       return new waybar::modules::Wireplumber(id, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_LIBCAVA
     if (ref == "cava") {
       return new waybar::modules::Cava(id, config_[name]);
     }
-#endif
+#endif/*
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
     }
-#endif
+#endif*/
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name);
-    }
+    }/*
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);
-    }
+    }*/
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());
     throw std::runtime_error(err);

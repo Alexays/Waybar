@@ -1,26 +1,19 @@
 #include "group.hpp"
 
-#include <fmt/format.h>
-
-#include <util/command.hpp>
-
-#include "gdkmm/device.h"
-#include "gtkmm/widget.h"
-
 namespace waybar {
 
 const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical, bool left_to_right) {
   if (is_vertical) {
     if (left_to_right) {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_DOWN;
+      return Gtk::RevealerTransitionType::SLIDE_DOWN;
     } else {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
+      return Gtk::RevealerTransitionType::SLIDE_UP;
     }
   } else {
     if (left_to_right) {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT;
+      return Gtk::RevealerTransitionType::SLIDE_RIGHT;
     } else {
-      return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
+      return Gtk::RevealerTransitionType::SLIDE_LEFT;
     }
   }
 }
@@ -28,8 +21,9 @@ const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical, b
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
              bool vertical)
     : AModule(config, name, id, true, true),
-      box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
-      revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
+      box{vertical ? Gtk::Orientation::VERTICAL : Gtk::Orientation::HORIZONTAL, 0},
+      revealer_box{vertical ? Gtk::Orientation::VERTICAL : Gtk::Orientation::HORIZONTAL, 0},
+      controllMotion_{Gtk::EventControllerMotion::create()} {
   box.set_name(name_);
   if (!id.empty()) {
     box.get_style_context()->add_class(id);
@@ -41,11 +35,11 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
   if (orientation == "inherit") {
     // keep orientation passed
   } else if (orientation == "orthogonal") {
-    box.set_orientation(vertical ? Gtk::ORIENTATION_HORIZONTAL : Gtk::ORIENTATION_VERTICAL);
+    box.set_orientation(vertical ? Gtk::Orientation::HORIZONTAL : Gtk::Orientation::VERTICAL);
   } else if (orientation == "vertical") {
-    box.set_orientation(Gtk::ORIENTATION_VERTICAL);
+    box.set_orientation(Gtk::Orientation::VERTICAL);
   } else if (orientation == "horizontal") {
-    box.set_orientation(Gtk::ORIENTATION_HORIZONTAL);
+    box.set_orientation(Gtk::Orientation::HORIZONTAL);
   } else {
     throw std::runtime_error("Invalid orientation value: " + orientation);
   }
@@ -72,32 +66,29 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 
     revealer.get_style_context()->add_class("drawer");
 
-    revealer.add(revealer_box);
-    box.pack_start(revealer);
+    revealer.set_child(revealer_box);
+    if (left_to_right)
+      box.append(revealer);
+    else
+      box.prepend(revealer);
 
     addHoverHandlerTo(revealer);
   }
 }
 
-bool Group::handleMouseHover(GdkEventCrossing* const& e) {
-  switch (e->type) {
-    case GDK_ENTER_NOTIFY:
-      revealer.set_reveal_child(true);
-      break;
-    case GDK_LEAVE_NOTIFY:
-      revealer.set_reveal_child(false);
-      break;
-    default:
-      break;
-  }
+void Group::onMotionEnter(double x, double y) {
+  revealer.set_reveal_child(true);
+}
 
-  return true;
+void Group::onMotionLeave() {
+  revealer.set_reveal_child(false);
 }
 
 void Group::addHoverHandlerTo(Gtk::Widget& widget) {
-  widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-  widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
-  widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
+  controllMotion_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+  box.add_controller(controllMotion_);
+  controllMotion_->signal_enter().connect(sigc::mem_fun(*this, &Group::onMotionEnter));
+  controllMotion_->signal_leave().connect(sigc::mem_fun(*this, &Group::onMotionLeave));
 }
 
 auto Group::update() -> void {
@@ -107,7 +98,7 @@ auto Group::update() -> void {
 Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
 
 void Group::addWidget(Gtk::Widget& widget) {
-  getBox().pack_start(widget, false, false);
+  getBox().prepend(widget);
 
   if (is_drawer) {
     // Necessary because of GTK's hitbox detection
