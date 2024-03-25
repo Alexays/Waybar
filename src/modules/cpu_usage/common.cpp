@@ -21,7 +21,7 @@ auto waybar::modules::CpuUsage::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   if (tooltipEnabled()) {
-    Gtk::Label::set_tooltip_text(tooltip);
+    label_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
@@ -31,9 +31,9 @@ auto waybar::modules::CpuUsage::update() -> void {
   }
 
   if (format.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
   } else {
-    Gtk::Label::show();
+    label_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("usage", total_usage));
@@ -45,7 +45,7 @@ auto waybar::modules::CpuUsage::update() -> void {
       auto icon_format = fmt::format("icon{}", core_i);
       store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
     }
-    Gtk::Label::set_markup(fmt::vformat(format, store));
+    label_.set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update

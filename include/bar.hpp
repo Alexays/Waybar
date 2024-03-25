@@ -89,9 +89,9 @@ class Bar {
 
   Glib::RefPtr<Gdk::Surface> gdk_surface_;
   struct wl_surface *surface;
+  Json::Value config;
   int x_global;
   int y_global;
-  Json::Value config;
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;

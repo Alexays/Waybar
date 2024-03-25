@@ -201,7 +201,7 @@ bool AModule::handleScroll(double dx, double dy) {
 
 bool AModule::tooltipEnabled() { return isTooltip; }
 
-AModule::operator Gtk::Widget&() { return dynamic_cast<Gtk::Widget&>(*this); }
+AModule::operator Gtk::Widget&() { return this->operator Gtk::Widget&(); };
 
 void AModule::bindEvents(Gtk::Widget& wg) {
   wg.add_controller(controllClick_);

@@ -629,7 +629,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 auto waybar::modules::Battery::update() -> void {
 #if defined(__linux__)
   if (batteries_.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
     return;
   }
 #endif
@@ -663,15 +663,15 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    Gtk::Label::set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
+    label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
                                         fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("power", power), fmt::arg("capacity", capacity),
                                         fmt::arg("time", time_remaining_formatted)));
   }
   if (!old_status_.empty()) {
-    Gtk::Label::get_style_context()->remove_class(old_status_);
+    label_.get_style_context()->remove_class(old_status_);
   }
-  Gtk::Label::get_style_context()->add_class(status);
+  label_.get_style_context()->add_class(status);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
@@ -681,11 +681,11 @@ auto waybar::modules::Battery::update() -> void {
     format = config_["format-" + state].asString();
   }
   if (format.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
   } else {
-    Gtk::Label::show();
+    label_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    Gtk::Label::set_markup(fmt::format(
+    label_.set_markup(fmt::format(
         fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
         fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted)));
   }
@@ -695,7 +695,7 @@ auto waybar::modules::Battery::update() -> void {
 
 void waybar::modules::Battery::setBarClass(std::string& state) {
   // Drop style
-  auto classes = Gtk::Widget::get_css_classes();
+  auto classes = label_.get_css_classes();
   const Glib::ustring prefix{"battery-"};
 
   auto old_class_it = std::find_if(classes.cbegin(), classes.cend(), [&prefix](auto classname) {
@@ -707,7 +707,7 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar doesn't have any `battery-` class
   if (old_class_it == classes.end()) {
     if (!state.empty()) {
-      Gtk::Label::get_style_context()->add_class(new_class);
+      label_.get_style_context()->add_class(new_class);
     }
     return;
   }
@@ -717,14 +717,14 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar has a `battery-` class,
   // but `state` is empty
   if (state.empty()) {
-    Gtk::Label::get_style_context()->remove_class(old_class);
+    label_.get_style_context()->remove_class(old_class);
     return;
   }
 
   // If the bar has a `battery-` class,
   // and `state` is NOT empty
   if (old_class != new_class) {
-    Gtk::Label::get_style_context()->remove_class(old_class);
-    Gtk::Label::get_style_context()->add_class(new_class);
+    label_.get_style_context()->remove_class(old_class);
+    label_.get_style_context()->add_class(new_class);
   }
 }

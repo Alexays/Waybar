@@ -27,7 +27,7 @@ auto waybar::modules::Cpu::update() -> void {
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
   if (tooltipEnabled()) {
-    Gtk::Label::set_tooltip_text(tooltip);
+    label_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
@@ -37,15 +37,15 @@ auto waybar::modules::Cpu::update() -> void {
   }
 
   if (!prev_state_.empty()) {
-    Gtk::Label::get_style_context()->remove_class(prev_state_);
+    label_.get_style_context()->remove_class(prev_state_);
   }
-  Gtk::Label::get_style_context()->add_class(state);
+  label_.get_style_context()->add_class(state);
   prev_state_ = state;
 
   if (format.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
   } else {
-    Gtk::Label::show();
+    label_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load", load1));
@@ -61,7 +61,7 @@ auto waybar::modules::Cpu::update() -> void {
       auto icon_format = fmt::format("icon{}", core_i);
       store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
     }
-    Gtk::Label::set_markup(fmt::vformat(format, store));
+    label_.set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update

@@ -55,20 +55,20 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    Gtk::Label::get_style_context()->add_class("critical");
+    label_.get_style_context()->add_class("critical");
   } else {
-    Gtk::Label::get_style_context()->remove_class("critical");
+    label_.get_style_context()->remove_class("critical");
   }
 
   if (format.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
     return;
   } else {
-    Gtk::Label::show();
+    label_.show();
   }
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
-  Gtk::Label::set_markup(fmt::format(fmt::runtime(format), fmt::arg("temperatureC", temperature_c),
+  label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("temperatureC", temperature_c),
                                 fmt::arg("temperatureF", temperature_f),
                                 fmt::arg("temperatureK", temperature_k),
                                 fmt::arg("icon", getIcon(temperature_c, "", max_temp))));
@@ -77,7 +77,7 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    Gtk::Label::set_tooltip_text(fmt::format(
+    label_.set_tooltip_text(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("temperatureC", temperature_c),
         fmt::arg("temperatureF", temperature_f), fmt::arg("temperatureK", temperature_k)));
   }

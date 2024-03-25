@@ -114,7 +114,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     if (config_[kCldPlaceholder]["on-scroll"].isInt()) {
       controllMot_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
       controllMot_->signal_leave().connect([this](){ cldCurrShift_ = months{0}; });
-      this->add_controller(controllMot_);
+      label_.add_controller(controllMot_);
     }
   }
 
@@ -128,7 +128,7 @@ auto waybar::modules::Clock::update() -> void {
   auto tz{tzList_[tzCurrIdx_]};
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
-  Gtk::Label::set_markup(fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(now)));
+  label_.set_markup(fmt_lib::vformat(locale_, format_, fmt_lib::make_format_args(now)));
 
   if (tooltipEnabled()) {
     const year_month_day today{floor<days>(now.get_local_time())};
@@ -147,7 +147,7 @@ auto waybar::modules::Clock::update() -> void {
 
     tlpText_ = fmt_lib::vformat(locale_, tlpText_, fmt_lib::make_format_args(shiftedNow));
 
-    Gtk::Label::set_tooltip_markup(tlpText_);
+    label_.set_tooltip_markup(tlpText_);
   }
 
   ALabel::update();

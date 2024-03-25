@@ -129,8 +129,8 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
-      config(w_config),
       window{Gtk::Window()},
+      config(w_config),
       x_global(0),
       y_global(0),
       margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},

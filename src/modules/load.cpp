@@ -24,7 +24,7 @@ auto waybar::modules::Load::update() -> void {
   auto [load1, load5, load15] = Load::getLoad();
   if (tooltipEnabled()) {
     auto tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
-    Gtk::Label::set_tooltip_text(tooltip);
+    label_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto state = getState(load1);
@@ -33,9 +33,9 @@ auto waybar::modules::Load::update() -> void {
   }
 
   if (format.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
   } else {
-    Gtk::Label::show();
+    label_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load1", load1));
@@ -44,7 +44,7 @@ auto waybar::modules::Load::update() -> void {
     store.push_back(fmt::arg("icon1", getIcon(load1, icons)));
     store.push_back(fmt::arg("icon5", getIcon(load5, icons)));
     store.push_back(fmt::arg("icon15", getIcon(load15, icons)));
-    Gtk::Label::set_markup(fmt::vformat(format, store));
+    label_.set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update

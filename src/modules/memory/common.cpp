@@ -53,11 +53,11 @@ auto waybar::modules::Memory::update() -> void {
     }
 
     if (format.empty()) {
-      Gtk::Label::hide();
+      label_.hide();
     } else {
-      Gtk::Label::show();
+      label_.show();
       auto icons = std::vector<std::string>{state};
-      Gtk::Label::set_markup(fmt::format(
+      label_.set_markup(fmt::format(
           fmt::runtime(format), used_ram_percentage,
           fmt::arg("icon", getIcon(used_ram_percentage, icons)),
           fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
@@ -70,7 +70,7 @@ auto waybar::modules::Memory::update() -> void {
     if (tooltipEnabled()) {
       if (config_["tooltip-format"].isString()) {
         auto tooltip_format = config_["tooltip-format"].asString();
-        Gtk::Label::set_tooltip_text(fmt::format(
+        label_.set_tooltip_text(fmt::format(
             fmt::runtime(tooltip_format), used_ram_percentage,
             fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
             fmt::arg("percentage", used_ram_percentage),
@@ -78,11 +78,11 @@ auto waybar::modules::Memory::update() -> void {
             fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
             fmt::arg("swapAvail", available_swap_gigabytes)));
       } else {
-        Gtk::Label::set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
+        label_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
       }
     }
   } else {
-    Gtk::Label::hide();
+    label_.hide();
   }
   // Call parent update
   ALabel::update();

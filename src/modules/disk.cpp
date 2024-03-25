@@ -46,7 +46,7 @@ auto waybar::modules::Disk::update() -> void {
   */
 
   if (err != 0) {
-    Gtk::Label::hide();
+    label_.hide();
     return;
   }
 
@@ -69,10 +69,10 @@ auto waybar::modules::Disk::update() -> void {
   }
 
   if (format.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
   } else {
-    Gtk::Label::show();
-    Gtk::Label::set_markup(fmt::format(
+    label_.show();
+    label_.set_markup(fmt::format(
         fmt::runtime(format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
         fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks), fmt::arg("used", used),
         fmt::arg("percentage_used", percentage_used), fmt::arg("total", total),
@@ -85,7 +85,7 @@ auto waybar::modules::Disk::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    Gtk::Label::set_tooltip_text(fmt::format(
+    label_.set_tooltip_text(fmt::format(
         fmt::runtime(tooltip_format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
         fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks), fmt::arg("used", used),
         fmt::arg("percentage_used", percentage_used), fmt::arg("total", total),

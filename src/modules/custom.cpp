@@ -149,7 +149,7 @@ auto waybar::modules::Custom::update() -> void {
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
-    Gtk::Label::hide();
+    label_.hide();
   } else {
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
@@ -161,28 +161,28 @@ auto waybar::modules::Custom::update() -> void {
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
     if (str.empty()) {
-      Gtk::Label::hide();
+      label_.hide();
     } else {
-      Gtk::Label::set_markup(str);
+      label_.set_markup(str);
       if (tooltipEnabled()) {
         if (text_ == tooltip_) {
-          if (Gtk::Label::get_tooltip_markup().c_str() != str) {
-            Gtk::Label::set_tooltip_markup(str);
+          if (label_.get_tooltip_markup().c_str() != str) {
+            label_.set_tooltip_markup(str);
           }
         } else if (config_["tooltip-format"].isString()) {
           auto tooltip = config_["tooltip-format"].asString();
           tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
                                 fmt::arg("icon", getIcon(percentage_, alt_)),
                                 fmt::arg("percentage", percentage_));
-          Gtk::Label::set_tooltip_markup(tooltip);
+          label_.set_tooltip_markup(tooltip);
         } else {
-          if (Gtk::Label::get_tooltip_markup().c_str() != tooltip_) {
-            Gtk::Label::set_tooltip_markup(tooltip_);
+          if (label_.get_tooltip_markup().c_str() != tooltip_) {
+            label_.set_tooltip_markup(tooltip_);
           }
         }
       }
-      auto style = Gtk::Label::get_style_context();
-      auto classes{Gtk::Widget::get_css_classes()};
+      auto style = label_.get_style_context();
+      auto classes{label_.get_css_classes()};
       for (auto const& c : classes) {
         if(c.c_str() == id_) continue;
         style->remove_class(c);
@@ -193,7 +193,7 @@ auto waybar::modules::Custom::update() -> void {
       style->add_class("flat");
       style->add_class("text-button");
       style->add_class(MODULE_CLASS);
-      Gtk::Label::show();
+      label_.show();
     }
   }
   // Call parent update

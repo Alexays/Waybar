@@ -14,7 +14,7 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   box_.set_name(name_);
 
   // Get current theme
-  gtkTheme_ = Gtk::IconTheme::get_for_display(Gtk::Widget::get_display());
+  gtkTheme_ = Gtk::IconTheme::get_for_display(label_.get_display());
 
   // Tooltip
   if (config_["tooltip"].isBool()) {
@@ -158,7 +158,7 @@ void Gamemode::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& con
 void Gamemode::appear(const Glib::RefPtr<Gio::DBus::Connection>& connection,
                       const Glib::ustring& name, const Glib::ustring& name_owner) {
   gamemodeRunning = true;
-  Gtk::Label::set_visible(true);
+  label_.set_visible(true);
   getData();
   dp.emit();
 }
@@ -166,7 +166,7 @@ void Gamemode::appear(const Glib::RefPtr<Gio::DBus::Connection>& connection,
 void Gamemode::disappear(const Glib::RefPtr<Gio::DBus::Connection>& connection,
                          const Glib::ustring& name) {
   gamemodeRunning = false;
-  Gtk::Label::set_visible(false);
+  label_.set_visible(false);
 }
 
 void Gamemode::handleToggle(int n_press, double dx, double dy) {
@@ -177,12 +177,12 @@ void Gamemode::handleToggle(int n_press, double dx, double dy) {
 auto Gamemode::update() -> void {
   // Don't update widget if the Gamemode service isn't running
   if (!gamemodeRunning || (gameCount <= 0 && hideNotRunning)) {
-    Gtk::Label::set_visible(false);
+    label_.set_visible(false);
     return;
   }
 
   // Show the module
-  if (!Gtk::Label::get_visible()) Gtk::Label::set_visible(true);
+  if (!label_.get_visible()) label_.set_visible(true);
 
   // CSS status class
   const std::string status = gamemodeRunning && gameCount > 0 ? "running" : "";

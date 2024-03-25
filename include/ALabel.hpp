@@ -7,12 +7,13 @@
 
 namespace waybar {
 
-class ALabel : public AModule, public Gtk::Label {
+class ALabel : public AModule {
  public:
   virtual ~ALabel() = default;
   auto update() -> void override;
   virtual std::string getIcon(uint16_t, const std::string &alt = "", uint16_t max = 0);
   virtual std::string getIcon(uint16_t, const std::vector<std::string> &alts, uint16_t max = 0);
+  operator Gtk::Widget &() override;
 
  protected:
   ALabel(const Json::Value &, const std::string &, const std::string &, const std::string &format,
@@ -20,6 +21,7 @@ class ALabel : public AModule, public Gtk::Label {
          bool enable_scroll = false);
 
   std::string format_;
+  Gtk::Label label_;
   const std::chrono::seconds interval_;
   bool alt_ = false;
   std::string default_format_;

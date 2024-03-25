@@ -27,7 +27,7 @@ auto waybar::modules::CpuFrequency::update() -> void {
     auto tooltip =
         fmt::format("Minimum frequency: {}\nAverage frequency: {}\nMaximum frequency: {}\n",
                     min_frequency, avg_frequency, max_frequency);
-    Gtk::Label::set_tooltip_text(tooltip);
+    label_.set_tooltip_text(tooltip);
   }
   auto format = format_;
   auto state = getState(avg_frequency);
@@ -36,16 +36,16 @@ auto waybar::modules::CpuFrequency::update() -> void {
   }
 
   if (format.empty()) {
-    Gtk::Label::hide();
+    label_.hide();
   } else {
-    Gtk::Label::show();
+    label_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("icon", getIcon(avg_frequency, icons)));
     store.push_back(fmt::arg("max_frequency", max_frequency));
     store.push_back(fmt::arg("min_frequency", min_frequency));
     store.push_back(fmt::arg("avg_frequency", avg_frequency));
-    Gtk::Label::set_markup(fmt::vformat(format, store));
+    label_.set_markup(fmt::vformat(format, store));
   }
 
   // Call parent update

@@ -175,13 +175,13 @@ auto waybar::modules::Cava::update() -> void {
         if (prm_.bar_delim != 0) text_.push_back(prm_.bar_delim);
       }
 
-      Gtk::Label::set_markup(text_);
-      Gtk::Label::show();
+      label_.set_markup(text_);
+      label_.show();
       ALabel::update();
     }
   } else {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
-    if (hide_on_silence_) Gtk::Label::hide();
+    if (hide_on_silence_) label_.hide();
   }
 }
 
