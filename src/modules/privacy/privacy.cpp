@@ -1,12 +1,8 @@
 #include "modules/privacy/privacy.hpp"
 
-#include <fmt/core.h>
 #include <json/value.h>
-#include <pipewire/pipewire.h>
 #include <spdlog/spdlog.h>
 
-#include <cstdio>
-#include <cstring>
 #include <string>
 
 #include "AModule.hpp"
