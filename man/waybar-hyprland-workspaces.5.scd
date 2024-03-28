@@ -42,6 +42,11 @@ Addressed by *hyprland/workspaces*
 	default: false ++
 	If set to true, special workspaces will be shown.
 
+*special-visible-only*: ++
+	typeof: bool ++
+	default: false ++
+	If this and show-special are to true, special workspaces will be shown only if visible.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++

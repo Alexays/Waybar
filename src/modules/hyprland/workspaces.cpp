@@ -78,6 +78,11 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
     m_showSpecial = configShowSpecial.asBool();
   }
 
+  auto configSpecialVisibleOnly = config_["special-visible-only"];
+  if (configShowSpecial.isBool()) {
+    m_specialVisibleOnly = configShowSpecial.asBool();
+  }
+
   auto configActiveOnly = config_["active-only"];
   if (configActiveOnly.isBool()) {
     m_activeOnly = configActiveOnly.asBool();
@@ -886,6 +891,13 @@ void Workspace::update(const std::string &format, const std::string &icon) {
     m_button.hide();
     return;
   }
+  if (this->isSpecial() && \
+      this->m_workspaceManager.specialVisibleOnly() && \
+      !this->isVisible()) {
+    m_button.hide();
+    return;
+  }
+
   m_button.show();
 
   auto styleContext = m_button.get_style_context();
