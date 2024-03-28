@@ -5,6 +5,8 @@
 
 #include <map>
 #include <string>
+#include <type_traits>
+#include <vector>
 
 #include "ALabel.hpp"
 #include "bar.hpp"
@@ -21,7 +23,12 @@ class Language : public ALabel, public sigc::trackable {
   auto update() -> void override;
 
  private:
-  enum class DispayedShortFlag { None = 0, ShortName = 1, ShortDescription = 1 << 1 };
+  enum VisibleFields {
+    None = 0,
+    ShortName = 1,
+    ShortDescription = 1 << 1,
+    Variant = 1 << 2,
+  };
 
   struct Layout {
     std::string full_name;
@@ -29,36 +36,52 @@ class Language : public ALabel, public sigc::trackable {
     std::string variant;
     std::string short_description;
     std::string country_flag() const;
+
+    Layout() = default;
+    Layout(rxkb_layout*);
+
+    void addShortNameSuffix(std::string_view suffix);
   };
 
   class XKBContext {
    public:
     XKBContext();
     ~XKBContext();
-    auto next_layout() -> Layout*;
+
+    void initLayouts(const std::vector<std::string>& names, bool want_unique_names);
+    /*
+     * Get layout info by full name (description).
+     * The reference is guaranteed to be valid until the XKBContext is destroyed.
+     */
+    const Layout& getLayout(const std::string& name);
 
    private:
+    static const Layout fallback_;
+
+    bool want_unique_names_ = false;
     rxkb_context* context_ = nullptr;
-    rxkb_layout* xkb_layout_ = nullptr;
-    Layout* layout_ = nullptr;
+
+    std::map<std::string, Layout> cached_layouts_;
     std::map<std::string, rxkb_layout*> base_layouts_by_name_;
+    std::multimap<std::string, Layout&> layouts_by_short_name_;
+
+    Layout& newCachedEntry(const std::string& name, rxkb_layout* xkb_layout);
   };
 
   void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
 
   auto set_current_layout(std::string current_layout) -> void;
-  auto init_layouts_map(const std::vector<std::string>& used_layouts) -> void;
 
   const static std::string XKB_LAYOUT_NAMES_KEY;
   const static std::string XKB_ACTIVE_LAYOUT_NAME_KEY;
 
   Layout layout_;
+  XKBContext xkb_context_;
   std::string tooltip_format_ = "";
-  std::map<std::string, Layout> layouts_map_;
+  std::vector<std::string> layouts_;
   bool hide_single_;
-  bool is_variant_displayed;
-  std::byte displayed_short_flag = static_cast<std::byte>(DispayedShortFlag::None);
+  std::underlying_type_t<VisibleFields> visible_fields = VisibleFields::None;
 
   util::JsonParser parser_;
   std::mutex mutex_;
