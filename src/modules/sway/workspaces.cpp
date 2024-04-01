@@ -299,12 +299,13 @@ auto Workspaces::update() -> void {
     if (needReorder) {
       box_.reorder_child(button, it - workspaces_.begin());
     }
+    bool noNodes = (*it)["nodes"].empty() && (*it)["floating_nodes"].empty();
     if (hasFlag((*it), "focused")) {
       button.get_style_context()->add_class("focused");
     } else {
       button.get_style_context()->remove_class("focused");
     }
-    if (hasFlag((*it), "visible") || ((*it)["output"].isString() && (*it)["nodes"].size() == 0)) {
+    if (hasFlag((*it), "visible") || ((*it)["output"].isString() && noNodes )) {
       button.get_style_context()->add_class("visible");
     } else {
       button.get_style_context()->remove_class("visible");
@@ -319,7 +320,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("persistent");
     }
-    if ((*it)["nodes"].size() == 0) {
+    if (noNodes)  {
       button.get_style_context()->add_class("empty");
     } else {
       button.get_style_context()->remove_class("empty");
@@ -406,7 +407,7 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
       }
     }
     if (key == "focused" || key == "urgent") {
-      if (config_["format-icons"][key].isString() && node[key].asBool()) {
+      if (config_["format-icons"][key].isString() && hasFlag(node, key)) {
         return config_["format-icons"][key].asString();
       }
     } else if (config_["format-icons"]["persistent"].isString() &&
