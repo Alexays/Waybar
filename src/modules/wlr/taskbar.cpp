@@ -30,6 +30,9 @@ namespace waybar::modules::wlr {
 static std::vector<std::string> search_prefix() {
   std::vector<std::string> prefixes = {""};
 
+  std::string home_dir = std::getenv("HOME");
+  prefixes.push_back(home_dir + "/.local/share/");
+
   auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
   if (!xdg_data_dirs) {
     prefixes.emplace_back("/usr/share/");
@@ -46,9 +49,6 @@ static std::vector<std::string> search_prefix() {
       start = end == std::string::npos ? end : end + 1;
     } while (end != std::string::npos);
   }
-
-  std::string home_dir = std::getenv("HOME");
-  prefixes.push_back(home_dir + "/.local/share/");
 
   for (auto &p : prefixes) spdlog::debug("Using 'desktop' search path prefix: {}", p);
 
