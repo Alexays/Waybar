@@ -384,6 +384,14 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
         spdlog::error("Workspaces: {}", e.what());
       }
     });
+
+    button.signal_enter().connect([this, node] {
+      setCursor(Gdk::HAND2);
+    });
+
+    button.signal_leave().connect([this, node] {
+      setCursor(Gdk::ARROW);
+    });
   }
   return button;
 }
@@ -420,6 +428,15 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
     }
   }
   return name;
+}
+
+// Since we add handle workspace buttons ourselves we don't want
+// to handle enter/leave events on the AModule EventBox
+bool Workspaces::handleEnter(GdkEventCrossing* const& e) {
+  return true;
+}
+bool Workspaces::handleLeave(GdkEventCrossing* const& e) {
+  return true;
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {

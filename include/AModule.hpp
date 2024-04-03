@@ -37,7 +37,11 @@ class AModule : public IModule {
   const Json::Value &config_;
   Gtk::EventBox event_box_;
 
+  virtual void setCursor(Gdk::CursorType const c);
+
   virtual bool handleToggle(GdkEventButton *const &ev);
+  virtual bool handleEnter(GdkEventCrossing *const &ev);
+  virtual bool handleLeave(GdkEventCrossing *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
   virtual bool handleRelease(GdkEventButton *const &ev);
 

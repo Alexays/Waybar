@@ -15,6 +15,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       distance_scrolled_x_(0.0) {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
       if (eventActionMap_.count(it.key().asString()) == 0) {
@@ -39,6 +40,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   if (enable_click || hasUserEvent) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
+
+    event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleEnter));
+    event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleLeave));
   }
 
   bool hasReleaseEvent =
@@ -83,14 +87,30 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
+void AModule::setCursor(Gdk::CursorType c) {
+  auto cursor = Gdk::Cursor::create(Gdk::HAND2);
+  auto gdk_window = event_box_.get_window();
+  gdk_window->set_cursor(cursor);
+}
+
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
 
 bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
+
+bool AModule::handleEnter(GdkEventCrossing* const& e) {
+  setCursor(Gdk::HAND2);
+  return true;
+}
+bool AModule::handleLeave(GdkEventCrossing* const& e) {
+  setCursor(Gdk::ARROW);
+  return true;
+}
 
 bool AModule::handleUserEvent(GdkEventButton* const& e) {
   std::string format{};
   const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
       eventMap_.find(std::pair(e->button, e->type))};
+
   if (rec != eventMap_.cend()) {
     // First call module actions
     this->AModule::doAction(rec->second);
