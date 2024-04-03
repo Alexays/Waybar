@@ -99,11 +99,11 @@ bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e
 
 bool AModule::handleEnter(GdkEventCrossing* const& e) {
   setCursor(Gdk::HAND2);
-  return true;
+  return false;
 }
 bool AModule::handleLeave(GdkEventCrossing* const& e) {
   setCursor(Gdk::ARROW);
-  return true;
+  return false;
 }
 
 bool AModule::handleUserEvent(GdkEventButton* const& e) {
