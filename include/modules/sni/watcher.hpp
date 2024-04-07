@@ -4,7 +4,7 @@
 #include <giomm.h>
 #include <glibmm/refptr.h>
 
-namespace waybar::modules::SNI {
+namespace wabar::modules::SNI {
 
 class Watcher {
  private:
@@ -53,4 +53,4 @@ class Watcher {
   SnWatcher *watcher_ = nullptr;
 };
 
-}  // namespace waybar::modules::SNI
+}  // namespace wabar::modules::SNI

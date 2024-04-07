@@ -7,11 +7,11 @@
 #include "ALabel.hpp"
 #include "bar.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Inhibitor : public ALabel {
  public:
-  Inhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
+  Inhibitor(const std::string&, const wabar::Bar&, const Json::Value&);
   virtual ~Inhibitor();
   auto update() -> void override;
   auto activated() -> bool;
@@ -24,4 +24,4 @@ class Inhibitor : public ALabel {
   int handle_ = -1;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

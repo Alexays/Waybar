@@ -7,7 +7,7 @@
 #include "AModule.hpp"
 #include "gtkmm/revealer.h"
 
-namespace waybar {
+namespace wabar {
 
 class Group : public AModule {
  public:
@@ -32,4 +32,4 @@ class Group : public AModule {
   void addHoverHandlerTo(Gtk::Widget& widget);
 };
 
-}  // namespace waybar
+}  // namespace wabar

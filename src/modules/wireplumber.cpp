@@ -4,7 +4,7 @@
 
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
-waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config)
+wabar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config)
     : ALabel(config, "wireplumber", id, "{volume}%"),
       wp_core_(nullptr),
       apis_(nullptr),
@@ -38,7 +38,7 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
   asyncLoadRequiredApiModules();
 }
 
-waybar::modules::Wireplumber::~Wireplumber() {
+wabar::modules::Wireplumber::~Wireplumber() {
   wp_core_disconnect(wp_core_);
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
@@ -48,7 +48,7 @@ waybar::modules::Wireplumber::~Wireplumber() {
   g_free(default_node_name_);
 }
 
-void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* self, uint32_t id) {
+void wabar::modules::Wireplumber::updateNodeName(wabar::modules::Wireplumber* self, uint32_t id) {
   spdlog::debug("[{}]: updating node name with node.id {}", self->name_, id);
 
   if (!isValidNodeId(id)) {
@@ -83,7 +83,7 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
   spdlog::debug("[{}]: Updating node name to: {}", self->name_, self->node_name_);
 }
 
-void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* self, uint32_t id) {
+void wabar::modules::Wireplumber::updateVolume(wabar::modules::Wireplumber* self, uint32_t id) {
   spdlog::debug("[{}]: updating volume", self->name_);
   GVariant* variant = nullptr;
 
@@ -108,7 +108,7 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
   self->dp.emit();
 }
 
-void waybar::modules::Wireplumber::onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id) {
+void wabar::modules::Wireplumber::onMixerChanged(wabar::modules::Wireplumber* self, uint32_t id) {
   spdlog::debug("[{}]: (onMixerChanged) - id: {}", self->name_, id);
 
   g_autoptr(WpNode) node = static_cast<WpNode*>(wp_object_manager_lookup(
@@ -134,7 +134,7 @@ void waybar::modules::Wireplumber::onMixerChanged(waybar::modules::Wireplumber* 
   updateVolume(self, id);
 }
 
-void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wireplumber* self) {
+void wabar::modules::Wireplumber::onDefaultNodesApiChanged(wabar::modules::Wireplumber* self) {
   spdlog::debug("[{}]: (onDefaultNodesApiChanged)", self->name_);
 
   uint32_t defaultNodeId;
@@ -182,7 +182,7 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   updateNodeName(self, defaultNodeId);
 }
 
-void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wireplumber* self) {
+void wabar::modules::Wireplumber::onObjectManagerInstalled(wabar::modules::Wireplumber* self) {
   spdlog::debug("[{}]: onObjectManagerInstalled", self->name_);
 
   self->def_nodes_api_ = wp_plugin_find(self->wp_core_, "default-nodes-api");
@@ -216,8 +216,8 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
                            self);
 }
 
-void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
-                                                     waybar::modules::Wireplumber* self) {
+void wabar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
+                                                     wabar::modules::Wireplumber* self) {
   const auto* pluginName = wp_plugin_get_name(WP_PLUGIN(p));
   spdlog::debug("[{}]: onPluginActivated: {}", self->name_, pluginName);
   g_autoptr(GError) error = nullptr;
@@ -232,7 +232,7 @@ void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* 
   }
 }
 
-void waybar::modules::Wireplumber::activatePlugins() {
+void wabar::modules::Wireplumber::activatePlugins() {
   spdlog::debug("[{}]: activating plugins", name_);
   for (uint16_t i = 0; i < apis_->len; i++) {
     WpPlugin* plugin = static_cast<WpPlugin*>(g_ptr_array_index(apis_, i));
@@ -242,14 +242,14 @@ void waybar::modules::Wireplumber::activatePlugins() {
   }
 }
 
-void waybar::modules::Wireplumber::prepare() {
+void wabar::modules::Wireplumber::prepare() {
   spdlog::debug("[{}]: preparing object manager", name_);
   wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
                                  "=s", "Audio/Sink", nullptr);
 }
 
-void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
-                                                           waybar::modules::Wireplumber* self) {
+void wabar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
+                                                           wabar::modules::Wireplumber* self) {
   gboolean success = FALSE;
   g_autoptr(GError) error = nullptr;
 
@@ -269,8 +269,8 @@ void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncRe
                          "mixer-api", nullptr, (GAsyncReadyCallback)onMixerApiLoaded, self);
 }
 
-void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res,
-                                                    waybar::modules::Wireplumber* self) {
+void wabar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res,
+                                                    wabar::modules::Wireplumber* self) {
   gboolean success = FALSE;
   g_autoptr(GError) error = nullptr;
 
@@ -296,14 +296,14 @@ void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* r
   self->event_box_.signal_scroll_event().connect(sigc::mem_fun(*self, &Wireplumber::handleScroll));
 }
 
-void waybar::modules::Wireplumber::asyncLoadRequiredApiModules() {
+void wabar::modules::Wireplumber::asyncLoadRequiredApiModules() {
   spdlog::debug("[{}]: loading default nodes api module", name_);
   wp_core_load_component(wp_core_, "libwireplumber-module-default-nodes-api", "module", nullptr,
                          "default-nodes-api", nullptr, (GAsyncReadyCallback)onDefaultNodesApiLoaded,
                          this);
 }
 
-auto waybar::modules::Wireplumber::update() -> void {
+auto wabar::modules::Wireplumber::update() -> void {
   auto format = format_;
   std::string tooltipFormat;
 
@@ -339,7 +339,7 @@ auto waybar::modules::Wireplumber::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
+bool wabar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);
   }

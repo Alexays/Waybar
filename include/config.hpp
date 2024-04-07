@@ -9,7 +9,7 @@
 #define SYSCONFDIR "/etc"
 #endif
 
-namespace waybar {
+namespace wabar {
 
 class Config {
  public:
@@ -37,4 +37,4 @@ class Config {
 
   Json::Value config_;
 };
-}  // namespace waybar
+}  // namespace wabar

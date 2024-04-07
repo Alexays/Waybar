@@ -4,7 +4,7 @@
 #include "util/date.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 const std::string kCldPlaceholder{"calendar"};
 const std::string kTZPlaceholder{"tz_list"};
@@ -73,12 +73,12 @@ class Clock final : public ALabel {
   void tz_up();
   void tz_down();
   // Module Action Map
-  static inline std::map<const std::string, void (waybar::modules::Clock::*const)()> actionMap_{
-      {"mode", &waybar::modules::Clock::cldModeSwitch},
-      {"shift_up", &waybar::modules::Clock::cldShift_up},
-      {"shift_down", &waybar::modules::Clock::cldShift_down},
-      {"tz_up", &waybar::modules::Clock::tz_up},
-      {"tz_down", &waybar::modules::Clock::tz_down}};
+  static inline std::map<const std::string, void (wabar::modules::Clock::*const)()> actionMap_{
+      {"mode", &wabar::modules::Clock::cldModeSwitch},
+      {"shift_up", &wabar::modules::Clock::cldShift_up},
+      {"shift_down", &wabar::modules::Clock::cldShift_down},
+      {"tz_up", &wabar::modules::Clock::tz_up},
+      {"tz_down", &wabar::modules::Clock::tz_down}};
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

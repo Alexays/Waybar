@@ -6,7 +6,7 @@
 
 #include "AModule.hpp"
 
-namespace waybar {
+namespace wabar {
 
 class ALabel : public AModule {
  public:
@@ -29,4 +29,4 @@ class ALabel : public AModule {
   virtual std::string getState(uint8_t value, bool lesser = false);
 };
 
-}  // namespace waybar
+}  // namespace wabar

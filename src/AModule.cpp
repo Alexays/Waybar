@@ -4,7 +4,7 @@
 
 #include <util/command.hpp>
 
-namespace waybar {
+namespace wabar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
@@ -200,4 +200,4 @@ bool AModule::tooltipEnabled() { return isTooltip; }
 
 AModule::operator Gtk::Widget&() { return event_box_; }
 
-}  // namespace waybar
+}  // namespace wabar

@@ -9,11 +9,11 @@
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
-class Language : public waybar::ALabel, public EventHandler {
+class Language : public wabar::ALabel, public EventHandler {
  public:
-  Language(const std::string&, const waybar::Bar&, const Json::Value&);
+  Language(const std::string&, const wabar::Bar&, const Json::Value&);
   virtual ~Language();
 
   auto update() -> void override;
@@ -39,4 +39,4 @@ class Language : public waybar::ALabel, public EventHandler {
   Layout layout_;
 };
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

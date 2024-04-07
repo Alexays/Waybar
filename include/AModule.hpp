@@ -7,7 +7,7 @@
 
 #include "IModule.hpp"
 
-namespace waybar {
+namespace wabar {
 
 class AModule : public IModule {
  public:
@@ -71,4 +71,4 @@ class AModule : public IModule {
       {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"}};
 };
 
-}  // namespace waybar
+}  // namespace wabar

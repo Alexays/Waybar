@@ -15,10 +15,10 @@
 #include "group.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
-namespace waybar {
+namespace wabar {
 
 class Factory;
-struct waybar_output {
+struct wabar_output {
   Glib::RefPtr<Gdk::Monitor> monitor;
   std::string name;
   std::string identifier;
@@ -60,7 +60,7 @@ class Bar {
   static const std::string MODE_DEFAULT;
   static const std::string MODE_INVISIBLE;
 
-  Bar(struct waybar_output *w_output, const Json::Value &);
+  Bar(struct wabar_output *w_output, const Json::Value &);
   Bar(const Bar &) = delete;
   ~Bar();
 
@@ -69,7 +69,7 @@ class Bar {
   void toggle();
   void handleSignal(int);
 
-  struct waybar_output *output;
+  struct wabar_output *output;
   Json::Value config;
   struct wl_surface *surface;
   bool visible = true;
@@ -87,7 +87,7 @@ class Bar {
  private:
   void onMap(GdkEventAny *);
   auto setupWidgets() -> void;
-  void getModules(const Factory &, const std::string &, waybar::Group *);
+  void getModules(const Factory &, const std::string &, wabar::Group *);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
@@ -109,14 +109,14 @@ class Bar {
   Gtk::Box center_;
   Gtk::Box right_;
   Gtk::Box box_;
-  std::vector<std::shared_ptr<waybar::AModule>> modules_left_;
-  std::vector<std::shared_ptr<waybar::AModule>> modules_center_;
-  std::vector<std::shared_ptr<waybar::AModule>> modules_right_;
+  std::vector<std::shared_ptr<wabar::AModule>> modules_left_;
+  std::vector<std::shared_ptr<wabar::AModule>> modules_center_;
+  std::vector<std::shared_ptr<wabar::AModule>> modules_right_;
 #ifdef HAVE_SWAY
   using BarIpcClient = modules::sway::BarIpcClient;
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
-  std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
+  std::vector<std::shared_ptr<wabar::AModule>> modules_all_;
 };
 
-}  // namespace waybar
+}  // namespace wabar

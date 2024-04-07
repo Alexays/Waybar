@@ -6,7 +6,7 @@
 #include <regex>
 #include <string>
 
-namespace waybar::util {
+namespace wabar::util {
 
 struct Rule {
   std::regex rule;
@@ -48,4 +48,4 @@ class RegexCollection {
   std::string& get(std::string& value);
 };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

@@ -12,11 +12,11 @@
 
 namespace fs = std::filesystem;
 
-namespace waybar {
+namespace wabar {
 
 const std::vector<std::string> Config::CONFIG_DIRS = {
-    "$XDG_CONFIG_HOME/waybar/", "$HOME/.config/waybar/",   "$HOME/waybar/",
-    "/etc/xdg/waybar/",         SYSCONFDIR "/xdg/waybar/", "./resources/",
+    "$XDG_CONFIG_HOME/wabar/", "$HOME/.config/wabar/",   "$HOME/wabar/",
+    "/etc/xdg/wabar/",         SYSCONFDIR "/xdg/wabar/", "./resources/",
 };
 
 const char *Config::CONFIG_PATH_ENV = "WAYBAR_CONFIG_DIR";
@@ -181,4 +181,4 @@ std::vector<Json::Value> Config::getOutputConfigs(const std::string &name,
   return configs;
 }
 
-}  // namespace waybar
+}  // namespace wabar

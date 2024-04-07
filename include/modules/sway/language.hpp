@@ -12,7 +12,7 @@
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 class Language : public ALabel, public sigc::trackable {
  public:
@@ -65,4 +65,4 @@ class Language : public ALabel, public sigc::trackable {
   Ipc ipc_;
 };
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

@@ -9,7 +9,7 @@
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class JACK : public ALabel {
  public:
@@ -36,7 +36,7 @@ class JACK : public ALabel {
   util::SleeperThread thread_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules
 
 int bufSizeCallback(jack_nframes_t size, void *obj);
 int sampleRateCallback(jack_nframes_t rate, void *obj);

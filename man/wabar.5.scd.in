@@ -1,0 +1,349 @@
+wabar(5)
+
+# NAME
+
+wabar - configuration file
+
+# DESCRIPTION
+
+The configuration uses the JSONC file format and is named *config* or *config.jsonc*.
+
+Valid locations for this file are:
+
+- *$XDG_CONFIG_HOME/wabar/*
+- *~/.config/wabar/*
+- *~/wabar/*
+- */etc/xdg/wabar/*
+- *@sysconfdir@/xdg/wabar/*
+
+A good starting point is the default configuration found at https://github.com/Alexays/Wabar/blob/master/resources/config.jsonc
+Also, a minimal example configuration can be found at the bottom of this man page.
+
+# BAR CONFIGURATION
+
+*layer* ++
+	typeof: string ++
+	default: bottom ++
+	Decide if the bar is displayed in front (*top*) of the windows or behind (*bottom*)
+	them.
+
+*output* ++
+	typeof: string|array ++
+	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
+	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model, and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
+	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
+
+*position* ++
+	typeof: string ++
+	default: top ++
+	Bar position, can be *top*, *bottom*, *left*, *right*.
+
+*height* ++
+	typeof: integer ++
+	Height to be used by the bar if possible. Leave blank for a dynamic value.
+
+*width* ++
+	typeof: integer ++
+	Width to be used by the bar if possible. Leave blank for a dynamic value.
+
+*modules-left* ++
+	typeof: array ++
+	Modules that will be displayed on the left.
+
+*modules-center* ++
+	typeof: array ++
+	Modules that will be displayed in the center.
+
+*modules-right* ++
+	typeof: array
+	Modules that will be displayed on the right.
+
+*margin* ++
+	typeof: string ++
+	Margins value using the CSS format without units.
+
+*margin-<top\|left\|bottom\|right>* ++
+	typeof: integer ++
+	Margins value without units.
+
+*spacing* ++
+	typeof: integer ++
+	Size of gaps in between the different modules.
+
+*name* ++
+	typeof: string ++
+	Optional name added as a CSS class, for styling multiple wabars.
+
+*mode* ++
+	typeof: string ++
+	Selects one of the preconfigured display modes. This is an equivalent of the sway-bar(5) *mode* command and supports the same values: *dock*, *hide*, *invisible*, *overlay*. ++
+	Note: *hide* and *invisible* modes may be not as useful without Sway IPC.
+
+*start_hidden* ++
+	typeof: bool ++
+	default: *false* ++
+	Option to start the bar hidden.
+
+*modifier-reset* ++
+	typeof: string ++
+	default: *press*
+	Defines the timing of modifier key to reset the bar visibility.
+	To reset the visibility of the bar with the press of the modifier key use *press*.
+	Use *release* to reset the visibility upon the release of the modifier key and only if no other action happened while the key was pressed. This prevents hiding the bar when the modifier is used to switch a workspace, change binding mode, or start a keybinding.
+
+*exclusive* ++
+	typeof: bool ++
+	default: *true* ++
+	Option to request an exclusive zone from the compositor. Disable this to allow drawing application windows underneath or on top of the bar.
+
+*fixed-center* ++
+	typeof: bool ++
+	default: *true*
+	Prefer fixed center position for the `modules-center` block. The center block will stay in the middle of the bar whenever possible. It can still be pushed around if other blocks need more space.
+	When false, the center block is centered in the space between the left and right block.
+
+*passthrough* ++
+	typeof: bool ++
+	default: *false* ++
+	Option to pass any pointer events to the window under the bar.
+	Intended to be used with either *top* or *overlay* layers and without exclusive zone.
+
+*ipc* ++
+	typeof: bool ++
+	default: false ++
+	Option to subscribe to the Sway IPC bar configuration and visibility events and control wabar with *swaymsg bar* commands. ++
+	Requires *bar_id* value from sway configuration to be either passed with the *-b* command line argument or specified with the *id* option.
+
+*id* ++
+	typeof: string ++
+	*bar_id* for the Sway IPC. Use this if you need to override the value passed with the *-b bar_id* command line argument for the specific bar instance.
+
+*include* ++
+	typeof: string|array ++
+	Paths to additional configuration files.
+	Each file can contain a single object with any of the bar configuration options. In case of duplicate options, the first defined value takes precedence, i.e. including file -> first included file -> etc. Nested includes are permitted, but make sure to avoid circular imports.
+	For a multi-bar config, the include directive affects only current bar configuration object.
+
+*reload_style_on_change* ++
+	typeof: bool ++
+	default: *false* ++
+	Option to enable reloading the css style if a modification is detected on the style sheet file or any imported css files.
+
+# MODULE FORMAT
+
+You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
+
+e.g.
+
+```
+"format": "<span style=\"italic\">{}</span>"
+```
+# MULTIPLE INSTANCES OF A MODULE
+
+If you want to have a second instance of a module, you can suffix it by a '#' and a custom name.
+For example, if you want a second battery module, you can add *"battery#bat2"* to your modules.
+To configure the newly added module, you then also add a module configuration with the same name.
+
+This could then look something like this *(this is an incomplete example)*:
+
+```
+"modules-right": ["battery", "battery#bat2"],
+"battery": {
+	"bat": "BAT1"
+},
+"battery#bat2": {
+	"bat": "BAT2"
+}
+```
+
+# MINIMAL CONFIGURATION
+
+A minimal *config* file could look like this:
+
+```
+{
+	"layer": "top",
+	"modules-left": ["sway/workspaces", "sway/mode"],
+	"modules-center": ["sway/window"],
+	"modules-right": ["battery", "clock"],
+	"sway/window": {
+		"max-length": 50
+	},
+	"battery": {
+		"format": "{capacity}% {icon}",
+		"format-icons": ["", "", "", "", ""]
+	},
+	"clock": {
+		"format-alt": "{:%a, %d. %b  %H:%M}"
+	}
+}
+```
+
+# MULTI OUTPUT CONFIGURATION
+
+## Limit a configuration to some outputs
+
+```
+{
+	"layer": "top",
+	"output": "eDP-1",
+	"modules-left": ["sway/workspaces", "sway/mode"],
+	...
+
+}
+
+```
+
+```
+{
+	"layer": "top",
+	"output": ["eDP-1", "VGA"],
+	"modules-left": ["sway/workspaces", "sway/mode"],
+	...
+}
+
+```
+
+## Configuration of multiple outputs
+
+Don't specify an output to create multiple bars on the same screen.
+
+```
+[{
+	"layer": "top",
+	"output": "eDP-1",
+	"modules-left": ["sway/workspaces", "sway/mode"],
+	...
+}, {
+	"layer": "top",
+	"output": "VGA",
+	"modules-right": ["clock"],
+	...
+}]
+
+```
+
+## Rotating modules
+
+When positioning Wabar on the left or right side of the screen, sometimes it's useful to be able to rotate the contents of a module so the text runs vertically. This can be done using the "rotate" property of the module. Example:
+
+```
+{
+	"clock": {
+		"rotate": 90
+	}
+}
+```
+
+Valid options for the "rotate" property are: 0, 90, 180, and 270.
+
+## Grouping modules
+
+Module groups allow stacking modules in any direction. By default, when the bar is positioned on the top or bottom of the screen, modules in a group are stacked vertically. Likewise, when positioned on the left or right, modules in a group are stacked horizontally. This can be changed with the "orientation" property.
+
+A module group is defined by specifying a module named "group/some-group-name". The group must also be configured with a list of contained modules. Example:
+
+```
+{
+	"modules-right": ["group/hardware", "clock"],
+
+	"group/hardware": {
+		"orientation": "vertical",
+		"modules": [
+			"cpu",
+			"memory",
+			"battery"
+		]
+	},
+
+	...
+}
+```
+
+Valid options for the (optional) "orientation" property are: "horizontal", "vertical", "inherit", and "orthogonal" (default).
+
+## Group Drawers
+
+A group may hide all but one element, showing them only on mouse hover. In order to configure this, you can use the `drawer` property, whose value is an object with the following properties:
+
+*transition-duration*: ++
+	typeof: integer ++
+	default: 500 ++
+	Defines the duration of the transition animation in milliseconds.
+
+*children-class*: ++
+	typeof: string ++
+	default: "hidden" ++
+	Defines the CSS class to be applied to the hidden elements.
+
+*transition-left-to-right*: ++
+	typeof: bool ++
+	default: true ++
+	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
+	When the bar is vertical, it reads as top-to-bottom.
+
+```
+"group/power": {
+    "orientation": "inherit",
+    "drawer": {
+        "transition-duration": 500,
+        "children-class": "not-power",
+        "transition-left-to-right": false,
+    },
+    "modules": [
+        "custom/power", // First element is the "group leader" and won't ever be hidden
+        "custom/quit",
+        "custom/lock",
+        "custom/reboot",
+    ]
+},
+```
+
+# SUPPORTED MODULES
+
+- *wabar-backlight(5)*
+- *wabar-battery(5)*
+- *wabar-bluetooth(5)*
+- *wabar-cava(5)*
+- *wabar-clock(5)*
+- *wabar-cpu(5)*
+- *wabar-custom(5)*
+- *wabar-disk(5)*
+- *wabar-dwl-tags(5)*
+- *wabar-dwl-window(5)*
+- *wabar-gamemode(5)*
+- *wabar-hyprland-language(5)*
+- *wabar-hyprland-submap(5)*
+- *wabar-hyprland-window(5)*
+- *wabar-hyprland-workspaces(5)*
+- *wabar-idle-inhibitor(5)*
+- *wabar-image(5)*
+- *wabar-inhibitor(5)*
+- *wabar-jack(5)*
+- *wabar-keyboard-state(5)*
+- *wabar-memory(5)*
+- *wabar-mpd(5)*
+- *wabar-mpris(5)*
+- *wabar-network(5)*
+- *wabar-pulseaudio(5)*
+- *wabar-river-layout(5)*
+- *wabar-river-mode(5)*
+- *wabar-river-tags(5)*
+- *wabar-river-window(5)*
+- *wabar-sndio(5)*
+- *wabar-states(5)*
+- *wabar-sway-language(5)*
+- *wabar-sway-mode(5)*
+- *wabar-sway-scratchpad(5)*
+- *wabar-sway-window(5)*
+- *wabar-sway-workspaces(5)*
+- *wabar-temperature(5)*
+- *wabar-tray(5)*
+- *wabar-upower(5)*
+- *wabar-wireplumber(5)*
+- *wabar-wlr-taskbar(5)*
+- *wabar-wlr-workspaces(5)*
+
+# SEE ALSO
+
+*sway-output(5)*

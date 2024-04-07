@@ -6,7 +6,7 @@
 #include "gtkmm/label.h"
 #include "util/gtk_icon.hpp"
 
-namespace waybar::modules::upower {
+namespace wabar::modules::upower {
 UPowerTooltip::UPowerTooltip(uint iconSize_, uint tooltipSpacing_, uint tooltipPadding_)
     : Gtk::Window(),
       contentBox(std::make_unique<Gtk::Box>(Gtk::ORIENTATION_VERTICAL)),
@@ -157,4 +157,4 @@ const std::string UPowerTooltip::getDeviceIcon(UpDeviceKind& kind) {
       return "battery-symbolic";
   }
 }
-}  // namespace waybar::modules::upower
+}  // namespace wabar::modules::upower

@@ -12,7 +12,7 @@
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Image : public AModule {
  public:
@@ -37,4 +37,4 @@ class Image : public AModule {
   util::SleeperThread thread_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

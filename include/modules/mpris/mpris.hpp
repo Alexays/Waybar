@@ -14,7 +14,7 @@ extern "C" {
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules::mpris {
+namespace wabar::modules::mpris {
 
 class Mpris : public ALabel {
  public:
@@ -85,4 +85,4 @@ class Mpris : public ALabel {
   std::chrono::time_point<std::chrono::system_clock> last_update_;
 };
 
-}  // namespace waybar::modules::mpris
+}  // namespace wabar::modules::mpris

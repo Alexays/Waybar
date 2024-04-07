@@ -18,7 +18,7 @@
 extern std::mutex reap_mtx;
 extern std::list<pid_t> reap;
 
-namespace waybar::util::command {
+namespace wabar::util::command {
 
 struct res {
   int exit_code;
@@ -94,7 +94,7 @@ inline FILE* open(const std::string& cmd, int& pid, const std::string& output_na
     // Reset sigmask
     err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
     if (err != 0) spdlog::error("pthread_sigmask in open failed: {}", strerror(err));
-    // Kill child if Waybar exits
+    // Kill child if Wabar exits
     int deathsig = SIGTERM;
 #ifdef __linux__
     if (prctl(PR_SET_PDEATHSIG, deathsig) != 0) {
@@ -169,4 +169,4 @@ inline int32_t forkExec(const std::string& cmd) {
   return pid;
 }
 
-}  // namespace waybar::util::command
+}  // namespace wabar::util::command

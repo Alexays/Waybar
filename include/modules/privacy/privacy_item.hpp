@@ -12,10 +12,10 @@
 #include "gtkmm/revealer.h"
 #include "util/pipewire/privacy_node_info.hpp"
 
-using waybar::util::PipewireBackend::PrivacyNodeInfo;
-using waybar::util::PipewireBackend::PrivacyNodeType;
+using wabar::util::PipewireBackend::PrivacyNodeInfo;
+using wabar::util::PipewireBackend::PrivacyNodeType;
 
-namespace waybar::modules::privacy {
+namespace wabar::modules::privacy {
 
 class PrivacyItem : public Gtk::Revealer {
  public:
@@ -48,4 +48,4 @@ class PrivacyItem : public Gtk::Revealer {
   void update_tooltip();
 };
 
-}  // namespace waybar::modules::privacy
+}  // namespace wabar::modules::privacy

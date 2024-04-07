@@ -14,7 +14,7 @@
 #include "gtkmm/label.h"
 #include "modules/upower/upower_tooltip.hpp"
 
-namespace waybar::modules::upower {
+namespace wabar::modules::upower {
 
 class UPower : public AModule {
  public:
@@ -79,4 +79,4 @@ class UPower : public AModule {
   std::string nativePath_;
 };
 
-}  // namespace waybar::modules::upower
+}  // namespace wabar::modules::upower

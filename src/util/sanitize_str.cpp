@@ -3,7 +3,7 @@
 #include <util/sanitize_str.hpp>
 #include <utility>
 
-namespace waybar::util {
+namespace wabar::util {
 // replaces ``<>&"'`` with their encoded counterparts
 std::string sanitize_string(std::string str) {
   // note: it's important that '&' is replaced first; therefore we *can't* use std::map
@@ -21,4 +21,4 @@ std::string sanitize_string(std::string str) {
 
   return str;
 }
-}  // namespace waybar::util
+}  // namespace wabar::util

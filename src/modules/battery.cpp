@@ -7,7 +7,7 @@
 #include <spdlog/spdlog.h>
 
 #include <iostream>
-waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
+wabar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60), bar_(bar) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
@@ -29,7 +29,7 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
   worker();
 }
 
-waybar::modules::Battery::~Battery() {
+wabar::modules::Battery::~Battery() {
 #if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
@@ -50,7 +50,7 @@ waybar::modules::Battery::~Battery() {
 #endif
 }
 
-void waybar::modules::Battery::worker() {
+void wabar::modules::Battery::worker() {
 #if defined(__FreeBSD__)
   thread_timer_ = [this] {
     dp.emit();
@@ -86,7 +86,7 @@ void waybar::modules::Battery::worker() {
 #endif
 }
 
-void waybar::modules::Battery::refreshBatteries() {
+void wabar::modules::Battery::refreshBatteries() {
 #if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
   // Mark existing list of batteries as not necessarily found
@@ -181,7 +181,7 @@ static bool status_gt(const std::string& a, const std::string& b) {
   return false;
 }
 
-const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::getInfos() {
+const std::tuple<uint8_t, float, std::string, float> wabar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
@@ -581,7 +581,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
   }
 }
 
-const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
+const std::string wabar::modules::Battery::getAdapterStatus(uint8_t capacity) const {
 #if defined(__FreeBSD__)
   int state;
   size_t size_state = sizeof state;
@@ -609,7 +609,7 @@ const std::string waybar::modules::Battery::getAdapterStatus(uint8_t capacity) c
   return "Unknown";
 }
 
-const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemaining) {
+const std::string wabar::modules::Battery::formatTimeRemaining(float hoursRemaining) {
   hoursRemaining = std::fabs(hoursRemaining);
   uint16_t full_hours = static_cast<uint16_t>(hoursRemaining);
   uint16_t minutes = static_cast<uint16_t>(60 * (hoursRemaining - full_hours));
@@ -626,7 +626,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
                      fmt::arg("m", zero_pad_minutes));
 }
 
-auto waybar::modules::Battery::update() -> void {
+auto wabar::modules::Battery::update() -> void {
 #if defined(__linux__)
   if (batteries_.empty()) {
     event_box_.hide();
@@ -693,7 +693,7 @@ auto waybar::modules::Battery::update() -> void {
   ALabel::update();
 }
 
-void waybar::modules::Battery::setBarClass(std::string& state) {
+void wabar::modules::Battery::setBarClass(std::string& state) {
   auto classes = bar_.window.get_style_context()->list_classes();
   const std::string prefix = "battery-";
 

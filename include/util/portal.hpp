@@ -4,7 +4,7 @@
 
 #include "fmt/format.h"
 
-namespace waybar {
+namespace wabar {
 
 using namespace Gio;
 
@@ -29,10 +29,10 @@ class Portal : private DBus::Proxy {
                  const Glib::VariantContainerBase& parameters);
 };
 
-}  // namespace waybar
+}  // namespace wabar
 
 template <>
-struct fmt::formatter<waybar::Appearance> : formatter<fmt::string_view> {
+struct fmt::formatter<wabar::Appearance> : formatter<fmt::string_view> {
   // parse is inherited from formatter<string_view>.
-  auto format(waybar::Appearance c, format_context& ctx) const;
+  auto format(wabar::Appearance c, format_context& ctx) const;
 };

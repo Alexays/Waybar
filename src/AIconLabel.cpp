@@ -2,7 +2,7 @@
 
 #include <gdkmm/pixbuf.h>
 
-namespace waybar {
+namespace wabar {
 
 AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const std::string &id,
                        const std::string &format, uint16_t interval, bool ellipsize,
@@ -38,4 +38,4 @@ bool AIconLabel::iconEnabled() const {
   return config_["icon"].isBool() ? config_["icon"].asBool() : false;
 }
 
-}  // namespace waybar
+}  // namespace wabar

@@ -9,7 +9,7 @@
 #include "util/format.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Disk : public ALabel {
  public:
@@ -25,4 +25,4 @@ class Disk : public ALabel {
   float calc_specific_divisor(const std::string divisor);
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

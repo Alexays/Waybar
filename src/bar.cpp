@@ -13,7 +13,7 @@
 #include "modules/sway/bar.hpp"
 #endif
 
-namespace waybar {
+namespace wabar {
 static constexpr const char* MIN_HEIGHT_MSG =
     "Requested height: {} is less than the minimum height: {} required by the modules";
 
@@ -127,9 +127,9 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   }
 }
 
-};  // namespace waybar
+};  // namespace wabar
 
-waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
+wabar::Bar::Bar(struct wabar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
@@ -140,8 +140,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
-  window.set_title("waybar");
-  window.set_name("waybar");
+  window.set_title("wabar");
+  window.set_name("wabar");
   window.set_decorated(false);
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
@@ -226,7 +226,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   gtk_layer_init_for_window(gtk_window);
   gtk_layer_set_keyboard_mode(gtk_window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
   gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
-  gtk_layer_set_namespace(gtk_window, "waybar");
+  gtk_layer_set_namespace(gtk_window, "wabar");
 
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
@@ -291,9 +291,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 }
 
 /* Need to define it here because of forward declared members */
-waybar::Bar::~Bar() = default;
+wabar::Bar::~Bar() = default;
 
-void waybar::Bar::setMode(const std::string& mode) {
+void wabar::Bar::setMode(const std::string& mode) {
   using namespace std::literals::string_literals;
 
   auto style = window.get_style_context();
@@ -313,7 +313,7 @@ void waybar::Bar::setMode(const std::string& mode) {
   }
 }
 
-void waybar::Bar::setMode(const struct bar_mode& mode) {
+void wabar::Bar::setMode(const struct bar_mode& mode) {
   auto* gtk_window = window.gobj();
 
   auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
@@ -341,7 +341,7 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
   }
 }
 
-void waybar::Bar::setPassThrough(bool passthrough) {
+void wabar::Bar::setPassThrough(bool passthrough) {
   auto gdk_window = window.get_window();
   if (gdk_window) {
     Cairo::RefPtr<Cairo::Region> region;
@@ -352,7 +352,7 @@ void waybar::Bar::setPassThrough(bool passthrough) {
   }
 }
 
-void waybar::Bar::setPosition(Gtk::PositionType position) {
+void wabar::Bar::setPosition(Gtk::PositionType position) {
   std::array<gboolean, GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER> anchors;
   anchors.fill(TRUE);
 
@@ -393,7 +393,7 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   }
 }
 
-void waybar::Bar::onMap(GdkEventAny*) {
+void wabar::Bar::onMap(GdkEventAny*) {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
@@ -404,7 +404,7 @@ void waybar::Bar::onMap(GdkEventAny*) {
   setPassThrough(passthrough_);
 }
 
-void waybar::Bar::setVisible(bool value) {
+void wabar::Bar::setVisible(bool value) {
   visible = value;
   if (auto mode = config.get("mode", {}); mode.isString()) {
     setMode(visible ? config["mode"].asString() : MODE_INVISIBLE);
@@ -413,10 +413,10 @@ void waybar::Bar::setVisible(bool value) {
   }
 }
 
-void waybar::Bar::toggle() { setVisible(!visible); }
+void wabar::Bar::toggle() { setVisible(!visible); }
 
 // Converting string to button code rn as to avoid doing it later
-void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
+void wabar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
   if (config.isMember(module_name)) {
     Json::Value& module = config[module_name];
     if (module.isMember("format-alt")) {
@@ -444,7 +444,7 @@ void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
   }
 }
 
-void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
+void wabar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
   if (config.isMember(module_list_name)) {
     Json::Value& modules = config[module_list_name];
     for (const Json::Value& module_name : modules) {
@@ -465,14 +465,14 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
   }
 }
 
-void waybar::Bar::handleSignal(int signal) {
+void wabar::Bar::handleSignal(int signal) {
   for (auto& module : modules_all_) {
     module->refresh(signal);
   }
 }
 
-void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
-                             waybar::Group* group = nullptr) {
+void wabar::Bar::getModules(const Factory& factory, const std::string& pos,
+                             wabar::Group* group = nullptr) {
   auto module_list = group ? config[pos]["modules"] : config[pos];
   if (module_list.isArray()) {
     for (const auto& name : module_list) {
@@ -488,7 +488,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
                           Gtk::ORIENTATION_VERTICAL;
 
-          auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
+          auto group_module = new wabar::Group(id_name, class_name, config[ref], vertical);
           getModules(factory, ref, group_module);
           module = group_module;
         } else {
@@ -524,7 +524,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
   }
 }
 
-auto waybar::Bar::setupWidgets() -> void {
+auto wabar::Bar::setupWidgets() -> void {
   window.add(box_);
   box_.pack_start(left_, false, false);
   if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
@@ -555,7 +555,7 @@ auto waybar::Bar::setupWidgets() -> void {
   }
 }
 
-void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
+void wabar::Bar::onConfigure(GdkEventConfigure* ev) {
   /*
    * GTK wants new size for the window.
    * Actual resizing and management of the exclusve zone is handled within the gtk-layer-shell
@@ -580,7 +580,7 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
   spdlog::info(BAR_SIZE_MSG, ev->width, ev->height, output->name);
 }
 
-void waybar::Bar::configureGlobalOffset(int width, int height) {
+void wabar::Bar::configureGlobalOffset(int width, int height) {
   auto monitor_geometry = *output->monitor->property_geometry().get_value().gobj();
   int x;
   int y;
@@ -619,6 +619,6 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
   y_global = y + monitor_geometry.y;
 }
 
-void waybar::Bar::onOutputGeometryChanged() {
+void wabar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
 }

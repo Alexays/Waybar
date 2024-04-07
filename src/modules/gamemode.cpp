@@ -20,7 +20,7 @@
 #include "gtkmm/tooltip.h"
 #include "util/gtk_icon.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 Gamemode::Gamemode(const std::string& id, const Json::Value& config)
     : AModule(config, "gamemode", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0), icon_(), label_() {
   box_.pack_start(icon_);
@@ -234,4 +234,4 @@ auto Gamemode::update() -> void {
   AModule::update();
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

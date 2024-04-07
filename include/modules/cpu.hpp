@@ -12,7 +12,7 @@
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Cpu : public ALabel {
  public:
@@ -26,4 +26,4 @@ class Cpu : public ALabel {
   util::SleeperThread thread_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

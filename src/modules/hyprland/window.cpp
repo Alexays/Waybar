@@ -12,7 +12,7 @@
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
@@ -45,14 +45,14 @@ auto Window::update() -> void {
   // fix ampersands
   std::lock_guard<std::mutex> lg(mutex_);
 
-  std::string windowName = waybar::util::sanitize_string(workspace_.last_window_title);
+  std::string windowName = wabar::util::sanitize_string(workspace_.last_window_title);
   std::string windowAddress = workspace_.last_window;
 
   windowData_.title = windowName;
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(waybar::util::rewriteString(
+    label_.set_markup(wabar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", windowName),
                     fmt::arg("initialTitle", windowData_.initial_title),
                     fmt::arg("class", windowData_.class_name),
@@ -220,4 +220,4 @@ void Window::setClass(const std::string& classname, bool enable) {
   }
 }
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

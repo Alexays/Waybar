@@ -9,7 +9,7 @@
 #include "gtkmm/image.h"
 #include "modules/privacy/privacy_item.hpp"
 
-namespace waybar::modules::privacy {
+namespace wabar::modules::privacy {
 
 using util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT;
 using util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
@@ -172,4 +172,4 @@ auto Privacy::update() -> void {
   AModule::update();
 }
 
-}  // namespace waybar::modules::privacy
+}  // namespace wabar::modules::privacy

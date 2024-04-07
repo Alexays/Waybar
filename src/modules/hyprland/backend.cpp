@@ -12,7 +12,7 @@
 #include <string>
 #include <thread>
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
 void IPC::startIPC() {
   // will start IPC and relay events to parseIPC
@@ -191,4 +191,4 @@ Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
   return parser_.parse(getSocket1Reply("j/" + rq));
 }
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

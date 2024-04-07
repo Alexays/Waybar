@@ -4,7 +4,7 @@
 
 #include "util/sanitize_str.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
 Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "submap", id, "{}", 0, true), bar_(bar) {
@@ -73,7 +73,7 @@ void Submap::onEvent(const std::string& ev) {
   }
 
   auto submapName = ev.substr(ev.find_last_of('>') + 1);
-  submapName = waybar::util::sanitize_string(submapName);
+  submapName = wabar::util::sanitize_string(submapName);
 
   if (!submap_.empty()) {
     label_.get_style_context()->remove_class(submap_);
@@ -91,4 +91,4 @@ void Submap::onEvent(const std::string& ev) {
 
   dp.emit();
 }
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

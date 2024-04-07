@@ -5,7 +5,7 @@
 #include <sigc++/signal.h>
 #include <sigc++/trackable.h>
 
-namespace waybar::util {
+namespace wabar::util {
 
 class Rfkill : public sigc::trackable {
  public:
@@ -23,4 +23,4 @@ class Rfkill : public sigc::trackable {
   bool on_event(Glib::IOCondition cond);
 };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

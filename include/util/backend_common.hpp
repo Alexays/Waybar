@@ -2,9 +2,9 @@
 
 #include "AModule.hpp"
 
-namespace waybar::util {
+namespace wabar::util {
 
 const static auto NOOP = []() {};
 enum class ChangeType : char { Increase, Decrease };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

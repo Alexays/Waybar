@@ -5,7 +5,7 @@
 #include "util/backend_common.hpp"
 #include "util/pipewire/privacy_node_info.hpp"
 
-namespace waybar::util::PipewireBackend {
+namespace wabar::util::PipewireBackend {
 
 class PipewireBackend {
  private:
@@ -40,4 +40,4 @@ class PipewireBackend {
   PipewireBackend(PrivateConstructorTag tag);
   ~PipewireBackend();
 };
-}  // namespace waybar::util::PipewireBackend
+}  // namespace wabar::util::PipewireBackend

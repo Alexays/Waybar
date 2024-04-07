@@ -8,7 +8,7 @@
 
 #include "util/json.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
 class EventHandler {
  public:
@@ -37,4 +37,4 @@ class IPC {
 
 inline std::unique_ptr<IPC> gIPC;
 inline bool modulesReady = false;
-};  // namespace waybar::modules::hyprland
+};  // namespace wabar::modules::hyprland

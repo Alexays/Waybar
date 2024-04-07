@@ -19,7 +19,7 @@ static const char* getDeviceWarningLevel(UpDeviceLevel level) {
   }
 }
 
-namespace waybar::modules::upower {
+namespace wabar::modules::upower {
 UPower::UPower(const std::string& id, const Json::Value& config)
     : AModule(config, "upower", id),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
@@ -415,4 +415,4 @@ auto UPower::update() -> void {
   AModule::update();
 }
 
-}  // namespace waybar::modules::upower
+}  // namespace wabar::modules::upower

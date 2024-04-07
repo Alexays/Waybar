@@ -7,7 +7,7 @@
 #endif
 
 TEST_CASE("Load simple config", "[config]") {
-  waybar::Config conf;
+  wabar::Config conf;
   conf.load("test/config/simple.json");
 
   SECTION("validate the config data") {
@@ -26,7 +26,7 @@ TEST_CASE("Load simple config", "[config]") {
 }
 
 TEST_CASE("Load config with multiple bars", "[config]") {
-  waybar::Config conf;
+  wabar::Config conf;
   conf.load("test/config/multi.json");
 
   SECTION("select multiple configs #1") {
@@ -61,7 +61,7 @@ TEST_CASE("Load config with multiple bars", "[config]") {
 }
 
 TEST_CASE("Load simple config with include", "[config]") {
-  waybar::Config conf;
+  wabar::Config conf;
   conf.load("test/config/include.json");
 
   SECTION("validate the config data") {
@@ -85,7 +85,7 @@ TEST_CASE("Load simple config with include", "[config]") {
 }
 
 TEST_CASE("Load multiple bar config with include", "[config]") {
-  waybar::Config conf;
+  wabar::Config conf;
   conf.load("test/config/include-multi.json");
 
   SECTION("bar config with sole include") {

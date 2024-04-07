@@ -14,7 +14,7 @@
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
@@ -94,7 +94,7 @@ auto Window::update() -> void {
     old_app_id_ = app_id_;
   }
 
-  label_.set_markup(waybar::util::rewriteString(
+  label_.set_markup(wabar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", window_), fmt::arg("app_id", app_id_),
                   fmt::arg("shell", shell_)),
       config_["rewrite"]));
@@ -294,4 +294,4 @@ void Window::getTree() {
   }
 }
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

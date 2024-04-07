@@ -71,10 +71,10 @@ void startSignalThread(void) {
 
 int main(int argc, char* argv[]) {
   try {
-    auto client = waybar::Client::inst();
+    auto client = wabar::Client::inst();
 
     std::signal(SIGUSR1, [](int /*signal*/) {
-      for (auto& bar : waybar::Client::inst()->bars) {
+      for (auto& bar : wabar::Client::inst()->bars) {
         bar->toggle();
       }
     });
@@ -82,18 +82,18 @@ int main(int argc, char* argv[]) {
     std::signal(SIGUSR2, [](int /*signal*/) {
       spdlog::info("Reloading...");
       reload = true;
-      waybar::Client::inst()->reset();
+      wabar::Client::inst()->reset();
     });
 
     std::signal(SIGINT, [](int /*signal*/) {
       spdlog::info("Quitting.");
       reload = false;
-      waybar::Client::inst()->reset();
+      wabar::Client::inst()->reset();
     });
 
     for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
       std::signal(sig, [](int sig) {
-        for (auto& bar : waybar::Client::inst()->bars) {
+        for (auto& bar : wabar::Client::inst()->bars) {
           bar->handleSignal(sig);
         }
       });

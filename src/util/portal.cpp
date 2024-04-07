@@ -9,23 +9,23 @@
 
 #include "fmt/format.h"
 
-namespace waybar {
+namespace wabar {
 static constexpr const char* PORTAL_BUS_NAME = "org.freedesktop.portal.Desktop";
 static constexpr const char* PORTAL_OBJ_PATH = "/org/freedesktop/portal/desktop";
 static constexpr const char* PORTAL_INTERFACE = "org.freedesktop.portal.Settings";
 static constexpr const char* PORTAL_NAMESPACE = "org.freedesktop.appearance";
 static constexpr const char* PORTAL_KEY = "color-scheme";
-}  // namespace waybar
+}  // namespace wabar
 
 using namespace Gio;
 
-auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_context& ctx) const {
+auto fmt::formatter<wabar::Appearance>::format(wabar::Appearance c, format_context& ctx) const {
   string_view name;
   switch (c) {
-    case waybar::Appearance::LIGHT:
+    case wabar::Appearance::LIGHT:
       name = "light";
       break;
-    case waybar::Appearance::DARK:
+    case wabar::Appearance::DARK:
       name = "dark";
       break;
     default:
@@ -35,14 +35,14 @@ auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_con
   return formatter<string_view>::format(name, ctx);
 }
 
-waybar::Portal::Portal()
+wabar::Portal::Portal()
     : DBus::Proxy(DBus::Connection::get_sync(DBus::BusType::BUS_TYPE_SESSION), PORTAL_BUS_NAME,
                   PORTAL_OBJ_PATH, PORTAL_INTERFACE),
       currentMode(Appearance::UNKNOWN) {
   refreshAppearance();
 };
 
-void waybar::Portal::refreshAppearance() {
+void wabar::Portal::refreshAppearance() {
   auto params = Glib::Variant<std::tuple<Glib::ustring, Glib::ustring>>::create(
       {PORTAL_NAMESPACE, PORTAL_KEY});
   Glib::VariantBase response;
@@ -77,9 +77,9 @@ void waybar::Portal::refreshAppearance() {
   m_signal_appearance_changed.emit(currentMode);
 }
 
-waybar::Appearance waybar::Portal::getAppearance() { return currentMode; };
+wabar::Appearance wabar::Portal::getAppearance() { return currentMode; };
 
-void waybar::Portal::on_signal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
+void wabar::Portal::on_signal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                                const Glib::VariantContainerBase& parameters) {
   spdlog::debug("Received signal {}", (std::string)signal_name);
   if (signal_name != "SettingChanged" || parameters.get_n_children() != 3) {

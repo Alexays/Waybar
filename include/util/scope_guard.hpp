@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace waybar::util {
+namespace wabar::util {
 
 template <typename Func>
 class ScopeGuard {
@@ -18,4 +18,4 @@ class ScopeGuard {
   Func f;
 };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

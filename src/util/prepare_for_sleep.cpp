@@ -36,7 +36,7 @@ class PrepareForSleep {
     static PrepareForSleep instance;
     return instance;
   }
-  waybar::SafeSignal<bool> signal;
+  wabar::SafeSignal<bool> signal;
 
  private:
   guint login1_id;
@@ -44,6 +44,6 @@ class PrepareForSleep {
 };
 }  // namespace
 
-waybar::SafeSignal<bool> &waybar::util::prepare_for_sleep() {
+wabar::SafeSignal<bool> &wabar::util::prepare_for_sleep() {
   return PrepareForSleep::GetInstance().signal;
 }

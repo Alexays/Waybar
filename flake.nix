@@ -31,15 +31,15 @@
             default =
               pkgs.mkShell
                 {
-                  name = "waybar-shell";
+                  name = "wabar-shell";
 
                   # inherit attributes from upstream nixpkgs derivation
-                  inherit (pkgs.waybar) buildInputs depsBuildBuild depsBuildBuildPropagated depsBuildTarget
+                  inherit (pkgs.wabar) buildInputs depsBuildBuild depsBuildBuildPropagated depsBuildTarget
                     depsBuildTargetPropagated depsHostHost depsHostHostPropagated depsTargetTarget
                     depsTargetTargetPropagated propagatedBuildInputs propagatedNativeBuildInputs strictDeps;
 
                   # overrides for local development
-                  nativeBuildInputs = pkgs.waybar.nativeBuildInputs ++ (with pkgs; [
+                  nativeBuildInputs = pkgs.wabar.nativeBuildInputs ++ (with pkgs; [
                     clang-tools
                     gdb
                   ]);
@@ -47,7 +47,7 @@
           });
 
       overlays.default = final: prev: {
-        waybar = final.callPackage ./nix/default.nix {
+        wabar = final.callPackage ./nix/default.nix {
           # take the first "version: '...'" from meson.build
           version =
             (builtins.head (builtins.split "'"
@@ -61,7 +61,7 @@
       packages = genSystems (pkgs:
         let packages = self.overlays.default pkgs pkgs;
         in packages // {
-          default = packages.waybar;
+          default = packages.wabar;
         });
     };
 }

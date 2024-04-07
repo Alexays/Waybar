@@ -6,7 +6,7 @@
 
 #include "util/gtk_icon.hpp"
 
-namespace waybar::util::PipewireBackend {
+namespace wabar::util::PipewireBackend {
 
 enum PrivacyNodeType {
   PRIVACY_NODE_TYPE_NONE,
@@ -42,4 +42,4 @@ class PrivacyNodeInfo {
   void handleNodeEventInfo(const struct pw_node_info *info);
 };
 
-}  // namespace waybar::util::PipewireBackend
+}  // namespace wabar::util::PipewireBackend

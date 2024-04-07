@@ -10,7 +10,7 @@
 #include "client.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
-namespace waybar::modules::river {
+namespace wabar::modules::river {
 
 static void listen_focused_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
                                 uint32_t tags) {
@@ -81,8 +81,8 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::AModule(config, "tags", id, false, false),
+Tags::Tags(const std::string &id, const wabar::Bar &bar, const Json::Value &config)
+    : wabar::AModule(config, "tags", id, false, false),
       status_manager_{nullptr},
       control_{nullptr},
       seat_{nullptr},
@@ -224,4 +224,4 @@ void Tags::handle_urgent_tags(uint32_t tags) {
   }
 }
 
-} /* namespace waybar::modules::river */
+} /* namespace wabar::modules::river */

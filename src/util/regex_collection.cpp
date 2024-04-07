@@ -3,7 +3,7 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
-namespace waybar::util {
+namespace wabar::util {
 
 int default_priority_function(std::string& key) { return 0; }
 
@@ -48,7 +48,7 @@ std::string& RegexCollection::get(std::string& value, bool& matched_any) {
   }
 
   // std::string repr =
-  // waybar::util::find_match(value, window_rewrite_rules_, matched_any);
+  // wabar::util::find_match(value, window_rewrite_rules_, matched_any);
 
   std::string repr = find_match(value, matched_any);
 
@@ -66,4 +66,4 @@ std::string& RegexCollection::get(std::string& value) {
   return get(value, matched_any);
 }
 
-}  // namespace waybar::util
+}  // namespace wabar::util

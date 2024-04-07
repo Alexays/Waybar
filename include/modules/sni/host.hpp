@@ -10,7 +10,7 @@
 #include "bar.hpp"
 #include "modules/sni/item.hpp"
 
-namespace waybar::modules::SNI {
+namespace wabar::modules::SNI {
 
 class Host {
  public:
@@ -45,4 +45,4 @@ class Host {
   const std::function<void(std::unique_ptr<Item>&)> on_remove_;
 };
 
-}  // namespace waybar::modules::SNI
+}  // namespace wabar::modules::SNI

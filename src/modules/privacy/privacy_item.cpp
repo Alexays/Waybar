@@ -11,7 +11,7 @@
 #include "sigc++/adaptors/bind.h"
 #include "util/pipewire/privacy_node_info.hpp"
 
-namespace waybar::modules::privacy {
+namespace wabar::modules::privacy {
 
 PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
                          std::list<PrivacyNodeInfo *> *nodes_, const std::string &pos,
@@ -26,15 +26,15 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
   switch (privacy_type) {
     case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
       box_.get_style_context()->add_class("audio-in");
-      iconName = "waybar-privacy-audio-input-symbolic";
+      iconName = "wabar-privacy-audio-input-symbolic";
       break;
     case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
       box_.get_style_context()->add_class("audio-out");
-      iconName = "waybar-privacy-audio-output-symbolic";
+      iconName = "wabar-privacy-audio-output-symbolic";
       break;
     case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
       box_.get_style_context()->add_class("screenshare");
-      iconName = "waybar-privacy-screen-share-symbolic";
+      iconName = "wabar-privacy-screen-share-symbolic";
       break;
     default:
     case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
@@ -151,4 +151,4 @@ void PrivacyItem::set_in_use(bool in_use) {
   this->init = true;
 }
 
-}  // namespace waybar::modules::privacy
+}  // namespace wabar::modules::privacy

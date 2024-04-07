@@ -11,7 +11,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace waybar {
+namespace wabar {
 
 /**
  * Thread-safe signal wrapper.
@@ -72,4 +72,4 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
   const slot_t cached_fn_ = make_slot();
 };
 
-}  // namespace waybar
+}  // namespace wabar

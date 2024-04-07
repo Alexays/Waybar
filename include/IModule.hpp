@@ -2,7 +2,7 @@
 
 #include <gtkmm/widget.h>
 
-namespace waybar {
+namespace wabar {
 
 class IModule {
  public:
@@ -12,4 +12,4 @@ class IModule {
   virtual auto doAction(const std::string& name) -> void = 0;
 };
 
-}  // namespace waybar
+}  // namespace wabar

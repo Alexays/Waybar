@@ -5,7 +5,7 @@
 
 #include "client.hpp"
 
-namespace waybar::modules::river {
+namespace wabar::modules::river {
 
 static void listen_focused_output(void *data, struct zriver_seat_status_v1 *seat_status,
                                   struct wl_output *output) {
@@ -58,8 +58,8 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Mode::Mode(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::ALabel(config, "mode", id, "{}"),
+Mode::Mode(const std::string &id, const wabar::Bar &bar, const Json::Value &config)
+    : wabar::ALabel(config, "mode", id, "{}"),
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),
@@ -111,4 +111,4 @@ void Mode::handle_mode(const char *mode) {
   ALabel::update();
 }
 
-} /* namespace waybar::modules::river */
+} /* namespace wabar::modules::river */

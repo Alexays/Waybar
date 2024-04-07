@@ -13,7 +13,7 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
+wabar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu", id, "{usage}%", 10) {
   thread_ = [this] {
     dp.emit();
@@ -21,7 +21,7 @@ waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
   };
 }
 
-auto waybar::modules::Cpu::update() -> void {
+auto wabar::modules::Cpu::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [load1, load5, load15] = Load::getLoad();
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);

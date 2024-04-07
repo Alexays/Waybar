@@ -2,7 +2,7 @@
 
 #include "modules/cpu_usage.hpp"
 
-std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo() {
+std::vector<std::tuple<size_t, size_t>> wabar::modules::CpuUsage::parseCpuinfo() {
   const std::string data_dir_ = "/proc/stat";
   std::ifstream info(data_dir_);
   if (!info.is_open()) {

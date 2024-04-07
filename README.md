@@ -1,15 +1,15 @@
-# Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
+# Wabar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Wabar](https://raw.githubusercontent.com/alexays/wabar/master/preview-2.png)
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
-> Available in [all major distributions](https://github.com/Alexays/Waybar/wiki/Installation)<br>
-> *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
+> Available in [all major distributions](https://github.com/Alexays/Wabar/wiki/Installation)<br>
+> *Wabar [examples](https://github.com/Alexays/Wabar/wiki/Examples)*
 
 #### Current features
 - Sway (Workspaces, Binding mode, Focused window name)
 - River (Mapping mode, Tags, Focused window name)
 - Hyprland (Window Icons, Workspaces, Focused window name)
 - DWL (Tags, Focused window name) [requires dwl ipc patch](https://github.com/djpohly/dwl/wiki/ipc)
-- Tray [#21](https://github.com/Alexays/Waybar/issues/21)
+- Tray [#21](https://github.com/Alexays/Wabar/issues/21)
 - Local time
 - Battery
 - UPower
@@ -31,29 +31,29 @@
 
 #### Configuration and Styling
 
-[See the wiki for more details](https://github.com/Alexays/Waybar/wiki).
+[See the wiki for more details](https://github.com/Alexays/Wabar/wiki).
 
 ### Installation
 
-Waybar is available from a number of Linux distributions:
+Wabar is available from a number of Linux distributions:
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/waybar.svg?columns=3&header=Waybar%20Downstream%20Packaging)](https://repology.org/project/waybar/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/wabar.svg?columns=3&header=Wabar%20Downstream%20Packaging)](https://repology.org/project/wabar/versions)
 
 An Ubuntu PPA with more recent versions is available
-[here](https://launchpad.net/~nschloe/+archive/ubuntu/waybar).
+[here](https://launchpad.net/~nschloe/+archive/ubuntu/wabar).
 
 
 #### Building from source
 
 ```bash
-$ git clone https://github.com/Alexays/Waybar
-$ cd Waybar
+$ git clone https://github.com/Alexays/Wabar
+$ cd Wabar
 $ meson build
 $ ninja -C build
-$ ./build/waybar
+$ ./build/wabar
 # If you want to install it
 $ ninja -C build install
-$ waybar
+$ wabar
 ```
 
 **Dependencies**
@@ -122,4 +122,4 @@ The style guidelines are [Google's](https://google.github.io/styleguide/cppguide
 
 ## License
 
-Waybar is licensed under the MIT license. [See LICENSE for more information](https://github.com/Alexays/Waybar/blob/master/LICENSE).
+Wabar is licensed under the MIT license. [See LICENSE for more information](https://github.com/Alexays/Wabar/blob/master/LICENSE).

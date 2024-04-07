@@ -7,7 +7,7 @@
 #include "util/sanitize_str.hpp"
 #include "util/string.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
@@ -68,7 +68,7 @@ void Language::onEvent(const std::string& ev) {
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
 
-  layoutName = waybar::util::sanitize_string(layoutName);
+  layoutName = wabar::util::sanitize_string(layoutName);
 
   layout_ = getLayout(layoutName);
 
@@ -89,7 +89,7 @@ void Language::initLanguage() {
     searcher = searcher.substr(searcher.find("keymap:") + 8);
     searcher = searcher.substr(0, searcher.find_first_of("\n\t"));
 
-    searcher = waybar::util::sanitize_string(searcher);
+    searcher = wabar::util::sanitize_string(searcher);
 
     layout_ = getLayout(searcher);
 
@@ -135,4 +135,4 @@ auto Language::getLayout(const std::string& fullName) -> Layout {
   return Layout{"", "", "", ""};
 }
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

@@ -5,7 +5,7 @@
 #include <glibmm/variant.h>
 #include <spdlog/spdlog.h>
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Value& config)
     : ALabel(config, "power-profiles-daemon", id, "{icon}", 0, false, true), connected_(false) {
@@ -210,4 +210,4 @@ void PowerProfilesDaemon::setPropCb(Glib::RefPtr<Gio::AsyncResult>& r) {
   }
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

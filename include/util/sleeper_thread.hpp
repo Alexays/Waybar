@@ -8,7 +8,7 @@
 
 #include "prepare_for_sleep.h"
 
-namespace waybar::util {
+namespace wabar::util {
 
 /**
  * Defer pthread_cancel until the end of a current scope.
@@ -123,4 +123,4 @@ class SleeperThread {
   sigc::connection connection_;
 };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

@@ -38,7 +38,7 @@ auto getLocks(const DBus& bus, const std::string& inhibitors) -> int {
   auto reply = g_dbus_connection_call_with_unix_fd_list_sync(
       bus.get(), "org.freedesktop.login1", "/org/freedesktop/login1",
       "org.freedesktop.login1.Manager", "Inhibit",
-      g_variant_new("(ssss)", inhibitors.c_str(), "waybar", "Asked by user", "block"),
+      g_variant_new("(ssss)", inhibitors.c_str(), "wabar", "Asked by user", "block"),
       G_VARIANT_TYPE("(h)"), G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &fd_list, nullptr, &error);
   if (error) {
     spdlog::error("g_dbus_connection_call_with_unix_fd_list_sync() failed: {}", error->message);
@@ -95,7 +95,7 @@ auto getInhibitors(const Json::Value& config) -> std::string {
 
 }  // namespace
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "inhibitor", id, "{status}", true),
@@ -145,4 +145,4 @@ auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
   return ALabel::handleToggle(e);
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

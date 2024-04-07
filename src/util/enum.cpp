@@ -10,7 +10,7 @@
 #include "modules/hyprland/workspaces.hpp"
 #include "util/string.hpp"
 
-namespace waybar::util {
+namespace wabar::util {
 
 template <typename EnumType>
 EnumParser<EnumType>::EnumParser() = default;
@@ -42,4 +42,4 @@ EnumType EnumParser<EnumType>::parseStringToEnum(const std::string& str,
 // Add explicit instantiations for all relevant EnumType types
 template struct EnumParser<modules::hyprland::Workspaces::SortMethod>;
 
-}  // namespace waybar::util
+}  // namespace wabar::util

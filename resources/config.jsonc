@@ -1,9 +1,9 @@
 // -*- mode: jsonc -*-
 {
-    // "layer": "top", // Waybar at top layer
-    // "position": "bottom", // Waybar position (top|bottom|left|right)
-    "height": 30, // Waybar height (to be removed for auto height)
-    // "width": 1280, // Waybar width
+    // "layer": "top", // Wabar at top layer
+    // "position": "bottom", // Wabar position (top|bottom|left|right)
+    "height": 30, // Wabar height (to be removed for auto height)
+    // "width": 1280, // Wabar width
     "spacing": 4, // Gaps between modules (4px)
     // Choose the order of the modules
     "modules-left": [
@@ -196,7 +196,7 @@
             "default": "🎜"
         },
         "escape": true,
-        "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
-        // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
+        "exec": "$HOME/.config/wabar/mediaplayer.py 2> /dev/null" // Script in resources folder
+        // "exec": "$HOME/.config/wabar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
     }
 }

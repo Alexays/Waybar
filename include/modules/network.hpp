@@ -16,7 +16,7 @@
 #include "util/rfkill.hpp"
 #endif
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Network : public ALabel {
  public:
@@ -88,4 +88,4 @@ class Network : public ALabel {
   float frequency_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

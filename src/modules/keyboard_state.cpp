@@ -78,7 +78,7 @@ auto supportsLockStates(const libevdev* dev) -> bool {
          libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
 }
 
-waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
+wabar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
       box_(bar.orientation, 0),
@@ -244,13 +244,13 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   };
 }
 
-waybar::modules::KeyboardState::~KeyboardState() {
+wabar::modules::KeyboardState::~KeyboardState() {
   for (const auto& [_, dev_ptr] : libinput_devices_) {
     libinput_path_remove_device(dev_ptr);
   }
 }
 
-auto waybar::modules::KeyboardState::update() -> void {
+auto wabar::modules::KeyboardState::update() -> void {
   sleep(0);  // Wait for keyboard status change
   int numl = 0, capsl = 0, scrolll = 0;
 
@@ -302,7 +302,7 @@ auto waybar::modules::KeyboardState::update() -> void {
   AModule::update();
 }
 
-auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
+auto wabar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
   try {
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
     auto dev = openDevice(fd);

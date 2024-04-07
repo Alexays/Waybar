@@ -8,7 +8,7 @@
 
 static const unsigned UPDATE_DEBOUNCE_TIME_MS = 1000;
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value& config)
     : ALabel(config, "systemd-failed-units", id, "{nr_failed} failed", 1),
@@ -127,4 +127,4 @@ auto SystemdFailedUnits::update() -> void {
   ALabel::update();
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

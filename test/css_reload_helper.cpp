@@ -8,9 +8,9 @@
 #include <catch2/catch.hpp>
 #endif
 
-class CssReloadHelperTest : public waybar::CssReloadHelper {
+class CssReloadHelperTest : public wabar::CssReloadHelper {
  public:
-  CssReloadHelperTest() : CssReloadHelper("/tmp/waybar_test.css", [this]() { callback(); }) {}
+  CssReloadHelperTest() : CssReloadHelper("/tmp/wabar_test.css", [this]() { callback(); }) {}
 
   void callback() { m_callbackCounter++; }
 
@@ -34,63 +34,63 @@ class CssReloadHelperTest : public waybar::CssReloadHelper {
 
 TEST_CASE_METHOD(CssReloadHelperTest, "parse_imports", "[util][css_reload_helper]") {
   SECTION("no imports") {
-    setFileContents("/tmp/waybar_test.css", "body { color: red; }");
-    auto files = parseImports("/tmp/waybar_test.css");
+    setFileContents("/tmp/wabar_test.css", "body { color: red; }");
+    auto files = parseImports("/tmp/wabar_test.css");
     REQUIRE(files.size() == 1);
-    CHECK(files[0] == "/tmp/waybar_test.css");
+    CHECK(files[0] == "/tmp/wabar_test.css");
   }
 
   SECTION("single import") {
-    setFileContents("/tmp/waybar_test.css", "@import 'test.css';");
+    setFileContents("/tmp/wabar_test.css", "@import 'test.css';");
     setFileContents("test.css", "body { color: red; }");
-    auto files = parseImports("/tmp/waybar_test.css");
+    auto files = parseImports("/tmp/wabar_test.css");
     std::sort(files.begin(), files.end());
     REQUIRE(files.size() == 2);
-    CHECK(files[0] == "/tmp/waybar_test.css");
+    CHECK(files[0] == "/tmp/wabar_test.css");
     CHECK(files[1] == "test.css");
   }
 
   SECTION("multiple imports") {
-    setFileContents("/tmp/waybar_test.css", "@import 'test.css'; @import 'test2.css';");
+    setFileContents("/tmp/wabar_test.css", "@import 'test.css'; @import 'test2.css';");
     setFileContents("test.css", "body { color: red; }");
     setFileContents("test2.css", "body { color: blue; }");
-    auto files = parseImports("/tmp/waybar_test.css");
+    auto files = parseImports("/tmp/wabar_test.css");
     std::sort(files.begin(), files.end());
     REQUIRE(files.size() == 3);
-    CHECK(files[0] == "/tmp/waybar_test.css");
+    CHECK(files[0] == "/tmp/wabar_test.css");
     CHECK(files[1] == "test.css");
     CHECK(files[2] == "test2.css");
   }
 
   SECTION("nested imports") {
-    setFileContents("/tmp/waybar_test.css", "@import 'test.css';");
+    setFileContents("/tmp/wabar_test.css", "@import 'test.css';");
     setFileContents("test.css", "@import 'test2.css';");
     setFileContents("test2.css", "body { color: red; }");
-    auto files = parseImports("/tmp/waybar_test.css");
+    auto files = parseImports("/tmp/wabar_test.css");
     std::sort(files.begin(), files.end());
     REQUIRE(files.size() == 3);
-    CHECK(files[0] == "/tmp/waybar_test.css");
+    CHECK(files[0] == "/tmp/wabar_test.css");
     CHECK(files[1] == "test.css");
     CHECK(files[2] == "test2.css");
   }
 
   SECTION("circular imports") {
-    setFileContents("/tmp/waybar_test.css", "@import 'test.css';");
+    setFileContents("/tmp/wabar_test.css", "@import 'test.css';");
     setFileContents("test.css", "@import 'test2.css';");
     setFileContents("test2.css", "@import 'test.css';");
-    auto files = parseImports("/tmp/waybar_test.css");
+    auto files = parseImports("/tmp/wabar_test.css");
     std::sort(files.begin(), files.end());
     REQUIRE(files.size() == 3);
-    CHECK(files[0] == "/tmp/waybar_test.css");
+    CHECK(files[0] == "/tmp/wabar_test.css");
     CHECK(files[1] == "test.css");
     CHECK(files[2] == "test2.css");
   }
 
   SECTION("empty") {
-    setFileContents("/tmp/waybar_test.css", "");
-    auto files = parseImports("/tmp/waybar_test.css");
+    setFileContents("/tmp/wabar_test.css", "");
+    auto files = parseImports("/tmp/wabar_test.css");
     REQUIRE(files.size() == 1);
-    CHECK(files[0] == "/tmp/waybar_test.css");
+    CHECK(files[0] == "/tmp/wabar_test.css");
   }
 
   SECTION("empty name") {

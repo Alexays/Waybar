@@ -13,7 +13,7 @@
 struct udev;
 struct udev_device;
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Backlight : public ALabel {
  public:
@@ -29,4 +29,4 @@ class Backlight : public ALabel {
 
   util::BacklightBackend backend;
 };
-}  // namespace waybar::modules
+}  // namespace wabar::modules

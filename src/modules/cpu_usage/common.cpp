@@ -9,7 +9,7 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& config)
+wabar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu_usage", id, "{usage}%", 10) {
   thread_ = [this] {
     dp.emit();
@@ -17,7 +17,7 @@ waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& co
   };
 }
 
-auto waybar::modules::CpuUsage::update() -> void {
+auto wabar::modules::CpuUsage::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   if (tooltipEnabled()) {
@@ -52,7 +52,7 @@ auto waybar::modules::CpuUsage::update() -> void {
   ALabel::update();
 }
 
-std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpuUsage(
+std::tuple<std::vector<uint16_t>, std::string> wabar::modules::CpuUsage::getCpuUsage(
     std::vector<std::tuple<size_t, size_t>>& prev_times) {
   if (prev_times.empty()) {
     prev_times = CpuUsage::parseCpuinfo();

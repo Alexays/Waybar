@@ -7,7 +7,7 @@
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Temperature : public ALabel {
  public:
@@ -23,4 +23,4 @@ class Temperature : public ALabel {
   util::SleeperThread thread_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

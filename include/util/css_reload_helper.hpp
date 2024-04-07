@@ -11,7 +11,7 @@
 
 struct pollfd;
 
-namespace waybar {
+namespace wabar {
 class CssReloadHelper {
  public:
   CssReloadHelper(std::string cssFile, std::function<void()> callback);
@@ -46,4 +46,4 @@ class CssReloadHelper {
 
   std::vector<std::tuple<Glib::RefPtr<Gio::FileMonitor>>> m_fileMonitors;
 };
-}  // namespace waybar
+}  // namespace wabar

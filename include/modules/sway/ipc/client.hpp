@@ -14,7 +14,7 @@
 #include "ipc.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 class Ipc {
  public:
@@ -50,4 +50,4 @@ class Ipc {
   util::SleeperThread thread_;
 };
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

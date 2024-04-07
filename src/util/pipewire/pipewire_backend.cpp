@@ -2,7 +2,7 @@
 
 #include "util/pipewire/privacy_node_info.hpp"
 
-namespace waybar::util::PipewireBackend {
+namespace wabar::util::PipewireBackend {
 
 static void getNodeInfo(void *data_, const struct pw_node_info *info) {
   auto *pNodeInfo = static_cast<PrivacyNodeInfo *>(data_);
@@ -44,7 +44,7 @@ static const struct pw_registry_events REGISTRY_EVENTS = {
 PipewireBackend::PipewireBackend(PrivateConstructorTag tag)
     : mainloop_(nullptr), context_(nullptr), core_(nullptr) {
   pw_init(nullptr, nullptr);
-  mainloop_ = pw_thread_loop_new("waybar", nullptr);
+  mainloop_ = pw_thread_loop_new("wabar", nullptr);
   if (mainloop_ == nullptr) {
     throw std::runtime_error("pw_thread_loop_new() failed.");
   }
@@ -137,4 +137,4 @@ void PipewireBackend::handleRegistryEventGlobalRemove(uint32_t id) {
   privacy_nodes_changed_signal_event.emit();
 }
 
-}  // namespace waybar::util::PipewireBackend
+}  // namespace wabar::util::PipewireBackend

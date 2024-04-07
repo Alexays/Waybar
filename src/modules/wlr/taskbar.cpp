@@ -24,7 +24,7 @@
 #include "util/rewrite_string.hpp"
 #include "util/string.hpp"
 
-namespace waybar::modules::wlr {
+namespace wabar::modules::wlr {
 
 /* Icon loading functions */
 static std::vector<std::string> search_prefix() {
@@ -105,7 +105,7 @@ Glib::RefPtr<Gio::DesktopAppInfo> get_desktop_app_info(const std::string &app_id
       } else {
         auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
         if (!tmp_info)
-          // see https://github.com/Alexays/Waybar/issues/1446
+          // see https://github.com/Alexays/Wabar/issues/1446
           continue;
 
         auto startup_class = tmp_info->get_startup_wm_class();
@@ -269,7 +269,7 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
 static const std::vector<Gtk::TargetEntry> target_entries = {
     Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)};
 
-Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
+Task::Task(const wabar::Bar &bar, const Json::Value &config, Taskbar *tbar,
            struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat)
     : bar_{bar},
       config_{config},
@@ -638,7 +638,7 @@ void Task::update() {
                     fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true)));
 
-    txt = waybar::util::rewriteString(txt, config_["rewrite"]);
+    txt = wabar::util::rewriteString(txt, config_["rewrite"]);
 
     if (markup)
       text_before_.set_markup(txt);
@@ -652,7 +652,7 @@ void Task::update() {
                     fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true)));
 
-    txt = waybar::util::rewriteString(txt, config_["rewrite"]);
+    txt = wabar::util::rewriteString(txt, config_["rewrite"]);
 
     if (markup)
       text_after_.set_markup(txt);
@@ -721,8 +721,8 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::AModule(config, "taskbar", id, false, false),
+Taskbar::Taskbar(const std::string &id, const wabar::Bar &bar, const Json::Value &config)
+    : wabar::AModule(config, "taskbar", id, false, false),
       bar_(bar),
       box_{bar.orientation, 0},
       manager_{nullptr},
@@ -929,4 +929,4 @@ const std::map<std::string, std::string> &Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
 }
 
-} /* namespace waybar::modules::wlr */
+} /* namespace wabar::modules::wlr */

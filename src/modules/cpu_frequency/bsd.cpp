@@ -3,7 +3,7 @@
 
 #include "modules/cpu_frequency.hpp"
 
-std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
+std::vector<float> wabar::modules::CpuFrequency::parseCpuFrequencies() {
   std::vector<float> frequencies;
   char buffer[256];
   size_t len;

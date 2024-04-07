@@ -14,9 +14,9 @@
 #include <locale.h>
 #endif
 
-namespace fmt_lib = waybar::util::date::format;
+namespace fmt_lib = wabar::util::date::format;
 
-waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
+wabar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       locale_{std::locale(config_["locale"].isString() ? config_["locale"].asString() : "")},
       tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
@@ -130,7 +130,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   };
 }
 
-auto waybar::modules::Clock::update() -> void {
+auto wabar::modules::Clock::update() -> void {
   const auto* tz = tzList_[tzCurrIdx_] != nullptr ? tzList_[tzCurrIdx_] : current_zone();
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
@@ -162,7 +162,7 @@ auto waybar::modules::Clock::update() -> void {
   ALabel::update();
 }
 
-auto waybar::modules::Clock::getTZtext(sys_seconds now) -> std::string {
+auto wabar::modules::Clock::getTZtext(sys_seconds now) -> std::string {
   if (tzList_.size() == 1) return "";
 
   std::stringstream os;
@@ -270,7 +270,7 @@ auto getCalendarLine(const year_month_day& currDate, const year_month ym, const 
   return os.str();
 }
 
-auto waybar::modules::Clock::get_calendar(const year_month_day& today, const year_month_day& ymd,
+auto wabar::modules::Clock::get_calendar(const year_month_day& today, const year_month_day& ymd,
                                           const time_zone* tz) -> const std::string {
   const auto firstdow{first_day_of_week()};
   const auto maxRows{12 / cldMonCols_};
@@ -394,7 +394,7 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
 }
 
 // Actions handler
-auto waybar::modules::Clock::doAction(const std::string& name) -> void {
+auto wabar::modules::Clock::doAction(const std::string& name) -> void {
   if (actionMap_[name]) {
     (this->*actionMap_[name])();
   } else
@@ -402,22 +402,22 @@ auto waybar::modules::Clock::doAction(const std::string& name) -> void {
 }
 
 // Module actions
-void waybar::modules::Clock::cldModeSwitch() {
+void wabar::modules::Clock::cldModeSwitch() {
   cldMode_ = (cldMode_ == CldMode::YEAR) ? CldMode::MONTH : CldMode::YEAR;
 }
-void waybar::modules::Clock::cldShift_up() {
+void wabar::modules::Clock::cldShift_up() {
   cldCurrShift_ += (months)((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
 }
-void waybar::modules::Clock::cldShift_down() {
+void wabar::modules::Clock::cldShift_down() {
   cldCurrShift_ -= (months)((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
 }
-void waybar::modules::Clock::tz_up() {
+void wabar::modules::Clock::tz_up() {
   const auto tzSize{tzList_.size()};
   if (tzSize == 1) return;
   size_t newIdx{tzCurrIdx_ + 1lu};
   tzCurrIdx_ = (newIdx == tzSize) ? 0 : newIdx;
 }
-void waybar::modules::Clock::tz_down() {
+void wabar::modules::Clock::tz_down() {
   const auto tzSize{tzList_.size()};
   if (tzSize == 1) return;
   tzCurrIdx_ = (tzCurrIdx_ == 0) ? tzSize - 1 : tzCurrIdx_ - 1;
@@ -432,7 +432,7 @@ using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
 #endif
 
 // Computations done similarly to Linux cal utility.
-auto waybar::modules::Clock::first_day_of_week() -> weekday {
+auto wabar::modules::Clock::first_day_of_week() -> weekday {
 #ifdef HAVE_LANGINFO_1STDAY
   deleting_unique_ptr<std::remove_pointer<locale_t>::type, freelocale> posix_locale{
       newlocale(LC_ALL, locale_.name().c_str(), nullptr)};
@@ -446,7 +446,7 @@ auto waybar::modules::Clock::first_day_of_week() -> weekday {
   return Sunday;
 }
 
-auto waybar::modules::Clock::get_ordinal_date(const year_month_day& today) -> std::string {
+auto wabar::modules::Clock::get_ordinal_date(const year_month_day& today) -> std::string {
   auto day = static_cast<unsigned int>(today.day());
   std::stringstream res;
   res << day;

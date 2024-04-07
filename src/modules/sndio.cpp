@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cstdlib>
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 void ondesc(void *arg, struct sioctl_desc *d, int curval) {
   auto self = static_cast<Sndio *>(arg);
@@ -201,4 +201,4 @@ bool Sndio::handleToggle(GdkEventButton *const &e) {
   return true;
 }
 
-} /* namespace waybar::modules */
+} /* namespace wabar::modules */

@@ -33,4 +33,4 @@ jobs:
               libinotify
             meson build -Dman-pages=enabled
             ninja -C build
-            meson test -C build --no-rebuild --print-errorlogs --suite waybar
+            meson test -C build --no-rebuild --print-errorlogs --suite wabar

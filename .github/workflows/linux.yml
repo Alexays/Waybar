@@ -21,7 +21,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: alexays/waybar:${{ matrix.distro }}
+      image: alexays/wabar:${{ matrix.distro }}
 
     steps:
       - uses: actions/checkout@v3

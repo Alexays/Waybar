@@ -8,9 +8,9 @@
 #include "bar.hpp"
 #include "modules/sway/ipc/ipc.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
-BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
+BarIpcClient::BarIpcClient(wabar::Bar& bar) : bar_{bar} {
   {
     sigc::connection handle =
         ipc_.signal_cmd.connect(sigc::mem_fun(*this, &BarIpcClient::onInitialConfig));
@@ -73,8 +73,8 @@ bool BarIpcClient::isModuleEnabled(std::string name) {
   return false;
 }
 
-struct swaybar_config parseConfig(const Json::Value& payload) {
-  swaybar_config conf;
+struct swabar_config parseConfig(const Json::Value& payload) {
+  swabar_config conf;
   if (auto id = payload["id"]; id.isString()) {
     conf.id = id.asString();
   }
@@ -131,7 +131,7 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
       case IPC_EVENT_BAR_STATE_UPDATE:
       case IPC_EVENT_BARCONFIG_UPDATE:
         if (auto id = payload["id"]; id.isString() && id.asString() != bar_.bar_id) {
-          spdlog::trace("swaybar ipc: ignore event for {}", id.asString());
+          spdlog::trace("swabar ipc: ignore event for {}", id.asString());
           return;
         }
         if (payload.isMember("visible_by_modifier")) {
@@ -170,7 +170,7 @@ void BarIpcClient::onCmd(const struct Ipc::ipc_response& res) {
   }
 }
 
-void BarIpcClient::onConfigUpdate(const swaybar_config& config) {
+void BarIpcClient::onConfigUpdate(const swabar_config& config) {
   spdlog::info("config update for {}: id {}, mode {}, hidden_state {}", bar_.bar_id, config.id,
                config.mode, config.hidden_state);
   bar_config_ = config;
@@ -218,4 +218,4 @@ void BarIpcClient::update() {
   bar_.setMode(visible ? bar_config_.mode : Bar::MODE_INVISIBLE);
 }
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

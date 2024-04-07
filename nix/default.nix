@@ -1,6 +1,6 @@
 { lib
 , pkgs
-, waybar
+, wabar
 , version
 }:
 let
@@ -14,7 +14,7 @@ let
     };
   };
 in
-(waybar.overrideAttrs (
+(wabar.overrideAttrs (
   oldAttrs: {
     inherit version;
 

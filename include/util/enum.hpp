@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace waybar::util {
+namespace wabar::util {
 
 template <typename EnumType>
 struct EnumParser {
@@ -16,4 +16,4 @@ struct EnumParser {
                              const std::map<std::string, EnumType>& enumMap);
 };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

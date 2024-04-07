@@ -16,13 +16,13 @@
 #include "bar.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 namespace fs = std::filesystem;
 
 class Battery : public ALabel {
  public:
-  Battery(const std::string&, const waybar::Bar&, const Json::Value&);
+  Battery(const std::string&, const wabar::Bar&, const Json::Value&);
   virtual ~Battery();
   auto update() -> void override;
 
@@ -51,4 +51,4 @@ class Battery : public ALabel {
   util::SleeperThread thread_timer_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

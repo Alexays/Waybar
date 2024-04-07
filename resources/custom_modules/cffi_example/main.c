@@ -1,8 +1,8 @@
 
-#include "waybar_cffi_module.h"
+#include "wabar_cffi_module.h"
 
 typedef struct {
-  wbcffi_module* waybar_module;
+  wbcffi_module* wabar_module;
   GtkBox* container;
   GtkButton* button;
 } ExampleMod;
@@ -28,7 +28,7 @@ void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* 
 
   // Allocate the instance object
   ExampleMod* inst = malloc(sizeof(ExampleMod));
-  inst->waybar_module = init_info->obj;
+  inst->wabar_module = init_info->obj;
 
   GtkContainer* root = init_info->get_root_widget(init_info->obj);
 

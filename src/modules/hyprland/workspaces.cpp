@@ -11,7 +11,7 @@
 
 #include "util/regex_collection.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
 int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
   // Rules that match against title are prioritized
@@ -683,7 +683,7 @@ Json::Value createMonitorWorkspaceData(std::string const &name, std::string cons
 }
 
 void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJson) {
-  spdlog::info("Loading persistent workspaces from Waybar config");
+  spdlog::info("Loading persistent workspaces from Wabar config");
   const std::vector<std::string> keys = m_persistentWorkspaceConfig.getMemberNames();
   std::vector<std::string> persistentWorkspacesToCreate;
 
@@ -1188,4 +1188,4 @@ void WindowCreationPayload::moveToWorksace(std::string &new_workspace_name) {
   m_workspaceName = new_workspace_name;
 }
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

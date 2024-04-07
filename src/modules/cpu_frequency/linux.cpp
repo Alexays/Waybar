@@ -2,7 +2,7 @@
 
 #include "modules/cpu_frequency.hpp"
 
-std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
+std::vector<float> wabar::modules::CpuFrequency::parseCpuFrequencies() {
   const std::string file_path_ = "/proc/cpuinfo";
   std::ifstream info(file_path_);
   if (!info.is_open()) {

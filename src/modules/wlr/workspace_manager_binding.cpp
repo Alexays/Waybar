@@ -7,7 +7,7 @@
 #include "client.hpp"
 #include "modules/wlr/workspace_manager.hpp"
 
-namespace waybar::modules::wlr {
+namespace wabar::modules::wlr {
 
 static void handle_global(void *data, wl_registry *registry, uint32_t name, const char *interface,
                           uint32_t version) {
@@ -133,4 +133,4 @@ static const zext_workspace_handle_v1_listener workspace_impl = {
 void add_workspace_listener(zext_workspace_handle_v1 *workspace_handle, void *data) {
   zext_workspace_handle_v1_add_listener(workspace_handle, &workspace_impl, data);
 }
-}  // namespace waybar::modules::wlr
+}  // namespace wabar::modules::wlr

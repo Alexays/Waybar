@@ -5,7 +5,7 @@
 
 #include <stdexcept>
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 Ipc::Ipc() {
   const std::string& socketPath = getSocketPath();
@@ -154,4 +154,4 @@ void Ipc::handleEvent() {
   signal_event.emit(res);
 }
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

@@ -6,7 +6,7 @@
 
 #include "ALabel.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class SystemdFailedUnits : public ALabel {
  public:
@@ -28,4 +28,4 @@ class SystemdFailedUnits : public ALabel {
   void updateData();
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

@@ -7,7 +7,7 @@
 #include "gdkmm/device.h"
 #include "gtkmm/widget.h"
 
-namespace waybar {
+namespace wabar {
 
 const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
   /* The transition direction of a drawer is not actually determined by the transition type,
@@ -126,4 +126,4 @@ void Group::addWidget(Gtk::Widget& widget) {
 
 Group::operator Gtk::Widget&() { return box; }
 
-}  // namespace waybar
+}  // namespace wabar

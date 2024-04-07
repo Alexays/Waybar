@@ -9,7 +9,7 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::Value& config)
+wabar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::Value& config)
     : ALabel(config, "cpu_frequency", id, "{avg_frequency}", 10) {
   thread_ = [this] {
     dp.emit();
@@ -17,7 +17,7 @@ waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::V
   };
 }
 
-auto waybar::modules::CpuFrequency::update() -> void {
+auto wabar::modules::CpuFrequency::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
   if (tooltipEnabled()) {
@@ -49,7 +49,7 @@ auto waybar::modules::CpuFrequency::update() -> void {
   ALabel::update();
 }
 
-std::tuple<float, float, float> waybar::modules::CpuFrequency::getCpuFrequency() {
+std::tuple<float, float, float> wabar::modules::CpuFrequency::getCpuFrequency() {
   std::vector<float> frequencies = CpuFrequency::parseCpuFrequencies();
   if (frequencies.empty()) {
     return {0.f, 0.f, 0.f};

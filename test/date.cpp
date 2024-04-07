@@ -19,7 +19,7 @@
 #endif
 
 using namespace std::literals::chrono_literals;
-namespace fmt_lib = waybar::util::date::format;
+namespace fmt_lib = wabar::util::date::format;
 /*
  * Check that the date/time formatter with locale and timezone support is working as expected.
  */

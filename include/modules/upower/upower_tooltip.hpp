@@ -9,7 +9,7 @@
 #include "gtkmm/label.h"
 #include "gtkmm/window.h"
 
-namespace waybar::modules::upower {
+namespace wabar::modules::upower {
 
 class UPowerTooltip : public Gtk::Window {
  private:
@@ -30,4 +30,4 @@ class UPowerTooltip : public Gtk::Window {
   uint updateTooltip(Devices& devices);
 };
 
-}  // namespace waybar::modules::upower
+}  // namespace wabar::modules::upower

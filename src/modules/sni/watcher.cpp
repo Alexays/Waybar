@@ -4,7 +4,7 @@
 
 #include "util/scope_guard.hpp"
 
-using namespace waybar::modules::SNI;
+using namespace wabar::modules::SNI;
 
 Watcher::Watcher()
     : bus_name_id_(Gio::DBus::own_name(Gio::DBus::BusType::BUS_TYPE_SESSION,
@@ -31,7 +31,7 @@ Watcher::~Watcher() {
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  wabar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }

@@ -4,7 +4,7 @@
 
 #include "util/scope_guard.hpp"
 
-namespace waybar::modules::SNI {
+namespace wabar::modules::SNI {
 
 Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
@@ -59,7 +59,7 @@ void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
 
 void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  wabar::util::ScopeGuard error_deleter([error]() {
     if (error != nullptr) {
       g_error_free(error);
     }
@@ -81,7 +81,7 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
 
 void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  wabar::util::ScopeGuard error_deleter([error]() {
     if (error != nullptr) {
       g_error_free(error);
     }
@@ -144,4 +144,4 @@ void Host::addRegisteredItem(std::string service) {
   }
 }
 
-}  // namespace waybar::modules::SNI
+}  // namespace wabar::modules::SNI

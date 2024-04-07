@@ -13,7 +13,7 @@
 struct zwp_idle_inhibitor_v1;
 struct zwp_idle_inhibit_manager_v1;
 
-namespace waybar {
+namespace wabar {
 
 class Client {
  public:
@@ -35,10 +35,10 @@ class Client {
   Client() = default;
   const std::string getStyle(const std::string &style, std::optional<Appearance> appearance);
   void bindInterfaces();
-  void handleOutput(struct waybar_output &output);
+  void handleOutput(struct wabar_output &output);
   auto setupCss(const std::string &css_file) -> void;
-  struct waybar_output &getOutput(void *);
-  std::vector<Json::Value> getOutputConfigs(struct waybar_output &output);
+  struct wabar_output &getOutput(void *);
+  std::vector<Json::Value> getOutputConfigs(struct wabar_output &output);
 
   static void handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                            const char *interface, uint32_t version);
@@ -53,9 +53,9 @@ class Client {
   Glib::RefPtr<Gtk::StyleContext> style_context_;
   Glib::RefPtr<Gtk::CssProvider> css_provider_;
   std::unique_ptr<Portal> portal;
-  std::list<struct waybar_output> outputs_;
+  std::list<struct wabar_output> outputs_;
   std::unique_ptr<CssReloadHelper> m_cssReloadHelper;
   std::string m_cssFile;
 };
 
-}  // namespace waybar
+}  // namespace wabar

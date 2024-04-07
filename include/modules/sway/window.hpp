@@ -10,11 +10,11 @@
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 class Window : public AAppIconLabel, public sigc::trackable {
  public:
-  Window(const std::string&, const waybar::Bar&, const Json::Value&);
+  Window(const std::string&, const wabar::Bar&, const Json::Value&);
   virtual ~Window() = default;
   auto update() -> void override;
 
@@ -41,4 +41,4 @@ class Window : public AAppIconLabel, public sigc::trackable {
   Ipc ipc_;
 };
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

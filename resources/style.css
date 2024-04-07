@@ -4,7 +4,7 @@
     font-size: 13px;
 }
 
-window#waybar {
+window#wabar {
     background-color: rgba(43, 48, 59, 0.5);
     border-bottom: 3px solid rgba(100, 114, 125, 0.5);
     color: #ffffff;
@@ -12,24 +12,24 @@ window#waybar {
     transition-duration: .5s;
 }
 
-window#waybar.hidden {
+window#wabar.hidden {
     opacity: 0.2;
 }
 
 /*
-window#waybar.empty {
+window#wabar.empty {
     background-color: transparent;
 }
-window#waybar.solo {
+window#wabar.solo {
     background-color: #FFFFFF;
 }
 */
 
-window#waybar.termite {
+window#wabar.termite {
     background-color: #3F3F3F;
 }
 
-window#waybar.chromium {
+window#wabar.chromium {
     background-color: #000000;
     border: none;
 }
@@ -42,7 +42,7 @@ button {
     border-radius: 0;
 }
 
-/* https://github.com/Alexays/Waybar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
+/* https://github.com/Alexays/Wabar/wiki/FAQ#the-workspace-buttons-have-a-strange-hover-effect */
 button:hover {
     background: inherit;
     box-shadow: inset 0 -3px #ffffff;

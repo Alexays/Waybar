@@ -79,7 +79,7 @@ static uint64_t get_free_memory() {
 #endif
 }
 
-void waybar::modules::Memory::parseMeminfo() {
+void wabar::modules::Memory::parseMeminfo() {
   meminfo_["MemTotal"] = get_total_memory() / 1024;
   meminfo_["MemAvailable"] = get_free_memory() / 1024;
 }

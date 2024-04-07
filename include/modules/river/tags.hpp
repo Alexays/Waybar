@@ -9,11 +9,11 @@
 #include "river-status-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
-namespace waybar::modules::river {
+namespace wabar::modules::river {
 
-class Tags : public waybar::AModule {
+class Tags : public wabar::AModule {
  public:
-  Tags(const std::string &, const waybar::Bar &, const Json::Value &);
+  Tags(const std::string &, const wabar::Bar &, const Json::Value &);
   virtual ~Tags();
 
   // Handlers for wayland events
@@ -29,10 +29,10 @@ class Tags : public waybar::AModule {
   struct wl_seat *seat_;
 
  private:
-  const waybar::Bar &bar_;
+  const wabar::Bar &bar_;
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
   struct zriver_output_status_v1 *output_status_;
 };
 
-} /* namespace waybar::modules::river */
+} /* namespace wabar::modules::river */

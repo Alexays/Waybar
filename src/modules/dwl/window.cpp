@@ -11,7 +11,7 @@
 #include "dwl-ipc-unstable-v2-client-protocol.h"
 #include "util/rewrite_string.hpp"
 
-namespace waybar::modules::dwl {
+namespace wabar::modules::dwl {
 
 static void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
@@ -100,7 +100,7 @@ void Window::handle_layout_symbol(const char *layout_symbol) { layout_symbol_ = 
 void Window::handle_layout(const uint32_t layout) { layout_ = layout; }
 
 void Window::handle_frame() {
-  label_.set_markup(waybar::util::rewriteString(
+  label_.set_markup(wabar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", title_),
                   fmt::arg("layout", layout_symbol_), fmt::arg("app_id", appid_)),
       config_["rewrite"]));
@@ -111,4 +111,4 @@ void Window::handle_frame() {
   }
 }
 
-}  // namespace waybar::modules::dwl
+}  // namespace wabar::modules::dwl

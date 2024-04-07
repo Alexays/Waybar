@@ -6,16 +6,16 @@
 
 #include <system_error>
 #include <util/sanitize_str.hpp>
-using namespace waybar::util;
+using namespace wabar::util;
 
 #include "modules/mpd/state.hpp"
 #if defined(MPD_NOINLINE)
-namespace waybar::modules {
+namespace wabar::modules {
 #include "modules/mpd/state.inl.hpp"
-}  // namespace waybar::modules
+}  // namespace wabar::modules
 #endif
 
-waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
+wabar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     : ALabel(config, "mpd", id, "{album} - {artist} - {title}", 5, false, true),
       module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
@@ -44,14 +44,14 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
 }
 
-auto waybar::modules::MPD::update() -> void {
+auto wabar::modules::MPD::update() -> void {
   context_.update();
 
   // Call parent update
   ALabel::update();
 }
 
-void waybar::modules::MPD::queryMPD() {
+void wabar::modules::MPD::queryMPD() {
   if (connection_ != nullptr) {
     spdlog::trace("{}: fetching state information", module_name_);
     try {
@@ -66,7 +66,7 @@ void waybar::modules::MPD::queryMPD() {
   }
 }
 
-std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const {
+std::string wabar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const {
   std::string result =
       config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
   const char* tag = mpd_song_get_tag(song_.get(), type, idx);
@@ -77,7 +77,7 @@ std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const 
   return result;
 }
 
-std::string waybar::modules::MPD::getFilename() const {
+std::string wabar::modules::MPD::getFilename() const {
   std::string path = mpd_song_get_uri(song_.get());
   size_t position = path.find_last_of("/");
   if (position == std::string::npos) {
@@ -87,7 +87,7 @@ std::string waybar::modules::MPD::getFilename() const {
   }
 }
 
-void waybar::modules::MPD::setLabel() {
+void wabar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
     label_.get_style_context()->add_class("disconnected");
     label_.get_style_context()->remove_class("stopped");
@@ -216,7 +216,7 @@ void waybar::modules::MPD::setLabel() {
   }
 }
 
-std::string waybar::modules::MPD::getStateIcon() const {
+std::string wabar::modules::MPD::getStateIcon() const {
   if (!config_["state-icons"].isObject()) {
     return "";
   }
@@ -238,7 +238,7 @@ std::string waybar::modules::MPD::getStateIcon() const {
   }
 }
 
-std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool activated) const {
+std::string wabar::modules::MPD::getOptionIcon(std::string optionName, bool activated) const {
   if (!config_[optionName + "-icons"].isObject()) {
     return "";
   }
@@ -270,7 +270,7 @@ static bool isServerUnavailable(const std::error_code& ec) {
   return false;
 }
 
-void waybar::modules::MPD::tryConnect() {
+void wabar::modules::MPD::tryConnect() {
   if (connection_ != nullptr) {
     return;
   }
@@ -308,7 +308,7 @@ void waybar::modules::MPD::tryConnect() {
   }
 }
 
-void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
+void wabar::modules::MPD::checkErrors(mpd_connection* conn) {
   switch (mpd_connection_get_error(conn)) {
     case MPD_ERROR_SUCCESS:
       mpd_connection_clear_error(conn);
@@ -336,7 +336,7 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
   }
 }
 
-void waybar::modules::MPD::fetchState() {
+void wabar::modules::MPD::fetchState() {
   if (connection_ == nullptr) {
     spdlog::error("{}: Not connected to MPD", module_name_);
     return;
@@ -354,7 +354,7 @@ void waybar::modules::MPD::fetchState() {
   checkErrors(conn);
 }
 
-bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
+bool wabar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
   if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || connection_ == nullptr) {
     return false;
   }

@@ -9,7 +9,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace waybar::util {
+namespace wabar::util {
 
 AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_constructor_tag tag)
     : mainloop_(nullptr),
@@ -53,7 +53,7 @@ std::shared_ptr<AudioBackend> AudioBackend::getInstance(std::function<void()> on
 }
 
 void AudioBackend::connectContext() {
-  context_ = pa_context_new(mainloop_api_, "waybar");
+  context_ = pa_context_new(mainloop_api_, "wabar");
   if (context_ == nullptr) {
     throw std::runtime_error("pa_context_new() failed.");
   }
@@ -287,4 +287,4 @@ void AudioBackend::setIgnoredSinks(const Json::Value &config) {
   }
 }
 
-}  // namespace waybar::util
+}  // namespace wabar::util

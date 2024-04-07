@@ -1,6 +1,6 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
+wabar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
     : ALabel(config, "pulseaudio", id, "{volume}%") {
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
@@ -9,7 +9,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
   backend->setIgnoredSinks(config_["ignored-sinks"]);
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+bool wabar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   // change the pulse volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -41,7 +41,7 @@ static const std::array<std::string, 9> ports = {
     "headphone", "speaker", "hdmi", "headset", "hands-free", "portable", "car", "hifi", "phone",
 };
 
-const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
+const std::vector<std::string> wabar::modules::Pulseaudio::getPulseIcon() const {
   std::vector<std::string> res = {backend->getCurrentSinkName(), backend->getDefaultSourceName()};
   std::string nameLC = backend->getSinkPortName() + backend->getFormFactor();
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
@@ -54,7 +54,7 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
   return res;
 }
 
-auto waybar::modules::Pulseaudio::update() -> void {
+auto wabar::modules::Pulseaudio::update() -> void {
   auto format = format_;
   std::string tooltip_format;
   auto sink_volume = backend->getSinkVolume();

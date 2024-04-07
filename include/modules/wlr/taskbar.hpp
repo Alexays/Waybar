@@ -22,13 +22,13 @@
 #include "util/json.hpp"
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
-namespace waybar::modules::wlr {
+namespace wabar::modules::wlr {
 
 class Taskbar;
 
 class Task {
  public:
-  Task(const waybar::Bar &, const Json::Value &, Taskbar *,
+  Task(const wabar::Bar &, const Json::Value &, Taskbar *,
        struct zwlr_foreign_toplevel_handle_v1 *, struct wl_seat *);
   ~Task();
 
@@ -47,7 +47,7 @@ class Task {
   static uint32_t global_id;
 
  private:
-  const waybar::Bar &bar_;
+  const wabar::Bar &bar_;
   const Json::Value &config_;
   Taskbar *tbar_;
   struct zwlr_foreign_toplevel_handle_v1 *handle_;
@@ -135,14 +135,14 @@ class Task {
 
 using TaskPtr = std::unique_ptr<Task>;
 
-class Taskbar : public waybar::AModule {
+class Taskbar : public wabar::AModule {
  public:
-  Taskbar(const std::string &, const waybar::Bar &, const Json::Value &);
+  Taskbar(const std::string &, const wabar::Bar &, const Json::Value &);
   ~Taskbar();
   void update();
 
  private:
-  const waybar::Bar &bar_;
+  const wabar::Bar &bar_;
   Gtk::Box box_;
   std::vector<TaskPtr> tasks_;
 
@@ -176,4 +176,4 @@ class Taskbar : public waybar::AModule {
   const std::map<std::string, std::string> &app_ids_replace_map() const;
 };
 
-} /* namespace waybar::modules::wlr */
+} /* namespace wabar::modules::wlr */

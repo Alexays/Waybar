@@ -7,7 +7,7 @@
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 namespace ffi {
 extern "C" {
@@ -15,7 +15,7 @@ typedef struct wbcffi_module wbcffi_module;
 
 typedef struct {
   wbcffi_module* obj;
-  const char* waybar_version;
+  const char* wabar_version;
   GtkContainer* (*get_root_widget)(wbcffi_module*);
   void (*queue_update)(wbcffi_module*);
 } wbcffi_init_info;
@@ -57,4 +57,4 @@ class CFFI : public AModule {
   } hooks_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

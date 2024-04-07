@@ -5,7 +5,7 @@
 
 #include "ALabel.hpp"
 
-namespace waybar {
+namespace wabar {
 
 class AIconLabel : public ALabel {
  public:
@@ -22,4 +22,4 @@ class AIconLabel : public ALabel {
   bool iconEnabled() const;
 };
 
-}  // namespace waybar
+}  // namespace wabar

@@ -5,7 +5,7 @@
 
 #include "AIconLabel.hpp"
 
-namespace waybar {
+namespace wabar {
 
 class AAppIconLabel : public AIconLabel {
  public:
@@ -24,4 +24,4 @@ class AAppIconLabel : public AIconLabel {
   std::string app_icon_name_;
 };
 
-}  // namespace waybar
+}  // namespace wabar

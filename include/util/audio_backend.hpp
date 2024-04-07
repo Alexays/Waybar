@@ -12,7 +12,7 @@
 
 #include "util/backend_common.hpp"
 
-namespace waybar::util {
+namespace wabar::util {
 
 class AudioBackend {
  private:
@@ -93,4 +93,4 @@ class AudioBackend {
   bool isBluetooth();
 };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

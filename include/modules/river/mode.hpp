@@ -6,11 +6,11 @@
 #include "bar.hpp"
 #include "river-status-unstable-v1-client-protocol.h"
 
-namespace waybar::modules::river {
+namespace wabar::modules::river {
 
-class Mode : public waybar::ALabel {
+class Mode : public wabar::ALabel {
  public:
-  Mode(const std::string &, const waybar::Bar &, const Json::Value &);
+  Mode(const std::string &, const wabar::Bar &, const Json::Value &);
   virtual ~Mode();
 
   // Handlers for wayland events
@@ -20,9 +20,9 @@ class Mode : public waybar::ALabel {
   struct wl_seat *seat_;
 
  private:
-  const waybar::Bar &bar_;
+  const wabar::Bar &bar_;
   std::string mode_;
   struct zriver_seat_status_v1 *seat_status_;
 };
 
-} /* namespace waybar::modules::river */
+} /* namespace wabar::modules::river */

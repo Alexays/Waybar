@@ -34,13 +34,13 @@ inline auto format(const std::locale& loc, const char* spec, const T& arg) {
 }  // namespace date
 
 // Format
-namespace waybar::util::date::format {
+namespace wabar::util::date::format {
 #if HAVE_CHRONO_TIMEZONES
 using namespace std;
 #else
 using namespace fmt;
 #endif
-}  // namespace waybar::util::date::format
+}  // namespace wabar::util::date::format
 
 #if not HAVE_CHRONO_TIMEZONES
 template <typename Duration, typename TimeZonePtr>

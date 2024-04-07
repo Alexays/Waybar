@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-namespace waybar::modules::SNI {
+namespace wabar::modules::SNI {
 
 Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "tray", id),
@@ -44,4 +44,4 @@ auto Tray::update() -> void {
   AModule::update();
 }
 
-}  // namespace waybar::modules::SNI
+}  // namespace wabar::modules::SNI

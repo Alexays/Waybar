@@ -7,7 +7,7 @@
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Sndio : public ALabel {
  public:
@@ -29,4 +29,4 @@ class Sndio : public ALabel {
   bool muted_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

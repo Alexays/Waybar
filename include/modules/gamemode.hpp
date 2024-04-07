@@ -13,7 +13,7 @@
 #include "gtkmm/label.h"
 #include "gtkmm/overlay.h"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Gamemode : public AModule {
  public:
@@ -74,4 +74,4 @@ class Gamemode : public AModule {
   guint gamemodeWatcher_id;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

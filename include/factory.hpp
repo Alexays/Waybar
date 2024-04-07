@@ -4,7 +4,7 @@
 
 #include <AModule.hpp>
 
-namespace waybar {
+namespace wabar {
 
 class Bar;
 
@@ -18,4 +18,4 @@ class Factory {
   const Json::Value& config_;
 };
 
-}  // namespace waybar
+}  // namespace wabar

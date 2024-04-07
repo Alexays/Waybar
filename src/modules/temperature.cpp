@@ -6,7 +6,7 @@
 #include <sys/sysctl.h>
 #endif
 
-waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
+wabar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
 #if defined(__FreeBSD__)
 // FreeBSD uses sysctlbyname instead of read from a file
@@ -56,7 +56,7 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
   };
 }
 
-auto waybar::modules::Temperature::update() -> void {
+auto wabar::modules::Temperature::update() -> void {
   auto temperature = getTemperature();
   uint16_t temperature_c = std::round(temperature);
   uint16_t temperature_f = std::round(temperature * 1.8 + 32);
@@ -95,7 +95,7 @@ auto waybar::modules::Temperature::update() -> void {
   ALabel::update();
 }
 
-float waybar::modules::Temperature::getTemperature() {
+float wabar::modules::Temperature::getTemperature() {
 #if defined(__FreeBSD__)
   int temp;
   size_t size = sizeof temp;
@@ -128,7 +128,7 @@ float waybar::modules::Temperature::getTemperature() {
 #endif
 }
 
-bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {
+bool wabar::modules::Temperature::isCritical(uint16_t temperature_c) {
   return config_["critical-threshold"].isInt() &&
          temperature_c >= config_["critical-threshold"].asInt();
 }

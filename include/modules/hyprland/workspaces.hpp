@@ -22,7 +22,7 @@
 
 using WindowAddress = std::string;
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
 class Workspaces;
 
@@ -106,7 +106,7 @@ class Workspace {
   bool m_isActive = false;
   bool m_isSpecial = false;
   bool m_isPersistentRule = false;    // represents the persistent state in hyprland
-  bool m_isPersistentConfig = false;  // represents the persistent state in the Waybar config
+  bool m_isPersistentConfig = false;  // represents the persistent state in the Wabar config
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
@@ -119,7 +119,7 @@ class Workspace {
 
 class Workspaces : public AModule, public EventHandler {
  public:
-  Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
+  Workspaces(const std::string&, const wabar::Bar&, const Json::Value&);
   ~Workspaces() override;
   void update() override;
   void init();
@@ -223,4 +223,4 @@ class Workspaces : public AModule, public EventHandler {
   Gtk::Box m_box;
 };
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

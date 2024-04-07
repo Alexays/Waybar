@@ -4,7 +4,7 @@
 
 #include "ASlider.hpp"
 #include "util/audio_backend.hpp"
-namespace waybar::modules {
+namespace wabar::modules {
 
 enum class PulseaudioSliderTarget {
   Sink,
@@ -24,4 +24,4 @@ class PulseaudioSlider : public ASlider {
   PulseaudioSliderTarget target = PulseaudioSliderTarget::Sink;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

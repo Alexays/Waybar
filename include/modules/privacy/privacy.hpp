@@ -10,9 +10,9 @@
 #include "util/pipewire/pipewire_backend.hpp"
 #include "util/pipewire/privacy_node_info.hpp"
 
-using waybar::util::PipewireBackend::PrivacyNodeInfo;
+using wabar::util::PipewireBackend::PrivacyNodeInfo;
 
-namespace waybar::modules::privacy {
+namespace wabar::modules::privacy {
 
 class Privacy : public AModule {
  public:
@@ -38,4 +38,4 @@ class Privacy : public AModule {
   std::shared_ptr<util::PipewireBackend::PipewireBackend> backend = nullptr;
 };
 
-}  // namespace waybar::modules::privacy
+}  // namespace wabar::modules::privacy

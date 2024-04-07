@@ -14,7 +14,7 @@
 #define TAG_ACTIVE 1
 #define TAG_URGENT 2
 
-namespace waybar::modules::dwl {
+namespace wabar::modules::dwl {
 
 /* dwl stuff */
 wl_array tags, layouts;
@@ -88,8 +88,8 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::AModule(config, "tags", id, false, false),
+Tags::Tags(const std::string &id, const wabar::Bar &bar, const Json::Value &config)
+    : wabar::AModule(config, "tags", id, false, false),
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),
@@ -200,4 +200,4 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
   }
 }
 
-} /* namespace waybar::modules::dwl */
+} /* namespace wabar::modules::dwl */

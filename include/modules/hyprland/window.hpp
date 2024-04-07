@@ -9,11 +9,11 @@
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
-class Window : public waybar::AAppIconLabel, public EventHandler {
+class Window : public wabar::AAppIconLabel, public EventHandler {
  public:
-  Window(const std::string&, const waybar::Bar&, const Json::Value&);
+  Window(const std::string&, const wabar::Bar&, const Json::Value&);
   ~Window() override;
 
   auto update() -> void override;
@@ -62,4 +62,4 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   bool focused_;
 };
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

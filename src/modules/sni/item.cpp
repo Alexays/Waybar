@@ -29,7 +29,7 @@ struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
   }
 };
 
-namespace waybar::modules::SNI {
+namespace wabar::modules::SNI {
 
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
@@ -467,4 +467,4 @@ bool Item::handleScroll(GdkEventScroll* const& ev) {
   return true;
 }
 
-}  // namespace waybar::modules::SNI
+}  // namespace wabar::modules::SNI

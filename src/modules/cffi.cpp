@@ -7,7 +7,7 @@
 #include <iostream>
 #include <type_traits>
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& config)
     : AModule(config, name, id, true, true) {
@@ -73,7 +73,7 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
 
   ffi::wbcffi_init_info init_info = {
       .obj = (ffi::wbcffi_module*)this,
-      .waybar_version = VERSION,
+      .wabar_version = VERSION,
       .get_root_widget =
           [](ffi::wbcffi_module* obj) {
             return dynamic_cast<Gtk::Container*>(&((CFFI*)obj)->event_box_)->gobj();
@@ -116,4 +116,4 @@ auto CFFI::doAction(const std::string& name) -> void {
   }
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

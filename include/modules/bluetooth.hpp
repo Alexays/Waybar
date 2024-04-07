@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Bluetooth : public ALabel {
   struct ControllerInfo {
@@ -77,4 +77,4 @@ class Bluetooth : public ALabel {
   std::vector<std::string> device_preference_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

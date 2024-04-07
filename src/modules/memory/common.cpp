@@ -1,6 +1,6 @@
 #include "modules/memory.hpp"
 
-waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
+wabar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
     : ALabel(config, "memory", id, "{}%", 30) {
   thread_ = [this] {
     dp.emit();
@@ -8,7 +8,7 @@ waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config
   };
 }
 
-auto waybar::modules::Memory::update() -> void {
+auto wabar::modules::Memory::update() -> void {
   parseMeminfo();
 
   unsigned long memtotal = meminfo_["MemTotal"];

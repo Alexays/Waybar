@@ -11,7 +11,7 @@
 
 #include "util/gtk_icon.hpp"
 
-namespace waybar {
+namespace wabar {
 
 AAppIconLabel::AAppIconLabel(const Json::Value& config, const std::string& name,
                              const std::string& id, const std::string& format, uint16_t interval,
@@ -166,4 +166,4 @@ auto AAppIconLabel::update() -> void {
   AIconLabel::update();
 }
 
-}  // namespace waybar
+}  // namespace wabar

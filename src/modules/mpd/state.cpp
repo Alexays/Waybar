@@ -5,9 +5,9 @@
 
 #include "modules/mpd/mpd.hpp"
 #if defined(MPD_NOINLINE)
-namespace waybar::modules {
+namespace wabar::modules {
 #include "modules/mpd/state.inl.hpp"
-}  // namespace waybar::modules
+}  // namespace wabar::modules
 #endif
 
 #if FMT_VERSION >= 90000
@@ -17,7 +17,7 @@ auto format_as(enum mpd_idle val) {
 }
 #endif
 
-namespace waybar::modules::detail {
+namespace wabar::modules::detail {
 
 #define IDLE_RUN_NOIDLE_AND_CMD(...)                                      \
   if (idle_connection_.connected()) {                                     \
@@ -387,4 +387,4 @@ bool Disconnected::on_timer() {
 
 void Disconnected::update() noexcept { ctx_->do_update(); }
 
-}  // namespace waybar::modules::detail
+}  // namespace wabar::modules::detail

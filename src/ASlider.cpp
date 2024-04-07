@@ -3,7 +3,7 @@
 #include "gtkmm/adjustment.h"
 #include "gtkmm/enums.h"
 
-namespace waybar {
+namespace wabar {
 
 ASlider::ASlider(const Json::Value& config, const std::string& name, const std::string& id)
     : AModule(config, name, id, false, false),
@@ -32,4 +32,4 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
 
 void ASlider::onValueChanged() {}
 
-}  // namespace waybar
+}  // namespace wabar

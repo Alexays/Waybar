@@ -5,7 +5,7 @@
 
 #include "client.hpp"
 
-namespace waybar::modules::river {
+namespace wabar::modules::river {
 
 static void listen_focused_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
                                 uint32_t tags) {
@@ -98,8 +98,8 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Layout::Layout(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::ALabel(config, "layout", id, "{}"),
+Layout::Layout(const std::string &id, const wabar::Bar &bar, const Json::Value &config)
+    : wabar::ALabel(config, "layout", id, "{}"),
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),
@@ -171,4 +171,4 @@ void Layout::handle_unfocused_output(struct wl_output *output) {
   }
 }
 
-} /* namespace waybar::modules::river */
+} /* namespace wabar::modules::river */

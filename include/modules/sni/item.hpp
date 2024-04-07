@@ -16,7 +16,7 @@
 
 #include "bar.hpp"
 
-namespace waybar::modules::SNI {
+namespace wabar::modules::SNI {
 
 struct ToolTip {
   Glib::ustring icon_name;
@@ -91,4 +91,4 @@ class Item : public sigc::trackable {
   std::set<std::string_view> update_pending_;
 };
 
-}  // namespace waybar::modules::SNI
+}  // namespace wabar::modules::SNI

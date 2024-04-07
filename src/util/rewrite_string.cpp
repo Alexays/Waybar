@@ -4,7 +4,7 @@
 
 #include <regex>
 
-namespace waybar::util {
+namespace wabar::util {
 std::string rewriteString(const std::string& value, const Json::Value& rules) {
   if (!rules.isObject()) {
     return value;
@@ -29,4 +29,4 @@ std::string rewriteString(const std::string& value, const Json::Value& rules) {
 
   return res;
 }
-}  // namespace waybar::util
+}  // namespace wabar::util

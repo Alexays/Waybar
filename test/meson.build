@@ -21,15 +21,15 @@ if tz_dep.found()
   test_src += files('date.cpp')
 endif
 
-waybar_test = executable(
-    'waybar_test',
+wabar_test = executable(
+    'wabar_test',
     test_src,
     dependencies: test_dep,
     include_directories: test_inc,
 )
 
 test(
-    'waybar',
-    waybar_test,
+    'wabar',
+    wabar_test,
     workdir: meson.project_source_root(),
 )

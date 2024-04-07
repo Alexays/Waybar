@@ -12,7 +12,7 @@
 #include "modules/sway/ipc/ipc.hpp"
 #include "util/string.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 const std::string Language::XKB_LAYOUT_NAMES_KEY = "xkb_layout_names";
 const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name";
@@ -229,4 +229,4 @@ std::string Language::Layout::country_flag() const {
   if (result[7] < 0xa6 || result[7] > 0xbf) return "";
   return std::string{reinterpret_cast<char*>(result)};
 }
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

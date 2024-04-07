@@ -16,7 +16,7 @@ struct fmt::formatter<Json::Value> : ostream_formatter {};
 
 #endif
 
-namespace waybar::util {
+namespace wabar::util {
 
 class JsonParser {
  public:
@@ -44,4 +44,4 @@ class JsonParser {
     return std::regex_replace(str, re, "\\u00");
   }
 };
-}  // namespace waybar::util
+}  // namespace wabar::util

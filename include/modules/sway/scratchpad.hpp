@@ -11,7 +11,7 @@
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 class Scratchpad : public ALabel {
  public:
   Scratchpad(const std::string&, const Json::Value&);
@@ -32,4 +32,4 @@ class Scratchpad : public ALabel {
   Ipc ipc_;
   util::JsonParser parser_;
 };
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

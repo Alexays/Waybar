@@ -2,9 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
-waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
+wabar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
     : ALabel(config, "cava", id, "{}", 60, false, false, false) {
-  // Load waybar module config
+  // Load wabar module config
   char cfgPath[PATH_MAX];
   cfgPath[0] = '\0';
 
@@ -111,7 +111,7 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
   };
 }
 
-waybar::modules::Cava::~Cava() {
+wabar::modules::Cava::~Cava() {
   thread_fetch_input_.stop();
   thread_.stop();
   delete plan_;
@@ -132,7 +132,7 @@ void downThreadDelay(std::chrono::milliseconds& delay, std::chrono::seconds& del
   }
 }
 
-auto waybar::modules::Cava::update() -> void {
+auto wabar::modules::Cava::update() -> void {
   if (audio_data_.suspendFlag) return;
   silence_ = true;
 
@@ -185,7 +185,7 @@ auto waybar::modules::Cava::update() -> void {
   }
 }
 
-auto waybar::modules::Cava::doAction(const std::string& name) -> void {
+auto wabar::modules::Cava::doAction(const std::string& name) -> void {
   if ((actionMap_[name])) {
     (this->*actionMap_[name])();
   } else
@@ -193,7 +193,7 @@ auto waybar::modules::Cava::doAction(const std::string& name) -> void {
 }
 
 // Cava actions
-void waybar::modules::Cava::pause_resume() {
+void wabar::modules::Cava::pause_resume() {
   pthread_mutex_lock(&audio_data_.lock);
   if (audio_data_.suspendFlag) {
     audio_data_.suspendFlag = false;

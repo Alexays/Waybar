@@ -9,7 +9,7 @@
 #include "ALabel.hpp"
 #include "util/audio_backend.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Pulseaudio : public ALabel {
  public:
@@ -24,4 +24,4 @@ class Pulseaudio : public ALabel {
   std::shared_ptr<util::AudioBackend> backend = nullptr;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

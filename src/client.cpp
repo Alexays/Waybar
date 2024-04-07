@@ -10,12 +10,12 @@
 #include "util/clara.hpp"
 #include "util/format.hpp"
 
-waybar::Client *waybar::Client::inst() {
+wabar::Client *wabar::Client::inst() {
   static auto c = new Client();
   return c;
 }
 
-void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
+void wabar::Client::handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
                                   const char *interface, uint32_t version) {
   auto client = static_cast<Client *>(data);
   if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
@@ -28,12 +28,12 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
   }
 }
 
-void waybar::Client::handleGlobalRemove(void *data, struct wl_registry * /*registry*/,
+void wabar::Client::handleGlobalRemove(void *data, struct wl_registry * /*registry*/,
                                         uint32_t name) {
   // Nothing here
 }
 
-void waybar::Client::handleOutput(struct waybar_output &output) {
+void wabar::Client::handleOutput(struct wabar_output &output) {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
       .logical_position = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
       .logical_size = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
@@ -47,7 +47,7 @@ void waybar::Client::handleOutput(struct waybar_output &output) {
   zxdg_output_v1_add_listener(output.xdg_output.get(), &xdgOutputListener, &output);
 }
 
-struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
+struct wabar::wabar_output &wabar::Client::getOutput(void *addr) {
   auto it = std::find_if(outputs_.begin(), outputs_.end(),
                          [&addr](const auto &output) { return &output == addr; });
   if (it == outputs_.end()) {
@@ -56,12 +56,12 @@ struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
   return *it;
 }
 
-std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &output) {
+std::vector<Json::Value> wabar::Client::getOutputConfigs(struct wabar_output &output) {
   return config.getOutputConfigs(output.name, output.identifier);
 }
 
-void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_output*/) {
-  auto client = waybar::Client::inst();
+void wabar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_output*/) {
+  auto client = wabar::Client::inst();
   try {
     auto &output = client->getOutput(data);
     /**
@@ -89,9 +89,9 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
   }
 }
 
-void waybar::Client::handleOutputName(void *data, struct zxdg_output_v1 * /*xdg_output*/,
+void wabar::Client::handleOutputName(void *data, struct zxdg_output_v1 * /*xdg_output*/,
                                       const char *name) {
-  auto client = waybar::Client::inst();
+  auto client = wabar::Client::inst();
   try {
     auto &output = client->getOutput(data);
     output.name = name;
@@ -100,9 +100,9 @@ void waybar::Client::handleOutputName(void *data, struct zxdg_output_v1 * /*xdg_
   }
 }
 
-void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 * /*xdg_output*/,
+void wabar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 * /*xdg_output*/,
                                              const char *description) {
-  auto client = waybar::Client::inst();
+  auto client = wabar::Client::inst();
   try {
     auto &output = client->getOutput(data);
     const char *open_paren = strrchr(description, '(');
@@ -115,13 +115,13 @@ void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 *
   }
 }
 
-void waybar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
+void wabar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
   auto &output = outputs_.emplace_back();
   output.monitor = monitor;
   handleOutput(output);
 }
 
-void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
+void wabar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
   spdlog::debug("Output removed: {} {}", monitor->get_manufacturer(), monitor->get_model());
   /* This event can be triggered from wl_display_roundtrip called by GTK or our code.
    * Defer destruction of bars for the output to the next iteration of the event loop to avoid
@@ -132,7 +132,7 @@ void waybar::Client::handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor) {
       Glib::PRIORITY_HIGH_IDLE);
 }
 
-void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor) {
+void wabar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor) {
   for (auto it = bars.begin(); it != bars.end();) {
     if ((*it)->output->monitor == monitor) {
       auto output_name = (*it)->output->name;
@@ -147,19 +147,19 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
   outputs_.remove_if([&monitor](const auto &output) { return output.monitor == monitor; });
 }
 
-const std::string waybar::Client::getStyle(const std::string &style,
+const std::string wabar::Client::getStyle(const std::string &style,
                                            std::optional<Appearance> appearance = std::nullopt) {
   std::optional<std::string> css_file;
   if (style.empty()) {
     std::vector<std::string> search_files;
     switch (appearance.value_or(portal->getAppearance())) {
-      case waybar::Appearance::LIGHT:
+      case wabar::Appearance::LIGHT:
         search_files.push_back("style-light.css");
         break;
-      case waybar::Appearance::DARK:
+      case wabar::Appearance::DARK:
         search_files.push_back("style-dark.css");
         break;
-      case waybar::Appearance::UNKNOWN:
+      case wabar::Appearance::UNKNOWN:
         break;
     }
     search_files.push_back("style.css");
@@ -174,7 +174,7 @@ const std::string waybar::Client::getStyle(const std::string &style,
   return css_file.value();
 };
 
-auto waybar::Client::setupCss(const std::string &css_file) -> void {
+auto wabar::Client::setupCss(const std::string &css_file) -> void {
   css_provider_ = Gtk::CssProvider::create();
   style_context_ = Gtk::StyleContext::create();
 
@@ -187,7 +187,7 @@ auto waybar::Client::setupCss(const std::string &css_file) -> void {
                                           GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
-void waybar::Client::bindInterfaces() {
+void wabar::Client::bindInterfaces() {
   registry = wl_display_get_registry(wl_display);
   static const struct wl_registry_listener registry_listener = {
       .global = handleGlobal,
@@ -213,7 +213,7 @@ void waybar::Client::bindInterfaces() {
       sigc::mem_fun(*this, &Client::handleMonitorRemoved));
 }
 
-int waybar::Client::main(int argc, char *argv[]) {
+int wabar::Client::main(int argc, char *argv[]) {
   bool show_help = false;
   bool show_version = false;
   std::string config_opt;
@@ -237,18 +237,18 @@ int waybar::Client::main(int argc, char *argv[]) {
     return 0;
   }
   if (show_version) {
-    std::cout << "Waybar v" << VERSION << std::endl;
+    std::cout << "Wabar v" << VERSION << std::endl;
     return 0;
   }
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
+  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.wabar",
                                      Gio::APPLICATION_HANDLES_COMMAND_LINE);
 
-  // Initialize Waybars GTK resources with our custom icons
+  // Initialize Wabars GTK resources with our custom icons
   auto theme = Gtk::IconTheme::get_default();
-  theme->add_resource_path("/fr/arouillard/waybar/icons");
+  theme->add_resource_path("/fr/arouillard/wabar/icons");
 
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
@@ -260,12 +260,12 @@ int waybar::Client::main(int argc, char *argv[]) {
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   config.load(config_opt);
   if (!portal) {
-    portal = std::make_unique<waybar::Portal>();
+    portal = std::make_unique<wabar::Portal>();
   }
   m_cssFile = getStyle(style_opt);
   setupCss(m_cssFile);
   m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&]() { setupCss(m_cssFile); });
-  portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
+  portal->signal_appearance_changed().connect([&](wabar::Appearance appearance) {
     auto css_file = getStyle(style_opt, appearance);
     setupCss(css_file);
   });
@@ -290,7 +290,7 @@ int waybar::Client::main(int argc, char *argv[]) {
   return 0;
 }
 
-void waybar::Client::reset() {
+void wabar::Client::reset() {
   gtk_app->quit();
   // delete signal handler for css changes
   portal->signal_appearance_changed().clear();

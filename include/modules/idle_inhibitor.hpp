@@ -6,16 +6,16 @@
 #include "bar.hpp"
 #include "client.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
 
  public:
-  IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
+  IdleInhibitor(const std::string&, const wabar::Bar&, const Json::Value&);
   virtual ~IdleInhibitor();
   auto update() -> void override;
-  static std::list<waybar::AModule*> modules;
+  static std::list<wabar::AModule*> modules;
   static bool status;
 
  private:
@@ -27,4 +27,4 @@ class IdleInhibitor : public ALabel {
   int pid_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

@@ -1,5 +1,5 @@
 project(
-    'waybar', 'cpp', 'c',
+    'wabar', 'cpp', 'c',
     version: '0.10.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
@@ -150,7 +150,7 @@ if systemd.found()
 
   configure_file(
     configuration: conf_data,
-    input: './resources/waybar.service.in',
+    input: './resources/wabar.service.in',
     output: '@BASENAME@',
     install_dir: user_units_dir
   )
@@ -187,12 +187,12 @@ src_files = files(
 )
 
 man_files = files(
-    'man/waybar-custom.5.scd',
-    'man/waybar-disk.5.scd',
-    'man/waybar-idle-inhibitor.5.scd',
-    'man/waybar-image.5.scd',
-    'man/waybar-states.5.scd',
-    'man/waybar-temperature.5.scd',
+    'man/wabar-custom.5.scd',
+    'man/wabar-disk.5.scd',
+    'man/wabar-idle-inhibitor.5.scd',
+    'man/wabar-image.5.scd',
+    'man/wabar-states.5.scd',
+    'man/wabar-temperature.5.scd',
 )
 
 inc_dirs = ['include']
@@ -216,13 +216,13 @@ if is_linux
         'src/modules/systemd_failed_units.cpp',
     )
     man_files += files(
-        'man/waybar-battery.5.scd',
-        'man/waybar-bluetooth.5.scd',
-        'man/waybar-cffi.5.scd',
-        'man/waybar-cpu.5.scd',
-        'man/waybar-memory.5.scd',
-        'man/waybar-systemd-failed-units.5.scd',
-        'man/waybar-power-profiles-daemon.5.scd',
+        'man/wabar-battery.5.scd',
+        'man/wabar-bluetooth.5.scd',
+        'man/wabar-cffi.5.scd',
+        'man/wabar-cpu.5.scd',
+        'man/wabar-memory.5.scd',
+        'man/wabar-systemd-failed-units.5.scd',
+        'man/wabar-power-profiles-daemon.5.scd',
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
@@ -238,13 +238,13 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
         'src/modules/memory/common.cpp',
     )
     man_files += files(
-        'man/waybar-cffi.5.scd',
-        'man/waybar-cpu.5.scd',
-        'man/waybar-memory.5.scd',
+        'man/wabar-cffi.5.scd',
+        'man/wabar-cpu.5.scd',
+        'man/wabar-memory.5.scd',
     )
     if is_freebsd
         src_files += files('src/modules/battery.cpp')
-        man_files += files('man/waybar-battery.5.scd')
+        man_files += files('man/wabar-battery.5.scd')
     endif
 endif
 
@@ -260,18 +260,18 @@ if true
         'src/modules/sway/scratchpad.cpp'
     )
     man_files += files(
-        'man/waybar-sway-language.5.scd',
-        'man/waybar-sway-mode.5.scd',
-        'man/waybar-sway-scratchpad.5.scd',
-        'man/waybar-sway-window.5.scd',
-        'man/waybar-sway-workspaces.5.scd',
+        'man/wabar-sway-language.5.scd',
+        'man/wabar-sway-mode.5.scd',
+        'man/wabar-sway-scratchpad.5.scd',
+        'man/wabar-sway-window.5.scd',
+        'man/wabar-sway-workspaces.5.scd',
     )
 endif
 
 if true
     add_project_arguments('-DHAVE_WLR_TASKBAR', language: 'cpp')
     src_files += files('src/modules/wlr/taskbar.cpp')
-    man_files += files('man/waybar-wlr-taskbar.5.scd')
+    man_files += files('man/wabar-wlr-taskbar.5.scd')
 endif
 
 if true
@@ -283,10 +283,10 @@ if true
         'src/modules/river/window.cpp',
     )
     man_files += files(
-        'man/waybar-river-layout.5.scd',
-        'man/waybar-river-mode.5.scd',
-        'man/waybar-river-tags.5.scd',
-        'man/waybar-river-window.5.scd',
+        'man/wabar-river-layout.5.scd',
+        'man/wabar-river-mode.5.scd',
+        'man/wabar-river-tags.5.scd',
+        'man/wabar-river-window.5.scd',
     )
 endif
 
@@ -294,8 +294,8 @@ if true
     add_project_arguments('-DHAVE_DWL', language: 'cpp')
     src_files += files('src/modules/dwl/tags.cpp')
     src_files += files('src/modules/dwl/window.cpp')
-    man_files += files('man/waybar-dwl-tags.5.scd')
-    man_files += files('man/waybar-dwl-window.5.scd')
+    man_files += files('man/wabar-dwl-tags.5.scd')
+    man_files += files('man/wabar-dwl-window.5.scd')
 endif
 
 if true
@@ -308,17 +308,17 @@ if true
         'src/modules/hyprland/workspaces.cpp',
     )
     man_files += files(
-        'man/waybar-hyprland-language.5.scd',
-        'man/waybar-hyprland-submap.5.scd',
-        'man/waybar-hyprland-window.5.scd',
-        'man/waybar-hyprland-workspaces.5.scd',
+        'man/wabar-hyprland-language.5.scd',
+        'man/wabar-hyprland-submap.5.scd',
+        'man/wabar-hyprland-window.5.scd',
+        'man/wabar-hyprland-workspaces.5.scd',
     )
 endif
 
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += files('src/modules/network.cpp')
-    man_files += files('man/waybar-network.5.scd')
+    man_files += files('man/wabar-network.5.scd')
 endif
 
 if not get_option('logind').disabled()
@@ -328,8 +328,8 @@ if not get_option('logind').disabled()
         'src/modules/inhibitor.cpp',
     )
     man_files += files(
-        'man/waybar-gamemode.5.scd',
-        'man/waybar-inhibitor.5.scd',
+        'man/wabar-gamemode.5.scd',
+        'man/wabar-inhibitor.5.scd',
     )
 endif
 
@@ -339,7 +339,7 @@ if (upower_glib.found() and not get_option('logind').disabled())
         'src/modules/upower/upower.cpp',
         'src/modules/upower/upower_tooltip.cpp',
     )
-    man_files += files('man/waybar-upower.5.scd')
+    man_files += files('man/wabar-upower.5.scd')
 endif
 
 
@@ -351,13 +351,13 @@ if pipewire.found()
         'src/util/pipewire/pipewire_backend.cpp',
         'src/util/pipewire/privacy_node_info.cpp',
     )
-    man_files += files('man/waybar-privacy.5.scd')
+    man_files += files('man/wabar-privacy.5.scd')
 endif
 
 if playerctl.found()
     add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
     src_files += files('src/modules/mpris/mpris.cpp')
-    man_files += files('man/waybar-mpris.5.scd')
+    man_files += files('man/wabar-mpris.5.scd')
 endif
 
 if libpulse.found()
@@ -368,21 +368,21 @@ if libpulse.found()
         'src/util/audio_backend.cpp',
     )
     man_files += files(
-        'man/waybar-pulseaudio.5.scd',
-        'man/waybar-pulseaudio-slider.5.scd',
+        'man/wabar-pulseaudio.5.scd',
+        'man/wabar-pulseaudio-slider.5.scd',
     )
 endif
 
 if libjack.found()
     add_project_arguments('-DHAVE_LIBJACK', language: 'cpp')
     src_files += files('src/modules/jack.cpp')
-    man_files += files('man/waybar-jack.5.scd')
+    man_files += files('man/wabar-jack.5.scd')
 endif
 
 if libwireplumber.found()
     add_project_arguments('-DHAVE_LIBWIREPLUMBER', language: 'cpp')
     src_files += files('src/modules/wireplumber.cpp')
-    man_files += files('man/waybar-wireplumber.5.scd')
+    man_files += files('man/wabar-wireplumber.5.scd')
 endif
 
 if dbusmenu_gtk.found()
@@ -394,7 +394,7 @@ if dbusmenu_gtk.found()
         'src/modules/sni/item.cpp'
     )
     man_files += files(
-        'man/waybar-tray.5.scd',
+        'man/wabar-tray.5.scd',
     )
 endif
 
@@ -406,8 +406,8 @@ if libudev.found() and (is_linux or libepoll.found())
         'src/util/backlight_backend.cpp',
     )
     man_files += files(
-        'man/waybar-backlight.5.scd',
-        'man/waybar-backlight-slider.5.scd',
+        'man/wabar-backlight.5.scd',
+        'man/wabar-backlight-slider.5.scd',
     )
 endif
 
@@ -415,7 +415,7 @@ if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and 
     add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
     add_project_arguments('-DHAVE_LIBINPUT', language: 'cpp')
     src_files += files('src/modules/keyboard_state.cpp')
-    man_files += files('man/waybar-keyboard-state.5.scd')
+    man_files += files('man/wabar-keyboard-state.5.scd')
 endif
 
 if libmpdclient.found()
@@ -425,14 +425,14 @@ if libmpdclient.found()
         'src/modules/mpd/state.cpp',
     )
     man_files += files(
-        'man/waybar-mpd.5.scd',
+        'man/wabar-mpd.5.scd',
     )
 endif
 
 if libsndio.found()
     add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
     src_files += files('src/modules/sndio.cpp')
-    man_files += files('man/waybar-sndio.5.scd')
+    man_files += files('man/wabar-sndio.5.scd')
 endif
 
 if get_option('rfkill').enabled() and is_linux
@@ -445,14 +445,14 @@ endif
 if have_chrono_timezones
     add_project_arguments('-DHAVE_CHRONO_TIMEZONES', language: 'cpp')
     src_files += files('src/modules/clock.cpp')
-    man_files += files('man/waybar-clock.5.scd')
+    man_files += files('man/wabar-clock.5.scd')
 elif tz_dep.found()
     add_project_arguments('-DHAVE_LIBDATE', language: 'cpp')
     src_files += files('src/modules/clock.cpp')
-    man_files += files('man/waybar-clock.5.scd')
+    man_files += files('man/wabar-clock.5.scd')
 else
     src_files += files('src/modules/simpleclock.cpp')
-    man_files += files('man/waybar-clock.5.scd')
+    man_files += files('man/wabar-clock.5.scd')
 endif
 
 if get_option('experimental')
@@ -462,7 +462,7 @@ if get_option('experimental')
         'src/modules/wlr/workspace_manager_binding.cpp',
     )
     man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
+        'man/wabar-wlr-workspaces.5.scd',
     )
 endif
 
@@ -470,12 +470,12 @@ cava = dependency('cava',
                   version : '>=0.10.1',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
-                  not_found_message: 'cava is not found. Building waybar without cava')
+                  not_found_message: 'cava is not found. Building wabar without cava')
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
    src_files += files('src/modules/cava.cpp')
-   man_files += files('man/waybar-cava.5.scd')
+   man_files += files('man/wabar-cava.5.scd')
 endif
 
 subdir('protocol')
@@ -484,7 +484,7 @@ app_resources = []
 subdir('resources/icons')
 
 executable(
-    'waybar',
+    'wabar',
     [src_files, app_resources],
     dependencies: [
         thread_dep,
@@ -525,15 +525,15 @@ executable(
 install_data(
     'resources/config.jsonc',
     'resources/style.css',
-    install_dir: sysconfdir / 'xdg/waybar'
+    install_dir: sysconfdir / 'xdg/wabar'
 )
 
 scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
 
 if scdoc.found()
     man_files += configure_file(
-        input: 'man/waybar.5.scd.in',
-        output: 'waybar.5.scd',
+        input: 'man/wabar.5.scd.in',
+        output: 'wabar.5.scd',
         configuration: {
             'sysconfdir': prefix / sysconfdir
         }

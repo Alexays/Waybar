@@ -5,7 +5,7 @@
 #include "ASlider.hpp"
 #include "util/backlight_backend.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class BacklightSlider : public ASlider {
  public:
@@ -21,4 +21,4 @@ class BacklightSlider : public ASlider {
   util::BacklightBackend backend;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

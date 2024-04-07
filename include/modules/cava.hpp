@@ -9,7 +9,7 @@ extern "C" {
 }
 }  // namespace cava
 
-namespace waybar::modules {
+namespace wabar::modules {
 using namespace std::literals::chrono_literals;
 
 class Cava final : public ALabel {
@@ -43,7 +43,7 @@ class Cava final : public ALabel {
   // Cava method
   void pause_resume();
   // ModuleActionMap
-  static inline std::map<const std::string, void (waybar::modules::Cava::*const)()> actionMap_{
-      {"mode", &waybar::modules::Cava::pause_resume}};
+  static inline std::map<const std::string, void (wabar::modules::Cava::*const)()> actionMap_{
+      {"mode", &wabar::modules::Cava::pause_resume}};
 };
-}  // namespace waybar::modules
+}  // namespace wabar::modules

@@ -15,11 +15,11 @@ extern "C" {
 #include <libinput.h>
 }
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class KeyboardState : public AModule {
  public:
-  KeyboardState(const std::string&, const waybar::Bar&, const Json::Value&);
+  KeyboardState(const std::string&, const wabar::Bar&, const Json::Value&);
   virtual ~KeyboardState();
   auto update() -> void override;
 
@@ -46,4 +46,4 @@ class KeyboardState : public AModule {
   util::SleeperThread libinput_thread_, hotplug_thread_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

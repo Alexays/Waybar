@@ -9,11 +9,11 @@
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::hyprland {
+namespace wabar::modules::hyprland {
 
-class Submap : public waybar::ALabel, public EventHandler {
+class Submap : public wabar::ALabel, public EventHandler {
  public:
-  Submap(const std::string&, const waybar::Bar&, const Json::Value&);
+  Submap(const std::string&, const wabar::Bar&, const Json::Value&);
   ~Submap() override;
 
   auto update() -> void override;
@@ -30,4 +30,4 @@ class Submap : public waybar::ALabel, public EventHandler {
   std::string default_submap_ = "Default";
 };
 
-}  // namespace waybar::modules::hyprland
+}  // namespace wabar::modules::hyprland

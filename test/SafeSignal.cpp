@@ -12,7 +12,7 @@
 
 #include "GlibTestsFixture.hpp"
 
-using namespace waybar;
+using namespace wabar;
 
 template <typename T>
 using remove_cvref_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;

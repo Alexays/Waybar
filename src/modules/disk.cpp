@@ -1,8 +1,8 @@
 #include "modules/disk.hpp"
 
-using namespace waybar::util;
+using namespace wabar::util;
 
-waybar::modules::Disk::Disk(const std::string& id, const Json::Value& config)
+wabar::modules::Disk::Disk(const std::string& id, const Json::Value& config)
     : ALabel(config, "disk", id, "{}%", 30), path_("/") {
   thread_ = [this] {
     dp.emit();
@@ -16,7 +16,7 @@ waybar::modules::Disk::Disk(const std::string& id, const Json::Value& config)
   }
 }
 
-auto waybar::modules::Disk::update() -> void {
+auto wabar::modules::Disk::update() -> void {
   struct statvfs /* {
       unsigned long  f_bsize;    // filesystem block size
       unsigned long  f_frsize;   // fragment size
@@ -92,7 +92,7 @@ auto waybar::modules::Disk::update() -> void {
   ALabel::update();
 }
 
-float waybar::modules::Disk::calc_specific_divisor(std::string divisor) {
+float wabar::modules::Disk::calc_specific_divisor(std::string divisor) {
   if (divisor == "kB") {
     return 1000.0;
   } else if (divisor == "kiB") {

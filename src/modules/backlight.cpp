@@ -13,7 +13,7 @@
 #include "util/backend_common.hpp"
 #include "util/backlight_backend.hpp"
 
-waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
+wabar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
@@ -24,7 +24,7 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
 }
 
-auto waybar::modules::Backlight::update() -> void {
+auto wabar::modules::Backlight::update() -> void {
   GET_BEST_DEVICE(best, backend, preferred_device_);
 
   const auto previous_best_device = backend.get_previous_best_device();
@@ -69,7 +69,7 @@ auto waybar::modules::Backlight::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
+bool wabar::modules::Backlight::handleScroll(GdkEventScroll *e) {
   // Check if the user has set a custom command for scrolling
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);

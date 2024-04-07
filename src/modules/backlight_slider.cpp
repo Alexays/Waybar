@@ -2,7 +2,7 @@
 
 #include "ASlider.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 BacklightSlider::BacklightSlider(const std::string& id, const Json::Value& config)
     : ASlider(config, "backlight-slider", id),
@@ -20,4 +20,4 @@ void BacklightSlider::onValueChanged() {
   backend.set_scaled_brightness(preferred_device_, brightness);
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

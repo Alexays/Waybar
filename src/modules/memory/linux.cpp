@@ -21,7 +21,7 @@ static unsigned zfsArcSize() {
   return 0;
 }
 
-void waybar::modules::Memory::parseMeminfo() {
+void wabar::modules::Memory::parseMeminfo() {
   const std::string data_dir_ = "/proc/meminfo";
   std::ifstream info(data_dir_);
   if (!info.is_open()) {

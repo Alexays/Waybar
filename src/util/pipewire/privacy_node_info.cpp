@@ -1,6 +1,6 @@
 #include "util/pipewire/privacy_node_info.hpp"
 
-namespace waybar::util::PipewireBackend {
+namespace wabar::util::PipewireBackend {
 
 std::string PrivacyNodeInfo::getName() {
   const std::vector<std::string *> names{&application_name, &node_name};
@@ -53,4 +53,4 @@ void PrivacyNodeInfo::handleNodeEventInfo(const struct pw_node_info *info) {
   }
 }
 
-}  // namespace waybar::util::PipewireBackend
+}  // namespace wabar::util::PipewireBackend

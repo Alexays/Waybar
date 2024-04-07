@@ -22,7 +22,7 @@
   }                                                                  \
   auto varname = (backend).best_device(__devices, preferred_device);
 
-namespace waybar::util {
+namespace wabar::util {
 
 class BacklightDevice {
  public:
@@ -84,4 +84,4 @@ class BacklightBackend {
   static constexpr int EPOLL_MAX_EVENTS = 16;
 };
 
-}  // namespace waybar::util
+}  // namespace wabar::util

@@ -8,11 +8,11 @@
 #include "dwl-ipc-unstable-v2-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
-namespace waybar::modules::dwl {
+namespace wabar::modules::dwl {
 
-class Tags : public waybar::AModule {
+class Tags : public wabar::AModule {
  public:
-  Tags(const std::string &, const waybar::Bar &, const Json::Value &);
+  Tags(const std::string &, const wabar::Bar &, const Json::Value &);
   virtual ~Tags();
 
   // Handlers for wayland events
@@ -25,10 +25,10 @@ class Tags : public waybar::AModule {
   struct wl_seat *seat_;
 
  private:
-  const waybar::Bar &bar_;
+  const wabar::Bar &bar_;
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
   struct zdwl_ipc_output_v2 *output_status_;
 };
 
-} /* namespace waybar::modules::dwl */
+} /* namespace wabar::modules::dwl */

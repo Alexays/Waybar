@@ -26,7 +26,7 @@
 
 #include <cerrno>
 
-waybar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type) : rfkill_type_(rfkill_type) {
+wabar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type) : rfkill_type_(rfkill_type) {
   fd_ = open("/dev/rfkill", O_RDONLY);
   if (fd_ < 0) {
     spdlog::error("Can't open RFKILL control device");
@@ -43,13 +43,13 @@ waybar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type) : rfkill_type_(
                             Glib::IO_IN | Glib::IO_ERR | Glib::IO_HUP);
 }
 
-waybar::util::Rfkill::~Rfkill() {
+wabar::util::Rfkill::~Rfkill() {
   if (fd_ >= 0) {
     close(fd_);
   }
 }
 
-bool waybar::util::Rfkill::on_event(Glib::IOCondition cond) {
+bool wabar::util::Rfkill::on_event(Glib::IOCondition cond) {
   if (cond & Glib::IO_IN) {
     struct rfkill_event event;
     ssize_t len;
@@ -78,4 +78,4 @@ bool waybar::util::Rfkill::on_event(Glib::IOCondition cond) {
   return false;
 }
 
-bool waybar::util::Rfkill::getState() const { return state_; }
+bool wabar::util::Rfkill::getState() const { return state_; }

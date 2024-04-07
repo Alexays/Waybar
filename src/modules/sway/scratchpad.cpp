@@ -4,7 +4,7 @@
 
 #include <string>
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
     : ALabel(config, "scratchpad", id,
              config["format"].isString() ? config["format"].asString() : "{icon} {count}"),
@@ -80,4 +80,4 @@ auto Scratchpad::onCmd(const struct Ipc::ipc_response& res) -> void {
 }
 
 auto Scratchpad::onEvent(const struct Ipc::ipc_response& res) -> void { getTree(); }
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

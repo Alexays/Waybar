@@ -14,11 +14,11 @@
 #include "util/json.hpp"
 #include "util/regex_collection.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 class Workspaces : public AModule, public sigc::trackable {
  public:
-  Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
+  Workspaces(const std::string&, const wabar::Bar&, const Json::Value&);
   virtual ~Workspaces() = default;
   auto update() -> void override;
 
@@ -57,4 +57,4 @@ class Workspaces : public AModule, public sigc::trackable {
   Ipc ipc_;
 };
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

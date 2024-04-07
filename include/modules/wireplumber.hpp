@@ -8,7 +8,7 @@
 
 #include "ALabel.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class Wireplumber : public ALabel {
  public:
@@ -20,15 +20,15 @@ class Wireplumber : public ALabel {
   void asyncLoadRequiredApiModules();
   void prepare();
   void activatePlugins();
-  static void updateVolume(waybar::modules::Wireplumber* self, uint32_t id);
-  static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
-  static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
+  static void updateVolume(wabar::modules::Wireplumber* self, uint32_t id);
+  static void updateNodeName(wabar::modules::Wireplumber* self, uint32_t id);
+  static void onPluginActivated(WpObject* p, GAsyncResult* res, wabar::modules::Wireplumber* self);
   static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
-                                      waybar::modules::Wireplumber* self);
-  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
-  static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
-  static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
-  static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
+                                      wabar::modules::Wireplumber* self);
+  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, wabar::modules::Wireplumber* self);
+  static void onObjectManagerInstalled(wabar::modules::Wireplumber* self);
+  static void onMixerChanged(wabar::modules::Wireplumber* self, uint32_t id);
+  static void onDefaultNodesApiChanged(wabar::modules::Wireplumber* self);
 
   bool handleScroll(GdkEventScroll* e) override;
 
@@ -46,4 +46,4 @@ class Wireplumber : public ALabel {
   std::string node_name_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

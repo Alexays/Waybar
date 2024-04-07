@@ -14,13 +14,13 @@ install: build
 	ninja -C build install
 
 run: build
-	./build/waybar
+	./build/wabar
 
 debug-run: build-debug
-	./build/waybar --log-level debug
+	./build/wabar --log-level debug
 
 test:
-	meson test -C build --no-rebuild --verbose --suite waybar
+	meson test -C build --no-rebuild --verbose --suite wabar
 .PHONY: test
 
 clean:

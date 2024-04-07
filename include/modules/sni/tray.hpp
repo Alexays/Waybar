@@ -8,7 +8,7 @@
 #include "modules/sni/watcher.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::SNI {
+namespace wabar::modules::SNI {
 
 class Tray : public AModule {
  public:
@@ -26,4 +26,4 @@ class Tray : public AModule {
   SNI::Host host_;
 };
 
-}  // namespace waybar::modules::SNI
+}  // namespace wabar::modules::SNI

@@ -1,6 +1,6 @@
 #include "modules/pulseaudio_slider.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 PulseaudioSlider::PulseaudioSlider(const std::string& id, const Json::Value& config)
     : ASlider(config, "pulseaudio-slider", id) {
@@ -79,4 +79,4 @@ void PulseaudioSlider::onValueChanged() {
   backend->changeVolume(volume, min_, max_);
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

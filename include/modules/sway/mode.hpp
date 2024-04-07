@@ -8,7 +8,7 @@
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 class Mode : public ALabel, public sigc::trackable {
  public:
@@ -25,4 +25,4 @@ class Mode : public ALabel, public sigc::trackable {
   Ipc ipc_;
 };
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

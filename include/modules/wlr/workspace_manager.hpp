@@ -14,14 +14,14 @@
 #include "bar.hpp"
 #include "ext-workspace-unstable-v1-client-protocol.h"
 
-namespace waybar::modules::wlr {
+namespace wabar::modules::wlr {
 
 class WorkspaceManager;
 class WorkspaceGroup;
 
 class Workspace {
  public:
-  Workspace(const waybar::Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
+  Workspace(const wabar::Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
             zext_workspace_handle_v1 *workspace, uint32_t id, std::string name);
   ~Workspace();
   auto update() -> void;
@@ -81,7 +81,7 @@ class Workspace {
 
 class WorkspaceGroup {
  public:
-  WorkspaceGroup(const waybar::Bar &bar, Gtk::Box &box, const Json::Value &config,
+  WorkspaceGroup(const wabar::Bar &bar, Gtk::Box &box, const Json::Value &config,
                  WorkspaceManager &manager, zext_workspace_group_handle_v1 *workspace_group_handle,
                  uint32_t id);
   ~WorkspaceGroup();
@@ -112,7 +112,7 @@ class WorkspaceGroup {
 
  private:
   static uint32_t workspace_global_id;
-  const waybar::Bar &bar_;
+  const wabar::Bar &bar_;
   Gtk::Box &box_;
   const Json::Value &config_;
   WorkspaceManager &workspace_manager_;
@@ -130,7 +130,7 @@ class WorkspaceGroup {
 
 class WorkspaceManager : public AModule {
  public:
-  WorkspaceManager(const std::string &id, const waybar::Bar &bar, const Json::Value &config);
+  WorkspaceManager(const std::string &id, const wabar::Bar &bar, const Json::Value &config);
   ~WorkspaceManager() override;
   auto update() -> void override;
 
@@ -152,7 +152,7 @@ class WorkspaceManager : public AModule {
   auto commit() -> void;
 
  private:
-  const waybar::Bar &bar_;
+  const wabar::Bar &bar_;
   Gtk::Box box_;
   std::vector<std::unique_ptr<WorkspaceGroup>> groups_;
 
@@ -169,4 +169,4 @@ class WorkspaceManager : public AModule {
   bool creation_delayed_ = false;
 };
 
-}  // namespace waybar::modules::wlr
+}  // namespace wabar::modules::wlr

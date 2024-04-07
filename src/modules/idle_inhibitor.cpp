@@ -3,20 +3,20 @@
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/command.hpp"
 
-std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
-bool waybar::modules::IdleInhibitor::status = false;
+std::list<wabar::AModule*> wabar::modules::IdleInhibitor::modules;
+bool wabar::modules::IdleInhibitor::status = false;
 
-waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
+wabar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
       bar_(bar),
       idle_inhibitor_(nullptr),
       pid_(-1) {
-  if (waybar::Client::inst()->idle_inhibit_manager == nullptr) {
+  if (wabar::Client::inst()->idle_inhibit_manager == nullptr) {
     throw std::runtime_error("idle-inhibit not available");
   }
 
-  if (waybar::modules::IdleInhibitor::modules.empty() && config_["start-activated"].isBool() &&
+  if (wabar::modules::IdleInhibitor::modules.empty() && config_["start-activated"].isBool() &&
       config_["start-activated"].asBool() != status) {
     toggleStatus();
   }
@@ -26,19 +26,19 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
 
   // Add this to the modules list
-  waybar::modules::IdleInhibitor::modules.push_back(this);
+  wabar::modules::IdleInhibitor::modules.push_back(this);
 
   dp.emit();
 }
 
-waybar::modules::IdleInhibitor::~IdleInhibitor() {
+wabar::modules::IdleInhibitor::~IdleInhibitor() {
   if (idle_inhibitor_ != nullptr) {
     zwp_idle_inhibitor_v1_destroy(idle_inhibitor_);
     idle_inhibitor_ = nullptr;
   }
 
   // Remove this from the modules list
-  waybar::modules::IdleInhibitor::modules.remove(this);
+  wabar::modules::IdleInhibitor::modules.remove(this);
 
   if (pid_ != -1) {
     kill(-pid_, 9);
@@ -46,13 +46,13 @@ waybar::modules::IdleInhibitor::~IdleInhibitor() {
   }
 }
 
-auto waybar::modules::IdleInhibitor::update() -> void {
+auto wabar::modules::IdleInhibitor::update() -> void {
   // Check status
   if (status) {
     label_.get_style_context()->remove_class("deactivated");
     if (idle_inhibitor_ == nullptr) {
       idle_inhibitor_ = zwp_idle_inhibit_manager_v1_create_inhibitor(
-          waybar::Client::inst()->idle_inhibit_manager, bar_.surface);
+          wabar::Client::inst()->idle_inhibit_manager, bar_.surface);
     }
   } else {
     label_.get_style_context()->remove_class("activated");
@@ -77,7 +77,7 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   ALabel::update();
 }
 
-void waybar::modules::IdleInhibitor::toggleStatus() {
+void wabar::modules::IdleInhibitor::toggleStatus() {
   status = !status;
 
   if (timeout_.connected()) {
@@ -96,7 +96,7 @@ void waybar::modules::IdleInhibitor::toggleStatus() {
            */
           spdlog::info("deactivating idle_inhibitor by timeout");
           status = false;
-          for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+          for (auto const& module : wabar::modules::IdleInhibitor::modules) {
             module->update();
           }
           /* disconnect */
@@ -106,12 +106,12 @@ void waybar::modules::IdleInhibitor::toggleStatus() {
   }
 }
 
-bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
+bool wabar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
     toggleStatus();
 
     // Make all other idle inhibitor modules update
-    for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+    for (auto const& module : wabar::modules::IdleInhibitor::modules) {
       if (module != this) {
         module->update();
       }

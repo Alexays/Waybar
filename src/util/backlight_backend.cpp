@@ -71,7 +71,7 @@ void check_nn(const void *ptr, const char *message = "ptr was null") {
 
 }  // namespace
 
-namespace waybar::util {
+namespace wabar::util {
 
 static void upsert_device(std::vector<BacklightDevice> &devices, udev_device *dev) {
   const char *name = udev_device_get_sysname(dev);
@@ -281,4 +281,4 @@ int BacklightBackend::get_scaled_brightness(std::string preferred_device) {
   return 0;
 }
 
-}  // namespace waybar::util
+}  // namespace wabar::util

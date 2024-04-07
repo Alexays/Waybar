@@ -3,7 +3,7 @@
 #include "AModule.hpp"
 #include "gtkmm/scale.h"
 
-namespace waybar {
+namespace wabar {
 
 class ASlider : public AModule {
  public:
@@ -16,4 +16,4 @@ class ASlider : public AModule {
   Gtk::Scale scale_;
 };
 
-}  // namespace waybar
+}  // namespace wabar

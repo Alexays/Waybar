@@ -15,7 +15,7 @@ extern "C" {
 #include <glib.h>
 #include <spdlog/spdlog.h>
 
-namespace waybar::modules::mpris {
+namespace wabar::modules::mpris {
 
 const std::string DEFAULT_FORMAT = "{player} ({status}): {dynamic}";
 
@@ -119,7 +119,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  wabar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }
@@ -482,7 +482,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   }
 
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  wabar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }
@@ -588,7 +588,7 @@ errorexit:
 
 bool Mpris::handleToggle(GdkEventButton* const& e) {
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  wabar::util::ScopeGuard error_deleter([error]() {
     if (error) {
       g_error_free(error);
     }
@@ -737,4 +737,4 @@ auto Mpris::update() -> void {
   ALabel::update();
 }
 
-}  // namespace waybar::modules::mpris
+}  // namespace wabar::modules::mpris

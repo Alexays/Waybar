@@ -1,5 +1,5 @@
 project(
-    'waybar_cffi_example', 'c',
+    'wabar_cffi_example', 'c',
     version: '0.1.0',
     license: 'MIT',
 )

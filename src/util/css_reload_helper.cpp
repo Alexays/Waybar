@@ -17,10 +17,10 @@ namespace {
 const std::regex IMPORT_REGEX(R"(@import\s+(?:url\()?(?:"|')([^"')]+)(?:"|')\)?;)");
 }
 
-waybar::CssReloadHelper::CssReloadHelper(std::string cssFile, std::function<void()> callback)
+wabar::CssReloadHelper::CssReloadHelper(std::string cssFile, std::function<void()> callback)
     : m_cssFile(std::move(cssFile)), m_callback(std::move(callback)) {}
 
-std::string waybar::CssReloadHelper::getFileContents(const std::string& filename) {
+std::string wabar::CssReloadHelper::getFileContents(const std::string& filename) {
   if (filename.empty()) {
     return {};
   }
@@ -33,7 +33,7 @@ std::string waybar::CssReloadHelper::getFileContents(const std::string& filename
   return {(std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>()};
 }
 
-std::string waybar::CssReloadHelper::findPath(const std::string& filename) {
+std::string wabar::CssReloadHelper::findPath(const std::string& filename) {
   // try path and fallback to looking relative to the config
   std::string result;
   if (std::filesystem::exists(filename)) {
@@ -50,7 +50,7 @@ std::string waybar::CssReloadHelper::findPath(const std::string& filename) {
   return result;
 }
 
-void waybar::CssReloadHelper::monitorChanges() {
+void wabar::CssReloadHelper::monitorChanges() {
   auto files = parseImports(m_cssFile);
   for (const auto& file : files) {
     auto gioFile = Gio::File::create_for_path(file);
@@ -76,7 +76,7 @@ void waybar::CssReloadHelper::monitorChanges() {
   }
 }
 
-void waybar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& file,
+void wabar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& file,
                                                Glib::RefPtr<Gio::File> const& other_type,
                                                Gio::FileMonitorEvent event_type) {
   // Multiple events are fired on file changed (attributes, write, changes done hint, etc.), only
@@ -87,7 +87,7 @@ void waybar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& fi
   }
 }
 
-std::vector<std::string> waybar::CssReloadHelper::parseImports(const std::string& cssFile) {
+std::vector<std::string> wabar::CssReloadHelper::parseImports(const std::string& cssFile) {
   std::unordered_map<std::string, bool> imports;
 
   auto cssFullPath = findPath(cssFile);
@@ -122,7 +122,7 @@ std::vector<std::string> waybar::CssReloadHelper::parseImports(const std::string
   return result;
 }
 
-void waybar::CssReloadHelper::parseImports(const std::string& cssFile,
+void wabar::CssReloadHelper::parseImports(const std::string& cssFile,
                                            std::unordered_map<std::string, bool>& imports) {
   // if the file has already been parsed, skip
   if (imports.find(cssFile) != imports.end() && imports[cssFile]) {

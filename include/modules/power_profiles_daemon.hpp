@@ -5,7 +5,7 @@
 #include "ALabel.hpp"
 #include "giomm/dbusproxy.h"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 struct Profile {
   std::string name;
@@ -43,4 +43,4 @@ class PowerProfilesDaemon : public ALabel {
   Glib::RefPtr<Gio::DBus::Proxy> powerProfilesProxy_;
 };
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

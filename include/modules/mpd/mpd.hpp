@@ -10,7 +10,7 @@
 #include "ALabel.hpp"
 #include "modules/mpd/state.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 class MPD : public ALabel {
   friend class detail::Context;
@@ -65,4 +65,4 @@ class MPD : public ALabel {
 #include "modules/mpd/state.inl.hpp"
 #endif
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules

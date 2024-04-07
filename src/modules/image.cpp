@@ -1,6 +1,6 @@
 #include "modules/image.hpp"
 
-waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
+wabar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.pack_start(image_);
   box_.set_name("image");
@@ -27,7 +27,7 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
   delayWorker();
 }
 
-void waybar::modules::Image::delayWorker() {
+void wabar::modules::Image::delayWorker() {
   thread_ = [this] {
     dp.emit();
     auto interval = std::chrono::seconds(interval_);
@@ -35,13 +35,13 @@ void waybar::modules::Image::delayWorker() {
   };
 }
 
-void waybar::modules::Image::refresh(int sig) {
+void wabar::modules::Image::refresh(int sig) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }
 
-auto waybar::modules::Image::update() -> void {
+auto wabar::modules::Image::update() -> void {
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;
   if (config_["path"].isString()) {
     path_ = config_["path"].asString();
@@ -74,7 +74,7 @@ auto waybar::modules::Image::update() -> void {
   AModule::update();
 }
 
-void waybar::modules::Image::parseOutputRaw() {
+void wabar::modules::Image::parseOutputRaw() {
   std::istringstream output(output_.out);
   std::string line;
   int i = 0;

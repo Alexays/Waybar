@@ -2,7 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 Mode::Mode(const std::string& id, const Json::Value& config)
     : ALabel(config, "mode", id, "{}", 0, true) {
@@ -52,4 +52,4 @@ auto Mode::update() -> void {
   ALabel::update();
 }
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

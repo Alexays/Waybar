@@ -7,7 +7,7 @@
 #include "AIconLabel.hpp"
 #include "util/sleeper_thread.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 class User : public AIconLabel {
  public:
   User(const std::string&, const Json::Value&);
@@ -31,4 +31,4 @@ class User : public AIconLabel {
   void init_avatar(const Json::Value& config);
   void init_update_worker();
 };
-}  // namespace waybar::modules
+}  // namespace wabar::modules

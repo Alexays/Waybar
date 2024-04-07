@@ -1,6 +1,6 @@
 #include "modules/jack.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 
 JACK::JACK(const std::string &id, const Json::Value &config)
     : ALabel(config, "jack", id, "{load}%", 1) {
@@ -30,7 +30,7 @@ std::string JACK::JACKState() {
     client_ = NULL;
   }
 
-  client_ = jack_client_open("waybar", JackNoStartServer, NULL);
+  client_ = jack_client_open("wabar", JackNoStartServer, NULL);
   if (!client_) return "disconnected";
 
   if (config_["realtime"].isBool() && !config_["realtime"].asBool()) {
@@ -111,16 +111,16 @@ void JACK::shutdown() {
   running_ = false;
 }
 
-}  // namespace waybar::modules
+}  // namespace wabar::modules
 
 int bufSizeCallback(jack_nframes_t size, void *obj) {
-  return static_cast<waybar::modules::JACK *>(obj)->bufSize(size);
+  return static_cast<wabar::modules::JACK *>(obj)->bufSize(size);
 }
 
 int sampleRateCallback(jack_nframes_t rate, void *obj) {
-  return static_cast<waybar::modules::JACK *>(obj)->sampleRate(rate);
+  return static_cast<wabar::modules::JACK *>(obj)->sampleRate(rate);
 }
 
-int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->xrun(); }
+int xrunCallback(void *obj) { return static_cast<wabar::modules::JACK *>(obj)->xrun(); }
 
-void shutdownCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->shutdown(); }
+void shutdownCallback(void *obj) { return static_cast<wabar::modules::JACK *>(obj)->shutdown(); }

@@ -4,7 +4,7 @@
 
 #include "util/scope_guard.hpp"
 
-waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
+wabar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config, const std::string& output_name)
     : ALabel(config, "custom-" + name, id, "{}"),
       name_(name),
@@ -24,7 +24,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
   }
 }
 
-waybar::modules::Custom::~Custom() {
+wabar::modules::Custom::~Custom() {
   if (pid_ != -1) {
     killpg(pid_, SIGTERM);
     waitpid(pid_, NULL, 0);
@@ -32,7 +32,7 @@ waybar::modules::Custom::~Custom() {
   }
 }
 
-void waybar::modules::Custom::delayWorker() {
+void wabar::modules::Custom::delayWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
@@ -52,7 +52,7 @@ void waybar::modules::Custom::delayWorker() {
   };
 }
 
-void waybar::modules::Custom::continuousWorker() {
+void wabar::modules::Custom::continuousWorker() {
   auto cmd = config_["exec"].asString();
   pid_ = -1;
   fp_ = util::command::open(cmd, pid_, output_name_);
@@ -61,7 +61,7 @@ void waybar::modules::Custom::continuousWorker() {
   }
   thread_ = [this, cmd] {
     char* buff = nullptr;
-    waybar::util::ScopeGuard buff_deleter([buff]() {
+    wabar::util::ScopeGuard buff_deleter([buff]() {
       if (buff) {
         free(buff);
       }
@@ -102,7 +102,7 @@ void waybar::modules::Custom::continuousWorker() {
   };
 }
 
-void waybar::modules::Custom::waitingWorker() {
+void wabar::modules::Custom::waitingWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
@@ -122,31 +122,31 @@ void waybar::modules::Custom::waitingWorker() {
   };
 }
 
-void waybar::modules::Custom::refresh(int sig) {
+void wabar::modules::Custom::refresh(int sig) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }
 
-void waybar::modules::Custom::handleEvent() {
+void wabar::modules::Custom::handleEvent() {
   if (!config_["exec-on-event"].isBool() || config_["exec-on-event"].asBool()) {
     thread_.wake_up();
   }
 }
 
-bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
+bool wabar::modules::Custom::handleScroll(GdkEventScroll* e) {
   auto ret = ALabel::handleScroll(e);
   handleEvent();
   return ret;
 }
 
-bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
+bool wabar::modules::Custom::handleToggle(GdkEventButton* const& e) {
   auto ret = ALabel::handleToggle(e);
   handleEvent();
   return ret;
 }
 
-auto waybar::modules::Custom::update() -> void {
+auto wabar::modules::Custom::update() -> void {
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
@@ -201,7 +201,7 @@ auto waybar::modules::Custom::update() -> void {
   ALabel::update();
 }
 
-void waybar::modules::Custom::parseOutputRaw() {
+void wabar::modules::Custom::parseOutputRaw() {
   std::istringstream output(output_.out);
   std::string line;
   int i = 0;
@@ -230,7 +230,7 @@ void waybar::modules::Custom::parseOutputRaw() {
   }
 }
 
-void waybar::modules::Custom::parseOutputJson() {
+void wabar::modules::Custom::parseOutputJson() {
   std::istringstream output(output_.out);
   std::string line;
   class_.clear();

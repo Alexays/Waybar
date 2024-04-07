@@ -4,7 +4,7 @@
 
 #include <util/command.hpp>
 
-namespace waybar {
+namespace wabar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
@@ -113,7 +113,7 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
-bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
+bool wabar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
     if (alt_ && config_["format-alt"].isString()) {
@@ -154,4 +154,4 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
   return valid_state;
 }
 
-}  // namespace waybar
+}  // namespace wabar

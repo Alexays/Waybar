@@ -9,11 +9,11 @@
 #include "dwl-ipc-unstable-v2-client-protocol.h"
 #include "util/json.hpp"
 
-namespace waybar::modules::dwl {
+namespace wabar::modules::dwl {
 
 class Window : public AAppIconLabel, public sigc::trackable {
  public:
-  Window(const std::string &, const waybar::Bar &, const Json::Value &);
+  Window(const std::string &, const wabar::Bar &, const Json::Value &);
   virtual ~Window() = default;
 
   void handle_layout(const uint32_t layout);
@@ -35,4 +35,4 @@ class Window : public AAppIconLabel, public sigc::trackable {
   struct zdwl_ipc_output_v2 *output_status_;
 };
 
-}  // namespace waybar::modules::dwl
+}  // namespace wabar::modules::dwl

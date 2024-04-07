@@ -6,7 +6,7 @@
 #include <cctype>
 #include <string>
 
-namespace waybar::modules::sway {
+namespace wabar::modules::sway {
 
 // Helper function to assign a number to a workspace, just like sway. In fact
 // this is taken quite verbatim from `sway/ipc-json.c`.
@@ -68,7 +68,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   m_windowRewriteDefault =
       windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
 
-  m_windowRewriteRules = waybar::util::RegexCollection(
+  m_windowRewriteRules = wabar::util::RegexCollection(
       windowRewrite, m_windowRewriteDefault,
       [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
   ipc_.subscribe(R"(["workspace"])");
@@ -174,10 +174,10 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         }
 
         // sway has a defined ordering of workspaces that should be preserved in
-        // the representation displayed by waybar to ensure that commands such
+        // the representation displayed by wabar to ensure that commands such
         // as "workspace prev" or "workspace next" make sense when looking at
         // the workspace representation in the bar.
-        // Due to waybar's own feature of persistent workspaces unknown to sway,
+        // Due to wabar's own feature of persistent workspaces unknown to sway,
         // custom sorting logic is necessary to make these workspaces appear
         // naturally in the list of workspaces without messing up sway's
         // sorting. For this purpose, a custom numbering property is created
@@ -193,7 +193,7 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         //
         // Note: if the 'alphabetical_sort' option is true, the user is in
         // agreement that the "workspace prev/next" commands may not follow
-        // the order displayed in Waybar.
+        // the order displayed in Wabar.
         int max_num = -1;
         for (auto &workspace : workspaces_) {
           max_num = std::max(workspace["num"].asInt(), max_num);
@@ -505,4 +505,4 @@ void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
   }
 }
 
-}  // namespace waybar::modules::sway
+}  // namespace wabar::modules::sway

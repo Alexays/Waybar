@@ -9,11 +9,11 @@
 
 #include "ALabel.hpp"
 
-namespace waybar::modules {
+namespace wabar::modules {
 class MPD;
-}  // namespace waybar::modules
+}  // namespace wabar::modules
 
-namespace waybar::modules::detail {
+namespace wabar::modules::detail {
 
 using unique_connection = std::unique_ptr<mpd_connection, decltype(&mpd_connection_free)>;
 using unique_status = std::unique_ptr<mpd_status, decltype(&mpd_status_free)>;
@@ -28,7 +28,7 @@ class Context;
 /// entry and exit methods are automatically called when entering
 /// into a new state and exiting from the current state. This
 /// includes initially entering (Disconnected class) and exiting
-/// Waybar.
+/// Wabar.
 ///
 /// The following nested "top-level" states are represented:
 /// 1. Idle - await notification of MPD activity.
@@ -171,7 +171,7 @@ class Disconnected : public State {
 
 class Context {
   std::unique_ptr<State> state_;
-  waybar::modules::MPD* mpd_module_;
+  wabar::modules::MPD* mpd_module_;
 
   friend class State;
   friend class Playing;
@@ -204,7 +204,7 @@ class Context {
   [[nodiscard]] unique_connection& connection();
 
  public:
-  explicit Context(waybar::modules::MPD* const mpd_module)
+  explicit Context(wabar::modules::MPD* const mpd_module)
       : state_{std::make_unique<Disconnected>(this)}, mpd_module_{mpd_module} {
     state_->entry();
   }
@@ -215,4 +215,4 @@ class Context {
   void update() noexcept { state_->update(); }
 };
 
-}  // namespace waybar::modules::detail
+}  // namespace wabar::modules::detail

@@ -13,15 +13,15 @@
 #include "gtkmm/widget.h"
 #include "modules/wlr/workspace_manager_binding.hpp"
 
-namespace waybar::modules::wlr {
+namespace wabar::modules::wlr {
 
 uint32_t WorkspaceGroup::workspace_global_id = 0;
 uint32_t WorkspaceManager::group_global_id = 0;
 std::map<std::string, std::string> Workspace::icons_map_;
 
-WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
+WorkspaceManager::WorkspaceManager(const std::string &id, const wabar::Bar &bar,
                                    const Json::Value &config)
-    : waybar::AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
+    : wabar::AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   auto config_sort_by_name = config_["sort-by-name"];
   if (config_sort_by_name.isBool()) {
     sort_by_name_ = config_sort_by_name.asBool();
@@ -582,4 +582,4 @@ auto Workspace::handle_coordinates(const std::vector<uint32_t> &coordinates) -> 
   }
   coordinates_ = coordinates;
 }
-}  // namespace waybar::modules::wlr
+}  // namespace wabar::modules::wlr

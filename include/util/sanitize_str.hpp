@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
 
-namespace waybar::util {
+namespace wabar::util {
 std::string sanitize_string(std::string str);
-}  // namespace waybar::util
+}  // namespace wabar::util
