@@ -34,12 +34,12 @@
                   name = "wabar-shell";
 
                   # inherit attributes from upstream nixpkgs derivation
-                  inherit (pkgs.wabar) buildInputs depsBuildBuild depsBuildBuildPropagated depsBuildTarget
+                  inherit (pkgs.waybar) buildInputs depsBuildBuild depsBuildBuildPropagated depsBuildTarget
                     depsBuildTargetPropagated depsHostHost depsHostHostPropagated depsTargetTarget
                     depsTargetTargetPropagated propagatedBuildInputs propagatedNativeBuildInputs strictDeps;
 
                   # overrides for local development
-                  nativeBuildInputs = pkgs.wabar.nativeBuildInputs ++ (with pkgs; [
+                  nativeBuildInputs = pkgs.waybar.nativeBuildInputs ++ (with pkgs; [
                     clang-tools
                     gdb
                   ]);
