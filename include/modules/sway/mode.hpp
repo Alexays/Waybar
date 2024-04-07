@@ -1,16 +1,12 @@
 #pragma once
 
-#include <fmt/format.h>
-
 #include "ALabel.hpp"
-#include "bar.hpp"
-#include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::sway {
 
-class Mode : public ALabel, public sigc::trackable {
+class Mode final : public ALabel, public sigc::trackable {
  public:
   Mode(const std::string&, const Json::Value&);
   virtual ~Mode() = default;

@@ -6,7 +6,6 @@
 #include <json/json.h>
 
 #include "IModule.hpp"
-
 namespace waybar {
 
 class AModule : public IModule {

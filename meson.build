@@ -76,6 +76,7 @@ gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
 giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
 libudev = dependency('libudev', required: get_option('libudev'))
+xkbregistry = dependency('xkbregistry')
 
 gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              version : ['>=1.0.2'],
@@ -125,6 +126,8 @@ src_files = files(
      'src/util/prepare_for_sleep.cpp',
      'src/AModule.cpp',
      'src/ALabel.cpp',
+     'src/AIconLabel.cpp',
+     'src/AAppIconLabel.cpp',
      'src/factory.cpp',
      'src/util/ustring_clen.cpp',
      'src/group.cpp',
@@ -133,7 +136,8 @@ src_files = files(
      'src/modules/load.cpp',
      'src/modules/disk.cpp',
      'src/modules/temperature.cpp',
-     'src/modules/idle_inhibitor.cpp'
+     'src/modules/idle_inhibitor.cpp',
+     'src/util/rewrite_string.cpp'
 )
 
 man_files = files(
@@ -230,6 +234,21 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     endif
 endif
 
+add_project_arguments('-DHAVE_SWAY', language: 'cpp')
+src_files += files('src/modules/sway/ipc/client.cpp',
+                   'src/modules/sway/bar.cpp',
+                   'src/modules/sway/mode.cpp',
+                   'src/modules/sway/language.cpp',
+                   'src/modules/sway/window.cpp',
+                   'src/modules/sway/workspaces.cpp',
+                   'src/modules/sway/scratchpad.cpp')
+
+man_files += files('man/waybar-sway-language.5.scd',
+                   'man/waybar-sway-mode.5.scd',
+                   'man/waybar-sway-scratchpad.5.scd',
+                   'man/waybar-sway-window.5.scd',
+                   'man/waybar-sway-workspaces.5.scd')
+
 add_project_arguments('-DHAVE_DWL', language: 'cpp')
 src_files += files('src/modules/dwl/tags.cpp')
 man_files += files('man/waybar-dwl-tags.5.scd')
@@ -262,6 +281,7 @@ executable(
         wayland_cursor,
         client_protos,
         spdlog,
+        xkbregistry,
         cava
     ],
     include_directories: inc_dirs,

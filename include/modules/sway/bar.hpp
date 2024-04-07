@@ -1,6 +1,4 @@
 #pragma once
-#include <atomic>
-#include <string>
 
 #include "modules/sway/ipc/client.hpp"
 #include "util/SafeSignal.hpp"

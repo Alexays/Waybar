@@ -1,7 +1,6 @@
 #include "AModule.hpp"
 
 #include <util/command.hpp>
-
 namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
@@ -42,8 +41,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   if (enable_click || hasUserPressEvent || hasUserReleaseEvent) {
     controllClick_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
-    controllClick_->set_button(0);
-
+    controllClick_->set_button(0u);
 
     if (enable_click || hasUserPressEvent)
       controllClick_->signal_pressed().connect(sigc::mem_fun(*this, &AModule::handleToggle), after);

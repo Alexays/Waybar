@@ -1,18 +1,13 @@
 #pragma once
 
-#include <gtkmm/label.h>
-
 #include <mutex>
-#include <string>
 
 #include "ALabel.hpp"
-#include "bar.hpp"
-#include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::sway {
-class Scratchpad : public ALabel {
+class Scratchpad final : public ALabel {
  public:
   Scratchpad(const std::string&, const Json::Value&);
   virtual ~Scratchpad() = default;

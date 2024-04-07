@@ -68,6 +68,7 @@ class Bar {
   struct wl_surface *surface;
   bool visible = true;
   Gtk::Window window;
+  Json::Value config;
   Gtk::Orientation orientation = Gtk::Orientation::HORIZONTAL;
   Gtk::PositionType position = Gtk::PositionType::TOP;
 
@@ -89,7 +90,6 @@ class Bar {
   void onOutputGeometryChanged();
 
   Glib::RefPtr<Gdk::Surface> gdk_surface_;
-  Json::Value config;
   int x_global;
   int y_global;
 
