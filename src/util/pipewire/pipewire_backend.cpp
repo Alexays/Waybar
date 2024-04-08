@@ -48,12 +48,17 @@ PipewireBackend::PipewireBackend(PrivateConstructorTag tag)
   if (mainloop_ == nullptr) {
     throw std::runtime_error("pw_thread_loop_new() failed.");
   }
+
+  pw_thread_loop_lock(mainloop_);
+
   context_ = pw_context_new(pw_thread_loop_get_loop(mainloop_), nullptr, 0);
   if (context_ == nullptr) {
+    pw_thread_loop_unlock(mainloop_);
     throw std::runtime_error("pa_context_new() failed.");
   }
   core_ = pw_context_connect(context_, nullptr, 0);
   if (core_ == nullptr) {
+    pw_thread_loop_unlock(mainloop_);
     throw std::runtime_error("pw_context_connect() failed");
   }
   registry_ = pw_core_get_registry(core_, PW_VERSION_REGISTRY, 0);
@@ -61,11 +66,17 @@ PipewireBackend::PipewireBackend(PrivateConstructorTag tag)
   spa_zero(registryListener_);
   pw_registry_add_listener(registry_, &registryListener_, &REGISTRY_EVENTS, this);
   if (pw_thread_loop_start(mainloop_) < 0) {
+    pw_thread_loop_unlock(mainloop_);
     throw std::runtime_error("pw_thread_loop_start() failed.");
   }
+  pw_thread_loop_unlock(mainloop_);
 }
 
 PipewireBackend::~PipewireBackend() {
+  if (mainloop_ != nullptr) {
+    pw_thread_loop_lock(mainloop_);
+  }
+
   if (registry_ != nullptr) {
     pw_proxy_destroy((struct pw_proxy *)registry_);
   }
@@ -81,6 +92,7 @@ PipewireBackend::~PipewireBackend() {
   }
 
   if (mainloop_ != nullptr) {
+    pw_thread_loop_unlock(mainloop_);
     pw_thread_loop_stop(mainloop_);
     pw_thread_loop_destroy(mainloop_);
   }
