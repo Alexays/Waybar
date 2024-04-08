@@ -263,7 +263,7 @@ gtk4 todo
     if (ref == "keyboard-state") {
       return new waybar::modules::KeyboardState(id, bar_, config_[name]);
     }
-#endif
+#endif*/
 #ifdef HAVE_LIBPULSE
     if (ref == "pulseaudio") {
       return new waybar::modules::Pulseaudio(id, config_[name]);
@@ -271,7 +271,7 @@ gtk4 todo
     if (ref == "pulseaudio/slider") {
       return new waybar::modules::PulseaudioSlider(id, config_[name]);
     }
-#endif
+#endif/*
 #ifdef HAVE_LIBMPDCLIENT
     if (ref == "mpd") {
       return new waybar::modules::MPD(id, config_[name]);

@@ -79,6 +79,7 @@ libudev = dependency('libudev', required: get_option('libudev'))
 xkbregistry = dependency('xkbregistry')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
+libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 
 gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              version : ['>=1.0.2'],
@@ -281,6 +282,19 @@ if not get_option('logind').disabled()
     )
 endif
 
+if libpulse.found()
+    add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
+    src_files += files(
+        'src/modules/pulseaudio.cpp',
+        'src/modules/pulseaudio_slider.cpp',
+        'src/util/audio_backend.cpp',
+    )
+    man_files += files(
+        'man/waybar-pulseaudio.5.scd',
+        'man/waybar-pulseaudio-slider.5.scd',
+    )
+endif
+
 subdir('protocol')
 
 executable(
@@ -300,7 +314,8 @@ executable(
         xkbregistry,
         cava,
         libnl,
-        libnlgen
+        libnlgen,
+        libpulse
     ],
     include_directories: inc_dirs,
     install: true,
