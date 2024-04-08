@@ -10,7 +10,7 @@ namespace waybar {
 
 class AModule : public IModule {
  public:
-  static constexpr const char *MODULE_CLASS = "module";
+  static constexpr const char *MODULE_CLASS{"module"};
 
   virtual ~AModule();
   auto update() -> void override;

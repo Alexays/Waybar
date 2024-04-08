@@ -2,22 +2,20 @@
 
 #include <sndio.h>
 
-#include <vector>
-
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Sndio : public ALabel {
+class Sndio final : public ALabel {
  public:
   Sndio(const std::string &, const Json::Value &);
   virtual ~Sndio();
   auto update() -> void override;
   auto set_desc(struct sioctl_desc *, unsigned int) -> void;
   auto put_val(unsigned int, unsigned int) -> void;
-  bool handleScroll(GdkEventScroll *) override;
-  bool handleToggle(GdkEventButton *const &) override;
+  bool handleScroll(double dx, double dy) override;
+  void handleToggle(int n_press, double dx, double dy) override;
 
  private:
   auto connect_to_sndio() -> void;

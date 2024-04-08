@@ -8,7 +8,7 @@ PulseaudioSlider::PulseaudioSlider(const std::string& id, const Json::Value& con
   backend->setIgnoredSinks(config_["ignored-sinks"]);
 
   if (config_["target"].isString()) {
-    std::string target = config_["target"].asString();
+    std::string target{config_["target"].asString()};
     if (target == "sink") {
       this->target = PulseaudioSliderTarget::Sink;
     } else if (target == "source") {
@@ -38,7 +38,7 @@ void PulseaudioSlider::update() {
 }
 
 void PulseaudioSlider::onValueChanged() {
-  bool is_mute = false;
+  bool is_mute{false};
 
   switch (target) {
     case PulseaudioSliderTarget::Sink:
@@ -54,7 +54,7 @@ void PulseaudioSlider::onValueChanged() {
       break;
   }
 
-  uint16_t volume = scale_.get_value();
+  uint16_t volume{scale_.get_value()};
 
   if (is_mute) {
     // Avoid setting sink/source to volume 0 if the user muted if via another mean.

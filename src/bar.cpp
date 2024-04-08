@@ -279,10 +279,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
-    char* gtk_tree = gtk_style_context_to_string(
+    char* gtk_tree{gtk_style_context_to_string(
         window.get_style_context()->gobj(),
         (GtkStyleContextPrintFlags)(GTK_STYLE_CONTEXT_PRINT_RECURSE |
-                                    GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE));
+                                    GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE))};
     spdlog::debug("GTK widget tree:\n{}", gtk_tree);
     g_free(gtk_tree);
   }

@@ -12,6 +12,8 @@ class Tags final : public waybar::AModule {
  public:
   Tags(const std::string &, const waybar::Bar &, const Json::Value &);
   virtual ~Tags();
+  operator Gtk::Widget &() override;
+
   // Handlers for wayland events
   void handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused);
 

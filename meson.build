@@ -81,6 +81,18 @@ libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 
+libsndio = compiler.find_library('sndio', required: get_option('sndio'))
+if libsndio.found()
+    if not compiler.has_function('sioctl_open', prefix: '#include <sndio.h>', dependencies: libsndio)
+        if get_option('sndio').enabled()
+            error('libsndio is too old, required >=1.7.0')
+        else
+            warning('libsndio is too old, required >=1.7.0')
+            libsndio = dependency('', required: false)
+        endif
+    endif
+endif
+
 gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              version : ['>=1.0.2'],
                              fallback : ['gtk4-layer-shell', 'gtk_layer_shell'],
@@ -182,6 +194,12 @@ if libudev.found() and (is_linux or libepoll.found())
         'man/waybar-backlight-slider.5.scd',
     )
 endif
+
+#if libsndio.found()
+    add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
+    src_files += files('src/modules/sndio.cpp')
+    man_files += files('man/waybar-sndio.5.scd')
+#endif
 
 if get_option('rfkill').enabled() and is_linux
     add_project_arguments('-DWANT_RFKILL', language: 'cpp')
@@ -315,7 +333,8 @@ executable(
         cava,
         libnl,
         libnlgen,
-        libpulse
+        libpulse,
+        libsndio
     ],
     include_directories: inc_dirs,
     install: true,

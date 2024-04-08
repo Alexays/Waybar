@@ -42,7 +42,7 @@ static const std::array<std::string, 9> ports{
     "headphone", "speaker", "hdmi", "headset", "hands-free", "portable", "car", "hifi", "phone",
 };
 
-const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const {
+const std::vector<std::string> Pulseaudio::getPulseIcon() const {
   std::vector<std::string> res{backend->getCurrentSinkName(), backend->getDefaultSourceName()};
   std::string nameLC{backend->getSinkPortName() + backend->getFormFactor()};
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);

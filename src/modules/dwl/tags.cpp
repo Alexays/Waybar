@@ -191,4 +191,6 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
   }
 }
 
+Tags::operator Gtk::Widget&() { return box_; };
+
 } /* namespace waybar::modules::dwl */

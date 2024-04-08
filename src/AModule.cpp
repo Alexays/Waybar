@@ -12,7 +12,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true} {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
-  for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
+  for (Json::Value::const_iterator it{actions.begin()}; it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
       if (eventActionMap_.count(it.key().asString()) == 0) {
         eventActionMap_.insert({it.key().asString(), it->asString()});
@@ -111,8 +111,8 @@ void AModule::handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_ev
 
 const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e) {
   // only affects up/down
-  bool reverse = config_["reverse-scrolling"].asBool();
-  bool reverse_mouse = config_["reverse-mouse-scrolling"].asBool();
+  bool reverse{config_["reverse-scrolling"].asBool()};
+  bool reverse_mouse{config_["reverse-mouse-scrolling"].asBool()};
 
   // ignore reverse-scrolling if event comes from a mouse wheel
   const auto device{e->get_device()};
@@ -137,7 +137,7 @@ const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e
       distance_scrolled_y_ += delta_y;
       distance_scrolled_x_ += delta_x;
 
-      gdouble threshold = 0;
+      gdouble threshold{0.0};
       if (config_["smooth-scrolling-threshold"].isNumeric()) {
         threshold = config_["smooth-scrolling-threshold"].asDouble();
       }
@@ -155,11 +155,11 @@ const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e
       switch (dir) {
         case SCROLL_DIR::UP:
         case SCROLL_DIR::DOWN:
-          distance_scrolled_y_ = 0;
+          distance_scrolled_y_ = 0.0;
           break;
         case SCROLL_DIR::LEFT:
         case SCROLL_DIR::RIGHT:
-          distance_scrolled_x_ = 0;
+          distance_scrolled_x_ = 0.0;
           break;
         case SCROLL_DIR::NONE:
           break;
