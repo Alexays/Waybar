@@ -1,29 +1,28 @@
 #include "modules/network.hpp"
 
+#include <fstream>
+
+#include <arpa/inet.h>
+#include <linux/nl80211.h>
+#include <netlink/genl/ctrl.h>
+
 #include <linux/if.h>
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
-
-#include <cassert>
-#include <fstream>
-#include <optional>
-#include <sstream>
+#include <glibmm/markup.h>
 
 #include "util/format.hpp"
-#ifdef WANT_RFKILL
-#include "util/rfkill.hpp"
-#endif
 
 namespace {
 using namespace waybar::util;
-constexpr const char *DEFAULT_FORMAT = "{ifname}";
+constexpr const char *DEFAULT_FORMAT {"{ifname}"};
 }  // namespace
 
-constexpr const char *NETDEV_FILE =
-    "/proc/net/dev";  // std::ifstream does not take std::string_view as param
+constexpr const char *NETDEV_FILE{
+    "/proc/net/dev"}; // std::ifstream does not take std::string_view as param
 std::optional<std::pair<unsigned long long, unsigned long long>>
 waybar::modules::Network::readBandwidthUsage() {
-  std::ifstream netdev(NETDEV_FILE);
+  std::ifstream netdev{NETDEV_FILE};
   if (!netdev) {
     spdlog::warn("Failed to open netdev file {}", NETDEV_FILE);
     return {};
@@ -34,10 +33,10 @@ waybar::modules::Network::readBandwidthUsage() {
   std::getline(netdev, line);
   std::getline(netdev, line);
 
-  unsigned long long receivedBytes = 0ull;
-  unsigned long long transmittedBytes = 0ull;
+  unsigned long long receivedBytes{0ull};
+  unsigned long long transmittedBytes{0ull};
   while (std::getline(netdev, line)) {
-    std::istringstream iss(line);
+    std::istringstream iss{line};
 
     std::string ifacename;
     iss >> ifacename;      // ifacename contains "eth0:"
@@ -52,12 +51,12 @@ waybar::modules::Network::readBandwidthUsage() {
     //
     // We only care about the bytes count, so we'll just ignore the 7 other
     // columns.
-    unsigned long long r = 0ull;
-    unsigned long long t = 0ull;
+    unsigned long long r{0ull};
+    unsigned long long t{0ull};
     // Read received bytes
     iss >> r;
     // Skip all the other columns in the received group
-    for (int colsToSkip = 7; colsToSkip > 0; colsToSkip--) {
+    for (int colsToSkip{7}; colsToSkip > 0; colsToSkip--) {
       // skip whitespace between columns
       while (iss.peek() == ' ') {
         iss.ignore();
@@ -79,22 +78,22 @@ waybar::modules::Network::readBandwidthUsage() {
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
-      ifid_(-1),
-      family_(config["family"] == "ipv6" ? AF_INET6 : AF_INET),
-      efd_(-1),
-      ev_fd_(-1),
-      want_route_dump_(false),
-      want_link_dump_(false),
-      want_addr_dump_(false),
-      dump_in_progress_(false),
-      is_p2p_(false),
-      cidr_(0),
-      signal_strength_dbm_(0),
-      signal_strength_(0),
+      ifid_{-1},
+      family_{config["family"] == "ipv6" ? AF_INET6 : AF_INET},
+      efd_{-1},
+      ev_fd_{-1},
+      want_route_dump_{false},
+      want_link_dump_{false},
+      want_addr_dump_{false},
+      dump_in_progress_{false},
+      is_p2p_{false},
+      cidr_{0},
+      signal_strength_dbm_{0},
+      signal_strength_{0},
 #ifdef WANT_RFKILL
       rfkill_{RFKILL_TYPE_WLAN},
 #endif
-      frequency_(0.0) {
+      frequency_{0.0} {
 
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
@@ -102,7 +101,7 @@ waybar::modules::Network::Network(const std::string &id, const Json::Value &conf
   // the module start with no text, but the event_box_ is shown.
   label_.set_markup("<s></s>");
 
-  auto bandwidth = readBandwidthUsage();
+  auto bandwidth{readBandwidthUsage()};
   if (bandwidth.has_value()) {
     bandwidth_down_total_ = (*bandwidth).first;
     bandwidth_up_total_ = (*bandwidth).second;
@@ -161,7 +160,7 @@ void waybar::modules::Network::createEventSocket() {
   nl_socket_disable_seq_check(ev_sock_);
   nl_socket_modify_cb(ev_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleEvents, this);
   nl_socket_modify_cb(ev_sock_, NL_CB_FINISH, NL_CB_CUSTOM, handleEventsDone, this);
-  auto groups = RTMGRP_LINK | (family_ == AF_INET ? RTMGRP_IPV4_IFADDR : RTMGRP_IPV6_IFADDR);
+  auto groups{RTMGRP_LINK | (family_ == AF_INET ? RTMGRP_IPV4_IFADDR : RTMGRP_IPV6_IFADDR)};
   nl_join_groups(ev_sock_, groups);  // Deprecated
   if (nl_connect(ev_sock_, NETLINK_ROUTE) != 0) {
     throw std::runtime_error("Can't connect network socket");
@@ -198,7 +197,7 @@ void waybar::modules::Network::createEventSocket() {
     }
   }
   {
-    auto fd = nl_socket_get_fd(ev_sock_);
+    auto fd{nl_socket_get_fd(ev_sock_)};
     struct epoll_event event;
     memset(&event, 0, sizeof(event));
     event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
@@ -227,7 +226,7 @@ void waybar::modules::Network::worker() {
   // update via here not working
   thread_timer_ = [this] {
     {
-      std::lock_guard<std::mutex> lock(mutex_);
+      std::lock_guard<std::mutex> lock{mutex_};
       if (ifid_ > 0) {
         getInfo();
         dp.emit();
@@ -249,11 +248,11 @@ void waybar::modules::Network::worker() {
   thread_ = [this] {
     std::array<struct epoll_event, EPOLL_MAX> events{};
 
-    int ec = epoll_wait(efd_, events.data(), EPOLL_MAX, -1);
+    int ec{epoll_wait(efd_, events.data(), EPOLL_MAX, -1)};
     if (ec > 0) {
-      for (auto i = 0; i < ec; i++) {
+      for (auto i{0}; i < ec; i++) {
         if (events[i].data.fd == nl_socket_get_fd(ev_sock_)) {
-          int rc = 0;
+          int rc{0};
           // Read as many message as possible, until the socket blocks
           while (true) {
             errno = 0;
@@ -291,15 +290,15 @@ const std::string waybar::modules::Network::getNetworkState() const {
 }
 
 auto waybar::modules::Network::update() -> void {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock{mutex_};
   std::string tooltip_format;
 
-  auto bandwidth = readBandwidthUsage();
-  auto bandwidth_down = 0ull;
-  auto bandwidth_up = 0ull;
+  auto bandwidth{readBandwidthUsage()};
+  auto bandwidth_down{0ull};
+  auto bandwidth_up{0ull};
   if (bandwidth.has_value()) {
-    auto down_octets = (*bandwidth).first;
-    auto up_octets = (*bandwidth).second;
+    auto down_octets{(*bandwidth).first};
+    auto up_octets{(*bandwidth).second};
 
     bandwidth_down = down_octets - bandwidth_down_total_;
     bandwidth_down_total_ = down_octets;
@@ -309,7 +308,7 @@ auto waybar::modules::Network::update() -> void {
   }
 
   if (!alt_) {
-    auto state = getNetworkState();
+    auto state{getNetworkState()};
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
       label_.get_style_context()->remove_class(state_);
     }
@@ -331,7 +330,7 @@ auto waybar::modules::Network::update() -> void {
   }
   getState(signal_strength_);
 
-  auto text = fmt::format(
+  const Glib::ustring text{fmt::format(
       fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
       fmt::arg("signalStrength", signal_strength_),
       fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
@@ -349,13 +348,13 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")))};
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
-      event_box_.hide();
+      label_.hide();
     } else {
-      event_box_.show();
+      label_.show();
     }
   }
   if (tooltipEnabled()) {
@@ -363,7 +362,7 @@ auto waybar::modules::Network::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      auto tooltip_text = fmt::format(
+        const Glib::ustring tooltip_text{fmt::format(
           fmt::runtime(tooltip_format), fmt::arg("essid", essid_),
           fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
           fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
@@ -382,7 +381,7 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")))};
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -419,20 +418,20 @@ void waybar::modules::Network::clearIface() {
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
-  auto net = static_cast<waybar::modules::Network *>(data);
-  std::lock_guard<std::mutex> lock(net->mutex_);
-  auto nh = nlmsg_hdr(msg);
-  bool is_del_event = false;
+  auto net{static_cast<waybar::modules::Network *>(data)};
+  std::lock_guard<std::mutex> lock{net->mutex_};
+  auto nh{nlmsg_hdr(msg)};
+  bool is_del_event{false};
 
   switch (nh->nlmsg_type) {
     case RTM_DELLINK:
       is_del_event = true;
     case RTM_NEWLINK: {
-      struct ifinfomsg *ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-      ssize_t attrlen = IFLA_PAYLOAD(nh);
-      struct rtattr *ifla = IFLA_RTA(ifi);
-      const char *ifname = NULL;
-      size_t ifname_len = 0;
+      struct ifinfomsg *ifi{static_cast<struct ifinfomsg *>(NLMSG_DATA(nh))};
+      ssize_t attrlen{IFLA_PAYLOAD(nh)};
+      struct rtattr *ifla{IFLA_RTA(ifi)};
+      const char *ifname{NULL};
+      size_t ifname_len{0};
       std::optional<bool> carrier;
 
       if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
@@ -470,7 +469,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       if (!is_del_event && ifi->ifi_index == net->ifid_) {
         // Update interface information
         if (net->ifname_.empty() && ifname != NULL) {
-          std::string new_ifname(ifname, ifname_len);
+          std::string new_ifname{ifname, ifname_len};
           net->ifname_ = new_ifname;
         }
         if (carrier.has_value()) {
@@ -491,7 +490,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         }
       } else if (!is_del_event && net->ifid_ == -1) {
         // Checking if it's an interface we care about.
-        std::string new_ifname(ifname, ifname_len);
+        std::string new_ifname{ifname, ifname_len};
         if (net->checkInterface(new_ifname)) {
           spdlog::debug("network: selecting new interface {}/{}", new_ifname, ifi->ifi_index);
 
@@ -521,9 +520,9 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     case RTM_DELADDR:
       is_del_event = true;
     case RTM_NEWADDR: {
-      struct ifaddrmsg *ifa = static_cast<struct ifaddrmsg *>(NLMSG_DATA(nh));
-      ssize_t attrlen = IFA_PAYLOAD(nh);
-      struct rtattr *ifa_rta = IFA_RTA(ifa);
+      struct ifaddrmsg *ifa{static_cast<struct ifaddrmsg *>(NLMSG_DATA(nh))};
+      ssize_t attrlen{IFA_PAYLOAD(nh)};
+      struct rtattr *ifa_rta{IFA_RTA(ifa)};
 
       if ((int)ifa->ifa_index != net->ifid_) {
         return NL_OK;
@@ -556,8 +555,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
                 }
                 case AF_INET6: {
                   struct in6_addr netmask;
-                  for (int i = 0; i < 16; i++) {
-                    int v = (i + 1) * 8 - ifa->ifa_prefixlen;
+                  for (int i{0}; i < 16; i++) {
+                    int v{(i + 1) * 8 - ifa->ifa_prefixlen};
                     if (v < 0) v = 0;
                     if (v > 8) v = 8;
                     netmask.s6_addr[i] = ~0 << v;
@@ -588,13 +587,13 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
       // to find the interface used to reach the outside world
 
-      struct rtmsg *rtm = static_cast<struct rtmsg *>(NLMSG_DATA(nh));
-      ssize_t attrlen = RTM_PAYLOAD(nh);
-      struct rtattr *attr = RTM_RTA(rtm);
-      bool has_gateway = false;
-      bool has_destination = false;
-      int temp_idx = -1;
-      uint32_t priority = 0;
+      struct rtmsg *rtm{static_cast<struct rtmsg *>(NLMSG_DATA(nh))};
+      ssize_t attrlen{RTM_PAYLOAD(nh)};
+      struct rtattr *attr{RTM_RTA(rtm)};
+      bool has_gateway{false};
+      bool has_destination{false};
+      int temp_idx{-1};
+      uint32_t priority{0};
 
       /* Find the message(s) concerting the main routing table, each message
        * corresponds to a single routing table entry.
@@ -623,13 +622,13 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             /* The destination address.
              * Should be either missing, or maybe all 0s.  Accept both.
              */
-            const uint32_t nr_zeroes = (net->family_ == AF_INET) ? 4 : 16;
-            unsigned char c = 0;
-            size_t dstlen = RTA_PAYLOAD(attr);
+            const uint32_t nr_zeroes{(net->family_ == AF_INET) ? 4 : 16};
+            unsigned char c{0};
+            size_t dstlen{RTA_PAYLOAD(attr)};
             if (dstlen != nr_zeroes) {
               break;
             }
-            for (uint32_t i = 0; i < dstlen; i += 1) {
+            for (uint32_t i{0}; i < dstlen; i += 1) {
               c |= *((unsigned char *)RTA_DATA(attr) + i);
             }
             has_destination = (c == 0);
@@ -666,7 +665,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
                         temp_idx, priority);
 
           /* Ask ifname associated with temp_idx as well as carrier status */
-          struct ifinfomsg ifinfo_hdr = {
+          struct ifinfomsg ifinfo_hdr{
               .ifi_family = AF_UNSPEC,
               .ifi_index = temp_idx,
           };
@@ -710,7 +709,7 @@ void waybar::modules::Network::askForStateDump(void) {
    * messages. handleEventsDone() is called when a dump is done. */
   if (dump_in_progress_) return;
 
-  struct rtgenmsg rt_hdr = {
+  struct rtgenmsg rt_hdr{
       .rtgen_family = AF_UNSPEC,
   };
 
@@ -734,15 +733,15 @@ void waybar::modules::Network::askForStateDump(void) {
 }
 
 int waybar::modules::Network::handleEventsDone(struct nl_msg *msg, void *data) {
-  auto net = static_cast<waybar::modules::Network *>(data);
+  auto net{static_cast<waybar::modules::Network *>(data)};
   net->dump_in_progress_ = false;
   net->askForStateDump();
   return NL_OK;
 }
 
 int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
-  auto net = static_cast<waybar::modules::Network *>(data);
-  auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
+  auto net{static_cast<waybar::modules::Network *>(data)};
+  auto gnlh{static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)))};
   struct nlattr *tb[NL80211_ATTR_MAX + 1];
   struct nlattr *bss[NL80211_BSS_MAX + 1];
   struct nla_policy bss_policy[NL80211_BSS_MAX + 1]{};
@@ -777,16 +776,16 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
 
 void waybar::modules::Network::parseEssid(struct nlattr **bss) {
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
-    auto ies = static_cast<char *>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
-    auto ies_len = nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS]);
-    const auto hdr_len = 2;
+    auto ies{static_cast<char *>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]))};
+    auto ies_len{nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS])};
+    const auto hdr_len{2};
     while (ies_len > hdr_len && ies[0] != 0) {
       ies_len -= ies[1] + hdr_len;
       ies += ies[1] + hdr_len;
     }
     if (ies_len > hdr_len && ies_len > ies[1] + hdr_len) {
-      auto essid_begin = ies + hdr_len;
-      auto essid_end = essid_begin + ies[1];
+      auto essid_begin{ies + hdr_len};
+      auto essid_end{essid_begin + ies[1]};
       std::string essid_raw;
       std::copy(essid_begin, essid_end, std::back_inserter(essid_raw));
       essid_ = Glib::Markup::escape_text(essid_raw);
@@ -803,12 +802,12 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
     // If a signal is too strong, it can overwhelm receiving circuity that is designed
     // to pick up and process a certain signal level. The following percentage is scaled to
     // punish signals that are too strong (>= -45dBm) or too weak (<= -45 dBm).
-    const int hardwareOptimum = -45;
-    const int hardwareMin = -90;
-    const int strength =
+    const int hardwareOptimum{-45};
+    const int hardwareMin{-90};
+    const int strength{
         100 -
         ((abs(signal_strength_dbm_ - hardwareOptimum) / double{hardwareOptimum - hardwareMin}) *
-         100);
+         100)};
     signal_strength_ = std::clamp(strength, 0, 100);
 
     if (signal_strength_dbm_ >= -50) {
@@ -841,7 +840,7 @@ bool waybar::modules::Network::associatedOrJoined(struct nlattr **bss) {
   if (bss[NL80211_BSS_STATUS] == nullptr) {
     return false;
   }
-  auto status = nla_get_u32(bss[NL80211_BSS_STATUS]);
+  auto status{nla_get_u32(bss[NL80211_BSS_STATUS])};
   switch (status) {
     case NL80211_BSS_STATUS_ASSOCIATED:
     case NL80211_BSS_STATUS_IBSS_JOINED:
@@ -853,7 +852,7 @@ bool waybar::modules::Network::associatedOrJoined(struct nlattr **bss) {
 }
 
 auto waybar::modules::Network::getInfo() -> void {
-  struct nl_msg *nl_msg = nlmsg_alloc();
+  struct nl_msg *nl_msg{nlmsg_alloc()};
   if (nl_msg == nullptr) {
     return;
   }
@@ -869,11 +868,11 @@ auto waybar::modules::Network::getInfo() -> void {
 // https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
 bool waybar::modules::Network::wildcardMatch(const std::string &pattern,
                                              const std::string &text) const {
-  auto P = int(pattern.size());
-  auto T = int(text.size());
+  auto P{int(pattern.size())};
+  auto T{int(text.size())};
 
-  auto p = 0, fallback_p = -1;
-  auto t = 0, fallback_t = -1;
+  auto p{0}, fallback_p{-1};
+  auto t{0}, fallback_t{-1};
 
   while (t < T) {
     // Wildcard match:

@@ -77,6 +77,8 @@ giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
 libudev = dependency('libudev', required: get_option('libudev'))
 xkbregistry = dependency('xkbregistry')
+libnl = dependency('libnl-3.0', required: get_option('libnl'))
+libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 
 gtk_layer_shell = dependency('gtk4-layer-shell-0',
                              version : ['>=1.0.2'],
@@ -180,6 +182,13 @@ if libudev.found() and (is_linux or libepoll.found())
     )
 endif
 
+if get_option('rfkill').enabled() and is_linux
+    add_project_arguments('-DWANT_RFKILL', language: 'cpp')
+    src_files += files(
+        'src/util/rfkill.cpp'
+    )
+endif
+
 cava = dependency('cava',
                   version : '>=0.10.1',
                   required: get_option('cava'),
@@ -254,6 +263,12 @@ add_project_arguments('-DHAVE_DWL', language: 'cpp')
 src_files += files('src/modules/dwl/tags.cpp')
 man_files += files('man/waybar-dwl-tags.5.scd')
 
+if libnl.found() and libnlgen.found()
+    add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
+    src_files += files('src/modules/network.cpp')
+    man_files += files('man/waybar-network.5.scd')
+endif
+
 if not get_option('logind').disabled()
     add_project_arguments('-DHAVE_GAMEMODE', '-DHAVE_LOGIND_INHIBITOR', language: 'cpp')
     src_files += files(
@@ -283,7 +298,9 @@ executable(
         client_protos,
         spdlog,
         xkbregistry,
-        cava
+        cava,
+        libnl,
+        libnlgen
     ],
     include_directories: inc_dirs,
     install: true,
