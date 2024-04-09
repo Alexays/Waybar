@@ -19,6 +19,8 @@ Valid locations for this file are:
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.jsonc
 Also, a minimal example configuration can be found at the bottom of this man page.
 
+The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(5)* for details.
+
 # BAR CONFIGURATION
 
 *layer* ++
@@ -347,3 +349,4 @@ A group may hide all but one element, showing them only on mouse hover. In order
 # SEE ALSO
 
 *sway-output(5)*
+*waybar-styles(5)"
