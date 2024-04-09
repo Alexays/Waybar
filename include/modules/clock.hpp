@@ -52,6 +52,9 @@ class Clock final : public ALabel {
   auto get_calendar(const year_month_day& today, const year_month_day& ymd, const time_zone* tz)
       -> const std::string;
 
+  // get local time zone
+  auto local_zone() -> const time_zone*;
+
   // time zoned time in tooltip
   const bool tzInTooltip_;                // if need to print time zones text
   std::vector<const time_zone*> tzList_;  // time zones list
