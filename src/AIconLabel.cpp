@@ -21,4 +21,6 @@ bool AIconLabel::iconEnabled() const {
   return config_["icon"].isBool() ? config_["icon"].asBool() : false;
 }
 
+AIconLabel::operator Gtk::Widget&() { return box_; };
+
 }  // namespace waybar

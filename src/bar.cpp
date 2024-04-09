@@ -530,7 +530,7 @@ auto waybar::Bar::setupWidgets() -> void {
   getModules(factory, "modules-center");
   getModules(factory, "modules-right");
   for (auto const& module : modules_left_) {
-    left_.prepend(*module);
+    left_.append(*module);
   }
   for (auto const& module : modules_center_) {
     center_.append(*module);

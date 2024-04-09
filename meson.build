@@ -75,7 +75,11 @@ sigcpp = dependency('sigc++-3.0', version: ['>=3.4.0'])
 gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
 giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
+libinotify = dependency('libinotify', required: false)
+libepoll = dependency('epoll-shim', required: false)
+libinput = dependency('libinput', required: get_option('libinput'))
 libudev = dependency('libudev', required: get_option('libudev'))
+libevdev = dependency('libevdev', required: get_option('libevdev'))
 xkbregistry = dependency('xkbregistry')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
@@ -195,11 +199,18 @@ if libudev.found() and (is_linux or libepoll.found())
     )
 endif
 
-#if libsndio.found()
+if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
+    add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
+    add_project_arguments('-DHAVE_LIBINPUT', language: 'cpp')
+    src_files += files('src/modules/keyboard_state.cpp')
+    man_files += files('man/waybar-keyboard-state.5.scd')
+endif
+
+if libsndio.found()
     add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
     src_files += files('src/modules/sndio.cpp')
     man_files += files('man/waybar-sndio.5.scd')
-#endif
+endif
 
 if get_option('rfkill').enabled() and is_linux
     add_project_arguments('-DWANT_RFKILL', language: 'cpp')
@@ -323,6 +334,7 @@ executable(
         gtkmm,
         giounix,
         sigcpp,
+        libevdev,
         libudev,
         jsoncpp,
         wayland_client,
@@ -331,6 +343,9 @@ executable(
         spdlog,
         xkbregistry,
         cava,
+        libinotify,
+        libepoll,
+        libinput,
         libnl,
         libnlgen,
         libpulse,
