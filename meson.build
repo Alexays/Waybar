@@ -539,6 +539,14 @@ if scdoc.found()
         }
     )
 
+    man_files += configure_file(
+        input: 'man/waybar-styles.5.scd.in',
+        output: 'waybar-styles.5.scd',
+        configuration: {
+            'sysconfdir': prefix / sysconfdir
+        }
+    )
+
     fs = import('fs')
     mandir = get_option('mandir')
     foreach file : man_files
