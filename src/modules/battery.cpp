@@ -181,7 +181,7 @@ static bool status_gt(const std::string& a, const std::string& b) {
   return false;
 }
 
-const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::getInfos() {
+const std::tuple<uint8_t, float, std::string, float, uint16_t> waybar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
@@ -251,6 +251,9 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     bool time_to_empty_now_exists = false;
     uint32_t time_to_full_now = 0;
     bool time_to_full_now_exists = false;
+
+    uint32_t largest_design_capacity = 0;
+    uint16_t main_bat_cycle_count = 0;
 
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
@@ -351,6 +354,16 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       if (fs::exists(bat / "energy_full_design")) {
         energy_full_design_exists = true;
         std::ifstream(bat / "energy_full_design") >> energy_full_design;
+      }
+
+      bool is_main_battery = charge_full_design >= largest_design_capacity;
+      uint16_t cycle_count = 0;
+      if (fs::exists(bat / "cycle_count")) {
+        std::ifstream(bat / "cycle_count") >> cycle_count;
+      }
+      if (is_main_battery && (cycle_count > main_bat_cycle_count)) {
+        largest_design_capacity = charge_full_design;
+        main_bat_cycle_count = cycle_count;
       }
 
       if (!voltage_now_exists) {
@@ -573,11 +586,11 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     // still charging but not yet done
     if (cap == 100 && status == "Charging") status = "Full";
 
-    return {cap, time_remaining, status, total_power / 1e6};
+    return {cap, time_remaining, status, total_power / 1e6, main_bat_cycle_count};
 #endif
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
-    return {0, 0, "Unknown", 0};
+    return {0, 0, "Unknown", 0, 0};
   }
 }
 
@@ -633,7 +646,7 @@ auto waybar::modules::Battery::update() -> void {
     return;
   }
 #endif
-  auto [capacity, time_remaining, status, power] = getInfos();
+  auto [capacity, time_remaining, status, power, cycles] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
@@ -666,7 +679,8 @@ auto waybar::modules::Battery::update() -> void {
     label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
                                         fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("power", power), fmt::arg("capacity", capacity),
-                                        fmt::arg("time", time_remaining_formatted)));
+                                        fmt::arg("time", time_remaining_formatted),
+                                        fmt::arg("cycles", cycles)));
   }
   if (!old_status_.empty()) {
     label_.get_style_context()->remove_class(old_status_);
@@ -687,7 +701,8 @@ auto waybar::modules::Battery::update() -> void {
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(
         fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
-        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted)));
+        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted),
+        fmt::arg("cycles", cycles)));
   }
   // Call parent update
   ALabel::update();
