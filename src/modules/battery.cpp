@@ -361,9 +361,12 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t> waybar::modules::
       if (fs::exists(bat / "cycle_count")) {
         std::ifstream(bat / "cycle_count") >> cycle_count;
       }
-      if (is_main_battery && (cycle_count > main_bat_cycle_count)) {
+      if (is_main_battery) {
         largest_design_capacity = charge_full_design;
-        main_bat_cycle_count = cycle_count;
+
+        if (cycle_count > main_bat_cycle_count) {
+          main_bat_cycle_count = cycle_count;
+        }
       }
 
       if (!voltage_now_exists) {
