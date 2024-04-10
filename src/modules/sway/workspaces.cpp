@@ -305,7 +305,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("focused");
     }
-    if (hasFlag((*it), "visible") || ((*it)["output"].isString() && noNodes )) {
+    if (hasFlag((*it), "visible") || ((*it)["output"].isString() && noNodes)) {
       button.get_style_context()->add_class("visible");
     } else {
       button.get_style_context()->remove_class("visible");
@@ -320,7 +320,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("persistent");
     }
-    if (noNodes)  {
+    if (noNodes) {
       button.get_style_context()->add_class("empty");
     } else {
       button.get_style_context()->remove_class("empty");
