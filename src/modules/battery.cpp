@@ -181,7 +181,7 @@ static bool status_gt(const std::string& a, const std::string& b) {
   return false;
 }
 
-const std::tuple<uint8_t, float, std::string, float, uint16_t> waybar::modules::Battery::getInfos() {
+const std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
@@ -254,6 +254,7 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t> waybar::modules::
 
     uint32_t largest_design_capacity = 0;
     uint16_t main_bat_cycle_count = 0;
+    float main_bat_health_percent = 0.0f;
 
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
@@ -366,6 +367,16 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t> waybar::modules::
 
         if (cycle_count > main_bat_cycle_count) {
           main_bat_cycle_count = cycle_count;
+        }
+
+        std::string name;
+        std::ifstream(bat / "model_name") >> name;
+        spdlog::info("{} | full: {}, full_design: {}", name, energy_full, energy_full_design);
+        if (charge_full_exists && charge_full_design_exists) {
+          float bat_health_percent = ((float)charge_full_design / charge_full) * 100;
+          if (main_bat_health_percent == 0.0f || bat_health_percent < main_bat_health_percent) {
+            main_bat_health_percent = bat_health_percent;
+          }
         }
       }
 
@@ -589,11 +600,11 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t> waybar::modules::
     // still charging but not yet done
     if (cap == 100 && status == "Charging") status = "Full";
 
-    return {cap, time_remaining, status, total_power / 1e6, main_bat_cycle_count};
+    return {cap, time_remaining, status, total_power / 1e6, main_bat_cycle_count, main_bat_health_percent};
 #endif
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
-    return {0, 0, "Unknown", 0, 0};
+    return {0, 0, "Unknown", 0, 0, 0.0f};
   }
 }
 
@@ -649,7 +660,7 @@ auto waybar::modules::Battery::update() -> void {
     return;
   }
 #endif
-  auto [capacity, time_remaining, status, power, cycles] = getInfos();
+  auto [capacity, time_remaining, status, power, cycles, health] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
@@ -683,7 +694,8 @@ auto waybar::modules::Battery::update() -> void {
                                         fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("power", power), fmt::arg("capacity", capacity),
                                         fmt::arg("time", time_remaining_formatted),
-                                        fmt::arg("cycles", cycles)));
+                                        fmt::arg("cycles", cycles),
+                                        fmt::arg("health", fmt::format("{:.3}", health))));
   }
   if (!old_status_.empty()) {
     label_.get_style_context()->remove_class(old_status_);
