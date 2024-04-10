@@ -369,9 +369,6 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::mo
           main_bat_cycle_count = cycle_count;
         }
 
-        std::string name;
-        std::ifstream(bat / "model_name") >> name;
-        spdlog::info("{} | full: {}, full_design: {}", name, energy_full, energy_full_design);
         if (charge_full_exists && charge_full_design_exists) {
           float bat_health_percent = ((float)charge_full_design / charge_full) * 100;
           if (main_bat_health_percent == 0.0f || bat_health_percent < main_bat_health_percent) {
