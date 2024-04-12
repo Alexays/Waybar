@@ -194,6 +194,10 @@ void Workspaces::doUpdate() {
   for (auto &[workspaceData, clientsData] : m_workspacesToCreate) {
     createWorkspace(workspaceData, clientsData);
   }
+  if (!m_workspacesToCreate.empty()) {
+    updateWindowCount();
+    sortWorkspaces();
+  }
   m_workspacesToCreate.clear();
 
   // get all active workspaces
@@ -391,8 +395,7 @@ void Workspaces::onWorkspaceMoved(std::string const &payload) {
   // Update active workspace
   m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
 
-  if (allOutputs())
-    return;
+  if (allOutputs()) return;
 
   std::string workspaceName = payload.substr(0, payload.find(','));
   std::string monitorName = payload.substr(payload.find(',') + 1);
@@ -833,8 +836,6 @@ void Workspaces::init() {
   m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
 
   initializeWorkspaces();
-  updateWindowCount();
-  sortWorkspaces();
   dp.emit();
 }
 
