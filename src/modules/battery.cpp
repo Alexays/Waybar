@@ -181,7 +181,7 @@ static bool status_gt(const std::string& a, const std::string& b) {
   return false;
 }
 
-const std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::modules::Battery::getInfos() {
+std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
