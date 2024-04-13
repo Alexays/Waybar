@@ -371,7 +371,7 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::mo
 
         if (charge_full_exists && charge_full_design_exists) {
           float bat_health_percent = ((float)charge_full / charge_full_design) * 100;
-          if (mainBatHealthPercent == 0.0f || bat_health_percent < main_bat_health_percent) {
+          if (mainBatHealthPercent == 0.0f || bat_health_percent < mainBatHealthPercent) {
             mainBatHealthPercent = bat_health_percent;
           }
         }
