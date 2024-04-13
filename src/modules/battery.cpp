@@ -252,9 +252,9 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::mo
     uint32_t time_to_full_now = 0;
     bool time_to_full_now_exists = false;
 
-    uint32_t largest_design_capacity = 0;
-    uint16_t main_bat_cycle_count = 0;
-    float main_bat_health_percent = 0.0f;
+    uint32_t largestDesignCapacity = 0;
+    uint16_t mainBatCycleCount = 0;
+    float mainBatHealthPercent = 0.0F;
 
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
@@ -357,22 +357,22 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::mo
         std::ifstream(bat / "energy_full_design") >> energy_full_design;
       }
 
-      bool is_main_battery = charge_full_design >= largest_design_capacity;
+      bool is_main_battery = charge_full_design >= largestDesignCapacity;
       uint16_t cycle_count = 0;
       if (fs::exists(bat / "cycle_count")) {
         std::ifstream(bat / "cycle_count") >> cycle_count;
       }
       if (is_main_battery) {
-        largest_design_capacity = charge_full_design;
+        largestDesignCapacity = charge_full_design;
 
-        if (cycle_count > main_bat_cycle_count) {
-          main_bat_cycle_count = cycle_count;
+        if (cycle_count > mainBatCycleCount) {
+          mainBatCycleCount = cycle_count;
         }
 
         if (charge_full_exists && charge_full_design_exists) {
           float bat_health_percent = ((float)charge_full / charge_full_design) * 100;
-          if (main_bat_health_percent == 0.0f || bat_health_percent < main_bat_health_percent) {
-            main_bat_health_percent = bat_health_percent;
+          if (mainBatHealthPercent == 0.0f || bat_health_percent < main_bat_health_percent) {
+            mainBatHealthPercent = bat_health_percent;
           }
         }
       }
@@ -597,7 +597,7 @@ const std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::mo
     // still charging but not yet done
     if (cap == 100 && status == "Charging") status = "Full";
 
-    return {cap, time_remaining, status, total_power / 1e6, main_bat_cycle_count, main_bat_health_percent};
+    return {cap, time_remaining, status, total_power / 1e6, mainBatCycleCount, mainBatHealthPercent};
 #endif
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
