@@ -36,8 +36,30 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
+  event_box_.set_relief(Gtk::RELIEF_NONE);
+
   if (enable_click || hasUserEvent) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
+
+    // TODO: not ideal?
+    // seems like specifically click event of gtk button needs to be captured like this?
+    // construct the specific GdkEventButton manually
+    // and pass it through the generic handling is the idea
+    event_box_.signal_pressed().connect([this] {
+      GdkEventButton eventInstance;
+      eventInstance.button = 1;
+      eventInstance.type = GDK_BUTTON_PRESS;
+      GdkEventButton* event = &eventInstance;
+      this->handleToggle(event);
+    });
+    event_box_.signal_released().connect([this] {
+      GdkEventButton eventInstance;
+      eventInstance.button = 1;
+      eventInstance.type = GDK_BUTTON_RELEASE;
+      GdkEventButton* event = &eventInstance;
+      this->handleToggle(event);
+    });
+
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
   }
 

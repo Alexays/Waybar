@@ -6,6 +6,7 @@
 #include <json/json.h>
 
 #include "IModule.hpp"
+#include "gtkmm/button.h"
 
 namespace waybar {
 
@@ -35,7 +36,7 @@ class AModule : public IModule {
 
   const std::string name_;
   const Json::Value &config_;
-  Gtk::EventBox event_box_;
+  Gtk::Button event_box_;
 
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
