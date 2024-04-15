@@ -423,6 +423,9 @@ void waybar::modules::Clock::cldShift_up() {
 void waybar::modules::Clock::cldShift_down() {
   cldCurrShift_ -= (months)((cldMode_ == CldMode::YEAR) ? 12 : 1) * cldShift_;
 }
+void waybar::modules::Clock::cldShift_reset() {
+  cldCurrShift_ = (months)0;
+}
 void waybar::modules::Clock::tz_up() {
   const auto tzSize{tzList_.size()};
   if (tzSize == 1) return;

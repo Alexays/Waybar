@@ -73,6 +73,7 @@ class Clock final : public ALabel {
   void cldModeSwitch();
   void cldShift_up();
   void cldShift_down();
+  void cldShift_reset();
   void tz_up();
   void tz_down();
   // Module Action Map
@@ -80,6 +81,7 @@ class Clock final : public ALabel {
       {"mode", &waybar::modules::Clock::cldModeSwitch},
       {"shift_up", &waybar::modules::Clock::cldShift_up},
       {"shift_down", &waybar::modules::Clock::cldShift_down},
+      {"shift_reset", &waybar::modules::Clock::cldShift_reset},
       {"tz_up", &waybar::modules::Clock::tz_up},
       {"tz_down", &waybar::modules::Clock::tz_down}};
 };
