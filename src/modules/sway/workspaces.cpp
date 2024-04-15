@@ -266,7 +266,6 @@ bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
 }
 
 void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
-  auto format = config_["window-format"].asString();
   if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
       node["name"].isString()) {
     std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
