@@ -357,22 +357,21 @@ std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::modules:
         std::ifstream(bat / "energy_full_design") >> energy_full_design;
       }
 
-      bool is_main_battery = charge_full_design >= largestDesignCapacity;
-      uint16_t cycle_count = 0;
+      uint16_t cycleCount = 0;
       if (fs::exists(bat / "cycle_count")) {
-        std::ifstream(bat / "cycle_count") >> cycle_count;
+        std::ifstream(bat / "cycle_count") >> cycleCount;
       }
-      if (is_main_battery) {
+      if (charge_full_design >= largestDesignCapacity) {
         largestDesignCapacity = charge_full_design;
 
-        if (cycle_count > mainBatCycleCount) {
-          mainBatCycleCount = cycle_count;
+        if (cycleCount > mainBatCycleCount) {
+          mainBatCycleCount = cycleCount;
         }
 
         if (charge_full_exists && charge_full_design_exists) {
-          float bat_health_percent = ((float)charge_full / charge_full_design) * 100;
-          if (mainBatHealthPercent == 0.0f || bat_health_percent < mainBatHealthPercent) {
-            mainBatHealthPercent = bat_health_percent;
+          float batHealthPercent = ((float)charge_full / charge_full_design) * 100;
+          if (mainBatHealthPercent == 0.0f || batHealthPercent < mainBatHealthPercent) {
+            mainBatHealthPercent = batHealthPercent;
           }
         }
       }
