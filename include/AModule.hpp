@@ -38,6 +38,8 @@ class AModule : public IModule {
   Gtk::EventBox event_box_;
 
   virtual bool handleToggle(GdkEventButton *const &ev);
+  virtual bool handleMouseEnter(GdkEventCrossing *const &ev);
+  virtual bool handleMouseLeave(GdkEventCrossing *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
   virtual bool handleRelease(GdkEventButton *const &ev);
 

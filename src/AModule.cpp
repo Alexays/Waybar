@@ -27,6 +27,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
 
+  event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseEnter));
+  event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseLeave));
+
   // configure events' user commands
   // hasUserEvent is true if any element from eventMap_ is satisfying the condition in the lambda
   bool hasUserEvent =
@@ -81,6 +84,20 @@ auto AModule::doAction(const std::string& name) -> void {
     // Call overrided action if derrived class has implemented it
     if (recA != eventActionMap_.cend() && name != recA->second) this->doAction(recA->second);
   }
+}
+
+bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
+  if (auto* module = event_box_.get_child(); module != nullptr) {
+    module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  }
+  return true;
+}
+
+bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
+  if (auto* module = event_box_.get_child(); module != nullptr) {
+    module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  }
+  return true;
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
