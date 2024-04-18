@@ -181,7 +181,8 @@ static bool status_gt(const std::string& a, const std::string& b) {
   return false;
 }
 
-std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::modules::Battery::getInfos() {
+std::tuple<uint8_t, float, std::string, float, uint16_t, float>
+waybar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
@@ -596,7 +597,8 @@ std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::modules:
     // still charging but not yet done
     if (cap == 100 && status == "Charging") status = "Full";
 
-    return {cap, time_remaining, status, total_power / 1e6, mainBatCycleCount, mainBatHealthPercent};
+    return {
+        cap, time_remaining, status, total_power / 1e6, mainBatCycleCount, mainBatHealthPercent};
 #endif
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
@@ -686,12 +688,11 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
-                                        fmt::arg("timeTo", tooltip_text_default),
-                                        fmt::arg("power", power), fmt::arg("capacity", capacity),
-                                        fmt::arg("time", time_remaining_formatted),
-                                        fmt::arg("cycles", cycles),
-                                        fmt::arg("health", fmt::format("{:.3}", health))));
+    label_.set_tooltip_text(
+        fmt::format(fmt::runtime(tooltip_format), fmt::arg("timeTo", tooltip_text_default),
+                    fmt::arg("power", power), fmt::arg("capacity", capacity),
+                    fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
+                    fmt::arg("health", fmt::format("{:.3}", health))));
   }
   if (!old_status_.empty()) {
     label_.get_style_context()->remove_class(old_status_);
@@ -710,10 +711,10 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    label_.set_markup(fmt::format(
-        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
-        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted),
-        fmt::arg("cycles", cycles)));
+    label_.set_markup(
+        fmt::format(fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
+                    fmt::arg("icon", getIcon(capacity, icons)),
+                    fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles)));
   }
   // Call parent update
   ALabel::update();
