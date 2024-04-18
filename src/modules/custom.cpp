@@ -214,13 +214,19 @@ void waybar::modules::Custom::parseOutputRaw() {
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
         text_ = Glib::Markup::escape_text(validated_line);
+        tooltip_ = Glib::Markup::escape_text(validated_line);
       } else {
         text_ = validated_line;
+        tooltip_ = validated_line;
       }
       tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
-      tooltip_ = validated_line;
+      if (config_["escape"].isBool() && config_["escape"].asBool()) {
+        tooltip_ = Glib::Markup::escape_text(validated_line);
+      } else {
+        tooltip_ = validated_line;
+      }  
     } else if (i == 2) {
       class_.push_back(validated_line);
     } else {
@@ -246,7 +252,11 @@ void waybar::modules::Custom::parseOutputJson() {
     } else {
       alt_ = parsed["alt"].asString();
     }
-    tooltip_ = parsed["tooltip"].asString();
+    if (config_["escape"].isBool() && config_["escape"].asBool()) {
+      tooltip_ = Glib::Markup::escape_text(parsed["tooltip"].asString());
+    } else {
+      tooltip_ = parsed["tooltip"].asString();
+    }
     if (parsed["class"].isString()) {
       class_.push_back(parsed["class"].asString());
     } else if (parsed["class"].isArray()) {
