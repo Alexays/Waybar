@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <iostream>
 
 #ifdef __linux__
 #include <sys/prctl.h>

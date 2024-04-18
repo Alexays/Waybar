@@ -132,7 +132,7 @@ This should look like this:
 
 The *class* parameter also accepts an array of strings.
 
-If nothing or an invalid option is specified, Waybar expects i3blocks style output. Values are *newline* separated.
+If nothing is specified, Waybar expects i3blocks style output. Values are *newline* separated.
 This should look like this:
 
 ```
@@ -148,6 +148,13 @@ $text\\n$tooltip\\n$class*
 *{percentage}* Percentage which can be set via a json return type.
 
 *{icon}*: An icon from 'format-icons' according to percentage.
+
+All fields present in the returned json can be used in the *format* field.
+In the following example, *$myvalue* can be accessed via the *{myfield}*
+placeholder.
+```
+{"text": "$text", ..., "myfield": "$myvalue" }
+```
 
 # EXAMPLES
 
