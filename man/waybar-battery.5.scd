@@ -119,6 +119,10 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *{time}*: Estimate of time until full or empty. Note that this is based on the power draw at the last refresh time, not an average.
 
+*{cycles}*: Amount of charge cycles the highest-capacity battery has seen. *(Linux only)*
+
+*{health}*: The percentage of the highest-capacity battery's original maximum charge it can still hold.
+
 # TIME FORMAT
 
 The *battery* module allows you to define how time should be formatted via *format-time*.

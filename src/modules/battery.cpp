@@ -181,7 +181,7 @@ static bool status_gt(const std::string& a, const std::string& b) {
   return false;
 }
 
-const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::getInfos() {
+std::tuple<uint8_t, float, std::string, float, uint16_t, float> waybar::modules::Battery::getInfos() {
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
 
   try {
@@ -234,7 +234,7 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     }
 
     // spdlog::info("{} {} {} {}", capacity,time,status,rate);
-    return {capacity, time / 60.0, status, rate};
+    return {capacity, time / 60.0, status, rate, 0, 0.0F};
 
 #elif defined(__linux__)
     uint32_t total_power = 0;  // μW
@@ -251,6 +251,10 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     bool time_to_empty_now_exists = false;
     uint32_t time_to_full_now = 0;
     bool time_to_full_now_exists = false;
+
+    uint32_t largestDesignCapacity = 0;
+    uint16_t mainBatCycleCount = 0;
+    float mainBatHealthPercent = 0.0F;
 
     std::string status = "Unknown";
     for (auto const& item : batteries_) {
@@ -351,6 +355,25 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
       if (fs::exists(bat / "energy_full_design")) {
         energy_full_design_exists = true;
         std::ifstream(bat / "energy_full_design") >> energy_full_design;
+      }
+
+      uint16_t cycleCount = 0;
+      if (fs::exists(bat / "cycle_count")) {
+        std::ifstream(bat / "cycle_count") >> cycleCount;
+      }
+      if (charge_full_design >= largestDesignCapacity) {
+        largestDesignCapacity = charge_full_design;
+
+        if (cycleCount > mainBatCycleCount) {
+          mainBatCycleCount = cycleCount;
+        }
+
+        if (charge_full_exists && charge_full_design_exists) {
+          float batHealthPercent = ((float)charge_full / charge_full_design) * 100;
+          if (mainBatHealthPercent == 0.0f || batHealthPercent < mainBatHealthPercent) {
+            mainBatHealthPercent = batHealthPercent;
+          }
+        }
       }
 
       if (!voltage_now_exists) {
@@ -573,11 +596,11 @@ const std::tuple<uint8_t, float, std::string, float> waybar::modules::Battery::g
     // still charging but not yet done
     if (cap == 100 && status == "Charging") status = "Full";
 
-    return {cap, time_remaining, status, total_power / 1e6};
+    return {cap, time_remaining, status, total_power / 1e6, mainBatCycleCount, mainBatHealthPercent};
 #endif
   } catch (const std::exception& e) {
     spdlog::error("Battery: {}", e.what());
-    return {0, 0, "Unknown", 0};
+    return {0, 0, "Unknown", 0, 0, 0.0f};
   }
 }
 
@@ -633,7 +656,7 @@ auto waybar::modules::Battery::update() -> void {
     return;
   }
 #endif
-  auto [capacity, time_remaining, status, power] = getInfos();
+  auto [capacity, time_remaining, status, power, cycles, health] = getInfos();
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
@@ -666,7 +689,9 @@ auto waybar::modules::Battery::update() -> void {
     label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
                                         fmt::arg("timeTo", tooltip_text_default),
                                         fmt::arg("power", power), fmt::arg("capacity", capacity),
-                                        fmt::arg("time", time_remaining_formatted)));
+                                        fmt::arg("time", time_remaining_formatted),
+                                        fmt::arg("cycles", cycles),
+                                        fmt::arg("health", fmt::format("{:.3}", health))));
   }
   if (!old_status_.empty()) {
     label_.get_style_context()->remove_class(old_status_);
@@ -687,7 +712,8 @@ auto waybar::modules::Battery::update() -> void {
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(
         fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
-        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted)));
+        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted),
+        fmt::arg("cycles", cycles)));
   }
   // Call parent update
   ALabel::update();
