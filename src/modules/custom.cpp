@@ -226,7 +226,7 @@ void waybar::modules::Custom::parseOutputRaw() {
         tooltip_ = Glib::Markup::escape_text(validated_line);
       } else {
         tooltip_ = validated_line;
-      }  
+      }
     } else if (i == 2) {
       class_.push_back(validated_line);
     } else {
