@@ -434,9 +434,16 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   }
   std::string name;
   {
+    bool alloutputs = config_["all-outputs"].asBool();
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                           [](const auto &workspace) { return hasFlag(workspace, "focused"); });
+    auto it =
+        std::find_if(workspaces_.begin(), workspaces_.end(), [alloutputs](const auto &workspace) {
+          if (alloutputs) {
+            return hasFlag(workspace, "focused");
+          }
+          bool noNodes = workspace["nodes"].empty() && workspace["floating_nodes"].empty();
+          return hasFlag(workspace, "visible") || (workspace["output"].isString() && noNodes);
+        });
     if (it == workspaces_.end()) {
       return true;
     }
