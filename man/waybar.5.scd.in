@@ -320,6 +320,7 @@ A group may hide all but one element, showing them only on mouse hover. In order
 - *waybar-hyprland-workspaces(5)*
 - *waybar-idle-inhibitor(5)*
 - *waybar-image(5)*
+- *waybar-images(5)*
 - *waybar-inhibitor(5)*
 - *waybar-jack(5)*
 - *waybar-keyboard-state(5)*

@@ -166,6 +166,7 @@ src_files = files(
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
+    'src/modules/images.cpp',
     'src/modules/load.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
@@ -191,6 +192,7 @@ man_files = files(
     'man/waybar-disk.5.scd',
     'man/waybar-idle-inhibitor.5.scd',
     'man/waybar-image.5.scd',
+    'man/waybar-images.5.scd',
     'man/waybar-states.5.scd',
     'man/waybar-temperature.5.scd',
 )
