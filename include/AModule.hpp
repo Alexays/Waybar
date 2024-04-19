@@ -33,6 +33,7 @@ class AModule : public IModule {
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
   void bindEvents(Gtk::Widget& wg);
+  void unBindEvents();
   bool tooltipEnabled();
 
   virtual void handleToggle(int n_press, double dx, double dy);
@@ -42,6 +43,11 @@ class AModule : public IModule {
 
  private:
   const bool isTooltip;
+  const bool isAfter{true};
+  bool enableClick_{false};
+  bool enableScroll_{false};
+  bool hasUsrPressEvent_{false};
+  bool hasUsrReleaseEvent_{false};
   std::vector<int> pid_;
   double distance_scrolled_x_{0.0};
   double distance_scrolled_y_{0.0};
@@ -70,6 +76,10 @@ class AModule : public IModule {
     {std::make_pair(std::make_pair(9u, 3), Gdk::Event::Type::BUTTON_PRESS), "on-triple-click-forward"}
   };
   void handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype);
+  void makeControllClick();
+  void makeControllScroll();
+  void removeControllClick();
+  void removeControllScroll();
 };
 
 }  // namespace waybar

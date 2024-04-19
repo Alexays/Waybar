@@ -84,6 +84,7 @@ xkbregistry = dependency('xkbregistry')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
+upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -311,6 +312,16 @@ if not get_option('logind').disabled()
     )
 endif
 
+if (upower_glib.found() and not get_option('logind').disabled())
+    add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
+    src_files += files(
+         'src/modules/upower.cpp'
+#        'src/modules/upower/upower.cpp',
+#        'src/modules/upower/upower_tooltip.cpp',
+    )
+    man_files += files('man/waybar-upower.5.scd')
+endif
+
 if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += files(
@@ -349,7 +360,8 @@ executable(
         libnl,
         libnlgen,
         libpulse,
-        libsndio
+        libsndio,
+        upower_glib
     ],
     include_directories: inc_dirs,
     install: true,

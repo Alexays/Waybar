@@ -7,7 +7,6 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
                        bool enable_click, bool enable_scroll)
     : ALabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
   box_.set_orientation(Gtk::Orientation::HORIZONTAL);
-  box_.set_spacing(8);
   box_.append(image_);
   box_.append(label_);
 }
