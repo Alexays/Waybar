@@ -1,20 +1,15 @@
 #pragma once
 
-#include <fmt/chrono.h>
-#include <gdkmm/pixbuf.h>
-#include <glibmm/refptr.h>
-
 #include "AIconLabel.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
-class User : public AIconLabel {
+class User final : public AIconLabel {
  public:
   User(const std::string&, const Json::Value&);
   virtual ~User() = default;
   auto update() -> void override;
-
-//todo  bool handleToggle(GdkEventButton* const& e) override;
+  void handleToggle(int n_press, double dx, double dy) override;
 
  private:
   util::SleeperThread thread_;
