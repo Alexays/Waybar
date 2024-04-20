@@ -1,4 +1,4 @@
-#include "modules/mpris/mpris.hpp"
+#include "modules/mpris.hpp"
 
 #include <fmt/core.h>
 

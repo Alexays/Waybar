@@ -86,6 +86,7 @@ libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 libjack = dependency('jack', required: get_option('jack'))
+libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
 playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 
@@ -337,7 +338,7 @@ endif
 
 if playerctl.found()
     add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
-    src_files += files('src/modules/mpris/mpris.cpp')
+    src_files += files('src/modules/mpris.cpp')
     man_files += files('man/waybar-mpris.5.scd')
 endif
 
@@ -358,6 +359,12 @@ if libjack.found()
     add_project_arguments('-DHAVE_LIBJACK', language: 'cpp')
     src_files += files('src/modules/jack.cpp')
     man_files += files('man/waybar-jack.5.scd')
+endif
+
+if libwireplumber.found()
+    add_project_arguments('-DHAVE_LIBWIREPLUMBER', language: 'cpp')
+    src_files += files('src/modules/wireplumber.cpp')
+    man_files += files('man/waybar-wireplumber.5.scd')
 endif
 
 subdir('protocol')
@@ -388,6 +395,7 @@ executable(
         libpulse,
         libmpdclient,
         libjack,
+        libwireplumber,
         libsndio,
         upower_glib
     ],

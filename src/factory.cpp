@@ -53,7 +53,7 @@
 #include "modules/sni/tray.hpp"
 #endif
 #ifdef HAVE_MPRIS
-#include "modules/mpris/mpris.hpp"
+#include "modules/mpris.hpp"
 #endif
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
@@ -126,7 +126,6 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Gamemode(id, config_[name]);
     }
 #endif
-/* gtk4 todo*/
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
       return new waybar::modules::UPower(id, config_[name]);
@@ -136,12 +135,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "privacy") {
       return new waybar::modules::privacy::Privacy(id, config_[name], pos);
     }
-#endif
+#endif*/
 #ifdef HAVE_MPRIS
     if (ref == "mpris") {
       return new waybar::modules::mpris::Mpris(id, config_[name]);
     }
-#endif*/
+#endif
 #ifdef HAVE_SWAY
     if (ref == "sway/mode") {
       return new waybar::modules::sway::Mode(id, config_[name]);
@@ -229,17 +228,17 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "clock") {
       return new waybar::modules::Clock(id, config_[name]);
     }
-/**
-gtk4 todo
     if (ref == "user") {
       return new waybar::modules::User(id, config_[name]);
-    }*/
+    }
     if (ref == "disk") {
       return new waybar::modules::Disk(id, config_[name]);
-    }/*
+    }
     if (ref == "image") {
       return new waybar::modules::Image(id, config_[name]);
-    }
+    }/*
+gtk4 todo
+
 #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
@@ -270,12 +269,12 @@ gtk4 todo
     if (ref == "pulseaudio/slider") {
       return new waybar::modules::PulseaudioSlider(id, config_[name]);
     }
-#endif/*
+#endif
 #ifdef HAVE_LIBMPDCLIENT
     if (ref == "mpd") {
       return new waybar::modules::MPD(id, config_[name]);
     }
-#endif*/
+#endif
 #ifdef HAVE_LIBSNDIO
     if (ref == "sndio") {
       return new waybar::modules::Sndio(id, config_[name]);
@@ -288,7 +287,7 @@ gtk4 todo
     if (ref == "inhibitor") {
       return new waybar::modules::Inhibitor(id, bar_, config_[name]);
     }*/
-#endif/*
+#endif
 #ifdef HAVE_LIBJACK
     if (ref == "jack") {
       return new waybar::modules::JACK(id, config_[name]);
@@ -298,7 +297,7 @@ gtk4 todo
     if (ref == "wireplumber") {
       return new waybar::modules::Wireplumber(id, config_[name]);
     }
-#endif*/
+#endif
 #ifdef HAVE_LIBCAVA
     if (ref == "cava") {
       return new waybar::modules::Cava(id, config_[name]);
