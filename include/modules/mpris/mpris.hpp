@@ -16,12 +16,12 @@ extern "C" {
 
 namespace waybar::modules::mpris {
 
-class Mpris : public ALabel {
+class Mpris final : public ALabel {
  public:
   Mpris(const std::string&, const Json::Value&);
   virtual ~Mpris();
   auto update() -> void override;
-  bool handleToggle(GdkEventButton* const&) override;
+  void handleToggle(int n_press, double dx, double dy) override;
 
  private:
   static auto onPlayerNameAppeared(PlayerctlPlayerManager*, PlayerctlPlayerName*, gpointer) -> void;

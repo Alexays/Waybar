@@ -14,6 +14,7 @@ extern "C" {
 
 #include <glib.h>
 #include <spdlog/spdlog.h>
+#include <glibmm/markup.h>
 
 namespace waybar::modules::mpris {
 
@@ -462,7 +463,7 @@ auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
   spdlog::debug("mpris: player-stop callback");
 
   // hide widget
-  mpris->event_box_.set_visible(false);
+  mpris->label_.set_visible(false);
   // update widget
   mpris->dp.emit();
 }
@@ -586,7 +587,7 @@ errorexit:
   return std::nullopt;
 }
 
-bool Mpris::handleToggle(GdkEventButton* const& e) {
+void Mpris::handleToggle(int n_press, double dx, double dy) {
   GError* error = nullptr;
   waybar::util::ScopeGuard error_deleter([error]() {
     if (error) {
@@ -595,36 +596,33 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
   });
 
   auto info = getPlayerInfo();
-  if (!info) return false;
+  if (!info) return;
 
-  if (e->type == GdkEventType::GDK_BUTTON_PRESS) {
-    switch (e->button) {
+  if (n_press == 1) {
+    switch (controllClick_->get_current_button()) {
       case 1:  // left-click
         if (config_["on-click"].isString()) {
-          return ALabel::handleToggle(e);
+          return ALabel::handleToggle(n_press, dx, dy);
         }
         playerctl_player_play_pause(player, &error);
         break;
       case 2:  // middle-click
         if (config_["on-click-middle"].isString()) {
-          return ALabel::handleToggle(e);
+          return ALabel::handleToggle(n_press, dx, dy);
         }
         playerctl_player_previous(player, &error);
         break;
       case 3:  // right-click
         if (config_["on-click-right"].isString()) {
-          return ALabel::handleToggle(e);
+          return ALabel::handleToggle(n_press, dx, dy);
         }
         playerctl_player_next(player, &error);
         break;
     }
   }
-  if (error) {
+  if (error)
     spdlog::error("mpris[{}]: error running builtin on-click action: {}", (*info).name,
                   error->message);
-    return false;
-  }
-  return true;
 }
 
 auto Mpris::update() -> void {
@@ -634,7 +632,7 @@ auto Mpris::update() -> void {
 
   auto opt = getPlayerInfo();
   if (!opt) {
-    event_box_.set_visible(false);
+    label_.set_visible(false);
     ALabel::update();
     return;
   }
@@ -732,7 +730,7 @@ auto Mpris::update() -> void {
     }
   }
 
-  event_box_.set_visible(true);
+  label_.set_visible(true);
   // call parent update
   ALabel::update();
 }

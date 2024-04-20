@@ -47,7 +47,7 @@ class MPD final : public ALabel {
   std::string getOptionIcon(std::string optionName, bool activated) const;
 
   // GUI-side methods
-  bool handlePlayPause(int n_press, double dx, double dy);
+  void handlePlayPause(int n_press, double dx, double dy);
   void emit() { dp.emit(); }
 
   // MPD-side, Non-GUI methods.

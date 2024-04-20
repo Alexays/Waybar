@@ -326,9 +326,9 @@ void waybar::modules::MPD::fetchState() {
   checkErrors(conn);
 }
 
-bool waybar::modules::MPD::handlePlayPause(int n_press, double dx, double dy) {
+void waybar::modules::MPD::handlePlayPause(int n_press, double dx, double dy) {
   if (n_press != 1 || connection_ = nullptr)
-    return false;
+    return;
 
   auto button{controllClick_->get_current_button()};
 
@@ -340,6 +340,4 @@ bool waybar::modules::MPD::handlePlayPause(int n_press, double dx, double dy) {
   } else if (button == 3u) {
     context_.stop();
   }
-
-  return true;
 }

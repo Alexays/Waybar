@@ -87,6 +87,7 @@ libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 libjack = dependency('jack', required: get_option('jack'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
+playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -209,7 +210,7 @@ if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and 
     man_files += files('man/waybar-keyboard-state.5.scd')
 endif
 
-#if libmpdclient.found()
+if libmpdclient.found()
     add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
     src_files += files(
         'src/modules/mpd/mpd.cpp',
@@ -218,7 +219,7 @@ endif
     man_files += files(
         'man/waybar-mpd.5.scd',
     )
-#endif
+endif
 
 if libsndio.found()
     add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
@@ -333,6 +334,12 @@ if (upower_glib.found() and not get_option('logind').disabled())
     man_files += files('man/waybar-upower.5.scd')
 endif
 
+if playerctl.found()
+    add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
+    src_files += files('src/modules/mpris/mpris.cpp')
+    man_files += files('man/waybar-mpris.5.scd')
+endif
+
 if libpulse.found()
     add_project_arguments('-DHAVE_LIBPULSE', language: 'cpp')
     src_files += files(
@@ -376,6 +383,7 @@ executable(
         libinput,
         libnl,
         libnlgen,
+        playerctl,
         libpulse,
         libmpdclient,
         libjack,
