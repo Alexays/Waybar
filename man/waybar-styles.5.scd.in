@@ -29,6 +29,16 @@ An example user-controlled stylesheet that just changes the color of the clock t
 }
 ```
 
+## Hover-effect
+
+You can apply special styling to any module for when the cursor hovers it.
+
+```
+#clock:hover {
+  background-color: #ffffff;
+}
+```
+
 # SEE ALSO
 
 - *waybar(5)*
