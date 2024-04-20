@@ -39,8 +39,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     server_ = config["server"].asCString();
   }
 
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
+  controllClick_->signal_pressed().connect(sigc::mem_fun(*this, &MPD::handlePlayPause), false);
 }
 
 auto waybar::modules::MPD::update() -> void {
@@ -327,17 +326,18 @@ void waybar::modules::MPD::fetchState() {
   checkErrors(conn);
 }
 
-bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
-  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || connection_ == nullptr) {
+bool waybar::modules::MPD::handlePlayPause(int n_press, double dx, double dy) {
+  if (n_press != 1 || connection_ = nullptr)
     return false;
-  }
 
-  if (e->button == 1) {
+  auto button{controllClick_->get_current_button()};
+
+  if (button == 1u) {
     if (state_ == MPD_STATE_PLAY)
       context_.pause();
     else
       context_.play();
-  } else if (e->button == 3) {
+  } else if (button == 3u) {
     context_.stop();
   }
 

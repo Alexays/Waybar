@@ -84,6 +84,7 @@ xkbregistry = dependency('xkbregistry')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
+libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 libjack = dependency('jack', required: get_option('jack'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
 
@@ -207,6 +208,17 @@ if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and 
     src_files += files('src/modules/keyboard_state.cpp')
     man_files += files('man/waybar-keyboard-state.5.scd')
 endif
+
+#if libmpdclient.found()
+    add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
+    src_files += files(
+        'src/modules/mpd/mpd.cpp',
+        'src/modules/mpd/state.cpp',
+    )
+    man_files += files(
+        'man/waybar-mpd.5.scd',
+    )
+#endif
 
 if libsndio.found()
     add_project_arguments('-DHAVE_LIBSNDIO', language: 'cpp')
@@ -365,6 +377,7 @@ executable(
         libnl,
         libnlgen,
         libpulse,
+        libmpdclient,
         libjack,
         libsndio,
         upower_glib
