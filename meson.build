@@ -84,6 +84,7 @@ xkbregistry = dependency('xkbregistry')
 libnl = dependency('libnl-3.0', required: get_option('libnl'))
 libnlgen = dependency('libnl-genl-3.0', required: get_option('libnl'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
+libjack = dependency('jack', required: get_option('jack'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
@@ -316,8 +317,6 @@ if (upower_glib.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
     src_files += files(
          'src/modules/upower.cpp'
-#        'src/modules/upower/upower.cpp',
-#        'src/modules/upower/upower_tooltip.cpp',
     )
     man_files += files('man/waybar-upower.5.scd')
 endif
@@ -333,6 +332,12 @@ if libpulse.found()
         'man/waybar-pulseaudio.5.scd',
         'man/waybar-pulseaudio-slider.5.scd',
     )
+endif
+
+if libjack.found()
+    add_project_arguments('-DHAVE_LIBJACK', language: 'cpp')
+    src_files += files('src/modules/jack.cpp')
+    man_files += files('man/waybar-jack.5.scd')
 endif
 
 subdir('protocol')
@@ -360,6 +365,7 @@ executable(
         libnl,
         libnlgen,
         libpulse,
+        libjack,
         libsndio,
         upower_glib
     ],
