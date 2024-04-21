@@ -152,6 +152,8 @@ auto waybar::modules::Clock::update() -> void {
           std::regex_replace(tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"), cldText_);
       tlpText_ =
           std::regex_replace(tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
+    } else {
+      tlpText_ = tlpFmt_;
     }
 
     tlpText_ = fmt_lib::vformat(locale_, tlpText_, fmt_lib::make_format_args(shiftedNow));
