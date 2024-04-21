@@ -1,19 +1,22 @@
 #pragma once
 
 #include <pipewire/pipewire.h>
+#include <sigc++/signal.h>
+
 
 #include "util/backend_common.hpp"
 #include "util/pipewire/privacy_node_info.hpp"
 
 namespace waybar::util::PipewireBackend {
 
-class PipewireBackend {
+class PipewireBackend final {
  private:
   pw_thread_loop* mainloop_;
   pw_context* context_;
   pw_core* core_;
 
-  spa_hook registry_listener;
+  pw_registry* registry_;
+  spa_hook registryListener_;
 
   /* Hack to keep constructor inaccessible but still public.
    * This is required to be able to use std::make_shared.
@@ -21,20 +24,22 @@ class PipewireBackend {
    * pointer because the destructor will manually free memory, and this could be
    * a problem with C++20's copy and move semantics.
    */
-  struct private_constructor_tag {};
+  struct PrivateConstructorTag {};
 
  public:
-  std::mutex mutex_;
-
-  pw_registry* registry;
-
-  sigc::signal<void> privacy_nodes_changed_signal_event;
+  sigc::signal<void()> privacy_nodes_changed_signal_event;
 
   std::unordered_map<uint32_t, PrivacyNodeInfo*> privacy_nodes;
+  std::mutex mutex_;
 
   static std::shared_ptr<PipewireBackend> getInstance();
 
-  PipewireBackend(private_constructor_tag tag);
+  // Handlers for PipeWire events
+  void handleRegistryEventGlobal(uint32_t id, uint32_t permissions, const char* type,
+                                 uint32_t version, const struct spa_dict* props);
+  void handleRegistryEventGlobalRemove(uint32_t id);
+
+  PipewireBackend(PrivateConstructorTag tag);
   ~PipewireBackend();
 };
 }  // namespace waybar::util::PipewireBackend

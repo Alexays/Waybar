@@ -88,6 +88,7 @@ libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
 upower_glib = dependency('upower-glib', required: get_option('upower_glib'))
+pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'))
 playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
@@ -338,6 +339,17 @@ if (upower_glib.found() and not get_option('logind').disabled())
     man_files += files('man/waybar-upower.5.scd')
 endif
 
+if pipewire.found()
+    add_project_arguments('-DHAVE_PIPEWIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/privacy/privacy.cpp',
+        'src/modules/privacy/privacy_item.cpp',
+        'src/util/pipewire/pipewire_backend.cpp',
+        'src/util/pipewire/privacy_node_info.cpp',
+    )
+    man_files += files('man/waybar-privacy.5.scd')
+endif
+
 if playerctl.found()
     add_project_arguments('-DHAVE_MPRIS', language: 'cpp')
     src_files += files('src/modules/mpris.cpp')
@@ -399,7 +411,8 @@ executable(
         libjack,
         libwireplumber,
         libsndio,
-        upower_glib
+        upower_glib,
+        pipewire
     ],
     include_directories: inc_dirs,
     install: true,

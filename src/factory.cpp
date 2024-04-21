@@ -130,12 +130,12 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "upower") {
       return new waybar::modules::UPower(id, config_[name]);
     }
-#endif/*
+#endif
 #ifdef HAVE_PIPEWIRE
     if (ref == "privacy") {
       return new waybar::modules::privacy::Privacy(id, config_[name], pos);
     }
-#endif*/
+#endif
 #ifdef HAVE_MPRIS
     if (ref == "mpris") {
       return new waybar::modules::mpris::Mpris(id, config_[name]);
