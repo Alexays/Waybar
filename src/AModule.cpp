@@ -90,14 +90,14 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
   if (auto* module = event_box_.get_child(); module != nullptr) {
     module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
-  return true;
+  return false;
 }
 
 bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
   if (auto* module = event_box_.get_child(); module != nullptr) {
     module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
-  return true;
+  return false;
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
