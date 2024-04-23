@@ -1,11 +1,7 @@
 #include "modules/cffi.hpp"
 
 #include <dlfcn.h>
-#include <json/value.h>
-
-#include <algorithm>
-#include <iostream>
-#include <type_traits>
+#include <util/command.hpp>
 
 namespace waybar::modules {
 
@@ -76,7 +72,7 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
       .waybar_version = VERSION,
       .get_root_widget =
           [](ffi::wbcffi_module* obj) {
-            return dynamic_cast<Gtk::Container*>(&((CFFI*)obj)->event_box_)->gobj();
+            return dynamic_cast<Gtk::Widget*>(&((CFFI*)obj)->operator Gtk::Widget&())->gobj();
           },
       .queue_update = [](ffi::wbcffi_module* obj) { ((CFFI*)obj)->dp.emit(); },
   };

@@ -264,9 +264,11 @@ if is_linux
                       'src/modules/memory/common.cpp',
                       'src/modules/memory/linux.cpp',
                       'src/modules/bluetooth.cpp',
+                      'src/modules/cffi.cpp',
                       'src/modules/systemd_failed_units.cpp')
    man_files += files('man/waybar-battery.5.scd',
                       'man/waybar-bluetooth.5.scd',
+                      'man/waybar-cffi.5.scd',
                       'man/waybar-cpu.5.scd',
                       'man/waybar-memory.5.scd',
                       'man/waybar-systemd-failed-units.5.scd')
@@ -274,7 +276,7 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
     add_project_arguments('-DHAVE_MEMORY_BSD', language: 'cpp')
     src_files += files(
-#        'src/modules/cffi.cpp',
+        'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
         'src/modules/cpu_frequency/bsd.cpp',
         'src/modules/cpu_frequency/common.cpp',
@@ -284,7 +286,7 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
         'src/modules/memory/common.cpp',
     )
     man_files += files(
-#        'man/waybar-cffi.5.scd',
+        'man/waybar-cffi.5.scd',
         'man/waybar-cpu.5.scd',
         'man/waybar-memory.5.scd'
     )
