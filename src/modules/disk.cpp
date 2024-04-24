@@ -1,5 +1,9 @@
 #include "modules/disk.hpp"
 
+#include <fmt/format.h>
+#include <sys/statvfs.h>
+#include "util/format.hpp"
+
 using namespace waybar::util;
 
 waybar::modules::Disk::Disk(const std::string& id, const Json::Value& config)
@@ -42,7 +46,7 @@ auto waybar::modules::Disk::update() -> void {
   */
 
   if (err != 0) {
-    event_box_.hide();
+    label_.hide();
     return;
   }
 
@@ -65,9 +69,9 @@ auto waybar::modules::Disk::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
-    event_box_.show();
+    label_.show();
     label_.set_markup(fmt::format(
         fmt::runtime(format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
         fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks), fmt::arg("used", used),

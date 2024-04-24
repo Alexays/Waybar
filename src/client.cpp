@@ -212,11 +212,11 @@ void waybar::Client::bindInterfaces() {
   }
 
   monitors_->signal_items_changed().connect([=, this](const guint& position, const guint& removed, const guint& added){
-    for (auto i{removed}; i > 0; --i) {
+    for (auto i{removed}; i >= 0; --i) {
       handleMonitorRemoved(std::dynamic_pointer_cast<Gdk::Monitor>(monitors_->get_object(position + i)));
     }
 
-    for (auto i{added}; i > 0; --i) {
+    for (auto i{added}; i >= 0; --i) {
       handleMonitorAdded(std::dynamic_pointer_cast<Gdk::Monitor>(monitors_->get_object(position + i)));
     }
   });

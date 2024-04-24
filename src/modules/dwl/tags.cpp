@@ -1,14 +1,7 @@
 #include "modules/dwl/tags.hpp"
-
-#include <gtkmm/button.h>
-#include <gtkmm/label.h>
-#include <spdlog/spdlog.h>
-#include <wayland-client.h>
-
-#include <algorithm>
-
 #include "client.hpp"
-#include "dwl-ipc-unstable-v2-client-protocol.h"
+
+#include <spdlog/spdlog.h>
 
 #define TAG_INACTIVE 0
 #define TAG_ACTIVE 1
@@ -19,7 +12,7 @@ namespace waybar::modules::dwl {
 /* dwl stuff */
 wl_array tags, layouts;
 
-static uint num_tags = 0;
+static uint num_tags{0};
 
 void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
@@ -95,8 +88,8 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       bar_(bar),
       box_{bar.orientation, 0},
       output_status_{nullptr} {
-  struct wl_display *display = Client::inst()->wl_display;
-  struct wl_registry *registry = wl_display_get_registry(display);
+  struct wl_display *display{Client::inst()->wl_display};
+  struct wl_registry *registry{wl_display_get_registry(display)};
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
 
@@ -114,39 +107,42 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
 
   // Default to 9 tags, cap at 32
-  const uint32_t num_tags =
-      config["num-tags"].isUInt() ? std::min<uint32_t>(32, config_["num-tags"].asUInt()) : 9;
+  const uint32_t num_tags{
+      config["num-tags"].isUInt() ? std::min<uint32_t>(32, config_["num-tags"].asUInt()) : 9};
 
   std::vector<std::string> tag_labels(num_tags);
-  for (uint32_t tag = 0; tag < num_tags; ++tag) {
+  for (uint32_t tag{0}; tag < num_tags; ++tag) {
     tag_labels[tag] = std::to_string(tag + 1);
   }
-  const Json::Value custom_labels = config["tag-labels"];
+  const Json::Value custom_labels{config["tag-labels"]};
   if (custom_labels.isArray() && !custom_labels.empty()) {
-    for (uint32_t tag = 0; tag < std::min(num_tags, custom_labels.size()); ++tag) {
+    for (uint32_t tag{0}; tag < std::min(num_tags, custom_labels.size()); ++tag) {
       tag_labels[tag] = custom_labels[tag].asString();
     }
   }
 
-  uint32_t i = 1;
+  uint32_t i{1};
   for (const auto &tag_label : tag_labels) {
-    Gtk::Button &button = buttons_.emplace_back(tag_label);
-    button.set_relief(Gtk::RELIEF_NONE);
-    box_.pack_start(button, false, false, 0);
+    Gtk::Button &button{buttons_.emplace_back(tag_label)};
+    auto controlClick{clickControls_.emplace_back(Gtk::GestureClick::create())};
+    controlClick->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    controlClick->set_button(1u);
+    button.add_controller(controlClick);
+    button.set_has_frame(false);
+    box_.prepend(button);
     if (!config_["disable-click"].asBool()) {
-      button.signal_clicked().connect(
-          sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), i));
-      button.signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
+      controlClick->signal_pressed().connect(sigc::bind(sigc::mem_fun(*this,
+                                          &Tags::handle_button_press), i, controlClick));
+      controlClick->signal_released().connect(sigc::bind(sigc::mem_fun(*this,
+                                          &Tags::handle_primary_clicked), i));
     }
     button.show();
     i <<= 1;
   }
 
-  struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  struct wl_output *output{gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj())};
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
 
@@ -160,23 +156,22 @@ Tags::~Tags() {
   }
 }
 
-void Tags::handle_primary_clicked(uint32_t tag) {
+void Tags::handle_primary_clicked(int n_press, double dx, double dy, uint32_t tag) {
   if (!output_status_) return;
-
   zdwl_ipc_output_v2_set_tags(output_status_, tag, 1);
 }
 
-bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
-  if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
-    if (!output_status_) return true;
+void Tags::handle_button_press(int n_press, double dx, double dy, uint32_t tag,
+                               Glib::RefPtr<Gtk::GestureClick> controlClick) {
+  if (controlClick->get_current_button() == 3) {
+    if (!output_status_) return;
     zdwl_ipc_output_v2_set_tags(output_status_, num_tags ^ tag, 0);
   }
-  return true;
 }
 
 void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
   // First clear all occupied state
-  auto &button = buttons_[tag];
+  auto &button{buttons_[tag]};
   if (clients) {
     button.get_style_context()->add_class("occupied");
   } else {
@@ -195,5 +190,7 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
     button.get_style_context()->remove_class("urgent");
   }
 }
+
+Tags::operator Gtk::Widget&() { return box_; };
 
 } /* namespace waybar::modules::dwl */

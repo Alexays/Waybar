@@ -1,8 +1,5 @@
 #include "modules/systemd_failed_units.hpp"
 
-#include <cstdint>
-#include <giomm/dbusproxy.h>
-#include <glibmm/variant.h>
 #include <spdlog/spdlog.h>
 
 static const unsigned UPDATE_DEBOUNCE_TIME_MS = 1000;
@@ -28,7 +25,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
   /* Default to enable both "system" and "user". */
   if (!config["system"].isBool() || config["system"].asBool()) {
     system_proxy = Gio::DBus::Proxy::create_for_bus_sync(
-        Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.systemd1",
+        Gio::DBus::BusType::SYSTEM, "org.freedesktop.systemd1",
         "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties");
     if (!system_proxy) {
       throw std::runtime_error("Unable to connect to systemwide systemd DBus!");
@@ -37,7 +34,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
   }
   if (!config["user"].isBool() || config["user"].asBool()) {
     user_proxy = Gio::DBus::Proxy::create_for_bus_sync(
-        Gio::DBus::BusType::BUS_TYPE_SESSION, "org.freedesktop.systemd1",
+        Gio::DBus::BusType::SESSION, "org.freedesktop.systemd1",
         "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties");
     if (!user_proxy) {
       throw std::runtime_error("Unable to connect to user systemd DBus!");
@@ -55,23 +52,21 @@ SystemdFailedUnits::~SystemdFailedUnits() {
   if (user_proxy) user_proxy.reset();
 }
 
-auto SystemdFailedUnits::notify_cb(
-    const Glib::ustring &sender_name,
-    const Glib::ustring &signal_name,
-    const Glib::VariantContainerBase &arguments) -> void {
+auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
+                                   const Glib::ustring& signal_name,
+                                   const Glib::VariantContainerBase& arguments) -> void {
   if (signal_name == "PropertiesChanged" && !update_pending) {
     update_pending = true;
     /* The fail count may fluctuate due to restarting. */
-    Glib::signal_timeout().connect_once(
-        sigc::mem_fun(*this, &SystemdFailedUnits::updateData),
-        UPDATE_DEBOUNCE_TIME_MS);
+    Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &SystemdFailedUnits::updateData),
+                                        UPDATE_DEBOUNCE_TIME_MS);
   }
 }
 
 void SystemdFailedUnits::updateData() {
   update_pending = false;
 
-  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy> &proxy) -> uint32_t {
+  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> uint32_t {
     try {
       auto parameters = Glib::VariantContainerBase(
           g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "NFailedUnits"));
@@ -86,7 +81,7 @@ void SystemdFailedUnits::updateData() {
         }
       }
     } catch (Glib::Error& e) {
-      spdlog::error("Failed to get {} failed units: {}", kind, e.what().c_str());
+      spdlog::error("Failed to get {} failed units: {}", kind, e.what());
     }
     return 0;
   };
@@ -105,11 +100,11 @@ auto SystemdFailedUnits::update() -> void {
 
   // Hide if needed.
   if (nr_failed == 0 && hide_on_ok) {
-    event_box_.set_visible(false);
+    label_.set_visible(false);
     return;
   }
-  if (!event_box_.get_visible()) {
-    event_box_.set_visible(true);
+  if (!label_.get_visible()) {
+    label_.set_visible(true);
   }
 
   // Set state class.
@@ -123,11 +118,9 @@ auto SystemdFailedUnits::update() -> void {
   last_status = status;
 
   label_.set_markup(fmt::format(
-      fmt::runtime(nr_failed == 0 ? format_ok : format_),
-      fmt::arg("nr_failed", nr_failed),
-      fmt::arg("nr_failed_system", nr_failed_system),
-      fmt::arg("nr_failed_user", nr_failed_user)));
+      fmt::runtime(nr_failed == 0 ? format_ok : format_), fmt::arg("nr_failed", nr_failed),
+      fmt::arg("nr_failed_system", nr_failed_system), fmt::arg("nr_failed_user", nr_failed_user)));
   ALabel::update();
 }
 
-} // namespace waybar::modules::systemd_failed_units
+}  // namespace waybar::modules

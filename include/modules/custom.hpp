@@ -1,10 +1,5 @@
 #pragma once
 
-#include <fmt/format.h>
-
-#include <csignal>
-#include <string>
-
 #include "ALabel.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
@@ -12,7 +7,7 @@
 
 namespace waybar::modules {
 
-class Custom : public ALabel {
+class Custom final : public ALabel {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&, const std::string&);
   virtual ~Custom();
@@ -26,8 +21,8 @@ class Custom : public ALabel {
   void parseOutputRaw();
   void parseOutputJson();
   void handleEvent();
-//todo  bool handleScroll(GdkEventScroll* e) override;
-//todo  bool handleToggle(GdkEventButton* const& e) override;
+  bool handleScroll(double dx, double dy);
+  void handleToggle(int n_press, double dx, double dy);
 
   const std::string name_;
   const std::string output_name_;

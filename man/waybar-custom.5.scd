@@ -72,7 +72,11 @@ Addressed by *custom/<name>*
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -106,6 +110,11 @@ Addressed by *custom/<name>*
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	The tooltip format. If specified, overrides any tooltip output from the script in *exec*. ++
+	Uses the same format replacements as *format*.
 
 *escape*: ++
 	typeof: bool ++

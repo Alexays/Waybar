@@ -1,24 +1,8 @@
 #include "modules/privacy/privacy_item.hpp"
 
-#include <fmt/core.h>
-#include <pipewire/pipewire.h>
-#include <spdlog/spdlog.h>
-
-#include <cstdio>
-#include <cstring>
-#include <string>
-#include <thread>
-
-#include "AModule.hpp"
 #include "glibmm/main.h"
-#include "glibmm/priorities.h"
-#include "gtkmm/enums.h"
 #include "gtkmm/label.h"
-#include "gtkmm/revealer.h"
 #include "gtkmm/tooltip.h"
-#include "sigc++/adaptors/bind.h"
-#include "util/gtk_icon.hpp"
-#include "util/pipewire/privacy_node_info.hpp"
 
 namespace waybar::modules::privacy {
 
@@ -29,8 +13,8 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
       privacy_type(privacy_type_),
       nodes(nodes_),
       signal_conn(),
-      tooltip_window(Gtk::ORIENTATION_VERTICAL, 0),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0),
+      tooltip_window(Gtk::Orientation::VERTICAL, 0),
+      box_(Gtk::Orientation::HORIZONTAL, 0),
       icon_() {
   switch (privacy_type) {
     case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
@@ -52,24 +36,27 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
   // Set the reveal transition to not look weird when sliding in
   if (pos == "modules-left") {
-    set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
+    set_transition_type(Gtk::RevealerTransitionType::SLIDE_RIGHT);
   } else if (pos == "modules-center") {
-    set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_CROSSFADE);
+    set_transition_type(Gtk::RevealerTransitionType::CROSSFADE);
   } else if (pos == "modules-right") {
-    set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_LEFT);
+    set_transition_type(Gtk::RevealerTransitionType::SLIDE_LEFT);
   }
   set_transition_duration(transition_duration);
 
   box_.set_name("privacy-item");
-  box_.add(icon_);
+  box_.append(icon_);
   icon_.set_pixel_size(icon_size);
-  add(box_);
+  set_child(box_);
+
+  // Get current theme
+  gtkTheme_ = Gtk::IconTheme::get_for_display(box_.get_display());
 
   // Icon Name
   if (config_["icon-name"].isString()) {
     iconName = config_["icon-name"].asString();
   }
-  icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
+  icon_.set_from_icon_name(iconName);
 
   // Tooltip Icon Size
   if (config_["tooltip-icon-size"].isUInt()) {
@@ -88,7 +75,7 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
           tooltip->set_custom(tooltip_window);
           return true;
         },
-        *this));
+        *this), false);
   }
 
   // Don't show by default
@@ -98,27 +85,26 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
 void PrivacyItem::update_tooltip() {
   // Removes all old nodes
-  for (auto child : tooltip_window.get_children()) {
-    delete child;
-  }
+  for (auto child{tooltip_window.get_last_child()}; child; child = tooltip_window.get_last_child())
+    tooltip_window.remove(*child);
 
   for (auto *node : *nodes) {
-    Gtk::Box *box = new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 4);
+    Gtk::Box *box = new Gtk::Box(Gtk::Orientation::HORIZONTAL, 4);
 
     // Set device icon
     Gtk::Image *node_icon = new Gtk::Image();
     node_icon->set_pixel_size(tooltipIconSize);
-    node_icon->set_from_icon_name(node->get_icon_name(), Gtk::ICON_SIZE_INVALID);
-    box->add(*node_icon);
+    node_icon->set_from_icon_name(node->getIconName(gtkTheme_));
+    box->append(*node_icon);
 
     // Set model
-    Gtk::Label *node_name = new Gtk::Label(node->get_name());
-    box->add(*node_name);
+    auto *nodeName = new Gtk::Label(node->getName());
+    box->append(*nodeName);
 
-    tooltip_window.add(*box);
+    tooltip_window.append(*box);
   }
 
-  tooltip_window.show_all();
+  tooltip_window.show();
 }
 
 void PrivacyItem::set_in_use(bool in_use) {

@@ -1,23 +1,18 @@
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <string>
-
-#include "ALabel.hpp"
+#include "AModule.hpp"
 #include "gtkmm/box.h"
-#include "modules/privacy/privacy_item.hpp"
 #include "util/pipewire/pipewire_backend.hpp"
-#include "util/pipewire/privacy_node_info.hpp"
 
 using waybar::util::PipewireBackend::PrivacyNodeInfo;
 
 namespace waybar::modules::privacy {
 
-class Privacy : public AModule {
+class Privacy final : public AModule {
  public:
   Privacy(const std::string &, const Json::Value &, const std::string &pos);
   auto update() -> void override;
+  operator Gtk::Widget &() override;
 
   void onPrivacyNodesChanged();
 

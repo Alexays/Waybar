@@ -1,22 +1,14 @@
 #pragma once
 
-#include <sigc++/sigc++.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <unistd.h>
-
-#include <cstring>
-#include <memory>
-#include <mutex>
-#include <stdexcept>
-#include <string>
 
 #include "ipc.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
-class Ipc {
+class Ipc final {
  public:
   Ipc();
   ~Ipc();
@@ -27,15 +19,15 @@ class Ipc {
     std::string payload;
   };
 
-  sigc::signal<void, const struct ipc_response &> signal_event;
-  sigc::signal<void, const struct ipc_response &> signal_cmd;
+  sigc::signal<void(const struct ipc_response &)> signal_event;
+  sigc::signal<void(const struct ipc_response &)> signal_cmd;
 
   void sendCmd(uint32_t type, const std::string &payload = "");
   void subscribe(const std::string &payload);
   void handleEvent();
   void setWorker(std::function<void()> &&func);
 
- protected:
+ private:
   static inline const std::string ipc_magic_ = "i3-ipc";
   static inline const size_t ipc_header_size_ = ipc_magic_.size() + 8;
 

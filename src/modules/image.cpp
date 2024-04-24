@@ -1,14 +1,16 @@
 #include "modules/image.hpp"
 
-waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
-    : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
-  box_.pack_start(image_);
+namespace waybar::modules {
+
+Image::Image(const std::string& id, const Json::Value& config)
+    : AModule(config, "image", id), box_(Gtk::Orientation::HORIZONTAL, 0) {
+  box_.append(image_);
   box_.set_name("image");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  AModule::bindEvents(box_);
 
   dp.emit();
 
@@ -27,21 +29,21 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
   delayWorker();
 }
 
-void waybar::modules::Image::delayWorker() {
+void Image::delayWorker() {
   thread_ = [this] {
     dp.emit();
-    auto interval = std::chrono::seconds(interval_);
+    auto interval{std::chrono::seconds(interval_)};
     thread_.sleep_for(interval);
   };
 }
 
-void waybar::modules::Image::refresh(int sig) {
+void Image::refresh(int sig) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }
 
-auto waybar::modules::Image::update() -> void {
+auto Image::update() -> void {
   Glib::RefPtr<Gdk::Pixbuf> pixbuf;
   if (config_["path"].isString()) {
     path_ = config_["path"].asString();
@@ -51,7 +53,7 @@ auto waybar::modules::Image::update() -> void {
   } else {
     path_ = "";
   }
-  if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS))
+  if (Glib::file_test(path_, Glib::FileTest::EXISTS))
     pixbuf = Gdk::Pixbuf::create_from_file(path_, size_, size_);
   else
     pixbuf = {};
@@ -72,10 +74,10 @@ auto waybar::modules::Image::update() -> void {
   AModule::update();
 }
 
-void waybar::modules::Image::parseOutputRaw() {
+void Image::parseOutputRaw() {
   std::istringstream output(output_.out);
   std::string line;
-  int i = 0;
+  int i{0};
   while (getline(output, line)) {
     if (i == 0) {
       path_ = line;
@@ -87,3 +89,7 @@ void waybar::modules::Image::parseOutputRaw() {
     i++;
   }
 }
+
+Image::operator Gtk::Widget&() { return box_; };
+
+}  // namespace waybar::modules

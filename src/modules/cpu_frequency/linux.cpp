@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <fstream>
 
 #include "modules/cpu_frequency.hpp"
 

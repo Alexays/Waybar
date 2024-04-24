@@ -1,12 +1,7 @@
 #include "modules/bluetooth.hpp"
-
-#include <fmt/format.h>
-#include <spdlog/spdlog.h>
-
-#include <algorithm>
-#include <sstream>
-
 #include "util/scope_guard.hpp"
+
+#include <spdlog/spdlog.h>
 
 namespace {
 
@@ -216,9 +211,9 @@ auto waybar::modules::Bluetooth::update() -> void {
   state_ = state;
 
   if (format_.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
-    event_box_.show();
+    label_.show();
     label_.set_markup(fmt::format(
         fmt::runtime(format_), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
