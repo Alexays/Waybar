@@ -37,6 +37,8 @@ class AModule : public IModule {
   const Json::Value &config_;
   Gtk::EventBox event_box_;
 
+  virtual void setCursor(Gdk::CursorType const c);
+
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleMouseEnter(GdkEventCrossing *const &ev);
   virtual bool handleMouseLeave(GdkEventCrossing *const &ev);
@@ -46,6 +48,7 @@ class AModule : public IModule {
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
+  bool hasUserEvents_;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
