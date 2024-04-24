@@ -43,8 +43,6 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   if (enable_click || hasUserEvents_) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
-    event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleEnter));
-    event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleLeave));
   }
 
   bool hasReleaseEvent =
