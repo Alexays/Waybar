@@ -712,10 +712,10 @@ auto waybar::modules::Battery::update() -> void {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(
-        fmt::format(fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
-                    fmt::arg("icon", getIcon(capacity, icons)),
-                    fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
-                    fmt::arg("health", fmt::format("{:.3}", health))));
+      label_.set_markup(fmt::format(
+        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
+        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted),
+        fmt::arg("cycles", cycles), fmt::arg("health", fmt::format("{:.3}", health))));
   }
   // Call parent update
   ALabel::update();
