@@ -33,16 +33,19 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // configure events' user commands
   // hasUserEvents_ is true if any element from eventMap_ is satisfying the condition in the lambda
-  hasUserEvents_ =
+  bool hasUserEvents =
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
         // True if there is any non-release type event
         return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
-  if (enable_click || hasUserEvents_) {
+  if (enable_click || hasUserEvents) {
+    hasUserEvents_ = true
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
+  } else {
+    hasUserEvents_ = false
   }
 
   bool hasReleaseEvent =
