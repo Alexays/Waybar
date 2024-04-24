@@ -90,7 +90,6 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-
 void AModule::setCursor(Gdk::CursorType c) {
   auto cursor = Gdk::Cursor::create(Gdk::HAND2);
   auto gdk_window = event_box_.get_window();
@@ -101,7 +100,7 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
   if (auto* module = event_box_.get_child(); module != nullptr) {
     module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
-  
+
   if (hasUserEvents_) {
     setCursor(Gdk::HAND2);
   }
@@ -112,7 +111,7 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
   if (auto* module = event_box_.get_child(); module != nullptr) {
     module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
-  
+
   if (hasUserEvents_) {
     setCursor(Gdk::ARROW);
   }
