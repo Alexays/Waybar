@@ -14,10 +14,11 @@ class Sndio final : public ALabel {
   auto update() -> void override;
   auto set_desc(struct sioctl_desc *, unsigned int) -> void;
   auto put_val(unsigned int, unsigned int) -> void;
+
+ private:
   bool handleScroll(double dx, double dy) override;
   void handleToggle(int n_press, double dx, double dy) override;
 
- private:
   auto connect_to_sndio() -> void;
   util::SleeperThread thread_;
   struct sioctl_hdl *hdl_;

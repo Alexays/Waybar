@@ -327,7 +327,7 @@ void waybar::modules::MPD::fetchState() {
 }
 
 void waybar::modules::MPD::handlePlayPause(int n_press, double dx, double dy) {
-  if (n_press != 1 || connection_ = nullptr)
+  if (n_press != 1 || connection_ == nullptr)
     return;
 
   auto button{controllClick_->get_current_button()};

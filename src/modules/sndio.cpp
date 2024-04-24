@@ -175,14 +175,14 @@ bool Sndio::handleScroll(double dx, double dy) {
   return true;
 }
 
-bool Sndio::handleToggle(int n_press, double dx, double dy) {
+void Sndio::handleToggle(int n_press, double dx, double dy) {
   // toggle mute only when no user provided events are configured
   if (config_["on-click"].isString()) {
-    return AModule::handleToggle(n_press, dx, dy);
+    AModule::handleToggle(n_press, dx, dy);
   }
 
   // only try to talk to sndio if connected
-  if (hdl_ == nullptr) return true;
+  if (hdl_ == nullptr) return;
 
   muted_ = !muted_;
   if (muted_) {
@@ -192,8 +192,6 @@ bool Sndio::handleToggle(int n_press, double dx, double dy) {
   } else {
     sioctl_setval(hdl_, addr_, old_volume_);
   }
-
-  return true;
 }
 
 } /* namespace waybar::modules */
