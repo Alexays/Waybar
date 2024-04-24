@@ -374,6 +374,11 @@ waybar::modules::Battery::getInfos() {
           if (mainBatHealthPercent == 0.0f || batHealthPercent < mainBatHealthPercent) {
             mainBatHealthPercent = batHealthPercent;
           }
+        } else if (energy_full_exists && energy_full_design_exists) {
+          float batHealthPercent = ((float)energy_full / energy_full_design) * 100;
+          if (mainBatHealthPercent == 0.0f || batHealthPercent < mainBatHealthPercent) {
+            mainBatHealthPercent = batHealthPercent;
+          }
         }
       }
 
