@@ -69,8 +69,8 @@ class Bar {
   bool visible = true;
   Gtk::Window window;
   Json::Value config;
-  Gtk::Orientation orientation = Gtk::Orientation::HORIZONTAL;
-  Gtk::PositionType position = Gtk::PositionType::TOP;
+  Gtk::Orientation orientation{Gtk::Orientation::HORIZONTAL};
+  Gtk::PositionType position{Gtk::PositionType::TOP};
 
 #ifdef HAVE_SWAY
   std::string bar_id;

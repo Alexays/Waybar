@@ -17,12 +17,15 @@ class Wireplumber final : public ALabel {
   auto update() -> void override;
 
  private:
-  void loadRequiredApiModules();
+  void asyncLoadRequiredApiModules();
   void prepare();
   void activatePlugins();
   static void updateVolume(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
   static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
+  static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
+                                      waybar::modules::Wireplumber* self);
+  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
   static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);

@@ -128,16 +128,17 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
 };  // namespace waybar
 
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
-    : output(w_output),
+    : output{w_output},
       window{Gtk::Window()},
-      config(w_config),
-      x_global(0),
-      y_global(0),
+      config{w_config},
+      x_global{0},
+      y_global{0},
       margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},
-      left_(Gtk::Orientation::HORIZONTAL, 0),
-      center_(Gtk::Orientation::HORIZONTAL, 0),
-      right_(Gtk::Orientation::HORIZONTAL, 0),
+      left_{Gtk::Orientation::HORIZONTAL, 0},
+      center_{Gtk::Orientation::HORIZONTAL, 0},
+      right_{Gtk::Orientation::HORIZONTAL, 0},
       box_{} {
+
   window.set_title("waybar");
   window.set_name("waybar");
   window.set_decorated(false);
@@ -220,7 +221,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
   // this has to be executed before GtkWindow.realize
-  auto* gtk_window = window.gobj();
+  auto* gtk_window{window.gobj()};
   gtk_layer_init_for_window(gtk_window);
   gtk_layer_set_keyboard_mode(gtk_window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
   gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
@@ -278,13 +279,9 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.show();
 
   if (spdlog::should_log(spdlog::level::debug)) {
-    // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
-    char* gtk_tree{gtk_style_context_to_string(
-        window.get_style_context()->gobj(),
-        (GtkStyleContextPrintFlags)(GTK_STYLE_CONTEXT_PRINT_RECURSE |
-                                    GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE))};
-    spdlog::debug("GTK widget tree:\n{}", gtk_tree);
-    g_free(gtk_tree);
+    auto gtk_tree{window.get_style_context()->to_string(Gtk::StyleContext::PrintFlags::RECURSE |
+                                                        Gtk::StyleContext::PrintFlags::SHOW_STYLE)};
+    spdlog::debug("GTK widget tree:\n{}", gtk_tree.c_str());
   }
 }
 
@@ -340,11 +337,8 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
 }
 
 void waybar::Bar::setPassThrough(bool passthrough) {
-  if (gdk_surface_) {
-    Cairo::RefPtr<Cairo::Region> region;
-    if (passthrough) {
-      region = Cairo::Region::create();
-    }
+  if (passthrough && gdk_surface_) {
+    auto region{Cairo::Region::create()};
     gdk_surface_->set_input_region(region);
   }
 }
@@ -395,10 +389,9 @@ void waybar::Bar::onMap() {
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
   gdk_surface_ = window.get_surface();
+  gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &Bar::onConfigure));
   surface = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
   configureGlobalOffset(gdk_surface_->get_width(), gdk_surface_->get_height());
-  gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &Bar::onConfigure));
-
   setPassThrough(passthrough_);
 }
 
@@ -535,7 +528,6 @@ auto waybar::Bar::setupWidgets() -> void {
   for (auto const& module : modules_center_) {
     center_.append(*module);
   }
-//  std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
     right_.append(*module);
   }
