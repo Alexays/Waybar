@@ -714,7 +714,8 @@ auto waybar::modules::Battery::update() -> void {
     label_.set_markup(
         fmt::format(fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
                     fmt::arg("icon", getIcon(capacity, icons)),
-                    fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles)));
+                    fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
+                    fmt::arg("health", fmt::format("{:.3}", health))));
   }
   // Call parent update
   ALabel::update();
