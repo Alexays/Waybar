@@ -371,7 +371,12 @@ waybar::modules::Battery::getInfos() {
 
         if (charge_full_exists && charge_full_design_exists) {
           float batHealthPercent = ((float)charge_full / charge_full_design) * 100;
-          if (mainBatHealthPercent == 0.0f || batHealthPercent < mainBatHealthPercent) {
+          if (mainBatHealthPercent == 0.0F || batHealthPercent < mainBatHealthPercent) {
+            mainBatHealthPercent = batHealthPercent;
+          }
+        } else if (energy_full_exists && energy_full_design_exists) {
+          float batHealthPercent = ((float)energy_full / energy_full_design) * 100;
+          if (mainBatHealthPercent == 0.0F || batHealthPercent < mainBatHealthPercent) {
             mainBatHealthPercent = batHealthPercent;
           }
         }
@@ -711,10 +716,10 @@ auto waybar::modules::Battery::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
-    label_.set_markup(
-        fmt::format(fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
-                    fmt::arg("icon", getIcon(capacity, icons)),
-                    fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles)));
+    label_.set_markup(fmt::format(
+        fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
+        fmt::arg("icon", getIcon(capacity, icons)), fmt::arg("time", time_remaining_formatted),
+        fmt::arg("cycles", cycles), fmt::arg("health", fmt::format("{:.3}", health))));
   }
   // Call parent update
   ALabel::update();
