@@ -40,14 +40,15 @@ class AModule : public IModule {
   virtual void setCursor(Gdk::CursorType const c);
 
   virtual bool handleToggle(GdkEventButton *const &ev);
-  virtual bool handleEnter(GdkEventCrossing *const &ev);
-  virtual bool handleLeave(GdkEventCrossing *const &ev);
+  virtual bool handleMouseEnter(GdkEventCrossing *const &ev);
+  virtual bool handleMouseLeave(GdkEventCrossing *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
   virtual bool handleRelease(GdkEventButton *const &ev);
 
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
+  bool hasUserEvents_;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;

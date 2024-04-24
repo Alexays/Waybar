@@ -52,6 +52,9 @@ class Clock final : public ALabel {
   auto get_calendar(const year_month_day& today, const year_month_day& ymd, const time_zone* tz)
       -> const std::string;
 
+  // get local time zone
+  auto local_zone() -> const time_zone*;
+
   // time zoned time in tooltip
   const bool tzInTooltip_;                // if need to print time zones text
   std::vector<const time_zone*> tzList_;  // time zones list
@@ -70,6 +73,7 @@ class Clock final : public ALabel {
   void cldModeSwitch();
   void cldShift_up();
   void cldShift_down();
+  void cldShift_reset();
   void tz_up();
   void tz_down();
   // Module Action Map
@@ -77,6 +81,7 @@ class Clock final : public ALabel {
       {"mode", &waybar::modules::Clock::cldModeSwitch},
       {"shift_up", &waybar::modules::Clock::cldShift_up},
       {"shift_down", &waybar::modules::Clock::cldShift_down},
+      {"shift_reset", &waybar::modules::Clock::cldShift_reset},
       {"tz_up", &waybar::modules::Clock::tz_up},
       {"tz_down", &waybar::modules::Clock::tz_down}};
 };

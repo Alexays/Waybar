@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.10.0',
+    version: '0.10.2',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -534,6 +534,14 @@ if scdoc.found()
     man_files += configure_file(
         input: 'man/waybar.5.scd.in',
         output: 'waybar.5.scd',
+        configuration: {
+            'sysconfdir': prefix / sysconfdir
+        }
+    )
+
+    man_files += configure_file(
+        input: 'man/waybar-styles.5.scd.in',
+        output: 'waybar-styles.5.scd',
         configuration: {
             'sysconfdir': prefix / sysconfdir
         }

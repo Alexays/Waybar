@@ -266,7 +266,6 @@ bool Workspaces::hasFlag(const Json::Value &node, const std::string &flag) {
 }
 
 void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
-  auto format = config_["window-format"].asString();
   if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
       node["name"].isString()) {
     std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
@@ -305,7 +304,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("focused");
     }
-    if (hasFlag((*it), "visible") || ((*it)["output"].isString() && noNodes )) {
+    if (hasFlag((*it), "visible") || ((*it)["output"].isString() && noNodes)) {
       button.get_style_context()->add_class("visible");
     } else {
       button.get_style_context()->remove_class("visible");
@@ -320,7 +319,7 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("persistent");
     }
-    if (noNodes)  {
+    if (noNodes) {
       button.get_style_context()->add_class("empty");
     } else {
       button.get_style_context()->remove_class("empty");
@@ -435,9 +434,16 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   }
   std::string name;
   {
+    bool alloutputs = config_["all-outputs"].asBool();
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                           [](const auto &workspace) { return hasFlag(workspace, "focused"); });
+    auto it =
+        std::find_if(workspaces_.begin(), workspaces_.end(), [alloutputs](const auto &workspace) {
+          if (alloutputs) {
+            return hasFlag(workspace, "focused");
+          }
+          bool noNodes = workspace["nodes"].empty() && workspace["floating_nodes"].empty();
+          return hasFlag(workspace, "visible") || (workspace["output"].isString() && noNodes);
+        });
     if (it == workspaces_.end()) {
       return true;
     }

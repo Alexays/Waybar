@@ -32,7 +32,7 @@ class Battery : public ALabel {
   void refreshBatteries();
   void worker();
   const std::string getAdapterStatus(uint8_t capacity) const;
-  const std::tuple<uint8_t, float, std::string, float> getInfos();
+  std::tuple<uint8_t, float, std::string, float, uint16_t, float> getInfos();
   const std::string formatTimeRemaining(float hoursRemaining);
   void setBarClass(std::string&);
 
