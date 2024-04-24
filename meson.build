@@ -164,7 +164,8 @@ src_files = files(
      'src/modules/user.cpp',
      'src/modules/idle_inhibitor.cpp',
      'src/modules/image.cpp',
-     'src/util/rewrite_string.cpp'
+     'src/util/rewrite_string.cpp',
+     'src/util/sanitize_str.cpp'
 )
 
 man_files = files(
