@@ -102,7 +102,7 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
     module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
   
-  if (enable_click || hasUserEvents_) {
+  if (hasUserEvents_) {
     setCursor(Gdk::HAND2);
   }
   return false;
@@ -113,7 +113,7 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
     module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
   
-  if (enable_click || hasUserEvents_) {
+  if (hasUserEvents_) {
     setCursor(Gdk::ARROW);
   }
   return false;
