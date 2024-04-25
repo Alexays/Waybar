@@ -71,7 +71,7 @@ class UPower : public AModule {
   GDBusConnection *login1_connection;
   std::unique_ptr<UPowerTooltip> upower_tooltip;
   std::string lastStatus;
-  const char *lastWarningLevel;
+  const char *lastWarningLevel = nullptr;
   bool showAltText;
   bool showIcon = true;
   bool upowerRunning;
