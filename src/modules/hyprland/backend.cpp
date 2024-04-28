@@ -32,7 +32,6 @@ void IPC::startIPC() {
       return;
     }
 
-
     if (!modulesReady) return;
 
     spdlog::info("Hyprland IPC starting");
@@ -150,7 +149,6 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     spdlog::warn("XDG_RUNTIME_DIR not set, Hyprland IPC will not be available.");
     return "";
   }
-
 
   if (instanceSig == nullptr) {
     spdlog::error("Hyprland IPC: HYPRLAND_INSTANCE_SIGNATURE was not set! (Is Hyprland running?)");
