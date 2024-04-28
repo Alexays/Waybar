@@ -20,11 +20,18 @@ void IPC::startIPC() {
   std::thread([&]() {
     // check for hyprland
     const char* his = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+    const char* xdgRuntimeDir = getenv("XDG_RUNTIME_DIR");
+
+    if (xdgRuntimeDir == nullptr) {
+    spdlog::warn("XDG_RUNTIME_DIR not set, Hyprland IPC will not be available.");
+    return;
+    }
 
     if (his == nullptr) {
       spdlog::warn("Hyprland is not running, Hyprland IPC will not be available.");
       return;
     }
+
 
     if (!modulesReady) return;
 
@@ -41,7 +48,7 @@ void IPC::startIPC() {
     addr.sun_family = AF_UNIX;
 
     // socket path, specified by EventManager of Hyprland
-    std::string socketPath = "/tmp/hypr/" + std::string(his) + "/.socket2.sock";
+    std::string socketPath = std::string(xdgRuntimeDir) + "/hypr/" + std::string(his) + "/.socket2.sock";
 
     strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
@@ -137,6 +144,14 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   // get the instance signature
   auto* instanceSig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
 
+  auto* xdgRuntimeDir = getenv("XDG_RUNTIME_DIR");
+
+  if (xdgRuntimeDir == nullptr) {
+    spdlog::warn("XDG_RUNTIME_DIR not set, Hyprland IPC will not be available.");
+    return "";
+  }
+
+
   if (instanceSig == nullptr) {
     spdlog::error("Hyprland IPC: HYPRLAND_INSTANCE_SIGNATURE was not set! (Is Hyprland running?)");
     return "";
@@ -147,7 +162,7 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   sockaddr_un serverAddress = {0};
   serverAddress.sun_family = AF_UNIX;
 
-  std::string socketPath = "/tmp/hypr/" + instanceSigStr + "/.socket.sock";
+  std::string socketPath = std::string(xdgRuntimeDir) + "/hypr/" + instanceSigStr + "/.socket.sock";
 
   // Use snprintf to copy the socketPath string into serverAddress.sun_path
   if (snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str()) <
