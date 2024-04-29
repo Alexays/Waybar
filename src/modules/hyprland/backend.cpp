@@ -9,10 +9,29 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <filesystem>
 #include <string>
 #include <thread>
 
 namespace waybar::modules::hyprland {
+
+std::filesystem::path getSocketFolder(const char* instanceSig) {
+  // socket path, specified by EventManager of Hyprland
+  static std::filesystem::path socketFolder;
+  if (!socketFolder.empty()) {
+    return socketFolder;
+  }
+
+  std::filesystem::path xdgRuntimeDir = std::filesystem::path(getenv("XDG_RUNTIME_DIR"));
+  if (!xdgRuntimeDir.empty() && std::filesystem::exists(xdgRuntimeDir / "hypr")) {
+    socketFolder = xdgRuntimeDir / "hypr";
+  } else {
+    spdlog::warn("$XDG_RUNTIME_DIR/hypr does not exist, falling back to /tmp/hypr");
+    socketFolder = std::filesystem::temp_directory_path() / "hypr";
+  }
+  socketFolder = socketFolder / instanceSig;
+  return socketFolder;
+}
 
 void IPC::startIPC() {
   // will start IPC and relay events to parseIPC
@@ -40,9 +59,7 @@ void IPC::startIPC() {
 
     addr.sun_family = AF_UNIX;
 
-    // socket path, specified by EventManager of Hyprland
-    std::string socketPath = "/tmp/hypr/" + std::string(his) + "/.socket2.sock";
-
+    auto socketPath = getSocketFolder(his) / ".socket2.sock";
     strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
     addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
@@ -142,12 +159,10 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     return "";
   }
 
-  std::string instanceSigStr = std::string(instanceSig);
-
   sockaddr_un serverAddress = {0};
   serverAddress.sun_family = AF_UNIX;
 
-  std::string socketPath = "/tmp/hypr/" + instanceSigStr + "/.socket.sock";
+  std::string socketPath = getSocketFolder(instanceSig) / ".socket.sock";
 
   // Use snprintf to copy the socketPath string into serverAddress.sun_path
   if (snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str()) <
