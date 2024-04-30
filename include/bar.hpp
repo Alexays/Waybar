@@ -73,6 +73,7 @@ class Bar {
   Json::Value config;
   struct wl_surface *surface;
   bool visible = true;
+  Gtk::Box box_;
   Gtk::Window window;
   Gtk::Orientation orientation = Gtk::ORIENTATION_HORIZONTAL;
   Gtk::PositionType position = Gtk::POS_TOP;
@@ -87,7 +88,7 @@ class Bar {
  private:
   void onMap(GdkEventAny *);
   auto setupWidgets() -> void;
-  void getModules(const Factory &, const std::string &, waybar::Group *);
+  void getModules(const std::string &);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
@@ -105,10 +106,11 @@ class Bar {
   uint32_t width_, height_;
   bool passthrough_;
 
+  Factory factory_;
+
   Gtk::Box left_;
   Gtk::Box center_;
   Gtk::Box right_;
-  Gtk::Box box_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_left_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_center_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_right_;
@@ -116,7 +118,6 @@ class Bar {
   using BarIpcClient = modules::sway::BarIpcClient;
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
-  std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
 };
 
 }  // namespace waybar

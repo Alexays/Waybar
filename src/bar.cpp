@@ -7,7 +7,6 @@
 
 #include "client.hpp"
 #include "factory.hpp"
-#include "group.hpp"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -139,7 +138,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
       left_(Gtk::ORIENTATION_HORIZONTAL, 0),
       center_(Gtk::ORIENTATION_HORIZONTAL, 0),
       right_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+      box_(Gtk::ORIENTATION_HORIZONTAL, 0),
+      factory_(*this, config) {
   window.set_title("waybar");
   window.set_name("waybar");
   window.set_decorated(false);
@@ -466,49 +466,27 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
 }
 
 void waybar::Bar::handleSignal(int signal) {
-  for (auto& module : modules_all_) {
+  for (auto& module : factory_.modules_all_) {
     module->refresh(signal);
   }
 }
 
-void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
-                             waybar::Group* group = nullptr) {
-  auto module_list = group ? config[pos]["modules"] : config[pos];
+void waybar::Bar::getModules(const std::string& pos) {
+  auto module_list = config[pos];
   if (module_list.isArray()) {
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
-        AModule* module;
-
-        if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
-          auto hash_pos = ref.find('#');
-          auto id_name = ref.substr(6, hash_pos - 6);
-          auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
-
-          auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
-                          Gtk::ORIENTATION_VERTICAL;
-
-          auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
-          getModules(factory, ref, group_module);
-          module = group_module;
-        } else {
-          module = factory.makeModule(ref, pos);
-        }
-
+        AModule* module = factory_.addModule(ref, pos);
         std::shared_ptr<AModule> module_sp(module);
-        modules_all_.emplace_back(module_sp);
-        if (group) {
-          group->addWidget(*module);
-        } else {
-          if (pos == "modules-left") {
-            modules_left_.emplace_back(module_sp);
-          }
-          if (pos == "modules-center") {
-            modules_center_.emplace_back(module_sp);
-          }
-          if (pos == "modules-right") {
-            modules_right_.emplace_back(module_sp);
-          }
+        if (pos == "modules-left") {
+          modules_left_.emplace_back(module_sp);
+        }
+        if (pos == "modules-center") {
+          modules_center_.emplace_back(module_sp);
+        }
+        if (pos == "modules-right") {
+          modules_right_.emplace_back(module_sp);
         }
         module->dp.connect([module, ref] {
           try {
@@ -539,10 +517,9 @@ auto waybar::Bar::setupWidgets() -> void {
   setupAltFormatKeyForModuleList("modules-right");
   setupAltFormatKeyForModuleList("modules-center");
 
-  Factory factory(*this, config);
-  getModules(factory, "modules-left");
-  getModules(factory, "modules-center");
-  getModules(factory, "modules-right");
+  getModules("modules-left");
+  getModules("modules-center");
+  getModules("modules-right");
   for (auto const& module : modules_left_) {
     left_.pack_start(*module, false, false);
   }

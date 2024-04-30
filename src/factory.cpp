@@ -1,6 +1,7 @@
 #include "factory.hpp"
 
 #include "bar.hpp"
+#include "gtkmm/enums.h"
 
 #if defined(HAVE_CHRONO_TIMEZONES) || defined(HAVE_LIBDATE)
 #include "modules/clock.hpp"
@@ -110,10 +111,19 @@
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
 
-waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
+waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {
+}
+
+waybar::AModule* waybar::Factory::addModule(const std::string& name,
+                                            const std::string& pos) {
+  auto *module = makeModule(name, pos, *this);
+  modules_all_.emplace_back(module);
+  return module;
+}
 
 waybar::AModule* waybar::Factory::makeModule(const std::string& name,
-                                             const std::string& pos) const {
+                                             const std::string& pos,
+                                             waybar::Factory& factory) const {
   try {
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
@@ -324,6 +334,16 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);
+    }
+    if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
+      return new waybar::Group(
+        ref.substr(6),
+        hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "",
+        config_[name],
+        bar_.box_.get_orientation() == Gtk::ORIENTATION_VERTICAL,
+        pos,
+        factory
+      );
     }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());

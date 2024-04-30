@@ -5,13 +5,14 @@
 #include <json/json.h>
 
 #include "AModule.hpp"
+#include "factory.hpp"
 #include "gtkmm/revealer.h"
 
 namespace waybar {
 
 class Group : public AModule {
  public:
-  Group(const std::string&, const std::string&, const Json::Value&, bool);
+  Group(const std::string&, const std::string&, const Json::Value&, bool, const std::string&, Factory&);
   virtual ~Group() = default;
   auto update() -> void override;
   operator Gtk::Widget&() override;

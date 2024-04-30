@@ -19,13 +19,12 @@ const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
 
   if (is_vertical) {
     return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
-  } else {
-    return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
   }
+  return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
 }
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
-             bool vertical)
+             bool vertical, const std::string& pos, Factory& factory)
     : AModule(config, name, id, true, true),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
@@ -80,6 +79,27 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     }
 
     addHoverHandlerTo(revealer);
+  }
+
+  auto module_list = config_["modules"];
+  if (module_list.isArray()) {
+    for (const auto& name : module_list) {
+      try {
+        auto ref = name.asString();
+        AModule* module = factory.addModule(ref, pos);
+        std::shared_ptr<AModule> module_sp(module);
+        addWidget(*module_sp);
+        module->dp.connect([module, ref] {
+          try {
+            module->update();
+          } catch (const std::exception& e) {
+            spdlog::error("{}: {}", ref, e.what());
+          }
+        });
+      } catch (const std::exception& e) {
+        spdlog::warn("module {}: {}", name.asString(), e.what());
+      }
+    }
   }
 }
 
