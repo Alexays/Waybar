@@ -86,9 +86,8 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
-        AModule* module = factory.addModule(ref, pos);
-        std::shared_ptr<AModule> module_sp(module);
-        addWidget(*module_sp);
+        auto module = factory.addModule(ref, pos);
+        addWidget(*module);
         module->dp.connect([module, ref] {
           try {
             module->update();

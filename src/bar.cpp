@@ -466,7 +466,7 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
 }
 
 void waybar::Bar::handleSignal(int signal) {
-  for (auto& module : factory_.modules_all_) {
+  for (const auto& module : factory_.modules_all_) {
     module->refresh(signal);
   }
 }
@@ -477,16 +477,15 @@ void waybar::Bar::getModules(const std::string& pos) {
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
-        AModule* module = factory_.addModule(ref, pos);
-        std::shared_ptr<AModule> module_sp(module);
+        auto module = factory_.addModule(ref, pos);
         if (pos == "modules-left") {
-          modules_left_.emplace_back(module_sp);
+          modules_left_.emplace_back(module);
         }
         if (pos == "modules-center") {
-          modules_center_.emplace_back(module_sp);
+          modules_center_.emplace_back(module);
         }
         if (pos == "modules-right") {
-          modules_right_.emplace_back(module_sp);
+          modules_right_.emplace_back(module);
         }
         module->dp.connect([module, ref] {
           try {

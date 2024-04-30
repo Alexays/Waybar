@@ -1,4 +1,5 @@
 #include "factory.hpp"
+#include <memory>
 
 #include "bar.hpp"
 #include "gtkmm/enums.h"
@@ -114,11 +115,12 @@
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {
 }
 
-waybar::AModule* waybar::Factory::addModule(const std::string& name,
-                                            const std::string& pos) {
-  auto *module = makeModule(name, pos, *this);
-  modules_all_.emplace_back(module);
-  return module;
+std::shared_ptr<waybar::AModule> waybar::Factory::addModule(const std::string& name,
+                                                             const std::string& pos) {
+  auto module = makeModule(name, pos, *this);
+  std::shared_ptr<AModule> module_sp(module);
+  modules_all_.emplace_back(module_sp);
+  return module_sp;
 }
 
 waybar::AModule* waybar::Factory::makeModule(const std::string& name,
