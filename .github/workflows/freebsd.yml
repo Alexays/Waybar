@@ -29,7 +29,7 @@ jobs:
             sudo pkg install -y git #  subprojects/date
             sudo pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
               libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
-              pkgconf pulseaudio scdoc sndio spdlog wayland-protocols upower \
+              pkgconf pipewire pulseaudio scdoc sndio spdlog wayland-protocols upower \
               libinotify
             meson build -Dman-pages=enabled
             ninja -C build
