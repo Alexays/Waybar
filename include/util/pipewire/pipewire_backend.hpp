@@ -2,6 +2,8 @@
 
 #include <pipewire/pipewire.h>
 
+#include <unordered_map>
+
 #include "util/backend_common.hpp"
 #include "util/pipewire/privacy_node_info.hpp"
 
