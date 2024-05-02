@@ -91,7 +91,7 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 void AModule::setCursor(Gdk::CursorType c) {
-  auto cursor = Gdk::Cursor::create(Gdk::HAND2);
+  auto cursor = Gdk::Cursor::create(c);
   auto gdk_window = event_box_.get_window();
   gdk_window->set_cursor(cursor);
 }
