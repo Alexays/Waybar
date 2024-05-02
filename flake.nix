@@ -48,6 +48,7 @@
 
       overlays.default = final: prev: {
         waybar = final.callPackage ./nix/default.nix {
+          waybar = prev.waybar;
           # take the first "version: '...'" from meson.build
           version =
             (builtins.head (builtins.split "'"
