@@ -46,16 +46,19 @@
                 };
           });
 
-      overlays.default = final: prev: {
-        waybar = final.callPackage ./nix/default.nix {
-          waybar = prev.waybar;
-          # take the first "version: '...'" from meson.build
-          version =
-            (builtins.head (builtins.split "'"
-              (builtins.elemAt
-                (builtins.split " version: '" (builtins.readFile ./meson.build))
-                2)))
-            + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+      overlays = {
+        default = self.overlays.waybar;
+        waybar = final: prev: {
+          waybar = final.callPackage ./nix/default.nix {
+            waybar = prev.waybar;
+            # take the first "version: '...'" from meson.build
+            version =
+              (builtins.head (builtins.split "'"
+                (builtins.elemAt
+                  (builtins.split " version: '" (builtins.readFile ./meson.build))
+                  2)))
+              + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+          };
         };
       };
 
