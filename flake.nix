@@ -59,10 +59,9 @@
         };
       };
 
-      packages = genSystems (pkgs:
-        let packages = self.overlays.default pkgs pkgs;
-        in packages // {
-          default = packages.waybar;
-        });
+      packages = genSystems (pkgs: {
+        default = self.packages.${pkgs.stdenv.hostPlatform.system}.waybar;
+        inherit (pkgs) waybar;
+      });
     };
 }
