@@ -32,7 +32,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   event_box_.set_name(name_);
   if (!id.empty()) {
-    box.get_style_context()->add_class(id);
+    event_box_.get_style_context()->add_class(id);
   }
 
   // default orientation: orthogonal to parent
