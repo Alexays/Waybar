@@ -29,9 +29,9 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     : AModule(config, name, id, true, true),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
-  event_box_.set_name(name_);
+  box.set_name(name_);
   if (!id.empty()) {
-    event_box_.get_style_context()->add_class(id);
+    box.get_style_context()->add_class(id);
   }
 
   // default orientation: orthogonal to parent
@@ -84,13 +84,13 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
-  event_box_.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);
   return false;
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
-  event_box_.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
   return false;
 }
