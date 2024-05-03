@@ -83,9 +83,6 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     addHoverHandlerTo(revealer);
   }
 
-  event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseEnter));
-  event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseLeave));
-
   event_box_.add(box);
 }
 
