@@ -19,7 +19,7 @@ class Group : public AModule {
   virtual Gtk::Box& getBox();
   void addWidget(Gtk::Widget& widget);
 
-  bool handleMouseHover(GdkEventCrossing* const& e);
+  bool handleModuleMouseHover(GdkEventCrossing* const& e);
 
  protected:
   Gtk::Box box;
@@ -28,6 +28,8 @@ class Group : public AModule {
   bool is_first_widget = true;
   bool is_drawer = false;
   std::string add_class_to_drawer_children;
+  bool handleMouseEnter(GdkEventCrossing *const &ev) override;
+  bool handleMouseLeave(GdkEventCrossing *const &ev) override;
 
   void addHoverHandlerTo(Gtk::Widget& widget);
 };

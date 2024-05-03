@@ -5,6 +5,7 @@
 #include <util/command.hpp>
 
 #include "gdkmm/device.h"
+#include "gtkmm/enums.h"
 #include "gtkmm/widget.h"
 
 namespace waybar {
@@ -29,7 +30,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     : AModule(config, name, id, true, true),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
-  box.set_name(name_);
+  event_box_.set_name(name_);
   if (!id.empty()) {
     box.get_style_context()->add_class(id);
   }
@@ -81,9 +82,24 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 
     addHoverHandlerTo(revealer);
   }
+
+  event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseEnter));
+  event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseLeave));
+
+  event_box_.add(box);
 }
 
-bool Group::handleMouseHover(GdkEventCrossing* const& e) {
+bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
+  event_box_.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
+}
+
+bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
+  event_box_.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
+}
+
+bool Group::handleModuleMouseHover(GdkEventCrossing* const& e) {
   switch (e->type) {
     case GDK_ENTER_NOTIFY:
       revealer.set_reveal_child(true);
@@ -94,14 +110,13 @@ bool Group::handleMouseHover(GdkEventCrossing* const& e) {
     default:
       break;
   }
-
-  return true;
+  return false;
 }
 
 void Group::addHoverHandlerTo(Gtk::Widget& widget) {
   widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-  widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
-  widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
+  widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleModuleMouseHover));
+  widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleModuleMouseHover));
 }
 
 auto Group::update() -> void {
@@ -124,6 +139,6 @@ void Group::addWidget(Gtk::Widget& widget) {
   is_first_widget = false;
 }
 
-Group::operator Gtk::Widget&() { return box; }
+Group::operator Gtk::Widget&() { return event_box_; }
 
 }  // namespace waybar
