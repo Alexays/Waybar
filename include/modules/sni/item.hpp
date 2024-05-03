@@ -76,6 +76,8 @@ class Item : public sigc::trackable {
   void makeMenu();
   bool handleClick(GdkEventButton* const& /*ev*/);
   bool handleScroll(GdkEventScroll* const&);
+  bool handleMouseEnter(GdkEventCrossing* const&);
+  bool handleMouseLeave(GdkEventCrossing* const&);
 
   // smooth scrolling threshold
   gdouble scroll_threshold_ = 0;
