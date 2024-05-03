@@ -19,8 +19,6 @@ class Group : public AModule {
   virtual Gtk::Box& getBox();
   void addWidget(Gtk::Widget& widget);
 
-  bool handleModuleMouseHover(GdkEventCrossing* const& e);
-
  protected:
   Gtk::Box box;
   Gtk::Box revealer_box;
@@ -30,8 +28,6 @@ class Group : public AModule {
   std::string add_class_to_drawer_children;
   bool handleMouseEnter(GdkEventCrossing *const &ev) override;
   bool handleMouseLeave(GdkEventCrossing *const &ev) override;
-
-  void addHoverHandlerTo(Gtk::Widget& widget);
 };
 
 }  // namespace waybar
