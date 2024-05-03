@@ -136,6 +136,10 @@ class PlayerManager:
 
     def on_player_appeared(self, _, player):
         logger.info(f"Player has appeared: {player.name}")
+        if player.name in self.excluded_player:
+            logger.debug(
+                "New player appeared, but it's in exclude player list, skipping")
+            return
         if player is not None and (self.selected_player is None or player.name == self.selected_player):
             self.init_player(player)
         else:
