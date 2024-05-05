@@ -10,6 +10,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       name_(name),
       output_name_(output_name),
       id_(id),
+      tooltip_format_enabled_{config_["tooltip-format"].isString()},
       percentage_(0),
       fp_(nullptr),
       pid_(-1) {
@@ -166,16 +167,16 @@ auto waybar::modules::Custom::update() -> void {
     } else {
       label_.set_markup(str);
       if (tooltipEnabled()) {
-        if (text_ == tooltip_) {
-          if (label_.get_tooltip_markup() != str) {
-            label_.set_tooltip_markup(str);
-          }
-        } else if (config_["tooltip-format"].isString()) {
+        if (tooltip_format_enabled_) {
           auto tooltip = config_["tooltip-format"].asString();
           tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
                                 fmt::arg("icon", getIcon(percentage_, alt_)),
                                 fmt::arg("percentage", percentage_));
           label_.set_tooltip_markup(tooltip);
+        } else if (text_ == tooltip_) {
+          if (label_.get_tooltip_markup() != str) {
+            label_.set_tooltip_markup(str);
+          }
         } else {
           if (label_.get_tooltip_markup() != tooltip_) {
             label_.set_tooltip_markup(tooltip_);
