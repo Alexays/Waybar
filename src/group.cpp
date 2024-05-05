@@ -89,6 +89,8 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
   return false;
 }
 
+
+
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
   box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
