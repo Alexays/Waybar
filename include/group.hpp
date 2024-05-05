@@ -11,13 +11,13 @@ namespace waybar {
 
 class Group : public AModule {
  public:
-  Group(const std::string&, const std::string&, const Json::Value&, bool);
+  Group(const std::string &, const std::string &, const Json::Value &, bool);
   virtual ~Group() = default;
   auto update() -> void override;
-  operator Gtk::Widget&() override;
+  operator Gtk::Widget &() override;
 
-  virtual Gtk::Box& getBox();
-  void addWidget(Gtk::Widget& widget);
+  virtual Gtk::Box &getBox();
+  void addWidget(Gtk::Widget &widget);
 
  protected:
   Gtk::Box box;
