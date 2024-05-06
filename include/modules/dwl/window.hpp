@@ -14,7 +14,7 @@ namespace waybar::modules::dwl {
 class Window : public AAppIconLabel, public sigc::trackable {
  public:
   Window(const std::string &, const waybar::Bar &, const Json::Value &);
-  virtual ~Window() = default;
+  ~Window();
 
   void handle_layout(const uint32_t layout);
   void handle_title(const char *title);

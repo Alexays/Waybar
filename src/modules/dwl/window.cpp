@@ -80,7 +80,7 @@ Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
 
-  if (!status_manager_) {
+  if (status_manager_ == nullptr) {
     spdlog::error("dwl_status_manager_v2 not advertised");
     return;
   }
@@ -89,6 +89,12 @@ Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
   zdwl_ipc_manager_v2_destroy(status_manager_);
+}
+
+Window::~Window() {
+  if (output_status_ != nullptr) {
+    zdwl_ipc_output_v2_destroy(output_status_);
+  }
 }
 
 void Window::handle_title(const char *title) { title_ = title; }
