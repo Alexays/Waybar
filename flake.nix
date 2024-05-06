@@ -16,7 +16,12 @@
         "x86_64-linux"
         "aarch64-linux"
       ]
-        (system: func (import nixpkgs { inherit system; }));
+        (system: func (import nixpkgs {
+          inherit system;
+          overlays = with self.overlays; [
+            waybar
+          ];
+        }));
 
       mkDate = longDate: (lib.concatStringsSep "-" [
         (builtins.substring 0 4 longDate)
