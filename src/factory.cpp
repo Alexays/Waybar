@@ -70,7 +70,7 @@
 #include "modules/gamemode.hpp"
 #endif
 #ifdef HAVE_UPOWER
-#include "modules/upower/upower.hpp"
+#include "modules/upower.hpp"
 #endif
 #ifdef HAVE_PIPEWIRE
 #include "modules/privacy/privacy.hpp"
@@ -130,7 +130,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
-      return new waybar::modules::upower::UPower(id, config_[name]);
+      return new waybar::modules::UPower(id, config_[name]);
     }
 #endif
 #ifdef HAVE_PIPEWIRE
