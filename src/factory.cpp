@@ -107,6 +107,7 @@
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
+#include "modules/nvidia_monitor.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
 
@@ -318,6 +319,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
+    }
+    if (ref == "nvidia_monitor") {
+      return new waybar::modules::NvidiaMonitor(id, config_[name]);
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name);

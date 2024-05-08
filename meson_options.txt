@@ -19,3 +19,4 @@ option('experimental', type : 'boolean', value : false, description: 'Enable exp
 option('jack', type: 'feature', value: 'auto', description: 'Enable support for JACK')
 option('wireplumber', type: 'feature', value: 'auto', description: 'Enable support for WirePlumber')
 option('cava', type: 'feature', value: 'auto', description: 'Enable support for Cava')
+option('nvidia_monitor', type: 'feature', value: 'auto', description: 'Enable support for the Nvidia gpu monitor')

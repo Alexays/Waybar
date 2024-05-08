@@ -167,6 +167,7 @@ src_files = files(
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
     'src/modules/load.cpp',
+    'src/modules/nvidia_monitor.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
     'src/ASlider.cpp',
