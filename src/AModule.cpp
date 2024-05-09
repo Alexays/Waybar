@@ -27,6 +27,24 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     else
       spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
+  // If a GTKMenu is requested in the config
+  if (config_["menu"].isString()) {
+    // Create the GTKMenu widget
+    GtkBuilder* builder = gtk_builder_new_from_file(config_["menu-file"].asString().c_str());
+    menu_ = gtk_builder_get_object(builder, "menu");
+    submenus_ = std::map<std::string, GtkMenuItem*>();
+    menuActionsMap_ = std::map<std::string, std::string>();
+    // Linking actions to the GTKMenu based on
+    for (Json::Value::const_iterator it = config_["menu-actions"].begin(); it != config_["menu-actions"].end(); ++it) {
+      std::string key = it.key().asString();
+      submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
+      menuActionsMap_[key] = it->asString();
+      g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent), (gpointer) menuActionsMap_[key].c_str());
+
+    }
+    // Enable click
+    enable_click = true;
+  }
 
   event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseEnter));
   event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseLeave));
@@ -64,6 +82,10 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
+}
+
+void AModule::handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data) {
+  waybar::util::command::res res = waybar::util::command::exec((char*) data, "TLP");
 }
 
 AModule::~AModule() {
@@ -132,6 +154,14 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
     this->AModule::doAction(rec->second);
 
     format = rec->second;
+  }
+
+  // Check if the event is the one specified for the "menu" option
+  if (rec->second == config_["menu"].asString()) {
+    // Popup the menu
+    gtk_widget_show_all(GTK_WIDGET(menu_));
+    gtk_menu_popup_at_pointer (GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+
   }
   // Second call user scripts
   if (!format.empty()) {
