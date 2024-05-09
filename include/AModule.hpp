@@ -45,6 +45,7 @@ class AModule : public IModule {
   virtual bool handleMouseLeave(GdkEventCrossing *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
   virtual bool handleRelease(GdkEventButton *const &ev);
+  GObject* menu_;
 
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
@@ -53,10 +54,6 @@ class AModule : public IModule {
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
-  GObject* menu_;
-  std::map<std::string, GtkMenuItem*> submenus_;
-  std::map<std::string, std::string> menuActionsMap_;
-  static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
   std::map<std::string, std::string> eventActionMap_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
