@@ -2,9 +2,9 @@
 
 #include <glibmm/dispatcher.h>
 #include <glibmm/markup.h>
+#include <gtkmm.h>
 #include <gtkmm/eventbox.h>
 #include <json/json.h>
-#include <gtkmm.h>
 
 #include "IModule.hpp"
 
@@ -45,7 +45,7 @@ class AModule : public IModule {
   virtual bool handleMouseLeave(GdkEventCrossing *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
   virtual bool handleRelease(GdkEventButton *const &ev);
-  GObject* menu_;
+  GObject *menu_;
 
  private:
   bool handleUserEvent(GdkEventButton *const &ev);

@@ -9,7 +9,9 @@ namespace waybar {
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
                bool enable_scroll)
-    : AModule(config, name, id, config["format-alt"].isString() || config["menu"].isString() || enable_click, enable_scroll),
+    : AModule(config, name, id,
+              config["format-alt"].isString() || config["menu"].isString() || enable_click,
+              enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
                     ? std::chrono::seconds::max()
@@ -59,11 +61,13 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     submenus_ = std::map<std::string, GtkMenuItem*>();
     menuActionsMap_ = std::map<std::string, std::string>();
     // Linking actions to the GTKMenu based on
-    for (Json::Value::const_iterator it = config_["menu-actions"].begin(); it != config_["menu-actions"].end(); ++it) {
+    for (Json::Value::const_iterator it = config_["menu-actions"].begin();
+         it != config_["menu-actions"].end(); ++it) {
       std::string key = it.key().asString();
       submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
       menuActionsMap_[key] = it->asString();
-      g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent), (gpointer) menuActionsMap_[key].c_str());
+      g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                       (gpointer)menuActionsMap_[key].c_str());
     }
   }
 
@@ -142,7 +146,7 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
 }
 
 void ALabel::handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data) {
-  waybar::util::command::res res = waybar::util::command::exec((char*) data, "GtkMenu");
+  waybar::util::command::res res = waybar::util::command::exec((char*)data, "GtkMenu");
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {
