@@ -7,7 +7,7 @@
 namespace waybar::modules {
 
 UPower::UPower(const std::string &id, const Json::Value &config)
-    : AIconLabel(config, "upower", id, "{percentage}", 0, true, true, true) {
+    : AIconLabel(config, "upower", id, "{percentage}", 0, true, true, true), sleeping_{false} {
   box_.set_name(name_);
   box_.set_spacing(0);
   box_.set_has_tooltip(AModule::tooltipEnabled());
@@ -185,7 +185,7 @@ days: \"{3}\", strRet: \"{4}\"",
 auto UPower::update() -> void {
   std::lock_guard<std::mutex> guard{mutex_};
   // Don't update widget if the UPower service isn't running
-  if (!upRunning_) {
+  if (!upRunning_ || sleeping_) {
     if (hideIfEmpty_) box_.hide();
     return;
   }
@@ -262,9 +262,11 @@ void UPower::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection> &conne
     if (!sleeping.get()) {
       resetDevices();
       setDisplayDevice();
+      sleeping_ = false;
       // Update the widget
       dp.emit();
-    }
+    } else
+      sleeping_ = true;
   }
 }
 
@@ -355,6 +357,9 @@ void UPower::setDisplayDevice() {
   std::lock_guard<std::mutex> guard{mutex_};
 
   if (nativePath_.empty()) {
+    // Unref current upDevice
+    if (upDevice_.upDevice != NULL) g_object_unref(upDevice_.upDevice);
+
     upDevice_.upDevice = up_client_get_display_device(upClient_);
     getUpDeviceInfo(upDevice_);
   } else {
@@ -367,7 +372,7 @@ void UPower::setDisplayDevice() {
           thisPtr->getUpDeviceInfo(upDevice);
           if (0 == std::strcmp(upDevice.nativePath, thisPtr->nativePath_.c_str())) {
             // Unref current upDevice
-            if (thisPtr->upDevice_.upDevice) g_object_unref(thisPtr->upDevice_.upDevice);
+            if (thisPtr->upDevice_.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
             // Reassign new upDevice
             thisPtr->upDevice_ = upDevice;
           }
@@ -375,12 +380,12 @@ void UPower::setDisplayDevice() {
         this);
   }
 
-  if (upDevice_.upDevice)
+  if (upDevice_.upDevice != NULL)
     g_signal_connect(upDevice_.upDevice, "notify", G_CALLBACK(deviceNotify_cb), this);
 }
 
 void UPower::getUpDeviceInfo(upDevice_output &upDevice_) {
-  if (upDevice_.upDevice && G_IS_OBJECT(upDevice_.upDevice)) {
+  if (upDevice_.upDevice != NULL && G_IS_OBJECT(upDevice_.upDevice)) {
     g_object_get(upDevice_.upDevice, "kind", &upDevice_.kind, "state", &upDevice_.state,
                  "percentage", &upDevice_.percentage, "icon-name", &upDevice_.icon_name,
                  "time-to-empty", &upDevice_.time_empty, "time-to-full", &upDevice_.time_full,
@@ -398,7 +403,7 @@ native_path: \"{7}\". model: \"{8}\"",
 
 const Glib::ustring UPower::getText(const upDevice_output &upDevice_, const std::string &format) {
   Glib::ustring ret{""};
-  if (upDevice_.upDevice) {
+  if (upDevice_.upDevice != NULL) {
     std::string timeStr{""};
     switch (upDevice_.state) {
       case UP_DEVICE_STATE_CHARGING:

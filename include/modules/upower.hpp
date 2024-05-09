@@ -49,6 +49,7 @@ class UPower final : public AIconLabel {
   Glib::ustring label_markup_;
   std::mutex mutex_;
   Glib::RefPtr<Gtk::IconTheme> gtkTheme_;
+  bool sleeping_;
 
   // Technical functions
   void addDevice(UpDevice *);
