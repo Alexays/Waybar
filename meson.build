@@ -167,7 +167,6 @@ src_files = files(
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
     'src/modules/load.cpp',
-    'src/modules/nvidia_monitor.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
     'src/ASlider.cpp',
@@ -474,6 +473,16 @@ if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
    src_files += files('src/modules/cava.cpp')
    man_files += files('man/waybar-cava.5.scd')
+endif
+
+if true
+    add_project_arguments('-DHAVE_NVIDIA_MONITOR', language: 'cpp')
+    src_files += files(
+        'src/modules/nvidia_monitor.cpp',
+    )
+    man_files += files(
+        'man/waybar-nvidia-monitor.5.scd',
+    )
 endif
 
 subdir('protocol')
