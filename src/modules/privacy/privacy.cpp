@@ -6,7 +6,6 @@
 #include <string>
 
 #include "AModule.hpp"
-#include "gtkmm/image.h"
 #include "modules/privacy/privacy_item.hpp"
 
 namespace waybar::modules::privacy {
@@ -46,30 +45,29 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
   // Initialize each privacy module
   Json::Value modules = config_["modules"];
   // Add Screenshare and Mic usage as default modules if none are specified
-  if (!modules.isArray() || modules.size() == 0) {
+  if (!modules.isArray() || modules.empty()) {
     modules = Json::Value(Json::arrayValue);
-    for (auto& type : {"screenshare", "audio-in"}) {
+    for (const auto& type : {"screenshare", "audio-in"}) {
       Json::Value obj = Json::Value(Json::objectValue);
       obj["type"] = type;
       modules.append(obj);
     }
   }
-  for (uint i = 0; i < modules.size(); i++) {
-    const Json::Value& module_config = modules[i];
+  for (const auto& module_config : modules) {
     if (!module_config.isObject() || !module_config["type"].isString()) continue;
     const std::string type = module_config["type"].asString();
     if (type == "screenshare") {
-      auto item =
+      auto* item =
           Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_VIDEO_INPUT,
                                          &nodes_screenshare, pos, iconSize, transition_duration);
       box_.add(*item);
     } else if (type == "audio-in") {
-      auto item =
+      auto* item =
           Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_AUDIO_INPUT,
                                          &nodes_audio_in, pos, iconSize, transition_duration);
       box_.add(*item);
     } else if (type == "audio-out") {
-      auto item =
+      auto* item =
           Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_AUDIO_OUTPUT,
                                          &nodes_audio_out, pos, iconSize, transition_duration);
       box_.add(*item);
@@ -117,11 +115,13 @@ void Privacy::onPrivacyNodesChanged() {
 
 auto Privacy::update() -> void {
   mutex_.lock();
-  bool screenshare, audio_in, audio_out;
+  bool screenshare = false;
+  bool audio_in = false;
+  bool audio_out = false;
 
   for (Gtk::Widget* widget : box_.get_children()) {
-    PrivacyItem* module = dynamic_cast<PrivacyItem*>(widget);
-    if (!module) continue;
+    auto* module = dynamic_cast<PrivacyItem*>(widget);
+    if (module == nullptr) continue;
     switch (module->privacy_type) {
       case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
         screenshare = !nodes_screenshare.empty();
