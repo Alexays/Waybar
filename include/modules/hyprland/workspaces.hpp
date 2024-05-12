@@ -182,7 +182,7 @@ class Workspaces : public AModule, public EventHandler {
   void loadPersistentWorkspacesFromConfig(Json::Value const& clientsJson);
   void loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& clientsJson);
 
-  bool handleScroll(GdkEventScroll*) override;
+  bool handleScroll(GdkEventScroll* e) override;
 
   bool m_barScroll = false;
   bool m_allOutputs = false;

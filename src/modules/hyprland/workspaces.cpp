@@ -1208,18 +1208,14 @@ void WindowCreationPayload::moveToWorksace(std::string &new_workspace_name) {
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {
+  // Ignore emulated scroll events on window
   if (gdk_event_get_pointer_emulated((GdkEvent *)e)) {
-    /**
-     * Ignore emulated scroll events on window
-     */
     return false;
   }
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-
-  bool increase;
 
   if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
     if (allOutputs()) {
