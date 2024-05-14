@@ -370,6 +370,8 @@ void UPower::setDisplayDevice() {
           auto thisPtr{static_cast<UPower *>(user_data)};
           upDevice.upDevice = static_cast<UpDevice *>(data);
           thisPtr->getUpDeviceInfo(upDevice);
+          if (upDevice.nativePath == nullptr)
+            return;
           if (0 == std::strcmp(upDevice.nativePath, thisPtr->nativePath_.c_str())) {
             // Unref current upDevice
             if (thisPtr->upDevice_.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
