@@ -29,6 +29,8 @@ UPower::UPower(const std::string &id, const Json::Value &config)
   if (!showIcon_) box_.remove(image_);
   // Device user wants
   if (config_["native-path"].isString()) nativePath_ = config_["native-path"].asString();
+  // Device model user wants
+  if (config_["model"].isString()) model_ = config_["model"].asString();
 
   // Hide If Empty
   if (config_["hide-if-empty"].isBool()) hideIfEmpty_ = config_["hide-if-empty"].asBool();
@@ -356,13 +358,13 @@ void UPower::resetDevices() {
 void UPower::setDisplayDevice() {
   std::lock_guard<std::mutex> guard{mutex_};
 
-  if (nativePath_.empty()) {
+  if (nativePath_.empty() && model_.empty()) {
     // Unref current upDevice
     if (upDevice_.upDevice != NULL) g_object_unref(upDevice_.upDevice);
 
     upDevice_.upDevice = up_client_get_display_device(upClient_);
     getUpDeviceInfo(upDevice_);
-  } else {
+  } else if (!nativePath_.empty()) {
     g_ptr_array_foreach(
         up_client_get_devices2(upClient_),
         [](gpointer data, gpointer user_data) {
@@ -372,6 +374,23 @@ void UPower::setDisplayDevice() {
           thisPtr->getUpDeviceInfo(upDevice);
           if (upDevice.nativePath == nullptr) return;
           if (0 == std::strcmp(upDevice.nativePath, thisPtr->nativePath_.c_str())) {
+            // Unref current upDevice
+            if (thisPtr->upDevice_.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
+            // Reassign new upDevice
+            thisPtr->upDevice_ = upDevice;
+          }
+        },
+        this);
+  } else { // if `nativePath_` is empty, but `model_` is not.
+    g_ptr_array_foreach(
+        up_client_get_devices2(upClient_),
+        [](gpointer data, gpointer user_data) {
+          upDevice_output upDevice;
+          auto thisPtr {static_cast<UPower *>(user_data)};
+          upDevice.upDevice = static_cast<UpDevice *>(data);
+          thisPtr->getUpDeviceInfo(upDevice);
+          if (upDevice.model == nullptr) return;
+          if (0 == std::strcmp(upDevice.model, thisPtr->model_.c_str())) {
             // Unref current upDevice
             if (thisPtr->upDevice_.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
             // Reassign new upDevice
