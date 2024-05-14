@@ -381,12 +381,12 @@ void UPower::setDisplayDevice() {
           }
         },
         this);
-  } else { // if `nativePath_` is empty, but `model_` is not.
+  } else {  // if `nativePath_` is empty, but `model_` is not.
     g_ptr_array_foreach(
         up_client_get_devices2(upClient_),
         [](gpointer data, gpointer user_data) {
           upDevice_output upDevice;
-          auto thisPtr {static_cast<UPower *>(user_data)};
+          auto thisPtr{static_cast<UPower *>(user_data)};
           upDevice.upDevice = static_cast<UpDevice *>(data);
           thisPtr->getUpDeviceInfo(upDevice);
           if (upDevice.model == nullptr) return;
