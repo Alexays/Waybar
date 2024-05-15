@@ -1,8 +1,11 @@
 #include "AModule.hpp"
 
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
 
 #include <util/command.hpp>
+
+#include "gdkmm/cursor.h"
 
 namespace waybar {
 
@@ -67,6 +70,12 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   if (hasUserEvents_ && config_.isMember("cursor")) {
     if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
       setCursor(Gdk::HAND2);
+    } else if (config_["cursor"].isInt()) {
+      auto cursor_type = static_cast<Gdk::CursorType>(config_["cursor"].asInt());
+      setCursor(cursor_type);  // Don't care what happens if the cast was unsuccesful, blame GTK
+                               // about what the default is
+    } else {
+      spdlog::warn("unknown cursor option configured on module %s", name_);
     }
   }
 }
