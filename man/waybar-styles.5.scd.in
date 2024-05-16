@@ -39,6 +39,35 @@ You can apply special styling to any module for when the cursor hovers it.
 }
 ```
 
+## Setting cursor style
+
+Most, if not all, module types support setting the `cursor` option. This is
+configured in your `config.jsonc`. If set to `true`, when hovering the module a
+"pointer"(as commonly known from web CSS styling `cursor: pointer`) style cursor
+will be shown.
+There are more cursor types to choose frome by setting the `cursor` option to
+a number, see Gdk3 official docs for all possible cursor types:
+https://docs.gtk.org/gdk3/enum.CursorType.html.
+
+Example of enabling pointer(`Gdk::Hand2`) cursor type on a custom module:
+
+```
+"custom/my-custom-module": {
+    ...
+    "cursor": true,
+}
+```
+
+Example of setting cursor type to `Gdk::Boat`(according to
+https://docs.gtk.org/gdk3/enum.CursorType.html#boat):
+
+```
+"custom/my-custom-module": {
+    ...
+    "cursor": 8,
+}
+```
+
 # SEE ALSO
 
 - *waybar(5)*

@@ -301,14 +301,6 @@ A group may hide all but one element, showing them only on mouse hover. In order
 },
 ```
 
-## Setting cursor style
-
-Most, if not all, module types support setting the `cursor` option. If set to
-`true`, when hovering the module a "pointer"(as known from web CSS styling `cursor: pointer;`) style cursor will be shown.
-There are more cursor types to choose from by setting the `cursor` option to a number,
-see Gdk3 offical docs for all possible cursor types:
-https://docs.gtk.org/gdk3/enum.CursorType.html.
-
 # SUPPORTED MODULES
 
 - *waybar-backlight(5)*
