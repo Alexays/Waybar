@@ -67,7 +67,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
-  if (hasUserEvents_ && config_.isMember("cursor")) {
+  if (config_.isMember("cursor")) {
     if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
       setCursor(Gdk::HAND2);
     } else if (config_["cursor"].isInt()) {
