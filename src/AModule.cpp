@@ -5,6 +5,7 @@
 
 #include <util/command.hpp>
 
+#include "gdk/gdk.h"
 #include "gdkmm/cursor.h"
 
 namespace waybar {
@@ -67,15 +68,14 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
+
   if (config_.isMember("cursor")) {
     if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
       setCursor(Gdk::HAND2);
     } else if (config_["cursor"].isInt()) {
-      auto cursor_type = static_cast<Gdk::CursorType>(config_["cursor"].asInt());
-      setCursor(cursor_type);  // Don't care what happens if the cast was unsuccesful, blame GTK
-                               // about what the default is
+      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
     } else {
-      spdlog::warn("unknown cursor option configured on module %s", name_);
+      spdlog::warn("unknown cursor option configured on module {}", name_);
     }
   }
 }
@@ -107,7 +107,18 @@ auto AModule::doAction(const std::string& name) -> void {
 void AModule::setCursor(Gdk::CursorType c) {
   auto cursor = Gdk::Cursor::create(c);
   auto gdk_window = event_box_.get_window();
-  gdk_window->set_cursor(cursor);
+  if (gdk_window) {
+    gdk_window->set_cursor(cursor);
+  } else {
+    // window may not be accessible yet, in this case,
+    // schedule another call for setting the cursor in 1 sec
+    Glib::signal_timeout().connect_seconds(
+        [this, c]() {
+          setCursor(c);
+          return false;
+        },
+        1);
+  }
 }
 
 bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
