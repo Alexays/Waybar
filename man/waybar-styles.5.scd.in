@@ -48,6 +48,9 @@ will be shown.
 There are more cursor types to choose frome by setting the `cursor` option to
 a number, see Gdk3 official docs for all possible cursor types:
 https://docs.gtk.org/gdk3/enum.CursorType.html.
+However, note that not all cursor options listed there may not be available on
+your system. If you attempt to use a cursor which is not available, the
+application will crash.
 
 Example of enabling pointer(`Gdk::Hand2`) cursor type on a custom module:
 
