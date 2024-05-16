@@ -105,9 +105,9 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 void AModule::setCursor(Gdk::CursorType c) {
-  auto cursor = Gdk::Cursor::create(c);
   auto gdk_window = event_box_.get_window();
   if (gdk_window) {
+    auto cursor = Gdk::Cursor::create(c);
     gdk_window->set_cursor(cursor);
   } else {
     // window may not be accessible yet, in this case,
