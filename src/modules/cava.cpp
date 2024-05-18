@@ -12,7 +12,12 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
     std::string strPath{config_["cava_config"].asString()};
     const std::string fnd{"XDG_CONFIG_HOME"};
     const std::string::size_type npos{strPath.find("$" + fnd)};
-    if (npos != std::string::npos) strPath.replace(npos, fnd.length() + 1, getenv(fnd.c_str()));
+    if (npos != std::string::npos) {
+      if (const char* xdg = getenv(fnd.c_str()))
+        strPath.replace(npos, fnd.length() + 1, xdg);
+      else
+        spdlog::warn("Module {0}. Environment variable \"${1}\" not found", name_, fnd);
+    }
     strcpy(cfgPath, strPath.data());
   }
   // Load cava config
