@@ -43,7 +43,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = true}},
     {"invisible",
      {//
-      .layer = bar_layer::BOTTOM,
+      .layer = std::nullopt,
       .exclusive = false,
       .passthrough = true,
       .visible = false}},
@@ -59,7 +59,7 @@ const std::string Bar::MODE_INVISIBLE = "invisible";
 const std::string_view DEFAULT_BAR_ID = "bar-0";
 
 /* Deserializer for enum bar_layer */
-void from_json(const Json::Value& j, bar_layer& l) {
+void from_json(const Json::Value& j, std::optional<bar_layer>& l) {
   if (j == "bottom") {
     l = bar_layer::BOTTOM;
   } else if (j == "top") {
@@ -316,13 +316,13 @@ void waybar::Bar::setMode(const std::string& mode) {
 void waybar::Bar::setMode(const struct bar_mode& mode) {
   auto* gtk_window = window.gobj();
 
-  auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
-  if (mode.layer == bar_layer::TOP) {
-    layer = GTK_LAYER_SHELL_LAYER_TOP;
+  if (mode.layer == bar_layer::BOTTOM) {
+    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_BOTTOM);
+  } else if (mode.layer == bar_layer::TOP) {
+    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_TOP);
   } else if (mode.layer == bar_layer::OVERLAY) {
-    layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
+    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
   }
-  gtk_layer_set_layer(gtk_window, layer);
 
   if (mode.exclusive) {
     gtk_layer_auto_exclusive_zone_enable(gtk_window);
