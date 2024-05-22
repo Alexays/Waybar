@@ -86,7 +86,14 @@ void IPC::startIPC() {
       std::string messageReceived(buffer.data());
       messageReceived = messageReceived.substr(0, messageReceived.find_first_of('\n'));
       spdlog::debug("hyprland IPC received {}", messageReceived);
-      parseIPC(messageReceived);
+
+      try {
+        parseIPC(messageReceived);
+      } catch (std::exception& e) {
+        spdlog::warn("Failed to parse IPC message: {}, reason: {}", messageReceived, e.what());
+      } catch (...) {
+        throw;
+      }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
