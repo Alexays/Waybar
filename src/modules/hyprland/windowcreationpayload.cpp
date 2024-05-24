@@ -13,6 +13,15 @@
 #include "util/regex_collection.hpp"
 
 namespace waybar::modules::hyprland {
+
+WindowCreationPayload::WindowCreationPayload(Json::Value const &client_data)
+    : m_window(std::make_pair(client_data["class"].asString(), client_data["title"].asString())),
+      m_windowAddress(client_data["address"].asString()),
+      m_workspaceName(client_data["workspace"]["name"].asString()) {
+  clearAddr();
+  clearWorkspaceName();
+}
+
 WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
                                              WindowAddress window_address, std::string window_repr)
     : m_window(std::move(window_repr)),
@@ -31,43 +40,6 @@ WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
   clearAddr();
   clearWorkspaceName();
 }
-
-WindowCreationPayload::WindowCreationPayload(Json::Value const &client_data)
-    : m_window(std::make_pair(client_data["class"].asString(), client_data["title"].asString())),
-      m_windowAddress(client_data["address"].asString()),
-      m_workspaceName(client_data["workspace"]["name"].asString()) {
-  clearAddr();
-  clearWorkspaceName();
-}
-
-std::string WindowCreationPayload::repr(Workspaces &workspace_manager) {
-  if (std::holds_alternative<Repr>(m_window)) {
-    return std::get<Repr>(m_window);
-  }
-  if (std::holds_alternative<ClassAndTitle>(m_window)) {
-    auto [window_class, window_title] = std::get<ClassAndTitle>(m_window);
-    return workspace_manager.getRewrite(window_class, window_title);
-  }
-  // Unreachable
-  spdlog::error("WorkspaceWindow::repr: Unreachable");
-  throw std::runtime_error("WorkspaceWindow::repr: Unreachable");
-}
-
-bool WindowCreationPayload::isEmpty(Workspaces &workspace_manager) {
-  if (std::holds_alternative<Repr>(m_window)) {
-    return std::get<Repr>(m_window).empty();
-  }
-  if (std::holds_alternative<ClassAndTitle>(m_window)) {
-    auto [window_class, window_title] = std::get<ClassAndTitle>(m_window);
-    return (window_class.empty() &&
-            (!workspace_manager.windowRewriteConfigUsesTitle() || window_title.empty()));
-  }
-  // Unreachable
-  spdlog::error("WorkspaceWindow::isEmpty: Unreachable");
-  throw std::runtime_error("WorkspaceWindow::isEmpty: Unreachable");
-}
-
-int WindowCreationPayload::incrementTimeSpentUncreated() { return m_timeSpentUncreated++; }
 
 void WindowCreationPayload::clearAddr() {
   // substr(2, ...) is necessary because Hyprland's JSON follows this format:
@@ -103,8 +75,37 @@ void WindowCreationPayload::clearWorkspaceName() {
   }
 }
 
+bool WindowCreationPayload::isEmpty(Workspaces &workspace_manager) {
+  if (std::holds_alternative<Repr>(m_window)) {
+    return std::get<Repr>(m_window).empty();
+  }
+  if (std::holds_alternative<ClassAndTitle>(m_window)) {
+    auto [window_class, window_title] = std::get<ClassAndTitle>(m_window);
+    return (window_class.empty() &&
+            (!workspace_manager.windowRewriteConfigUsesTitle() || window_title.empty()));
+  }
+  // Unreachable
+  spdlog::error("WorkspaceWindow::isEmpty: Unreachable");
+  throw std::runtime_error("WorkspaceWindow::isEmpty: Unreachable");
+}
+
+int WindowCreationPayload::incrementTimeSpentUncreated() { return m_timeSpentUncreated++; }
+
 void WindowCreationPayload::moveToWorksace(std::string &new_workspace_name) {
   m_workspaceName = new_workspace_name;
+}
+
+std::string WindowCreationPayload::repr(Workspaces &workspace_manager) {
+  if (std::holds_alternative<Repr>(m_window)) {
+    return std::get<Repr>(m_window);
+  }
+  if (std::holds_alternative<ClassAndTitle>(m_window)) {
+    auto [window_class, window_title] = std::get<ClassAndTitle>(m_window);
+    return workspace_manager.getRewrite(window_class, window_title);
+  }
+  // Unreachable
+  spdlog::error("WorkspaceWindow::repr: Unreachable");
+  throw std::runtime_error("WorkspaceWindow::repr: Unreachable");
 }
 
 }  // namespace waybar::modules::hyprland
