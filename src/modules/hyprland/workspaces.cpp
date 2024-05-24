@@ -69,13 +69,9 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
 
   populateSortByConfig(config);
-
   populateIgnoreWorkspacesConfig(config);
-
   populatePersistentWorkspacesConfig(config);
-
   populateFormatWindowSeparatorConfig(config);
-
   populateWindowRewriteConfig(config);
 }
 
@@ -195,14 +191,31 @@ auto Workspaces::registerIpc() -> void {
 void Workspaces::doUpdate() {
   std::unique_lock lock(m_mutex);
 
-  // remove workspaces that wait to be removed
-  for (auto &elem : m_workspacesToRemove) {
-    removeWorkspace(elem);
+  removeWorkspacesToRemove();
+  createWorkspacesToCreate();
+
+  std::vector<std::string> visibleWorkspaces = getVisibleWorkspaces();
+
+  updateWorkspaceStates(visibleWorkspaces);
+  updateWindowCount();
+  sortWorkspaces();
+
+  bool anyWindowCreated = updateWindowsToCreate();
+
+  if (anyWindowCreated) {
+    dp.emit();
+  }
+}
+
+void Workspaces::removeWorkspacesToRemove() {
+  for (const auto &workspaceName : m_workspacesToRemove) {
+    removeWorkspace(workspaceName);
   }
   m_workspacesToRemove.clear();
+}
 
-  // add workspaces that wait to be created
-  for (auto &[workspaceData, clientsData] : m_workspacesToCreate) {
+void Workspaces::createWorkspacesToCreate() {
+  for (const auto &[workspaceData, clientsData] : m_workspacesToCreate) {
     createWorkspace(workspaceData, clientsData);
   }
   if (!m_workspacesToCreate.empty()) {
@@ -210,63 +223,55 @@ void Workspaces::doUpdate() {
     sortWorkspaces();
   }
   m_workspacesToCreate.clear();
+}
 
-  // get all active workspaces
-  spdlog::trace("Getting active workspaces");
-  auto monitors = gIPC->getSocket1JsonReply("monitors");
+std::vector<std::string> Workspaces::getVisibleWorkspaces() {
   std::vector<std::string> visibleWorkspaces;
-  for (Json::Value &monitor : monitors) {
+  auto monitors = gIPC->getSocket1JsonReply("monitors");
+  for (const auto &monitor : monitors) {
     auto ws = monitor["activeWorkspace"];
-    if (ws.isObject() && (ws["name"].isString())) {
+    if (ws.isObject() && ws["name"].isString()) {
       visibleWorkspaces.push_back(ws["name"].asString());
     }
     auto sws = monitor["specialWorkspace"];
     auto name = sws["name"].asString();
-    if (sws.isObject() && (sws["name"].isString()) && !name.empty()) {
+    if (sws.isObject() && sws["name"].isString() && !name.empty()) {
       visibleWorkspaces.push_back(!name.starts_with("special:") ? name : name.substr(8));
     }
   }
+  return visibleWorkspaces;
+}
 
-  spdlog::trace("Updating workspace states");
-  auto updated_workspaces = gIPC->getSocket1JsonReply("workspaces");
+void Workspaces::updateWorkspaceStates(const std::vector<std::string> &visibleWorkspaces) {
+  auto updatedWorkspaces = gIPC->getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
-    // active
     workspace->setActive(workspace->name() == m_activeWorkspaceName ||
                          workspace->name() == m_activeSpecialWorkspaceName);
-    // disable urgency if workspace is active
     if (workspace->name() == m_activeWorkspaceName && workspace->isUrgent()) {
       workspace->setUrgent(false);
     }
-
-    // visible
     workspace->setVisible(std::find(visibleWorkspaces.begin(), visibleWorkspaces.end(),
                                     workspace->name()) != visibleWorkspaces.end());
-
-    // set workspace icon
     std::string &workspaceIcon = m_iconsMap[""];
     if (m_withIcon) {
       workspaceIcon = workspace->selectIcon(m_iconsMap);
     }
-
-    // update m_output
-    auto updated_workspace =
-        std::find_if(updated_workspaces.begin(), updated_workspaces.end(), [&workspace](auto &w) {
+    auto updatedWorkspace = std::find_if(
+        updatedWorkspaces.begin(), updatedWorkspaces.end(), [&workspace](const auto &w) {
           auto wNameRaw = w["name"].asString();
           auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
           return wName == workspace->name();
         });
-
-    if (updated_workspace != updated_workspaces.end()) {
-      workspace->setOutput((*updated_workspace)["monitor"].asString());
+    if (updatedWorkspace != updatedWorkspaces.end()) {
+      workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
-
     workspace->update(m_format, workspaceIcon);
   }
+}
 
-  spdlog::trace("Updating window count");
+bool Workspaces::updateWindowsToCreate() {
   bool anyWindowCreated = false;
   std::vector<WindowCreationPayload> notCreated;
-
   for (auto &windowPayload : m_windowsToCreate) {
     bool created = false;
     for (auto &workspace : m_workspaces) {
@@ -285,13 +290,9 @@ void Workspaces::doUpdate() {
       }
     }
   }
-
-  if (anyWindowCreated) {
-    dp.emit();
-  }
-
   m_windowsToCreate.clear();
   m_windowsToCreate = notCreated;
+  return anyWindowCreated;
 }
 
 auto Workspaces::update() -> void {

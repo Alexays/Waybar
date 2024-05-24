@@ -181,7 +181,13 @@ class Workspaces : public AModule, public EventHandler {
 
   int windowRewritePriorityFunction(std::string const& window_rule);
 
+  // Update methods
   void doUpdate();
+  void removeWorkspacesToRemove();
+  void createWorkspacesToCreate();
+  std::vector<std::string> getVisibleWorkspaces();
+  void updateWorkspaceStates(const std::vector<std::string>& visibleWorkspaces);
+  bool updateWindowsToCreate();
 
   void extendOrphans(int workspaceId, Json::Value const& clientsJson);
   void registerOrphanWindow(WindowCreationPayload create_window_payload);
