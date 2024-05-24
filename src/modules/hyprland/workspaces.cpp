@@ -60,6 +60,16 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   m_format = configFormat.isString() ? configFormat.asString() : "{name}";
   m_withIcon = m_format.find("{icon}") != std::string::npos;
 
+  m_withTooltip = tooltipEnabled();
+
+  if (m_withTooltip && m_tooltipMap.empty()) {
+    Json::Value tooltipFormats = config["tooltips"];
+    for (std::string &name : tooltipFormats.getMemberNames()) {
+      m_tooltipMap.emplace(name, tooltipFormats[name].asString());
+    }
+    m_tooltipMap.emplace("", "");
+  }
+
   if (m_withIcon && m_iconsMap.empty()) {
     Json::Value formatIcons = config["format-icons"];
     for (std::string &name : formatIcons.getMemberNames()) {
@@ -234,7 +244,15 @@ void Workspaces::doUpdate() {
     // set workspace icon
     std::string &workspaceIcon = m_iconsMap[""];
     if (m_withIcon) {
-      workspaceIcon = workspace->selectIcon(m_iconsMap);
+      spdlog::trace("Selecting icon for workspace {}", workspace->name());
+      workspaceIcon = workspace->selectString(m_iconsMap);
+    }
+
+    // set tooltip
+    std::string &workspaceTooltip = m_tooltipMap[""];
+    if (m_withTooltip) {
+      spdlog::trace("Selecting tooltip for workspace {}", workspace->name());
+      workspaceTooltip = workspace->selectString(m_tooltipMap);
     }
 
     // update m_output
@@ -249,7 +267,7 @@ void Workspaces::doUpdate() {
       workspace->setOutput((*updated_workspace)["monitor"].asString());
     }
 
-    workspace->update(m_format, workspaceIcon);
+    workspace->update(m_format, workspaceIcon, workspaceTooltip);
   }
 
   spdlog::trace("Updating window count");
@@ -882,7 +900,7 @@ void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condi
   }
 }
 
-void Workspace::update(const std::string &format, const std::string &icon) {
+void Workspace::update(const std::string &format, const std::string &icon, const std::string &tooltipFormat) {
   // clang-format off
   if (this->m_workspaceManager.activeOnly() && \
      !this->isActive() && \
@@ -917,6 +935,10 @@ void Workspace::update(const std::string &format, const std::string &icon) {
     isNotFirst = true;
     windows.append(window_repr);
   }
+
+  m_button.set_tooltip_text(fmt::format(fmt::runtime(tooltipFormat), fmt::arg("id", id()),
+                                 fmt::arg("name", name()), fmt::arg("icon", icon),
+                                 fmt::arg("windows", windows)));
 
   m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
                                  fmt::arg("name", name()), fmt::arg("icon", icon),
@@ -986,58 +1008,57 @@ void Workspaces::sortWorkspaces() {
   }
 }
 
-std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map) {
-  spdlog::trace("Selecting icon for workspace {}", name());
+std::string &Workspace::selectString(std::map<std::string, std::string> &string_map) {
   if (isUrgent()) {
-    auto urgentIconIt = icons_map.find("urgent");
-    if (urgentIconIt != icons_map.end()) {
-      return urgentIconIt->second;
+    auto urgentStringIt = string_map.find("urgent");
+    if (urgentStringIt != string_map.end()) {
+      return urgentStringIt->second;
     }
   }
 
   if (isActive()) {
-    auto activeIconIt = icons_map.find("active");
-    if (activeIconIt != icons_map.end()) {
-      return activeIconIt->second;
+    auto activeStringIt = string_map.find("active");
+    if (activeStringIt != string_map.end()) {
+      return activeStringIt->second;
     }
   }
 
   if (isSpecial()) {
-    auto specialIconIt = icons_map.find("special");
-    if (specialIconIt != icons_map.end()) {
-      return specialIconIt->second;
+    auto specialStringIt = string_map.find("special");
+    if (specialStringIt != string_map.end()) {
+      return specialStringIt->second;
     }
   }
 
-  auto namedIconIt = icons_map.find(name());
-  if (namedIconIt != icons_map.end()) {
-    return namedIconIt->second;
+  auto namedStringIt = string_map.find(name());
+  if (namedStringIt != string_map.end()) {
+    return namedStringIt->second;
   }
 
   if (isVisible()) {
-    auto visibleIconIt = icons_map.find("visible");
-    if (visibleIconIt != icons_map.end()) {
-      return visibleIconIt->second;
+    auto visibleStringIt = string_map.find("visible");
+    if (visibleStringIt != string_map.end()) {
+      return visibleStringIt->second;
     }
   }
 
   if (isEmpty()) {
-    auto emptyIconIt = icons_map.find("empty");
-    if (emptyIconIt != icons_map.end()) {
-      return emptyIconIt->second;
+    auto emptyStringIt = string_map.find("empty");
+    if (emptyStringIt != string_map.end()) {
+      return emptyStringIt->second;
     }
   }
 
   if (isPersistent()) {
-    auto persistentIconIt = icons_map.find("persistent");
-    if (persistentIconIt != icons_map.end()) {
-      return persistentIconIt->second;
+    auto persistentStringIt = string_map.find("persistent");
+    if (persistentStringIt != string_map.end()) {
+      return persistentStringIt->second;
     }
   }
 
-  auto defaultIconIt = icons_map.find("default");
-  if (defaultIconIt != icons_map.end()) {
-    return defaultIconIt->second;
+  auto defaultStringIt = string_map.find("default");
+  if (defaultStringIt != string_map.end()) {
+    return defaultStringIt->second;
   }
 
   return m_name;

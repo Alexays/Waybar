@@ -62,7 +62,7 @@ class Workspace {
  public:
   explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
                      const Json::Value& clients_data = Json::Value::nullRef);
-  std::string& selectIcon(std::map<std::string, std::string>& icons_map);
+  std::string& selectString(std::map<std::string, std::string>& string_map);
   Gtk::Button& button() { return m_button; };
 
   int id() const { return m_id; };
@@ -94,7 +94,7 @@ class Workspace {
   bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
   std::optional<std::string> closeWindow(WindowAddress const& addr);
 
-  void update(const std::string& format, const std::string& icon);
+  void update(const std::string& format, const std::string& icon, const std::string &tooltipFormat);
 
  private:
   Workspaces& m_workspaceManager;
@@ -201,6 +201,9 @@ class Workspaces : public AModule, public EventHandler {
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
   std::string m_format;
+
+  std::map<std::string, std::string> m_tooltipMap;
+  bool m_withTooltip;
 
   std::map<std::string, std::string> m_iconsMap;
   util::RegexCollection m_windowRewriteRules;
