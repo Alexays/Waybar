@@ -54,6 +54,8 @@ class Workspaces : public AModule, public EventHandler {
   void sortWorkspaces();
   void createWorkspace(Json::Value const& workspaceData,
                        Json::Value const& clientsData = Json::Value::nullRef);
+
+  Json::Value createMonitorWorkspaceData(std::string const& name, std::string const& monitor);
   void removeWorkspace(std::string const& name);
   void setUrgentWorkspace(std::string const& windowaddress);
 
