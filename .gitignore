@@ -48,3 +48,5 @@ packagecache
 # Nix
 result
 result-*
+
+.ccls-cache
