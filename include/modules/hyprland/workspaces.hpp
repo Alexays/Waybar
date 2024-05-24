@@ -145,7 +145,17 @@ class Workspaces : public AModule, public EventHandler {
                        Json::Value const& clientsData = Json::Value::nullRef);
   void removeWorkspace(std::string const& name);
   void setUrgentWorkspace(std::string const& windowaddress);
+
+  // Config
   void parseConfig(const Json::Value& config);
+  auto populateIconsMap(const Json::Value& formatIcons) -> void;
+  auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member) -> void;
+  auto populateSortByConfig(const Json::Value& config) -> void;
+  auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
+  auto populatePersistentWorkspacesConfig(const Json::Value& config) -> void;
+  auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
+  auto populateWindowRewriteConfig(const Json::Value& config) -> void;
+
   void registerIpc();
 
   // workspace events

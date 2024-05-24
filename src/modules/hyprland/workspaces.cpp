@@ -55,54 +55,63 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 }
 
 auto Workspaces::parseConfig(const Json::Value &config) -> void {
-  const Json::Value &configFormat = config["format"];
-
+  const auto &configFormat = config["format"];
   m_format = configFormat.isString() ? configFormat.asString() : "{name}";
   m_withIcon = m_format.find("{icon}") != std::string::npos;
 
   if (m_withIcon && m_iconsMap.empty()) {
-    Json::Value formatIcons = config["format-icons"];
-    for (std::string &name : formatIcons.getMemberNames()) {
-      m_iconsMap.emplace(name, formatIcons[name].asString());
-    }
-    m_iconsMap.emplace("", "");
+    populateIconsMap(config["format-icons"]);
   }
 
-  auto configAllOutputs = config_["all-outputs"];
-  if (configAllOutputs.isBool()) {
-    m_allOutputs = configAllOutputs.asBool();
-  }
+  populateBoolConfig(config, "all-outputs", m_allOutputs);
+  populateBoolConfig(config, "show-special", m_showSpecial);
+  populateBoolConfig(config, "active-only", m_activeOnly);
+  populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
 
-  auto configShowSpecial = config_["show-special"];
-  if (configShowSpecial.isBool()) {
-    m_showSpecial = configShowSpecial.asBool();
-  }
+  populateSortByConfig(config);
 
-  auto configActiveOnly = config_["active-only"];
-  if (configActiveOnly.isBool()) {
-    m_activeOnly = configActiveOnly.asBool();
-  }
+  populateIgnoreWorkspacesConfig(config);
 
-  auto configMoveToMonitor = config_["move-to-monitor"];
-  if (configMoveToMonitor.isBool()) {
-    m_moveToMonitor = configMoveToMonitor.asBool();
-  }
+  populatePersistentWorkspacesConfig(config);
 
-  auto configSortBy = config_["sort-by"];
+  populateFormatWindowSeparatorConfig(config);
+
+  populateWindowRewriteConfig(config);
+}
+
+auto Workspaces::populateIconsMap(const Json::Value &formatIcons) -> void {
+  for (const auto &name : formatIcons.getMemberNames()) {
+    m_iconsMap.emplace(name, formatIcons[name].asString());
+  }
+  m_iconsMap.emplace("", "");
+}
+
+auto Workspaces::populateBoolConfig(const Json::Value &config, const std::string &key, bool &member)
+    -> void {
+  auto configValue = config[key];
+  if (configValue.isBool()) {
+    member = configValue.asBool();
+  }
+}
+
+auto Workspaces::populateSortByConfig(const Json::Value &config) -> void {
+  auto configSortBy = config["sort-by"];
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
     try {
       m_sortBy = m_enumParser.parseStringToEnum(sortByStr, m_sortMap);
     } catch (const std::invalid_argument &e) {
-      // Handle the case where the string is not a valid enum representation.
       m_sortBy = SortMethod::DEFAULT;
-      g_warning("Invalid string representation for sort-by. Falling back to default sort method.");
+      spdlog::warn(
+          "Invalid string representation for sort-by. Falling back to default sort method.");
     }
   }
+}
 
-  Json::Value ignoreWorkspaces = config["ignore-workspaces"];
+auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value &config) -> void {
+  auto ignoreWorkspaces = config["ignore-workspaces"];
   if (ignoreWorkspaces.isArray()) {
-    for (Json::Value &workspaceRegex : ignoreWorkspaces) {
+    for (const auto &workspaceRegex : ignoreWorkspaces) {
       if (workspaceRegex.isString()) {
         std::string ruleString = workspaceRegex.asString();
         try {
@@ -116,29 +125,31 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
       }
     }
   }
+}
 
-  if (config_["persistent_workspaces"].isObject()) {
+auto Workspaces::populatePersistentWorkspacesConfig(const Json::Value &config) -> void {
+  if (config.isMember("persistent-workspaces") || config.isMember("persistent_workspaces")) {
     spdlog::warn(
         "persistent_workspaces is deprecated. Please change config to use persistent-workspaces.");
+    m_persistentWorkspaceConfig =
+        config.get("persistent-workspaces", config.get("persistent_workspaces", Json::Value()));
   }
+}
 
-  if (config_["persistent-workspaces"].isObject() || config_["persistent_workspaces"].isObject()) {
-    m_persistentWorkspaceConfig = config_["persistent-workspaces"].isObject()
-                                      ? config_["persistent-workspaces"]
-                                      : config_["persistent_workspaces"];
-  }
-
-  const Json::Value &formatWindowSeparator = config["format-window-separator"];
+auto Workspaces::populateFormatWindowSeparatorConfig(const Json::Value &config) -> void {
+  auto formatWindowSeparator = config["format-window-separator"];
   m_formatWindowSeparator =
       formatWindowSeparator.isString() ? formatWindowSeparator.asString() : " ";
+}
 
-  const Json::Value &windowRewrite = config["window-rewrite"];
+auto Workspaces::populateWindowRewriteConfig(const Json::Value &config) -> void {
+  const auto &windowRewrite = config["window-rewrite"];
   if (!windowRewrite.isObject()) {
     spdlog::debug("window-rewrite is not defined or is not an object, using default rules.");
     return;
   }
 
-  const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
+  const auto &windowRewriteDefaultConfig = config["window-rewrite-default"];
   std::string windowRewriteDefault =
       windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
 
