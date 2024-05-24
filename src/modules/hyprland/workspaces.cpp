@@ -88,6 +88,11 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
     m_moveToMonitor = configMoveToMonitor.asBool();
   }
 
+  auto configBarScroll = config_["enable-bar-scroll"];
+  if (configBarScroll.isBool()) {
+    m_barScroll = configBarScroll.asBool();
+  }
+
   auto configSortBy = config_["sort-by"];
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
@@ -803,6 +808,12 @@ void Workspaces::initializeWorkspaces() {
   auto const workspacesJson = gIPC->getSocket1JsonReply("workspaces");
   auto const clientsJson = gIPC->getSocket1JsonReply("clients");
 
+  if (barScroll()) {
+    auto &window = const_cast<Bar &>(m_bar).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
+
   for (Json::Value workspaceJson : workspacesJson) {
     std::string workspaceName = workspaceJson["name"].asString();
     if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
@@ -1194,6 +1205,33 @@ void WindowCreationPayload::clearWorkspaceName() {
 
 void WindowCreationPayload::moveToWorksace(std::string &new_workspace_name) {
   m_workspaceName = new_workspace_name;
+}
+
+bool Workspaces::handleScroll(GdkEventScroll *e) {
+  // Ignore emulated scroll events on window
+  if (gdk_event_get_pointer_emulated((GdkEvent *)e)) {
+    return false;
+  }
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
+    if (allOutputs()) {
+      gIPC->getSocket1Reply("dispatch workspace e+1");
+    } else {
+      gIPC->getSocket1Reply("dispatch workspace m+1");
+    }
+  } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
+    if (allOutputs()) {
+      gIPC->getSocket1Reply("dispatch workspace e-1");
+    } else {
+      gIPC->getSocket1Reply("dispatch workspace m-1");
+    }
+  }
+
+  return true;
 }
 
 }  // namespace waybar::modules::hyprland

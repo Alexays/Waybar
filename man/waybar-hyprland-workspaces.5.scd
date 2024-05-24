@@ -47,6 +47,11 @@ Addressed by *hyprland/workspaces*
 	default: false ++
 	If set to false workspaces group will be shown only in assigned output. Otherwise, all workspace groups are shown.
 
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
 *active-only*: ++
 	typeof: bool ++
 	default: false ++
