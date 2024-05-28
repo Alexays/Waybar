@@ -2,9 +2,6 @@
 
 #include <json/value.h>
 
-#include <iostream>
-#include <map>
-#include <mutex>
 #include <string>
 
 #include "gtkmm/box.h"

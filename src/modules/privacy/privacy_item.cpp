@@ -1,14 +1,11 @@
 #include "modules/privacy/privacy_item.hpp"
 
 #include <string>
-#include <thread>
 
-#include "AModule.hpp"
 #include "glibmm/main.h"
 #include "gtkmm/label.h"
 #include "gtkmm/revealer.h"
 #include "gtkmm/tooltip.h"
-#include "sigc++/adaptors/bind.h"
 #include "util/pipewire/privacy_node_info.hpp"
 
 namespace waybar::modules::privacy {
@@ -89,7 +86,7 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
 void PrivacyItem::update_tooltip() {
   // Removes all old nodes
-  for (auto child : tooltip_window.get_children()) {
+  for (auto *child : tooltip_window.get_children()) {
     delete child;
   }
 

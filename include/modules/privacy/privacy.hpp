@@ -1,10 +1,7 @@
 #pragma once
 
-#include <iostream>
-#include <map>
 #include <string>
 
-#include "ALabel.hpp"
 #include "gtkmm/box.h"
 #include "modules/privacy/privacy_item.hpp"
 #include "util/pipewire/pipewire_backend.hpp"
