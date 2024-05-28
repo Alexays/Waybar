@@ -31,6 +31,6 @@ jobs:
               libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
               pkgconf pipewire pulseaudio scdoc sndio spdlog wayland-protocols upower \
               libinotify
-            meson build -Dman-pages=enabled
+            meson setup build -Dman-pages=enabled
             ninja -C build
             meson test -C build --no-rebuild --print-errorlogs --suite waybar
