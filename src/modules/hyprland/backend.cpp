@@ -27,7 +27,7 @@ std::filesystem::path getSocketFolder(const char* instanceSig) {
     socketFolder = xdgRuntimeDir / "hypr";
   } else {
     spdlog::warn("$XDG_RUNTIME_DIR/hypr does not exist, falling back to /tmp/hypr");
-    socketFolder = std::filesystem::temp_directory_path() / "hypr";
+    socketFolder = std::filesystem::path("/tmp") / "hypr";
   }
   socketFolder = socketFolder / instanceSig;
   return socketFolder;
