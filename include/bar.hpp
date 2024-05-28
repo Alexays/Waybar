@@ -8,6 +8,7 @@
 #include <gtkmm/window.h>
 #include <json/json.h>
 
+#include <optional>
 #include <memory>
 #include <vector>
 
@@ -41,7 +42,7 @@ struct bar_margins {
 };
 
 struct bar_mode {
-  bar_layer layer;
+  std::optional<bar_layer> layer;
   bool exclusive;
   bool passthrough;
   bool visible;
