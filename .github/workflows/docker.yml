@@ -28,4 +28,4 @@ jobs:
           context: .
           file: Dockerfiles/${{ matrix.os }}
           push: true
-          tags: alexays/${{ matrix.os }}:latest
+          tags: alexays/waybar:${{ matrix.os }}
