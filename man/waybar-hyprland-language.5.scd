@@ -25,6 +25,19 @@ Addressed by *hyprland/language*
 	typeof: string ++
 	Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 
 # FORMAT REPLACEMENTS
 

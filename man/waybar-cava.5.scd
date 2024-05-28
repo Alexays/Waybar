@@ -120,6 +120,18 @@ libcava lives in:
 :[ string
 :[ /dev/stdout
 :[ It's impossible to set it. Waybar sets it to = /dev/stdout for internal needs
+|[ *menu*
+:[ string
+:[
+:[ Action that popups the menu.
+|[ *menu-file*
+:[ string
+:[
+:[ Location of the menu descriptor file. There need to be an element of type GtkMenu with id *menu*
+|[ *menu-actions*
+:[ array
+:[
+:[ The actions corresponding to the buttons of the menu.
 
 Configuration can be provided as:
 - The only cava configuration file which is provided through *cava_config*. The rest configuration can be skipped

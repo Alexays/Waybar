@@ -93,6 +93,19 @@ Addressed by *disk*
 	typeof: string ++
 	Use with specific_free, specific_used, and specific_total to force calculation to always be in a certain unit. Accepts kB, kiB, MB, Mib, GB, GiB, TB, TiB.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{percentage_used}*: Percentage of disk in use.

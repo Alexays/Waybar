@@ -80,6 +80,19 @@ Addressed by *hyprland/submap*
 	default: Default ++
 	Option to set the submap name to display when not in an active submap.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 
 # EXAMPLES
 

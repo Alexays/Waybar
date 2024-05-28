@@ -109,6 +109,19 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: false ++
 	Option to enable battery compatibility if not detected.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{capacity}*: Capacity in percentage
