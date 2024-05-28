@@ -8,8 +8,8 @@
 #include <gtkmm/window.h>
 #include <json/json.h>
 
-#include <optional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "AModule.hpp"
