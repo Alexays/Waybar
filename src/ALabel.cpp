@@ -2,6 +2,8 @@
 
 #include <fmt/format.h>
 
+#include <fstream>
+#include <iostream>
 #include <util/command.hpp>
 
 namespace waybar {
@@ -56,18 +58,41 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   // If a GTKMenu is requested in the config
   if (config_["menu"].isString()) {
     // Create the GTKMenu widget
-    GtkBuilder* builder = gtk_builder_new_from_file(config_["menu-file"].asString().c_str());
-    menu_ = gtk_builder_get_object(builder, "menu");
-    submenus_ = std::map<std::string, GtkMenuItem*>();
-    menuActionsMap_ = std::map<std::string, std::string>();
-    // Linking actions to the GTKMenu based on
-    for (Json::Value::const_iterator it = config_["menu-actions"].begin();
-         it != config_["menu-actions"].end(); ++it) {
-      std::string key = it.key().asString();
-      submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
-      menuActionsMap_[key] = it->asString();
-      g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                       (gpointer)menuActionsMap_[key].c_str());
+    try {
+      // Check that the file exists
+      std::string menuFile = config_["menu-file"].asString();
+      // Read the menu descriptor file
+      std::ifstream file(menuFile);
+      if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + menuFile);
+      }
+      std::stringstream fileContent;
+      fileContent << file.rdbuf();
+      GtkBuilder* builder = gtk_builder_new();
+
+      // Make the GtkBuilder and check for errors in his parsing
+      if (!gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr)) {
+        throw std::runtime_error("Error found in the file " + menuFile);
+      }
+
+      menu_ = gtk_builder_get_object(builder, "menu");
+      if (!menu_) {
+        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
+      }
+      submenus_ = std::map<std::string, GtkMenuItem*>();
+      menuActionsMap_ = std::map<std::string, std::string>();
+
+      // Linking actions to the GTKMenu based on
+      for (Json::Value::const_iterator it = config_["menu-actions"].begin();
+           it != config_["menu-actions"].end(); ++it) {
+        std::string key = it.key().asString();
+        submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
+        menuActionsMap_[key] = it->asString();
+        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                         (gpointer)menuActionsMap_[key].c_str());
+      }
+    } catch (std::runtime_error& e) {
+      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
   }
 
