@@ -72,21 +72,63 @@ A module that implements a 'menu' needs 3 properties defined in its config :
 	each actions needs to exists as an id in the 'menu-file' for it to be linked
 	properly.
 
+# MENU-FILE
+
+The menu-file is an `.xml` file representing a GtkBuilder. Documentation for it
+can be found here : https://docs.gtk.org/gtk4/class.Builder.html
+
+Here, it needs to have an element of type GtkMenu with id "menu". Eeach actions
+in *menu-actions* are linked to elements in the *menu-file* file by the id of
+the elements.
+
 # EXAMPLE
 
+Module config :
 ```
 "custom/power": {
-    "format" : "⏻ ",
-    "tooltip": false,
-    "menu": "on-click",
-    "menu-file": "~/.config/waybar/power_menu.xml",
-    "menu-actions": {
-        "shutdown": "shutdown",
-        "reboot": "reboot",
-	"suspend": "systemctl suspend",
-	"hibernate": "systemctl hibernate",
-    },
+	"format" : "⏻ ",
+		"tooltip": false,
+		"menu": "on-click",
+		"menu-file": "~/.config/waybar/power_menu.xml",
+		"menu-actions": {
+			"shutdown": "shutdown",
+			"reboot": "reboot",
+			"suspend": "systemctl suspend",
+			"hibernate": "systemctl hibernate",
+		},
 },
+```
+
+~/.config/waybar/power_menu.xml :
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkMenu" id="menu">
+	<child>
+		<object class="GtkMenuItem" id="suspend">
+			<property name="label">Suspend</property>
+        </object>
+	</child>
+	<child>
+        <object class="GtkMenuItem" id="hibernat">
+			<property name="label">Hibernate</property>
+        </object>
+	</child>
+    <child>
+        <object class="GtkMenuItem" id="shutdown">
+			<property name="label">Shutdown</property>
+        </object>
+    </child>
+    <child>
+      <object class="GtkSeparatorMenuItem" id="delimiter1"/>
+    </child>
+    <child>
+		<object class="GtkMenuItem" id="reboot">
+			<property name="label">Reboot</property>
+		</object>
+    </child>
+  </object>
+</interface>
 ```
 
 # STYLING MENUS
