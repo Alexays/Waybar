@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -37,4 +38,5 @@ class IPC {
 
 inline std::unique_ptr<IPC> gIPC;
 inline bool modulesReady = false;
+std::filesystem::path getSocketFolder(const char* instanceSig);
 };  // namespace waybar::modules::hyprland
