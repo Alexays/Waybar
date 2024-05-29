@@ -16,8 +16,12 @@ Addressed by *river/layout*
 
 *format*: ++
 	typeof: string ++
-	default: {} ++
+	default: {layout} ++
 	The format, how information should be displayed. On {} data gets inserted.
+
+*format-icons*: ++
+	typeof: array ++
+	Based on the current layout, the corresponding icon gets selected.
 
 *rotate*: ++
 	typeof: integer ++
@@ -64,13 +68,36 @@ Addressed by *river/layout*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
-# EXAMPLE
+# FORMAT REPLACEMENTS
+
+*{layout}*: Layout, as defined by your layout generator. By default this will be *rivertile(1)*
+
+*{icon}*: Icon, as defined in *format-icons*
+
+# EXAMPLES
+
+With layout name:
 
 ```
 "river/layout": {
-	"format": "{}",
+	"format": "{layout}",
 	"min-length": 4,
 	"align": "right"
+}
+```
+
+With icons, this sets icons for the 4 layouts available in rivertile:
+
+```
+"river/layout": {
+	"format": "{icon}",
+	"min-length": 3,
+	"format-icons": {
+		"left": "[]=",
+		"bottom": "TTT",
+		"top": "ꓕꓕꓕ",
+		"right": "=[]",
+	}
 }
 ```
 
@@ -81,4 +108,4 @@ Addressed by *river/layout*
 
 # SEE ALSO
 
-waybar(5), river(1)
+waybar(5), river(1), rivertile(1)
