@@ -182,6 +182,10 @@ void Workspace::update(const std::string &format, const std::string &icon) {
     m_button.hide();
     return;
   }
+  if (this->m_workspaceManager.specialVisibleOnly() && this->isSpecial() && !this->isVisible()) {
+    m_button.hide();
+    return;
+  }
   m_button.show();
 
   auto styleContext = m_button.get_style_context();
