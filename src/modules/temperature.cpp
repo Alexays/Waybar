@@ -1,7 +1,5 @@
 #include "modules/temperature.hpp"
 
-#include <bits/ranges_algo.h>
-
 #include <filesystem>
 #include <string>
 
