@@ -1,4 +1,5 @@
 test_inc = include_directories('../include')
+
 test_dep = [
     catch2,
     fmt,
@@ -6,6 +7,7 @@ test_dep = [
     jsoncpp,
     spdlog,
 ]
+
 test_src = files(
     'main.cpp',
     'JsonParser.cpp',
@@ -33,3 +35,5 @@ test(
     waybar_test,
     workdir: meson.project_source_root(),
 )
+
+subdir('hyprland')
