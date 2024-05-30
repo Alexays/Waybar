@@ -9,6 +9,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false # don't fail the other jobs if one of the images fails to build
       matrix:
         os: [ 'alpine', 'archlinux', 'debian', 'fedora', 'gentoo', 'opensuse' ]
 
