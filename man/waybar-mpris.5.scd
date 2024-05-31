@@ -142,11 +142,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *player-icons*: ++
 	typeof: map[string]string ++
-	Allows setting _{player-icon}_ based on player-name property.
+	Allows setting _{player_icon}_ based on player-name property.
 
 *status-icons*: ++
 	typeof: map[string]string ++
-	Allows setting _{status-icon}_ based on player status (playing, paused, stopped).
+	Allows setting _{status_icon}_ based on player status (playing, paused, stopped).
 
 
 # FORMAT REPLACEMENTS
