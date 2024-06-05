@@ -36,7 +36,7 @@ class RegexCollection {
   std::map<std::string, std::string> regex_cache;
   std::string default_repr;
 
-  std::string& find_match(std::string& value, bool& matched_any);
+  std::string find_match(std::string& value, bool& matched_any);
 
  public:
   RegexCollection() = default;
