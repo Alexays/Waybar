@@ -894,7 +894,7 @@ void Taskbar::move_button(Gtk::Button &bt, int pos) { box_.reorder_child(bt, pos
 
 void Taskbar::remove_button(Gtk::Button &bt) {
   box_.remove(bt);
-  if (tasks_.empty()) {
+  if (box_.get_children().empty()) {
     box_.get_style_context()->add_class("empty");
   }
 }
