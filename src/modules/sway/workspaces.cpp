@@ -501,7 +501,16 @@ std::string Workspaces::trimWorkspaceName(std::string name) {
 
 void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
   if (config_["current-only"].asBool()) {
-    if (node["focused"].asBool()) {
+    // If a workspace has a focused container then get_tree will say
+    // that the workspace itself isn't focused.  Therefore we need to
+    // check if any of its nodes are focused as well.
+    bool focused = node["focused"].asBool() ||
+      std::any_of(node["nodes"].begin(), node["nodes"].end(),
+                  [](const auto &child) {
+                    return child["focused"].asBool();
+                  });
+
+    if (focused) {
       button.show();
     } else {
       button.hide();
