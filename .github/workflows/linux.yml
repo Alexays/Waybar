@@ -9,6 +9,7 @@ concurrency:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         distro:
           - alpine
