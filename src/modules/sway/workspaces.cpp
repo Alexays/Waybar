@@ -505,10 +505,8 @@ void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
     // that the workspace itself isn't focused.  Therefore we need to
     // check if any of its nodes are focused as well.
     bool focused = node["focused"].asBool() ||
-      std::any_of(node["nodes"].begin(), node["nodes"].end(),
-                  [](const auto &child) {
-                    return child["focused"].asBool();
-                  });
+                   std::any_of(node["nodes"].begin(), node["nodes"].end(),
+                               [](const auto &child) { return child["focused"].asBool(); });
 
     if (focused) {
       button.show();
