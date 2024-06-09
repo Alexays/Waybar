@@ -26,6 +26,10 @@ class IPC {
 
   static std::string getSocket1Reply(const std::string& rq);
   Json::Value getSocket1JsonReply(const std::string& rq);
+  static std::filesystem::path getSocketFolder(const char* instanceSig);
+
+ protected:
+  static std::filesystem::path socketFolder_;
 
  private:
   void startIPC();
@@ -38,5 +42,4 @@ class IPC {
 
 inline std::unique_ptr<IPC> gIPC;
 inline bool modulesReady = false;
-std::filesystem::path getSocketFolder(const char* instanceSig);
 };  // namespace waybar::modules::hyprland
