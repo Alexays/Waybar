@@ -23,15 +23,21 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
     spdlog::warn("socketFolder already set, using {}", socketFolder_.c_str());
     return socketFolder_;
   }
+
+  const char* xdgRuntimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
+  std::filesystem::path xdgRuntimeDir;
+  // Only set path if env variable is set
+  if (xdgRuntimeDirEnv) {
+    xdgRuntimeDir = std::filesystem::path(xdgRuntimeDirEnv);
   }
 
-  std::filesystem::path xdgRuntimeDir = std::filesystem::path(getenv("XDG_RUNTIME_DIR"));
   if (!xdgRuntimeDir.empty() && std::filesystem::exists(xdgRuntimeDir / "hypr")) {
     socketFolder_ = xdgRuntimeDir / "hypr";
   } else {
     spdlog::warn("$XDG_RUNTIME_DIR/hypr does not exist, falling back to /tmp/hypr");
     socketFolder_ = std::filesystem::path("/tmp") / "hypr";
   }
+
   socketFolder_ = socketFolder_ / instanceSig;
   return socketFolder_;
 }
