@@ -128,10 +128,7 @@ void Workspaces::doUpdate() {
 
   removeWorkspacesToRemove();
   createWorkspacesToCreate();
-
-  std::vector<std::string> visibleWorkspaces = getVisibleWorkspaces();
-
-  updateWorkspaceStates(visibleWorkspaces);
+  updateWorkspaceStates();
   updateWindowCount();
   sortWorkspaces();
 
@@ -870,7 +867,8 @@ bool Workspaces::updateWindowsToCreate() {
   return anyWindowCreated;
 }
 
-void Workspaces::updateWorkspaceStates(const std::vector<std::string> &visibleWorkspaces) {
+void Workspaces::updateWorkspaceStates() {
+  const std::vector<std::string> visibleWorkspaces = getVisibleWorkspaces();
   auto updatedWorkspaces = gIPC->getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
     workspace->setActive(workspace->name() == m_activeWorkspaceName ||

@@ -10,7 +10,7 @@
 #include <thread>
 #include <type_traits>
 
-#include "GlibTestsFixture.hpp"
+#include "fixtures/GlibTestsFixture.hpp"
 
 using namespace waybar;
 

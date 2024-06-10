@@ -100,7 +100,7 @@ class Workspaces : public AModule, public EventHandler {
   void removeWorkspacesToRemove();
   void createWorkspacesToCreate();
   std::vector<std::string> getVisibleWorkspaces();
-  void updateWorkspaceStates(const std::vector<std::string>& visibleWorkspaces);
+  void updateWorkspaceStates();
   bool updateWindowsToCreate();
 
   void extendOrphans(int workspaceId, Json::Value const& clientsJson);

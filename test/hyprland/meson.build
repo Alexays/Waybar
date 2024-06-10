@@ -1,4 +1,4 @@
-test_inc = include_directories('../include')
+test_inc = include_directories('../../include')
 
 test_dep = [
     catch2,
@@ -9,23 +9,20 @@ test_dep = [
 ]
 
 test_src = files(
-    'main.cpp',
-    'config.cpp',
-    '../src/config.cpp',
+    '../main.cpp',
+    'backend.cpp',
+    '../../src/modules/hyprland/backend.cpp'
 )
 
-waybar_test = executable(
-    'waybar_test',
+hyprland_test = executable(
+    'hyprland_test',
     test_src,
     dependencies: test_dep,
     include_directories: test_inc,
 )
 
 test(
-    'waybar',
-    waybar_test,
+    'hyprland',
+    hyprland_test,
     workdir: meson.project_source_root(),
 )
-
-subdir('utils')
-subdir('hyprland')

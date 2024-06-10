@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -25,6 +26,10 @@ class IPC {
 
   static std::string getSocket1Reply(const std::string& rq);
   Json::Value getSocket1JsonReply(const std::string& rq);
+  static std::filesystem::path getSocketFolder(const char* instanceSig);
+
+ protected:
+  static std::filesystem::path socketFolder_;
 
  private:
   void startIPC();
