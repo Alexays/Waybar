@@ -591,8 +591,8 @@ auto Workspaces::populateIconsMap(const Json::Value &formatIcons) -> void {
   m_iconsMap.emplace("", "");
 }
 
-auto Workspaces::populateBoolConfig(const Json::Value &config, const std::string &key, bool &member)
-    -> void {
+auto Workspaces::populateBoolConfig(const Json::Value &config, const std::string &key,
+                                    bool &member) -> void {
   auto configValue = config[key];
   if (configValue.isBool()) {
     member = configValue.asBool();
