@@ -171,6 +171,7 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
   "window-rewrite": {
     "class<firefox>": "",
     "class<kitty>": "k",
+	"title<.* - (.*) - VSCodium>": "codium $1"  // captures part of the window title and formats it into output
   }
 }
 ```

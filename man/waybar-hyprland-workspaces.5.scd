@@ -147,6 +147,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"class<firefox> title<.*github.*>": "", // Windows whose class is "firefox" and title contains "github". Note that "class" always comes first.
 		"foot": "", // Windows that contain "foot" in either class or title. For optimization reasons, it will only match against a title if at least one other window explicitly matches against a title.
 		"code": "󰨞",
+		"title<.* - (.*) - VSCodium>": "codium $1"  // captures part of the window title and formats it into output
 	}
 }
 ```

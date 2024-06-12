@@ -31,11 +31,12 @@ RegexCollection::RegexCollection(const Json::Value& map, std::string default_rep
   std::sort(rules.begin(), rules.end(), [](Rule& a, Rule& b) { return a.priority > b.priority; });
 }
 
-std::string& RegexCollection::find_match(std::string& value, bool& matched_any) {
+std::string RegexCollection::find_match(std::string& value, bool& matched_any) {
   for (auto& rule : rules) {
-    if (std::regex_search(value, rule.rule)) {
+    std::smatch match;
+    if (std::regex_search(value, match, rule.rule)) {
       matched_any = true;
-      return rule.repr;
+      return match.format(rule.repr.data());
     }
   }
 
