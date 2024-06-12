@@ -12,7 +12,8 @@
 
 #ifdef HAVE_LANGINFO_1STDAY
 #include <langinfo.h>
-#include <locale.h>
+
+#include <clocale>
 #endif
 
 namespace fmt_lib = waybar::util::date::format;
@@ -126,8 +127,10 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     }
   }
 
-  label_.set_has_tooltip(true);
-  label_.signal_query_tooltip().connect(sigc::mem_fun(*this, &Clock::query_tlp_cb));
+  if (tooltipEnabled()) {
+    label_.set_has_tooltip(true);
+    label_.signal_query_tooltip().connect(sigc::mem_fun(*this, &Clock::query_tlp_cb));
+  }
 
   thread_ = [this] {
     dp.emit();
@@ -194,8 +197,8 @@ const unsigned cldRowsInMonth(const year_month& ym, const weekday& firstdow) {
   return 2u + ceil<weeks>((weekday{ym / 1} - firstdow) + ((ym / last).day() - day{0})).count();
 }
 
-auto cldGetWeekForLine(const year_month& ym, const weekday& firstdow, const unsigned line)
-    -> const year_month_weekday {
+auto cldGetWeekForLine(const year_month& ym, const weekday& firstdow,
+                       const unsigned line) -> const year_month_weekday {
   unsigned index{line - 2};
   if (weekday{ym / 1} == firstdow) ++index;
   return ym / firstdow[index];
