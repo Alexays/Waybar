@@ -142,6 +142,8 @@ If they are found in the current PulseAudio port name, the corresponding icons w
 - *hifi*
 - *phone*
 
+Additionally, suffixing a device name or port with *-muted* will cause the icon
+to be selected when the corresponding audio device is muted. This applies to *default* as well.
 
 # EXAMPLES
 
@@ -152,10 +154,12 @@ If they are found in the current PulseAudio port name, the corresponding icons w
 	"format-muted": "",
 	"format-icons": {
 		"alsa_output.pci-0000_00_1f.3.analog-stereo": "",
+		"alsa_output.pci-0000_00_1f.3.analog-stereo-muted": "",
 		"headphones": "",
 		"handsfree": "",
 		"headset": "",
 		"phone": "",
+		"phone-muted": "",
 		"portable": "",
 		"car": "",
 		"default": ["", ""]
