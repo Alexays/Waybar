@@ -49,6 +49,9 @@ class Bluetooth : public ALabel {
   auto update() -> void override;
 
  private:
+  static auto onObjectAdded(GDBusObjectManager*, GDBusObject*, gpointer) -> void;
+  static auto onObjectRemoved(GDBusObjectManager*, GDBusObject*, gpointer) -> void;
+
   static auto onInterfaceAddedOrRemoved(GDBusObjectManager*, GDBusObject*, GDBusInterface*,
                                         gpointer) -> void;
   static auto onInterfaceProxyPropertiesChanged(GDBusObjectManagerClient*, GDBusObjectProxy*,
