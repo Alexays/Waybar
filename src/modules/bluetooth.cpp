@@ -301,16 +301,25 @@ auto waybar::modules::Bluetooth::onObjectAdded(GDBusObjectManager* manager,
 auto waybar::modules::Bluetooth::onObjectRemoved(GDBusObjectManager* manager,
                                                  GDBusObject* object,
                                                  gpointer user_data) -> void {
-  GDBusProxy* proxy_controller =
-      G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Adapter1"));
+  Bluetooth* bt = static_cast<Bluetooth*>(user_data);
+  GDBusProxy* proxy_controller;
+
+  if (!bt->cur_controller_.has_value()) {
+    return;
+  }
+
+  proxy_controller = G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Adapter1"));
 
   if (proxy_controller != NULL) {
 
     std::string object_path = g_dbus_object_get_object_path(object);
-    Bluetooth* bt = static_cast<Bluetooth*>(user_data);
 
     if (object_path == bt->cur_controller_->path) {
       bt->cur_controller_ = bt->findCurController();
+      if (bt->cur_controller_.has_value()) {
+        bt->connected_devices_.clear();
+        bt->findConnectedDevices(bt->cur_controller_->path, bt->connected_devices_);
+      }
       bt->dp.emit();
     }
 
