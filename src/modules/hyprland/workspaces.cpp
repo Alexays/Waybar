@@ -577,9 +577,9 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateBoolConfig(config, "active-only", m_activeOnly);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
 
+  m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
-  populatePersistentWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
   populateWindowRewriteConfig(config);
 }
@@ -591,8 +591,8 @@ auto Workspaces::populateIconsMap(const Json::Value &formatIcons) -> void {
   m_iconsMap.emplace("", "");
 }
 
-auto Workspaces::populateBoolConfig(const Json::Value &config, const std::string &key,
-                                    bool &member) -> void {
+auto Workspaces::populateBoolConfig(const Json::Value &config, const std::string &key, bool &member)
+    -> void {
   auto configValue = config[key];
   if (configValue.isBool()) {
     member = configValue.asBool();
@@ -629,15 +629,6 @@ auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value &config) -> vo
         spdlog::error("Not a string: '{}'", workspaceRegex);
       }
     }
-  }
-}
-
-auto Workspaces::populatePersistentWorkspacesConfig(const Json::Value &config) -> void {
-  if (config.isMember("persistent-workspaces") || config.isMember("persistent_workspaces")) {
-    spdlog::warn(
-        "persistent_workspaces is deprecated. Please change config to use persistent-workspaces.");
-    m_persistentWorkspaceConfig =
-        config.get("persistent-workspaces", config.get("persistent_workspaces", Json::Value()));
   }
 }
 
