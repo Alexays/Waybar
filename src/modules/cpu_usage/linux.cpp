@@ -16,7 +16,8 @@ std::vector<std::tuple<size_t, size_t>> waybar::modules::CpuUsage::parseCpuinfo(
     }
     std::stringstream sline(line.substr(5));
     std::vector<size_t> times;
-    for (size_t time = 0; sline >> time; times.push_back(time));
+    for (size_t time = 0; sline >> time; times.push_back(time))
+      ;
 
     size_t idle_time = 0;
     size_t total_time = 0;
