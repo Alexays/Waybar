@@ -622,8 +622,8 @@ inline auto convertInto(std::string const &source, bool &target) -> ParserResult
 }
 #ifdef CLARA_CONFIG_OPTIONAL_TYPE
 template <typename T>
-inline auto convertInto(std::string const &source,
-                        CLARA_CONFIG_OPTIONAL_TYPE<T> &target) -> ParserResult {
+inline auto convertInto(std::string const &source, CLARA_CONFIG_OPTIONAL_TYPE<T> &target)
+    -> ParserResult {
   T temp;
   auto result = convertInto(source, temp);
   if (result) target = std::move(temp);
@@ -751,8 +751,8 @@ class ParserBase {
  public:
   virtual ~ParserBase() = default;
   virtual auto validate() const -> Result { return Result::ok(); }
-  virtual auto parse(std::string const &exeName,
-                     TokenStream const &tokens) const -> InternalParseResult = 0;
+  virtual auto parse(std::string const &exeName, TokenStream const &tokens) const
+      -> InternalParseResult = 0;
   virtual auto cardinality() const -> size_t { return 1; }
 
   auto parse(Args const &args) const -> InternalParseResult {
@@ -1098,8 +1098,8 @@ struct Parser : ParserBase {
 
   using ParserBase::parse;
 
-  auto parse(std::string const &exeName,
-             TokenStream const &tokens) const -> InternalParseResult override {
+  auto parse(std::string const &exeName, TokenStream const &tokens) const
+      -> InternalParseResult override {
     struct ParserInfo {
       ParserBase const *parser = nullptr;
       size_t count = 0;

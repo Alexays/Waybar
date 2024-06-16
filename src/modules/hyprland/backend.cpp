@@ -20,7 +20,6 @@ std::filesystem::path IPC::socketFolder_;
 std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   // socket path, specified by EventManager of Hyprland
   if (!socketFolder_.empty()) {
-    spdlog::warn("socketFolder already set, using {}", socketFolder_.c_str());
     return socketFolder_;
   }
 
