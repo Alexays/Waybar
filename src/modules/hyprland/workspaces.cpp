@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <variant>
 
 #include "util/regex_collection.hpp"
 
@@ -593,14 +592,14 @@ auto Workspaces::populateIconsMap(const Json::Value &formatIcons) -> void {
 
 auto Workspaces::populateBoolConfig(const Json::Value &config, const std::string &key, bool &member)
     -> void {
-  auto configValue = config[key];
+  const auto &configValue = config[key];
   if (configValue.isBool()) {
     member = configValue.asBool();
   }
 }
 
 auto Workspaces::populateSortByConfig(const Json::Value &config) -> void {
-  auto configSortBy = config["sort-by"];
+  const auto &configSortBy = config["sort-by"];
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
     try {
@@ -633,7 +632,7 @@ auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value &config) -> vo
 }
 
 auto Workspaces::populateFormatWindowSeparatorConfig(const Json::Value &config) -> void {
-  auto formatWindowSeparator = config["format-window-separator"];
+  const auto &formatWindowSeparator = config["format-window-separator"];
   m_formatWindowSeparator =
       formatWindowSeparator.isString() ? formatWindowSeparator.asString() : " ";
 }

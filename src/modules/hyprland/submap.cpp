@@ -38,12 +38,12 @@ Submap::~Submap() {
 }
 
 auto Submap::parseConfig(const Json::Value& config) -> void {
-  auto const alwaysOn = config["always-on"];
+  auto const& alwaysOn = config["always-on"];
   if (alwaysOn.isBool()) {
     always_on_ = alwaysOn.asBool();
   }
 
-  auto const defaultSubmap = config["default-submap"];
+  auto const& defaultSubmap = config["default-submap"];
   if (defaultSubmap.isString()) {
     default_submap_ = defaultSubmap.asString();
   }

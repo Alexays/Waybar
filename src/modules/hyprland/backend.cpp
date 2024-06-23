@@ -26,7 +26,7 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   const char* xdgRuntimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
   std::filesystem::path xdgRuntimeDir;
   // Only set path if env variable is set
-  if (xdgRuntimeDirEnv) {
+  if (xdgRuntimeDirEnv != nullptr) {
     xdgRuntimeDir = std::filesystem::path(xdgRuntimeDirEnv);
   }
 
