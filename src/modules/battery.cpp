@@ -272,13 +272,6 @@ waybar::modules::Battery::getInfos() {
       // Some battery will report current and charge in μA/μAh.
       // Scale these by the voltage to get μW/μWh.
 
-      uint32_t capacity = 0;
-      bool capacity_exists = false;
-      if (fs::exists(bat / "capacity")) {
-        capacity_exists = true;
-        std::ifstream(bat / "capacity") >> capacity;
-      }
-
       uint32_t current_now = 0;
       bool current_now_exists = false;
       if (fs::exists(bat / "current_now")) {
@@ -382,6 +375,19 @@ waybar::modules::Battery::getInfos() {
         }
       }
 
+      uint32_t capacity = 0;
+      bool capacity_exists = false;
+      if (charge_now_exists && charge_full_exists && charge_full != 0) {
+        capacity_exists = true;
+        capacity = 100 * (uint64_t)charge_now / (uint64_t)charge_full;
+      } else if (energy_now_exists && energy_full_exists && energy_full != 0) {
+        capacity_exists = true;
+        capacity = 100 * (uint64_t)energy_now / (uint64_t)energy_full;
+      } else if (fs::exists(bat / "capacity")) {
+        capacity_exists = true;
+        std::ifstream(bat / "capacity") >> capacity;
+      }
+
       if (!voltage_now_exists) {
         if (power_now_exists && current_now_exists && current_now != 0) {
           voltage_now_exists = true;
@@ -422,13 +428,7 @@ waybar::modules::Battery::getInfos() {
       }
 
       if (!capacity_exists) {
-        if (charge_now_exists && charge_full_exists && charge_full != 0) {
-          capacity_exists = true;
-          capacity = 100 * (uint64_t)charge_now / (uint64_t)charge_full;
-        } else if (energy_now_exists && energy_full_exists && energy_full != 0) {
-          capacity_exists = true;
-          capacity = 100 * (uint64_t)energy_now / (uint64_t)energy_full;
-        } else if (charge_now_exists && energy_full_exists && voltage_now_exists) {
+        if (charge_now_exists && energy_full_exists && voltage_now_exists) {
           if (!charge_full_exists && voltage_now != 0) {
             charge_full_exists = true;
             charge_full = 1000000 * (uint64_t)energy_full / (uint64_t)voltage_now;
