@@ -1,4 +1,3 @@
-#include <cstdlib>
 #if __has_include(<catch2/catch_test_macros.hpp>)
 #include <catch2/catch_test_macros.hpp>
 #else
@@ -6,7 +5,6 @@
 #endif
 
 #include "fixtures/IPCTestFixture.hpp"
-#include "modules/hyprland/backend.hpp"
 
 namespace fs = std::filesystem;
 namespace hyprland = waybar::modules::hyprland;
@@ -52,4 +50,12 @@ TEST_CASE_METHOD(IPCTestFixture, "XDGRuntimeDirExistsNoHyprDir", "[getSocketFold
 
   // Assert expected result
   REQUIRE(actualPath == expectedPath);
+}
+
+TEST_CASE_METHOD(IPCMock, "getSocket1JsonReply handles empty response", "[getSocket1JsonReply]") {
+  std::string request = "test_request";
+
+  Json::Value jsonResponse = getSocket1JsonReply(request);
+
+  REQUIRE(jsonResponse.isNull());
 }

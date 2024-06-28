@@ -4,14 +4,11 @@
 #include <gtkmm/label.h>
 #include <json/value.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
-#include <optional>
 #include <regex>
 #include <string>
-#include <variant>
 #include <vector>
 
 #include "AModule.hpp"
@@ -53,17 +50,19 @@ class Workspaces : public AModule, public EventHandler {
   void onEvent(const std::string& e) override;
   void updateWindowCount();
   void sortWorkspaces();
-  void createWorkspace(Json::Value const& workspaceData,
-                       Json::Value const& clientsData = Json::Value::nullRef);
+  void createWorkspace(Json::Value const& workspace_data,
+                       Json::Value const& clients_data = Json::Value::nullRef);
 
-  Json::Value createMonitorWorkspaceData(std::string const& name, std::string const& monitor);
+  static Json::Value createMonitorWorkspaceData(std::string const& name,
+                                                std::string const& monitor);
   void removeWorkspace(std::string const& name);
   void setUrgentWorkspace(std::string const& windowaddress);
 
   // Config
   void parseConfig(const Json::Value& config);
   auto populateIconsMap(const Json::Value& formatIcons) -> void;
-  auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member) -> void;
+  static auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
+      -> void;
   auto populateSortByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
@@ -98,7 +97,7 @@ class Workspaces : public AModule, public EventHandler {
   void doUpdate();
   void removeWorkspacesToRemove();
   void createWorkspacesToCreate();
-  std::vector<std::string> getVisibleWorkspaces();
+  static std::vector<std::string> getVisibleWorkspaces();
   void updateWorkspaceStates();
   bool updateWindowsToCreate();
 

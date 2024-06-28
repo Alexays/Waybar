@@ -14,3 +14,9 @@ class IPCTestFixture : public hyprland::IPC {
 
  private:
 };
+
+class IPCMock : public IPCTestFixture {
+ public:
+  // Mock getSocket1Reply to return an empty string
+  static std::string getSocket1Reply(const std::string& rq) { return ""; }
+};

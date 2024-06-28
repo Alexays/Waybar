@@ -26,7 +26,7 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   const char* xdgRuntimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
   std::filesystem::path xdgRuntimeDir;
   // Only set path if env variable is set
-  if (xdgRuntimeDirEnv) {
+  if (xdgRuntimeDirEnv != nullptr) {
     xdgRuntimeDir = std::filesystem::path(xdgRuntimeDirEnv);
   }
 
@@ -218,7 +218,13 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
 }
 
 Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
-  return parser_.parse(getSocket1Reply("j/" + rq));
+  std::string reply = getSocket1Reply("j/" + rq);
+
+  if (reply.empty()) {
+    return {};
+  }
+
+  return parser_.parse(reply);
 }
 
 }  // namespace waybar::modules::hyprland

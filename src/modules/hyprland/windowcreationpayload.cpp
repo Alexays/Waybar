@@ -3,14 +3,11 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-#include <memory>
 #include <string>
 #include <utility>
 #include <variant>
 
 #include "modules/hyprland/workspaces.hpp"
-#include "util/regex_collection.hpp"
 
 namespace waybar::modules::hyprland {
 
