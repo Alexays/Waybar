@@ -6,7 +6,7 @@
 
 #### Current features
 - Sway (Workspaces, Binding mode, Focused window name)
-- River (Mapping mode, Tags, Focused window name)
+- River (Mapping mode, Tags, Focused window name, Layout)
 - Hyprland (Window Icons, Workspaces, Focused window name)
 - DWL (Tags, Focused window name) [requires dwl ipc patch](https://github.com/djpohly/dwl/wiki/ipc)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
