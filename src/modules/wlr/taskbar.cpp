@@ -788,6 +788,10 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   }
 
   icon_themes_.push_back(Gtk::IconTheme::get_default());
+
+  for (auto &t : tasks_) {
+    t->handle_app_id(t->app_id().c_str());
+  }
 }
 
 Taskbar::~Taskbar() {
