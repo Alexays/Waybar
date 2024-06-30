@@ -162,7 +162,7 @@ auto waybar::modules::Custom::update() -> void {
     auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
-    if (str.empty()) {
+    if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
       event_box_.hide();
     } else {
       label_.set_markup(str);
