@@ -65,6 +65,19 @@ Addressed by *river/mode*
 	typeof: double ++
 	Threshold to be used when scrolling.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # EXAMPLES
 
 ```

@@ -129,6 +129,19 @@ Addressed by *bluetooth*
 	typeof: string ++
 	This format is used to define how each connected device should be displayed within the *device_enumerate* format replacement in the tooltip menu.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: Status of the bluetooth device.

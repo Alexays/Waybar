@@ -87,6 +87,19 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	default: 100 ++
 	The maximum volume that can be set, in percentage.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{volume}*: Volume in percentage.

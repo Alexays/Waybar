@@ -192,6 +192,7 @@ man_files = files(
     'man/waybar-idle-inhibitor.5.scd',
     'man/waybar-image.5.scd',
     'man/waybar-states.5.scd',
+    'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
 )
 

@@ -113,6 +113,19 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	typeof: array ++
 	Sinks in this list will not be shown as active sink by Waybar. Entries should be the sink's description field.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{desc}*: Pulseaudio port's description, for bluetooth it'll be the device name.

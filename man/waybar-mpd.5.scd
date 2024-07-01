@@ -162,6 +162,19 @@ Addressed by *mpd*
 	default: {} ++
 	Icon to show depending on the "single" option (*{ "on": "...", "off": "..." }*)
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 ## WHEN PLAYING/PAUSED

@@ -89,6 +89,19 @@ screensaver, also known as "presentation mode".
 	typeof: string ++
 	This format is used when the inhibit is deactivated.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu. Cannot be "on-click".
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: status (*activated* or *deactivated*)

@@ -133,6 +133,16 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
 
     format = rec->second;
   }
+
+  // Check that a menu has been configured
+  if (config_["menu"].isString()) {
+    // Check if the event is the one specified for the "menu" option
+    if (rec->second == config_["menu"].asString()) {
+      // Popup the menu
+      gtk_widget_show_all(GTK_WIDGET(menu_));
+      gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+    }
+  }
   // Second call user scripts
   if (!format.empty()) {
     if (config_[format].isString())

@@ -76,6 +76,19 @@ See *systemd-inhibit*(1) for more information.
 	default: true ++
 	Option to disable tooltip on hover.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu. Cannot be "on-click".
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: status (*activated* or *deactivated*)

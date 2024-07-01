@@ -32,6 +32,19 @@ Addressed by *sway/language*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{short}*: Short name of layout (e.g. "us"). Equals to {}.

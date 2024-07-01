@@ -36,6 +36,19 @@ Addressed by *systemd-failed-units*
 	default: *true* ++
 	Option to hide this module when there is no failing units.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{nr_failed_system}*: Number of failed units from systemwide (PID=1) systemd.

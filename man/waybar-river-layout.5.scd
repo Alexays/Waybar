@@ -51,6 +51,19 @@ Addressed by *river/layout*
 	typeof: string ++
 	Command to execute when you right-click on the module.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # EXAMPLE
 
 ```
