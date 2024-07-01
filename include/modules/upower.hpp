@@ -45,6 +45,7 @@ class UPower final : public AIconLabel {
 
   // Technical variables
   std::string nativePath_;
+  std::string model_;
   std::string lastStatus_;
   Glib::ustring label_markup_;
   std::mutex mutex_;

@@ -29,6 +29,8 @@ UPower::UPower(const std::string &id, const Json::Value &config)
   if (!showIcon_) box_.remove(image_);
   // Device user wants
   if (config_["native-path"].isString()) nativePath_ = config_["native-path"].asString();
+  // Device model user wants
+  if (config_["model"].isString()) model_ = config_["model"].asString();
 
   // Hide If Empty
   if (config_["hide-if-empty"].isBool()) hideIfEmpty_ = config_["hide-if-empty"].asBool();
@@ -356,7 +358,7 @@ void UPower::resetDevices() {
 void UPower::setDisplayDevice() {
   std::lock_guard<std::mutex> guard{mutex_};
 
-  if (nativePath_.empty()) {
+  if (nativePath_.empty() && model_.empty()) {
     // Unref current upDevice
     if (upDevice_.upDevice != NULL) g_object_unref(upDevice_.upDevice);
 
@@ -370,13 +372,22 @@ void UPower::setDisplayDevice() {
           auto thisPtr{static_cast<UPower *>(user_data)};
           upDevice.upDevice = static_cast<UpDevice *>(data);
           thisPtr->getUpDeviceInfo(upDevice);
-          if (upDevice.nativePath == nullptr) return;
-          if (0 == std::strcmp(upDevice.nativePath, thisPtr->nativePath_.c_str())) {
-            // Unref current upDevice
-            if (thisPtr->upDevice_.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
-            // Reassign new upDevice
-            thisPtr->upDevice_ = upDevice;
+          upDevice_output displayDevice{NULL};
+          if (!thisPtr->nativePath_.empty()) {
+            if (upDevice.nativePath == nullptr) return;
+            if (0 == std::strcmp(upDevice.nativePath, thisPtr->nativePath_.c_str())) {
+              displayDevice = upDevice;
+            }
+          } else {
+            if (upDevice.model == nullptr) return;
+            if (0 == std::strcmp(upDevice.model, thisPtr->model_.c_str())) {
+              displayDevice = upDevice;
+            }
           }
+          // Unref current upDevice
+          if (displayDevice.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
+          // Reassign new upDevice
+          thisPtr->upDevice_ = displayDevice;
         },
         this);
   }
