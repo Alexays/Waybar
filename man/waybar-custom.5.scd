@@ -21,6 +21,10 @@ Addressed by *custom/<name>*
 	The path to a script, which determines if the script in *exec* should be executed. ++
 	*exec* will be executed if the exit code of *exec-if* equals 0.
 
+*hide-empty-text*: ++
+	typeof: bool ++
+	Disables the module when output is empty, but format might contain additional static content.
+
 *exec-on-event*: ++
 	typeof: bool ++
 	default: true ++
