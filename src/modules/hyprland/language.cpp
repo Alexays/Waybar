@@ -36,6 +36,11 @@ Language::~Language() {
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
+  spdlog::debug("hyprland language update with full name {}", layout_.full_name);
+  spdlog::debug("hyprland language update with short name {}", layout_.short_name);
+  spdlog::debug("hyprland language update with short description {}", layout_.short_description);
+  spdlog::debug("hyprland language update with variant {}", layout_.variant);
+
   std::string layoutName = std::string{};
   if (config_.isMember("format-" + layout_.short_description + "-" + layout_.variant)) {
     const auto propName = "format-" + layout_.short_description + "-" + layout_.variant;
@@ -49,6 +54,8 @@ auto Language::update() -> void {
                                   fmt::arg("shortDescription", layout_.short_description),
                                   fmt::arg("variant", layout_.variant)));
   }
+
+  spdlog::debug("hyprland language formatted layout name {}", layoutName);
 
   if (!format_.empty()) {
     label_.show();
