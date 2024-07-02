@@ -96,14 +96,14 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
       return app_identifier;
     }
 
-    const auto app_identifier_desktop = app_identifier + "-desktop";
+    auto app_identifier_desktop = app_identifier + "-desktop";
     if (DefaultGtkIconThemeWrapper::has_icon(app_identifier_desktop)) {
       return app_identifier_desktop;
     }
 
-    const auto first_space = app_identifier.find_first_of(' ');
+    auto first_space = app_identifier.find_first_of(' ');
     if (first_space != std::string::npos) {
-      const auto first_word = toLowerCase(app_identifier.substr(0, first_space));
+      auto first_word = toLowerCase(app_identifier.substr(0, first_space));
       if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }
@@ -111,7 +111,7 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
 
     const auto first_dash = app_identifier.find_first_of('-');
     if (first_dash != std::string::npos) {
-      const auto first_word = toLowerCase(app_identifier.substr(0, first_dash));
+      auto first_word = toLowerCase(app_identifier.substr(0, first_dash));
       if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }

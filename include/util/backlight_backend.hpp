@@ -56,10 +56,10 @@ class BacklightBackend {
 
   void set_previous_best_device(const BacklightDevice *device);
 
-  void set_brightness(std::string preferred_device, ChangeType change_type, double step);
+  void set_brightness(const std::string &preferred_device, ChangeType change_type, double step);
 
-  void set_scaled_brightness(std::string preferred_device, int brightness);
-  int get_scaled_brightness(std::string preferred_device);
+  void set_scaled_brightness(const std::string &preferred_device, int brightness);
+  int get_scaled_brightness(const std::string &preferred_device);
 
   bool is_login_proxy_initialized() const { return static_cast<bool>(login_proxy_); }
 
@@ -70,7 +70,7 @@ class BacklightBackend {
   std::mutex udev_thread_mutex_;
 
  private:
-  void set_brightness_internal(std::string device_name, int brightness, int max_brightness);
+  void set_brightness_internal(const std::string &device_name, int brightness, int max_brightness);
 
   std::function<void()> on_updated_cb_;
   std::chrono::milliseconds polling_interval_;

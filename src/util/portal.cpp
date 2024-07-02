@@ -85,7 +85,9 @@ void waybar::Portal::on_signal(const Glib::ustring& sender_name, const Glib::ust
   if (signal_name != "SettingChanged" || parameters.get_n_children() != 3) {
     return;
   }
-  Glib::VariantBase nspcv, keyv, valuev;
+  Glib::VariantBase nspcv;
+  Glib::VariantBase keyv;
+  Glib::VariantBase valuev;
   parameters.get_child(nspcv, 0);
   parameters.get_child(keyv, 1);
   parameters.get_child(valuev, 2);

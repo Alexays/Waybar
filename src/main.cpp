@@ -13,7 +13,8 @@ std::list<pid_t> reap;
 volatile bool reload;
 
 void* signalThread(void* args) {
-  int err, signum;
+  int err;
+  int signum;
   sigset_t mask;
   sigemptyset(&mask);
   sigaddset(&mask, SIGCHLD);
@@ -46,7 +47,7 @@ void* signalThread(void* args) {
   }
 }
 
-void startSignalThread(void) {
+void startSignalThread() {
   int err;
   sigset_t mask;
   sigemptyset(&mask);
@@ -71,7 +72,7 @@ void startSignalThread(void) {
 
 int main(int argc, char* argv[]) {
   try {
-    auto client = waybar::Client::inst();
+    auto* client = waybar::Client::inst();
 
     std::signal(SIGUSR1, [](int /*signal*/) {
       for (auto& bar : waybar::Client::inst()->bars) {

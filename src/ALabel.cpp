@@ -71,12 +71,12 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       GtkBuilder* builder = gtk_builder_new();
 
       // Make the GtkBuilder and check for errors in his parsing
-      if (!gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr)) {
+      if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
         throw std::runtime_error("Error found in the file " + menuFile);
       }
 
       menu_ = gtk_builder_get_object(builder, "menu");
-      if (!menu_) {
+      if (menu_ == nullptr) {
         throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
       }
       submenus_ = std::map<std::string, GtkMenuItem*>();
@@ -121,7 +121,7 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size) {
+    if (size != 0U) {
       auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
       format_icons = format_icons[idx];
     }
@@ -147,7 +147,7 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size) {
+    if (size != 0U) {
       auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
       format_icons = format_icons[idx];
     }
