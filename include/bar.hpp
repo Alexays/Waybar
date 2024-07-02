@@ -9,6 +9,7 @@
 #include <json/json.h>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "AModule.hpp"
@@ -41,7 +42,7 @@ struct bar_margins {
 };
 
 struct bar_mode {
-  bar_layer layer;
+  std::optional<bar_layer> layer;
   bool exclusive;
   bool passthrough;
   bool visible;

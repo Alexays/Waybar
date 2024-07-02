@@ -9,6 +9,7 @@ concurrency:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         distro:
           - alpine
@@ -26,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: configure
-        run: meson -Dman-pages=enabled -Dcpp_std=${{matrix.cpp_std}} build
+        run: meson setup -Dman-pages=enabled -Dcpp_std=${{matrix.cpp_std}} build
       - name: build
         run: ninja -C build
       - name: test

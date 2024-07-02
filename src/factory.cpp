@@ -28,6 +28,7 @@
 #endif
 #ifdef HAVE_DWL
 #include "modules/dwl/tags.hpp"
+#include "modules/dwl/window.hpp"
 #endif
 #ifdef HAVE_HYPRLAND
 #include "modules/hyprland/language.hpp"
@@ -69,7 +70,7 @@
 #include "modules/gamemode.hpp"
 #endif
 #ifdef HAVE_UPOWER
-#include "modules/upower/upower.hpp"
+#include "modules/upower.hpp"
 #endif
 #ifdef HAVE_PIPEWIRE
 #include "modules/privacy/privacy.hpp"
@@ -86,6 +87,7 @@
 #endif
 #if defined(__linux__)
 #include "modules/bluetooth.hpp"
+#include "modules/power_profiles_daemon.hpp"
 #endif
 #ifdef HAVE_LOGIND_INHIBITOR
 #include "modules/inhibitor.hpp"
@@ -128,7 +130,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_UPOWER
     if (ref == "upower") {
-      return new waybar::modules::upower::UPower(id, config_[name]);
+      return new waybar::modules::UPower(id, config_[name]);
     }
 #endif
 #ifdef HAVE_PIPEWIRE
@@ -185,6 +187,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #ifdef HAVE_DWL
     if (ref == "dwl/tags") {
       return new waybar::modules::dwl::Tags(id, bar_, config_[name]);
+    }
+    if (ref == "dwl/window") {
+      return new waybar::modules::dwl::Window(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_HYPRLAND
@@ -281,6 +286,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #if defined(__linux__)
     if (ref == "bluetooth") {
       return new waybar::modules::Bluetooth(id, config_[name]);
+    }
+    if (ref == "power-profiles-daemon") {
+      return new waybar::modules::PowerProfilesDaemon(id, config_[name]);
     }
 #endif
 #ifdef HAVE_LOGIND_INHIBITOR

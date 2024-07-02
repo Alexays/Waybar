@@ -19,6 +19,7 @@ const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name
 
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
+  hide_single_ = config["hide-single-layout"].isBool() && config["hide-single-layout"].asBool();
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
   if (format_.find("{}") != std::string::npos || format_.find("{short}") != std::string::npos) {
     displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortName);
@@ -95,6 +96,10 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
+  if (hide_single_ && layouts_map_.size() <= 1) {
+    event_box_.hide();
+    return;
+  }
   auto display_layout = trim(fmt::format(
       fmt::runtime(format_), fmt::arg("short", layout_.short_name),
       fmt::arg("shortDescription", layout_.short_description), fmt::arg("long", layout_.full_name),

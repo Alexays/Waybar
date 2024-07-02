@@ -1,0 +1,44 @@
+waybar-styles(5)
+
+# NAME
+
+waybar-styles - using stylesheets for waybar
+
+# DESCRIPTION
+
+Waybar uses Cascading Style Sheets (CSS) to configure its appearance.
+
+It uses the first file found in this search order:
+
+- *$XDG_CONFIG_HOME/waybar/style.css*
+- *~/.config/waybar/style.css*
+- *~/waybar/style.css*
+- */etc/xdg/waybar/style.css*
+- *@sysconfdir@/xdg/waybar/style.css*
+
+# EXAMPLE
+
+An example user-controlled stylesheet that just changes the color of the clock to be green on black, while keeping the rest of the system config the same would be:
+
+```
+@import url("file:///etc/xdg/waybar/style.css")
+
+#clock {
+  background: #000000;
+  color: #00ff00;
+}
+```
+
+## Hover-effect
+
+You can apply special styling to any module for when the cursor hovers it.
+
+```
+#clock:hover {
+  background-color: #ffffff;
+}
+```
+
+# SEE ALSO
+
+- *waybar(5)*

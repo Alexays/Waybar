@@ -84,6 +84,18 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ string
 :[ same as format
 :[ Tooltip on hover
+|[ *menu*
+:[ string
+:[
+:[ Action that popups the menu.
+|[ *menu-file*
+:[ string
+:[
+:[ Location of the menu descriptor file. There need to be an element of type GtkMenu with id *menu*
+|[ *menu-actions*
+:[ array
+:[
+:[ The actions corresponding to the buttons of the menu.
 
 View all valid format options in *strftime(3)* or have a look https://en.cppreference.com/w/cpp/chrono/duration/formatter
 

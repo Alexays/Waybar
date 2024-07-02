@@ -42,6 +42,11 @@ Addressed by *hyprland/workspaces*
 	default: false ++
 	If set to true, special workspaces will be shown.
 
+*special-visible-only*: ++
+	typeof: bool ++
+	default: false ++
+	If this and show-special are to true, special workspaces will be shown only if visible.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
@@ -51,6 +56,13 @@ Addressed by *hyprland/workspaces*
 	typeof: bool ++
 	default: false ++
 	If set to true, only the active workspace will be shown.
+
+*move-to-monitor*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, open the workspace on the current monitor when clicking on a workspace button.
+	Otherwise, the workspace will open on the monitor where it was previously assigned.
+	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
 
 *ignore-workspaces*: ++
 	typeof: array ++
@@ -135,6 +147,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"class<firefox> title<.*github.*>": "", // Windows whose class is "firefox" and title contains "github". Note that "class" always comes first.
 		"foot": "", // Windows that contain "foot" in either class or title. For optimization reasons, it will only match against a title if at least one other window explicitly matches against a title.
 		"code": "󰨞",
+		"title<.* - (.*) - VSCodium>": "codium $1"  // captures part of the window title and formats it into output
 	}
 }
 ```
@@ -158,3 +171,4 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.persistent*
 - *#workspaces button.special*
 - *#workspaces button.urgent*
+- *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)

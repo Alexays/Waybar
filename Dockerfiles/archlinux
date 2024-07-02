@@ -3,5 +3,5 @@
 FROM archlinux:base-devel
 
 RUN pacman -Syu --noconfirm && \
-    pacman -S --noconfirm git meson base-devel libinput wayland wayland-protocols pixman libxkbcommon mesa gtkmm3 jsoncpp pugixml scdoc libpulse libdbusmenu-gtk3 libmpdclient gobject-introspection libxkbcommon playerctl iniparser fftw && \
+    pacman -S --noconfirm git meson base-devel libinput wayland wayland-protocols glib2-devel pixman libxkbcommon mesa gtkmm3 jsoncpp pugixml scdoc libpulse libdbusmenu-gtk3 libmpdclient gobject-introspection libxkbcommon playerctl iniparser fftw && \
     sed -Ei 's/#(en_(US|GB)\.UTF)/\1/' /etc/locale.gen && locale-gen

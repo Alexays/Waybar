@@ -10,9 +10,8 @@ std::string sanitize_string(std::string str) {
   const std::pair<char, std::string> replacement_table[] = {
       {'&', "&amp;"}, {'<', "&lt;"}, {'>', "&gt;"}, {'"', "&quot;"}, {'\'', "&apos;"}};
   size_t startpoint;
-  for (size_t i = 0; i < (sizeof(replacement_table) / sizeof(replacement_table[0])); ++i) {
+  for (const auto& pair : replacement_table) {
     startpoint = 0;
-    std::pair pair = replacement_table[i];
     while ((startpoint = str.find(pair.first, startpoint)) != std::string::npos) {
       str.replace(startpoint, 1, pair.second);
       startpoint += pair.second.length();

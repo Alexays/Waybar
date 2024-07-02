@@ -119,8 +119,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. ++
-	If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -139,11 +142,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *player-icons*: ++
 	typeof: map[string]string ++
-	Allows setting _{player-icon}_ based on player-name property.
+	Allows setting _{player_icon}_ based on player-name property.
 
 *status-icons*: ++
 	typeof: map[string]string ++
-	Allows setting _{status-icon}_ based on player status (playing, paused, stopped).
+	Allows setting _{status_icon}_ based on player status (playing, paused, stopped).
 
 
 # FORMAT REPLACEMENTS

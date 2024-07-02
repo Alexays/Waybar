@@ -14,17 +14,20 @@ namespace waybar::modules::hyprland {
 class Submap : public waybar::ALabel, public EventHandler {
  public:
   Submap(const std::string&, const waybar::Bar&, const Json::Value&);
-  virtual ~Submap();
+  ~Submap() override;
 
   auto update() -> void override;
 
  private:
-  void onEvent(const std::string&) override;
+  auto parseConfig(const Json::Value&) -> void;
+  void onEvent(const std::string& ev) override;
 
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
   std::string submap_;
+  bool always_on_ = false;
+  std::string default_submap_ = "Default";
 };
 
 }  // namespace waybar::modules::hyprland

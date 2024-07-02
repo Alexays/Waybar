@@ -31,7 +31,7 @@ The volume can be controlled by dragging the slider across the bar or clicking o
 
 ```
 "modules-right": [
-    "pulseaudio-slider",
+    "pulseaudio/slider",
 ],
 "pulseaudio/slider": {
     "min": 0,

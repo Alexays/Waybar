@@ -31,7 +31,11 @@ Addressed by *river/mode*
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -60,6 +64,19 @@ Addressed by *river/mode*
 *smooth-scrolling-threshold*: ++
 	typeof: double ++
 	Threshold to be used when scrolling.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
 
 # EXAMPLES
 

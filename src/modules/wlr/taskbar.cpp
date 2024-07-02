@@ -30,6 +30,9 @@ namespace waybar::modules::wlr {
 static std::vector<std::string> search_prefix() {
   std::vector<std::string> prefixes = {""};
 
+  std::string home_dir = std::getenv("HOME");
+  prefixes.push_back(home_dir + "/.local/share/");
+
   auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
   if (!xdg_data_dirs) {
     prefixes.emplace_back("/usr/share/");
@@ -46,9 +49,6 @@ static std::vector<std::string> search_prefix() {
       start = end == std::string::npos ? end : end + 1;
     } while (end != std::string::npos);
   }
-
-  std::string home_dir = std::getenv("HOME");
-  prefixes.push_back(home_dir + "/.local/share/");
 
   for (auto &p : prefixes) spdlog::debug("Using 'desktop' search path prefix: {}", p);
 
@@ -334,9 +334,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
   }
 
   button.add_events(Gdk::BUTTON_PRESS_MASK);
-  button.signal_button_press_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
-  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_button_release),
-                                               false);
+  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
 
   button.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
                                               false);
@@ -573,12 +571,8 @@ bool Task::handle_clicked(GdkEventButton *bt) {
   else
     spdlog::warn("Unknown action {}", action);
 
-  return true;
-}
-
-bool Task::handle_button_release(GdkEventButton *bt) {
   drag_start_button = -1;
-  return false;
+  return true;
 }
 
 bool Task::handle_motion_notify(GdkEventMotion *mn) {
@@ -794,6 +788,10 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   }
 
   icon_themes_.push_back(Gtk::IconTheme::get_default());
+
+  for (auto &t : tasks_) {
+    t->handle_app_id(t->app_id().c_str());
+  }
 }
 
 Taskbar::~Taskbar() {
@@ -900,7 +898,7 @@ void Taskbar::move_button(Gtk::Button &bt, int pos) { box_.reorder_child(bt, pos
 
 void Taskbar::remove_button(Gtk::Button &bt) {
   box_.remove(bt);
-  if (tasks_.empty()) {
+  if (box_.get_children().empty()) {
     box_.get_style_context()->add_class("empty");
   }
 }

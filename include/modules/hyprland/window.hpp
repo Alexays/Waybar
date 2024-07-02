@@ -25,7 +25,7 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
     std::string last_window;
     std::string last_window_title;
 
-    static auto parse(const Json::Value&) -> Workspace;
+    static auto parse(const Json::Value& value) -> Workspace;
   };
 
   struct WindowData {
@@ -41,23 +41,25 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
     static auto parse(const Json::Value&) -> WindowData;
   };
 
-  auto getActiveWorkspace(const std::string&) -> Workspace;
-  void onEvent(const std::string&) override;
+  static auto getActiveWorkspace(const std::string&) -> Workspace;
+  static auto getActiveWorkspace() -> Workspace;
+  void onEvent(const std::string& ev) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
 
-  bool separate_outputs;
+  bool separateOutputs_;
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
-  WindowData window_data_;
+  WindowData windowData_;
   Workspace workspace_;
-  std::string solo_class_;
-  std::string last_solo_class_;
+  std::string soloClass_;
+  std::string lastSoloClass_;
   bool solo_;
-  bool all_floating_;
+  bool allFloating_;
   bool swallowing_;
   bool fullscreen_;
+  bool focused_;
 };
 
 }  // namespace waybar::modules::hyprland

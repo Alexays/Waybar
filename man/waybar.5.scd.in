@@ -16,8 +16,10 @@ Valid locations for this file are:
 - */etc/xdg/waybar/*
 - *@sysconfdir@/xdg/waybar/*
 
-A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
+A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.jsonc
 Also, a minimal example configuration can be found at the bottom of this man page.
+
+The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(5)* for details.
 
 # BAR CONFIGURATION
 
@@ -310,6 +312,7 @@ A group may hide all but one element, showing them only on mouse hover. In order
 - *waybar-custom(5)*
 - *waybar-disk(5)*
 - *waybar-dwl-tags(5)*
+- *waybar-dwl-window(5)*
 - *waybar-gamemode(5)*
 - *waybar-hyprland-language(5)*
 - *waybar-hyprland-submap(5)*
@@ -346,3 +349,4 @@ A group may hide all but one element, showing them only on mouse hover. In order
 # SEE ALSO
 
 *sway-output(5)*
+*waybar-styles(5)"

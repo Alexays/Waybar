@@ -10,6 +10,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       name_(name),
       output_name_(output_name),
       id_(id),
+      tooltip_format_enabled_{config_["tooltip-format"].isString()},
       percentage_(0),
       fp_(nullptr),
       pid_(-1) {
@@ -161,21 +162,21 @@ auto waybar::modules::Custom::update() -> void {
     auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
-    if (str.empty()) {
+    if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
       event_box_.hide();
     } else {
       label_.set_markup(str);
       if (tooltipEnabled()) {
-        if (text_ == tooltip_) {
-          if (label_.get_tooltip_markup() != str) {
-            label_.set_tooltip_markup(str);
-          }
-        } else if (config_["tooltip-format"].isString()) {
+        if (tooltip_format_enabled_) {
           auto tooltip = config_["tooltip-format"].asString();
           tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
                                 fmt::arg("icon", getIcon(percentage_, alt_)),
                                 fmt::arg("percentage", percentage_));
           label_.set_tooltip_markup(tooltip);
+        } else if (text_ == tooltip_) {
+          if (label_.get_tooltip_markup() != str) {
+            label_.set_tooltip_markup(str);
+          }
         } else {
           if (label_.get_tooltip_markup() != tooltip_) {
             label_.set_tooltip_markup(tooltip_);
@@ -214,13 +215,19 @@ void waybar::modules::Custom::parseOutputRaw() {
     if (i == 0) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
         text_ = Glib::Markup::escape_text(validated_line);
+        tooltip_ = Glib::Markup::escape_text(validated_line);
       } else {
         text_ = validated_line;
+        tooltip_ = validated_line;
       }
       tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
-      tooltip_ = validated_line;
+      if (config_["escape"].isBool() && config_["escape"].asBool()) {
+        tooltip_ = Glib::Markup::escape_text(validated_line);
+      } else {
+        tooltip_ = validated_line;
+      }
     } else if (i == 2) {
       class_.push_back(validated_line);
     } else {
@@ -246,7 +253,11 @@ void waybar::modules::Custom::parseOutputJson() {
     } else {
       alt_ = parsed["alt"].asString();
     }
-    tooltip_ = parsed["tooltip"].asString();
+    if (config_["escape"].isBool() && config_["escape"].asBool()) {
+      tooltip_ = Glib::Markup::escape_text(parsed["tooltip"].asString());
+    } else {
+      tooltip_ = parsed["tooltip"].asString();
+    }
     if (parsed["class"].isString()) {
       class_.push_back(parsed["class"].asString());
     } else if (parsed["class"].isArray()) {

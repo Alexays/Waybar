@@ -1,23 +1,11 @@
 #include "modules/privacy/privacy_item.hpp"
 
-#include <fmt/core.h>
-#include <pipewire/pipewire.h>
-#include <spdlog/spdlog.h>
-
-#include <cstdio>
-#include <cstring>
 #include <string>
-#include <thread>
 
-#include "AModule.hpp"
 #include "glibmm/main.h"
-#include "glibmm/priorities.h"
-#include "gtkmm/enums.h"
 #include "gtkmm/label.h"
 #include "gtkmm/revealer.h"
 #include "gtkmm/tooltip.h"
-#include "sigc++/adaptors/bind.h"
-#include "util/gtk_icon.hpp"
 #include "util/pipewire/privacy_node_info.hpp"
 
 namespace waybar::modules::privacy {
@@ -98,7 +86,7 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
 void PrivacyItem::update_tooltip() {
   // Removes all old nodes
-  for (auto child : tooltip_window.get_children()) {
+  for (auto *child : tooltip_window.get_children()) {
     delete child;
   }
 
@@ -108,12 +96,12 @@ void PrivacyItem::update_tooltip() {
     // Set device icon
     Gtk::Image *node_icon = new Gtk::Image();
     node_icon->set_pixel_size(tooltipIconSize);
-    node_icon->set_from_icon_name(node->get_icon_name(), Gtk::ICON_SIZE_INVALID);
+    node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
     box->add(*node_icon);
 
     // Set model
-    Gtk::Label *node_name = new Gtk::Label(node->get_name());
-    box->add(*node_name);
+    auto *nodeName = new Gtk::Label(node->getName());
+    box->add(*nodeName);
 
     tooltip_window.add(*box);
   }

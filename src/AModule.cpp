@@ -8,37 +8,44 @@ namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
-    : name_(std::move(name)),
-      config_(std::move(config)),
+    : name_(name),
+      config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       distance_scrolled_y_(0.0),
       distance_scrolled_x_(0.0) {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
-      if (eventActionMap_.count(it.key().asString()) == 0) {
+      if (!eventActionMap_.contains(it.key().asString())) {
         eventActionMap_.insert({it.key().asString(), it->asString()});
         enable_click = true;
         enable_scroll = true;
       } else
-        spdlog::warn("Dublicate action is ignored: {0}", it.key().asString());
+        spdlog::warn("Duplicate action is ignored: {0}", it.key().asString());
     else
       spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
 
+  event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseEnter));
+  event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseLeave));
+
   // configure events' user commands
-  // hasUserEvent is true if any element from eventMap_ is satisfying the condition in the lambda
-  bool hasUserEvent =
+  // hasUserEvents is true if any element from eventMap_ is satisfying the condition in the lambda
+  bool hasUserEvents =
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
         // True if there is any non-release type event
         return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
-  if (enable_click || hasUserEvent) {
+  if (enable_click || hasUserEvents) {
+    hasUserEvents_ = true;
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
+  } else {
+    hasUserEvents_ = false;
   }
 
   bool hasReleaseEvent =
@@ -51,7 +58,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
     event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
   }
-  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() || enable_scroll) {
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
+      config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
+      enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
@@ -81,6 +90,34 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
+void AModule::setCursor(Gdk::CursorType const& c) {
+  auto cursor = Gdk::Cursor::create(c);
+  auto gdk_window = event_box_.get_window();
+  gdk_window->set_cursor(cursor);
+}
+
+bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
+  if (auto* module = event_box_.get_child(); module != nullptr) {
+    module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  }
+
+  if (hasUserEvents_) {
+    setCursor(Gdk::HAND2);
+  }
+  return false;
+}
+
+bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
+  if (auto* module = event_box_.get_child(); module != nullptr) {
+    module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  }
+
+  if (hasUserEvents_) {
+    setCursor(Gdk::ARROW);
+  }
+  return false;
+}
+
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
 
 bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
@@ -89,11 +126,22 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   std::string format{};
   const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
       eventMap_.find(std::pair(e->button, e->type))};
+
   if (rec != eventMap_.cend()) {
     // First call module actions
     this->AModule::doAction(rec->second);
 
     format = rec->second;
+  }
+
+  // Check that a menu has been configured
+  if (config_["menu"].isString()) {
+    // Check if the event is the one specified for the "menu" option
+    if (rec->second == config_["menu"].asString()) {
+      // Popup the menu
+      gtk_widget_show_all(GTK_WIDGET(menu_));
+      gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+    }
   }
   // Second call user scripts
   if (!format.empty()) {
@@ -116,7 +164,7 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
 
   // ignore reverse-scrolling if event comes from a mouse wheel
   GdkDevice* device = gdk_event_get_source_device((GdkEvent*)e);
-  if (device != NULL && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
+  if (device != nullptr && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
     reverse = reverse_mouse;
   }
 
@@ -179,6 +227,10 @@ bool AModule::handleScroll(GdkEventScroll* e) {
     eventName = "on-scroll-up";
   else if (dir == SCROLL_DIR::DOWN)
     eventName = "on-scroll-down";
+  else if (dir == SCROLL_DIR::LEFT)
+    eventName = "on-scroll-left";
+  else if (dir == SCROLL_DIR::RIGHT)
+    eventName = "on-scroll-right";
 
   // First call module actions
   this->AModule::doAction(eventName);
@@ -190,7 +242,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-bool AModule::tooltipEnabled() { return isTooltip; }
+bool AModule::tooltipEnabled() const { return isTooltip; }
 
 AModule::operator Gtk::Widget&() { return event_box_; }
 

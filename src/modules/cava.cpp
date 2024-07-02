@@ -8,13 +8,7 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
   char cfgPath[PATH_MAX];
   cfgPath[0] = '\0';
 
-  if (config_["cava_config"].isString()) {
-    std::string strPath{config_["cava_config"].asString()};
-    const std::string fnd{"XDG_CONFIG_HOME"};
-    const std::string::size_type npos{strPath.find("$" + fnd)};
-    if (npos != std::string::npos) strPath.replace(npos, fnd.length() + 1, getenv(fnd.c_str()));
-    strcpy(cfgPath, strPath.data());
-  }
+  if (config_["cava_config"].isString()) strcpy(cfgPath, config_["cava_config"].asString().data());
   // Load cava config
   error_.length = 0;
 

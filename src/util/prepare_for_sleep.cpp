@@ -7,14 +7,14 @@ namespace {
 class PrepareForSleep {
  private:
   PrepareForSleep() {
-    login1_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
-    if (!login1_connection) {
+    login1_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, nullptr, nullptr);
+    if (login1_connection == nullptr) {
       spdlog::warn("Unable to connect to the SYSTEM Bus!...");
     } else {
       login1_id = g_dbus_connection_signal_subscribe(
           login1_connection, "org.freedesktop.login1", "org.freedesktop.login1.Manager",
-          "PrepareForSleep", "/org/freedesktop/login1", NULL, G_DBUS_SIGNAL_FLAGS_NONE,
-          prepareForSleep_cb, this, NULL);
+          "PrepareForSleep", "/org/freedesktop/login1", nullptr, G_DBUS_SIGNAL_FLAGS_NONE,
+          prepareForSleep_cb, this, nullptr);
     }
   }
 
@@ -22,11 +22,11 @@ class PrepareForSleep {
                                  const gchar *object_path, const gchar *interface_name,
                                  const gchar *signal_name, GVariant *parameters,
                                  gpointer user_data) {
-    if (g_variant_is_of_type(parameters, G_VARIANT_TYPE("(b)"))) {
+    if (g_variant_is_of_type(parameters, G_VARIANT_TYPE("(b)")) != 0) {
       gboolean sleeping;
       g_variant_get(parameters, "(b)", &sleeping);
 
-      PrepareForSleep *self = static_cast<PrepareForSleep *>(user_data);
+      auto *self = static_cast<PrepareForSleep *>(user_data);
       self->signal.emit(sleeping);
     }
   }

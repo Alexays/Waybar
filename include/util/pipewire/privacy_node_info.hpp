@@ -34,29 +34,12 @@ class PrivacyNodeInfo {
 
   void *data;
 
-  std::string get_name() {
-    const std::vector<std::string *> names{&application_name, &node_name};
-    std::string name = "Unknown Application";
-    for (auto &name_ : names) {
-      if (name_ != nullptr && name_->length() > 0) {
-        name = *name_;
-        name[0] = toupper(name[0]);
-        break;
-      }
-    }
-    return name;
-  }
+  std::string getName();
+  std::string getIconName();
 
-  std::string get_icon_name() {
-    const std::vector<std::string *> names{&application_icon_name, &pipewire_access_portal_app_id,
-                                           &application_name, &node_name};
-    const std::string name = "application-x-executable-symbolic";
-    for (auto &name_ : names) {
-      if (name_ != nullptr && name_->length() > 0 && DefaultGtkIconThemeWrapper::has_icon(*name_)) {
-        return *name_;
-      }
-    }
-    return name;
-  }
+  // Handlers for PipeWire events
+  void handleProxyEventDestroy();
+  void handleNodeEventInfo(const struct pw_node_info *info);
 };
+
 }  // namespace waybar::util::PipewireBackend

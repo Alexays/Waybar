@@ -1,6 +1,7 @@
 #include "modules/temperature.hpp"
 
 #include <filesystem>
+#include <string>
 
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
@@ -9,39 +10,53 @@
 waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
     : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
 #if defined(__FreeBSD__)
-// try to read sysctl?
+// FreeBSD uses sysctlbyname instead of read from a file
 #else
-  auto& hwmon_path = config_["hwmon-path"];
-  if (hwmon_path.isString()) {
-    file_path_ = hwmon_path.asString();
-  } else if (hwmon_path.isArray()) {
-    // if hwmon_path is an array, loop to find first valid item
-    for (auto& item : hwmon_path) {
-      auto path = item.asString();
-      if (std::filesystem::exists(path)) {
-        file_path_ = path;
-        break;
-      }
-    }
-  } else if (config_["hwmon-path-abs"].isString() && config_["input-filename"].isString()) {
-    for (const auto& hwmon :
-         std::filesystem::directory_iterator(config_["hwmon-path-abs"].asString())) {
-      if (hwmon.path().filename().string().starts_with("hwmon")) {
-        file_path_ = hwmon.path().string() + "/" + config_["input-filename"].asString();
-        break;
-      }
-    }
+  auto traverseAsArray = [](const Json::Value& value, auto&& check_set_path) {
+    if (value.isString())
+      check_set_path(value.asString());
+    else if (value.isArray())
+      for (const auto& item : value)
+        if (check_set_path(item.asString())) break;
+  };
+
+  // if hwmon_path is an array, loop to find first valid item
+  traverseAsArray(config_["hwmon-path"], [this](const std::string& path) {
+    if (!std::filesystem::exists(path)) return false;
+    file_path_ = path;
+    return true;
+  });
+
+  if (file_path_.empty() && config_["input-filename"].isString()) {
+    // fallback to hwmon_paths-abs
+    traverseAsArray(config_["hwmon-path-abs"], [this](const std::string& path) {
+      if (!std::filesystem::is_directory(path)) return false;
+      return std::ranges::any_of(
+          std::filesystem::directory_iterator(path), [this](const auto& hwmon) {
+            if (!hwmon.path().filename().string().starts_with("hwmon")) return false;
+            file_path_ = hwmon.path().string() + "/" + config_["input-filename"].asString();
+            return true;
+          });
+    });
   }
 
   if (file_path_.empty()) {
     auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }
+
+  // check if file_path_ can be used to retrive the temperature
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
   }
+  if (!temp.good()) {
+    temp.close();
+    throw std::runtime_error("Can't read from " + file_path_);
+  }
+  temp.close();
 #endif
+
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -93,11 +108,11 @@ float waybar::modules::Temperature::getTemperature() {
   size_t size = sizeof temp;
 
   auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
-  auto sysctl_thermal = fmt::format("hw.acpi.thermal.tz{}.temperature", zone);
 
-  if (sysctlbyname("hw.acpi.thermal.tz0.temperature", &temp, &size, NULL, 0) != 0) {
-    throw std::runtime_error(
-        "sysctl hw.acpi.thermal.tz0.temperature or dev.cpu.0.temperature failed");
+  if (sysctlbyname(fmt::format("hw.acpi.thermal.tz{}.temperature", zone).c_str(), &temp, &size,
+                   NULL, 0) != 0) {
+    throw std::runtime_error(fmt::format(
+        "sysctl hw.acpi.thermal.tz{}.temperature or dev.cpu.{}.temperature failed", zone, zone));
   }
   auto temperature_c = ((float)temp - 2732) / 10;
   return temperature_c;
@@ -110,6 +125,9 @@ float waybar::modules::Temperature::getTemperature() {
   std::string line;
   if (temp.good()) {
     getline(temp, line);
+  } else {
+    temp.close();
+    throw std::runtime_error("Can't read from " + file_path_);
   }
   temp.close();
   auto temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;

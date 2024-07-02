@@ -21,10 +21,10 @@ const std::vector<std::string> Config::CONFIG_DIRS = {
 
 const char *Config::CONFIG_PATH_ENV = "WAYBAR_CONFIG_DIR";
 
-std::optional<std::string> tryExpandPath(const std::string base, const std::string filename) {
+std::optional<std::string> tryExpandPath(const std::string &base, const std::string &filename) {
   fs::path path;
 
-  if (filename != "") {
+  if (!filename.empty()) {
     path = fs::path(base) / fs::path(filename);
   } else {
     path = fs::path(base);
@@ -129,9 +129,9 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
         if (config_output.substr(0, 1) == "!") {
           if (config_output.substr(1) == name || config_output.substr(1) == identifier) {
             return false;
-          } else {
-            continue;
           }
+
+          continue;
         }
         if (config_output == name || config_output == identifier) {
           return true;
@@ -142,7 +142,9 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
       }
     }
     return false;
-  } else if (config["output"].isString()) {
+  }
+
+  if (config["output"].isString()) {
     auto config_output = config["output"].asString();
     if (!config_output.empty()) {
       if (config_output.substr(0, 1) == "!") {
@@ -162,6 +164,7 @@ void Config::load(const std::string &config) {
   }
   config_file_ = file.value();
   spdlog::info("Using configuration file {}", config_file_);
+  config_ = Json::Value();
   setupConfig(config_, config_file_, 0);
 }
 

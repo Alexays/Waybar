@@ -10,12 +10,21 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "submap", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
-  if (!gIPC.get()) {
+  parseConfig(config);
+
+  if (!gIPC) {
     gIPC = std::make_unique<IPC>();
   }
 
   label_.hide();
   ALabel::update();
+
+  // Displays widget immediately if always_on_ assuming default submap
+  // Needs an actual way to retrive current submap on startup
+  if (always_on_) {
+    submap_ = default_submap_;
+    label_.get_style_context()->add_class(submap_);
+  }
 
   // register for hyprland ipc
   gIPC->registerForIPC("submap", this);
@@ -26,6 +35,18 @@ Submap::~Submap() {
   gIPC->unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
+}
+
+auto Submap::parseConfig(const Json::Value& config) -> void {
+  auto const& alwaysOn = config["always-on"];
+  if (alwaysOn.isBool()) {
+    always_on_ = alwaysOn.asBool();
+  }
+
+  auto const& defaultSubmap = config["default-submap"];
+  if (defaultSubmap.isString()) {
+    default_submap_ = defaultSubmap.asString();
+  }
 }
 
 auto Submap::update() -> void {
@@ -59,6 +80,10 @@ void Submap::onEvent(const std::string& ev) {
   }
 
   submap_ = submapName;
+
+  if (submap_.empty() && always_on_) {
+    submap_ = default_submap_;
+  }
 
   label_.get_style_context()->add_class(submap_);
 

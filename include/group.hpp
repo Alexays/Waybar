@@ -11,15 +11,13 @@ namespace waybar {
 
 class Group : public AModule {
  public:
-  Group(const std::string&, const std::string&, const Json::Value&, bool);
+  Group(const std::string &, const std::string &, const Json::Value &, bool);
   virtual ~Group() = default;
   auto update() -> void override;
-  operator Gtk::Widget&() override;
+  operator Gtk::Widget &() override;
 
-  virtual Gtk::Box& getBox();
-  void addWidget(Gtk::Widget& widget);
-
-  bool handleMouseHover(GdkEventCrossing* const& e);
+  virtual Gtk::Box &getBox();
+  void addWidget(Gtk::Widget &widget);
 
  protected:
   Gtk::Box box;
@@ -28,8 +26,8 @@ class Group : public AModule {
   bool is_first_widget = true;
   bool is_drawer = false;
   std::string add_class_to_drawer_children;
-
-  void addHoverHandlerTo(Gtk::Widget& widget);
+  bool handleMouseEnter(GdkEventCrossing *const &ev) override;
+  bool handleMouseLeave(GdkEventCrossing *const &ev) override;
 };
 
 }  // namespace waybar

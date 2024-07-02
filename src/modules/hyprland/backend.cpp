@@ -9,10 +9,37 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <filesystem>
 #include <string>
 #include <thread>
 
 namespace waybar::modules::hyprland {
+
+std::filesystem::path IPC::socketFolder_;
+
+std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
+  // socket path, specified by EventManager of Hyprland
+  if (!socketFolder_.empty()) {
+    return socketFolder_;
+  }
+
+  const char* xdgRuntimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
+  std::filesystem::path xdgRuntimeDir;
+  // Only set path if env variable is set
+  if (xdgRuntimeDirEnv != nullptr) {
+    xdgRuntimeDir = std::filesystem::path(xdgRuntimeDirEnv);
+  }
+
+  if (!xdgRuntimeDir.empty() && std::filesystem::exists(xdgRuntimeDir / "hypr")) {
+    socketFolder_ = xdgRuntimeDir / "hypr";
+  } else {
+    spdlog::warn("$XDG_RUNTIME_DIR/hypr does not exist, falling back to /tmp/hypr");
+    socketFolder_ = std::filesystem::path("/tmp") / "hypr";
+  }
+
+  socketFolder_ = socketFolder_ / instanceSig;
+  return socketFolder_;
+}
 
 void IPC::startIPC() {
   // will start IPC and relay events to parseIPC
@@ -40,9 +67,7 @@ void IPC::startIPC() {
 
     addr.sun_family = AF_UNIX;
 
-    // socket path, specified by EventManager of Hyprland
-    std::string socketPath = "/tmp/hypr/" + std::string(his) + "/.socket2.sock";
-
+    auto socketPath = IPC::getSocketFolder(his) / ".socket2.sock";
     strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
     addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
@@ -54,22 +79,29 @@ void IPC::startIPC() {
       return;
     }
 
-    auto file = fdopen(socketfd, "r");
+    auto* file = fdopen(socketfd, "r");
 
     while (true) {
-      char buffer[1024];  // Hyprland socket2 events are max 1024 bytes
+      std::array<char, 1024> buffer;  // Hyprland socket2 events are max 1024 bytes
 
-      auto recievedCharPtr = fgets(buffer, 1024, file);
+      auto* receivedCharPtr = fgets(buffer.data(), buffer.size(), file);
 
-      if (!recievedCharPtr) {
+      if (receivedCharPtr == nullptr) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         continue;
       }
 
-      std::string messageRecieved(buffer);
-      messageRecieved = messageRecieved.substr(0, messageRecieved.find_first_of('\n'));
-      spdlog::debug("hyprland IPC received {}", messageRecieved);
-      parseIPC(messageRecieved);
+      std::string messageReceived(buffer.data());
+      messageReceived = messageReceived.substr(0, messageReceived.find_first_of('\n'));
+      spdlog::debug("hyprland IPC received {}", messageReceived);
+
+      try {
+        parseIPC(messageReceived);
+      } catch (std::exception& e) {
+        spdlog::warn("Failed to parse IPC message: {}, reason: {}", messageReceived, e.what());
+      } catch (...) {
+        throw;
+      }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
@@ -78,9 +110,9 @@ void IPC::startIPC() {
 
 void IPC::parseIPC(const std::string& ev) {
   std::string request = ev.substr(0, ev.find_first_of('>'));
-  std::unique_lock lock(m_callbackMutex);
+  std::unique_lock lock(callbackMutex_);
 
-  for (auto& [eventname, handler] : m_callbacks) {
+  for (auto& [eventname, handler] : callbacks_) {
     if (eventname == request) {
       handler->onEvent(ev);
     }
@@ -88,25 +120,25 @@ void IPC::parseIPC(const std::string& ev) {
 }
 
 void IPC::registerForIPC(const std::string& ev, EventHandler* ev_handler) {
-  if (!ev_handler) {
+  if (ev_handler == nullptr) {
     return;
   }
 
-  std::unique_lock lock(m_callbackMutex);
-  m_callbacks.emplace_back(ev, ev_handler);
+  std::unique_lock lock(callbackMutex_);
+  callbacks_.emplace_back(ev, ev_handler);
 }
 
 void IPC::unregisterForIPC(EventHandler* ev_handler) {
-  if (!ev_handler) {
+  if (ev_handler == nullptr) {
     return;
   }
 
-  std::unique_lock lock(m_callbackMutex);
+  std::unique_lock lock(callbackMutex_);
 
-  for (auto it = m_callbacks.begin(); it != m_callbacks.end();) {
+  for (auto it = callbacks_.begin(); it != callbacks_.end();) {
     auto& [eventname, handler] = *it;
     if (handler == ev_handler) {
-      m_callbacks.erase(it++);
+      callbacks_.erase(it++);
     } else {
       ++it;
     }
@@ -135,19 +167,17 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   }
 
   // get the instance signature
-  auto instanceSig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
+  auto* instanceSig = getenv("HYPRLAND_INSTANCE_SIGNATURE");
 
-  if (!instanceSig) {
+  if (instanceSig == nullptr) {
     spdlog::error("Hyprland IPC: HYPRLAND_INSTANCE_SIGNATURE was not set! (Is Hyprland running?)");
     return "";
   }
 
-  std::string instanceSigStr = std::string(instanceSig);
-
   sockaddr_un serverAddress = {0};
   serverAddress.sun_family = AF_UNIX;
 
-  std::string socketPath = "/tmp/hypr/" + instanceSigStr + "/.socket.sock";
+  std::string socketPath = IPC::getSocketFolder(instanceSig) / ".socket.sock";
 
   // Use snprintf to copy the socketPath string into serverAddress.sun_path
   if (snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str()) <
@@ -169,18 +199,18 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     return "";
   }
 
-  char buffer[8192] = {0};
+  std::array<char, 8192> buffer = {0};
   std::string response;
 
   do {
-    sizeWritten = read(serverSocket, buffer, 8192);
+    sizeWritten = read(serverSocket, buffer.data(), 8192);
 
     if (sizeWritten < 0) {
       spdlog::error("Hyprland IPC: Couldn't read (5)");
       close(serverSocket);
       return "";
     }
-    response.append(buffer, sizeWritten);
+    response.append(buffer.data(), sizeWritten);
   } while (sizeWritten > 0);
 
   close(serverSocket);
@@ -188,7 +218,13 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
 }
 
 Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
-  return m_parser.parse(getSocket1Reply("j/" + rq));
+  std::string reply = getSocket1Reply("j/" + rq);
+
+  if (reply.empty()) {
+    return {};
+  }
+
+  return parser_.parse(reply);
 }
 
 }  // namespace waybar::modules::hyprland

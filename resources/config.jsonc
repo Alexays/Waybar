@@ -1,3 +1,4 @@
+// -*- mode: jsonc -*-
 {
     // "layer": "top", // Waybar at top layer
     // "position": "bottom", // Waybar position (top|bottom|left|right)
@@ -5,9 +6,33 @@
     // "width": 1280, // Waybar width
     "spacing": 4, // Gaps between modules (4px)
     // Choose the order of the modules
-    "modules-left": ["sway/workspaces", "sway/mode", "sway/scratchpad", "custom/media"],
-    "modules-center": ["sway/window"],
-    "modules-right": ["mpd", "idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "backlight", "keyboard-state", "sway/language", "battery", "battery#bat2", "clock", "tray"],
+    "modules-left": [
+        "sway/workspaces",
+        "sway/mode",
+        "sway/scratchpad",
+        "custom/media"
+    ],
+    "modules-center": [
+        "sway/window"
+    ],
+    "modules-right": [
+        "mpd",
+        "idle_inhibitor",
+        "pulseaudio",
+        "network",
+        "power-profiles-daemon",
+        "cpu",
+        "memory",
+        "temperature",
+        "backlight",
+        "keyboard-state",
+        "sway/language",
+        "battery",
+        "battery#bat2",
+        "clock",
+        "tray",
+        "custom/power"
+    ],
     // Modules configuration
     // "sway/workspaces": {
     //     "disable-scroll": true,
@@ -49,7 +74,7 @@
         "format-disconnected": "Disconnected ",
         "format-stopped": "{consumeIcon}{randomIcon}{repeatIcon}{singleIcon}Stopped ",
         "unknown-tag": "N/A",
-        "interval": 2,
+        "interval": 5,
         "consume-icons": {
             "on": " "
         },
@@ -124,6 +149,17 @@
     "battery#bat2": {
         "bat": "BAT2"
     },
+    "power-profiles-daemon": {
+      "format": "{icon}",
+      "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+      "tooltip": true,
+      "format-icons": {
+        "default": "",
+        "performance": "",
+        "balanced": "",
+        "power-saver": ""
+      }
+    },
     "network": {
         // "interface": "wlp2*", // (Optional) To force the use of this interface
         "format-wifi": "{essid} ({signalStrength}%) ",
@@ -163,6 +199,17 @@
         "escape": true,
         "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
         // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
+    },
+    "custom/power": {
+        "format" : "⏻ ",
+		"tooltip": false,
+		"menu": "on-click",
+		"menu-file": "$HOME/.config/waybar/power_menu.xml", // Menu file in resources folder
+		"menu-actions": {
+			"shutdown": "shutdown",
+			"reboot": "reboot",
+			"suspend": "systemctl suspend",
+			"hibernate": "systemctl hibernate"
+		}
     }
 }
-

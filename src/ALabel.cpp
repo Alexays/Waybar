@@ -2,6 +2,8 @@
 
 #include <fmt/format.h>
 
+#include <fstream>
+#include <iostream>
 #include <util/command.hpp>
 
 namespace waybar {
@@ -9,7 +11,9 @@ namespace waybar {
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
                bool enable_scroll)
-    : AModule(config, name, id, config["format-alt"].isString() || enable_click, enable_scroll),
+    : AModule(config, name, id,
+              config["format-alt"].isString() || config["menu"].isString() || enable_click,
+              enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
                     ? std::chrono::seconds::max()
@@ -50,6 +54,58 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       label_.set_xalign(align);
     }
   }
+
+  // If a GTKMenu is requested in the config
+  if (config_["menu"].isString()) {
+    // Create the GTKMenu widget
+    try {
+      // Check that the file exists
+      std::string menuFile = config_["menu-file"].asString();
+      // Read the menu descriptor file
+      std::ifstream file(menuFile);
+      if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + menuFile);
+      }
+      std::stringstream fileContent;
+      fileContent << file.rdbuf();
+      GtkBuilder* builder = gtk_builder_new();
+
+      // Make the GtkBuilder and check for errors in his parsing
+      if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
+        throw std::runtime_error("Error found in the file " + menuFile);
+      }
+
+      menu_ = gtk_builder_get_object(builder, "menu");
+      if (menu_ == nullptr) {
+        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
+      }
+      submenus_ = std::map<std::string, GtkMenuItem*>();
+      menuActionsMap_ = std::map<std::string, std::string>();
+
+      // Linking actions to the GTKMenu based on
+      for (Json::Value::const_iterator it = config_["menu-actions"].begin();
+           it != config_["menu-actions"].end(); ++it) {
+        std::string key = it.key().asString();
+        submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
+        menuActionsMap_[key] = it->asString();
+        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                         (gpointer)menuActionsMap_[key].c_str());
+      }
+    } catch (std::runtime_error& e) {
+      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
+    }
+  }
+
+  if (config_["justify"].isString()) {
+    auto justify_str = config_["justify"].asString();
+    if (justify_str == "left") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_LEFT);
+    } else if (justify_str == "right") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_RIGHT);
+    } else if (justify_str == "center") {
+      label_.set_justify(Gtk::Justification::JUSTIFY_CENTER);
+    }
+  }
 }
 
 auto ALabel::update() -> void { AModule::update(); }
@@ -65,7 +121,7 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size) {
+    if (size != 0U) {
       auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
       format_icons = format_icons[idx];
     }
@@ -91,7 +147,7 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size) {
+    if (size != 0U) {
       auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
       format_icons = format_icons[idx];
     }
@@ -112,6 +168,10 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     }
   }
   return AModule::handleToggle(e);
+}
+
+void ALabel::handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data) {
+  waybar::util::command::res res = waybar::util::command::exec((char*)data, "GtkMenu");
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {

@@ -61,7 +61,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *rotate*: ++
 	typeof: integer++
@@ -105,6 +109,19 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: false ++
 	Option to enable battery compatibility if not detected.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{capacity}*: Capacity in percentage
@@ -114,6 +131,10 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{time}*: Estimate of time until full or empty. Note that this is based on the power draw at the last refresh time, not an average.
+
+*{cycles}*: Amount of charge cycles the highest-capacity battery has seen. *(Linux only)*
+
+*{health}*: The percentage of the highest-capacity battery's original maximum charge it can still hold.
 
 # TIME FORMAT
 

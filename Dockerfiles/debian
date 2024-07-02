@@ -34,7 +34,7 @@ RUN apt update && \
         libudev-dev \
         libupower-glib-dev \
         libwayland-dev \
-        libwireplumber-0.4-dev \
+        libwireplumber-0.5-dev \
         libxkbcommon-dev \
         libxkbregistry-dev \
         locales \

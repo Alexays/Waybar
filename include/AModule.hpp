@@ -2,6 +2,7 @@
 
 #include <glibmm/dispatcher.h>
 #include <glibmm/markup.h>
+#include <gtkmm.h>
 #include <gtkmm/eventbox.h>
 #include <json/json.h>
 
@@ -13,9 +14,9 @@ class AModule : public IModule {
  public:
   static constexpr const char *MODULE_CLASS = "module";
 
-  virtual ~AModule();
+  ~AModule() override;
   auto update() -> void override;
-  virtual auto refresh(int) -> void{};
+  virtual auto refresh(int shouldRefresh) -> void{};
   operator Gtk::Widget &() override;
   auto doAction(const std::string &name) -> void override;
 
@@ -31,19 +32,25 @@ class AModule : public IModule {
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
   SCROLL_DIR getScrollDir(GdkEventScroll *e);
-  bool tooltipEnabled();
+  bool tooltipEnabled() const;
 
   const std::string name_;
   const Json::Value &config_;
   Gtk::EventBox event_box_;
 
+  virtual void setCursor(Gdk::CursorType const &c);
+
   virtual bool handleToggle(GdkEventButton *const &ev);
+  virtual bool handleMouseEnter(GdkEventCrossing *const &ev);
+  virtual bool handleMouseLeave(GdkEventCrossing *const &ev);
   virtual bool handleScroll(GdkEventScroll *);
   virtual bool handleRelease(GdkEventButton *const &ev);
+  GObject *menu_;
 
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
+  bool hasUserEvents_;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;

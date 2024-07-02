@@ -43,7 +43,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = true}},
     {"invisible",
      {//
-      .layer = bar_layer::BOTTOM,
+      .layer = std::nullopt,
       .exclusive = false,
       .passthrough = true,
       .visible = false}},
@@ -59,7 +59,7 @@ const std::string Bar::MODE_INVISIBLE = "invisible";
 const std::string_view DEFAULT_BAR_ID = "bar-0";
 
 /* Deserializer for enum bar_layer */
-void from_json(const Json::Value& j, bar_layer& l) {
+void from_json(const Json::Value& j, std::optional<bar_layer>& l) {
   if (j == "bottom") {
     l = bar_layer::BOTTOM;
   } else if (j == "top") {
@@ -72,16 +72,16 @@ void from_json(const Json::Value& j, bar_layer& l) {
 /* Deserializer for struct bar_mode */
 void from_json(const Json::Value& j, bar_mode& m) {
   if (j.isObject()) {
-    if (auto v = j["layer"]; v.isString()) {
+    if (const auto& v = j["layer"]; v.isString()) {
       from_json(v, m.layer);
     }
-    if (auto v = j["exclusive"]; v.isBool()) {
+    if (const auto& v = j["exclusive"]; v.isBool()) {
       m.exclusive = v.asBool();
     }
-    if (auto v = j["passthrough"]; v.isBool()) {
+    if (const auto& v = j["passthrough"]; v.isBool()) {
       m.passthrough = v.asBool();
     }
-    if (auto v = j["visible"]; v.isBool()) {
+    if (const auto& v = j["visible"]; v.isBool()) {
       m.visible = v.asBool();
     }
   }
@@ -118,7 +118,7 @@ Glib::ustring to_string(Gtk::PositionType pos) {
  * Assumes that all the values in the object are deserializable to the same type.
  */
 template <typename Key, typename Value,
-          typename = std::enable_if_t<std::is_convertible<std::string, Key>::value>>
+          typename = std::enable_if_t<std::is_convertible_v<std::string, Key>>>
 void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   if (j.isObject()) {
     for (auto it = j.begin(); it != j.end(); ++it) {
@@ -316,13 +316,13 @@ void waybar::Bar::setMode(const std::string& mode) {
 void waybar::Bar::setMode(const struct bar_mode& mode) {
   auto* gtk_window = window.gobj();
 
-  auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
-  if (mode.layer == bar_layer::TOP) {
-    layer = GTK_LAYER_SHELL_LAYER_TOP;
+  if (mode.layer == bar_layer::BOTTOM) {
+    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_BOTTOM);
+  } else if (mode.layer == bar_layer::TOP) {
+    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_TOP);
   } else if (mode.layer == bar_layer::OVERLAY) {
-    layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
+    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
   }
-  gtk_layer_set_layer(gtk_window, layer);
 
   if (mode.exclusive) {
     gtk_layer_auto_exclusive_zone_enable(gtk_window);
@@ -393,19 +393,18 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   }
 }
 
-void waybar::Bar::onMap(GdkEventAny*) {
+void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto gdk_window = window.get_window()->gobj();
+  auto* gdk_window = window.get_window()->gobj();
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
   configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
 
   setPassThrough(passthrough_);
 }
 
-void waybar::Bar::setVisible(bool value) {
-  visible = value;
+void waybar::Bar::setVisible(bool visible) {
   if (auto mode = config.get("mode", {}); mode.isString()) {
     setMode(visible ? config["mode"].asString() : MODE_INVISIBLE);
   } else {
@@ -449,7 +448,17 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
     Json::Value& modules = config[module_list_name];
     for (const Json::Value& module_name : modules) {
       if (module_name.isString()) {
-        setupAltFormatKeyForModule(module_name.asString());
+        auto ref = module_name.asString();
+        if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
+          Json::Value& group_modules = config[ref]["modules"];
+          for (const Json::Value& module_name : group_modules) {
+            if (module_name.isString()) {
+              setupAltFormatKeyForModule(module_name.asString());
+            }
+          }
+        } else {
+          setupAltFormatKeyForModule(ref);
+        }
       }
     }
   }
@@ -463,7 +472,7 @@ void waybar::Bar::handleSignal(int signal) {
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
-  auto module_list = group ? config[pos]["modules"] : config[pos];
+  auto module_list = group != nullptr ? config[pos]["modules"] : config[pos];
   if (module_list.isArray()) {
     for (const auto& name : module_list) {
       try {
@@ -475,10 +484,10 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto id_name = ref.substr(6, hash_pos - 6);
           auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
 
-          auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
-                          Gtk::ORIENTATION_VERTICAL;
+          auto vertical = (group != nullptr ? group->getBox().get_orientation()
+                                            : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
 
-          auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
+          auto* group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
           getModules(factory, ref, group_module);
           module = group_module;
         } else {
@@ -487,7 +496,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
 
         std::shared_ptr<AModule> module_sp(module);
         modules_all_.emplace_back(module_sp);
-        if (group) {
+        if (group != nullptr) {
           group->addWidget(*module);
         } else {
           if (pos == "modules-left") {

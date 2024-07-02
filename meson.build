@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.9.24',
+    version: '0.10.3',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -92,7 +92,7 @@ libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
-libwireplumber = dependency('wireplumber-0.4', required: get_option('wireplumber'))
+libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -192,6 +192,7 @@ man_files = files(
     'man/waybar-idle-inhibitor.5.scd',
     'man/waybar-image.5.scd',
     'man/waybar-states.5.scd',
+    'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
 )
 
@@ -212,6 +213,7 @@ if is_linux
         'src/modules/cpu_usage/linux.cpp',
         'src/modules/memory/common.cpp',
         'src/modules/memory/linux.cpp',
+        'src/modules/power_profiles_daemon.cpp',
         'src/modules/systemd_failed_units.cpp',
     )
     man_files += files(
@@ -221,6 +223,7 @@ if is_linux
         'man/waybar-cpu.5.scd',
         'man/waybar-memory.5.scd',
         'man/waybar-systemd-failed-units.5.scd',
+        'man/waybar-power-profiles-daemon.5.scd',
     )
 elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     add_project_arguments('-DHAVE_CPU_BSD', language: 'cpp')
@@ -291,7 +294,9 @@ endif
 if true
     add_project_arguments('-DHAVE_DWL', language: 'cpp')
     src_files += files('src/modules/dwl/tags.cpp')
+    src_files += files('src/modules/dwl/window.cpp')
     man_files += files('man/waybar-dwl-tags.5.scd')
+    man_files += files('man/waybar-dwl-window.5.scd')
 endif
 
 if true
@@ -301,7 +306,9 @@ if true
         'src/modules/hyprland/language.cpp',
         'src/modules/hyprland/submap.cpp',
         'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
+        'src/modules/hyprland/windowcreationpayload.cpp',
     )
     man_files += files(
         'man/waybar-hyprland-language.5.scd',
@@ -331,10 +338,7 @@ endif
 
 if (upower_glib.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
-    src_files += files(
-        'src/modules/upower/upower.cpp',
-        'src/modules/upower/upower_tooltip.cpp',
-    )
+    src_files += files('src/modules/upower.cpp')
     man_files += files('man/waybar-upower.5.scd')
 endif
 
@@ -344,7 +348,8 @@ if pipewire.found()
     src_files += files(
         'src/modules/privacy/privacy.cpp',
         'src/modules/privacy/privacy_item.cpp',
-        'src/util/pipewire_backend.cpp',
+        'src/util/pipewire/pipewire_backend.cpp',
+        'src/util/pipewire/privacy_node_info.cpp',
     )
     man_files += files('man/waybar-privacy.5.scd')
 endif
@@ -462,7 +467,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.10.1',
+                  version : '>=0.10.2',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
@@ -518,8 +523,8 @@ executable(
 )
 
 install_data(
-    './resources/config',
-    './resources/style.css',
+    'resources/config.jsonc',
+    'resources/style.css',
     install_dir: sysconfdir / 'xdg/waybar'
 )
 
@@ -529,6 +534,14 @@ if scdoc.found()
     man_files += configure_file(
         input: 'man/waybar.5.scd.in',
         output: 'waybar.5.scd',
+        configuration: {
+            'sysconfdir': prefix / sysconfdir
+        }
+    )
+
+    man_files += configure_file(
+        input: 'man/waybar-styles.5.scd.in',
+        output: 'waybar-styles.5.scd',
         configuration: {
             'sysconfdir': prefix / sysconfdir
         }
@@ -577,4 +590,3 @@ if clangtidy.found()
             '-p', meson.project_build_root()
         ] + src_files)
 endif
-

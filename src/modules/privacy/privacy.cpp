@@ -1,16 +1,11 @@
 #include "modules/privacy/privacy.hpp"
 
-#include <fmt/core.h>
 #include <json/value.h>
-#include <pipewire/pipewire.h>
 #include <spdlog/spdlog.h>
 
-#include <cstdio>
-#include <cstring>
 #include <string>
 
 #include "AModule.hpp"
-#include "gtkmm/image.h"
 #include "modules/privacy/privacy_item.hpp"
 
 namespace waybar::modules::privacy {
@@ -50,32 +45,30 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
   // Initialize each privacy module
   Json::Value modules = config_["modules"];
   // Add Screenshare and Mic usage as default modules if none are specified
-  if (!modules.isArray() || modules.size() == 0) {
+  if (!modules.isArray() || modules.empty()) {
     modules = Json::Value(Json::arrayValue);
-    for (auto& type : {"screenshare", "audio-in"}) {
+    for (const auto& type : {"screenshare", "audio-in"}) {
       Json::Value obj = Json::Value(Json::objectValue);
       obj["type"] = type;
       modules.append(obj);
     }
   }
-  for (uint i = 0; i < modules.size(); i++) {
-    const Json::Value& module_config = modules[i];
-    if (!module_config.isObject() || !module_config["type"].isString()) continue;
-    const std::string type = module_config["type"].asString();
-    if (type == "screenshare") {
-      auto item =
-          Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_VIDEO_INPUT,
-                                         &nodes_screenshare, pos, iconSize, transition_duration);
-      box_.add(*item);
-    } else if (type == "audio-in") {
-      auto item =
-          Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_AUDIO_INPUT,
-                                         &nodes_audio_in, pos, iconSize, transition_duration);
-      box_.add(*item);
-    } else if (type == "audio-out") {
-      auto item =
-          Gtk::make_managed<PrivacyItem>(module_config, PRIVACY_NODE_TYPE_AUDIO_OUTPUT,
-                                         &nodes_audio_out, pos, iconSize, transition_duration);
+
+  std::map<std::string, std::tuple<decltype(&nodes_audio_in), PrivacyNodeType> > typeMap = {
+      {"screenshare", {&nodes_screenshare, PRIVACY_NODE_TYPE_VIDEO_INPUT}},
+      {"audio-in", {&nodes_audio_in, PRIVACY_NODE_TYPE_AUDIO_INPUT}},
+      {"audio-out", {&nodes_audio_out, PRIVACY_NODE_TYPE_AUDIO_OUTPUT}},
+  };
+
+  for (const auto& module : modules) {
+    if (!module.isObject() || !module["type"].isString()) continue;
+    const std::string type = module["type"].asString();
+
+    auto iter = typeMap.find(type);
+    if (iter != typeMap.end()) {
+      auto& [nodePtr, nodeType] = iter->second;
+      auto* item = Gtk::make_managed<PrivacyItem>(module, nodeType, nodePtr, pos, iconSize,
+                                                  transition_duration);
       box_.add(*item);
     }
   }
@@ -120,24 +113,35 @@ void Privacy::onPrivacyNodesChanged() {
 }
 
 auto Privacy::update() -> void {
-  mutex_.lock();
-  bool screenshare, audio_in, audio_out;
+  // set in modules or not
+  bool setScreenshare = false;
+  bool setAudioIn = false;
+  bool setAudioOut = false;
 
+  // used or not
+  bool useScreenshare = false;
+  bool useAudioIn = false;
+  bool useAudioOut = false;
+
+  mutex_.lock();
   for (Gtk::Widget* widget : box_.get_children()) {
-    PrivacyItem* module = dynamic_cast<PrivacyItem*>(widget);
-    if (!module) continue;
+    auto* module = dynamic_cast<PrivacyItem*>(widget);
+    if (module == nullptr) continue;
     switch (module->privacy_type) {
       case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
-        screenshare = !nodes_screenshare.empty();
-        module->set_in_use(screenshare);
+        setScreenshare = true;
+        useScreenshare = !nodes_screenshare.empty();
+        module->set_in_use(useScreenshare);
         break;
       case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
-        audio_in = !nodes_audio_in.empty();
-        module->set_in_use(audio_in);
+        setAudioIn = true;
+        useAudioIn = !nodes_audio_in.empty();
+        module->set_in_use(useAudioIn);
         break;
       case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
-        audio_out = !nodes_audio_out.empty();
-        module->set_in_use(audio_out);
+        setAudioOut = true;
+        useAudioOut = !nodes_audio_out.empty();
+        module->set_in_use(useAudioOut);
         break;
       case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
         break;
@@ -146,25 +150,28 @@ auto Privacy::update() -> void {
   mutex_.unlock();
 
   // Hide the whole widget if none are in use
-  bool is_visible = screenshare || audio_in || audio_out;
-  if (is_visible != event_box_.get_visible()) {
+  bool isVisible = (setScreenshare && useScreenshare) || (setAudioIn && useAudioIn) ||
+                   (setAudioOut && useAudioOut);
+
+  if (isVisible != event_box_.get_visible()) {
     // Disconnect any previous connection so that it doesn't get activated in
     // the future, hiding the module when it should be visible
     visibility_conn.disconnect();
-    if (is_visible) {
+    if (isVisible) {
       event_box_.set_visible(true);
     } else {
       // Hides the widget when all of the privacy_item revealers animations
       // have finished animating
       visibility_conn = Glib::signal_timeout().connect(
           sigc::track_obj(
-              [this] {
+              [this, setScreenshare, setAudioOut, setAudioIn]() {
                 mutex_.lock();
-                bool screenshare = !nodes_screenshare.empty();
-                bool audio_in = !nodes_audio_in.empty();
-                bool audio_out = !nodes_audio_out.empty();
+                bool visible = false;
+                visible |= setScreenshare && !nodes_screenshare.empty();
+                visible |= setAudioIn && !nodes_audio_in.empty();
+                visible |= setAudioOut && !nodes_audio_out.empty();
                 mutex_.unlock();
-                event_box_.set_visible(screenshare || audio_in || audio_out);
+                event_box_.set_visible(visible);
                 return false;
               },
               *this),

@@ -20,7 +20,7 @@
     std::scoped_lock<std::mutex> lock((backend).udev_thread_mutex_); \
     __devices = (backend).devices_;                                  \
   }                                                                  \
-  auto varname = (backend).best_device(__devices.cbegin(), __devices.cend(), preferred_device);
+  auto varname = (backend).best_device(__devices, preferred_device);
 
 namespace waybar::util {
 
@@ -56,27 +56,21 @@ class BacklightBackend {
 
   void set_previous_best_device(const BacklightDevice *device);
 
-  void set_brightness(std::string preferred_device, ChangeType change_type, double step);
+  void set_brightness(const std::string &preferred_device, ChangeType change_type, double step);
 
-  void set_scaled_brightness(std::string preferred_device, int brightness);
-  int get_scaled_brightness(std::string preferred_device);
-
-  template <class ForwardIt, class Inserter>
-  static void upsert_device(ForwardIt first, ForwardIt last, Inserter inserter, udev_device *dev);
-
-  template <class ForwardIt, class Inserter>
-  static void enumerate_devices(ForwardIt first, ForwardIt last, Inserter inserter, udev *udev);
+  void set_scaled_brightness(const std::string &preferred_device, int brightness);
+  int get_scaled_brightness(const std::string &preferred_device);
 
   bool is_login_proxy_initialized() const { return static_cast<bool>(login_proxy_); }
 
-  template <class ForwardIt>
-  static const BacklightDevice *best_device(ForwardIt first, ForwardIt last, std::string_view);
+  static const BacklightDevice *best_device(const std::vector<BacklightDevice> &devices,
+                                            std::string_view);
 
   std::vector<BacklightDevice> devices_;
   std::mutex udev_thread_mutex_;
 
  private:
-  void set_brightness_internal(std::string device_name, int brightness, int max_brightness);
+  void set_brightness_internal(const std::string &device_name, int brightness, int max_brightness);
 
   std::function<void()> on_updated_cb_;
   std::chrono::milliseconds polling_interval_;

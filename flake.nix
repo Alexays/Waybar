@@ -16,7 +16,12 @@
         "x86_64-linux"
         "aarch64-linux"
       ]
-        (system: func (import nixpkgs { inherit system; }));
+        (system: func (import nixpkgs {
+          inherit system;
+          overlays = with self.overlays; [
+            waybar
+          ];
+        }));
 
       mkDate = longDate: (lib.concatStringsSep "-" [
         (builtins.substring 0 4 longDate)
@@ -46,22 +51,25 @@
                 };
           });
 
-      overlays.default = final: prev: {
-        waybar = final.callPackage ./nix/default.nix {
-          # take the first "version: '...'" from meson.build
-          version =
-            (builtins.head (builtins.split "'"
-              (builtins.elemAt
-                (builtins.split " version: '" (builtins.readFile ./meson.build))
-                2)))
-            + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+      overlays = {
+        default = self.overlays.waybar;
+        waybar = final: prev: {
+          waybar = final.callPackage ./nix/default.nix {
+            waybar = prev.waybar;
+            # take the first "version: '...'" from meson.build
+            version =
+              (builtins.head (builtins.split "'"
+                (builtins.elemAt
+                  (builtins.split " version: '" (builtins.readFile ./meson.build))
+                  2)))
+              + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+          };
         };
       };
 
-      packages = genSystems (pkgs:
-        let packages = self.overlays.default pkgs pkgs;
-        in packages // {
-          default = packages.waybar;
-        });
+      packages = genSystems (pkgs: {
+        default = self.packages.${pkgs.stdenv.hostPlatform.system}.waybar;
+        inherit (pkgs) waybar;
+      });
     };
 }

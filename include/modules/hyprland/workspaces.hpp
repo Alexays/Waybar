@@ -4,19 +4,18 @@
 #include <gtkmm/label.h>
 #include <json/value.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
-#include <optional>
 #include <regex>
 #include <string>
-#include <variant>
 #include <vector>
 
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
+#include "modules/hyprland/windowcreationpayload.hpp"
+#include "modules/hyprland/workspace.hpp"
 #include "util/enum.hpp"
 #include "util/regex_collection.hpp"
 
@@ -25,92 +24,6 @@ using WindowAddress = std::string;
 namespace waybar::modules::hyprland {
 
 class Workspaces;
-
-class WindowCreationPayload {
- public:
-  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
-                        std::string window_repr);
-  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
-                        std::string window_class, std::string window_title);
-  WindowCreationPayload(Json::Value const& client_data);
-
-  int incrementTimeSpentUncreated();
-  bool isEmpty(Workspaces& workspace_manager);
-  bool reprIsReady() const { return std::holds_alternative<Repr>(m_window); }
-  std::string repr(Workspaces& workspace_manager);
-
-  std::string getWorkspaceName() const { return m_workspaceName; }
-  WindowAddress getAddress() const { return m_windowAddress; }
-
-  void moveToWorksace(std::string& new_workspace_name);
-
- private:
-  void clearAddr();
-  void clearWorkspaceName();
-
-  using Repr = std::string;
-  using ClassAndTitle = std::pair<std::string, std::string>;
-  std::variant<Repr, ClassAndTitle> m_window;
-
-  WindowAddress m_windowAddress;
-  std::string m_workspaceName;
-
-  int m_timeSpentUncreated = 0;
-};
-
-class Workspace {
- public:
-  explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
-                     const Json::Value& clients_data = Json::Value::nullRef);
-  std::string& selectIcon(std::map<std::string, std::string>& icons_map);
-  Gtk::Button& button() { return m_button; };
-
-  int id() const { return m_id; };
-  std::string name() const { return m_name; };
-  std::string output() const { return m_output; };
-  bool isActive() const { return m_isActive; };
-  bool isSpecial() const { return m_isSpecial; };
-  bool isPersistent() const { return m_isPersistent; };
-  bool isVisible() const { return m_isVisible; };
-  bool isEmpty() const { return m_windows == 0; };
-  bool isUrgent() const { return m_isUrgent; };
-
-  bool handleClicked(GdkEventButton* bt) const;
-  void setActive(bool value = true) { m_isActive = value; };
-  void setPersistent(bool value = true) { m_isPersistent = value; };
-  void setUrgent(bool value = true) { m_isUrgent = value; };
-  void setVisible(bool value = true) { m_isVisible = value; };
-  void setWindows(uint value) { m_windows = value; };
-  void setName(std::string const& value) { m_name = value; };
-  bool containsWindow(WindowAddress const& addr) const { return m_windowMap.contains(addr); }
-  void insertWindow(WindowCreationPayload create_window_paylod);
-  std::string removeWindow(WindowAddress const& addr);
-  void initializeWindowMap(const Json::Value& clients_data);
-
-  bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
-  std::optional<std::string> closeWindow(WindowAddress const& addr);
-
-  void update(const std::string& format, const std::string& icon);
-
- private:
-  Workspaces& m_workspaceManager;
-
-  int m_id;
-  std::string m_name;
-  std::string m_output;
-  uint m_windows;
-  bool m_isActive = false;
-  bool m_isSpecial = false;
-  bool m_isPersistent = false;
-  bool m_isUrgent = false;
-  bool m_isVisible = false;
-
-  std::map<WindowAddress, std::string> m_windowMap;
-
-  Gtk::Button m_button;
-  Gtk::Box m_content;
-  Gtk::Label m_label;
-};
 
 class Workspaces : public AModule, public EventHandler {
  public:
@@ -122,6 +35,8 @@ class Workspaces : public AModule, public EventHandler {
   auto allOutputs() const -> bool { return m_allOutputs; }
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
+  auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
+  auto moveToMonitor() const -> bool { return m_moveToMonitor; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
 
@@ -135,11 +50,24 @@ class Workspaces : public AModule, public EventHandler {
   void onEvent(const std::string& e) override;
   void updateWindowCount();
   void sortWorkspaces();
-  void createWorkspace(Json::Value const& workspaceData,
-                       Json::Value const& clientsData = Json::Value::nullRef);
+  void createWorkspace(Json::Value const& workspace_data,
+                       Json::Value const& clients_data = Json::Value::nullRef);
+
+  static Json::Value createMonitorWorkspaceData(std::string const& name,
+                                                std::string const& monitor);
   void removeWorkspace(std::string const& name);
   void setUrgentWorkspace(std::string const& windowaddress);
+
+  // Config
   void parseConfig(const Json::Value& config);
+  auto populateIconsMap(const Json::Value& formatIcons) -> void;
+  static auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
+      -> void;
+  auto populateSortByConfig(const Json::Value& config) -> void;
+  auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
+  auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
+  auto populateWindowRewriteConfig(const Json::Value& config) -> void;
+
   void registerIpc();
 
   // workspace events
@@ -165,7 +93,13 @@ class Workspaces : public AModule, public EventHandler {
 
   int windowRewritePriorityFunction(std::string const& window_rule);
 
+  // Update methods
   void doUpdate();
+  void removeWorkspacesToRemove();
+  void createWorkspacesToCreate();
+  static std::vector<std::string> getVisibleWorkspaces();
+  void updateWorkspaceStates();
+  bool updateWindowsToCreate();
 
   void extendOrphans(int workspaceId, Json::Value const& clientsJson);
   void registerOrphanWindow(WindowCreationPayload create_window_payload);
@@ -178,6 +112,8 @@ class Workspaces : public AModule, public EventHandler {
   bool m_allOutputs = false;
   bool m_showSpecial = false;
   bool m_activeOnly = false;
+  bool m_specialVisibleOnly = false;
+  bool m_moveToMonitor = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
