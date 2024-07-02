@@ -328,11 +328,6 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
       format_tooltip_ = "{title}";
   }
 
-  /* Handle click events if configured */
-  if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
-      config_["on-click-right"].isString()) {
-  }
-
   button.add_events(Gdk::BUTTON_PRESS_MASK);
   button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
 
@@ -586,12 +581,20 @@ bool Task::handle_clicked(GdkEventButton *bt) {
   }
 
   std::string action;
-  if (config_["on-click"].isString() && bt->button == 1)
-    action = config_["on-click"].asString();
-  else if (config_["on-click-middle"].isString() && bt->button == 2)
-    action = config_["on-click-middle"].asString();
-  else if (config_["on-click-right"].isString() && bt->button == 3)
-    action = config_["on-click-right"].asString();
+  auto cr = config_["actions"];
+  if (!cr.isObject()) {
+    if (tbar_->legacy_event_config) {
+      cr = config_;
+    } else {
+      return false;
+    }
+  }
+  if (cr["on-click"].isString() && bt->button == 1)
+    action = cr["on-click"].asString();
+  else if (cr["on-click-middle"].isString() && bt->button == 2)
+    action = cr["on-click-middle"].asString();
+  else if (cr["on-click-right"].isString() && bt->button == 3)
+    action = cr["on-click-right"].asString();
 
   if (action.empty())
     return true;
@@ -836,6 +839,19 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     }
   }
 
+  if (config_["on-click"]) {
+    legacy_event_config = true;
+    spdlog::warn("wlr/taskbar: on-click should be within actions object");
+  }
+  if (config_["on-click-right"]) {
+    legacy_event_config = true;
+    spdlog::warn("wlr/taskbar: on-click-right should be within actions object");
+  }
+  if (config_["on-click-middle"]) {
+    legacy_event_config = true;
+    spdlog::warn("wlr/taskbar: on-click-middle should be within actions object");
+  }
+
   icon_themes_.push_back(Gtk::IconTheme::get_default());
 
   for (auto &t : tasks_) {
@@ -894,6 +910,8 @@ static const struct zwlr_foreign_toplevel_manager_v1_listener toplevel_manager_i
     .toplevel = tm_handle_toplevel,
     .finished = tm_handle_finished,
 };
+
+auto Taskbar::doAction(const std::string &name) -> void {}
 
 void Taskbar::register_manager(struct wl_registry *registry, uint32_t name, uint32_t version) {
   if (manager_) {

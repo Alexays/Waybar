@@ -147,6 +147,7 @@ class Taskbar : public waybar::AModule {
   Taskbar(const std::string &, const waybar::Bar &, const Json::Value &);
   ~Taskbar();
   void update();
+  auto doAction(const std::string &) -> void override;
 
  private:
   const waybar::Bar &bar_;
@@ -177,6 +178,7 @@ class Taskbar : public waybar::AModule {
 
   bool show_output(struct wl_output *) const;
   bool all_outputs() const;
+  bool legacy_event_config = false;
 
   const std::vector<Glib::RefPtr<Gtk::IconTheme>> &icon_themes() const;
   const std::unordered_set<std::string> &ignore_list() const;
