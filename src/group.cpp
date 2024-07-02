@@ -19,9 +19,9 @@ const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
 
   if (is_vertical) {
     return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
-  } else {
-    return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
   }
+
+  return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
 }
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
