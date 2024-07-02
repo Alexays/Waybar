@@ -4,7 +4,9 @@
 #include <spdlog/spdlog.h>
 #include <sys/epoll.h>
 
+#include <cmath>
 #include <optional>
+#include <utility>
 
 namespace {
 class FileDescriptor {
@@ -122,7 +124,7 @@ static void enumerate_devices(std::vector<BacklightDevice> &devices, udev *udev)
 }
 
 BacklightDevice::BacklightDevice(std::string name, int actual, int max, bool powered)
-    : name_(name), actual_(actual), max_(max), powered_(powered) {}
+    : name_(std::move(name)), actual_(actual), max_(max), powered_(powered) {}
 
 std::string BacklightDevice::name() const { return name_; }
 
@@ -140,7 +142,7 @@ void BacklightDevice::set_powered(bool powered) { powered_ = powered; }
 
 BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
                                    std::function<void()> on_updated_cb)
-    : on_updated_cb_(on_updated_cb), polling_interval_(interval), previous_best_({}) {
+    : on_updated_cb_(std::move(on_updated_cb)), polling_interval_(interval), previous_best_({}) {
   std::unique_ptr<udev, UdevDeleter> udev_check{udev_new()};
   check_nn(udev_check.get(), "Udev check new failed");
   enumerate_devices(devices_, udev_check.get());
@@ -236,24 +238,24 @@ void BacklightBackend::set_previous_best_device(const BacklightDevice *device) {
   }
 }
 
-void BacklightBackend::set_scaled_brightness(std::string preferred_device, int brightness) {
+void BacklightBackend::set_scaled_brightness(const std::string &preferred_device, int brightness) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
     const auto max = best->get_max();
-    const auto abs_val = static_cast<int>(round(brightness * max / 100.0f));
+    const auto abs_val = static_cast<int>(std::round(brightness * max / 100.0F));
     set_brightness_internal(best->name(), abs_val, best->get_max());
   }
 }
 
-void BacklightBackend::set_brightness(std::string preferred_device, ChangeType change_type,
+void BacklightBackend::set_brightness(const std::string &preferred_device, ChangeType change_type,
                                       double step) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
     const auto max = best->get_max();
 
-    const auto abs_step = static_cast<int>(round(step * max / 100.0f));
+    const auto abs_step = static_cast<int>(round(step * max / 100.0F));
 
     const int new_brightness = change_type == ChangeType::Increase ? best->get_actual() + abs_step
                                                                    : best->get_actual() - abs_step;
@@ -261,7 +263,7 @@ void BacklightBackend::set_brightness(std::string preferred_device, ChangeType c
   }
 }
 
-void BacklightBackend::set_brightness_internal(std::string device_name, int brightness,
+void BacklightBackend::set_brightness_internal(const std::string &device_name, int brightness,
                                                int max_brightness) {
   brightness = std::clamp(brightness, 0, max_brightness);
 
@@ -271,7 +273,7 @@ void BacklightBackend::set_brightness_internal(std::string device_name, int brig
   login_proxy_->call_sync("SetBrightness", call_args);
 }
 
-int BacklightBackend::get_scaled_brightness(std::string preferred_device) {
+int BacklightBackend::get_scaled_brightness(const std::string &preferred_device) {
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {

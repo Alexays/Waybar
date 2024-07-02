@@ -14,9 +14,9 @@ class AModule : public IModule {
  public:
   static constexpr const char *MODULE_CLASS = "module";
 
-  virtual ~AModule();
+  ~AModule() override;
   auto update() -> void override;
-  virtual auto refresh(int) -> void{};
+  virtual auto refresh(int shouldRefresh) -> void{};
   operator Gtk::Widget &() override;
   auto doAction(const std::string &name) -> void override;
 
@@ -32,13 +32,13 @@ class AModule : public IModule {
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
   SCROLL_DIR getScrollDir(GdkEventScroll *e);
-  bool tooltipEnabled();
+  bool tooltipEnabled() const;
 
   const std::string name_;
   const Json::Value &config_;
   Gtk::EventBox event_box_;
 
-  virtual void setCursor(Gdk::CursorType const c);
+  virtual void setCursor(Gdk::CursorType const &c);
 
   virtual bool handleToggle(GdkEventButton *const &ev);
   virtual bool handleMouseEnter(GdkEventCrossing *const &ev);
