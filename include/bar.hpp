@@ -69,6 +69,7 @@ class Bar {
   void setVisible(bool value);
   void toggle();
   void handleSignal(int);
+  bool handleScroll(GdkEventScroll*);
 
   struct waybar_output *output;
   Json::Value config;
