@@ -107,6 +107,7 @@
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
+#include "modules/images.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
 
@@ -241,6 +242,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "image") {
       return new waybar::modules::Image(id, config_[name]);
+    }
+    if (ref == "images") {
+      return new waybar::modules::Images(id, config_[name]);
     }
 #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
