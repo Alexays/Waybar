@@ -69,6 +69,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
 
+  // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
     if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
       setCursor(Gdk::HAND2);
@@ -125,6 +126,12 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
   if (auto* module = event_box_.get_child(); module != nullptr) {
     module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
+
+  // Default behavior indicating event availability
+  if (hasUserEvents_ && !config_.isMember("cursor")) {
+    setCursor(Gdk::HAND2);
+  }
+
   return false;
 }
 
@@ -132,6 +139,12 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
   if (auto* module = event_box_.get_child(); module != nullptr) {
     module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
+
+  // Default behavior indicating event availability
+  if (hasUserEvents_ && !config_.isMember("cursor")) {
+    setCursor(Gdk::ARROW);
+  }
+
   return false;
 }
 
