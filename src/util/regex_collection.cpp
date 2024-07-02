@@ -3,13 +3,15 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
+#include <utility>
+
 namespace waybar::util {
 
 int default_priority_function(std::string& key) { return 0; }
 
 RegexCollection::RegexCollection(const Json::Value& map, std::string default_repr,
-                                 std::function<int(std::string&)> priority_function)
-    : default_repr(default_repr) {
+                                 const std::function<int(std::string&)>& priority_function)
+    : default_repr(std::move(default_repr)) {
   if (!map.isObject()) {
     spdlog::warn("Mapping is not an object");
     return;
