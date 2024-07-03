@@ -92,7 +92,11 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
 
 void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
   if (!create_window_paylod.isEmpty(m_workspaceManager)) {
-    m_windowMap[create_window_paylod.getAddress()] = create_window_paylod.repr(m_workspaceManager);
+    auto repr = create_window_paylod.repr(m_workspaceManager);
+
+    if (!repr.empty()) {
+      m_windowMap[create_window_paylod.getAddress()] = repr;
+    }
   }
 };
 

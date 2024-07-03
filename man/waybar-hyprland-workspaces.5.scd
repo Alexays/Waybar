@@ -26,6 +26,7 @@ Addressed by *hyprland/workspaces*
 	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
 	Keys are the rules, while the values are the methods of representation. Values may use the placeholders {class} and {title} to use the window's original class and/or title respectively.
 	Rules may specify `class<...>`, `title<...>`, or both in order to fine-tune the matching.
+	You may assign an empty value to a rule to have it ignored from generating any representation in workspaces.
 
 *window-rewrite-default*:
 	typeof: string ++
