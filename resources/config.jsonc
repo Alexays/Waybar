@@ -111,6 +111,10 @@
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%Y-%m-%d}"
     },
+    "prayer_timer":{
+        "file-path": "/home/abdalrahman/.src/Islamic-Prayer-Timings/next.txt"
+    },
+
     "cpu": {
         "format": "{usage}% ",
         "tooltip": false
