@@ -1,0 +1,109 @@
+diff --git a/include/modules/prayer_timer.hpp b/include/modules/prayer_timer.hpp
+new file mode 100644
+index 00000000..3d962743
+--- /dev/null
++++ b/include/modules/prayer_timer.hpp
+@@ -0,0 +1,19 @@
++#pragma once
++#include <fmt/chrono.h>
++#include "ALabel.hpp"
++#include <fstream>
++#include "util/sleeper_thread.hpp"
++namespace waybar::modules {
++
++class prayer_timer : public ALabel {
++ public:
++  prayer_timer(const std::string&, const Json::Value&);
++  virtual ~prayer_timer() = default;
++  auto update() -> void override;
++  void SecondsToString(int,char*,int);
++ private:
++  util::SleeperThread thread_;
++  std::string file_path_;
++};
++
++}  // namespace waybar::modules
+diff --git a/meson.build b/meson.build
+index 1af8e2b2..8951fb1a 100644
+--- a/meson.build
++++ b/meson.build
+@@ -169,6 +169,7 @@ src_files = files(
+     'src/modules/load.cpp',
+     'src/modules/temperature.cpp',
+     'src/modules/user.cpp',
++    'src/modules/prayer_timer.cpp',
+     'src/ASlider.cpp',
+     'src/main.cpp',
+     'src/bar.cpp',
+diff --git a/src/factory.cpp b/src/factory.cpp
+index ca10ef95..894d8dbd 100644
+--- a/src/factory.cpp
++++ b/src/factory.cpp
+@@ -109,6 +109,7 @@
+ #include "modules/image.hpp"
+ #include "modules/temperature.hpp"
+ #include "modules/user.hpp"
++#include "modules/prayer_timer.hpp"
+ 
+ waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
+ 
+@@ -118,6 +119,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
+     auto hash_pos = name.find('#');
+     auto ref = name.substr(0, hash_pos);
+     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
++
++    if(ref == "prayer_timer"){
++        return new waybar::modules::prayer_timer(id, config_[name]);
++    }
++
+ #if defined(__FreeBSD__) || defined(__linux__)
+     if (ref == "battery") {
+       return new waybar::modules::Battery(id, bar_, config_[name]);
+diff --git a/src/modules/prayer_timer.cpp b/src/modules/prayer_timer.cpp
+new file mode 100644
+index 00000000..f7e70e67
+--- /dev/null
++++ b/src/modules/prayer_timer.cpp
+@@ -0,0 +1,42 @@
++#include "modules/prayer_timer.hpp"
++
++#include <time.h>
++
++waybar::modules::prayer_timer::prayer_timer(const std::string& id, const Json::Value& config)
++    : ALabel(config, "prayer_timer", id, "{next}", 1) {
++
++    file_path_ = config_["file-path"].asString();
++
++        thread_ = [this]{
++            dp.emit();
++            auto now = std::chrono::system_clock::now();
++            /* difference with projected wakeup time */
++            auto diff = now.time_since_epoch() % interval_;
++            /* sleep until the next projected time */
++            thread_.sleep_for(interval_ - diff);
++        };
++    }
++void waybar::modules::prayer_timer::SecondsToString(int seconds, char *buffer, int buffer_size) {
++    int hours = seconds / 3600;
++    int minutes = (seconds % 3600) / 60;
++    int secs = seconds % 60;
++
++    snprintf(buffer, buffer_size, "%02d:%02d:%02d", hours, minutes, secs);
++}
++
++auto waybar::modules::prayer_timer::update() -> void {
++    std::ifstream infile(file_path_);
++    char* arr[6] = {"Fajr ", "Sunrise ", "Dhuhr ", "Asr ", "Maghrib ", "Isha "};
++    int idx = 0, rem = 0;
++    infile >> idx;
++    infile >> rem;
++    infile.close();
++    char buf[30];
++    strcpy(buf, arr[idx]);
++    char temp[10];
++    SecondsToString(rem, temp, 10);
++    strcat(buf, temp);
++    label_.set_markup(buf);
++    // Call parent update
++    ALabel::update();
++}

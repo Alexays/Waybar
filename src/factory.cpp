@@ -109,6 +109,7 @@
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
+#include "modules/prayer_timer.hpp"
 
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
@@ -118,6 +119,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     auto hash_pos = name.find('#');
     auto ref = name.substr(0, hash_pos);
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
+
+    if(ref == "prayer_timer"){
+        return new waybar::modules::prayer_timer(id, config_[name]);
+    }
+
 #if defined(__FreeBSD__) || defined(__linux__)
     if (ref == "battery") {
       return new waybar::modules::Battery(id, bar_, config_[name]);
