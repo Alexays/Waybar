@@ -113,6 +113,10 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	typeof: array ++
 	Sinks in this list will not be shown as active sink by Waybar. Entries should be the sink's description field.
 
+*sink-mapping*: ++
+	typeof: object ++
+	Sinks named by the values of this mapping will be considered to be the current sink instead of the sinks named by the respective keys.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.

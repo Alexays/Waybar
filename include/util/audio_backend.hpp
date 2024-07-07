@@ -48,6 +48,7 @@ class AudioBackend {
   std::string default_source_name_;
 
   std::vector<std::string> ignored_sinks_;
+  std::map<std::string, std::string> sink_mapping_;
 
   std::function<void()> on_updated_cb_ = NOOP;
 
@@ -69,6 +70,7 @@ class AudioBackend {
   void changeVolume(ChangeType change_type, double step = 1, uint16_t max_volume = 100);
 
   void setIgnoredSinks(const Json::Value& config);
+  void setSinkMapping(const Json::Value& config);
 
   std::string getSinkPortName() const { return port_name_; }
   std::string getFormFactor() const { return form_factor_; }
