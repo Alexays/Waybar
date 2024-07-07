@@ -25,9 +25,13 @@ class Group : public AModule {
   Gtk::Revealer revealer;
   bool is_first_widget = true;
   bool is_drawer = false;
+  bool click_to_reveal = false;
   std::string add_class_to_drawer_children;
   bool handleMouseEnter(GdkEventCrossing *const &ev) override;
   bool handleMouseLeave(GdkEventCrossing *const &ev) override;
+  bool handleToggle(GdkEventButton *const &ev) override;
+  void show_group();
+  void hide_group();
 };
 
 }  // namespace waybar
