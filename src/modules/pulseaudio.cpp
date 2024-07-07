@@ -7,6 +7,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value
 
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
+  backend->setSinkMapping(config_["sink-mapping"]);
 }
 
 bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
