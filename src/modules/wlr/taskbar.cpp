@@ -855,8 +855,7 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
           actions.end()) {
         task_actions_.emplace(t, config["actions"][t].asString());
       } else {
-        spdlog::warn(
-            std::format("wlr/taskbar: unknown action {}", config["actions"][t].asString()));
+        spdlog::warn("wlr/taskbar: unknown action {}", config["actions"][t].asString());
       }
     }
 
@@ -866,11 +865,11 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     if (config_[t].isString() &&
         std::find(actions.begin(), actions.end(), config_[t].asString()) != actions.end()) {
       if (task_actions_.emplace(t, config_[t].asString()).second) {
-        spdlog::warn(std::format("wlr/taskbar: {} action should be within actions object", t));
+        spdlog::warn("wlr/taskbar: {} action should be within actions object", t);
       } else {
-        spdlog::warn(std::format(
+        spdlog::warn(
             "wlr/taskbar: ignoring action {} because there is another within the actions object",
-            t));
+            t);
       }
     }
   }

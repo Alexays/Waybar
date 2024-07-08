@@ -146,7 +146,7 @@ class Taskbar : public waybar::AModule {
  public:
   Taskbar(const std::string &, const waybar::Bar &, const Json::Value &);
   ~Taskbar();
-  void update();
+  auto update() -> void override;
   auto doAction(const std::string &) -> void override;
 
  private:
