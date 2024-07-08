@@ -581,29 +581,27 @@ bool Task::handle_clicked(GdkEventButton *bt) {
   }
 
   std::string action;
-  auto cr = config_["actions"];
-  if (!cr.isObject()) {
-    if (tbar_->legacy_event_config) {
-      cr = config_;
-    } else {
-      return false;
-    }
-  }
-  if (cr["on-click"].isString() && bt->button == 1)
-    action = cr["on-click"].asString();
-  else if (cr["on-click-middle"].isString() && bt->button == 2)
-    action = cr["on-click-middle"].asString();
-  else if (cr["on-click-right"].isString() && bt->button == 3)
-    action = cr["on-click-right"].asString();
+  auto actions = tbar_->task_actions();
 
-  if (action.empty())
+  if (actions.contains("on-click") && bt->button == 1)
+    action = actions["on-click"];
+  else if (actions.contains("on-click-middle") && bt->button == 2)
+    action = actions["on-click-middle"];
+  else if (actions.contains("on-click-right") && bt->button == 3)
+    action = actions["on-click-right"];
+
+  if (action.empty()) {
+    spdlog::trace("wlr/taskbar: no action bound");
     return true;
-  else if (action == "activate")
+  } else if (action == "activate") {
+    spdlog::trace("wlr/taskbar: activate");
     activate();
-  else if (action == "minimize") {
+  } else if (action == "minimize") {
+    spdlog::trace("wlr/taskbar: minimize");
     set_minimize_hint();
     minimize(!minimized());
   } else if (action == "minimize-raise") {
+    spdlog::trace("wlr/taskbar: minimize-raise");
     set_minimize_hint();
     if (minimized())
       minimize(false);
@@ -611,14 +609,20 @@ bool Task::handle_clicked(GdkEventButton *bt) {
       minimize(true);
     else
       activate();
-  } else if (action == "maximize")
+  } else if (action == "maximize") {
+    spdlog::trace("wlr/taskbar: maximize");
     maximize(!maximized());
-  else if (action == "fullscreen")
+  } else if (action == "fullscreen") {
+    spdlog::trace("wlr/taskbar: fullscreen");
     fullscreen(!fullscreen());
-  else if (action == "close")
+  } else if (action == "close") {
+    spdlog::trace("wlr/taskbar: close");
     close();
-  else
+  } else {
+    // this should probably not happen anymore
+    spdlog::trace("wlr/taskbar: unknown action");
     spdlog::warn("Unknown action {}", action);
+  }
 
   drag_start_button = -1;
   return true;
@@ -839,17 +843,36 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     }
   }
 
-  if (config_["on-click"]) {
-    legacy_event_config = true;
-    spdlog::warn("wlr/taskbar: on-click should be within actions object");
-  }
-  if (config_["on-click-right"]) {
-    legacy_event_config = true;
-    spdlog::warn("wlr/taskbar: on-click-right should be within actions object");
-  }
-  if (config_["on-click-middle"]) {
-    legacy_event_config = true;
-    spdlog::warn("wlr/taskbar: on-click-middle should be within actions object");
+  // valid actions
+  const std::vector<std::string> actions = {"activate", "minimize",   "minimize-raise",
+                                            "maximize", "fullscreen", "close"};
+  // valid triggers for the actions
+  const std::vector<std::string> triggers = {"on-click", "on-click-right", "on-click-middle"};
+
+  for (auto &t : triggers) {
+    if (config_["actions"].isObject() && config["actions"][t].isString()) {
+      if (std::find(actions.begin(), actions.end(), config_["actions"][t].asString()) !=
+          actions.end()) {
+        task_actions_.emplace(t, config["actions"][t].asString());
+      } else {
+        spdlog::warn(
+            std::format("wlr/taskbar: unknown action {}", config["actions"][t].asString()));
+      }
+    }
+
+    // commands can still be executed by AModule on the whole module.
+    // But if it is an action, it should ideally be within "actions", give a warning.
+    // If there was an action within the actions object, ignore this one.
+    if (config_[t].isString() &&
+        std::find(actions.begin(), actions.end(), config_[t].asString()) != actions.end()) {
+      if (task_actions_.emplace(t, config_[t].asString()).second) {
+        spdlog::warn(std::format("wlr/taskbar: {} action should be within actions object", t));
+      } else {
+        spdlog::warn(std::format(
+            "wlr/taskbar: ignoring action {} because there is another within the actions object",
+            t));
+      }
+    }
   }
 
   icon_themes_.push_back(Gtk::IconTheme::get_default());
@@ -999,5 +1022,7 @@ const std::unordered_set<std::string> &Taskbar::ignore_list() const { return ign
 const std::map<std::string, std::string> &Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
 }
+
+const std::map<std::string, std::string> &Taskbar::task_actions() const { return task_actions_; }
 
 } /* namespace waybar::modules::wlr */
