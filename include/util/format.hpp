@@ -45,7 +45,7 @@ struct formatter<pow_format> {
   }
 
   template <class FormatContext>
-  auto format(const pow_format& s, FormatContext& ctx) -> decltype(ctx.out()) {
+  auto format(const pow_format& s, FormatContext& ctx) const -> decltype(ctx.out()) {
     const char* units[] = {"", "k", "M", "G", "T", "P", nullptr};
 
     auto base = s.binary_ ? 1024ull : 1000ll;
