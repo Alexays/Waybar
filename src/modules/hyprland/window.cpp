@@ -90,22 +90,18 @@ auto Window::update() -> void {
   AAppIconLabel::update();
 }
 
-auto Window::getActiveWorkspace() -> Workspace {
-  const auto workspace = gIPC->getSocket1JsonReply("activeworkspace");
-  assert(workspace.isObject());
-  return Workspace::parse(workspace);
-}
-
-auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
+auto Window::getActiveWorkspace(const std::string& monitorName = "") -> Workspace {
   const auto monitors = gIPC->getSocket1JsonReply("monitors");
   assert(monitors.isArray());
-  auto monitor = std::find_if(monitors.begin(), monitors.end(),
-                              [&](Json::Value monitor) { return monitor["name"] == monitorName; });
+  auto monitor = std::find_if(monitors.begin(), monitors.end(), [&](Json::Value monitor) {
+    return monitorName == "" ? monitor["focused"].asBool() : monitor["name"] == monitorName;
+  });
   if (monitor == std::end(monitors)) {
     spdlog::warn("Monitor not found: {}", monitorName);
     return Workspace{-1, 0, "", ""};
   }
-  const int id = (*monitor)["activeWorkspace"]["id"].asInt();
+  const int special_id = (*monitor)["specialWorkspace"]["id"].asInt();
+  const int id = special_id != 0 ? special_id : (*monitor)["activeWorkspace"]["id"].asInt();
 
   const auto workspaces = gIPC->getSocket1JsonReply("workspaces");
   assert(workspaces.isArray());
