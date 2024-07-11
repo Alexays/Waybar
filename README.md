@@ -48,7 +48,7 @@ An Ubuntu PPA with more recent versions is available
 ```bash
 $ git clone https://github.com/Alexays/Waybar
 $ cd Waybar
-$ meson build
+$ meson setup build
 $ ninja -C build
 $ ./build/waybar
 # If you want to install it
