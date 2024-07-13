@@ -27,10 +27,37 @@ static void listen_urgent_tags(void *data, struct zriver_output_status_v1 *zrive
   static_cast<Tags *>(data)->handle_urgent_tags(tags);
 }
 
+static void listen_focused_view(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                                const char *title) {
+  // This module doesn't care
+}
+
+static void listen_mode(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                        const char *mode) {
+  // This module doesn't care
+}
+
+static void listen_focused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                                  struct wl_output *output) {
+  static_cast<Tags *>(data)->handle_focused_output(output);
+}
+
+static void listen_unfocused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                                    struct wl_output *output) {
+  static_cast<Tags *>(data)->handle_unfocused_output(output);
+}
+
 static const zriver_output_status_v1_listener output_status_listener_impl{
     .focused_tags = listen_focused_tags,
     .view_tags = listen_view_tags,
     .urgent_tags = listen_urgent_tags,
+};
+
+static const zriver_seat_status_v1_listener seat_status_listener_impl{
+    .focused_output = listen_focused_output,
+    .unfocused_output = listen_unfocused_output,
+    .focused_view = listen_focused_view,
+    .mode = listen_mode,
 };
 
 static void listen_command_success(void *data,
@@ -88,11 +115,14 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       seat_{nullptr},
       bar_(bar),
       box_{bar.orientation, 0},
-      output_status_{nullptr} {
+      output_status_{nullptr},
+      seat_status_{nullptr} {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
+
+  output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
 
   if (!status_manager_) {
     spdlog::error("river_status_manager_v1 not advertised");
@@ -150,9 +180,11 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     button.show();
   }
 
-  struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output);
+  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
   zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
+
+  seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
+  zriver_seat_status_v1_add_listener(seat_status_, &seat_status_listener_impl, this);
 
   zriver_status_manager_v1_destroy(status_manager_);
 }
@@ -160,6 +192,10 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
 Tags::~Tags() {
   if (output_status_) {
     zriver_output_status_v1_destroy(output_status_);
+  }
+
+  if (seat_status_) {
+    zriver_seat_status_v1_destroy(seat_status_);
   }
 
   if (control_) {
@@ -220,6 +256,22 @@ void Tags::handle_urgent_tags(uint32_t tags) {
       buttons_[i].get_style_context()->add_class("urgent");
     } else {
       buttons_[i].get_style_context()->remove_class("urgent");
+    }
+  }
+}
+
+void Tags::handle_focused_output(struct wl_output *output) {
+  if (output_ == output) {
+    for (size_t i = 0; i < buttons_.size(); ++i) {
+      buttons_[i].get_style_context()->add_class("output");
+    }
+  }
+}
+
+void Tags::handle_unfocused_output(struct wl_output *output) {
+  if (output_ == output) {
+    for (size_t i = 0; i < buttons_.size(); ++i) {
+      buttons_[i].get_style_context()->remove_class("output");
     }
   }
 }
