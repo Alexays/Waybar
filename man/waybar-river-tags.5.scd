@@ -40,9 +40,12 @@ Addressed by *river/tags*
 - *#tags button.occupied*
 - *#tags button.focused*
 - *#tags button.urgent*
+- *#tags button.output*
 
-Note that occupied/focused/urgent status may overlap. That is, a tag may be
+Note that occupied/focused/urgent/output status may overlap. That is, a tag may be
 both occupied and focused at the same time.
+
+The *output* style is applied when the river output (e.g. monitor) of the current bar is focused.
 
 # SEE ALSO
 
