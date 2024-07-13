@@ -156,6 +156,8 @@ Addressed by *network*
 
 *{essid}*: Name (SSID) of the wireless network.
 
+*{bssid}*: MAC address (BSSID) of the wireless access point.
+
 *{signalStrength}*: Signal strength of the wireless network.
 
 *{signaldBm}*: Signal strength of the wireless network in dBm.
