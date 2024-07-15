@@ -14,14 +14,14 @@
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
-  bool is_printable(const Glib::VariantBase& value) {
+  bool is_printable(const Glib::VariantBase& value) const {
     auto type = value.get_type_string();
     /* Print only primitive (single character excluding 'v') and short complex types */
     return (type.length() == 1 && islower(type[0]) && type[0] != 'v') || value.get_size() <= 32;
   }
 
   template <typename FormatContext>
-  auto format(const Glib::VariantBase& value, FormatContext& ctx) {
+  auto format(const Glib::VariantBase& value, FormatContext& ctx) const {
     if (is_printable(value)) {
       return formatter<std::string>::format(static_cast<std::string>(value.print()), ctx);
     } else {
