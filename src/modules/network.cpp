@@ -845,7 +845,7 @@ void waybar::modules::Network::parseBssid(struct nlattr **bss) {
     auto bssid = static_cast<uint8_t *>(nla_data(bss[NL80211_BSS_BSSID]));
     auto bssid_len = nla_len(bss[NL80211_BSS_BSSID]);
     if (bssid_len == 6) {
-      bssid_ = std::format("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", bssid[0], bssid[1], bssid[2], bssid[3],
+      bssid_ = fmt::format("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", bssid[0], bssid[1], bssid[2], bssid[3],
                            bssid[4], bssid[5]);
     }
   }
