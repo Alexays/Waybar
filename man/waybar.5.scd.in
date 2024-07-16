@@ -278,6 +278,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: "hidden" ++
 	Defines the CSS class to be applied to the hidden elements.
 
+*click-to-reveal*: ++
+	typeof: bool ++
+	default: false ++
+	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
+
 *transition-left-to-right*: ++
 	typeof: bool ++
 	default: true ++
