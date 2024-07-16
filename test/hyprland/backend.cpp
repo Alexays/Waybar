@@ -52,10 +52,8 @@ TEST_CASE_METHOD(IPCTestFixture, "XDGRuntimeDirExistsNoHyprDir", "[getSocketFold
   REQUIRE(actualPath == expectedPath);
 }
 
-TEST_CASE_METHOD(IPCMock, "getSocket1JsonReply handles empty response", "[getSocket1JsonReply]") {
+TEST_CASE_METHOD(IPCTestFixture, "getSocket1Reply throws on no socket", "[getSocket1Reply]") {
   std::string request = "test_request";
 
-  Json::Value jsonResponse = getSocket1JsonReply(request);
-
-  REQUIRE(jsonResponse.isNull());
+  CHECK_THROWS(getSocket1Reply(request));
 }
