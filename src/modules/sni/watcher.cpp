@@ -67,10 +67,9 @@ gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invoca
   }
   auto watch = gfWatchFind(obj->hosts_, bus_name, object_path);
   if (watch != nullptr) {
-    g_dbus_method_invocation_return_error(
-        invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-        "Status Notifier Host with bus name '%s' and object path '%s' is already registered",
-        bus_name, object_path);
+    g_warning("Status Notifier Host with bus name '%s' and object path '%s' is already registered",
+              bus_name, object_path);
+    sn_watcher_complete_register_item(obj->watcher_, invocation);
     return TRUE;
   }
   watch = gfWatchNew(GF_WATCH_TYPE_HOST, service, bus_name, object_path, obj);
