@@ -261,13 +261,17 @@ void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
       node["name"].isString()) {
     std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
     std::string windowClass = node["app_id"].asString();
-    std::string windowReprKey = fmt::format("class<{}> title<{}>", windowClass, title);
-    std::string window = m_windowRewriteRules.get(windowReprKey);
-    // allow result to have formatting
-    window =
-        fmt::format(fmt::runtime(window), fmt::arg("name", title), fmt::arg("class", windowClass));
-    windows.append(window);
-    windows.append(m_formatWindowSeperator);
+
+    // Only add window rewrites that can be looked up
+    if (!windowClass.empty()) {
+      std::string windowReprKey = fmt::format("class<{}> title<{}>", windowClass, title);
+      std::string window = m_windowRewriteRules.get(windowReprKey);
+      // allow result to have formatting
+      window = fmt::format(fmt::runtime(window), fmt::arg("name", title),
+                           fmt::arg("class", windowClass));
+      windows.append(window);
+      windows.append(m_formatWindowSeperator);
+    }
   }
   for (const Json::Value &child : node["nodes"]) {
     updateWindows(child, windows);
