@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Test in FreeBSD VM
-        uses: cross-platform-actions/action@v0.23.0
+        uses: cross-platform-actions/action@v0.25.0
         timeout-minutes: 180
         env:
           CPPFLAGS: '-isystem/usr/local/include'
