@@ -66,7 +66,7 @@ class Bar {
   ~Bar();
 
   void setMode(const std::string &mode);
-  void setVisible(bool visible);
+  void setVisible(bool value);
   void toggle();
   void handleSignal(int);
 
