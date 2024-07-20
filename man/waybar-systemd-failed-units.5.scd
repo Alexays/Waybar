@@ -49,6 +49,16 @@ Addressed by *systemd-failed-units*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Whether to display a tooltip.
+
+*tooltip-format* ++
+	typeof: string ++
+	default: content of *format* ++
+	The format for the tooltip.
+
 # FORMAT REPLACEMENTS
 
 *{nr_failed_system}*: Number of failed units from systemwide (PID=1) systemd.
