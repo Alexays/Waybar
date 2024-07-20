@@ -53,6 +53,15 @@ Addressed by *systemd-failed-units*
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Whether to display a tooltip.
+
+*tooltip-format* ++
+	typeof: string ++
+	default: content of *format* ++
+	The format for the tooltip.
 
 # FORMAT REPLACEMENTS
 
