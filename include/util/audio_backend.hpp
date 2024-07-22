@@ -38,6 +38,8 @@ class AudioBackend {
   std::string desc_;
   std::string monitor_;
   std::string current_sink_name_;
+  std::string default_sink_name;
+  bool default_sink_running_;
   bool current_sink_running_;
   // SOURCE
   uint32_t source_idx_{0};
