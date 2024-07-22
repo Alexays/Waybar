@@ -163,15 +163,16 @@ auto waybar::modules::Clock::update() -> void {
       // std::vformat doesn't support named arguments.
       m_tlpText_ =
           std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
-      m_tlpText_ =
-          std::regex_replace(m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"), cldText_);
+      m_tlpText_ = std::regex_replace(
+          m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"),
+          fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
       m_tlpText_ =
           std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
     } else {
       m_tlpText_ = m_tlpFmt_;
     }
 
-    m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(shiftedNow));
+    m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
     m_tooltip_->set_markup(m_tlpText_);
     label_.trigger_tooltip_query();
   }
