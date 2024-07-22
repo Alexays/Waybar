@@ -1,4 +1,6 @@
 #include "modules/pulseaudio.hpp"
+#include <spdlog/spdlog.h>
+#include <numeric>
 
 waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
     : ALabel(config, "pulseaudio", id, "{volume}%") {
@@ -52,6 +54,7 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
   std::string nameLC = backend->getSinkPortName() + backend->getFormFactor();
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
   for (auto const &port : ports) {
+    spdlog::trace("Port: {}", nameLC);
     if (nameLC.find(port) != std::string::npos) {
       if (sink_muted) {
         res.emplace_back(port + "-muted");
@@ -62,6 +65,10 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
   }
   if (sink_muted) {
     res.emplace_back("default-muted");
+  }
+  spdlog::trace("Ports:");
+  for (auto const &item : res) {
+    spdlog::trace(" {}", item);
   }
   return res;
 }
