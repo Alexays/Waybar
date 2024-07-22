@@ -165,7 +165,7 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
   backend->default_sink_running_ =
       backend->default_sink_name == i->name;
 
-  if ( i->name != backend->default_sink_name) {
+  if ( i->name != backend->default_sink_name && !backend->default_sink_running_) {
     return;
   }
 
