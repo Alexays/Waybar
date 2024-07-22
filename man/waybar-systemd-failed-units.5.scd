@@ -63,6 +63,11 @@ Addressed by *systemd-failed-units*
 	default: content of *format* ++
 	The format for the tooltip.
 
+*tooltip-with-markup* ++
+	typeof: bool ++
+	default: true ++
+	Whether to accept pango markup in the tooltip.
+
 # FORMAT REPLACEMENTS
 
 *{nr_failed_system}*: Number of failed units from systemwide (PID=1) systemd.
