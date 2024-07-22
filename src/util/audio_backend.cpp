@@ -9,7 +9,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 #include <stdexcept>
 #include <utility>
 #include <spdlog/spdlog.h>
@@ -136,7 +135,6 @@ void AudioBackend::volumeModifyCb(pa_context *c, int success, void *data) {
   }
 }
 
-
 /*
  * Called when the requested sink information is ready.
  */
@@ -144,7 +142,6 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
                               void *data) {
   if (i == nullptr) return;
 
-  spdlog::trace("Callback start");
   auto running = i->state == PA_SINK_RUNNING;
   auto idle = i->state == PA_SINK_IDLE;
   spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running,idle );
