@@ -6,12 +6,12 @@
 #include <pulse/introspect.h>
 #include <pulse/subscribe.h>
 #include <pulse/volume.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <utility>
-#include <spdlog/spdlog.h>
 
 namespace waybar::util {
 
@@ -144,7 +144,7 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
 
   auto running = i->state == PA_SINK_RUNNING;
   auto idle = i->state == PA_SINK_IDLE;
-  spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running,idle );
+  spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running, idle);
 
   auto *backend = static_cast<AudioBackend *>(data);
 
@@ -162,23 +162,19 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
     }
   }
 
-  backend->default_sink_running_ = backend->default_sink_name == i->name
-    && (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+  backend->default_sink_running_ = backend->default_sink_name == i->name &&
+                                   (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
 
-
-  if ( i->name != backend->default_sink_name && !backend->default_sink_running_) {
+  if (i->name != backend->default_sink_name && !backend->default_sink_running_) {
     return;
   }
 
   if (backend->current_sink_name_ == i->name) {
-    backend->current_sink_running_ =
-      (i->state == PA_SINK_RUNNING ||
-       i->state == PA_SINK_IDLE);
+    backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
   }
 
-  if (!backend->current_sink_running_ && (
-        i->state == PA_SINK_RUNNING ||
-        i->state == PA_SINK_IDLE)) {
+  if (!backend->current_sink_running_ &&
+      (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE)) {
     backend->current_sink_name_ = i->name;
     backend->current_sink_running_ = true;
   }
