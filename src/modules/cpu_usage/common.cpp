@@ -61,9 +61,36 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpu
   std::vector<std::tuple<size_t, size_t>> curr_times = CpuUsage::parseCpuinfo();
   std::string tooltip;
   std::vector<uint16_t> usage;
+
+  if (curr_times.size() != prev_times.size()) {
+    // The number of CPUs has changed, eg. due to CPU hotplug
+    // We don't know which CPU came up or went down
+    // so only give total usage (if we can)
+    if (!curr_times.empty() && !prev_times.empty()) {
+      auto [curr_idle, curr_total] = curr_times[0];
+      auto [prev_idle, prev_total] = prev_times[0];
+      const float delta_idle = curr_idle - prev_idle;
+      const float delta_total = curr_total - prev_total;
+      uint16_t tmp = 100 * (1 - delta_idle / delta_total);
+      tooltip = fmt::format("Total: {}%\nCores: (pending)", tmp);
+      usage.push_back(tmp);
+    } else {
+      tooltip = "(pending)";
+      usage.push_back(0);
+    }
+    prev_times = curr_times;
+    return {usage, tooltip};
+  }
+
   for (size_t i = 0; i < curr_times.size(); ++i) {
     auto [curr_idle, curr_total] = curr_times[i];
     auto [prev_idle, prev_total] = prev_times[i];
+    if (i > 0 && (curr_total == 0 || prev_total == 0)) {
+      // This CPU is offline
+      tooltip = tooltip + fmt::format("\nCore{}: offline", i - 1);
+      usage.push_back(0);
+      continue;
+    }
     const float delta_idle = curr_idle - prev_idle;
     const float delta_total = curr_total - prev_total;
     uint16_t tmp = 100 * (1 - delta_idle / delta_total);
