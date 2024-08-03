@@ -81,14 +81,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     }
   }
 
-  addHoverHandlerTo(revealer);
   event_box_.add(box);
-}
-
-void Group::addHoverHandlerTo(Gtk::Widget& widget) {
-  widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-  widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseEnter));
-  widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseLeave));
 }
 
 void Group::show_group() {
@@ -109,7 +102,7 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (!click_to_reveal) {
+  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
     hide_group();
   }
   return false;
