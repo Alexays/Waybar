@@ -9,7 +9,7 @@
 
 namespace waybar {
 
-const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
+Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
   /* The transition direction of a drawer is not actually determined by the transition type,
    * but rather by the order of 'box' and 'revealer_box':
    *   'REVEALER_TRANSITION_TYPE_SLIDE_LEFT' and 'REVEALER_TRANSITION_TYPE_SLIDE_RIGHT'
@@ -102,7 +102,7 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (!click_to_reveal) {
+  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
     hide_group();
   }
   return false;
@@ -112,7 +112,7 @@ bool Group::handleToggle(GdkEventButton* const& e) {
   if (!click_to_reveal || e->button != 1) {
     return false;
   }
-  if (box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) {
+  if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
     hide_group();
   } else {
     show_group();

@@ -12,7 +12,7 @@ namespace waybar {
 class Group : public AModule {
  public:
   Group(const std::string &, const std::string &, const Json::Value &, bool);
-  virtual ~Group() = default;
+  ~Group() override = default;
   auto update() -> void override;
   operator Gtk::Widget &() override;
 
