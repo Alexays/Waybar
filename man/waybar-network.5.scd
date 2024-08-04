@@ -182,6 +182,8 @@ Addressed by *network*
 
 *{bandwidthTotalBytes}*: Instant total speed in bytes/seconds.
 
+*{linkSpeed}*: Ethernet link speed.
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 # EXAMPLES
