@@ -33,6 +33,7 @@ class AModule : public IModule {
 
   SCROLL_DIR getScrollDir(GdkEventScroll *e);
   bool tooltipEnabled() const;
+  bool tooltipMarkupEnabled() const;
 
   const std::string name_;
   const Json::Value &config_;
@@ -50,6 +51,7 @@ class AModule : public IModule {
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
+  const bool isMarkupTooltip;
   bool hasUserEvents_;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;
