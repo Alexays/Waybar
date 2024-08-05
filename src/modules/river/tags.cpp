@@ -188,9 +188,15 @@ bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
   return true;
 }
 
+bool Tags::check_tags(uint32_t tags, size_t i) {
+  const auto toggle_tags = config_["toggle-tags"];
+  auto tag = toggle_tags.isArray() && !toggle_tags.empty() ? toggle_tags[(int) i].asUInt() : 1 << i;
+  return (bool) (tag & tags);
+}
+
 void Tags::handle_focused_tags(uint32_t tags) {
   for (size_t i = 0; i < buttons_.size(); ++i) {
-    if ((1 << i) & tags) {
+    if (check_tags(tags, i)) {
       buttons_[i].get_style_context()->add_class("focused");
     } else {
       buttons_[i].get_style_context()->remove_class("focused");
@@ -206,7 +212,7 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
     tags |= *view_tag;
   }
   for (size_t i = 0; i < buttons_.size(); ++i) {
-    if ((1 << i) & tags) {
+    if (check_tags(tags, i)) {
       buttons_[i].get_style_context()->add_class("occupied");
     } else {
       buttons_[i].get_style_context()->remove_class("occupied");
@@ -216,7 +222,7 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
 
 void Tags::handle_urgent_tags(uint32_t tags) {
   for (size_t i = 0; i < buttons_.size(); ++i) {
-    if ((1 << i) & tags) {
+    if (check_tags(tags, i)) {
       buttons_[i].get_style_context()->add_class("urgent");
     } else {
       buttons_[i].get_style_context()->remove_class("urgent");
