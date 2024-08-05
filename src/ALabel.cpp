@@ -6,6 +6,8 @@
 #include <iostream>
 #include <util/command.hpp>
 
+#include "config.hpp"
+
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
@@ -61,6 +63,14 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     try {
       // Check that the file exists
       std::string menuFile = config_["menu-file"].asString();
+
+      // there might be "~" or "$HOME" in original path, try to expand it.
+      auto result = Config::tryExpandPath(menuFile, "");
+      if (!result.has_value()) {
+        throw std::runtime_error("Failed to expand file: " + menuFile);
+      }
+
+      menuFile = result.value();
       // Read the menu descriptor file
       std::ifstream file(menuFile);
       if (!file.is_open()) {
@@ -170,7 +180,7 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   return AModule::handleToggle(e);
 }
 
-void ALabel::handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data) {
+void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
   waybar::util::command::res res = waybar::util::command::exec((char*)data, "GtkMenu");
 }
 
