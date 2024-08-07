@@ -276,6 +276,15 @@ if true
 endif
 
 if true
+    add_project_arguments('-DHAVE_COSMIC_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/cosmic/cosmic_workspace_manager.cpp',
+        'src/modules/cosmic/cosmic_workspace_manager_binding.cpp',
+    )
+    man_files += files('man/waybar-cosmic-workspaces.5.scd')
+endif
+
+if true
     add_project_arguments('-DHAVE_RIVER', language: 'cpp')
     src_files += files(
         'src/modules/river/layout.cpp',

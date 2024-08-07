@@ -20,6 +20,9 @@
 #ifdef HAVE_WLR_WORKSPACES
 #include "modules/wlr/workspace_manager.hpp"
 #endif
+#ifdef HAVE_COSMIC_WORKSPACES
+#include "modules/cosmic/cosmic_workspace_manager.hpp"
+#endif
 #ifdef HAVE_RIVER
 #include "modules/river/layout.hpp"
 #include "modules/river/mode.hpp"
@@ -163,6 +166,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #ifdef HAVE_WLR_TASKBAR
     if (ref == "wlr/taskbar") {
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_COSMIC_WORKSPACES
+    if (ref == "cosmic/workspaces") {
+        return new waybar::modules::cosmic::WorkspaceManager(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_WLR_WORKSPACES
