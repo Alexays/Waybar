@@ -139,7 +139,8 @@ class Taskbar : public waybar::AModule {
  public:
   Taskbar(const std::string &, const waybar::Bar &, const Json::Value &);
   ~Taskbar();
-  void update();
+  auto update() -> void override;
+  auto doAction(const std::string &) -> void override;
 
  private:
   const waybar::Bar &bar_;
@@ -149,6 +150,7 @@ class Taskbar : public waybar::AModule {
   std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
   std::unordered_set<std::string> ignore_list_;
   std::map<std::string, std::string> app_ids_replace_map_;
+  std::map<std::string, std::string> task_actions_;
 
   struct zwlr_foreign_toplevel_manager_v1 *manager_;
   struct wl_seat *seat_;
@@ -174,6 +176,7 @@ class Taskbar : public waybar::AModule {
   const std::vector<Glib::RefPtr<Gtk::IconTheme>> &icon_themes() const;
   const std::unordered_set<std::string> &ignore_list() const;
   const std::map<std::string, std::string> &app_ids_replace_map() const;
+  const std::map<std::string, std::string> &task_actions() const;
 };
 
 } /* namespace waybar::modules::wlr */
