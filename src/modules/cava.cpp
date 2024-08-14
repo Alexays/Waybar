@@ -174,10 +174,14 @@ auto waybar::modules::Cava::update() -> void {
       label_.show();
       ALabel::update();
     }
+    
+    label_.get_style_context()->remove_class("silence");
   } else {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
     if (hide_on_silence_) label_.hide();
     else if (config_["format_silent"].isString()) label_.set_markup(format_silent_);
+
+    label_.get_style_context()->add_class("silence");
   }
 }
 
