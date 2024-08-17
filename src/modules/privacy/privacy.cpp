@@ -73,6 +73,18 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
     }
   }
 
+  for (const auto& ignore_item : config_["ignore"]) {
+    if (!ignore_item.isObject() || !ignore_item["type"].isString() || !ignore_item["name"].isString()) continue;
+    const std::string type = ignore_item["type"].asString();
+    const std::string name = ignore_item["name"].asString();
+
+    auto iter = typeMap.find(type);
+    if (iter != typeMap.end()) {
+      auto& [_, nodeType] = iter->second;
+      ignore.emplace(nodeType, std::move(name));
+    }
+  }
+
   backend = util::PipewireBackend::PipewireBackend::getInstance();
   backend->privacy_nodes_changed_signal_event.connect(
       sigc::mem_fun(*this, &Privacy::onPrivacyNodesChanged));
@@ -87,6 +99,10 @@ void Privacy::onPrivacyNodesChanged() {
   nodes_screenshare.clear();
 
   for (auto& node : backend->privacy_nodes) {
+    auto iter = ignore.find(std::pair(node.second->type, node.second->node_name));
+    if (iter != ignore.end())
+      continue;
+
     switch (node.second->state) {
       case PW_NODE_STATE_RUNNING:
         switch (node.second->type) {
