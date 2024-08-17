@@ -37,7 +37,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = true}},
     {"hide",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = false,
       .visible = true}},
@@ -49,7 +49,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = false}},
     {"overlay",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = true,
       .visible = true}}};
