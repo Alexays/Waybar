@@ -132,6 +132,7 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
+      surface(nullptr),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
       x_global(0),
       y_global(0),
@@ -339,6 +340,13 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
     window.get_style_context()->add_class("hidden");
     window.set_opacity(0);
   }
+  /*
+   * All the changes above require `wl_surface_commit`.
+   * gtk-layer-shell schedules a commit on the next frame event in GTK, but this could fail in
+   * certain scenarios, such as fully occluded bar.
+   */
+  gtk_layer_try_force_commit(gtk_window);
+  wl_display_flush(Client::inst()->wl_display);
 }
 
 void waybar::Bar::setPassThrough(bool passthrough) {
