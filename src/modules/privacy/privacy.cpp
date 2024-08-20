@@ -85,6 +85,10 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
     }
   }
 
+  if (config_["ignore-monitor"].isBool()) {
+    ignore_monitor = config_["ignore-monitor"].asBool();
+  }
+
   backend = util::PipewireBackend::PipewireBackend::getInstance();
   backend->privacy_nodes_changed_signal_event.connect(
       sigc::mem_fun(*this, &Privacy::onPrivacyNodesChanged));
@@ -99,6 +103,9 @@ void Privacy::onPrivacyNodesChanged() {
   nodes_screenshare.clear();
 
   for (auto& node : backend->privacy_nodes) {
+    if (ignore_monitor && node.second->is_monitor)
+      continue;
+
     auto iter = ignore.find(std::pair(node.second->type, node.second->node_name));
     if (iter != ignore.end())
       continue;
