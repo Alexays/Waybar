@@ -32,6 +32,7 @@ class Privacy : public AModule {
   uint iconSize = 20;
   uint transition_duration = 250;
   std::set<std::pair<PrivacyNodeType, std::string>> ignore;
+  bool ignore_monitor = true;
 
   std::shared_ptr<util::PipewireBackend::PipewireBackend> backend = nullptr;
 };
