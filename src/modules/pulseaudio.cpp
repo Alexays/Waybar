@@ -106,7 +106,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
   } else {
     label_.get_style_context()->remove_class("source-muted");
-    if (config_["format-source-muted"].isString()) {
+    if (config_["format-source"].isString()) {
       format_source = config_["format-source"].asString();
     }
   }
