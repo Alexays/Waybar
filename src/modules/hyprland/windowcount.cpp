@@ -46,20 +46,27 @@ auto WindowCount::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   std::string format = config_["format"].asString();
+  std::string formatFullscreen = config_["format-fullscreen"].asString();
+  std::string formatWindowed = config_["format-windowed"].asString();
   std::string formattedText;
 
-  if (!format.empty()) {
-    formattedText = fmt::format(fmt::runtime(format), workspace_.windows);
+  if (workspace_.hasfullscreen && !formatFullscreen.empty()) {
     label_.set_markup(waybar::util::rewriteString(
-        formattedText,
+        fmt::format(fmt::runtime(formatFullscreen), workspace_.windows),
         config_["rewrite"]));
-    label_.show();
+  } else if (!workspace_.hasfullscreen && !formatWindowed.empty()) {
+    label_.set_markup(waybar::util::rewriteString(
+        fmt::format(fmt::runtime(formatWindowed), workspace_.windows),
+        config_["rewrite"]));
+  } else if (!format.empty()) {
+    label_.set_markup(waybar::util::rewriteString(
+        fmt::format(fmt::runtime(format), workspace_.windows),
+        config_["rewrite"]));
   } else {
-    // Default display
     label_.set_text(fmt::format("{}", workspace_.windows));
-    label_.hide();
   }
 
+  label_.show();
   AAppIconLabel::update();
 }
 
@@ -81,7 +88,7 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
     });
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
-      return Workspace{-1, 0};
+      return Workspace{-1, 0, false};
     }
     const int id = (*monitor)["activeWorkspace"]["id"].asInt();
 
@@ -91,7 +98,7 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
                                     [&](Json::Value workspace) { return workspace["id"] == id; });
       if (workspace == std::end(workspaces)) {
         spdlog::warn("No workspace with id {}", id);
-        return Workspace{-1, 0};
+        return Workspace{-1, 0, false};
       }
       return Workspace::parse(*workspace);
     };
@@ -104,6 +111,7 @@ auto WindowCount::Workspace::parse(const Json::Value& value) -> WindowCount::Wor
   return Workspace{
       value["id"].asInt(),
       value["windows"].asInt(),
+      value["hasfullscreen"].asBool(),
   };
 }
 

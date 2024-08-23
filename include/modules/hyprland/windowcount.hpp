@@ -22,6 +22,7 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
   struct Workspace {
     int id;
     int windows;
+    bool hasfullscreen;
     static auto parse(const Json::Value& value) -> Workspace;
   };
 
