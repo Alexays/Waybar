@@ -48,7 +48,9 @@ auto WindowCount::update() -> void {
   std::string format = config_["format"].asString();
   std::string formatFullscreen = config_["format-fullscreen"].asString();
   std::string formatWindowed = config_["format-windowed"].asString();
-  std::string formattedText;
+
+  setClass("empty", workspace_.windows == 0);
+  setClass("fullscreen", workspace_.hasfullscreen);
 
   if (workspace_.hasfullscreen && !formatFullscreen.empty()) {
     label_.set_markup(waybar::util::rewriteString(
