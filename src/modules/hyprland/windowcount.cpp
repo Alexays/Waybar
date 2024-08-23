@@ -45,17 +45,20 @@ WindowCount::~WindowCount() {
 auto WindowCount::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
-  if (!format_.empty()) {
-    label_.show();
+  std::string format = config_["format"].asString();
+  std::string formattedText;
+
+  if (!format.empty()) {
+    formattedText = fmt::format(fmt::runtime(format), workspace_.windows);
     label_.set_markup(waybar::util::rewriteString(
-        fmt::format(fmt::runtime(format_), fmt::arg("count", workspace_.windows)),
+        formattedText,
         config_["rewrite"]));
+    label_.show();
   } else {
+    // Default display
+    label_.set_text(fmt::format("{}", workspace_.windows));
     label_.hide();
   }
-
-  // Display the count as the label text
-  label_.set_text(fmt::format("{}", workspace_.windows));
 
   AAppIconLabel::update();
 }
@@ -125,7 +128,6 @@ void WindowCount::queryActiveWorkspace() {
 
 void WindowCount::onEvent(const std::string& ev) {
   queryActiveWorkspace();
-  update();
   dp.emit();
 }
 
