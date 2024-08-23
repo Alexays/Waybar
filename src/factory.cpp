@@ -34,6 +34,7 @@
 #include "modules/hyprland/language.hpp"
 #include "modules/hyprland/submap.hpp"
 #include "modules/hyprland/window.hpp"
+#include "modules/hyprland/windowcount.hpp"
 #include "modules/hyprland/workspaces.hpp"
 #endif
 #if defined(__FreeBSD__) || defined(__linux__)
@@ -195,6 +196,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #ifdef HAVE_HYPRLAND
     if (ref == "hyprland/window") {
       return new waybar::modules::hyprland::Window(id, bar_, config_[name]);
+    }
+    if (ref == "hyprland/windowcount") {
+      return new waybar::modules::hyprland::WindowCount(id, bar_, config_[name]);
     }
     if (ref == "hyprland/language") {
       return new waybar::modules::hyprland::Language(id, bar_, config_[name]);
