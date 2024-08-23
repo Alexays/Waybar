@@ -28,19 +28,6 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
     static auto parse(const Json::Value& value) -> Workspace;
   };
 
-  struct WindowCountData {
-    bool floating;
-    int monitor = -1;
-    std::string class_name;
-    std::string initial_class_name;
-    std::string title;
-    std::string initial_title;
-    bool fullscreen;
-    bool grouped;
-
-    static auto parse(const Json::Value&) -> WindowCountData;
-  };
-
   static auto getActiveWorkspace(const std::string&) -> Workspace;
   static auto getActiveWorkspace() -> Workspace;
   void onEvent(const std::string& ev) override;
@@ -50,16 +37,9 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
   bool separateOutputs_;
   std::mutex mutex_;
   const Bar& bar_;
-  util::JsonParser parser_;
-  WindowCountData windowData_;
   Workspace workspace_;
-  std::string soloClass_;
-  std::string lastSoloClass_;
-  bool solo_;
-  bool allFloating_;
-  bool swallowing_;
-  bool fullscreen_;
   bool focused_;
+  int windowCount_;
 };
 
 }  // namespace waybar::modules::hyprland
