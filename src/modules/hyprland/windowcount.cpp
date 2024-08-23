@@ -119,7 +119,6 @@ void WindowCount::queryActiveWorkspace() {
   }
 
   focused_ = true;
-  windowCount_ = workspace_.windows;
 
   if (workspace_.windows == 0) {
     focused_ = false;

@@ -39,7 +39,6 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
   const Bar& bar_;
   Workspace workspace_;
   bool focused_;
-  int windowCount_;
 };
 
 }  // namespace waybar::modules::hyprland
