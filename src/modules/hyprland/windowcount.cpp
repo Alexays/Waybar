@@ -81,7 +81,7 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
     });
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
-      return Workspace{-1, 0, "", ""};
+      return Workspace{-1, 0};
     }
     const int id = (*monitor)["activeWorkspace"]["id"].asInt();
 
@@ -91,7 +91,7 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
                                     [&](Json::Value workspace) { return workspace["id"] == id; });
       if (workspace == std::end(workspaces)) {
         spdlog::warn("No workspace with id {}", id);
-        return Workspace{-1, 0, "", ""};
+        return Workspace{-1, 0};
       }
       return Workspace::parse(*workspace);
     };
@@ -104,8 +104,6 @@ auto WindowCount::Workspace::parse(const Json::Value& value) -> WindowCount::Wor
   return Workspace{
       value["id"].asInt(),
       value["windows"].asInt(),
-      value["lastwindow"].asString(),
-      value["lastwindowtitle"].asString(),
   };
 }
 

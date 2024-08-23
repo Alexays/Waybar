@@ -22,9 +22,6 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
   struct Workspace {
     int id;
     int windows;
-    std::string last_window;
-    std::string last_window_title;
-
     static auto parse(const Json::Value& value) -> Workspace;
   };
 
