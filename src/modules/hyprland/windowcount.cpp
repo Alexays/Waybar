@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
-#include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
 namespace waybar::modules::hyprland {
@@ -53,17 +52,11 @@ auto WindowCount::update() -> void {
   setClass("fullscreen", workspace_.hasfullscreen);
 
   if (workspace_.hasfullscreen && !formatFullscreen.empty()) {
-    label_.set_markup(waybar::util::rewriteString(
-        fmt::format(fmt::runtime(formatFullscreen), workspace_.windows),
-        config_["rewrite"]));
+    label_.set_markup(fmt::format(fmt::runtime(formatFullscreen), workspace_.windows));
   } else if (!workspace_.hasfullscreen && !formatWindowed.empty()) {
-    label_.set_markup(waybar::util::rewriteString(
-        fmt::format(fmt::runtime(formatWindowed), workspace_.windows),
-        config_["rewrite"]));
+    label_.set_markup(fmt::format(fmt::runtime(formatWindowed), workspace_.windows));
   } else if (!format.empty()) {
-    label_.set_markup(waybar::util::rewriteString(
-        fmt::format(fmt::runtime(format), workspace_.windows),
-        config_["rewrite"]));
+    label_.set_markup(fmt::format(fmt::runtime(format), workspace_.windows));
   } else {
     label_.set_text(fmt::format("{}", workspace_.windows));
   }
