@@ -32,7 +32,7 @@ Addressed by *hyprland/windowcount*
 *separate-outputs*: ++
 	typeof: bool ++
 	default: true ++
-	Show the active window count of the monitor the bar belongs to, instead of the focused window.
+	Show the active workspace window count of the monitor the bar belongs to, instead of the focused workspace.
 
 # STYLE
 
