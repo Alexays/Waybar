@@ -15,7 +15,19 @@ Addressed by *hyprland/windowcount*
 *format*: ++
 	typeof: string ++
 	default: {} ++
-	The format, how information should be displayed. On {} the current window count is displayed.
+	The format for how information should be displayed. On {} the current workspace window count is displayed.
+
+*format-empty*: ++
+	typeof: string ++
+	Override the format when the workspace contains no windows window
+
+*format-windowed*: ++
+	typeof: string ++
+	Override the format when the workspace contains no fullscreen windows
+
+*format-fullscreen*: ++
+	typeof: string ++
+	Override the format when the workspace contains a fullscreen window
 
 *separate-outputs*: ++
 	typeof: bool ++
