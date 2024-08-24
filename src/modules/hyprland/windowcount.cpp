@@ -46,16 +46,19 @@ auto WindowCount::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   std::string format = config_["format"].asString();
-  std::string formatFullscreen = config_["format-fullscreen"].asString();
+  std::string formatEmpty = config_["format-empty"].asString();
   std::string formatWindowed = config_["format-windowed"].asString();
+  std::string formatFullscreen = config_["format-fullscreen"].asString();
 
   setClass("empty", workspace_.windows == 0);
   setClass("fullscreen", workspace_.hasfullscreen);
 
-  if (workspace_.hasfullscreen && !formatFullscreen.empty()) {
-    label_.set_markup(fmt::format(fmt::runtime(formatFullscreen), workspace_.windows));
+  if (workspace_.windows == 0 && !formatEmpty.empty()) {
+    label_.set_markup(fmt::format(fmt::runtime(formatEmpty), workspace_.windows));
   } else if (!workspace_.hasfullscreen && !formatWindowed.empty()) {
     label_.set_markup(fmt::format(fmt::runtime(formatWindowed), workspace_.windows));
+  } else if (workspace_.hasfullscreen && !formatFullscreen.empty()) {
+    label_.set_markup(fmt::format(fmt::runtime(formatFullscreen), workspace_.windows));
   } else if (!format.empty()) {
     label_.set_markup(fmt::format(fmt::runtime(format), workspace_.windows));
   } else {
