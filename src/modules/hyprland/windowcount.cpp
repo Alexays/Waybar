@@ -125,12 +125,6 @@ void WindowCount::queryActiveWorkspace() {
   } else {
     workspace_ = getActiveWorkspace();
   }
-
-  focused_ = true;
-
-  if (workspace_.windows == 0) {
-    focused_ = false;
-  }
 }
 
 void WindowCount::onEvent(const std::string& ev) {

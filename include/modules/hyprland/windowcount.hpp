@@ -36,7 +36,6 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
   std::mutex mutex_;
   const Bar& bar_;
   Workspace workspace_;
-  bool focused_;
 };
 
 }  // namespace waybar::modules::hyprland
