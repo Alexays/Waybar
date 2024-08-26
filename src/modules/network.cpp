@@ -77,6 +77,22 @@ waybar::modules::Network::readBandwidthUsage() {
   return {{receivedBytes, transmittedBytes}};
 }
 
+uint32_t waybar::modules::Network::readLinkSpeed() const {
+  auto path = fmt::format("/sys/class/net/{}/speed", ifname_);
+  std::ifstream sysfs_speed(path);
+
+  if (!sysfs_speed)
+      return 0;
+
+  uint32_t speed;
+  sysfs_speed>>speed;
+
+  if(sysfs_speed.bad()) // read fails on incompatible devices
+    return 0;
+
+  return speed;
+}
+
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
     : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
       ifid_(-1),
@@ -308,6 +324,8 @@ auto waybar::modules::Network::update() -> void {
     bandwidth_up_total_ = up_octets;
   }
 
+  link_speed_ = readLinkSpeed();
+
   if (!alt_) {
     auto state = getNetworkState();
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
@@ -349,7 +367,8 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
+      fmt::arg("linkSpeed", pow_format(link_speed_ * 1000000ull, "b/s", false, true)));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -382,7 +401,8 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
+          fmt::arg("linkSpeed", pow_format(link_speed_ * 1000000ull, "b/s", false, true)));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -416,6 +436,7 @@ void waybar::modules::Network::clearIface() {
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
   signal_strength_app_.clear();
+  link_speed_ = 0;
   frequency_ = 0.0;
 }
 

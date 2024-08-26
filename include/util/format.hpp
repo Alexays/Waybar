@@ -5,12 +5,13 @@
 
 class pow_format {
  public:
-  pow_format(long long val, std::string&& unit, bool binary = false)
-      : val_(val), unit_(unit), binary_(binary){};
+  pow_format(long long val, std::string&& unit, bool binary = false, bool skip_decimal = false)
+      : val_(val), unit_(unit), binary_(binary), skip_decimal_(skip_decimal){};
 
   long long val_;
   std::string unit_;
   bool binary_;
+  bool skip_decimal_;
 };
 
 namespace fmt {
@@ -49,17 +50,21 @@ struct formatter<pow_format> {
     const char* units[] = {"", "k", "M", "G", "T", "P", nullptr};
 
     auto base = s.binary_ ? 1024ull : 1000ll;
+    auto div = 1ll;
     auto fraction = (double)s.val_;
 
     int pow;
     for (pow = 0; units[pow + 1] != nullptr && fraction / base >= 1; ++pow) {
       fraction /= base;
+      div *= base;
     }
 
-    auto number_width = 5              // coeff in {:.1f} format
-                        + s.binary_;   // potential 4th digit before the decimal point
-    auto max_width = number_width + 1  // prefix from units array
-                     + s.binary_       // for the 'i' in GiB.
+    auto fixed_precision = (s.skip_decimal_ && ((s.val_%div) == 0)) ? 0 : 1;
+    auto number_width = 3 + fixed_precision     // coeff in {:.{fixed_precision}f} format
+                        + (fixed_precision != 0)// float dot
+                        + s.binary_;            // potential digit before the decimal point
+    auto max_width = number_width + 1           // prefix from units array
+                     + s.binary_                // for the 'i' in GiB.
                      + s.unit_.length();
 
     const char* format;
@@ -70,15 +75,16 @@ struct formatter<pow_format> {
       case '<':
         return fmt::format_to(ctx.out(), "{:<{}}", fmt::format("{}", s), max_width);
       case '=':
-        format = "{coefficient:<{number_width}.1f}{padding}{prefix}{unit}";
+        format = "{coefficient:<{number_width}.{fixed_precision}f}{padding}{prefix}{unit}";
         break;
       case 0:
       default:
-        format = "{coefficient:.1f}{prefix}{unit}";
+        format = "{coefficient:.{fixed_precision}f}{prefix}{unit}";
         break;
     }
     return fmt::format_to(
         ctx.out(), fmt::runtime(format), fmt::arg("coefficient", fraction),
+        fmt::arg("fixed_precision", fixed_precision),
         fmt::arg("number_width", number_width),
         fmt::arg("prefix", std::string() + units[pow] + ((s.binary_ && pow) ? "i" : "")),
         fmt::arg("unit", s.unit_),
