@@ -388,7 +388,8 @@ void Task::handle_title(const char *title) {
 }
 
 void Task::set_minimize_hint() {
-    zwlr_foreign_toplevel_handle_v1_set_rectangle(handle_, bar_.surface, minimize_hint.x, minimize_hint.y, minimize_hint.w, minimize_hint.h);
+  zwlr_foreign_toplevel_handle_v1_set_rectangle(handle_, bar_.surface, minimize_hint.x,
+                                                minimize_hint.y, minimize_hint.w, minimize_hint.h);
 }
 
 void Task::hide_if_ignored() {
@@ -452,9 +453,10 @@ void Task::handle_app_id(const char *app_id) {
 }
 
 void Task::on_button_size_allocated(Gtk::Allocation &alloc) {
-    gtk_widget_translate_coordinates(GTK_WIDGET(button.gobj()), GTK_WIDGET(bar_.window.gobj()), 0, 0, &minimize_hint.x, &minimize_hint.y);
-    minimize_hint.w = button.get_width();
-    minimize_hint.h = button.get_height();
+  gtk_widget_translate_coordinates(GTK_WIDGET(button.gobj()), GTK_WIDGET(bar_.window.gobj()), 0, 0,
+                                   &minimize_hint.x, &minimize_hint.y);
+  minimize_hint.w = button.get_width();
+  minimize_hint.h = button.get_height();
 }
 
 void Task::handle_output_enter(struct wl_output *output) {
@@ -467,7 +469,8 @@ void Task::handle_output_enter(struct wl_output *output) {
 
   if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
     /* The task entered the output of the current bar make the button visible */
-    button.signal_size_allocate().connect_notify(sigc::mem_fun(this, &Task::on_button_size_allocated));
+    button.signal_size_allocate().connect_notify(
+        sigc::mem_fun(this, &Task::on_button_size_allocated));
     tbar_->add_button(button);
     button.show();
     button_visible_ = true;

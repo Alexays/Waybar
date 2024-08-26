@@ -25,7 +25,7 @@
 namespace waybar::modules::wlr {
 
 struct widget_geometry {
-    int x, y, w, h;
+  int x, y, w, h;
 };
 
 class Taskbar;
