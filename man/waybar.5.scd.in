@@ -323,6 +323,9 @@ A group may hide all but one element, showing them only on mouse hover. In order
 - *waybar-hyprland-submap(5)*
 - *waybar-hyprland-window(5)*
 - *waybar-hyprland-workspaces(5)*
+- *waybar-niri-language(5)*
+- *waybar-niri-window(5)*
+- *waybar-niri-workspaces(5)*
 - *waybar-idle-inhibitor(5)*
 - *waybar-image(5)*
 - *waybar-inhibitor(5)*
