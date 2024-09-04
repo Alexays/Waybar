@@ -78,11 +78,18 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
       output.xdg_output.reset();
       spdlog::debug("Output detection done: {} ({})", output.name, output.identifier);
 
-      auto configs = client->getOutputConfigs(output);
-      if (!configs.empty()) {
-        for (const auto &config : configs) {
-          client->bars.emplace_back(std::make_unique<Bar>(&output, config));
+      if (client->m_monitors_inprocess.contains(output.name)) {
+        spdlog::debug("Ignore output detection done event: {} ({})", output.name,
+                      output.identifier);
+      } else {
+        client->m_monitors_inprocess.emplace(output.name);
+        auto configs = client->getOutputConfigs(output);
+        if (!configs.empty()) {
+          for (const auto &config : configs) {
+            client->bars.emplace_back(std::make_unique<Bar>(&output, config));
+          }
         }
+        client->m_monitors_inprocess.erase(output.name);
       }
     }
   } catch (const std::exception &e) {
