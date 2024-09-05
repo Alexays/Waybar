@@ -163,7 +163,8 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
       "[{}]: (onDefaultNodesApiChanged) - got the following default node: Node(name: {}, id: {})",
       self->name_, defaultNodeName, defaultNodeId);
 
-  if (g_strcmp0(self->default_node_name_, defaultNodeName) == 0) {
+  if (g_strcmp0(self->default_node_name_, defaultNodeName) == 0 &&
+      self->node_id_ == defaultNodeId) {
     spdlog::debug(
         "[{}]: (onDefaultNodesApiChanged) - Default node has not changed. Node(name: {}, id: {}). "
         "Ignoring.",

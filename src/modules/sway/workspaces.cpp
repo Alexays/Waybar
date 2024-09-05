@@ -11,15 +11,14 @@ namespace waybar::modules::sway {
 // Helper function to assign a number to a workspace, just like sway. In fact
 // this is taken quite verbatim from `sway/ipc-json.c`.
 int Workspaces::convertWorkspaceNameToNum(std::string name) {
-  if (isdigit(name[0])) {
+  if (isdigit(name[0]) != 0) {
     errno = 0;
-    char *endptr = NULL;
+    char *endptr = nullptr;
     long long parsed_num = strtoll(name.c_str(), &endptr, 10);
     if (errno != 0 || parsed_num > INT32_MAX || parsed_num < 0 || endptr == name.c_str()) {
       return -1;
-    } else {
-      return (int)parsed_num;
     }
+    return (int)parsed_num;
   }
   return -1;
 }
@@ -47,7 +46,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
       bar_(bar),
       box_(bar.orientation, 0) {
   if (config["format-icons"]["high-priority-named"].isArray()) {
-    for (auto &it : config["format-icons"]["high-priority-named"]) {
+    for (const auto &it : config["format-icons"]["high-priority-named"]) {
       high_priority_named_.push_back(it.asString());
     }
   }
@@ -70,7 +69,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 
   m_windowRewriteRules = waybar::util::RegexCollection(
       windowRewrite, m_windowRewriteDefault,
-      [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
+      [](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
@@ -125,18 +124,10 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
           std::copy(output["floating_nodes"].begin(), output["floating_nodes"].end(),
                     std::back_inserter(workspaces_));
         }
-        if (config_["persistent_workspaces"].isObject()) {
-          spdlog::warn(
-              "persistent_workspaces is deprecated. Please change config to use "
-              "persistent-workspaces.");
-        }
 
         // adding persistent workspaces (as per the config file)
-        if (config_["persistent-workspaces"].isObject() ||
-            config_["persistent_workspaces"].isObject()) {
-          const Json::Value &p_workspaces = config_["persistent-workspaces"].isObject()
-                                                ? config_["persistent-workspaces"]
-                                                : config_["persistent_workspaces"];
+        if (config_["persistent-workspaces"].isObject()) {
+          const Json::Value &p_workspaces = config_["persistent-workspaces"];
           const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
 
           for (const std::string &p_w_name : p_workspaces_names) {
@@ -270,13 +261,17 @@ void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
       node["name"].isString()) {
     std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
     std::string windowClass = node["app_id"].asString();
-    std::string windowReprKey = fmt::format("class<{}> title<{}>", windowClass, title);
-    std::string window = m_windowRewriteRules.get(windowReprKey);
-    // allow result to have formatting
-    window =
-        fmt::format(fmt::runtime(window), fmt::arg("name", title), fmt::arg("class", windowClass));
-    windows.append(window);
-    windows.append(m_formatWindowSeperator);
+
+    // Only add window rewrites that can be looked up
+    if (!windowClass.empty()) {
+      std::string windowReprKey = fmt::format("class<{}> title<{}>", windowClass, title);
+      std::string window = m_windowRewriteRules.get(windowReprKey);
+      // allow result to have formatting
+      window = fmt::format(fmt::runtime(window), fmt::arg("name", title),
+                           fmt::arg("class", windowClass));
+      windows.append(window);
+      windows.append(m_formatWindowSeperator);
+    }
   }
   for (const Json::Value &child : node["nodes"]) {
     updateWindows(child, windows);
@@ -422,7 +417,7 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
 }
 
 bool Workspaces::handleScroll(GdkEventScroll *e) {
-  if (gdk_event_get_pointer_emulated((GdkEvent *)e)) {
+  if (gdk_event_get_pointer_emulated((GdkEvent *)e) != 0) {
     /**
      * Ignore emulated scroll events on window
      */
@@ -472,8 +467,7 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
   return true;
 }
 
-const std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
-                                                bool prev) const {
+std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it, bool prev) const {
   if (prev && it == workspaces_.begin() && !config_["disable-scroll-wraparound"].asBool()) {
     return (*(--workspaces_.end()))["name"].asString();
   }

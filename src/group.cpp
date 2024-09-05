@@ -9,7 +9,7 @@
 
 namespace waybar {
 
-const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
+Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
   /* The transition direction of a drawer is not actually determined by the transition type,
    * but rather by the order of 'box' and 'revealer_box':
    *   'REVEALER_TRANSITION_TYPE_SLIDE_LEFT' and 'REVEALER_TRANSITION_TYPE_SLIDE_RIGHT'
@@ -62,6 +62,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
+    click_to_reveal = drawer_config["click-to-reveal"].asBool();
 
     auto transition_type = getPreferredTransitionType(vertical);
 
@@ -83,16 +84,40 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
   event_box_.add(box);
 }
 
-bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
+void Group::show_group() {
   box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);
+}
+
+void Group::hide_group() {
+  box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  revealer.set_reveal_child(false);
+}
+
+bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
+  if (!click_to_reveal) {
+    show_group();
+  }
   return false;
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
-  box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  revealer.set_reveal_child(false);
+  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+    hide_group();
+  }
   return false;
+}
+
+bool Group::handleToggle(GdkEventButton* const& e) {
+  if (!click_to_reveal || e->button != 1) {
+    return false;
+  }
+  if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
+    hide_group();
+  } else {
+    show_group();
+  }
+  return true;
 }
 
 auto Group::update() -> void {

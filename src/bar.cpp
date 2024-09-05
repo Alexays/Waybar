@@ -404,7 +404,8 @@ void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   setPassThrough(passthrough_);
 }
 
-void waybar::Bar::setVisible(bool visible) {
+void waybar::Bar::setVisible(bool value) {
+  visible = value;
   if (auto mode = config.get("mode", {}); mode.isString()) {
     setMode(visible ? config["mode"].asString() : MODE_INVISIBLE);
   } else {

@@ -43,8 +43,14 @@ std::string waybar::CssReloadHelper::findPath(const std::string& filename) {
   }
 
   // File monitor does not work with symlinks, so resolve them
-  if (std::filesystem::is_symlink(result)) {
+  std::string original = result;
+  while (std::filesystem::is_symlink(result)) {
     result = std::filesystem::read_symlink(result);
+
+    // prevent infinite cycle
+    if (result == original) {
+      break;
+    }
   }
 
   return result;

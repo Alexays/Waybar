@@ -14,18 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Test in FreeBSD VM
-        uses: cross-platform-actions/action@v0.23.0
+        uses: cross-platform-actions/action@v0.25.0
         timeout-minutes: 180
         env:
           CPPFLAGS: '-isystem/usr/local/include'
           LDFLAGS:  '-L/usr/local/lib'
         with:
           operating_system: freebsd
-          version: "13.2"
+          version: "14.1"
           environment_variables: CPPFLAGS LDFLAGS
           sync_files: runner-to-vm
           run: |
-            sudo sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
             sudo pkg install -y git #  subprojects/date
             sudo pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
               libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \

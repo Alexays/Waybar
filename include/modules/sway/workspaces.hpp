@@ -19,7 +19,7 @@ namespace waybar::modules::sway {
 class Workspaces : public AModule, public sigc::trackable {
  public:
   Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
-  virtual ~Workspaces() = default;
+  ~Workspaces() override = default;
   auto update() -> void override;
 
  private:
@@ -38,10 +38,10 @@ class Workspaces : public AModule, public sigc::trackable {
   Gtk::Button& addButton(const Json::Value&);
   void onButtonReady(const Json::Value&, Gtk::Button&);
   std::string getIcon(const std::string&, const Json::Value&);
-  const std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
+  std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t getWorkspaceIndex(const std::string& name) const;
-  std::string trimWorkspaceName(std::string);
-  bool handleScroll(GdkEventScroll*) override;
+  static std::string trimWorkspaceName(std::string);
+  bool handleScroll(GdkEventScroll* /*unused*/) override;
 
   const Bar& bar_;
   std::vector<Json::Value> workspaces_;

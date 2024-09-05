@@ -332,8 +332,8 @@ auto waybar::modules::Network::update() -> void {
   getState(signal_strength_);
 
   auto text = fmt::format(
-      fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("signaldBm", signal_strength_dbm_),
-      fmt::arg("signalStrength", signal_strength_),
+      fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
+      fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
       fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
       fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
       fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
@@ -364,7 +364,7 @@ auto waybar::modules::Network::update() -> void {
     }
     if (!tooltip_format.empty()) {
       auto tooltip_text = fmt::format(
-          fmt::runtime(tooltip_format), fmt::arg("essid", essid_),
+          fmt::runtime(tooltip_format), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
           fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
           fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
           fmt::arg("netmask", netmask_), fmt::arg("ipaddr", ipaddr_), fmt::arg("gwaddr", gwaddr_),
@@ -407,6 +407,7 @@ void waybar::modules::Network::clearIface() {
   ifid_ = -1;
   ifname_.clear();
   essid_.clear();
+  bssid_.clear();
   ipaddr_.clear();
   gwaddr_.clear();
   netmask_.clear();
@@ -481,6 +482,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
             } else {
               // clear state related to WiFi connection
               net->essid_.clear();
+              net->bssid_.clear();
               net->signal_strength_dbm_ = 0;
               net->signal_strength_ = 0;
               net->signal_strength_app_.clear();
@@ -772,6 +774,7 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   net->parseEssid(bss);
   net->parseSignal(bss);
   net->parseFreq(bss);
+  net->parseBssid(bss);
   return NL_OK;
 }
 
@@ -834,6 +837,17 @@ void waybar::modules::Network::parseFreq(struct nlattr **bss) {
   if (bss[NL80211_BSS_FREQUENCY] != nullptr) {
     // in GHz
     frequency_ = (double)nla_get_u32(bss[NL80211_BSS_FREQUENCY]) / 1000;
+  }
+}
+
+void waybar::modules::Network::parseBssid(struct nlattr **bss) {
+  if (bss[NL80211_BSS_BSSID] != nullptr) {
+    auto bssid = static_cast<uint8_t *>(nla_data(bss[NL80211_BSS_BSSID]));
+    auto bssid_len = nla_len(bss[NL80211_BSS_BSSID]);
+    if (bssid_len == 6) {
+      bssid_ = fmt::format("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", bssid[0], bssid[1], bssid[2], bssid[3],
+                           bssid[4], bssid[5]);
+    }
   }
 }
 

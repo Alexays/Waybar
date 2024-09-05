@@ -144,6 +144,12 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
   if (!backend->ignored_sinks_.empty()) {
     for (const auto &ignored_sink : backend->ignored_sinks_) {
       if (ignored_sink == i->description) {
+        if (i->name == backend->current_sink_name_) {
+          // If the current sink happens to be ignored it is never considered running
+          // so it will be replaced with another sink.
+          backend->current_sink_running_ = false;
+        }
+
         return;
       }
     }
