@@ -406,11 +406,7 @@ void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
 
 void waybar::Bar::setVisible(bool value) {
   visible = value;
-  if (auto mode = config.get("mode", {}); mode.isString()) {
-    setMode(visible ? config["mode"].asString() : MODE_INVISIBLE);
-  } else {
-    setMode(visible ? MODE_DEFAULT : MODE_INVISIBLE);
-  }
+  setMode(visible ? MODE_DEFAULT : MODE_INVISIBLE);
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
