@@ -318,7 +318,7 @@ if true
     )
 endif
 
-if true
+if get_option('niri')
     add_project_arguments('-DHAVE_NIRI', language: 'cpp')
     src_files += files(
         'src/modules/niri/backend.cpp',
