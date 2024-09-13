@@ -384,10 +384,11 @@ void UPower::setDisplayDevice() {
               displayDevice = upDevice;
             }
           }
-          // Unref current upDevice
-          if (displayDevice.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
-          // Reassign new upDevice
-          thisPtr->upDevice_ = displayDevice;
+          // Unref current upDevice if it exists
+          if (displayDevice.upDevice != NULL) {
+            if (thisPtr->upDevice_.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
+            thisPtr->upDevice_ = displayDevice;
+          }
         },
         this);
   }

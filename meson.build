@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.10.4',
+    version: '0.11.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -69,7 +69,7 @@ is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
+spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled', 'std_format=disabled', 'tests=disabled'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -315,6 +315,21 @@ if true
         'man/waybar-hyprland-submap.5.scd',
         'man/waybar-hyprland-window.5.scd',
         'man/waybar-hyprland-workspaces.5.scd',
+    )
+endif
+
+if get_option('niri')
+    add_project_arguments('-DHAVE_NIRI', language: 'cpp')
+    src_files += files(
+        'src/modules/niri/backend.cpp',
+        'src/modules/niri/language.cpp',
+        'src/modules/niri/window.cpp',
+        'src/modules/niri/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-niri-language.5.scd',
+        'man/waybar-niri-window.5.scd',
+        'man/waybar-niri-workspaces.5.scd',
     )
 endif
 
