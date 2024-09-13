@@ -318,6 +318,21 @@ if true
     )
 endif
 
+if get_option('niri')
+    add_project_arguments('-DHAVE_NIRI', language: 'cpp')
+    src_files += files(
+        'src/modules/niri/backend.cpp',
+        'src/modules/niri/language.cpp',
+        'src/modules/niri/window.cpp',
+        'src/modules/niri/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-niri-language.5.scd',
+        'man/waybar-niri-window.5.scd',
+        'man/waybar-niri-workspaces.5.scd',
+    )
+endif
+
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += files('src/modules/network.cpp')
