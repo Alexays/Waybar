@@ -104,9 +104,11 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
     this->updateImage();
 
   } catch (const Glib::Error& err) {
-    spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
+    spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path,
+                  std::string(err.what()));
   } catch (const std::exception& err) {
-    spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
+    spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path,
+                  std::string(err.what()));
   }
 }
 
@@ -124,14 +126,15 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   result.text = get_variant<Glib::ustring>(container.get_child(2));
   auto description = get_variant<Glib::ustring>(container.get_child(3));
   if (!description.empty()) {
-    result.text = fmt::format("<b>{}</b>\n{}", result.text, description);
+    result.text = fmt::format("<b>{}</b>\n{}", std::string(result.text), std::string(description));
   }
   return result;
 }
 
 void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
   try {
-    spdlog::trace("Set tray item property: {}.{} = {}", id.empty() ? bus_name : id, name, value);
+    spdlog::trace("Set tray item property: {}.{} = {}", id.empty() ? bus_name : id,
+                  std::string(name), get_variant<std::string>(value));
 
     if (name == "Category") {
       category = get_variant<std::string>(value);
@@ -176,10 +179,12 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     }
   } catch (const Glib::Error& err) {
     spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
-                 id.empty() ? bus_name : id, name, value, err.what());
+                 id.empty() ? bus_name : id, std::string(name), get_variant<std::string>(value),
+                 std::string(err.what()));
   } catch (const std::exception& err) {
     spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
-                 id.empty() ? bus_name : id, name, value, err.what());
+                 id.empty() ? bus_name : id, std::string(name), get_variant<std::string>(value),
+                 std::string(err.what()));
   }
 }
 
@@ -221,9 +226,9 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
 
     this->updateImage();
   } catch (const Glib::Error& err) {
-    spdlog::warn("Failed to update properties: {}", err.what());
+    spdlog::warn("Failed to update properties: {}", std::string(err.what()));
   } catch (const std::exception& err) {
-    spdlog::warn("Failed to update properties: {}", err.what());
+    spdlog::warn("Failed to update properties: {}", std::string(err.what()));
   }
   update_pending_.clear();
 }
@@ -245,7 +250,7 @@ static const std::map<std::string_view, std::set<std::string_view>> signal2props
 
 void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
                     const Glib::VariantContainerBase& arguments) {
-  spdlog::trace("Tray item '{}' got signal {}", id, signal_name);
+  spdlog::trace("Tray item '{}' got signal {}", id, std::string(signal_name));
   auto changed = signal2props.find(signal_name.raw());
   if (changed != signal2props.end()) {
     if (update_pending_.empty()) {
