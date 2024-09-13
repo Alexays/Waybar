@@ -8,8 +8,11 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include "giomm/datainputstream.h"
+#include "giomm/dataoutputstream.h"
+#include "giomm/unixinputstream.h"
+#include "giomm/unixoutputstream.h"
 
-#include <ext/stdio_filebuf.h>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -63,18 +66,23 @@ void IPC::startIPC() {
 
     spdlog::info("Niri IPC starting");
 
-    __gnu_cxx::stdio_filebuf<char> filebuf(socketfd, std::ios::in | std::ios::out);
-    std::iostream fs(&filebuf);
-    fs << R"("EventStream")" << std::endl;
+    auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
+    auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
+    auto istream = Gio::DataInputStream::create(unix_istream);
+    auto ostream = Gio::DataOutputStream::create(unix_ostream);
 
-    std::string line;
-    std::getline(fs, line);
-    if (line != R"({"Ok":"Handled"})") {
+    if (!ostream->put_string("\"EventStream\"\n") || !ostream->flush()) {
       spdlog::error("Niri IPC: failed to start event stream");
       return;
     }
 
-    while (std::getline(fs, line)) {
+    std::string line;
+    if (!istream->read_line(line) || line != R"({"Ok":"Handled"})") {
+      spdlog::error("Niri IPC: failed to start event stream");
+      return;
+    }
+
+    while (istream->read_line(line)) {
       spdlog::debug("Niri IPC: received {}", line);
 
       try {
@@ -231,18 +239,29 @@ Json::Value IPC::send(const Json::Value& request) {
   if (socketfd == -1)
     throw std::runtime_error("Niri is not running");
 
-  __gnu_cxx::stdio_filebuf<char> filebuf(socketfd, std::ios::in | std::ios::out);
-  std::iostream fs(&filebuf);
+  auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
+  auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
+  auto istream = Gio::DataInputStream::create(unix_istream);
+  auto ostream = Gio::DataOutputStream::create(unix_ostream);
 
   // Niri needs the request on a single line.
   Json::StreamWriterBuilder builder;
   builder["indentation"] = "";
   std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
-  writer->write(request, &fs);
-  fs << std::endl;
+  std::ostringstream oss;
+  writer->write(request, &oss);
+  oss << '\n';
 
+  if (!ostream->put_string(oss.str()) || !ostream->flush())
+    throw std::runtime_error("error writing to niri socket");
+
+  std::string line;
+  if (!istream->read_line(line))
+    throw std::runtime_error("error reading from niri socket");
+
+  std::istringstream iss(std::move(line));
   Json::Value response;
-  fs >> response;
+  iss >> response;
   return response;
 }
 
