@@ -45,6 +45,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
   if (config_["rotate"].isUInt()) {
     rotate = config["rotate"].asUInt();
+    if (not (rotate == 0 || rotate == 90 || rotate == 180 || rotate == 270))
+      spdlog::warn("'rotate' is only supported in 90 degree increments {} is not valid.", rotate);
     label_.set_angle(rotate);
   }
 
