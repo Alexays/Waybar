@@ -16,7 +16,7 @@ class AModule : public IModule {
 
   ~AModule() override;
   auto update() -> void override;
-  virtual auto refresh(int shouldRefresh) -> void{};
+  virtual auto refresh(int shouldRefresh) -> void {};
   operator Gtk::Widget &() override;
   auto doAction(const std::string &name) -> void override;
 
