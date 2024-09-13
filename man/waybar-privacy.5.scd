@@ -32,6 +32,17 @@ the screen or playing audio.
 	Which privacy modules to monitor. See *MODULES CONFIGURATION* for++
 	more information.
 
+*ignore-monitor* ++
+	typeof: bool ++
+	default: true ++
+	Ignore streams with *stream.monitor* property.
+
+*ignore* ++
+	typeof: array of objects ++
+	default: [] ++
+	Additional streams to be ignored. See *IGNORE CONFIGURATION* for++
+	more information.
+
 # MODULES CONFIGURATION
 
 *type*: ++
@@ -48,6 +59,14 @@ the screen or playing audio.
 	typeof: integer ++
 	default: 24 ++
 	The size of each icon in the tooltip.
+
+# IGNORE CONFIGURATION
+
+*type*: ++
+	typeof: string
+
+*name*: ++
+	typeof: string
 
 # EXAMPLES
 
