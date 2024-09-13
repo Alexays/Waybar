@@ -69,7 +69,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *rotate*: ++
 	typeof: integer++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *on-click*: ++
 	typeof: string ++

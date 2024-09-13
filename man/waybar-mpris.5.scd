@@ -107,7 +107,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++

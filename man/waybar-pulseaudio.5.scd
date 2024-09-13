@@ -40,7 +40,7 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++

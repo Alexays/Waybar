@@ -6,7 +6,7 @@
 class pow_format {
  public:
   pow_format(long long val, std::string&& unit, bool binary = false)
-      : val_(val), unit_(unit), binary_(binary){};
+      : val_(val), unit_(unit), binary_(binary) {};
 
   long long val_;
   std::string unit_;
