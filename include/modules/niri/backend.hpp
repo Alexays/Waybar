@@ -26,9 +26,9 @@ class IPC {
 
   // The data members are only safe to access while dataMutex_ is locked.
   std::lock_guard<std::mutex> lockData() { return std::lock_guard(dataMutex_); }
-  const std::vector<Json::Value> &workspaces() const { return workspaces_; }
-  const std::vector<Json::Value> &windows() const { return windows_; }
-  const std::vector<std::string> &keyboardLayoutNames() const { return keyboardLayoutNames_; }
+  const std::vector<Json::Value>& workspaces() const { return workspaces_; }
+  const std::vector<Json::Value>& windows() const { return windows_; }
+  const std::vector<std::string>& keyboardLayoutNames() const { return keyboardLayoutNames_; }
   unsigned keyboardLayoutCurrent() const { return keyboardLayoutCurrent_; }
 
  private:

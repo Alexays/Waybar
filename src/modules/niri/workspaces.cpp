@@ -7,9 +7,7 @@
 namespace waybar::modules::niri {
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, false),
-      bar_(bar),
-      box_(bar.orientation, 0) {
+    : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
@@ -17,8 +15,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
-  if (!gIPC)
-    gIPC = std::make_unique<IPC>();
+  if (!gIPC) gIPC = std::make_unique<IPC>();
 
   gIPC->registerForIPC("WorkspacesChanged", this);
   gIPC->registerForIPC("WorkspaceActivated", this);
@@ -27,13 +24,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   dp.emit();
 }
 
-Workspaces::~Workspaces() {
-  gIPC->unregisterForIPC(this);
-}
+Workspaces::~Workspaces() { gIPC->unregisterForIPC(this); }
 
-void Workspaces::onEvent(const Json::Value &ev) {
-  dp.emit();
-}
+void Workspaces::onEvent(const Json::Value &ev) { dp.emit(); }
 
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
@@ -43,13 +36,12 @@ void Workspaces::doUpdate() {
   const auto &workspaces = gIPC->workspaces();
   std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
                [&](const auto &ws) {
-                 if (alloutputs)
-                   return true;
+                 if (alloutputs) return true;
                  return ws["output"].asString() == bar_.output->name;
                });
 
   // Remove buttons for removed workspaces.
-  for (auto it = buttons_.begin(); it != buttons_.end(); ) {
+  for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(my_workspaces.begin(), my_workspaces.end(),
                            [it](const auto &ws) { return ws["id"].asUInt64() == it->first; });
     if (ws == my_workspaces.end()) {
@@ -99,13 +91,10 @@ void Workspaces::doUpdate() {
 
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      name = fmt::format(
-          fmt::runtime(format),
-          fmt::arg("icon", getIcon(name, ws)),
-          fmt::arg("value", name),
-          fmt::arg("name", ws["name"].asString()),
-          fmt::arg("index", ws["idx"].asUInt()),
-          fmt::arg("output", ws["output"].asString()));
+      name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
+                         fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
+                         fmt::arg("index", ws["idx"].asUInt()),
+                         fmt::arg("output", ws["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
       static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(name);
@@ -129,8 +118,7 @@ void Workspaces::doUpdate() {
     const auto &ws = *it;
 
     auto pos = ws["idx"].asUInt() - 1;
-    if (alloutputs)
-      pos = it - my_workspaces.cbegin();
+    if (alloutputs) pos = it - my_workspaces.cbegin();
 
     auto &button = buttons_[ws["id"].asUInt64()];
     box_.reorder_child(button, pos);
@@ -176,27 +164,21 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
 
 std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws) {
   const auto &icons = config_["format-icons"];
-  if (!icons)
-    return value;
+  if (!icons) return value;
 
-  if (ws["is_focused"].asBool() && icons["focused"])
-    return icons["focused"].asString();
+  if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
 
-  if (ws["is_active"].asBool() && icons["active"])
-    return icons["active"].asString();
+  if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
 
   if (ws["name"]) {
     const auto &name = ws["name"].asString();
-    if (icons[name])
-      return icons[name].asString();
+    if (icons[name]) return icons[name].asString();
   }
 
   const auto idx = ws["idx"].asString();
-  if (icons[idx])
-    return icons[idx].asString();
+  if (icons[idx]) return icons[idx].asString();
 
-  if (icons["default"])
-    return icons["default"].asString();
+  if (icons["default"]) return icons["default"].asString();
 
   return value;
 }

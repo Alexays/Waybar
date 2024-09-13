@@ -11,8 +11,7 @@ namespace waybar::modules::niri {
 
 Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
-  if (!gIPC)
-    gIPC = std::make_unique<IPC>();
+  if (!gIPC) gIPC = std::make_unique<IPC>();
 
   gIPC->registerForIPC("WindowsChanged", this);
   gIPC->registerForIPC("WindowOpenedOrChanged", this);
@@ -22,13 +21,9 @@ Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
   dp.emit();
 }
 
-Window::~Window() {
-  gIPC->unregisterForIPC(this);
-}
+Window::~Window() { gIPC->unregisterForIPC(this); }
 
-void Window::onEvent(const Json::Value &ev) {
-  dp.emit();
-}
+void Window::onEvent(const Json::Value &ev) { dp.emit(); }
 
 void Window::doUpdate() {
   auto ipcLock = gIPC->lockData();
@@ -37,14 +32,13 @@ void Window::doUpdate() {
   const auto &workspaces = gIPC->workspaces();
 
   const auto separateOutputs = config_["separate-outputs"].asBool();
-  const auto ws_it = std::find_if(workspaces.cbegin(), workspaces.cend(),
-                                  [&](const auto &ws) {
-                                    if (separateOutputs) {
-                                      return ws["is_active"].asBool() && ws["output"].asString() == bar_.output->name;
-                                    }
+  const auto ws_it = std::find_if(workspaces.cbegin(), workspaces.cend(), [&](const auto &ws) {
+    if (separateOutputs) {
+      return ws["is_active"].asBool() && ws["output"].asString() == bar_.output->name;
+    }
 
-                                    return ws["is_focused"].asBool();
-                                  });
+    return ws["is_focused"].asBool();
+  });
 
   std::vector<Json::Value>::const_iterator it;
   if (ws_it == workspaces.cend() || (*ws_it)["active_window_id"].isNull()) {
@@ -67,37 +61,31 @@ void Window::doUpdate() {
 
     label_.show();
     label_.set_markup(waybar::util::rewriteString(
-        fmt::format(fmt::runtime(format_),
-                    fmt::arg("title", sanitizedTitle),
+        fmt::format(fmt::runtime(format_), fmt::arg("title", sanitizedTitle),
                     fmt::arg("app_id", sanitizedAppId)),
         config_["rewrite"]));
 
     updateAppIconName(appId, "");
 
-    if (tooltipEnabled())
-      label_.set_tooltip_text(title);
+    if (tooltipEnabled()) label_.set_tooltip_text(title);
 
     const auto id = window["id"].asUInt64();
     const auto workspaceId = window["workspace_id"].asUInt64();
-    const auto isSolo = std::none_of(windows.cbegin(), windows.cend(),
-                                     [&](const auto &win) {
-                                       return win["id"].asUInt64() != id && win["workspace_id"].asUInt64() == workspaceId;
-                                     });
+    const auto isSolo = std::none_of(windows.cbegin(), windows.cend(), [&](const auto &win) {
+      return win["id"].asUInt64() != id && win["workspace_id"].asUInt64() == workspaceId;
+    });
     setClass("solo", isSolo);
-    if (!appId.empty())
-      setClass(appId, isSolo);
+    if (!appId.empty()) setClass(appId, isSolo);
 
     if (oldAppId_ != appId) {
-      if (!oldAppId_.empty())
-        setClass(oldAppId_, false);
+      if (!oldAppId_.empty()) setClass(oldAppId_, false);
       oldAppId_ = appId;
     }
   } else {
     label_.hide();
     updateAppIconName("", "");
     setClass("solo", false);
-    if (!oldAppId_.empty())
-      setClass(oldAppId_, false);
+    if (!oldAppId_.empty()) setClass(oldAppId_, false);
     oldAppId_.clear();
   }
 }

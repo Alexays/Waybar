@@ -12,8 +12,7 @@ Language::Language(const std::string &id, const Bar &bar, const Json::Value &con
     : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
   label_.hide();
 
-  if (!gIPC)
-    gIPC = std::make_unique<IPC>();
+  if (!gIPC) gIPC = std::make_unique<IPC>();
 
   gIPC->registerForIPC("KeyboardLayoutsChanged", this);
   gIPC->registerForIPC("KeyboardLayoutSwitched", this);
@@ -33,8 +32,7 @@ void Language::updateFromIPC() {
   auto ipcLock = gIPC->lockData();
 
   layouts_.clear();
-  for (const auto &fullName : gIPC->keyboardLayoutNames())
-    layouts_.push_back(getLayout(fullName));
+  for (const auto &fullName : gIPC->keyboardLayoutNames()) layouts_.push_back(getLayout(fullName));
 
   current_idx_ = gIPC->keyboardLayoutCurrent();
 }
@@ -89,7 +87,7 @@ void Language::update() {
   ALabel::update();
 }
 
-void Language::onEvent(const Json::Value& ev) {
+void Language::onEvent(const Json::Value &ev) {
   if (ev["KeyboardLayoutsChanged"]) {
     updateFromIPC();
   } else if (ev["KeyboardLayoutSwitched"]) {
@@ -102,10 +100,10 @@ void Language::onEvent(const Json::Value& ev) {
 }
 
 Language::Layout Language::getLayout(const std::string &fullName) {
-  auto* const context = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
+  auto *const context = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
   rxkb_context_parse_default_ruleset(context);
 
-  rxkb_layout* layout = rxkb_layout_first(context);
+  rxkb_layout *layout = rxkb_layout_first(context);
   while (layout != nullptr) {
     std::string nameOfLayout = rxkb_layout_get_description(layout);
 
@@ -115,10 +113,10 @@ Language::Layout Language::getLayout(const std::string &fullName) {
     }
 
     auto name = std::string(rxkb_layout_get_name(layout));
-    const auto* variantPtr = rxkb_layout_get_variant(layout);
+    const auto *variantPtr = rxkb_layout_get_variant(layout);
     std::string variant = variantPtr == nullptr ? "" : std::string(variantPtr);
 
-    const auto* descriptionPtr = rxkb_layout_get_brief(layout);
+    const auto *descriptionPtr = rxkb_layout_get_brief(layout);
     std::string description = descriptionPtr == nullptr ? "" : std::string(descriptionPtr);
 
     Layout info = Layout{nameOfLayout, name, variant, description};
