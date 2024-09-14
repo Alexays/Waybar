@@ -53,8 +53,8 @@ static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t 
   // Intentionally empty
 }
 
-static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid){
-    // Intentionally empty
+static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid) {
+  // Intentionally empty
 };
 
 static const zdwl_ipc_output_v2_listener output_status_listener_impl{

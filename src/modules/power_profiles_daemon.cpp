@@ -204,7 +204,7 @@ void PowerProfilesDaemon::setPropCb(Glib::RefPtr<Gio::AsyncResult>& r) {
     auto _ = powerProfilesProxy_->call_finish(r);
     dp.emit();
   } catch (const std::exception& e) {
-    spdlog::error("Failed to set the the active power profile: {}", e.what());
+    spdlog::error("Failed to set the active power profile: {}", e.what());
   } catch (const Glib::Error& e) {
     spdlog::error("Failed to set the active power profile: {}", std::string(e.what()));
   }

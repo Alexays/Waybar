@@ -31,7 +31,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++

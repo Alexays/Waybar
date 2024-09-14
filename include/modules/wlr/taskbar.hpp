@@ -24,6 +24,10 @@
 
 namespace waybar::modules::wlr {
 
+struct widget_geometry {
+  int x, y, w, h;
+};
+
 class Taskbar;
 
 class Task {
@@ -42,6 +46,7 @@ class Task {
   };
   // made public so TaskBar can reorder based on configuration.
   Gtk::Button button;
+  struct widget_geometry minimize_hint;
 
  private:
   static uint32_t global_id;
@@ -82,6 +87,8 @@ class Task {
  private:
   std::string repr() const;
   std::string state_string(bool = false) const;
+  void set_minimize_hint();
+  void on_button_size_allocated(Gtk::Allocation &alloc);
   void set_app_info_from_app_id_list(const std::string &app_id_list);
   bool image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme> &icon_theme,
                        Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size);
