@@ -117,6 +117,10 @@ T get_variant(const Glib::VariantBase& value) {
   return Glib::VariantBase::cast_dynamic<Glib::Variant<T>>(value).get();
 }
 
+std::string get_printable_variant(const Glib::VariantBase& value) {
+  return std::string(value.print());
+}
+
 template <>
 ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   ToolTip result;
@@ -134,7 +138,7 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
 void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
   try {
     spdlog::trace("Set tray item property: {}.{} = {}", id.empty() ? bus_name : id,
-                  std::string(name), get_variant<std::string>(value));
+                  std::string(name), get_printable_variant(value));
 
     if (name == "Category") {
       category = get_variant<std::string>(value);
