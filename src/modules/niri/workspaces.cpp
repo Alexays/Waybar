@@ -72,7 +72,7 @@ void Workspaces::doUpdate() {
       style_context->remove_class("solo");
     }
     else {
-      if (ws["idx"].asUInt() == workspaces.size() && workspaces.size() == 1) {
+      if (workspaces.size() == 1) {
         style_context->remove_class("last");
         style_context->add_class("solo");
       }
