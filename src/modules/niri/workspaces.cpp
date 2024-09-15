@@ -70,14 +70,22 @@ void Workspaces::doUpdate() {
     if (ws["idx"].asUInt() == workspaces.size() && workspaces.size() > 1) { 
       style_context->add_class("last");
       style_context->remove_class("solo");
+      style_context->remove_class("first");
     }
     else {
       if (workspaces.size() == 1) {
         style_context->remove_class("last");
+        style_context->remove_class("first");
         style_context->add_class("solo");
+      }
+      else if (ws["idx"].asUInt() == 1) {
+        style_context->remove_class("last");
+        style_context->add_class("first");
+        style_context->remove_class("solo");
       }
       else {
         style_context->remove_class("last");
+        style_context->remove_class("first");
         style_context->remove_class("solo");
       }
     }
