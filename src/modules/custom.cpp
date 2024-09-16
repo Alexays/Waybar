@@ -159,7 +159,9 @@ auto waybar::modules::Custom::update() -> void {
       parseOutputRaw();
     }
 
-    auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
+    auto str = fmt::format(fmt::runtime(format_),
+                           fmt::arg("text", text_),
+                           fmt::arg("alt", alt_),
                            fmt::arg("icon", getIcon(percentage_, alt_)),
                            fmt::arg("percentage", percentage_));
     if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
@@ -169,7 +171,9 @@ auto waybar::modules::Custom::update() -> void {
       if (tooltipEnabled()) {
         if (tooltip_format_enabled_) {
           auto tooltip = config_["tooltip-format"].asString();
-          tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
+          tooltip = fmt::format(fmt::runtime(tooltip),
+                                fmt::arg("text", text_),
+                                fmt::arg("alt", alt_),
                                 fmt::arg("icon", getIcon(percentage_, alt_)),
                                 fmt::arg("percentage", percentage_));
           label_.set_tooltip_markup(tooltip);
