@@ -37,19 +37,19 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = true}},
     {"hide",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = false,
       .visible = true}},
     {"invisible",
      {//
-      .layer = std::nullopt,
+      .layer = bar_layer::BOTTOM,
       .exclusive = false,
       .passthrough = true,
       .visible = false}},
     {"overlay",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = true,
       .visible = true}}};
@@ -59,7 +59,7 @@ const std::string Bar::MODE_INVISIBLE = "invisible";
 const std::string_view DEFAULT_BAR_ID = "bar-0";
 
 /* Deserializer for enum bar_layer */
-void from_json(const Json::Value& j, std::optional<bar_layer>& l) {
+void from_json(const Json::Value& j, bar_layer& l) {
   if (j == "bottom") {
     l = bar_layer::BOTTOM;
   } else if (j == "top") {
@@ -132,6 +132,7 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
+      surface(nullptr),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
       x_global(0),
       y_global(0),
@@ -316,13 +317,13 @@ void waybar::Bar::setMode(const std::string& mode) {
 void waybar::Bar::setMode(const struct bar_mode& mode) {
   auto* gtk_window = window.gobj();
 
-  if (mode.layer == bar_layer::BOTTOM) {
-    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_BOTTOM);
-  } else if (mode.layer == bar_layer::TOP) {
-    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_TOP);
+  auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
+  if (mode.layer == bar_layer::TOP) {
+    layer = GTK_LAYER_SHELL_LAYER_TOP;
   } else if (mode.layer == bar_layer::OVERLAY) {
-    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
+    layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
   }
+  gtk_layer_set_layer(gtk_window, layer);
 
   if (mode.exclusive) {
     gtk_layer_auto_exclusive_zone_enable(gtk_window);
@@ -339,6 +340,13 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
     window.get_style_context()->add_class("hidden");
     window.set_opacity(0);
   }
+  /*
+   * All the changes above require `wl_surface_commit`.
+   * gtk-layer-shell schedules a commit on the next frame event in GTK, but this could fail in
+   * certain scenarios, such as fully occluded bar.
+   */
+  gtk_layer_try_force_commit(gtk_window);
+  wl_display_flush(Client::inst()->wl_display);
 }
 
 void waybar::Bar::setPassThrough(bool passthrough) {
