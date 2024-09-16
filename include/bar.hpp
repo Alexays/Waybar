@@ -42,7 +42,7 @@ struct bar_margins {
 };
 
 struct bar_mode {
-  std::optional<bar_layer> layer;
+  bar_layer layer;
   bool exclusive;
   bool passthrough;
   bool visible;
