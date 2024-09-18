@@ -170,9 +170,9 @@ auto waybar::modules::Custom::update() -> void {
         if (tooltipEnabled()) {
           if (tooltip_format_enabled_) {
             auto tooltip = config_["tooltip-format"].asString();
-            tooltip = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
-                                  fmt::arg("alt", alt_), fmt::arg("icon", getIcon(percentage_, alt_)),
-                                  fmt::arg("percentage", percentage_));
+            tooltip = fmt::format(
+                fmt::runtime(tooltip), fmt::arg("text", text_), fmt::arg("alt", alt_),
+                fmt::arg("icon", getIcon(percentage_, alt_)), fmt::arg("percentage", percentage_));
             label_.set_tooltip_markup(tooltip);
           } else if (text_ == tooltip_) {
             if (label_.get_tooltip_markup() != str) {
@@ -202,8 +202,9 @@ auto waybar::modules::Custom::update() -> void {
       if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
         throw;
 
-      throw fmt::format_error("mixing manual and automatic argument indexing is no longer supported; "
-                               "try replacing \"{}\" with \"{text}\" in your format specifier");
+      throw fmt::format_error(
+          "mixing manual and automatic argument indexing is no longer supported; "
+          "try replacing \"{}\" with \"{text}\" in your format specifier");
     }
   }
   // Call parent update
