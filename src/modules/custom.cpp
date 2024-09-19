@@ -159,43 +159,52 @@ auto waybar::modules::Custom::update() -> void {
       parseOutputRaw();
     }
 
-    auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
-                           fmt::arg("icon", getIcon(percentage_, alt_)),
-                           fmt::arg("percentage", percentage_));
-    if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
-      event_box_.hide();
-    } else {
-      label_.set_markup(str);
-      if (tooltipEnabled()) {
-        if (tooltip_format_enabled_) {
-          auto tooltip = config_["tooltip-format"].asString();
-          tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
-                                fmt::arg("icon", getIcon(percentage_, alt_)),
-                                fmt::arg("percentage", percentage_));
-          label_.set_tooltip_markup(tooltip);
-        } else if (text_ == tooltip_) {
-          if (label_.get_tooltip_markup() != str) {
-            label_.set_tooltip_markup(str);
-          }
-        } else {
-          if (label_.get_tooltip_markup() != tooltip_) {
-            label_.set_tooltip_markup(tooltip_);
+    try {
+      auto str = fmt::format(fmt::runtime(format_), fmt::arg("text", text_), fmt::arg("alt", alt_),
+                             fmt::arg("icon", getIcon(percentage_, alt_)),
+                             fmt::arg("percentage", percentage_));
+      if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
+        event_box_.hide();
+      } else {
+        label_.set_markup(str);
+        if (tooltipEnabled()) {
+          if (tooltip_format_enabled_) {
+            auto tooltip = config_["tooltip-format"].asString();
+            tooltip = fmt::format(
+                fmt::runtime(tooltip), fmt::arg("text", text_), fmt::arg("alt", alt_),
+                fmt::arg("icon", getIcon(percentage_, alt_)), fmt::arg("percentage", percentage_));
+            label_.set_tooltip_markup(tooltip);
+          } else if (text_ == tooltip_) {
+            if (label_.get_tooltip_markup() != str) {
+              label_.set_tooltip_markup(str);
+            }
+          } else {
+            if (label_.get_tooltip_markup() != tooltip_) {
+              label_.set_tooltip_markup(tooltip_);
+            }
           }
         }
+        auto style = label_.get_style_context();
+        auto classes = style->list_classes();
+        for (auto const& c : classes) {
+          if (c == id_) continue;
+          style->remove_class(c);
+        }
+        for (auto const& c : class_) {
+          style->add_class(c);
+        }
+        style->add_class("flat");
+        style->add_class("text-button");
+        style->add_class(MODULE_CLASS);
+        event_box_.show();
       }
-      auto style = label_.get_style_context();
-      auto classes = style->list_classes();
-      for (auto const& c : classes) {
-        if (c == id_) continue;
-        style->remove_class(c);
-      }
-      for (auto const& c : class_) {
-        style->add_class(c);
-      }
-      style->add_class("flat");
-      style->add_class("text-button");
-      style->add_class(MODULE_CLASS);
-      event_box_.show();
+    } catch (const fmt::format_error& e) {
+      if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
+        throw;
+
+      throw fmt::format_error(
+          "mixing manual and automatic argument indexing is no longer supported; "
+          "try replacing \"{}\" with \"{text}\" in your format specifier");
     }
   }
   // Call parent update
