@@ -154,8 +154,7 @@ void AAppIconLabel::updateAppIcon() {
     update_app_icon_ = false;
     if (app_icon_name_.empty()) {
       image_.set_visible(false);
-    }
-    else if (app_icon_name_.front() == '/') {
+    } else if (app_icon_name_.front() == '/') {
       auto pixbuf = Gdk::Pixbuf::create_from_file(app_icon_name_);
       int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
       pixbuf = Gdk::Pixbuf::create_from_file(app_icon_name_, scaled_icon_size, scaled_icon_size);
