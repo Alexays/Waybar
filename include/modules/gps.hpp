@@ -19,9 +19,10 @@ namespace waybar::modules {
     auto update() -> void override;
 
   private:
-    const int getFixState() const;
-    const std::string getFixStateName() const;
-    const std::string getFixStateString() const;
+    const std::string getFixModeName() const;
+    const std::string getFixModeString() const;
+
+    const std::string getFixStatusString() const;
 
     util::SleeperThread thread_;
     gps_data_t gps_data_;
