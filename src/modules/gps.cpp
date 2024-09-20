@@ -20,7 +20,7 @@ namespace {
 
 
 waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
-: ALabel(config, "gps", id, "{}", 1) {
+: ALabel(config, "gps", id, "{}", 5) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -28,6 +28,14 @@ waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
 
   if (0 != gps_open("localhost", "2947", &gps_data_)) {
     throw std::runtime_error("Can't open gpsd socket");
+  }
+
+  if (config_["hide-disconnected"].isBool()) {
+    hideDisconnected = config_["hide-disconnected"].asBool();
+  }
+
+  if (config_["hide-no-fix"].isBool()) {
+    hideNoFix = config_["hide-no-fix"].asBool();
   }
 
   gps_stream(&gps_data_, WATCH_ENABLE, NULL);
@@ -88,6 +96,14 @@ auto waybar::modules::Gps::update() -> void {
   if (gps_read(&gps_data_, NULL, 0) == -1) {
     throw std::runtime_error("Can't read data from gpsd.");
   }
+
+  if ((gps_data_.fix.mode == MODE_NOT_SEEN && hideDisconnected) || (gps_data_.fix.mode == MODE_NO_FIX && hideNoFix)) {
+    event_box_.set_visible(false);
+    return;
+  }
+
+  // Show the module
+  if (!event_box_.get_visible()) event_box_.set_visible(true);
 
   std::string tooltip_format;
 
