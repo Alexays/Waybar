@@ -27,6 +27,9 @@ namespace waybar::modules {
     util::SleeperThread thread_;
     gps_data_t gps_data_;
     std::string state_;
+
+    bool hideDisconnected = true;
+    bool hideNoFix = false;
   };
 
 }  // namespace waybar::modules
