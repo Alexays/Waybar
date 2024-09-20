@@ -109,6 +109,9 @@
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
+#ifdef HAVE_LIBGPS
+#include "modules/gps.hpp"
+#endif
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
@@ -330,6 +333,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_LIBCAVA
+    if (ref == "gps") {
+      return new waybar::modules::Gps(id, config_[name]);
     }
 #endif
     if (ref == "temperature") {
