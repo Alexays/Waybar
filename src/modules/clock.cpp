@@ -24,6 +24,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       m_tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
       m_tooltip_{new Gtk::Label()},
       cldInTooltip_{m_tlpFmt_.find("{" + kCldPlaceholder + "}") != std::string::npos},
+      cldYearShift_{1900y / 1 / 1},
       tzInTooltip_{m_tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
       tzCurrIdx_{0},
       ordInTooltip_{m_tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos} {
