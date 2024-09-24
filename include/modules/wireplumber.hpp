@@ -32,6 +32,8 @@ class Wireplumber : public ALabel {
 
   bool handleScroll(GdkEventScroll* e) override;
 
+  static std::list<waybar::modules::Wireplumber*> modules;
+
   WpCore* wp_core_;
   GPtrArray* apis_;
   WpObjectManager* om_;
