@@ -16,13 +16,17 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       muted_(false),
       volume_(0.0),
       min_step_(0.0),
-      node_id_(0) {
+      node_id_(0),
+      type_(nullptr) {
   wp_init(WP_INIT_PIPEWIRE);
   wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
   apis_ = g_ptr_array_new_with_free_func(g_object_unref);
   om_ = wp_object_manager_new();
 
-  prepare();
+  type_ = g_strdup(config_["node-type"].isString() ? config_["node-type"].asString().c_str()
+                                                   : "Audio/Sink");
+
+  prepare(this);
 
   spdlog::debug("[{}]: connecting to pipewire...", name_);
 
@@ -46,6 +50,7 @@ waybar::modules::Wireplumber::~Wireplumber() {
   g_clear_object(&mixer_api_);
   g_clear_object(&def_nodes_api_);
   g_free(default_node_name_);
+  g_free(type_);
 }
 
 void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* self, uint32_t id) {
@@ -138,7 +143,7 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   spdlog::debug("[{}]: (onDefaultNodesApiChanged)", self->name_);
 
   uint32_t defaultNodeId;
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Sink", &defaultNodeId);
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &defaultNodeId);
 
   if (!isValidNodeId(defaultNodeId)) {
     spdlog::warn("[{}]: '{}' is not a valid node ID. Ignoring node change.", self->name_,
@@ -200,9 +205,9 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
     throw std::runtime_error("Mixer api is not loaded\n");
   }
 
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Sink",
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", self->type_,
                         &self->default_node_name_);
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Sink", &self->node_id_);
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &self->node_id_);
 
   if (self->default_node_name_ != nullptr) {
     spdlog::debug("[{}]: (onObjectManagerInstalled) - default configured node name: {} and id: {}",
@@ -246,7 +251,7 @@ void waybar::modules::Wireplumber::activatePlugins() {
 void waybar::modules::Wireplumber::prepare() {
   spdlog::debug("[{}]: preparing object manager", name_);
   wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
-                                 "=s", "Audio/Sink", nullptr);
+                                 "=s", self->type_, nullptr);
 }
 
 void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,

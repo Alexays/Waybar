@@ -19,6 +19,11 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	typeof: string ++
 	This format is used when the sound is muted.
 
+*node-type*: ++
+	typeof: string ++
+	default: *Audio/Sink* ++
+	The WirePlumber node type to attach to. Use *Audio/Source* to manage microphones etc.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: *true* ++
@@ -108,11 +113,33 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 # EXAMPLES
 
+## Basic:
+
 ```
 "wireplumber": {
 	"format": "{volume}%",
 	"format-muted": "",
 	"on-click": "helvum"
+}
+```
+
+## Separate Sink and Source Widgets 
+
+```
+"wireplumber#sink": {
+    "format": "{volume}% {icon}",
+    "format-muted": "",
+    "format-icons": ["", "", ""],
+    "on-click": "helvum",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "scroll-step": 5
+},
+"wireplumber#source": {
+    "node-type": "Audio/Source",
+    "format": "{volume}% ",
+    "format-muted": "",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+    "scroll-step": 5
 }
 ```
 

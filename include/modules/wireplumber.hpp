@@ -18,7 +18,7 @@ class Wireplumber : public ALabel {
 
  private:
   void asyncLoadRequiredApiModules();
-  void prepare();
+  void prepare(waybar::modules::Wireplumber* self);
   void activatePlugins();
   static void updateVolume(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
@@ -44,6 +44,7 @@ class Wireplumber : public ALabel {
   double min_step_;
   uint32_t node_id_{0};
   std::string node_name_;
+  gchar* type_;
 };
 
 }  // namespace waybar::modules
