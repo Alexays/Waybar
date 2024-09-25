@@ -25,6 +25,9 @@ in
 
     mesonFlags = lib.remove "-Dgtk-layer-shell=enabled" oldAttrs.mesonFlags;
 
+    # downstream patch should not affect upstream
+    patches = [];
+
     buildInputs = (builtins.filter (p: p.pname != "wireplumber") oldAttrs.buildInputs) ++ [
         pkgs.wireplumber
     ];
