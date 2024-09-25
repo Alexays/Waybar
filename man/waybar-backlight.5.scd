@@ -81,6 +81,11 @@ The *backlight* module displays the current backlight level.
 	default: 1.0 ++
 	The speed at which to change the brightness when scrolling.
 
+*min-brightness*: ++
+	typeof: double ++
+	default: 10.0 ++
+	The minimum brightness of the backlight.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.
