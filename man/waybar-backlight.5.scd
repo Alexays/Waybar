@@ -83,7 +83,7 @@ The *backlight* module displays the current backlight level.
 
 *min-brightness*: ++
 	typeof: double ++
-	default: 10.0 ++
+	default: 0.0 ++
 	The minimum brightness of the backlight.
 
 *menu*: ++

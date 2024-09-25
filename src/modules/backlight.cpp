@@ -112,7 +112,7 @@ bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
     step = config_["scroll-step"].asDouble();
   }
 
-  double min_brightness = 10;
+  double min_brightness = 0;
   if (config_["min-brightness"].isDouble()) {
     min_brightness = config_["min-brightness"].asDouble();
   }
