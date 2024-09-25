@@ -586,11 +586,12 @@ endif
 
 catch2 = dependency(
     'catch2',
+    version: '>=3.7.1',
     default_options: [ 'tests=false' ],
     fallback: ['catch2', 'catch2_dep'],
     required: get_option('tests'),
 )
-if catch2.found()
+if catch2.found() and get_option('tests').enabled()
     subdir('test')
 endif
 
