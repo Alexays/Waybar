@@ -482,7 +482,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.10.2',
+                  version : '>=0.10.3',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
