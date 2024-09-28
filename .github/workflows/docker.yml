@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: github.repository == 'Alexays/Waybar'
     strategy:
       fail-fast: false # don't fail the other jobs if one of the images fails to build
       matrix:
