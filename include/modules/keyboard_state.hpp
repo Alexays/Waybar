@@ -4,24 +4,23 @@
 #include <gtkmm/label.h>
 
 #include <set>
-#include <unordered_map>
 
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "util/sleeper_thread.hpp"
 
 extern "C" {
-#include <libevdev/libevdev.h>
 #include <libinput.h>
 }
 
 namespace waybar::modules {
 
-class KeyboardState : public AModule {
+class KeyboardState final : public AModule {
  public:
   KeyboardState(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~KeyboardState();
   auto update() -> void override;
+  operator Gtk::Widget &() override;
 
  private:
   auto tryAddDevice(const std::string&) -> void;

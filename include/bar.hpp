@@ -7,7 +7,7 @@
 #include <gtkmm/window.h>
 
 #include "AModule.hpp"
-//#include "group.hpp"
+#include "group.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {
@@ -65,16 +65,12 @@ class Bar {
   void handleSignal(int);
 
   struct waybar_output *output;
-  Json::Value config;
   struct wl_surface *surface;
   bool visible = true;
   Gtk::Window window;
-  Glib::RefPtr<Gdk::Surface> gdk_surface_;
-  Gtk::Orientation orientation = Gtk::Orientation::HORIZONTAL;
-  Gtk::PositionType position = Gtk::PositionType::TOP;
-
-  int x_global;
-  int y_global;
+  Json::Value config;
+  Gtk::Orientation orientation{Gtk::Orientation::HORIZONTAL};
+  Gtk::PositionType position{Gtk::PositionType::TOP};
 
 #ifdef HAVE_SWAY
   std::string bar_id;
@@ -83,7 +79,7 @@ class Bar {
  private:
   void onMap();
   auto setupWidgets() -> void;
-//  void getModules(const Factory &, const std::string &, waybar::Group *);
+  void getModules(const Factory &, const std::string &, waybar::Group *);
   void setupAltFormatKeyForModule(const std::string &module_name);
   void setupAltFormatKeyForModuleList(const char *module_list_name);
   void setMode(const bar_mode &);
@@ -92,6 +88,10 @@ class Bar {
   void onConfigure(int width, int height);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
+
+  Glib::RefPtr<Gdk::Surface> gdk_surface_;
+  int x_global;
+  int y_global;
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;

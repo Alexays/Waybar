@@ -1,11 +1,6 @@
 #pragma once
 
-#include <string>
-
 #include "AModule.hpp"
-#include "util/command.hpp"
-#include "util/json.hpp"
-#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
@@ -16,7 +11,7 @@ typedef struct wbcffi_module wbcffi_module;
 typedef struct {
   wbcffi_module* obj;
   const char* waybar_version;
-//todo  GtkContainer* (*get_root_widget)(wbcffi_module*);
+  GtkWidget* (*get_root_widget)(wbcffi_module*);
   void (*queue_update)(wbcffi_module*);
 } wbcffi_init_info;
 
@@ -27,7 +22,7 @@ struct wbcffi_config_entry {
 }
 }  // namespace ffi
 
-class CFFI : public AModule {
+class CFFI final : public AModule {
  public:
   CFFI(const std::string&, const std::string&, const Json::Value&);
   virtual ~CFFI();

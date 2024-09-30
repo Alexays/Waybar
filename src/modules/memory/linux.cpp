@@ -1,5 +1,7 @@
 #include "modules/memory.hpp"
 
+#include <fstream>
+
 static unsigned zfsArcSize() {
   std::ifstream zfs_arc_stats{"/proc/spl/kstat/zfs/arcstats"};
 
