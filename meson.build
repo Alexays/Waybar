@@ -67,12 +67,12 @@ is_freebsd = host_machine.system() == 'freebsd'
 is_netbsd = host_machine.system() == 'netbsd'
 is_openbsd = host_machine.system() == 'openbsd'
 
-jsoncpp = dependency('jsoncpp', version : ['>=1.9.4'], fallback : ['jsoncpp', 'jsoncpp_dep'])
+jsoncpp = dependency('jsoncpp', version : ['>=1.9.6'], fallback : ['jsoncpp', 'jsoncpp_dep'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 sigcpp = dependency('sigc++-3.0', version: ['>=3.4.0'])
-gtkmm = dependency('gtkmm-4.0', version : ['>=4.12.0'])
+gtkmm = dependency('gtkmm-4.0', version : ['>=4.16.0'])
 giounix = dependency('gio-unix-2.0', version: ['>=2.76.4'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
 libinotify = dependency('libinotify', required: false)
@@ -104,7 +104,7 @@ if libsndio.found()
 endif
 
 gtk_layer_shell = dependency('gtk4-layer-shell-0',
-                             version : ['>=1.0.2'],
+                             version : ['>=1.0.3'],
                              fallback : ['gtk4-layer-shell', 'gtk_layer_shell'],
                              default_options : ['introspection=false', 'vapi=false'])
 

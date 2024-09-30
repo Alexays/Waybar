@@ -1,8 +1,8 @@
 [wrap-file]
-directory = gtk4-layer-shell-1.0.2
-source_filename = gtk4-layer-shell-1.0.2.tar.gz
-source_hash = a3a827845612fa15de30734eb29c01db329c32f8e279d8bc5251facc69220b86
-source_url = https://github.com/wmww/gtk4-layer-shell/archive/v1.0.2/gtk4-layer-shell-1.0.2.tar.gz
+directory = gtk4-layer-shell-1.0.3
+source_filename = gtk4-layer-shell-1.0.3.tar.gz
+source_hash = 4d669c30b3dbc68ad69ade9752e6ebbe7be132db21a5a4734d42bc09c5481c34
+source_url = https://github.com/wmww/gtk4-layer-shell/archive/v1.0.3/gtk4-layer-shell-1.0.3.tar.gz
 
 [provide]
 gtk-layer-shell = gtk_layer_shell
