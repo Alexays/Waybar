@@ -29,6 +29,8 @@ class Tags : public waybar::AModule {
   struct wl_seat *seat_;
 
  private:
+  bool check_tags(uint32_t tags, size_t i);
+ 
   const waybar::Bar &bar_;
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
