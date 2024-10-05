@@ -64,6 +64,10 @@ libcava lives in:
 :[ bool
 :[ false
 :[ Hides the widget if no input (after sleep_timer elapsed)
+|[ *format_silent*
+:[ string
+:[
+:[ Widget's text after sleep_timer elapsed (hide_on_silence has to be false)
 |[ *method*
 :[ string
 :[ pulse
@@ -196,3 +200,8 @@ In case when cava releases new version and you're wanna get it, it should be rai
 	}
 },
 ```
+# STYLE
+
+- *#cava*
+- *#cava.silent* Applied after no sound has been detected for sleep_timer seconds
+- *#cava.updated* Applied when a new frame is shown

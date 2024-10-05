@@ -59,6 +59,7 @@ waybar::modules::Cava::Cava(const std::string& id, const Json::Value& config)
   if (config_["input_delay"].isInt())
     fetch_input_delay_ = std::chrono::seconds(config_["input_delay"].asInt());
   if (config_["hide_on_silence"].isBool()) hide_on_silence_ = config_["hide_on_silence"].asBool();
+  if (config_["format_silent"].isString()) format_silent_ = config_["format_silent"].asString();
   // Make cava parameters configuration
   plan_ = new cava::cava_plan{};
 
@@ -172,10 +173,19 @@ auto waybar::modules::Cava::update() -> void {
       label_.set_markup(text_);
       label_.show();
       ALabel::update();
+      label_.get_style_context()->add_class("updated");
     }
+
+    label_.get_style_context()->remove_class("silent");
   } else {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
-    if (hide_on_silence_) label_.hide();
+    if (hide_on_silence_)
+      label_.hide();
+    else if (config_["format_silent"].isString())
+      label_.set_markup(format_silent_);
+
+    label_.get_style_context()->add_class("silent");
+    label_.get_style_context()->remove_class("updated");
   }
 }
 
