@@ -15,8 +15,7 @@
 
 #include <array>
 
-extern std::mutex reap_mtx;
-extern std::list<pid_t> reap;
+#include "util/unix_signal.hpp"
 
 namespace waybar::util::command {
 
@@ -160,9 +159,7 @@ inline int32_t forkExec(const std::string& cmd) {
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
-    reap_mtx.lock();
-    reap.push_back(pid);
-    reap_mtx.unlock();
+    signal_handler.addChild(pid);
     spdlog::debug("Added child to reap list: {}", pid);
   }
 
