@@ -46,6 +46,12 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     user_proxy->signal_signal().connect(sigc::mem_fun(*this, &SystemdFailedUnits::notify_cb));
   }
 
+  if (tooltipEnabled() && config["tooltip-format"].isString()) {
+    tooltip_format_ = config["tooltip-format"].asString();
+  } else if (tooltipEnabled()) {
+    tooltip_format_ = format_;
+  }
+
   updateData();
   /* Always update for the first time. */
   dp.emit();
@@ -124,6 +130,21 @@ auto SystemdFailedUnits::update() -> void {
   label_.set_markup(fmt::format(
       fmt::runtime(nr_failed == 0 ? format_ok : format_), fmt::arg("nr_failed", nr_failed),
       fmt::arg("nr_failed_system", nr_failed_system), fmt::arg("nr_failed_user", nr_failed_user)));
+
+  if (tooltipEnabled()) {
+    if (tooltipMarkupEnabled()) {
+      label_.set_tooltip_markup(fmt::format(fmt::runtime(tooltip_format_),
+                                            fmt::arg("nr_failed", nr_failed),
+                                            fmt::arg("nr_failed_system", nr_failed_system),
+                                            fmt::arg("nr_failed_user", nr_failed_user)));
+    } else {
+      label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format_),
+                                          fmt::arg("nr_failed", nr_failed),
+                                          fmt::arg("nr_failed_system", nr_failed_system),
+                                          fmt::arg("nr_failed_user", nr_failed_user)));
+    }
+  }
+
   ALabel::update();
 }
 
