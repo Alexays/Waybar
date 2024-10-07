@@ -1,12 +1,12 @@
 #include "client.hpp"
 
 #include <gtk-layer-shell.h>
+#include <gtkmm/icontheme.h>
 #include <spdlog/spdlog.h>
 
 #include <iostream>
 #include <utility>
 
-#include "gtkmm/icontheme.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
@@ -205,26 +205,16 @@ void waybar::Client::bindInterfaces() {
   if (xdg_output_manager == nullptr) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
-  // add existing outputs and subscribe to updates
-  for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
-    auto monitor = gdk_display->get_monitor(i);
-    handleMonitorAdded(monitor);
-  }
-  gdk_display->signal_monitor_added().connect(sigc::mem_fun(*this, &Client::handleMonitorAdded));
-  gdk_display->signal_monitor_removed().connect(
-      sigc::mem_fun(*this, &Client::handleMonitorRemoved));
 }
 
 int waybar::Client::main(int argc, char *argv[]) {
   bool show_help = false;
   bool show_version = false;
-  std::string config_opt;
-  std::string style_opt;
   std::string log_level;
   auto cli = clara::detail::Help(show_help) |
              clara::detail::Opt(show_version)["-v"]["--version"]("Show version") |
-             clara::detail::Opt(config_opt, "config")["-c"]["--config"]("Config path") |
-             clara::detail::Opt(style_opt, "style")["-s"]["--style"]("Style path") |
+             clara::detail::Opt(config_opt_, "config")["-c"]["--config"]("Config path") |
+             clara::detail::Opt(style_opt_, "style")["-s"]["--style"]("Style path") |
              clara::detail::Opt(
                  log_level,
                  "trace|debug|info|warning|error|critical|off")["-l"]["--log-level"]("Log level") |
@@ -260,31 +250,17 @@ int waybar::Client::main(int argc, char *argv[]) {
     throw std::runtime_error("Bar need to run under Wayland");
   }
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
-  config.load(config_opt);
-  if (!portal) {
-    portal = std::make_unique<waybar::Portal>();
-  }
-  m_cssFile = getStyle(style_opt);
-  setupCss(m_cssFile);
-  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&]() { setupCss(m_cssFile); });
+
+  bindInterfaces();
+
+  portal = std::make_unique<waybar::Portal>();
   portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
-    auto css_file = getStyle(style_opt, appearance);
+    auto css_file = getStyle(style_opt_, appearance);
     setupCss(css_file);
   });
 
-  auto m_config = config.getConfig();
-  if (m_config.isObject() && m_config["reload_style_on_change"].asBool()) {
-    m_cssReloadHelper->monitorChanges();
-  } else if (m_config.isArray()) {
-    for (const auto &conf : m_config) {
-      if (conf["reload_style_on_change"].asBool()) {
-        m_cssReloadHelper->monitorChanges();
-        break;
-      }
-    }
-  }
+  reload();
 
-  bindInterfaces();
   gtk_app->hold();
   gtk_app->run();
   m_cssReloadHelper.reset();  // stop watching css file
@@ -292,8 +268,54 @@ int waybar::Client::main(int argc, char *argv[]) {
   return 0;
 }
 
-void waybar::Client::reset() {
-  gtk_app->quit();
-  // delete signal handler for css changes
-  portal->signal_appearance_changed().clear();
+void waybar::Client::handleSignal(int signum) {
+  spdlog::debug("RT signal {} received", signum);
+  for (auto &bar : bars) {
+    bar->handleSignal(signum);
+  }
 }
+
+void waybar::Client::reload(G_GNUC_UNUSED int signum) {
+  config.load(config_opt_);
+
+  m_cssFile = getStyle(style_opt_);
+  setupCss(m_cssFile);
+
+  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&]() { setupCss(m_cssFile); });
+
+  auto confObj = config.getConfig();
+  if (confObj.isObject() && confObj["reload_style_on_change"].asBool()) {
+    m_cssReloadHelper->monitorChanges();
+  } else if (confObj.isArray()) {
+    for (const auto &conf : confObj) {
+      if (conf["reload_style_on_change"].asBool()) {
+        m_cssReloadHelper->monitorChanges();
+        break;
+      }
+    }
+  }
+
+  output_added_.disconnect();
+  output_removed_.disconnect();
+  bars.clear();
+  outputs_.clear();
+
+  // add existing outputs and subscribe to updates
+  for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
+    auto monitor = gdk_display->get_monitor(i);
+    handleMonitorAdded(monitor);
+  }
+
+  output_added_ = gdk_display->signal_monitor_added().connect(
+      sigc::mem_fun(*this, &Client::handleMonitorAdded));
+  output_removed_ = gdk_display->signal_monitor_removed().connect(
+      sigc::mem_fun(*this, &Client::handleMonitorRemoved));
+}
+
+void waybar::Client::toggle(G_GNUC_UNUSED int signum) {
+  for (auto &bar : bars) {
+    bar->toggle();
+  }
+}
+
+void waybar::Client::quit(G_GNUC_UNUSED int signum) { gtk_app->quit(); }

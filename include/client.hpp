@@ -15,11 +15,16 @@ struct zwp_idle_inhibit_manager_v1;
 
 namespace waybar {
 
-class Client {
+class Client : public sigc::trackable {
  public:
   static Client *inst();
   int main(int argc, char *argv[]);
-  void reset();
+
+  /* signal handlers */
+  void handleSignal(int signum);
+  void reload(int signum = 0);
+  void toggle(int signum = 0);
+  void quit(int signum = 0);
 
   Glib::RefPtr<Gtk::Application> gtk_app;
   Glib::RefPtr<Gdk::Display> gdk_display;
@@ -54,8 +59,11 @@ class Client {
   Glib::RefPtr<Gtk::CssProvider> css_provider_;
   std::unique_ptr<Portal> portal;
   std::list<struct waybar_output> outputs_;
+  sigc::connection output_added_, output_removed_;
   std::unique_ptr<CssReloadHelper> m_cssReloadHelper;
   std::string m_cssFile;
+  std::string config_opt_;
+  std::string style_opt_;
 };
 
 }  // namespace waybar
