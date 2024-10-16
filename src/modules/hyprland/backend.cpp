@@ -18,6 +18,9 @@ namespace waybar::modules::hyprland {
 std::filesystem::path IPC::socketFolder_;
 
 std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
+  static std::mutex folderMutex;
+  std::unique_lock lock(folderMutex);
+
   // socket path, specified by EventManager of Hyprland
   if (!socketFolder_.empty()) {
     return socketFolder_;
