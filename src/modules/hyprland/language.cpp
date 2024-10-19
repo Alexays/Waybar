@@ -11,8 +11,7 @@ namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true),
-      bar_(bar),
-      tooltip_format_enabled_{config_["tooltip-format"].isString()} {
+      bar_(bar) {
   modulesReady = true;
 
   if (!gIPC) {
@@ -56,30 +55,40 @@ auto Language::update() -> void {
                                   fmt::arg("shortDescription", layout_.short_description),
                                   fmt::arg("variant", layout_.variant)));
   }
-
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
 
   std::string tooltipContent = std::string{};
-  if (tooltipEnabled()) {
-    if (tooltip_format_enabled_) {
+  bool tooltip_enabled = tooltipEnabled();
+  if (tooltip_enabled) {
+    if (config_.isMember("tooltip-format")) {
       auto tooltip_format = config_["tooltip-format"].asString();
-      tooltipContent = fmt::format(fmt::runtime(tooltip_format),
-                        fmt::arg("long", layout_.full_name),
-                        fmt::arg("short", layout_.short_name),
-                        fmt::arg("shortDescription", layout_.short_description),
-                        fmt::arg("variant", layout_.variant));
-
-    } else {
+      if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
+        const auto propName = "tooltip-format-" + layout_.short_description + "-" + layout_.variant;
+        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
+      } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
+        const auto propName = "tooltip-format-" + layout_.short_description;
+        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
+      } else {
+        tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
+                                      fmt::arg("short", layout_.short_name),
+                                      fmt::arg("shortDescription", layout_.short_description),
+                                      fmt::arg("variant", layout_.variant)));
+      }
+    }
+    else {
+      // if no tooltip format is provided, use the same text as the module
       tooltipContent = layoutName;
     }
+    spdlog::debug("hyprland language formatted tooltip content {}", tooltipContent);
   }
 
-  spdlog::debug("hyprland language formatted tooltip content {}", tooltipContent);
 
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(layoutName);
-    label_.set_tooltip_markup(tooltipContent);
+    if (tooltip_enabled) {
+      label_.set_tooltip_markup(tooltipContent);
+    }
   } else {
     label_.hide();
   }
