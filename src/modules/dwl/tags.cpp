@@ -198,6 +198,15 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
   } else {
     button.get_style_context()->remove_class("urgent");
   }
+
+  const bool show_only_viable = config_["show-only-viable"].asBool();
+  if (show_only_viable) {
+    if (clients > 0 || state & (TAG_ACTIVE | TAG_URGENT)) {
+      button.show();
+    } else {
+      button.hide();
+    }
+  }
 }
 
 } /* namespace waybar::modules::dwl */
