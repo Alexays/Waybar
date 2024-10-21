@@ -183,7 +183,8 @@ src_files = files(
     'src/util/rewrite_string.cpp',
     'src/util/gtk_icon.cpp',
     'src/util/regex_collection.cpp',
-    'src/util/css_reload_helper.cpp'
+    'src/util/css_reload_helper.cpp',
+    'src/modules/ui.cpp'
 )
 
 man_files = files(
@@ -541,6 +542,11 @@ install_data(
     'resources/config.jsonc',
     'resources/style.css',
     install_dir: sysconfdir / 'xdg/waybar'
+)
+
+install_subdir(
+    'resources/ui',
+     install_dir: sysconfdir / 'xdg/waybar'
 )
 
 scdoc = dependency('scdoc', version: '>=1.9.2', native: true, required: get_option('man-pages'))
