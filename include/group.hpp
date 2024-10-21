@@ -30,6 +30,7 @@ class Group : public AModule {
   bool handleMouseEnter(GdkEventCrossing *const &ev) override;
   bool handleMouseLeave(GdkEventCrossing *const &ev) override;
   bool handleToggle(GdkEventButton *const &ev) override;
+  void refresh(int sig) override;
   void show_group();
   void hide_group();
 };

@@ -120,6 +120,18 @@ bool Group::handleToggle(GdkEventButton* const& e) {
   return true;
 }
 
+void Group::refresh(int sig) {
+  if (click_to_reveal) {
+    if (sig == SIGRTMIN + config_["signal"].asInt()) {
+      if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
+        hide_group();
+      } else {
+        show_group();
+      }
+    }
+  }
+}
+
 auto Group::update() -> void {
   // noop
 }
