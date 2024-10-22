@@ -38,6 +38,19 @@ Addressed by *hyprland/language*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*tooltip*: ++
+	typeof: boolean ++
+	default: true ++
+	Enables or disables the tooltip for the language module. By default, the tooltip is enabled. Set to *false* to disable.
+
+*tooltip-format*: ++
+	typeof: string ++
+	default: {long} ++
+	Specifies the format of the tooltip when it is enabled. It follows the same format replacement rules as the *format* key.
+
+*tooltip-format-<lang>*: ++
+	typeof: string ++
+	Allows specifying a different tooltip format for each language. The *<lang>* should be replaced with the language code. This can be used to provide a custom tooltip for each language.
 
 # FORMAT REPLACEMENTS
 
@@ -54,10 +67,32 @@ Addressed by *hyprland/language*
 
 ```
 "hyprland/language": {
-	"format": "Lang: {long}"
-	"format-en": "AMERICA, HELL YEAH!"
-	"format-tr": "As bayrakları"
+	"format": "Lang: {long}",
+	"format-en": "AMERICA, HELL YEAH!",
+	"format-tr": "As bayrakları",
 	"keyboard-name": "at-translated-set-2-keyboard"
+}
+```
+
+```
+"hyprland/language": {
+	"format": "{}",
+	"format-en": "US",
+	"format-es": "ES",
+	"tooltip": true,
+	"tooltip-format": "{long}"
+}
+```
+
+```
+"hyprland/language": {
+	"format": "{}",
+	"format-en": "US",
+	"format-es": "ES",
+	"tooltip": true,
+	"tooltip-format": "{}",
+	"tooltip-format-es": "{Español}",
+	"tooltip-format-en": "{English (american)}"
 }
 ```
 
