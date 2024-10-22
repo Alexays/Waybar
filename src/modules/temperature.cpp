@@ -1,6 +1,7 @@
 #include "modules/temperature.hpp"
 
 #include <filesystem>
+#include <stdexcept>
 #include <string>
 
 #if defined(__FreeBSD__)
@@ -20,12 +21,42 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
         if (check_set_path(item.asString())) break;
   };
 
-  // if hwmon_path is an array, loop to find first valid item
-  traverseAsArray(config_["hwmon-path"], [this](const std::string& path) {
-    if (!std::filesystem::exists(path)) return false;
-    file_path_ = path;
-    return true;
-  });
+  if (config_["hwmon-by-name"].isString() && config_["input-filename"].isString()) {
+    auto name = config_["hwmon-by-name"].asString();
+    auto input_filename = config_["input-filename"].asString();
+    for (const auto& entry : std::filesystem::directory_iterator("/sys/class/hwmon/")) {
+      if (std::filesystem::is_directory(entry) && file_path_.empty()) {
+        std::string name_filepath = entry.path().string() + "/name";
+        std::string input_filepath = entry.path().string() + "/" + input_filename;
+
+        if (std::filesystem::exists(name_filepath) && std::filesystem::exists(input_filepath)) {
+          std::ifstream name_file(name_filepath);
+          if (!name_file.is_open()) {
+            throw std::runtime_error("Error: Could not open file " + name_filepath);
+          }
+
+          std::string line;
+          while (std::getline(name_file, line)) {
+            if (line.find(name) != std::string::npos) {
+              file_path_ = input_filepath;
+              break;
+            }
+          }
+        }
+      } 
+    }
+    if (file_path_.empty())
+      throw std::runtime_error("Could not find hwmon by name " + name);
+  }
+
+  if (file_path_.empty()) {
+    // if hwmon_path is an array, loop to find first valid item
+    traverseAsArray(config_["hwmon-path"], [this](const std::string& path) {
+      if (!std::filesystem::exists(path)) return false;
+      file_path_ = path;
+      return true;
+    });
+  }
 
   if (file_path_.empty() && config_["input-filename"].isString()) {
     // fallback to hwmon_paths-abs
