@@ -26,8 +26,8 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
     auto input_filename = config_["input-filename"].asString();
     for (const auto& entry : std::filesystem::directory_iterator("/sys/class/hwmon/")) {
       if (std::filesystem::is_directory(entry) && file_path_.empty()) {
-        std::string name_filepath = entry.path().string() + "/name";
-        std::string input_filepath = entry.path().string() + "/" + input_filename;
+        auto name_filepath = entry.path().string() + "/name";
+        auto input_filepath = entry.path().string() + "/" + input_filename;
 
         if (std::filesystem::exists(name_filepath) && std::filesystem::exists(input_filepath)) {
           std::ifstream name_file(name_filepath);
