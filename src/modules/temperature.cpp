@@ -43,10 +43,9 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
             }
           }
         }
-      } 
+      }
     }
-    if (file_path_.empty())
-      throw std::runtime_error("Could not find hwmon by name " + name);
+    if (file_path_.empty()) throw std::runtime_error("Could not find hwmon by name " + name);
   }
 
   if (file_path_.empty()) {
