@@ -1,9 +1,12 @@
 #include "util/audio_backend.hpp"
 
 #include <fmt/core.h>
+#include <pulse/def.h>
 #include <pulse/error.h>
+#include <pulse/introspect.h>
 #include <pulse/subscribe.h>
 #include <pulse/volume.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cmath>
@@ -139,6 +142,10 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
                               void *data) {
   if (i == nullptr) return;
 
+  auto running = i->state == PA_SINK_RUNNING;
+  auto idle = i->state == PA_SINK_IDLE;
+  spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running, idle);
+
   auto *backend = static_cast<AudioBackend *>(data);
 
   if (!backend->ignored_sinks_.empty()) {
@@ -155,11 +162,19 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
     }
   }
 
-  if (backend->current_sink_name_ == i->name) {
-    backend->current_sink_running_ = i->state == PA_SINK_RUNNING;
+  backend->default_sink_running_ = backend->default_sink_name == i->name &&
+                                   (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+
+  if (i->name != backend->default_sink_name && !backend->default_sink_running_) {
+    return;
   }
 
-  if (!backend->current_sink_running_ && i->state == PA_SINK_RUNNING) {
+  if (backend->current_sink_name_ == i->name) {
+    backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+  }
+
+  if (!backend->current_sink_running_ &&
+      (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE)) {
     backend->current_sink_name_ = i->name;
     backend->current_sink_running_ = true;
   }
@@ -207,6 +222,7 @@ void AudioBackend::sourceInfoCb(pa_context * /*context*/, const pa_source_info *
 void AudioBackend::serverInfoCb(pa_context *context, const pa_server_info *i, void *data) {
   auto *backend = static_cast<AudioBackend *>(data);
   backend->current_sink_name_ = i->default_sink_name;
+  backend->default_sink_name = i->default_sink_name;
   backend->default_source_name_ = i->default_source_name;
 
   pa_context_get_sink_info_list(context, sinkInfoCb, data);
