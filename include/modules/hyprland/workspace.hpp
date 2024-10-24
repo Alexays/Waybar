@@ -44,8 +44,7 @@ class Workspace {
   bool isVisible() const { return m_isVisible; };
   bool isEmpty() const { return m_windows == 0; };
   bool isUrgent() const { return m_isUrgent; };
-
-  bool handleClicked(GdkEventButton* bt) const;
+  void handleToggle(int n_press, double dx, double dy);
   void setActive(bool value = true) { m_isActive = value; };
   void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
   void setPersistentConfig(bool value = true) { m_isPersistentConfig = value; };
@@ -83,6 +82,7 @@ class Workspace {
   Gtk::Button m_button;
   Gtk::Box m_content;
   Gtk::Label m_label;
+  Glib::RefPtr<Gtk::GestureClick> controllClick_;
 };
 
 }  // namespace waybar::modules::hyprland

@@ -177,6 +177,7 @@ src_files = files(
     'src/config.cpp',
     'src/group.cpp',
     'src/util/portal.cpp',
+    'src/util/enum.cpp',
     'src/util/prepare_for_sleep.cpp',
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
@@ -282,7 +283,7 @@ src_files += files('src/modules/dwl/tags.cpp',
                    'src/modules/dwl/window.cpp')
 man_files += files('man/waybar-dwl-tags.5.scd',
                    'man/waybar-dwl-window.5.scd')
-if 1 == 0
+
 add_project_arguments('-DHAVE_HYPRLAND', language: 'cpp')
 src_files += files('src/modules/hyprland/backend.cpp',
                    'src/modules/hyprland/language.cpp',
@@ -296,6 +297,7 @@ man_files += files('man/waybar-hyprland-language.5.scd',
                    'man/waybar-hyprland-window.5.scd',
                    'man/waybar-hyprland-workspaces.5.scd')
 
+if 1 == 0
 if get_option('niri')
 add_project_arguments('-DHAVE_NIRI', language: 'cpp')
 src_files += files(
