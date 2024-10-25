@@ -10,8 +10,7 @@
 namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, true),
-      bar_(bar) {
+    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
   modulesReady = true;
 
   if (!gIPC) {
@@ -69,19 +68,18 @@ auto Language::update() -> void {
         const auto propName = "tooltip-format-" + layout_.short_description;
         tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
       } else {
-        tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
-                                      fmt::arg("short", layout_.short_name),
-                                      fmt::arg("shortDescription", layout_.short_description),
-                                      fmt::arg("variant", layout_.variant)));
+        tooltipContent =
+            trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
+                             fmt::arg("short", layout_.short_name),
+                             fmt::arg("shortDescription", layout_.short_description),
+                             fmt::arg("variant", layout_.variant)));
       }
-    }
-    else {
+    } else {
       // if no tooltip format is provided, use the same text as the module
       tooltipContent = layoutName;
     }
     spdlog::debug("hyprland language formatted tooltip content {}", tooltipContent);
   }
-
 
   if (!format_.empty()) {
     label_.show();
