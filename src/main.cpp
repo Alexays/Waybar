@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
 
     std::signal(SIGUSR1, SIG_IGN);
     std::signal(SIGUSR2, SIG_IGN);
-    std::signal(SIGINT,  SIG_IGN);
+    std::signal(SIGINT, SIG_IGN);
 
     delete client;
     return ret;

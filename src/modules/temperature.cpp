@@ -77,7 +77,7 @@ auto waybar::modules::Temperature::update() -> void {
   } else if (warning) {
     format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
     label_.get_style_context()->add_class("warning");
-  } else        {
+  } else {
     label_.get_style_context()->remove_class("critical");
     label_.get_style_context()->remove_class("warning");
   }
