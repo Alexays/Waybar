@@ -106,6 +106,11 @@ Addressed by *disk*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{percentage_used}*: Percentage of disk in use.

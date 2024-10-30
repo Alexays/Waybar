@@ -99,6 +99,11 @@ warp-on-scroll: ++
 	default: " " ++
 	The separator to be used between windows in a workspace.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 
 # FORMAT REPLACEMENTS
 

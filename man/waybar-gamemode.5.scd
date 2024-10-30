@@ -61,6 +61,11 @@ Feral Gamemode optimizations.
 	default: 4 ++
 	Defines the spacing between the icon and the text.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{glyph}*: The string icon glyph to use instead.

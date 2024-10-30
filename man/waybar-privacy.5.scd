@@ -32,6 +32,11 @@ the screen or playing audio.
 	Which privacy modules to monitor. See *MODULES CONFIGURATION* for++
 	more information.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # MODULES CONFIGURATION
 
 *type*: ++
