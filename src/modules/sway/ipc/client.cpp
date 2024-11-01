@@ -3,8 +3,6 @@
 #include <fcntl.h>
 #include <spdlog/spdlog.h>
 
-#include <stdexcept>
-
 namespace waybar::modules::sway {
 
 Ipc::Ipc() {

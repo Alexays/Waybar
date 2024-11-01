@@ -66,10 +66,11 @@ void Idle::entry() noexcept {
     spdlog::error("mpd: Idle: failed to register for IDLE events");
   } else {
     spdlog::debug("mpd: Idle: watching FD");
-    sigc::slot<bool, Glib::IOCondition const&> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
+    sigc::slot<bool(Glib::IOCondition const&)> idle_slot = sigc::mem_fun(*this, &Idle::on_io);
     idle_connection_ =
         Glib::signal_io().connect(idle_slot, mpd_connection_get_fd(conn),
-                                  Glib::IO_IN | Glib::IO_PRI | Glib::IO_ERR | Glib::IO_HUP);
+                                  Glib::IOCondition::IO_IN | Glib::IOCondition::IO_PRI |
+                                      Glib::IOCondition::IO_ERR | Glib::IOCondition::IO_HUP);
   }
 }
 
@@ -118,7 +119,7 @@ bool Idle::on_io(Glib::IOCondition const&) {
 }
 
 void Playing::entry() noexcept {
-  sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Playing::on_timer);
+  sigc::slot<bool()> timer_slot = sigc::mem_fun(*this, &Playing::on_timer);
   timer_connection_ = Glib::signal_timeout().connect_seconds(timer_slot, 1);
   spdlog::debug("mpd: Playing: enabled 1 second periodic timer.");
 }
@@ -186,7 +187,7 @@ void Playing::pause() {
 void Playing::update() noexcept { ctx_->do_update(); }
 
 void Paused::entry() noexcept {
-  sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Paused::on_timer);
+  sigc::slot<bool()> timer_slot = sigc::mem_fun(*this, &Paused::on_timer);
   timer_connection_ = Glib::signal_timeout().connect(timer_slot, /* milliseconds */ 200);
   spdlog::debug("mpd: Paused: enabled 200 ms periodic timer.");
 }
@@ -257,7 +258,7 @@ void Paused::stop() {
 void Paused::update() noexcept { ctx_->do_update(); }
 
 void Stopped::entry() noexcept {
-  sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Stopped::on_timer);
+  sigc::slot<bool()> timer_slot = sigc::mem_fun(*this, &Stopped::on_timer);
   timer_connection_ = Glib::signal_timeout().connect(timer_slot, /* milliseconds */ 200);
   spdlog::debug("mpd: Stopped: enabled 200 ms periodic timer.");
 }
@@ -337,7 +338,7 @@ bool Disconnected::arm_timer(int interval) noexcept {
 
   // register timer
   last_interval_ = interval;
-  sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Disconnected::on_timer);
+  sigc::slot<bool()> timer_slot = sigc::mem_fun(*this, &Disconnected::on_timer);
   timer_connection_ = Glib::signal_timeout().connect_seconds(timer_slot, interval);
   spdlog::debug("mpd: Disconnected: enabled {}s interval timer.", interval);
   return false;

@@ -1,9 +1,6 @@
 #pragma once
 
-#include <fmt/format.h>
-#include <gdk/gdk.h>
-#include <gdk/gdkwayland.h>
-#include <wayland-client.h>
+#include <gdk/wayland/gdkwayland.h>
 
 #include "bar.hpp"
 #include "config.hpp"
@@ -33,6 +30,7 @@ class Client {
 
  private:
   Client() = default;
+  Glib::RefPtr<Gio::ListModel> monitors_;
   const std::string getStyle(const std::string &style, std::optional<Appearance> appearance);
   void bindInterfaces();
   void handleOutput(struct waybar_output &output);
@@ -50,7 +48,6 @@ class Client {
   void handleMonitorRemoved(Glib::RefPtr<Gdk::Monitor> monitor);
   void handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> monitor);
 
-  Glib::RefPtr<Gtk::StyleContext> style_context_;
   Glib::RefPtr<Gtk::CssProvider> css_provider_;
   std::unique_ptr<Portal> portal;
   std::list<struct waybar_output> outputs_;

@@ -1,5 +1,6 @@
 #include "modules/sway/mode.hpp"
 
+#include <glibmm/markup.h>
 #include <spdlog/spdlog.h>
 
 namespace waybar::modules::sway {
@@ -40,13 +41,13 @@ void Mode::onEvent(const struct Ipc::ipc_response& res) {
 
 auto Mode::update() -> void {
   if (mode_.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
     label_.set_markup(fmt::format(fmt::runtime(format_), mode_));
     if (tooltipEnabled()) {
       label_.set_tooltip_text(mode_);
     }
-    event_box_.show();
+    label_.show();
   }
   // Call parent update
   ALabel::update();

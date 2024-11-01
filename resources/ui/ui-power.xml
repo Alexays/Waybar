@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+    <requires lib="gtk" version="4.0"/>
+    <menu id='waybar-power-menu'>
+        <section>
+            <item>
+                <attribute name='label' translatable='yes'>Suspend</attribute>
+                <attribute name='action'>ui-power.doAction</attribute>
+                <attribute name='target'>loginctl suspend</attribute>
+            </item>
+            <item>
+                <attribute name='label' translatable='yes'>Hibernate</attribute>
+                <attribute name='action'>ui-power.doAction</attribute>
+                <attribute name='target'>loginctl hibernate</attribute>
+            </item>
+            <item>
+                <attribute name='label' translatable='yes'>Shutdown</attribute>
+                <attribute name='action'>ui-power.doAction</attribute>
+                <attribute name='target'>loginctl poweroff</attribute>
+            </item>
+        </section>
+        <section>
+            <item>
+                <attribute name='label' translatable='yes'>Reboot</attribute>
+                <attribute name='action'>ui-power.doAction</attribute>
+                <attribute name='target'>loginctl reboot</attribute>
+            </item>
+        </section>
+    </menu>
+
+    <object class="GtkMenuButton" id="ui-power">
+        <property name="menu-model">waybar-power-menu</property>
+        <property name="tooltip-text" translatable="yes">Power menu</property>
+        <property name="label">⏻</property>
+        <property name="visible">true</property>
+        <property name="always-show-arrow">false</property>
+        <property name="primary">true</property>
+        <property name="has-frame">false</property>
+        <property name="can-shrink">true</property>
+        <property name="direction">GTK_ARROW_NONE</property>
+        <property name="css-classes">label</property>
+    </object>
+</interface>

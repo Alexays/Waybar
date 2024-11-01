@@ -19,7 +19,7 @@ class Portal : private DBus::Proxy {
   void refreshAppearance();
   Appearance getAppearance();
 
-  typedef sigc::signal<void, Appearance> type_signal_appearance_changed;
+  typedef sigc::signal<void(Appearance)> type_signal_appearance_changed;
   type_signal_appearance_changed signal_appearance_changed() { return m_signal_appearance_changed; }
 
  private:

@@ -116,8 +116,5 @@ int main(int argc, char* argv[]) {
   } catch (const std::exception& e) {
     spdlog::error("{}", e.what());
     return 1;
-  } catch (const Glib::Exception& e) {
-    spdlog::error("{}", static_cast<std::string>(e.what()));
-    return 1;
   }
 }

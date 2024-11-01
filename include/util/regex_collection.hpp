@@ -5,7 +5,6 @@
 #include <functional>
 #include <regex>
 #include <string>
-#include <utility>
 
 namespace waybar::util {
 

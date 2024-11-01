@@ -1,13 +1,10 @@
 #include "bar.hpp"
 
-#include <gtk-layer-shell.h>
+#include <gtk4-layer-shell.h>
 #include <spdlog/spdlog.h>
-
-#include <type_traits>
 
 #include "client.hpp"
 #include "factory.hpp"
-#include "group.hpp"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -90,26 +87,28 @@ void from_json(const Json::Value& j, bar_mode& m) {
 /* Deserializer for enum Gtk::PositionType */
 void from_json(const Json::Value& j, Gtk::PositionType& pos) {
   if (j == "left") {
-    pos = Gtk::POS_LEFT;
+    pos = Gtk::PositionType::LEFT;
   } else if (j == "right") {
-    pos = Gtk::POS_RIGHT;
+    pos = Gtk::PositionType::RIGHT;
   } else if (j == "top") {
-    pos = Gtk::POS_TOP;
+    pos = Gtk::PositionType::TOP;
   } else if (j == "bottom") {
-    pos = Gtk::POS_BOTTOM;
+    pos = Gtk::PositionType::BOTTOM;
   }
 }
 
 Glib::ustring to_string(Gtk::PositionType pos) {
   switch (pos) {
-    case Gtk::POS_LEFT:
+    case Gtk::PositionType::LEFT:
       return "left";
-    case Gtk::POS_RIGHT:
+    case Gtk::PositionType::RIGHT:
       return "right";
-    case Gtk::POS_TOP:
+    case Gtk::PositionType::TOP:
       return "top";
-    case Gtk::POS_BOTTOM:
+    case Gtk::PositionType::BOTTOM:
       return "bottom";
+    default:
+      return "";
   }
   throw std::runtime_error("Invalid Gtk::PositionType");
 }
@@ -133,31 +132,32 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
       surface(nullptr),
-      window{Gtk::WindowType::WINDOW_TOPLEVEL},
+      window(),
       x_global(0),
       y_global(0),
       margins_{.top = 0, .right = 0, .bottom = 0, .left = 0},
-      left_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      center_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      right_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+      left_(Gtk::Orientation::HORIZONTAL, 0),
+      center_(Gtk::Orientation::HORIZONTAL, 0),
+      right_(Gtk::Orientation::HORIZONTAL, 0),
+      box_() {
   window.set_title("waybar");
   window.set_name("waybar");
   window.set_decorated(false);
+  window.set_child(box_);
   window.get_style_context()->add_class(output->name);
   window.get_style_context()->add_class(config["name"].asString());
 
   from_json(config["position"], position);
-  orientation = (position == Gtk::POS_LEFT || position == Gtk::POS_RIGHT)
-                    ? Gtk::ORIENTATION_VERTICAL
-                    : Gtk::ORIENTATION_HORIZONTAL;
+  orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
+                    ? Gtk::Orientation::VERTICAL
+                    : Gtk::Orientation::HORIZONTAL;
 
   window.get_style_context()->add_class(to_string(position));
 
-  left_ = Gtk::Box(orientation, 0);
-  center_ = Gtk::Box(orientation, 0);
-  right_ = Gtk::Box(orientation, 0);
-  box_ = Gtk::Box(orientation, 0);
+  left_.set_orientation(orientation);
+  center_.set_orientation(orientation);
+  right_.set_orientation(orientation);
+  box_.set_orientation(orientation);
 
   left_.get_style_context()->add_class("modules-left");
   center_.get_style_context()->add_class("modules-center");
@@ -218,7 +218,6 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     margins_ = {.top = gaps, .right = gaps, .bottom = gaps, .left = gaps};
   }
 
-  window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Bar::onConfigure));
   output->monitor->property_geometry().signal_changed().connect(
       sigc::mem_fun(*this, &Bar::onOutputGeometryChanged));
 
@@ -258,7 +257,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     setVisible(false);
   }
 
-  window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
+  window.signal_map().connect(sigc::mem_fun(*this, &Bar::onMap));
 
 #if HAVE_SWAY
   if (auto ipc = config["ipc"]; ipc.isBool() && ipc.asBool()) {
@@ -278,16 +277,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 #endif
 
   setupWidgets();
-  window.show_all();
+  window.show();
 
   if (spdlog::should_log(spdlog::level::debug)) {
-    // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
-    char* gtk_tree = gtk_style_context_to_string(
-        window.get_style_context()->gobj(),
-        (GtkStyleContextPrintFlags)(GTK_STYLE_CONTEXT_PRINT_RECURSE |
-                                    GTK_STYLE_CONTEXT_PRINT_SHOW_STYLE));
-    spdlog::debug("GTK widget tree:\n{}", gtk_tree);
-    g_free(gtk_tree);
+    auto gtk_tree{window.get_style_context()->to_string(Gtk::StyleContext::PrintFlags::RECURSE |
+                                                        Gtk::StyleContext::PrintFlags::SHOW_STYLE)};
+    spdlog::debug("GTK widget tree:\n{}", gtk_tree.c_str());
   }
 }
 
@@ -345,18 +340,13 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
    * gtk-layer-shell schedules a commit on the next frame event in GTK, but this could fail in
    * certain scenarios, such as fully occluded bar.
    */
-  gtk_layer_try_force_commit(gtk_window);
   wl_display_flush(Client::inst()->wl_display);
 }
 
 void waybar::Bar::setPassThrough(bool passthrough) {
-  auto gdk_window = window.get_window();
-  if (gdk_window) {
-    Cairo::RefPtr<Cairo::Region> region;
-    if (passthrough) {
-      region = Cairo::Region::create();
-    }
-    gdk_window->input_shape_combine_region(region, 0, 0);
+  if (passthrough && gdk_surface_) {
+    auto region{Cairo::Region::create()};
+    gdk_surface_->set_input_region(region);
   }
 }
 
@@ -364,18 +354,18 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   std::array<gboolean, GTK_LAYER_SHELL_EDGE_ENTRY_NUMBER> anchors;
   anchors.fill(TRUE);
 
-  auto orientation = (position == Gtk::POS_LEFT || position == Gtk::POS_RIGHT)
-                         ? Gtk::ORIENTATION_VERTICAL
-                         : Gtk::ORIENTATION_HORIZONTAL;
+  auto orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
+                         ? Gtk::Orientation::VERTICAL
+                         : Gtk::Orientation::HORIZONTAL;
 
   switch (position) {
-    case Gtk::POS_LEFT:
+    case Gtk::PositionType::LEFT:
       anchors[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
       break;
-    case Gtk::POS_RIGHT:
+    case Gtk::PositionType::RIGHT:
       anchors[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
       break;
-    case Gtk::POS_BOTTOM:
+    case Gtk::PositionType::BOTTOM:
       anchors[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
       break;
     default: /* Gtk::POS_TOP */
@@ -387,10 +377,10 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   // otherwise the bar will use all space
   uint32_t configured_width = config["width"].isUInt() ? config["width"].asUInt() : 0;
   uint32_t configured_height = config["height"].isUInt() ? config["height"].asUInt() : 0;
-  if (orientation == Gtk::ORIENTATION_VERTICAL && configured_height > 1) {
+  if (orientation == Gtk::Orientation::VERTICAL && configured_height > 1) {
     anchors[GTK_LAYER_SHELL_EDGE_TOP] = FALSE;
     anchors[GTK_LAYER_SHELL_EDGE_BOTTOM] = FALSE;
-  } else if (orientation == Gtk::ORIENTATION_HORIZONTAL && configured_width > 1) {
+  } else if (orientation == Gtk::Orientation::HORIZONTAL && configured_width > 1) {
     anchors[GTK_LAYER_SHELL_EDGE_LEFT] = FALSE;
     anchors[GTK_LAYER_SHELL_EDGE_RIGHT] = FALSE;
   }
@@ -401,14 +391,14 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   }
 }
 
-void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
+void waybar::Bar::onMap() {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto* gdk_window = window.get_window()->gobj();
-  surface = gdk_wayland_window_get_wl_surface(gdk_window);
-  configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
-
+  gdk_surface_ = window.get_surface();
+  gdk_surface_->signal_layout().connect(sigc::mem_fun(*this, &Bar::onConfigure));
+  surface = gdk_wayland_surface_get_wl_surface(gdk_surface_->gobj());
+  configureGlobalOffset(gdk_surface_->get_width(), gdk_surface_->get_height());
   setPassThrough(passthrough_);
 }
 
@@ -493,8 +483,8 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto id_name = ref.substr(6, hash_pos - 6);
           auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
 
-          auto vertical = (group != nullptr ? group->getBox().get_orientation()
-                                            : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
+          auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
+                          Gtk::Orientation::VERTICAL;
 
           auto* group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
           getModules(factory, ref, group_module);
@@ -533,23 +523,42 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
 }
 
 auto waybar::Bar::setupWidgets() -> void {
-  window.add(box_);
-
   bool expand_left = config["expand-left"].isBool() ? config["expand-left"].asBool() : false;
   bool expand_center = config["expand-center"].isBool() ? config["expand-center"].asBool() : false;
   bool expand_right = config["expand-right"].isBool() ? config["expand-right"].asBool() : false;
   bool no_center = config["no-center"].isBool() ? config["no-center"].asBool() : false;
 
-  box_.pack_start(left_, expand_left, expand_left);
+  box_.set_shrink_center_last(true);
+  if (expand_left) {
+    setExpand(left_);
+  }
+  if (expand_center) {
+    setExpand(center_);
+  }
+  if (expand_right) {
+    setExpand(right_);
+  }
+  box_.set_start_widget(left_);
   if (!no_center) {
     if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
       box_.set_center_widget(center_);
     } else {
-      spdlog::error("No fixed center_");
-      box_.pack_start(center_, true, expand_center);
+      right_.prepend(center_);
+      if (!expand_center) {
+        // If we don't want a fixed center, and center isn't set to "expand", then
+        // we actually do want center to expand, but not fill, so that it uses up all
+        // the space in the middle
+        if (box_.get_orientation() == Gtk::Orientation::HORIZONTAL) {
+          center_.set_halign(Gtk::Align::CENTER);
+          center_.set_hexpand(true);
+        } else {
+          center_.set_valign(Gtk::Align::CENTER);
+          center_.set_vexpand(true);
+        }
+      }
     }
   }
-  box_.pack_end(right_, expand_right, expand_right);
+  box_.set_end_widget(right_);
 
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
@@ -563,23 +572,15 @@ auto waybar::Bar::setupWidgets() -> void {
   }
   getModules(factory, "modules-right");
 
-  for (auto const& module : modules_left_) {
-    left_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
-  }
+  addModulesToBox(left_, modules_left_);
 
   if (!no_center) {
-    for (auto const& module : modules_center_) {
-      center_.pack_start(*module, false, false);
-    }
+    addModulesToBox(center_, modules_center_);
   }
-
-  std::reverse(modules_right_.begin(), modules_right_.end());
-  for (auto const& module : modules_right_) {
-    right_.pack_end(*module, false, false);
-  }
+  addModulesToBox(right_, modules_right_);
 }
 
-void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
+void waybar::Bar::onConfigure(int width, int height) {
   /*
    * GTK wants new size for the window.
    * Actual resizing and management of the exclusve zone is handled within the gtk-layer-shell
@@ -588,20 +589,20 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
    * Note: forced resizing to a window smaller than required by GTK would not work with
    * gtk-layer-shell.
    */
-  if (orientation == Gtk::ORIENTATION_VERTICAL) {
-    if (width_ > 1 && ev->width > static_cast<int>(width_)) {
-      spdlog::warn(MIN_WIDTH_MSG, width_, ev->width);
+  if (orientation == Gtk::Orientation::VERTICAL) {
+    if (width_ > 1 && width > static_cast<int>(width_)) {
+      spdlog::warn(MIN_WIDTH_MSG, width_, width);
     }
   } else {
-    if (height_ > 1 && ev->height > static_cast<int>(height_)) {
-      spdlog::warn(MIN_HEIGHT_MSG, height_, ev->height);
+    if (height_ > 1 && height > static_cast<int>(height_)) {
+      spdlog::warn(MIN_HEIGHT_MSG, height_, height);
     }
   }
-  width_ = ev->width;
-  height_ = ev->height;
+  width_ = width;
+  height_ = height;
 
-  configureGlobalOffset(ev->width, ev->height);
-  spdlog::info(BAR_SIZE_MSG, ev->width, ev->height, output->name);
+  configureGlobalOffset(width, height);
+  spdlog::info(BAR_SIZE_MSG, width, height, output->name);
 }
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {
@@ -609,28 +610,28 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
   int x;
   int y;
   switch (position) {
-    case Gtk::POS_BOTTOM:
+    case Gtk::PositionType::BOTTOM:
       if (width + margins_.left + margins_.right >= monitor_geometry.width)
         x = margins_.left;
       else
         x = (monitor_geometry.width - width) / 2;
       y = monitor_geometry.height - height - margins_.bottom;
       break;
-    case Gtk::POS_LEFT:
+    case Gtk::PositionType::LEFT:
       x = margins_.left;
       if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
         y = margins_.top;
       else
         y = (monitor_geometry.height - height) / 2;
       break;
-    case Gtk::POS_RIGHT:
+    case Gtk::PositionType::RIGHT:
       x = monitor_geometry.width - width - margins_.right;
       if (height + margins_.top + margins_.bottom >= monitor_geometry.height)
         y = margins_.top;
       else
         y = (monitor_geometry.height - height) / 2;
       break;
-    default: /* Gtk::POS_TOP */
+    default: /* Gtk::PositionType::TOP */
       if (width + margins_.left + margins_.right >= monitor_geometry.width)
         x = margins_.left;
       else
@@ -645,4 +646,22 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
 
 void waybar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
+}
+
+void waybar::Bar::setExpand(Gtk::Widget& widget) {
+  if (box_.get_orientation() == Gtk::Orientation::HORIZONTAL) {
+    widget.set_hexpand(true);
+  } else {
+    widget.set_vexpand(true);
+  }
+}
+
+void waybar::Bar::addModulesToBox(Gtk::Box& box,
+                                  std::vector<std::shared_ptr<waybar::AModule>>& modules) {
+  for (auto const& module : modules) {
+    if (module->expandEnabled()) {
+      setExpand(*module);
+    }
+    box.append(*module);
+  }
 }

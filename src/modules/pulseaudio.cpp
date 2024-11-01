@@ -1,21 +1,22 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "pulseaudio", id, "{volume}%") {
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
+#include <fmt/format.h>
 
+namespace waybar::modules {
+
+Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
+    : ALabel(config, "pulseaudio", id, "{volume}%", 60, false, false, true) {
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+bool Pulseaudio::handleScroll(double dx, double dy) {
   // change the pulse volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
+    return AModule::handleScroll(dx, dy);
   }
-  auto dir = AModule::getScrollDir(e);
+  auto dir{AModule::getScrollDir(controllScroll_->get_current_event())};
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
@@ -145,3 +146,5 @@ auto waybar::modules::Pulseaudio::update() -> void {
   // Call parent update
   ALabel::update();
 }
+
+}  // namespace waybar::modules

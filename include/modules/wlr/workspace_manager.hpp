@@ -1,16 +1,8 @@
 #pragma once
 
-#include <fmt/format.h>
 #include <gtkmm/button.h>
-#include <gtkmm/image.h>
 #include <gtkmm/label.h>
 
-#include <functional>
-#include <map>
-#include <memory>
-#include <vector>
-
-#include "AModule.hpp"
 #include "bar.hpp"
 #include "ext-workspace-unstable-v1-client-protocol.h"
 
@@ -41,7 +33,7 @@ class Workspace {
   auto handle_duplicate() -> void;
 
   auto handle_done() -> void;
-  auto handle_clicked(GdkEventButton *bt) -> bool;
+  void handleClick(int n_press, double dx, double dy);
   auto show() -> void;
   auto hide() -> void;
   auto get_button_ref() -> Gtk::Button & { return button_; }
@@ -75,6 +67,7 @@ class Workspace {
   bool persistent_ = false;
 
   Gtk::Button button_;
+  Glib::RefPtr<Gtk::GestureClick> const controllClick_;
   Gtk::Box content_;
   Gtk::Label label_;
 };
@@ -133,6 +126,7 @@ class WorkspaceManager : public AModule {
   WorkspaceManager(const std::string &id, const waybar::Bar &bar, const Json::Value &config);
   ~WorkspaceManager() override;
   auto update() -> void override;
+  Gtk::Widget &root() override;
 
   auto all_outputs() const -> bool { return all_outputs_; }
   auto active_only() const -> bool { return active_only_; }

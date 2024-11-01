@@ -1,14 +1,8 @@
 #include "modules/dwl/tags.hpp"
 
-#include <gtkmm/button.h>
-#include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
-#include <wayland-client.h>
-
-#include <algorithm>
 
 #include "client.hpp"
-#include "dwl-ipc-unstable-v2-client-protocol.h"
 
 #define TAG_INACTIVE 0
 #define TAG_ACTIVE 1
@@ -19,7 +13,7 @@ namespace waybar::modules::dwl {
 /* dwl stuff */
 wl_array tags, layouts;
 
-static uint num_tags = 0;
+static uint num_tags{0};
 
 static void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
@@ -115,11 +109,10 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
 
   // Default to 9 tags, cap at 32
-  const uint32_t num_tags =
-      config["num-tags"].isUInt() ? std::min<uint32_t>(32, config_["num-tags"].asUInt()) : 9;
+  const uint32_t num_tags{
+      config["num-tags"].isUInt() ? std::min<uint32_t>(32, config_["num-tags"].asUInt()) : 9};
 
   std::vector<std::string> tag_labels(num_tags);
   for (uint32_t tag = 0; tag < num_tags; ++tag) {
@@ -135,13 +128,17 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   uint32_t i = 1;
   for (const auto &tag_label : tag_labels) {
     Gtk::Button &button = buttons_.emplace_back(tag_label);
-    button.set_relief(Gtk::RELIEF_NONE);
-    box_.pack_start(button, false, false, 0);
+    auto rightClick{Gtk::GestureClick::create()};
+    rightClick->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    rightClick->set_button(3u);
+    button.add_controller(rightClick);
+    button.set_has_frame(false);
+    box_.prepend(button);
     if (!config_["disable-click"].asBool()) {
       button.signal_clicked().connect(
           sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), i));
-      button.signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
+      rightClick->signal_released().connect(
+          sigc::bind(sigc::mem_fun(*this, &Tags::handle_secondary_clicked), i));
     }
     button.show();
     i <<= 1;
@@ -170,12 +167,9 @@ void Tags::handle_primary_clicked(uint32_t tag) {
   zdwl_ipc_output_v2_set_tags(output_status_, tag, 1);
 }
 
-bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
-  if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
-    if (!output_status_) return true;
-    zdwl_ipc_output_v2_set_tags(output_status_, num_tags ^ tag, 0);
-  }
-  return true;
+void Tags::handle_secondary_clicked(int n_press, double dx, double dy, uint32_t tag) {
+  if (!output_status_) return;
+  zdwl_ipc_output_v2_set_tags(output_status_, num_tags ^ tag, 0);
 }
 
 void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
@@ -199,5 +193,7 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
     button.get_style_context()->remove_class("urgent");
   }
 }
+
+Gtk::Widget &Tags::root() { return box_; };
 
 } /* namespace waybar::modules::dwl */

@@ -2,8 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <string>
-
 namespace waybar::modules::sway {
 Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
     : ALabel(config, "scratchpad", id,
@@ -30,7 +28,7 @@ Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
 }
 auto Scratchpad::update() -> void {
   if (count_ || show_empty_) {
-    event_box_.show();
+    label_.show();
     label_.set_markup(
         fmt::format(fmt::runtime(format_),
                     fmt::arg("icon", getIcon(count_, "", config_["format-icons"].size())),
@@ -39,7 +37,7 @@ auto Scratchpad::update() -> void {
       label_.set_tooltip_markup(tooltip_text_);
     }
   } else {
-    event_box_.hide();
+    label_.hide();
   }
   if (count_) {
     label_.get_style_context()->remove_class("empty");

@@ -2,10 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-#include <cctype>
-#include <string>
-
 namespace waybar::modules::sway {
 
 // Helper function to assign a number to a workspace, just like sway. In fact
@@ -42,7 +38,8 @@ int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
 }
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
+    : AModule(config, "workspaces", id, false,
+              !config["disable-scroll"].asBool() || config["enable-bar-scroll"].asBool()),
       bar_(bar),
       box_(bar.orientation, 0) {
   if (config["format-icons"]["high-priority-named"].isArray()) {
@@ -55,7 +52,12 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+
+  if (!config["disable-scroll"].asBool() || config["enable-bar-scroll"].asBool()) {
+    controllScroll_->signal_scroll().connect(sigc::mem_fun(*this, &Workspaces::handleScroll), true);
+    controllScroll_->set_propagation_phase(Gtk::PropagationPhase::BUBBLE);
+  }
+
   if (config_["format-window-separator"].isString()) {
     m_formatWindowSeperator = config_["format-window-separator"].asString();
   } else {
@@ -74,11 +76,6 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
   ipc_.sendCmd(IPC_GET_TREE);
-  if (config["enable-bar-scroll"].asBool()) {
-    auto &window = const_cast<Bar &>(bar_).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
-  }
   // Launch worker
   ipc_.setWorker([this] {
     try {
@@ -87,6 +84,8 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
       spdlog::error("Workspaces: {}", e.what());
     }
   });
+
+  AModule::bindEvents(box_);
 }
 
 void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
@@ -102,10 +101,10 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
     try {
       {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto payload = parser_.parse(res.payload);
+        const auto payload{parser_.parse(res.payload)};
         workspaces_.clear();
         std::vector<Json::Value> outputs;
-        bool alloutputs = config_["all-outputs"].asBool();
+        const bool alloutputs{config_["all-outputs"].asBool()};
         std::copy_if(payload["nodes"].begin(), payload["nodes"].end(), std::back_inserter(outputs),
                      [&](const auto &output) {
                        if (alloutputs && output["name"].asString() != "__i3") {
@@ -292,7 +291,14 @@ auto Workspaces::update() -> void {
     }
     auto &button = bit == buttons_.end() ? addButton(*it) : bit->second;
     if (needReorder) {
-      box_.reorder_child(button, it - workspaces_.begin());
+      std::unordered_map<std::string, Gtk::Button>::const_iterator prevBit;
+
+      if (it != workspaces_.begin()) prevBit = buttons_.find((*(it - 1))["name"].asString());
+
+      if (prevBit != buttons_.end())
+        box_.reorder_child_after(button, prevBit->second);
+      else
+        box_.reorder_child_at_start(button);
     }
     bool noNodes = (*it)["nodes"].empty() && (*it)["floating_nodes"].empty();
     if (hasFlag((*it), "focused")) {
@@ -344,7 +350,7 @@ auto Workspaces::update() -> void {
           fmt::arg("output", (*it)["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
+      static_cast<Gtk::Label *>(button.get_child())->set_markup(output);
     } else {
       button.set_label(output);
     }
@@ -357,11 +363,13 @@ auto Workspaces::update() -> void {
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   auto pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
   auto &&button = pair.first->second;
-  box_.pack_start(button, false, false, 0);
+  box_.append(button);
   button.set_name("sway-workspace-" + node["name"].asString());
-  button.set_relief(Gtk::RELIEF_NONE);
+  button.set_has_frame(false);
   if (!config_["disable-click"].asBool()) {
-    button.signal_pressed().connect([this, node] {
+    auto controlClick{Gtk::GestureClick::create()};
+    button.add_controller(controlClick);
+    controlClick->signal_pressed().connect([this, node](int n_press, double dx, double dy) {
       try {
         if (node["target_output"].isString()) {
           ipc_.sendCmd(IPC_COMMAND,
@@ -379,12 +387,14 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
         spdlog::error("Workspaces: {}", e.what());
       }
     });
+    controlClick->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    controlClick->set_button(1u);
   }
   return button;
 }
 
 std::string Workspaces::getIcon(const std::string &name, const Json::Value &node) {
-  std::vector<std::string> keys = {"high-priority-named", "urgent", "focused", name, "default"};
+  std::vector<std::string> keys{"high-priority-named", "urgent", "focused", name, "default"};
   for (auto const &key : keys) {
     if (key == "high-priority-named") {
       auto it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
@@ -417,27 +427,28 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
   return name;
 }
 
-bool Workspaces::handleScroll(GdkEventScroll *e) {
-  if (gdk_event_get_pointer_emulated((GdkEvent *)e) != 0) {
+bool Workspaces::handleScroll(double dx, double dy) {
+  auto currEvent{controllScroll_->get_current_event()};
+  if (currEvent->get_pointer_emulated()) {
     /**
      * Ignore emulated scroll events on window
      */
     return false;
   }
-  auto dir = AModule::getScrollDir(e);
+  auto dir{AModule::getScrollDir(currEvent)};
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
   std::string name;
   {
-    bool alloutputs = config_["all-outputs"].asBool();
+    const bool alloutputs{config_["all-outputs"].asBool()};
     std::lock_guard<std::mutex> lock(mutex_);
     auto it =
         std::find_if(workspaces_.begin(), workspaces_.end(), [alloutputs](const auto &workspace) {
           if (alloutputs) {
             return hasFlag(workspace, "focused");
           }
-          bool noNodes = workspace["nodes"].empty() && workspace["floating_nodes"].empty();
+          const bool noNodes{workspace["nodes"].empty() && workspace["floating_nodes"].empty()};
           return hasFlag(workspace, "visible") || (workspace["output"].isString() && noNodes);
         });
     if (it == workspaces_.end()) {
@@ -512,5 +523,7 @@ void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
     button.show();
   }
 }
+
+Gtk::Widget &Workspaces::root() { return box_; };
 
 }  // namespace waybar::modules::sway

@@ -20,11 +20,7 @@
 
 #include <fcntl.h>
 #include <glibmm/main.h>
-#include <linux/rfkill.h>
 #include <spdlog/spdlog.h>
-#include <unistd.h>
-
-#include <cerrno>
 
 waybar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type) : rfkill_type_(rfkill_type) {
   fd_ = open("/dev/rfkill", O_RDONLY);
@@ -39,8 +35,9 @@ waybar::util::Rfkill::Rfkill(const enum rfkill_type rfkill_type) : rfkill_type_(
     fd_ = -1;
     return;
   }
-  Glib::signal_io().connect(sigc::mem_fun(*this, &Rfkill::on_event), fd_,
-                            Glib::IO_IN | Glib::IO_ERR | Glib::IO_HUP);
+  Glib::signal_io().connect(
+      sigc::mem_fun(*this, &Rfkill::on_event), fd_,
+      Glib::IOCondition::IO_IN | Glib::IOCondition::IO_ERR | Glib::IOCondition::IO_HUP);
 }
 
 waybar::util::Rfkill::~Rfkill() {
@@ -50,7 +47,7 @@ waybar::util::Rfkill::~Rfkill() {
 }
 
 bool waybar::util::Rfkill::on_event(Glib::IOCondition cond) {
-  if (cond & Glib::IO_IN) {
+  if ((cond & Glib::IOCondition::IO_IN) == Glib::IOCondition::IO_IN) {
     struct rfkill_event event;
     ssize_t len;
 

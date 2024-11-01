@@ -2,9 +2,8 @@
 
 #include <json/value.h>
 
-#include <string>
-
 #include "gtkmm/box.h"
+#include "gtkmm/icontheme.h"
 #include "gtkmm/image.h"
 #include "gtkmm/revealer.h"
 #include "util/pipewire/privacy_node_info.hpp"
@@ -14,7 +13,7 @@ using waybar::util::PipewireBackend::PrivacyNodeType;
 
 namespace waybar::modules::privacy {
 
-class PrivacyItem : public Gtk::Revealer {
+class PrivacyItem final : public Gtk::Revealer {
  public:
   PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
               std::list<PrivacyNodeInfo *> *nodes, const std::string &pos, const uint icon_size,
@@ -41,6 +40,7 @@ class PrivacyItem : public Gtk::Revealer {
 
   Gtk::Box box_;
   Gtk::Image icon_;
+  Glib::RefPtr<Gtk::IconTheme> gtkTheme_;
 
   void update_tooltip();
 };

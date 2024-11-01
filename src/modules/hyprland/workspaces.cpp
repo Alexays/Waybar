@@ -22,7 +22,6 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     m_box.get_style_context()->add_class(id);
   }
   m_box.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(m_box);
 
   if (!gIPC) {
     gIPC = std::make_unique<IPC>();
@@ -100,9 +99,9 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
   // create new workspace
   m_workspaces.emplace_back(std::make_unique<Workspace>(workspace_data, *this, clients_data));
   Gtk::Button &newWorkspaceButton = m_workspaces.back()->button();
-  m_box.pack_start(newWorkspaceButton, false, false);
+  m_box.append(newWorkspaceButton);
   sortWorkspaces();
-  newWorkspaceButton.show_all();
+  newWorkspaceButton.show();
 }
 
 void Workspaces::createWorkspacesToCreate() {
@@ -783,7 +782,10 @@ void Workspaces::sortWorkspaces() {
             });
 
   for (size_t i = 0; i < m_workspaces.size(); ++i) {
-    m_box.reorder_child(m_workspaces[i]->button(), i);
+    if (i == 0)
+      m_box.reorder_child_at_start(m_workspaces[i]->button());
+    else
+      m_box.reorder_child_after(m_workspaces[i]->button(), m_workspaces[i - 1]->button());
   }
 }
 
@@ -904,5 +906,7 @@ int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
   }
   return 0;
 }
+
+Gtk::Widget &Workspaces::root() { return m_box; }
 
 }  // namespace waybar::modules::hyprland

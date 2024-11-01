@@ -1,14 +1,10 @@
 #pragma once
 
 #include <json/value.h>
-#include <pulse/context.h>
 #include <pulse/introspect.h>
 #include <pulse/thread-mainloop.h>
-#include <pulse/volume.h>
 
 #include <functional>
-#include <memory>
-#include <string>
 
 #include "util/backend_common.hpp"
 

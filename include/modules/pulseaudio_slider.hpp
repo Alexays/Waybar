@@ -11,7 +11,7 @@ enum class PulseaudioSliderTarget {
   Source,
 };
 
-class PulseaudioSlider : public ASlider {
+class PulseaudioSlider final : public ASlider {
  public:
   PulseaudioSlider(const std::string&, const Json::Value&);
   virtual ~PulseaudioSlider() = default;

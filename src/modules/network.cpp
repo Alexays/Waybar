@@ -1,22 +1,20 @@
 #include "modules/network.hpp"
 
+#include <arpa/inet.h>
+#include <glibmm/markup.h>
 #include <linux/if.h>
+#include <linux/nl80211.h>
+#include <netlink/genl/ctrl.h>
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
 
-#include <cassert>
 #include <fstream>
-#include <optional>
-#include <sstream>
 
 #include "util/format.hpp"
-#ifdef WANT_RFKILL
-#include "util/rfkill.hpp"
-#endif
 
 namespace {
 using namespace waybar::util;
-constexpr const char *DEFAULT_FORMAT = "{ifname}";
+constexpr const char *DEFAULT_FORMAT{"{ifname}"};
 }  // namespace
 
 constexpr const char *NETDEV_FILE =
@@ -316,7 +314,7 @@ auto waybar::modules::Network::update() -> void {
   }
   getState(signal_strength_);
 
-  auto text = fmt::format(
+  const Glib::ustring text = fmt::format(
       fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
       fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
       fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
@@ -338,9 +336,9 @@ auto waybar::modules::Network::update() -> void {
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
-      event_box_.hide();
+      label_.hide();
     } else {
-      event_box_.show();
+      label_.show();
     }
   }
   if (tooltipEnabled()) {
@@ -348,7 +346,7 @@ auto waybar::modules::Network::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      auto tooltip_text = fmt::format(
+      const Glib::ustring tooltip_text = fmt::format(
           fmt::runtime(tooltip_format), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
           fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
           fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
@@ -456,7 +454,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       if (!is_del_event && ifi->ifi_index == net->ifid_) {
         // Update interface information
         if (net->ifname_.empty() && ifname != NULL) {
-          std::string new_ifname(ifname, ifname_len);
+          std::string new_ifname{ifname, ifname_len};
           net->ifname_ = new_ifname;
         }
         if (carrier.has_value()) {
@@ -478,7 +476,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         }
       } else if (!is_del_event && net->ifid_ == -1) {
         // Checking if it's an interface we care about.
-        std::string new_ifname(ifname, ifname_len);
+        std::string new_ifname{ifname, ifname_len};
         if (net->checkInterface(new_ifname)) {
           spdlog::debug("network: selecting new interface {}/{}", new_ifname, ifi->ifi_index);
 
@@ -650,7 +648,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
                         temp_idx, priority);
 
           /* Ask ifname associated with temp_idx as well as carrier status */
-          struct ifinfomsg ifinfo_hdr = {
+          struct ifinfomsg ifinfo_hdr{
               .ifi_family = AF_UNSPEC,
               .ifi_index = temp_idx,
           };
@@ -694,7 +692,7 @@ void waybar::modules::Network::askForStateDump(void) {
    * messages. handleEventsDone() is called when a dump is done. */
   if (dump_in_progress_) return;
 
-  struct rtgenmsg rt_hdr = {
+  struct rtgenmsg rt_hdr{
       .rtgen_family = AF_UNSPEC,
   };
 

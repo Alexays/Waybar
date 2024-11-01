@@ -1,3 +1,7 @@
+#include <fmt/format.h>
+
+#include <numeric>
+
 #include "modules/cpu_frequency.hpp"
 
 // In the 80000 version of fmt library authors decided to optimize imports
@@ -33,9 +37,9 @@ auto waybar::modules::CpuFrequency::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
-    event_box_.show();
+    label_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("icon", getIcon(avg_frequency, icons)));

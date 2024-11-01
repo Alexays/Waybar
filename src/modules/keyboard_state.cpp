@@ -1,20 +1,12 @@
 #include "modules/keyboard_state.hpp"
 
-#include <errno.h>
 #include <spdlog/spdlog.h>
-#include <string.h>
-
-#include <filesystem>
 
 extern "C" {
 #include <fcntl.h>
-#include <libinput.h>
-#include <linux/input-event-codes.h>
+#include <libevdev/libevdev.h>
 #include <poll.h>
 #include <sys/inotify.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 }
 
 class errno_error : public std::runtime_error {
@@ -78,8 +70,9 @@ auto supportsLockStates(const libevdev* dev) -> bool {
          libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
 }
 
-waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
-                                              const Json::Value& config)
+namespace waybar::modules {
+
+KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
       box_(bar.orientation, 0),
       numlock_label_(""),
@@ -119,21 +112,20 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
     numlock_label_.get_style_context()->add_class("numlock");
-    box_.pack_end(numlock_label_, false, false, 0);
+    box_.append(numlock_label_);
   }
   if (config_["capslock"].asBool()) {
     capslock_label_.get_style_context()->add_class("capslock");
-    box_.pack_end(capslock_label_, false, false, 0);
+    box_.append(capslock_label_);
   }
   if (config_["scrolllock"].asBool()) {
     scrolllock_label_.get_style_context()->add_class("scrolllock");
-    box_.pack_end(scrolllock_label_, false, false, 0);
+    box_.append(scrolllock_label_);
   }
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
 
   if (config_["device-path"].isString()) {
     std::string dev_path = config_["device-path"].asString();
@@ -142,6 +134,8 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
       spdlog::error("keyboard-state: Cannot find device {}", dev_path);
     }
   }
+
+  AModule::bindEvents(box_);
 
   auto keys = config_["binding-keys"];
   if (keys.isArray()) {
@@ -244,13 +238,13 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   };
 }
 
-waybar::modules::KeyboardState::~KeyboardState() {
+KeyboardState::~KeyboardState() {
   for (const auto& [_, dev_ptr] : libinput_devices_) {
     libinput_path_remove_device(dev_ptr);
   }
 }
 
-auto waybar::modules::KeyboardState::update() -> void {
+auto KeyboardState::update() -> void {
   sleep(0);  // Wait for keyboard status change
   int numl = 0, capsl = 0, scrolll = 0;
 
@@ -281,16 +275,16 @@ auto waybar::modules::KeyboardState::update() -> void {
     Gtk::Label& label;
     const std::string& format;
     const char* name;
-  } label_states[] = {
+  } label_states[]{
       {(bool)numl, numlock_label_, numlock_format_, "Num"},
       {(bool)capsl, capslock_label_, capslock_format_, "Caps"},
       {(bool)scrolll, scrolllock_label_, scrolllock_format_, "Scroll"},
   };
   for (auto& label_state : label_states) {
-    std::string text;
-    text = fmt::format(fmt::runtime(label_state.format),
-                       fmt::arg("icon", label_state.state ? icon_locked_ : icon_unlocked_),
-                       fmt::arg("name", label_state.name));
+    std::string text{
+        fmt::format(fmt::runtime(label_state.format),
+                    fmt::arg("icon", label_state.state ? icon_locked_ : icon_unlocked_),
+                    fmt::arg("name", label_state.name))};
     label_state.label.set_markup(text);
     if (label_state.state) {
       label_state.label.get_style_context()->add_class("locked");
@@ -302,7 +296,7 @@ auto waybar::modules::KeyboardState::update() -> void {
   AModule::update();
 }
 
-auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
+auto KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
   try {
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
     auto dev = openDevice(fd);
@@ -323,3 +317,7 @@ auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) 
     }
   }
 }
+
+Gtk::Widget& KeyboardState::root() { return box_; };
+
+}  // namespace waybar::modules

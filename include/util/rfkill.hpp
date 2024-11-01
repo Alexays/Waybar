@@ -2,12 +2,10 @@
 
 #include <glibmm/iochannel.h>
 #include <linux/rfkill.h>
-#include <sigc++/signal.h>
-#include <sigc++/trackable.h>
 
 namespace waybar::util {
 
-class Rfkill : public sigc::trackable {
+class Rfkill final : public sigc::trackable {
  public:
   Rfkill(enum rfkill_type rfkill_type);
   ~Rfkill();

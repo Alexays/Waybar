@@ -2,24 +2,8 @@
 
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
-#include <json/value.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <optional>
-#include <regex>
-#include <string>
-#include <variant>
-#include <vector>
-
-#include "AModule.hpp"
-#include "bar.hpp"
-#include "modules/hyprland/backend.hpp"
-#include "modules/hyprland/windowcreationpayload.hpp"
-#include "util/enum.hpp"
-#include "util/regex_collection.hpp"
+#include "modules/hyprland/workspaces.hpp"
 
 using WindowAddress = std::string;
 
@@ -44,8 +28,7 @@ class Workspace {
   bool isVisible() const { return m_isVisible; };
   bool isEmpty() const { return m_windows == 0; };
   bool isUrgent() const { return m_isUrgent; };
-
-  bool handleClicked(GdkEventButton* bt) const;
+  void handleToggle(int n_press, double dx, double dy);
   void setActive(bool value = true) { m_isActive = value; };
   void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
   void setPersistentConfig(bool value = true) { m_isPersistentConfig = value; };
@@ -83,6 +66,7 @@ class Workspace {
   Gtk::Button m_button;
   Gtk::Box m_content;
   Gtk::Label m_label;
+  Glib::RefPtr<Gtk::GestureClick> const controllClick_;
 };
 
 }  // namespace waybar::modules::hyprland

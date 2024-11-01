@@ -7,7 +7,6 @@
 #include "AAppIconLabel.hpp"
 #include "bar.hpp"
 #include "dwl-ipc-unstable-v2-client-protocol.h"
-#include "util/json.hpp"
 
 namespace waybar::modules::dwl {
 
