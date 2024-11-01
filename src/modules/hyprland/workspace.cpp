@@ -1,9 +1,4 @@
-#include <json/value.h>
 #include <spdlog/spdlog.h>
-
-#include <memory>
-#include <string>
-#include <utility>
 
 #include "modules/hyprland/workspaces.hpp"
 
@@ -18,7 +13,8 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
       m_windows(workspace_data["windows"].asInt()),
       m_isActive(true),
       m_isPersistentRule(workspace_data["persistent-rule"].asBool()),
-      m_isPersistentConfig(workspace_data["persistent-config"].asBool()) {
+      m_isPersistentConfig(workspace_data["persistent-config"].asBool()),
+      controllClick_{Gtk::GestureClick::create()} {
   if (m_name.starts_with("name:")) {
     m_name = m_name.substr(5);
   } else if (m_name.starts_with("special")) {
@@ -26,13 +22,12 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
     m_isSpecial = true;
   }
 
-  m_button.add_events(Gdk::BUTTON_PRESS_MASK);
-  m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
-                                               false);
+  controllClick_->signal_pressed().connect(sigc::mem_fun(*this, &Workspace::handleToggle), true);
+  m_button.add_controller(controllClick_);
 
-  m_button.set_relief(Gtk::RELIEF_NONE);
-  m_content.set_center_widget(m_label);
-  m_button.add(m_content);
+  m_button.set_has_frame(false);
+  m_content.append(m_label);
+  m_button.set_child(m_content);
 
   initializeWindowMap(clients_data);
 }
@@ -53,32 +48,28 @@ std::optional<std::string> Workspace::closeWindow(WindowAddress const &addr) {
   return std::nullopt;
 }
 
-bool Workspace::handleClicked(GdkEventButton *bt) const {
-  if (bt->type == GDK_BUTTON_PRESS) {
-    try {
-      if (id() > 0) {  // normal
-        if (m_workspaceManager.moveToMonitor()) {
-          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
-        } else {
-          gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
-        }
-      } else if (!isSpecial()) {  // named (this includes persistent)
-        if (m_workspaceManager.moveToMonitor()) {
-          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
-        } else {
-          gIPC->getSocket1Reply("dispatch workspace name:" + name());
-        }
-      } else if (id() != -99) {  // named special
-        gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
-      } else {  // special
-        gIPC->getSocket1Reply("dispatch togglespecialworkspace");
+void Workspace::handleToggle(int n_press, double dx, double dy) {
+  try {
+    if (id() > 0) {  // normal
+      if (m_workspaceManager.moveToMonitor()) {
+        gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
+      } else {
+        gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
       }
-      return true;
-    } catch (const std::exception &e) {
-      spdlog::error("Failed to dispatch workspace: {}", e.what());
+    } else if (!isSpecial()) {  // named (this includes persistent)
+      if (m_workspaceManager.moveToMonitor()) {
+        gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
+      } else {
+        gIPC->getSocket1Reply("dispatch workspace name:" + name());
+      }
+    } else if (id() != -99) {  // named special
+      gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
+    } else {  // special
+      gIPC->getSocket1Reply("dispatch togglespecialworkspace");
     }
+  } catch (const std::exception &e) {
+    spdlog::error("Failed to dispatch workspace: {}", e.what());
   }
-  return false;
 }
 
 void Workspace::initializeWindowMap(const Json::Value &clients_data) {

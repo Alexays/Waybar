@@ -3,7 +3,6 @@
 
 typedef struct {
   wbcffi_module* waybar_module;
-  GtkBox* container;
   GtkButton* button;
 } ExampleMod;
 
@@ -30,24 +29,22 @@ void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* 
   ExampleMod* inst = malloc(sizeof(ExampleMod));
   inst->waybar_module = init_info->obj;
 
-  GtkContainer* root = init_info->get_root_widget(init_info->obj);
-
-  // Add a container for displaying the next widgets
-  inst->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5));
-  gtk_container_add(GTK_CONTAINER(root), GTK_WIDGET(inst->container));
+  GtkWidget* root = init_info->get_root_widget(init_info->obj);
+  gtk_box_set_spacing(GTK_BOX(root), 5);
+  gtk_orientable_set_orientation(GTK_ORIENTABLE(root), GTK_ORIENTATION_HORIZONTAL);
 
   // Add a label
   GtkLabel* label = GTK_LABEL(gtk_label_new("[Example C FFI Module:"));
-  gtk_container_add(GTK_CONTAINER(inst->container), GTK_WIDGET(label));
+  gtk_box_append(GTK_BOX(root), GTK_WIDGET(label));
 
   // Add a button
   inst->button = GTK_BUTTON(gtk_button_new_with_label("click me !"));
   g_signal_connect(inst->button, "clicked", G_CALLBACK(onclicked), NULL);
-  gtk_container_add(GTK_CONTAINER(inst->container), GTK_WIDGET(inst->button));
+  gtk_box_append(GTK_BOX(root), GTK_WIDGET(inst->button));
 
   // Add a label
   label = GTK_LABEL(gtk_label_new("]"));
-  gtk_container_add(GTK_CONTAINER(inst->container), GTK_WIDGET(label));
+  gtk_box_append(GTK_BOX(root), GTK_WIDGET(label));
 
   // Return instance object
   printf("cffi_example inst=%p: init success ! (%d total instances)\n", inst, ++instance_count);

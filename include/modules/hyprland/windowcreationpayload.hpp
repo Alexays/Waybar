@@ -1,24 +1,8 @@
 #pragma once
 
-#include <gtkmm/button.h>
-#include <gtkmm/label.h>
 #include <json/value.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <optional>
-#include <regex>
-#include <string>
 #include <variant>
-#include <vector>
-
-#include "AModule.hpp"
-#include "bar.hpp"
-#include "modules/hyprland/backend.hpp"
-#include "util/enum.hpp"
-#include "util/regex_collection.hpp"
 
 using WindowAddress = std::string;
 

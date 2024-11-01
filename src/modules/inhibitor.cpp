@@ -1,7 +1,5 @@
 #include "modules/inhibitor.hpp"
 
-#include <gio/gio.h>
-#include <gio/gunixfdlist.h>
 #include <spdlog/spdlog.h>
 
 namespace {
@@ -97,12 +95,10 @@ auto getInhibitors(const Json::Value& config) -> std::string {
 
 namespace waybar::modules {
 
-Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
+Inhibitor::Inhibitor(const std::string& id, const Json::Value& config)
     : ALabel(config, "inhibitor", id, "{status}", true),
       dbus_(::dbus()),
       inhibitors_(::getInhibitors(config)) {
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Inhibitor::handleToggle));
   dp.emit();
 }
 
@@ -129,20 +125,21 @@ auto Inhibitor::update() -> void {
   return ALabel::update();
 }
 
-auto Inhibitor::handleToggle(GdkEventButton* const& e) -> bool {
-  if (e->button == 1) {
-    if (activated()) {
-      ::close(handle_);
-      handle_ = -1;
-    } else {
-      handle_ = ::getLocks(dbus_, inhibitors_);
-      if (handle_ == -1) {
-        spdlog::error("cannot get inhibitor locks");
-      }
-    }
-  }
+auto Inhibitor::doAction(const std::string& name) -> void {
+  if (actionMap_[name]) {
+    (this->*actionMap_[name])();
+  } else
+    spdlog::info("Inhibitor. Unsupported action \"{0}\"", name);
+}
 
-  return ALabel::handleToggle(e);
+void Inhibitor::toggle() {
+  if (activated()) {
+    ::close(handle_);
+    handle_ = -1;
+  } else {
+    handle_ = ::getLocks(dbus_, inhibitors_);
+    if (handle_ == -1) spdlog::error("cannot get inhibitor locks");
+  }
 }
 
 }  // namespace waybar::modules

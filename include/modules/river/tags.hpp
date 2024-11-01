@@ -15,14 +15,15 @@ class Tags : public waybar::AModule {
  public:
   Tags(const std::string &, const waybar::Bar &, const Json::Value &);
   virtual ~Tags();
+  operator Gtk::Widget &() override;
 
   // Handlers for wayland events
   void handle_focused_tags(uint32_t tags);
   void handle_view_tags(struct wl_array *tags);
   void handle_urgent_tags(uint32_t tags);
 
-  void handle_primary_clicked(uint32_t tag);
-  bool handle_button_press(GdkEventButton *event_button, uint32_t tag);
+  void handleRlse(int n_press, double dx, double dy, uint32_t tag);
+  void handlePress(int n_press, double dx, double dy, uint32_t tag);
 
   struct zriver_status_manager_v1 *status_manager_;
   struct zriver_control_v1 *control_;

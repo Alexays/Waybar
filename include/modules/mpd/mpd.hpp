@@ -12,7 +12,7 @@
 
 namespace waybar::modules {
 
-class MPD : public ALabel {
+class MPD final : public ALabel {
   friend class detail::Context;
 
   // State machine
@@ -47,7 +47,7 @@ class MPD : public ALabel {
   std::string getOptionIcon(std::string optionName, bool activated) const;
 
   // GUI-side methods
-  bool handlePlayPause(GdkEventButton* const&);
+  void handlePlayPause(int n_press, double dx, double dy);
   void emit() { dp.emit(); }
 
   // MPD-side, Non-GUI methods.

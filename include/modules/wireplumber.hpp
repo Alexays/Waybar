@@ -10,7 +10,7 @@
 
 namespace waybar::modules {
 
-class Wireplumber : public ALabel {
+class Wireplumber final : public ALabel {
  public:
   Wireplumber(const std::string&, const Json::Value&);
   virtual ~Wireplumber();
@@ -30,7 +30,7 @@ class Wireplumber : public ALabel {
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
 
-  bool handleScroll(GdkEventScroll* e) override;
+  bool handleScroll(double dx, double dy) override;
 
   WpCore* wp_core_;
   GPtrArray* apis_;

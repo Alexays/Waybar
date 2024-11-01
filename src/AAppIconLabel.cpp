@@ -1,15 +1,11 @@
 #include "AAppIconLabel.hpp"
 
-#include <gdkmm/pixbuf.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
-#include <optional>
-
-#include "util/gtk_icon.hpp"
 
 namespace waybar {
 
@@ -17,6 +13,9 @@ AAppIconLabel::AAppIconLabel(const Json::Value& config, const std::string& name,
                              const std::string& id, const std::string& format, uint16_t interval,
                              bool ellipsize, bool enable_click, bool enable_scroll)
     : AIconLabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
+  // Get current theme
+  gtkTheme_ = Gtk::IconTheme::get_for_display(label_.get_display());
+
   // Icon size
   if (config["icon-size"].isUInt()) {
     app_icon_size_ = config["icon-size"].asUInt();
@@ -63,13 +62,13 @@ std::optional<std::string> getDesktopFilePath(const std::string& app_identifier,
     return {};
   }
 
-  const auto data_dirs = Glib::get_system_data_dirs();
+  const auto data_dirs{Glib::get_system_data_dirs()};
   for (const auto& data_dir : data_dirs) {
-    const auto data_app_dir = data_dir + "/applications/";
-    auto desktop_file_suffix = app_identifier + ".desktop";
+    const auto data_app_dir{data_dir + "/applications/"};
+    auto desktop_file_suffix{app_identifier + ".desktop"};
     // searching for file by suffix catches cases like terminal emulator "foot" where class is
     // "footclient" and desktop file is named "org.codeberg.dnkl.footclient.desktop"
-    auto desktop_file_path = getFileBySuffix(data_app_dir, desktop_file_suffix, true);
+    auto desktop_file_path{getFileBySuffix(data_app_dir, desktop_file_suffix, true)};
     // "true" argument allows checking for lowercase - this catches cases where class name is
     // "LibreWolf" and desktop file is named "librewolf.desktop"
     if (desktop_file_path.has_value()) {
@@ -87,32 +86,33 @@ std::optional<std::string> getDesktopFilePath(const std::string& app_identifier,
 }
 
 std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
-                                         const std::string& alternative_app_identifier) {
-  const auto desktop_file_path = getDesktopFilePath(app_identifier, alternative_app_identifier);
+                                         const std::string& alternative_app_identifier,
+                                         const Glib::RefPtr<const Gtk::IconTheme> gtkTheme) {
+  const auto desktop_file_path{getDesktopFilePath(app_identifier, alternative_app_identifier)};
   if (!desktop_file_path.has_value()) {
     // Try some heuristics to find a matching icon
 
-    if (DefaultGtkIconThemeWrapper::has_icon(app_identifier)) {
+    if (gtkTheme->has_icon(app_identifier)) {
       return app_identifier;
     }
 
-    auto app_identifier_desktop = app_identifier + "-desktop";
-    if (DefaultGtkIconThemeWrapper::has_icon(app_identifier_desktop)) {
+    const auto app_identifier_desktop{app_identifier + "-desktop"};
+    if (gtkTheme->has_icon(app_identifier_desktop)) {
       return app_identifier_desktop;
     }
 
-    auto first_space = app_identifier.find_first_of(' ');
+    const auto first_space{app_identifier.find_first_of(' ')};
     if (first_space != std::string::npos) {
-      auto first_word = toLowerCase(app_identifier.substr(0, first_space));
-      if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
+      const auto first_word{toLowerCase(app_identifier.substr(0, first_space))};
+      if (gtkTheme->has_icon(first_word)) {
         return first_word;
       }
     }
 
-    const auto first_dash = app_identifier.find_first_of('-');
+    const auto first_dash{app_identifier.find_first_of('-')};
     if (first_dash != std::string::npos) {
-      auto first_word = toLowerCase(app_identifier.substr(0, first_dash));
-      if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
+      const auto first_word{toLowerCase(app_identifier.substr(0, first_dash))};
+      if (gtkTheme->has_icon(first_word)) {
         return first_word;
       }
     }
@@ -121,15 +121,15 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
   }
 
   try {
-    Glib::KeyFile desktop_file;
-    desktop_file.load_from_file(desktop_file_path.value());
-    return desktop_file.get_string("Desktop Entry", "Icon");
+    Glib::RefPtr<Glib::KeyFile> desktop_file;
+    desktop_file->load_from_file(desktop_file_path.value());
+    return desktop_file->get_string("Desktop Entry", "Icon");
   } catch (Glib::FileError& error) {
     spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
+                 error.what());
   } catch (Glib::KeyFileError& error) {
     spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
+                 error.what());
   }
   return {};
 }
@@ -140,7 +140,7 @@ void AAppIconLabel::updateAppIconName(const std::string& app_identifier,
     return;
   }
 
-  const auto icon_name = getIconName(app_identifier, alternative_app_identifier);
+  const auto icon_name{getIconName(app_identifier, alternative_app_identifier, gtkTheme_)};
   if (icon_name.has_value()) {
     app_icon_name_ = icon_name.value();
   } else {
@@ -155,16 +155,10 @@ void AAppIconLabel::updateAppIcon() {
     if (app_icon_name_.empty()) {
       image_.set_visible(false);
     } else if (app_icon_name_.front() == '/') {
-      auto pixbuf = Gdk::Pixbuf::create_from_file(app_icon_name_);
-      int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
-      pixbuf = Gdk::Pixbuf::create_from_file(app_icon_name_, scaled_icon_size, scaled_icon_size);
-
-      auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
-                                                            image_.get_window());
-      image_.set(surface);
+      image_.set(app_icon_name_);
       image_.set_visible(true);
     } else {
-      image_.set_from_icon_name(app_icon_name_, Gtk::ICON_SIZE_INVALID);
+      image_.set_from_icon_name(app_icon_name_);
       image_.set_visible(true);
     }
   }

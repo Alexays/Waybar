@@ -53,13 +53,13 @@ auto Submap::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   if (submap_.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
     label_.set_markup(fmt::format(fmt::runtime(format_), submap_));
     if (tooltipEnabled()) {
       label_.set_tooltip_text(submap_);
     }
-    event_box_.show();
+    label_.show();
   }
   // Call parent update
   ALabel::update();

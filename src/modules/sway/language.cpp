@@ -1,21 +1,13 @@
 #include "modules/sway/language.hpp"
 
-#include <fmt/core.h>
-#include <json/json.h>
 #include <spdlog/spdlog.h>
-#include <xkbcommon/xkbregistry.h>
 
-#include <cstring>
-#include <string>
-#include <vector>
-
-#include "modules/sway/ipc/ipc.hpp"
 #include "util/string.hpp"
 
 namespace waybar::modules::sway {
 
-const std::string Language::XKB_LAYOUT_NAMES_KEY = "xkb_layout_names";
-const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name";
+const std::string Language::XKB_LAYOUT_NAMES_KEY{"xkb_layout_names"};
+const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY{"xkb_active_layout_name"};
 
 Language::Language(const std::string& id, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true) {
@@ -51,14 +43,14 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
   }
 
   try {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto payload = parser_.parse(res.payload);
+    std::lock_guard<std::mutex> lock{mutex_};
+    auto payload{parser_.parse(res.payload)};
     std::vector<std::string> used_layouts;
     // Display current layout of a device with a maximum count of layouts, expecting that all will
     // be OK
-    Json::ArrayIndex max_id = 0, max = 0;
-    for (Json::ArrayIndex i = 0; i < payload.size(); i++) {
-      auto size = payload[i][XKB_LAYOUT_NAMES_KEY].size();
+    Json::ArrayIndex max_id{0}, max{0};
+    for (Json::ArrayIndex i{0}; i < payload.size(); i++) {
+      auto size{payload[i][XKB_LAYOUT_NAMES_KEY].size()};
       if (size > max) {
         max = size;
         max_id = i;
@@ -83,8 +75,8 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
   }
 
   try {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto payload = parser_.parse(res.payload)["input"];
+    std::lock_guard<std::mutex> lock{mutex_};
+    auto payload{parser_.parse(res.payload)["input"]};
     if (payload["type"].asString() == "keyboard") {
       set_current_layout(payload[XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
     }
@@ -95,30 +87,30 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 }
 
 auto Language::update() -> void {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard<std::mutex> lock{mutex_};
   if (hide_single_ && layouts_map_.size() <= 1) {
-    event_box_.hide();
+    label_.hide();
     return;
   }
-  auto display_layout = trim(fmt::format(
+  auto display_layout{trim(fmt::format(
       fmt::runtime(format_), fmt::arg("short", layout_.short_name),
       fmt::arg("shortDescription", layout_.short_description), fmt::arg("long", layout_.full_name),
-      fmt::arg("variant", layout_.variant), fmt::arg("flag", layout_.country_flag())));
+      fmt::arg("variant", layout_.variant), fmt::arg("flag", layout_.country_flag())))};
   label_.set_markup(display_layout);
   if (tooltipEnabled()) {
     if (tooltip_format_ != "") {
-      auto tooltip_display_layout = trim(
+      auto tooltip_display_layout{trim(
           fmt::format(fmt::runtime(tooltip_format_), fmt::arg("short", layout_.short_name),
                       fmt::arg("shortDescription", layout_.short_description),
                       fmt::arg("long", layout_.full_name), fmt::arg("variant", layout_.variant),
-                      fmt::arg("flag", layout_.country_flag())));
+                      fmt::arg("flag", layout_.country_flag())))};
       label_.set_tooltip_markup(tooltip_display_layout);
     } else {
       label_.set_tooltip_markup(display_layout);
     }
   }
 
-  event_box_.show();
+  label_.show();
 
   // Call parent update
   ALabel::update();
@@ -133,7 +125,7 @@ auto Language::set_current_layout(std::string current_layout) -> void {
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {
   std::map<std::string, std::vector<Layout*>> found_by_short_names;
   XKBContext xkb_context;
-  auto layout = xkb_context.next_layout();
+  auto layout{xkb_context.next_layout()};
   for (; layout != nullptr; layout = xkb_context.next_layout()) {
     if (std::find(used_layouts.begin(), used_layouts.end(), layout->full_name) ==
         used_layouts.end()) {
@@ -141,7 +133,7 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
     }
 
     if (!is_variant_displayed) {
-      auto short_name = layout->short_name;
+      auto short_name{layout->short_name};
       if (found_by_short_names.count(short_name) > 0) {
         found_by_short_names[short_name].push_back(layout);
       } else {
@@ -158,10 +150,10 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
 
   std::map<std::string, int> short_name_to_number_map;
   for (const auto& used_layout_name : used_layouts) {
-    auto found = layouts_map_.find(used_layout_name);
+    auto found{layouts_map_.find(used_layout_name)};
     if (found == layouts_map_.end()) continue;
-    auto used_layout = &found->second;
-    auto layouts_with_same_name_list = found_by_short_names[used_layout->short_name];
+    auto used_layout{&found->second};
+    auto layouts_with_same_name_list{found_by_short_names[used_layout->short_name]};
     if (layouts_with_same_name_list.size() < 2) {
       continue;
     }
@@ -171,7 +163,7 @@ auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) ->
     }
 
     if (displayed_short_flag != static_cast<std::byte>(0)) {
-      int& number = short_name_to_number_map[used_layout->short_name];
+      int& number{short_name_to_number_map[used_layout->short_name]};
       used_layout->short_name = used_layout->short_name + std::to_string(number);
       used_layout->short_description = used_layout->short_description + std::to_string(number);
       ++number;
@@ -195,17 +187,17 @@ auto Language::XKBContext::next_layout() -> Layout* {
     return nullptr;
   }
 
-  auto description = std::string(rxkb_layout_get_description(xkb_layout_));
-  auto name = std::string(rxkb_layout_get_name(xkb_layout_));
-  auto variant_ = rxkb_layout_get_variant(xkb_layout_);
-  std::string variant = variant_ == nullptr ? "" : std::string(variant_);
-  auto short_description_ = rxkb_layout_get_brief(xkb_layout_);
+  auto description{std::string(rxkb_layout_get_description(xkb_layout_))};
+  auto name{std::string(rxkb_layout_get_name(xkb_layout_))};
+  auto variant_{rxkb_layout_get_variant(xkb_layout_)};
+  std::string variant{variant_ == nullptr ? "" : std::string(variant_)};
+  auto short_description_{rxkb_layout_get_brief(xkb_layout_)};
   std::string short_description;
   if (short_description_ != nullptr) {
     short_description = std::string(short_description_);
     base_layouts_by_name_.emplace(name, xkb_layout_);
   } else {
-    auto base_layout = base_layouts_by_name_[name];
+    auto base_layout{base_layouts_by_name_[name]};
     short_description =
         base_layout == nullptr ? "" : std::string(rxkb_layout_get_brief(base_layout));
   }
@@ -221,7 +213,7 @@ Language::XKBContext::~XKBContext() {
 
 std::string Language::Layout::country_flag() const {
   if (short_name.size() != 2) return "";
-  unsigned char result[] = "\xf0\x9f\x87\x00\xf0\x9f\x87\x00";
+  unsigned char result[]{"\xf0\x9f\x87\x00\xf0\x9f\x87\x00"};
   result[3] = short_name[0] + 0x45;
   result[7] = short_name[1] + 0x45;
   // Check if both emojis are in A-Z symbol bounds

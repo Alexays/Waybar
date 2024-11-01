@@ -2,10 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-#include <cctype>
-#include <string>
-
 namespace waybar::modules::sway {
 
 // Helper function to assign a number to a workspace, just like sway. In fact
@@ -42,8 +38,9 @@ int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
 }
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
-      bar_(bar),
+    : AModule(config, "workspaces", id, false,
+              !config["disable-scroll"].asBool() || config["enable-bar-scroll"].asBool()),
+      bar_{bar},
       box_(bar.orientation, 0) {
   if (config["format-icons"]["high-priority-named"].isArray()) {
     for (const auto &it : config["format-icons"]["high-priority-named"]) {
@@ -55,7 +52,12 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+
+  if (!config["disable-scroll"].asBool() || config["enable-bar-scroll"].asBool()) {
+    controllScroll_->signal_scroll().connect(sigc::mem_fun(*this, &Workspaces::handleScroll), true);
+    controllScroll_->set_propagation_phase(Gtk::PropagationPhase::BUBBLE);
+  }
+
   if (config_["format-window-separator"].isString()) {
     m_formatWindowSeperator = config_["format-window-separator"].asString();
   } else {
@@ -75,11 +77,6 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Workspaces::onCmd));
   ipc_.sendCmd(IPC_GET_TREE);
-  if (config["enable-bar-scroll"].asBool()) {
-    auto &window = const_cast<Bar &>(bar_).window;
-    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
-  }
   // Launch worker
   ipc_.setWorker([this] {
     try {
@@ -88,6 +85,8 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
       spdlog::error("Workspaces: {}", e.what());
     }
   });
+
+  AModule::bindEvents(*this);
 }
 
 void Workspaces::onEvent(const struct Ipc::ipc_response &res) {
@@ -102,11 +101,11 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
   if (res.type == IPC_GET_TREE) {
     try {
       {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto payload = parser_.parse(res.payload);
+        std::lock_guard<std::mutex> lock{mutex_};
+        const auto payload{parser_.parse(res.payload)};
         workspaces_.clear();
         std::vector<Json::Value> outputs;
-        bool alloutputs = config_["all-outputs"].asBool();
+        const bool alloutputs{config_["all-outputs"].asBool()};
         std::copy_if(payload["nodes"].begin(), payload["nodes"].end(), std::back_inserter(outputs),
                      [&](const auto &output) {
                        if (alloutputs && output["name"].asString() != "__i3") {
@@ -127,15 +126,15 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 
         // adding persistent workspaces (as per the config file)
         if (config_["persistent-workspaces"].isObject()) {
-          const Json::Value &p_workspaces = config_["persistent-workspaces"];
-          const std::vector<std::string> p_workspaces_names = p_workspaces.getMemberNames();
+          const Json::Value &p_workspaces{config_["persistent-workspaces"]};
+          const std::vector<std::string> p_workspaces_names{p_workspaces.getMemberNames()};
 
           for (const std::string &p_w_name : p_workspaces_names) {
-            const Json::Value &p_w = p_workspaces[p_w_name];
-            auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                                   [&p_w_name](const Json::Value &node) {
-                                     return node["name"].asString() == p_w_name;
-                                   });
+            const Json::Value &p_w{p_workspaces[p_w_name]};
+            auto it{std::find_if(workspaces_.begin(), workspaces_.end(),
+                                 [&p_w_name](const Json::Value &node) {
+                                   return node["name"].asString() == p_w_name;
+                                 })};
 
             if (it != workspaces_.end()) {
               continue;  // already displayed by some bar
@@ -185,12 +184,12 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         // Note: if the 'alphabetical_sort' option is true, the user is in
         // agreement that the "workspace prev/next" commands may not follow
         // the order displayed in Waybar.
-        int max_num = -1;
+        int max_num{-1};
         for (auto &workspace : workspaces_) {
           max_num = std::max(workspace["num"].asInt(), max_num);
         }
         for (auto &workspace : workspaces_) {
-          auto workspace_num = workspace["num"].asInt();
+          auto workspace_num{workspace["num"].asInt()};
           if (workspace_num > -1) {
             workspace["sort"] = workspace_num;
           } else {
@@ -199,10 +198,10 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
         }
         std::sort(workspaces_.begin(), workspaces_.end(),
                   [this](const Json::Value &lhs, const Json::Value &rhs) {
-                    auto lname = lhs["name"].asString();
-                    auto rname = rhs["name"].asString();
-                    int l = lhs["sort"].asInt();
-                    int r = rhs["sort"].asInt();
+                    auto lname{lhs["name"].asString()};
+                    auto rname{rhs["name"].asString()};
+                    int l{lhs["sort"].asInt()};
+                    int r{rhs["sort"].asInt()};
 
                     if (l == r || config_["alphabetical_sort"].asBool()) {
                       // In case both integers are the same, lexicographical
@@ -225,10 +224,10 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
 }
 
 bool Workspaces::filterButtons() {
-  bool needReorder = false;
-  for (auto it = buttons_.begin(); it != buttons_.end();) {
-    auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
-                           [it](const auto &node) { return node["name"].asString() == it->first; });
+  bool needReorder{false};
+  for (auto it{buttons_.begin()}; it != buttons_.end();) {
+    auto ws{std::find_if(workspaces_.begin(), workspaces_.end(),
+                         [it](const auto &node) { return node["name"].asString() == it->first; })};
     if (ws == workspaces_.end() ||
         (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
@@ -282,18 +281,25 @@ void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
 }
 
 auto Workspaces::update() -> void {
-  std::lock_guard<std::mutex> lock(mutex_);
-  bool needReorder = filterButtons();
-  for (auto it = workspaces_.begin(); it != workspaces_.end(); ++it) {
-    auto bit = buttons_.find((*it)["name"].asString());
+  std::lock_guard<std::mutex> lock{mutex_};
+  bool needReorder{filterButtons()};
+  for (auto it{workspaces_.begin()}; it != workspaces_.end(); ++it) {
+    auto bit{buttons_.find((*it)["name"].asString())};
     if (bit == buttons_.end()) {
       needReorder = true;
     }
-    auto &button = bit == buttons_.end() ? addButton(*it) : bit->second;
+    auto &button{bit == buttons_.end() ? addButton(*it) : bit->second};
     if (needReorder) {
-      box_.reorder_child(button, it - workspaces_.begin());
+      std::unordered_map<std::string, Gtk::Button>::const_iterator prevBit;
+
+      if (it != workspaces_.begin()) prevBit = buttons_.find((*(it - 1))["name"].asString());
+
+      if (prevBit != buttons_.end())
+        box_.reorder_child_after(button, prevBit->second);
+      else
+        box_.reorder_child_at_start(button);
     }
-    bool noNodes = (*it)["nodes"].empty() && (*it)["floating_nodes"].empty();
+    bool noNodes{(*it)["nodes"].empty() && (*it)["floating_nodes"].empty()};
     if (hasFlag((*it), "focused")) {
       button.get_style_context()->add_class("focused");
     } else {
@@ -328,13 +334,13 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("current_output");
     }
-    std::string output = (*it)["name"].asString();
-    std::string windows = "";
+    std::string output{(*it)["name"].asString()};
+    std::string windows{""};
     if (config_["window-format"].isString()) {
       updateWindows((*it), windows);
     }
     if (config_["format"].isString()) {
-      auto format = config_["format"].asString();
+      auto format{config_["format"].asString()};
       output = fmt::format(
           fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)), fmt::arg("value", output),
           fmt::arg("name", trimWorkspaceName(output)), fmt::arg("index", (*it)["num"].asString()),
@@ -343,7 +349,7 @@ auto Workspaces::update() -> void {
           fmt::arg("output", (*it)["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
+      static_cast<Gtk::Label *>(button.get_child())->set_markup(output);
     } else {
       button.set_label(output);
     }
@@ -354,13 +360,15 @@ auto Workspaces::update() -> void {
 }
 
 Gtk::Button &Workspaces::addButton(const Json::Value &node) {
-  auto pair = buttons_.emplace(node["name"].asString(), node["name"].asString());
-  auto &&button = pair.first->second;
-  box_.pack_start(button, false, false, 0);
+  auto pair{buttons_.emplace(node["name"].asString(), node["name"].asString())};
+  auto &&button{pair.first->second};
+  box_.append(button);
   button.set_name("sway-workspace-" + node["name"].asString());
-  button.set_relief(Gtk::RELIEF_NONE);
+  button.set_has_frame(false);
   if (!config_["disable-click"].asBool()) {
-    button.signal_pressed().connect([this, node] {
+    auto controlClick{Gtk::GestureClick::create()};
+    button.add_controller(controlClick);
+    controlClick->signal_pressed().connect([this, node](int n_press, double dx, double dy) {
       try {
         if (node["target_output"].isString()) {
           ipc_.sendCmd(IPC_COMMAND,
@@ -378,16 +386,18 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
         spdlog::error("Workspaces: {}", e.what());
       }
     });
+    controlClick->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    controlClick->set_button(1u);
   }
   return button;
 }
 
 std::string Workspaces::getIcon(const std::string &name, const Json::Value &node) {
-  std::vector<std::string> keys = {"high-priority-named", "urgent", "focused", name, "default"};
+  std::vector<std::string> keys{"high-priority-named", "urgent", "focused", name, "default"};
   for (auto const &key : keys) {
     if (key == "high-priority-named") {
-      auto it = std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
-                             [&](const std::string &member) { return member == name; });
+      auto it{std::find_if(high_priority_named_.begin(), high_priority_named_.end(),
+                           [&](const std::string &member) { return member == name; })};
       if (it != high_priority_named_.end()) {
         return config_["format-icons"][name].asString();
       }
@@ -416,29 +426,30 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
   return name;
 }
 
-bool Workspaces::handleScroll(GdkEventScroll *e) {
-  if (gdk_event_get_pointer_emulated((GdkEvent *)e) != 0) {
+bool Workspaces::handleScroll(double dx, double dy) {
+  auto currEvent{controllScroll_->get_current_event()};
+  if (currEvent->get_pointer_emulated()) {
     /**
      * Ignore emulated scroll events on window
      */
     return false;
   }
-  auto dir = AModule::getScrollDir(e);
+  auto dir{AModule::getScrollDir(currEvent)};
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
   std::string name;
   {
-    bool alloutputs = config_["all-outputs"].asBool();
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it =
+    std::lock_guard<std::mutex> lock{mutex_};
+    const bool alloutputs{config_["all-outputs"].asBool()};
+    auto it{
         std::find_if(workspaces_.begin(), workspaces_.end(), [alloutputs](const auto &workspace) {
           if (alloutputs) {
             return hasFlag(workspace, "focused");
           }
-          bool noNodes = workspace["nodes"].empty() && workspace["floating_nodes"].empty();
+          const bool noNodes{workspace["nodes"].empty() && workspace["floating_nodes"].empty()};
           return hasFlag(workspace, "visible") || (workspace["output"].isString() && noNodes);
-        });
+        })};
     if (it == workspaces_.end()) {
       return true;
     }
@@ -486,7 +497,7 @@ std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
 }
 
 std::string Workspaces::trimWorkspaceName(std::string name) {
-  std::size_t found = name.find(':');
+  std::size_t found{name.find(':')};
   if (found != std::string::npos) {
     return name.substr(found + 1);
   }
@@ -511,5 +522,7 @@ void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
     button.show();
   }
 }
+
+Workspaces::operator Gtk::Widget &() { return box_; };
 
 }  // namespace waybar::modules::sway

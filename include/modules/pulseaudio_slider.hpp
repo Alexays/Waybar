@@ -11,7 +11,7 @@ enum class PulseaudioSliderTarget {
   Source,
 };
 
-class PulseaudioSlider : public ASlider {
+class PulseaudioSlider final : public ASlider {
  public:
   PulseaudioSlider(const std::string&, const Json::Value&);
   virtual ~PulseaudioSlider() = default;
@@ -20,8 +20,8 @@ class PulseaudioSlider : public ASlider {
   void onValueChanged() override;
 
  private:
-  std::shared_ptr<util::AudioBackend> backend = nullptr;
-  PulseaudioSliderTarget target = PulseaudioSliderTarget::Sink;
+  std::shared_ptr<util::AudioBackend> backend{nullptr};
+  PulseaudioSliderTarget target{PulseaudioSliderTarget::Sink};
 };
 
 }  // namespace waybar::modules

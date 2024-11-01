@@ -3,8 +3,6 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
-#include <utility>
-
 namespace waybar::util {
 
 int default_priority_function(std::string& key) { return 0; }

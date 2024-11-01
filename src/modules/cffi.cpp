@@ -1,16 +1,14 @@
 #include "modules/cffi.hpp"
 
 #include <dlfcn.h>
-#include <json/value.h>
 
-#include <algorithm>
-#include <iostream>
-#include <type_traits>
+#include <util/command.hpp>
 
 namespace waybar::modules {
 
 CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& config)
-    : AModule(config, name, id, true, true) {
+    : AModule(config, name, id, true, true), box_{new Gtk::Box()} {
+  box_->set_name(name_);
   const auto dynlib_path = config_["module_path"].asString();
   if (dynlib_path.empty()) {
     throw std::runtime_error{"Missing or empty 'module_path' in module config"};
@@ -76,7 +74,7 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
       .waybar_version = VERSION,
       .get_root_widget =
           [](ffi::wbcffi_module* obj) {
-            return dynamic_cast<Gtk::Container*>(&((CFFI*)obj)->event_box_)->gobj();
+            return dynamic_cast<Gtk::Widget*>(&((CFFI*)obj)->operator Gtk::Widget&())->gobj();
           },
       .queue_update = [](ffi::wbcffi_module* obj) { ((CFFI*)obj)->dp.emit(); },
   };
@@ -102,6 +100,11 @@ auto CFFI::update() -> void {
 
   // Execute the on-update command set in config
   AModule::update();
+}
+
+CFFI::operator Gtk::Widget&() {
+  assert(box_);
+  return *box_;
 }
 
 auto CFFI::refresh(int signal) -> void {

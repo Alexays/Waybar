@@ -109,15 +109,15 @@ int main(int argc, char* argv[]) {
 
     std::signal(SIGUSR1, SIG_IGN);
     std::signal(SIGUSR2, SIG_IGN);
-    std::signal(SIGINT,  SIG_IGN);
+    std::signal(SIGINT, SIG_IGN);
 
     delete client;
     return ret;
+  } catch (const Glib::Error& e) {
+    spdlog::error("{}", static_cast<std::string>(e.what()));
+    return 1;
   } catch (const std::exception& e) {
     spdlog::error("{}", e.what());
-    return 1;
-  } catch (const Glib::Exception& e) {
-    spdlog::error("{}", static_cast<std::string>(e.what()));
     return 1;
   }
 }

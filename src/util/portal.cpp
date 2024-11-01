@@ -36,7 +36,7 @@ auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_con
 }
 
 waybar::Portal::Portal()
-    : DBus::Proxy(DBus::Connection::get_sync(DBus::BusType::BUS_TYPE_SESSION), PORTAL_BUS_NAME,
+    : DBus::Proxy(DBus::Connection::get_sync(DBus::BusType::SESSION), PORTAL_BUS_NAME,
                   PORTAL_OBJ_PATH, PORTAL_INTERFACE),
       currentMode(Appearance::UNKNOWN) {
   refreshAppearance();

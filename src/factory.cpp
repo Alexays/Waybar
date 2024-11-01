@@ -59,7 +59,7 @@
 #include "modules/sni/tray.hpp"
 #endif
 #ifdef HAVE_MPRIS
-#include "modules/mpris/mpris.hpp"
+#include "modules/mpris.hpp"
 #endif
 #ifdef HAVE_LIBNL
 #include "modules/network.hpp"
@@ -113,9 +113,10 @@
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
+#include "modules/ui.hpp"
 #include "modules/user.hpp"
 
-waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
+waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_{bar}, config_{config} {}
 
 waybar::AModule* waybar::Factory::makeModule(const std::string& name,
                                              const std::string& pos) const {
@@ -125,7 +126,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     auto id = hash_pos != std::string::npos ? name.substr(hash_pos + 1) : "";
 #if defined(__FreeBSD__) || defined(__linux__)
     if (ref == "battery") {
-      return new waybar::modules::Battery(id, bar_, config_[name]);
+      return new waybar::modules::Battery(id, config_[name]);
     }
 #endif
 #ifdef HAVE_GAMEMODE
@@ -258,6 +259,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "image") {
       return new waybar::modules::Image(id, config_[name]);
     }
+    // gtk4 todo
 #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
@@ -309,7 +311,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LOGIND_INHIBITOR
     if (ref == "inhibitor") {
-      return new waybar::modules::Inhibitor(id, bar_, config_[name]);
+      return new waybar::modules::Inhibitor(id, config_[name]);
     }
 #endif
 #ifdef HAVE_LIBJACK
@@ -340,6 +342,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);
+    }
+    if (ref.compare(0, 3, "ui/") == 0 && ref.size() > 3) {
+      return new waybar::modules::UI(ref.substr(3), id, config_[name]);
     }
   } catch (const std::exception& e) {
     auto err = fmt::format("Disabling module \"{}\", {}", name, e.what());

@@ -1,26 +1,27 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "pulseaudio", id, "{volume}%") {
-  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
+#include <fmt/format.h>
 
+namespace waybar::modules {
+
+Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
+    : ALabel(config, "pulseaudio", id, "{volume}%", 60, false, false, true) {
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+bool Pulseaudio::handleScroll(double dx, double dy) {
   // change the pulse volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
+    return AModule::handleScroll(dx, dy);
   }
-  auto dir = AModule::getScrollDir(e);
+  auto dir{AModule::getScrollDir(controllScroll_->get_current_event())};
   if (dir == SCROLL_DIR::NONE) {
     return true;
   }
-  int max_volume = 100;
-  double step = 1;
+  int max_volume{100};
+  double step{1};
   // isDouble returns true for integers as well, just in case
   if (config_["scroll-step"].isDouble()) {
     step = config_["scroll-step"].asDouble();
@@ -29,15 +30,15 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
     max_volume = config_["max-volume"].asInt();
   }
 
-  auto change_type = (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::RIGHT)
-                         ? util::ChangeType::Increase
-                         : util::ChangeType::Decrease;
+  auto change_type{(dir == SCROLL_DIR::UP || dir == SCROLL_DIR::RIGHT)
+                       ? util::ChangeType::Increase
+                       : util::ChangeType::Decrease};
 
   backend->changeVolume(change_type, step, max_volume);
   return true;
 }
 
-static const std::array<std::string, 9> ports = {
+static const std::array<std::string, 9> ports{
     "headphone", "speaker", "hdmi", "headset", "hands-free", "portable", "car", "hifi", "phone",
 };
 
@@ -66,12 +67,12 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
   return res;
 }
 
-auto waybar::modules::Pulseaudio::update() -> void {
-  auto format = format_;
+auto Pulseaudio::update() -> void {
+  auto format{format_};
   std::string tooltip_format;
-  auto sink_volume = backend->getSinkVolume();
+  auto sink_volume{backend->getSinkVolume()};
   if (!alt_) {
-    std::string format_name = "format";
+    std::string format_name{"format"};
     if (backend->isBluetooth()) {
       format_name = format_name + "-bluetooth";
       label_.get_style_context()->add_class("bluetooth");
@@ -90,7 +91,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
       label_.get_style_context()->remove_class("muted");
       label_.get_style_context()->remove_class("sink-muted");
     }
-    auto state = getState(sink_volume, true);
+    auto state{getState(sink_volume, true)};
     if (!state.empty() && config_[format_name + "-" + state].isString()) {
       format = config_[format_name + "-" + state].asString();
     } else if (config_[format_name].isString()) {
@@ -98,7 +99,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
   }
   // TODO: find a better way to split source/sink
-  std::string format_source = "{volume}%";
+  std::string format_source{"{volume}%"};
   if (backend->getSourceMuted()) {
     label_.get_style_context()->add_class("source-muted");
     if (config_["format-source-muted"].isString()) {
@@ -111,15 +112,16 @@ auto waybar::modules::Pulseaudio::update() -> void {
     }
   }
 
-  auto source_volume = backend->getSourceVolume();
-  auto sink_desc = backend->getSinkDesc();
-  auto source_desc = backend->getSourceDesc();
+  auto source_volume{backend->getSourceVolume()};
+  auto sink_desc{backend->getSinkDesc()};
+  auto source_desc{backend->getSourceDesc()};
 
   format_source = fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_volume));
-  auto text = fmt::format(
-      fmt::runtime(format), fmt::arg("desc", sink_desc), fmt::arg("volume", sink_volume),
-      fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume),
-      fmt::arg("source_desc", source_desc), fmt::arg("icon", getIcon(sink_volume, getPulseIcon())));
+  auto text{fmt::format(fmt::runtime(format), fmt::arg("desc", sink_desc),
+                        fmt::arg("volume", sink_volume), fmt::arg("format_source", format_source),
+                        fmt::arg("source_volume", source_volume),
+                        fmt::arg("source_desc", source_desc),
+                        fmt::arg("icon", getIcon(sink_volume, getPulseIcon())))};
   if (text.empty()) {
     label_.hide();
   } else {
@@ -145,3 +147,5 @@ auto waybar::modules::Pulseaudio::update() -> void {
   // Call parent update
   ALabel::update();
 }
+
+}  // namespace waybar::modules

@@ -1,6 +1,9 @@
 #include "modules/temperature.hpp"
 
+#include <fmt/format.h>
+
 #include <filesystem>
+#include <fstream>
 #include <string>
 
 #if defined(__FreeBSD__)
@@ -77,17 +80,17 @@ auto waybar::modules::Temperature::update() -> void {
   } else if (warning) {
     format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
     label_.get_style_context()->add_class("warning");
-  } else        {
+  } else {
     label_.get_style_context()->remove_class("critical");
     label_.get_style_context()->remove_class("warning");
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    label_.hide();
     return;
   }
 
-  event_box_.show();
+  label_.show();
 
   auto max_temp = config_["critical-threshold"].isInt() ? config_["critical-threshold"].asInt() : 0;
   label_.set_markup(fmt::format(fmt::runtime(format), fmt::arg("temperatureC", temperature_c),

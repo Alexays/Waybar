@@ -1,14 +1,7 @@
 #include "modules/hyprland/window.hpp"
 
-#include <glibmm/fileutils.h>
-#include <glibmm/keyfile.h>
-#include <glibmm/miscutils.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-#include <vector>
-
-#include "modules/hyprland/backend.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
@@ -75,14 +68,14 @@ auto Window::update() -> void {
   setClass("fullscreen", fullscreen_);
 
   if (!lastSoloClass_.empty() && soloClass_ != lastSoloClass_) {
-    if (bar_.window.get_style_context()->has_class(lastSoloClass_)) {
-      bar_.window.get_style_context()->remove_class(lastSoloClass_);
+    if (box_.get_style_context()->has_class(lastSoloClass_)) {
+      box_.get_style_context()->remove_class(lastSoloClass_);
       spdlog::trace("Removing solo class: {}", lastSoloClass_);
     }
   }
 
   if (!soloClass_.empty() && soloClass_ != lastSoloClass_) {
-    bar_.window.get_style_context()->add_class(soloClass_);
+    box_.get_style_context()->add_class(soloClass_);
     spdlog::trace("Adding solo class: {}", soloClass_);
   }
   lastSoloClass_ = soloClass_;
@@ -222,11 +215,11 @@ void Window::onEvent(const std::string& ev) {
 
 void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {
-    if (!bar_.window.get_style_context()->has_class(classname)) {
-      bar_.window.get_style_context()->add_class(classname);
+    if (!box_.get_style_context()->has_class(classname)) {
+      box_.get_style_context()->add_class(classname);
     }
   } else {
-    bar_.window.get_style_context()->remove_class(classname);
+    box_.get_style_context()->remove_class(classname);
   }
 }
 

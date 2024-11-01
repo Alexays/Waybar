@@ -1,14 +1,7 @@
 #pragma once
 
-#include <arpa/inet.h>
-#include <fmt/format.h>
-#include <linux/nl80211.h>
-#include <netlink/genl/ctrl.h>
 #include <netlink/genl/genl.h>
-#include <netlink/netlink.h>
 #include <sys/epoll.h>
-
-#include <optional>
 
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
@@ -18,7 +11,7 @@
 
 namespace waybar::modules {
 
-class Network : public ALabel {
+class Network final : public ALabel {
  public:
   Network(const std::string&, const Json::Value&);
   virtual ~Network();

@@ -1,12 +1,9 @@
 #include "util/backlight_backend.hpp"
 
 #include <fmt/core.h>
-#include <spdlog/spdlog.h>
 #include <sys/epoll.h>
 
 #include <cmath>
-#include <optional>
-#include <utility>
 
 namespace {
 class FileDescriptor {
@@ -152,8 +149,8 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
 
   // Connect to the login interface
   login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
-      Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
-      "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
+      Gio::DBus::BusType::SYSTEM, "org.freedesktop.login1", "/org/freedesktop/login1/session/self",
+      "org.freedesktop.login1.Session");
 
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
@@ -255,7 +252,7 @@ void BacklightBackend::set_brightness(const std::string &preferred_device, Chang
   if (best != nullptr) {
     const auto max = best->get_max();
 
-    const auto abs_step = static_cast<int>(round(step * max / 100.0F));
+    const auto abs_step = static_cast<int>(std::round(step * max / 100.0F));
 
     const int new_brightness = change_type == ChangeType::Increase ? best->get_actual() + abs_step
                                                                    : best->get_actual() - abs_step;

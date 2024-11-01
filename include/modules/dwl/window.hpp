@@ -7,7 +7,6 @@
 #include "AAppIconLabel.hpp"
 #include "bar.hpp"
 #include "dwl-ipc-unstable-v2-client-protocol.h"
-#include "util/json.hpp"
 
 namespace waybar::modules::dwl {
 
@@ -26,7 +25,6 @@ class Window : public AAppIconLabel, public sigc::trackable {
 
  private:
   const Bar &bar_;
-
   std::string title_;
   std::string appid_;
   std::string layout_symbol_;

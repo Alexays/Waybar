@@ -1,16 +1,10 @@
 #pragma once
 
 #include <gdkmm/monitor.h>
-#include <glibmm/refptr.h>
 #include <gtkmm/box.h>
+#include <gtkmm/centerbox.h>
 #include <gtkmm/cssprovider.h>
-#include <gtkmm/main.h>
 #include <gtkmm/window.h>
-#include <json/json.h>
-
-#include <memory>
-#include <optional>
-#include <vector>
 
 #include "AModule.hpp"
 #include "group.hpp"
@@ -75,18 +69,15 @@ class Bar : public sigc::trackable {
   struct wl_surface *surface;
   bool visible = true;
   Gtk::Window window;
-  Gtk::Orientation orientation = Gtk::ORIENTATION_HORIZONTAL;
-  Gtk::PositionType position = Gtk::POS_TOP;
-
-  int x_global;
-  int y_global;
+  Gtk::Orientation orientation{Gtk::Orientation::HORIZONTAL};
+  Gtk::PositionType position{Gtk::PositionType::TOP};
 
 #ifdef HAVE_SWAY
   std::string bar_id;
 #endif
 
  private:
-  void onMap(GdkEventAny *);
+  void onMap();
   auto setupWidgets() -> void;
   void getModules(const Factory &, const std::string &, waybar::Group *);
   void setupAltFormatKeyForModule(const std::string &module_name);
@@ -94,9 +85,13 @@ class Bar : public sigc::trackable {
   void setMode(const bar_mode &);
   void setPassThrough(bool passthrough);
   void setPosition(Gtk::PositionType position);
-  void onConfigure(GdkEventConfigure *ev);
+  void onConfigure(int width, int height);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
+
+  Glib::RefPtr<Gdk::Surface> gdk_surface_;
+  int x_global;
+  int y_global;
 
   /* Copy initial set of modes to allow customization */
   bar_mode_map configured_modes = PRESET_MODES;
@@ -109,7 +104,7 @@ class Bar : public sigc::trackable {
   Gtk::Box left_;
   Gtk::Box center_;
   Gtk::Box right_;
-  Gtk::Box box_;
+  Gtk::CenterBox box_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_left_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_center_;
   std::vector<std::shared_ptr<waybar::AModule>> modules_right_;
