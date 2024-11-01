@@ -91,8 +91,8 @@ Module config :
 		"menu": "on-click",
 		"menu-file": "~/.config/waybar/power_menu.xml",
 		"menu-actions": {
-			"shutdown": "systemctl poweroff",
-			"reboot": "systemctl reboot",
+			"shutdown": "shutdown",
+			"reboot": "reboot",
 			"suspend": "systemctl suspend",
 			"hibernate": "systemctl hibernate",
 		},
