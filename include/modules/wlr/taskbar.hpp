@@ -68,6 +68,7 @@ class Task {
   Glib::RefPtr<Gio::DesktopAppInfo> app_info_;
   bool button_visible_ = false;
   bool ignored_ = false;
+  bool squashed_ = false;
 
   bool with_icon_ = false;
   bool with_name_ = false;
@@ -91,6 +92,7 @@ class Task {
   void set_minimize_hint();
   void on_button_size_allocated(Gtk::Allocation &alloc);
   void hide_if_ignored();
+  void hide_if_duplicate();
 
  public:
   /* Getter functions */
@@ -153,6 +155,7 @@ class Taskbar : public waybar::AModule {
 
   IconLoader icon_loader_;
   std::unordered_set<std::string> ignore_list_;
+  std::unordered_set<std::string> squash_list_;
   std::map<std::string, std::string> app_ids_replace_map_;
 
   struct zwlr_foreign_toplevel_manager_v1 *manager_;
@@ -178,7 +181,10 @@ class Taskbar : public waybar::AModule {
 
   const IconLoader &icon_loader() const;
   const std::unordered_set<std::string> &ignore_list() const;
+  const std::unordered_set<std::string> &squash_list() const;
   const std::map<std::string, std::string> &app_ids_replace_map() const;
+  std::size_t task_id_count(std::string_view id) const;
+  std::size_t task_title_count(std::string_view title) const;
 };
 
 } /* namespace waybar::modules::wlr */
