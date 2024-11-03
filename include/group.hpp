@@ -7,6 +7,8 @@
 #include "AModule.hpp"
 #include "gtkmm/revealer.h"
 
+#include "util/sleeper_thread.hpp"
+
 namespace waybar {
 
 class Group : public AModule {
@@ -33,6 +35,11 @@ class Group : public AModule {
   void refresh(int sig) override;
   void show_group();
   void hide_group();
+  util::SleeperThread thread_;
+  bool reset_ = false;
+  bool free_ = true;
+  std::chrono::seconds interval_;
+
 };
 
 }  // namespace waybar
