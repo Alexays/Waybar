@@ -392,6 +392,28 @@ void Task::handle_closed() {
     tbar_->remove_button(button);
     button_visible_ = false;
   }
+
+  const auto &squash_list = tbar_->squash_list();
+  const bool in_squash_list =
+      squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
+  if (in_squash_list && !squashed_ &&
+      (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
+    // Find next squashed task with same title or id (excluding ourselves)
+    auto tasks = tbar_->tasks();
+    const auto it = std::ranges::find_if(tasks, [this](auto &&task) {
+      return &task != this && task.squashed_ &&
+             (task.app_id() == app_id_ || task.title() == title_);
+    });
+
+    if (it != tasks.end() && !(*it).ignored_) {
+      Task &task = *it;
+      task.squashed_ = false;
+      tbar_->add_button(task.button);
+      task.button.show();
+      task.button_visible_ = true;
+    }
+  }
+
   tbar_->remove_task(id_);
 }
 

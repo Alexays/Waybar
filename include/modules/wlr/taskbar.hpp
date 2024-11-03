@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -185,6 +186,10 @@ class Taskbar : public waybar::AModule {
   const std::map<std::string, std::string> &app_ids_replace_map() const;
   std::size_t task_id_count(std::string_view id) const;
   std::size_t task_title_count(std::string_view title) const;
+
+  auto tasks() {
+    return tasks_ | std::views::transform([](auto &task) -> Task & { return *task; });
+  }
 };
 
 } /* namespace waybar::modules::wlr */
