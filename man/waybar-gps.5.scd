@@ -42,7 +42,8 @@ libgps lives in:
 *interval*: ++
 	typeof: integer ++
 	default: 5 ++
-	The interval in which the GPS information gets polled (e.g. fix status).
+	The interval in which the GPS information gets polled (e.g. current speed).
+	Significant updates (e.g. the current fix mode) are updated immediately.
 
 *hide-disconnected*: ++
 	typeof: bool ++

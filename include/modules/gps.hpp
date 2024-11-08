@@ -24,7 +24,7 @@ namespace waybar::modules {
 
     const std::string getFixStatusString() const;
 
-    util::SleeperThread thread_;
+    util::SleeperThread thread_, gps_thread_;
     gps_data_t gps_data_;
     std::string state_;
 
