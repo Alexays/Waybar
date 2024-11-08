@@ -335,7 +335,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
     }
 #endif
-#ifdef HAVE_LIBCAVA
+#ifdef HAVE_LIBGPS
     if (ref == "gps") {
       return new waybar::modules::Gps(id, config_[name]);
     }
