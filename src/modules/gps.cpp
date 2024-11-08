@@ -1,4 +1,5 @@
 #include "modules/gps.hpp"
+#include <gps.h>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
@@ -38,7 +39,28 @@ waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
     hideNoFix = config_["hide-no-fix"].asBool();
   }
 
-  gps_stream(&gps_data_, WATCH_ENABLE, NULL);
+  gps_thread_ = [this] {
+    dp.emit();
+    gps_stream(&gps_data_, WATCH_ENABLE, NULL);
+    int last_gps_mode = 0;
+
+    while (gps_waiting(&gps_data_, 5000000)) {
+      if (gps_read(&gps_data_, NULL, 0) == -1) {
+        throw std::runtime_error("Can't read data from gpsd.");
+      }
+
+      if (MODE_SET != (MODE_SET & gps_data_.set)) {
+        // did not even get mode, nothing to see here
+        continue;
+      }
+
+      if (gps_data_.fix.mode != last_gps_mode) {
+        // significant update
+        dp.emit();
+      }
+      last_gps_mode = gps_data_.fix.mode;
+    }
+  };
 }
 
 const std::string waybar::modules::Gps::getFixModeName() const {
@@ -93,9 +115,7 @@ const std::string waybar::modules::Gps::getFixStatusString() const {
 }
 
 auto waybar::modules::Gps::update() -> void {
-  if (gps_read(&gps_data_, NULL, 0) == -1) {
-    throw std::runtime_error("Can't read data from gpsd.");
-  }
+  sleep(0);    // Wait for gps status change
 
   if ((gps_data_.fix.mode == MODE_NOT_SEEN && hideDisconnected) || (gps_data_.fix.mode == MODE_NO_FIX && hideNoFix)) {
     event_box_.set_visible(false);
