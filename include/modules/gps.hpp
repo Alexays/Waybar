@@ -3,11 +3,13 @@
 #include <fmt/format.h>
 #include <sys/statvfs.h>
 
-#include <fstream>
+#ifdef WANT_RFKILL
+#include "util/rfkill.hpp"
+#endif
+
 #include <gps.h>
 
 #include "ALabel.hpp"
-#include "util/format.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
@@ -19,6 +21,9 @@ namespace waybar::modules {
     auto update() -> void override;
 
   private:
+    #ifdef WANT_RFKILL
+    util::Rfkill rfkill_;
+    #endif
     const std::string getFixModeName() const;
     const std::string getFixModeString() const;
 

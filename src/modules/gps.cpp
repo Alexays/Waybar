@@ -21,7 +21,11 @@ namespace {
 
 
 waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
-: ALabel(config, "gps", id, "{}", 5) {
+: ALabel(config, "gps", id, "{}", 5)
+#ifdef WANT_RFKILL
+,rfkill_{RFKILL_TYPE_GPS}
+#endif
+{
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -61,6 +65,10 @@ waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
       last_gps_mode = gps_data_.fix.mode;
     }
   };
+
+  #ifdef WANT_RFKILL
+  rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Gps::update)));
+  #endif
 }
 
 const std::string waybar::modules::Gps::getFixModeName() const {
@@ -72,6 +80,9 @@ const std::string waybar::modules::Gps::getFixModeName() const {
     case MODE_3D:
       return "fix-3d";
     default:
+      #ifdef WANT_RFKILL
+      if (rfkill_.getState()) return "disabled";
+      #endif
       return "disconnected";
   }
 }
@@ -91,8 +102,6 @@ const std::string waybar::modules::Gps::getFixModeString() const {
 
 const std::string waybar::modules::Gps::getFixStatusString() const {
   switch (gps_data_.fix.status) {
-    case STATUS_UNK:
-      return "Unknown";
     case STATUS_GPS:
       return "GPS";
     case STATUS_DGPS:
@@ -110,6 +119,11 @@ const std::string waybar::modules::Gps::getFixStatusString() const {
     case STATUS_PPS_FIX:
       return "PPS Fix";
     default:
+
+      #ifdef WANT_RFKILL
+      if (rfkill_.getState()) return "Disabled";
+      #endif
+
       return "Unknown";
   }
 }
