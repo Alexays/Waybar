@@ -92,6 +92,7 @@ libgps lives in:
 ```
 "gps": {
 	"format": "{mode}",
+	"format-disabled": "", // an empty format will hide the module
 	"format-no-fix": "No fix",
 	"format-fix-3d": "{status}",
 	"tooltip-format": "{mode}",
@@ -104,6 +105,7 @@ libgps lives in:
 # STYLE
 
 - *#gps*
+- *#gps.disabled* Applied when GPS is disabled.
 - *#gps.fix-none* Applied when GPS is present, but there is no fix.
 - *#gps.fix-2d* Applied when there is a 2D fix.
 - *#gps.fix-3d* Applied when there is a 3D fix.
