@@ -181,6 +181,19 @@ A minimal *config* file could look like this:
 }
 ```
 
+# SIGNALS
+
+Waybar accepts the following signals:
+
+*SIGUSR1*
+	Toggles the bar visibility (hides if shown, shows if hidden)
+*SIGUSR2*
+	Reloads (resets) the bar
+*SIGINT*
+	Quits the bar
+
+For example, to toggle the bar programmatically, you can invoke `killall -SIGUSR1 waybar`.
+
 # MULTI OUTPUT CONFIGURATION
 
 ## Limit a configuration to some outputs
