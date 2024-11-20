@@ -18,6 +18,9 @@ namespace waybar::modules::hyprland {
 std::filesystem::path IPC::socketFolder_;
 
 std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
+  static std::mutex folderMutex;
+  std::unique_lock lock(folderMutex);
+
   // socket path, specified by EventManager of Hyprland
   if (!socketFolder_.empty()) {
     return socketFolder_;
@@ -148,20 +151,10 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
-  struct addrinfo aiHints;
-  struct addrinfo* aiRes = nullptr;
   const auto serverSocket = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (serverSocket < 0) {
     throw std::runtime_error("Hyprland IPC: Couldn't open a socket (1)");
-  }
-
-  memset(&aiHints, 0, sizeof(struct addrinfo));
-  aiHints.ai_family = AF_UNSPEC;
-  aiHints.ai_socktype = SOCK_STREAM;
-
-  if (getaddrinfo("localhost", nullptr, &aiHints, &aiRes) != 0) {
-    throw std::runtime_error("Hyprland IPC: Couldn't get host (2)");
   }
 
   // get the instance signature

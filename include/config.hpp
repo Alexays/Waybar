@@ -20,6 +20,9 @@ class Config {
   static std::optional<std::string> findConfigPath(
       const std::vector<std::string> &names, const std::vector<std::string> &dirs = CONFIG_DIRS);
 
+  static std::optional<std::string> tryExpandPath(const std::string &base,
+                                                  const std::string &filename);
+
   Config() = default;
 
   void load(const std::string &config);

@@ -21,7 +21,8 @@ const std::vector<std::string> Config::CONFIG_DIRS = {
 
 const char *Config::CONFIG_PATH_ENV = "WAYBAR_CONFIG_DIR";
 
-std::optional<std::string> tryExpandPath(const std::string &base, const std::string &filename) {
+std::optional<std::string> Config::tryExpandPath(const std::string &base,
+                                                 const std::string &filename) {
   fs::path path;
 
   if (!filename.empty()) {

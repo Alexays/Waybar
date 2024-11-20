@@ -38,7 +38,7 @@ The *backlight* module displays the current backlight level.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -80,6 +80,11 @@ The *backlight* module displays the current backlight level.
 	typeof: float ++
 	default: 1.0 ++
 	The speed at which to change the brightness when scrolling.
+
+*min-brightness*: ++
+	typeof: double ++
+	default: 0.0 ++
+	The minimum brightness of the backlight.
 
 *menu*: ++
 	typeof: string ++
