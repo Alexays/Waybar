@@ -82,6 +82,11 @@ The *cpu* module displays the current CPU utilization.
 	default: true ++
 	Option to disable tooltip on hover.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{load}*: Current CPU load.

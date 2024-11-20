@@ -23,6 +23,21 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 
 # BAR CONFIGURATION
 
+*expand-center* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-center to consume all left over space dynamically.
+
+*expand-left* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
+
+*expand-right* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
+
 *layer* ++
 	typeof: string ++
 	default: bottom ++
@@ -67,6 +82,11 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *margin-<top\|left\|bottom\|right>* ++
 	typeof: integer ++
 	Margins value without units.
+
+*no-center* ++
+	typeof: bool ++
+	default: false ++
+	Option to disable the center modules fully usefull together with expand-\*.
 
 *spacing* ++
 	typeof: integer ++

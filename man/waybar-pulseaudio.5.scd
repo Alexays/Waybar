@@ -126,6 +126,11 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{desc}*: Pulseaudio port's description, for bluetooth it'll be the device name.

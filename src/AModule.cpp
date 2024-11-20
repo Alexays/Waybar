@@ -15,6 +15,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     : name_(name),
       config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
+      isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
       distance_scrolled_x_(0.0) {
   // Configure module action Map
@@ -273,6 +274,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }
+bool AModule::expandEnabled() const { return isExpand; }
 
 AModule::operator Gtk::Widget&() { return event_box_; }
 
