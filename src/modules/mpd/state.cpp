@@ -80,7 +80,15 @@ void Idle::exit() noexcept {
   }
 }
 
-bool Idle::on_io(Glib::IOCondition const&) {
+bool Idle::on_io(Glib::IOCondition const& condition) {
+  if (condition & Glib::IO_HUP || condition & Glib::IO_ERR) {
+    spdlog::debug("mpd: Idle: Error (IO_HUP or IO_ERR ), restarting connection");
+    idle_connection_.disconnect();
+    ctx_->connection().reset();
+    ctx_->setState(std::make_unique<Disconnected>(ctx_));
+    return false;
+  }
+
   auto conn = ctx_->connection().get();
 
   // callback should do this:
