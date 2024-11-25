@@ -28,7 +28,7 @@ void* signalThread(void* args) {
 
     switch (signum) {
       case SIGCHLD:
-        spdlog::debug("Received SIGCHLD in signalThread");
+        spdlog::trace("Received SIGCHLD in signalThread");
         if (!reap.empty()) {
           reap_mtx.lock();
           for (auto it = reap.begin(); it != reap.end(); ++it) {

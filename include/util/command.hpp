@@ -50,7 +50,7 @@ inline int close(FILE* fp, pid_t pid) {
     ret = waitpid(pid, &stat, WCONTINUED | WUNTRACED);
 
     if (WIFEXITED(stat)) {
-      spdlog::debug("Cmd exited with code {}", WEXITSTATUS(stat));
+      spdlog::trace("Cmd exited with code {}", WEXITSTATUS(stat));
     } else if (WIFSIGNALED(stat)) {
       spdlog::debug("Cmd killed by {}", WTERMSIG(stat));
     } else if (WIFSTOPPED(stat)) {
