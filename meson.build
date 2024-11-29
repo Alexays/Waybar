@@ -106,7 +106,7 @@ if libsndio.found()
     endif
 endif
 
-gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.6.0'],
+gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.9.0'],
         default_options: ['introspection=false', 'vapi=false'],
         fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
@@ -482,7 +482,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.10.2',
+                  version : '>=0.10.3',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')

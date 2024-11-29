@@ -191,12 +191,6 @@ void Window::queryActiveWorkspace() {
         solo_ = true;
       }
 
-      // Grouped windows have a tab bar and therefore don't look fullscreen or solo
-      if (windowData_.grouped) {
-        fullscreen_ = false;
-        solo_ = false;
-      }
-
       if (solo_) {
         soloClass_ = windowData_.class_name;
       } else {

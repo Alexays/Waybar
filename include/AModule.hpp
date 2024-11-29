@@ -23,6 +23,8 @@ class AModule : public IModule {
   /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 
+  bool expandEnabled() const;
+
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
@@ -50,6 +52,7 @@ class AModule : public IModule {
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
+  const bool isExpand;
   bool hasUserEvents_;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;

@@ -5,12 +5,12 @@
 }:
 let
   libcava = rec {
-    version = "0.10.2";
+    version = "0.10.3";
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
       rev = version;
-      hash = "sha256-jU7RQV2txruu/nUUl0TzjK4nai7G38J1rcTjO7UXumY=";
+      hash = "sha256-ZDFbI69ECsUTjbhlw2kHRufZbQMu+FQSMmncCJ5pagg=";
     };
   };
 in
@@ -24,6 +24,9 @@ in
     };
 
     mesonFlags = lib.remove "-Dgtk-layer-shell=enabled" oldAttrs.mesonFlags;
+
+    # downstream patch should not affect upstream
+    patches = [];
 
     buildInputs = (builtins.filter (p: p.pname != "wireplumber") oldAttrs.buildInputs) ++ [
         pkgs.wireplumber

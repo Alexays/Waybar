@@ -64,6 +64,11 @@ The *image* module displays an image from a path.
 	default: true ++
 	Option to enable tooltip on hover.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # SCRIPT OUTPUT
 
 Similar to the *custom* module, output values of the script are *newline* separated.

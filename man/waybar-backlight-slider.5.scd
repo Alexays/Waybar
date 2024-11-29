@@ -31,6 +31,11 @@ The brightness can be controlled by dragging the slider across the bar or clicki
     typeof: string ++
     The name of the preferred device to control. If left empty, a device will be chosen automatically.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # EXAMPLES
 
 ```
