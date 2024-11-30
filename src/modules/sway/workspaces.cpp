@@ -260,7 +260,9 @@ void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
   if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
       node["name"].isString()) {
     std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
-    std::string windowClass = node["app_id"].asString();
+    std::string windowClass = node["app_id"].isString()
+                                  ? node["app_id"].asString()
+                                  : node["window_properties"]["class"].asString();
 
     // Only add window rewrites that can be looked up
     if (!windowClass.empty()) {
