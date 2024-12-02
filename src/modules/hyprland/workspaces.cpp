@@ -371,7 +371,8 @@ void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
     auto const workspaceRules = gIPC->getSocket1JsonReply("workspacerules");
     for (Json::Value workspaceJson : workspacesJson) {
       std::string name = workspaceJson["name"].asString();
-      if (name == workspaceName) {
+      int id = workspaceJson["id"].asInt();
+      if (name == workspaceName || std::to_string(id) == workspaceName) {
         if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
             (showSpecial() || !name.starts_with("special")) && !isDoubleSpecial(workspaceName)) {
           for (Json::Value const &rule : workspaceRules) {
@@ -385,7 +386,7 @@ void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
           break;
         }
       } else {
-        extendOrphans(workspaceJson["id"].asInt(), clientsData);
+        extendOrphans(id, clientsData);
       }
     }
   } else {
@@ -418,14 +419,19 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
   std::string workspaceIdStr = payload.substr(0, payload.find(','));
   int workspaceId = workspaceIdStr == "special" ? -99 : std::stoi(workspaceIdStr);
   std::string newName = payload.substr(payload.find(',') + 1);
+  bool workspaceFound = false;
   for (auto &workspace : m_workspaces) {
     if (workspace->id() == workspaceId) {
       if (workspace->name() == m_activeWorkspaceName) {
         m_activeWorkspaceName = newName;
       }
       workspace->setName(newName);
+      workspaceFound = true;
       break;
     }
+  }
+  if (!workspaceFound) {
+    spdlog::debug("Could not find workspace with id {} to rename", workspaceId);
   }
   sortWorkspaces();
 }
