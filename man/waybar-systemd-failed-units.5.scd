@@ -53,6 +53,7 @@ Addressed by *systemd-failed-units*
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
