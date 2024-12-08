@@ -123,20 +123,37 @@ void Config::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) {
 }
 bool isValidOutput(const Json::Value &config, const std::string &name,
                    const std::string &identifier) {
+  const auto isOutputMatches = [&](const std::string &output) -> bool {
+    if (output.substr(0, 1) == "$") {
+      auto *const environment_value = std::getenv(output.substr(1).c_str());
+      if (environment_value != nullptr) {
+        const std::string output_from_env = environment_value;
+        return output_from_env == name || output_from_env == identifier;
+      }
+
+      spdlog::warn("The environment value is unknown: {}", output);
+    }
+
+    return output == name || output == identifier;
+  };
+
   if (config["output"].isArray()) {
     for (auto const &output_conf : config["output"]) {
       if (output_conf.isString()) {
         auto config_output = output_conf.asString();
+
         if (config_output.substr(0, 1) == "!") {
-          if (config_output.substr(1) == name || config_output.substr(1) == identifier) {
+          if (isOutputMatches(config_output.substr(1))) {
             return false;
           }
 
           continue;
         }
-        if (config_output == name || config_output == identifier) {
+
+        if (isOutputMatches(config_output)) {
           return true;
         }
+
         if (config_output.substr(0, 1) == "*") {
           return true;
         }
@@ -147,11 +164,13 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
 
   if (config["output"].isString()) {
     auto config_output = config["output"].asString();
+
     if (!config_output.empty()) {
       if (config_output.substr(0, 1) == "!") {
-        return config_output.substr(1) != name && config_output.substr(1) != identifier;
+        return !isOutputMatches(config_output.substr(1));
       }
-      return config_output == name || config_output == identifier;
+
+      return isOutputMatches(config_output);
     }
   }
 
