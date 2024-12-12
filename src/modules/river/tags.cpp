@@ -220,7 +220,7 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
       }
       buttons_[i].get_style_context()->add_class("occupied");
     } else {
-      if (hide_vacant) {
+      if (hide_vacant && !buttons_[i].get_style_context()->has_class("focused")) {
         buttons_[i].set_visible(false);
       }
       buttons_[i].get_style_context()->remove_class("occupied");
