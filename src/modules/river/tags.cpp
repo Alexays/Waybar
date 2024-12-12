@@ -191,16 +191,19 @@ bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
 void Tags::handle_focused_tags(uint32_t tags) {
   auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
+    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
     if ((1 << i) & tags) {
-      if (hide_vacant) {
+      if (hide_vacant && !visible) {
         buttons_[i].set_visible(true);
       }
       buttons_[i].get_style_context()->add_class("focused");
     } else {
-      buttons_[i].get_style_context()->remove_class("focused");
-      if (hide_vacant && !buttons_[i].get_style_context()->has_class("occupied")) {
+      if (hide_vacant && !(occupied || urgent)) {
         buttons_[i].set_visible(false);
       }
+      buttons_[i].get_style_context()->remove_class("focused");
     }
   }
 }
@@ -214,13 +217,16 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
   }
   auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool focused = buttons_[i].get_style_context()->has_class("focused");
+    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
     if ((1 << i) & tags) {
-      if (hide_vacant) {
+      if (hide_vacant && !visible) {
         buttons_[i].set_visible(true);
       }
       buttons_[i].get_style_context()->add_class("occupied");
     } else {
-      if (hide_vacant && !buttons_[i].get_style_context()->has_class("focused")) {
+      if (hide_vacant && !(focused || urgent)) {
         buttons_[i].set_visible(false);
       }
       buttons_[i].get_style_context()->remove_class("occupied");
@@ -229,10 +235,20 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
 }
 
 void Tags::handle_urgent_tags(uint32_t tags) {
+  auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
+    bool focused = buttons_[i].get_style_context()->has_class("focused");
     if ((1 << i) & tags) {
+      if (hide_vacant && !visible) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("urgent");
     } else {
+      if (hide_vacant && !(occupied || focused)) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("urgent");
     }
   }
