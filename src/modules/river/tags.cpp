@@ -189,11 +189,18 @@ bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {
+  auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
     if ((1 << i) & tags) {
+      if (hide_vacant) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("focused");
     } else {
       buttons_[i].get_style_context()->remove_class("focused");
+      if (hide_vacant && !buttons_[i].get_style_context()->has_class("occupied")) {
+        buttons_[i].set_visible(false);
+      }
     }
   }
 }
@@ -205,10 +212,17 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
   for (; view_tag < end; ++view_tag) {
     tags |= *view_tag;
   }
+  auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
     if ((1 << i) & tags) {
+      if (hide_vacant) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("occupied");
     } else {
+      if (hide_vacant) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("occupied");
     }
   }
