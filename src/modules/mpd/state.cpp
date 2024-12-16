@@ -26,7 +26,12 @@ namespace waybar::modules::detail {
     if (!mpd_run_noidle(conn)) {                                          \
       if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {          \
         spdlog::error("mpd: Idle: failed to unregister for IDLE events"); \
-        ctx_->checkErrors(conn);                                          \
+        try {                                                             \
+          ctx_->checkErrors(conn);                                        \
+        } catch (std::system_error const& e) {                            \
+          ctx_->connection().reset();                                     \
+          ctx_->tryConnect();                                             \
+        }                                                                 \
       }                                                                   \
     }                                                                     \
     __VA_ARGS__;                                                          \
