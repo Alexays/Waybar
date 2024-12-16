@@ -97,6 +97,7 @@ bool Idle::on_io(Glib::IOCondition const&) {
     ctx_->checkErrors(conn);
   } catch (std::exception const& e) {
     spdlog::warn("mpd: Idle: error: {}", e.what());
+    ctx_->connection().reset();
     ctx_->setState(std::make_unique<Disconnected>(ctx_));
     return false;
   }
@@ -384,6 +385,7 @@ bool Disconnected::on_timer() {
       return false;  // do not rearm timer
     }
   } catch (std::exception const& e) {
+    ctx_->connection().reset();
     spdlog::warn("mpd: Disconnected: error: {}", e.what());
   }
 
