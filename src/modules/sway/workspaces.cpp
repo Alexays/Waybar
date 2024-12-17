@@ -62,14 +62,13 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     m_formatWindowSeperator = " ";
   }
   const Json::Value &windowRewrite = config["window-rewrite"];
-
-  const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
-  m_windowRewriteDefault =
-      windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
-
-  m_windowRewriteRules = waybar::util::RegexCollection(
-      windowRewrite, m_windowRewriteDefault,
-      [](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
+  if (windowRewrite.isObject()) {
+    const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
+    std::string windowRewriteDefault =
+        windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
+    m_windowRewriteRules = waybar::util::RegexCollection(
+        windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction);
+  }
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
