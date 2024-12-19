@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
 namespace waybar::modules::SNI {
 
 Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
@@ -39,7 +41,9 @@ void Tray::onRemove(std::unique_ptr<Item>& item) {
 
 auto Tray::update() -> void {
   // Show tray only when items are available
-  event_box_.set_visible(!box_.get_children().empty());
+  std::vector<Gtk::Widget*> children = box_.get_children();
+  event_box_.set_visible(std::any_of(children.begin(), children.end(),
+                                     [](Gtk::Widget* child) { return child->get_visible(); }));
   // Call parent update
   AModule::update();
 }
