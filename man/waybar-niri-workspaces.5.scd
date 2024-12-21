@@ -17,6 +17,10 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
 
+*output*: ++
+	typeof: string ++
+	If set, only show workspaces for the output set.
+
 *format*: ++
 	typeof: string ++
 	default: {value} ++
