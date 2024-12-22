@@ -236,7 +236,9 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
   volume = std::clamp(volume, min_volume, max_volume);
   pa_cvolume_set(&pa_volume, pa_volume_.channels, volume * volume_tick);
 
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t max_volume) {
@@ -265,31 +267,41 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
       pa_cvolume_dec(&pa_volume, change);
     }
   }
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSinkMute() {
   muted_ = !muted_;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
                                     nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSinkMute(bool mute) {
   muted_ = mute;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
                                     nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSourceMute() {
   source_muted_ = !muted_;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSourceMute(bool mute) {
   source_muted_ = mute;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 bool AudioBackend::isBluetooth() {
