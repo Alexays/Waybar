@@ -35,9 +35,17 @@ Addressed by *network*
 	typeof: string ++
 	This format is used when an ethernet interface is displayed.
 
+*format-ethernet-no-internet*: ++
+	typeof: string ++
+	This format is used when an ethernet interface is displayed and no internet connection is present.
+
 *format-wifi*: ++
 	typeof: string ++
 	This format is used when a wireless interface is displayed.
+
+*format-wifi-no-internet*: ++
+	typeof: string ++
+	This format is used when a wireless interface is displayed and no internet connection is present.
 
 *format-linked*: ++
 	typeof: string ++
@@ -55,6 +63,10 @@ Addressed by *network*
 	typeof: array/object ++
 	Based on the current signal strength, the corresponding icon gets selected. ++
 	The order is *low* to *high*. Or by the state if it is an object.
+
+*ping-servers*: ++
+	typeof: array ++
+	The list of servers to ping to determine if an internet connection is present. Deactivate with an empty array.
 
 *rotate*: ++
 	typeof: integer ++
@@ -196,7 +208,9 @@ Addressed by *network*
 	"interface": "wlp2s0",
 	"format": "{ifname}",
 	"format-wifi": "{essid} ({signalStrength}%) ",
+	"format-wifi-no-internet": "{essid} ({signalStrength}%) 󰖪",
 	"format-ethernet": "{ifname} ",
+	"format-ethernet-no-internet": "{ifname} 󰌙",
 	"format-disconnected": "", //An empty format will hide the module.
 	"format-disconnected": "",
 	"tooltip-format": "{ifname}",
