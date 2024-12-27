@@ -59,15 +59,15 @@ Addressed by *wlr/taskbar*
 
 *on-click*: ++
 	typeof: string ++
-	The action which should be triggered when clicking on the application button with the left mouse button.
+	The action which should be triggered when clicking on the application button with the left mouse button. Needs to be defined in actions object.
 
 *on-click-middle*: ++
 	typeof: string ++
-	The action which should be triggered when clicking on the application button with the middle mouse button.
+	The action which should be triggered when clicking on the application button with the middle mouse button. Needs to be defined in actions object.
 
 *on-click-right*: ++
 	typeof: string ++
-	The action which should be triggered when clicking on the application button with the right mouse button.
+	The action which should be triggered when clicking on the application button with the right mouse button. Needs to be defined in actions object.
 
 *on-update*: ++
 	typeof: string ++
@@ -133,8 +133,10 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 	"icon-size": 14,
 	"icon-theme": "Numix-Circle",
 	"tooltip-format": "{title}",
-	"on-click": "activate",
-	"on-click-middle": "close",
+	"actions" : {
+		"on-click": "activate",
+		"on-click-middle": "close",
+        },
 	"ignore-list": [
 	    "Alacritty"
 	],
