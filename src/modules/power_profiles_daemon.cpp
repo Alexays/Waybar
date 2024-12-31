@@ -56,9 +56,6 @@ void PowerProfilesDaemon::busConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r) {
     // Connect active profile callback
   } catch (const std::exception& e) {
     spdlog::error("Failed to create the power profiles daemon DBus proxy: {}", e.what());
-  } catch (const Glib::Error& e) {
-    spdlog::error("Failed to create the power profiles daemon DBus proxy: {}",
-                  std::string(e.what()));
   }
 }
 

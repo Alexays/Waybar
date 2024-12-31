@@ -430,7 +430,7 @@ auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlaye
 
   if (std::string(player_name->name) == mpris->player_) {
     mpris->player = nullptr;
-    mpris->event_box_.set_visible(false);
+    mpris->label_.set_visible(false);
     mpris->dp.emit();
   }
 }
