@@ -425,7 +425,7 @@ icon_name: \"{3}\". time-to-empty: \"{4}\". time-to-full: \"{5}\". temperature: 
 native_path: \"{7}\". model: \"{8}\". level: \"{9}\"",
         fmt::format_int(upDevice_.kind).str(), fmt::format_int(upDevice_.state).str(),
         upDevice_.percentage, upDevice_.icon_name, upDevice_.time_empty, upDevice_.time_full,
-        upDevice_.temperature, upDevice_.nativePath, upDevice_.model, upDevice_.level);
+        upDevice_.temperature, upDevice_.nativePath, upDevice_.model, fmt::format_int(upDevice_.level).str());
   }
 }
 
