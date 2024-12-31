@@ -23,3 +23,19 @@ inline std::string capitalize(const std::string& str) {
                  [](unsigned char c) { return std::toupper(c); });
   return result;
 }
+
+inline std::vector<std::string> split(std::string_view s, std::string_view delimiter,
+                                      int max_splits = -1) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+  size_t next_pos = 0;
+  while ((next_pos = s.find(delimiter, pos)) != std::string::npos) {
+    result.push_back(std::string(s.substr(pos, next_pos - pos)));
+    pos = next_pos + delimiter.size();
+    if (max_splits > 0 && result.size() == static_cast<size_t>(max_splits)) {
+      break;
+    }
+  }
+  result.push_back(std::string(s.substr(pos)));
+  return result;
+}
