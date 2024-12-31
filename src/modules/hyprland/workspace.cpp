@@ -35,9 +35,9 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
   if (true) {
     // TODO-WorkspaceTaskbar: Allow vertical?
     m_content.set_orientation(Gtk::ORIENTATION_HORIZONTAL);
-    m_content.pack_start(m_label, false, false);
+    m_content.pack_start(m_labelBefore, false, false);
   } else {
-    m_content.set_center_widget(m_label);
+    m_content.set_center_widget(m_labelBefore);
   }
   m_button.add(m_content);
 
@@ -178,7 +178,7 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
   return m_name;
 }
 
-void Workspace::update(const std::string &format, const std::string &icon) {
+void Workspace::update(const std::string &workspace_icon) {
   // clang-format off
   if (this->m_workspaceManager.activeOnly() && \
      !this->isActive() && \
@@ -206,13 +206,14 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
   std::string windows;
-  // TODO-WorkspaceTaskbar
-  if (false) {
+  // Optimization: The {windows} substitution string is only possible if the taskbar is disabled, no
+  // need to compute this if enableWorkspaceTaskbar() is true
+  if (!m_workspaceManager.enableWorkspaceTaskbar()) {
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
 
     bool isNotFirst = false;
 
-    for (auto &[_pid, window_repr] : m_windowMap) {
+    for (const auto &[_pid, window_repr] : m_windowMap) {
       if (isNotFirst) {
         windows.append(windowSeparator);
       }
@@ -221,37 +222,62 @@ void Workspace::update(const std::string &format, const std::string &icon) {
     }
   }
 
-  m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
-                                 fmt::arg("name", name()), fmt::arg("icon", icon),
-                                 fmt::arg("windows", windows)));
+  auto formatBefore = m_workspaceManager.formatBefore();
+  m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", id()),
+                                       fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
+                                       fmt::arg("windows", windows)));
 
-  auto children = m_content.get_children();
-  for (auto child : children) {
-    if (child != &m_label) {
+  if (m_workspaceManager.enableWorkspaceTaskbar()) {
+    updateTaskbar(workspace_icon);
+  }
+}
+
+void Workspace::updateTaskbar(const std::string &workspace_icon) {
+  for (auto child : m_content.get_children()) {
+    if (child != &m_labelBefore) {
       m_content.remove(*child);
     }
   }
 
-  for (auto &[_addr, window_repr] : m_windowMap) {
+  for (const auto &[_addr, window_repr] : m_windowMap) {
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    auto window_icon = Gtk::make_managed<Gtk::Image>();
-    auto window_label = Gtk::make_managed<Gtk::Label>(window_repr.window_title);
-
-    // TODO-WorkspaceTaskbar: customizable max width and ellipsize
-    window_label->set_max_width_chars(20);
-    window_label->set_ellipsize(Pango::ELLIPSIZE_END);
-
-    // TODO-WorkspaceTaskbar: support themes
-    auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr.window_class);
-    // TODO-WorkspaceTaskbar: icon size
-    m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, 24);
-
-    window_box->pack_start(*window_icon, false, false);
-    window_box->pack_start(*window_label, true, true);
     window_box->set_tooltip_text(window_repr.window_title);
+
+    auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
+                                   fmt::arg("title", window_repr.window_title));
+    if (!text_before.empty()) {
+      auto window_label_before = Gtk::make_managed<Gtk::Label>(text_before);
+      window_box->pack_start(*window_label_before, true, true);
+    }
+
+    if (m_workspaceManager.taskbarWithIcon()) {
+      // TODO-WorkspaceTaskbar: support themes
+      auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr.window_class);
+
+      // TODO-WorkspaceTaskbar: icon size
+      auto window_icon = Gtk::make_managed<Gtk::Image>();
+      m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, 24);
+      window_box->pack_start(*window_icon, false, false);
+    }
+
+    auto text_after = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatAfter()),
+                                  fmt::arg("title", window_repr.window_title));
+    if (!text_after.empty()) {
+      auto window_label_after = Gtk::make_managed<Gtk::Label>(text_after);
+      window_box->pack_start(*window_label_after, true, true);
+    }
 
     m_content.pack_start(*window_box, true, false);
     window_box->show_all();
+  }
+
+  auto formatAfter = m_workspaceManager.formatAfter();
+  if (!formatAfter.empty()) {
+    m_labelAfter.set_markup(fmt::format(fmt::runtime(formatAfter), fmt::arg("id", id()),
+                                        fmt::arg("name", name()),
+                                        fmt::arg("icon", workspace_icon)));
+    m_content.pack_end(m_labelAfter, false, false);
+    m_labelAfter.show();
   }
 }
 
