@@ -24,6 +24,13 @@ inline std::string capitalize(const std::string& str) {
   return result;
 }
 
+inline std::string toLower(const std::string& str) {
+  std::string result = str;
+  std::transform(result.begin(), result.end(), result.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return result;
+}
+
 inline std::vector<std::string> split(std::string_view s, std::string_view delimiter,
                                       int max_splits = -1) {
   std::vector<std::string> result;

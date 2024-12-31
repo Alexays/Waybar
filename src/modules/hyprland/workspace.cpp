@@ -32,9 +32,8 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
                                                false);
 
   m_button.set_relief(Gtk::RELIEF_NONE);
-  if (true) {
-    // TODO-WorkspaceTaskbar: Allow vertical?
-    m_content.set_orientation(Gtk::ORIENTATION_HORIZONTAL);
+  if (m_workspaceManager.enableWorkspaceTaskbar()) {
+    m_content.set_orientation(m_workspaceManager.taskbarOrientation());
     m_content.pack_start(m_labelBefore, false, false);
   } else {
     m_content.set_center_widget(m_labelBefore);
@@ -251,12 +250,10 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     }
 
     if (m_workspaceManager.taskbarWithIcon()) {
-      // TODO-WorkspaceTaskbar: support themes
       auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr.window_class);
-
-      // TODO-WorkspaceTaskbar: icon size
+      int icon_size = m_workspaceManager.taskbarIconSize();
       auto window_icon = Gtk::make_managed<Gtk::Image>();
-      m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, 24);
+      m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, icon_size);
       window_box->pack_start(*window_icon, false, false);
     }
 

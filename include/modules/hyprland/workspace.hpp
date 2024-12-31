@@ -63,7 +63,6 @@ class Workspace {
   std::optional<WindowRepr> closeWindow(WindowAddress const& addr);
 
   void update(const std::string& workspace_icon);
-  void updateTaskbar(const std::string& workspace_icon);
 
  private:
   Workspaces& m_workspaceManager;
@@ -85,6 +84,8 @@ class Workspace {
   Gtk::Box m_content;
   Gtk::Label m_labelBefore;
   Gtk::Label m_labelAfter;
+
+  void updateTaskbar(const std::string& workspace_icon);
 };
 
 }  // namespace waybar::modules::hyprland
