@@ -89,10 +89,12 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 void AModule::handleToggle(int n_press, double dx, double dy) {
-  handleClickEvent(controllClick_->get_current_button(), n_press, Gdk::Event::Type::BUTTON_PRESS);
+  handleRawClickEvent(controllClick_->get_current_button(), n_press,
+                      Gdk::Event::Type::BUTTON_PRESS);
 }
 void AModule::handleRelease(int n_press, double dx, double dy) {
-  handleClickEvent(controllClick_->get_current_button(), n_press, Gdk::Event::Type::BUTTON_RELEASE);
+  handleRawClickEvent(controllClick_->get_current_button(), n_press,
+                      Gdk::Event::Type::BUTTON_RELEASE);
 }
 
 void AModule::setCursor(const Glib::RefPtr<Gdk::Cursor>& cur) {
@@ -119,7 +121,7 @@ void AModule::handleMouseLeave() {
   }
 }
 
-void AModule::handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype) {
+void AModule::handleRawClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype) {
   std::string format{};
   const std::map<std::pair<std::pair<uint, int>, Gdk::Event::Type>, std::string>::const_iterator&
       rec{eventMap_.find(std::pair(std::pair(n_button, n_press), n_evtype))};
@@ -127,8 +129,12 @@ void AModule::handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_ev
     // First call module action
     this->AModule::doAction(rec->second);
     format = rec->second;
+
+    // Second allow subclass to handle the event by name
+    handleClick(rec->second);
   }
-  // Second call user scripts
+
+  // Finally call user scripts
   if (!format.empty()) {
     if (config_[format].isString())
       format = config_[format].asString();
@@ -139,6 +145,8 @@ void AModule::handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_ev
 
   dp.emit();
 }
+
+void AModule::handleClick(const std::string& name) {}
 
 const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e) {
   // only affects up/down

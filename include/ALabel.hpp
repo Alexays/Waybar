@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtkmm/label.h>
+#include <gtkmm/popovermenu.h>
 
 #include <chrono>
 
@@ -26,9 +27,14 @@ class ALabel : public AModule {
   const std::chrono::seconds interval_;
   bool alt_ = false;
   std::string default_format_;
+  std::unique_ptr<Gtk::PopoverMenu> menu_;
 
   void handleToggle(int n_press, double dx, double dy) override;
   virtual std::string getState(uint8_t value, bool lesser = false);
+  void handleClick(const std::string &name) override;
+
+ private:
+  void handleMenu(std::string cmd) const;
 };
 
 }  // namespace waybar
