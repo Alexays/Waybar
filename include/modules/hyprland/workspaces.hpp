@@ -38,8 +38,14 @@ class Workspaces : public AModule, public EventHandler {
   auto activeOnly() const -> bool { return m_activeOnly; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
+  auto enableWorkspaceTaskbar() const -> bool { return m_enableWorkspaceTaskbar; }
+  auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
+  auto formatBefore() const -> std::string { return m_formatBefore; }
+  auto formatAfter() const -> std::string { return m_formatAfter; }
+  auto taskbarFormatBefore() const -> std::string { return m_taskbarFormatBefore; }
+  auto taskbarFormatAfter() const -> std::string { return m_taskbarFormatAfter; }
 
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
@@ -69,6 +75,7 @@ class Workspaces : public AModule, public EventHandler {
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
   auto populateWindowRewriteConfig(const Json::Value& config) -> void;
+  auto populateWorkspaceTaskbarConfig(const Json::Value& config) -> void;
 
   void registerIpc();
 
@@ -121,7 +128,7 @@ class Workspaces : public AModule, public EventHandler {
   // Map for windows stored in workspaces not present in the current bar.
   // This happens when the user has multiple monitors (hence, multiple bars)
   // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
-  std::map<WindowAddress, WindowRepr> m_orphanWindowMap;
+  std::map<WindowAddress, WindowRepr, std::less<>> m_orphanWindowMap;
 
   enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
   util::EnumParser<SortMethod> m_enumParser;
@@ -131,14 +138,14 @@ class Workspaces : public AModule, public EventHandler {
                                                  {"NUMBER", SortMethod::NUMBER},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
-  std::string m_format;
+  std::string m_formatBefore;
+  std::string m_formatAfter;
 
   std::map<std::string, std::string> m_iconsMap;
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
 
-  IconLoader m_iconLoader;
   bool m_withIcon;
   uint64_t m_monitorId;
   std::string m_activeWorkspaceName;
@@ -147,6 +154,12 @@ class Workspaces : public AModule, public EventHandler {
   std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
   std::vector<std::string> m_workspacesToRemove;
   std::vector<WindowCreationPayload> m_windowsToCreate;
+
+  IconLoader m_iconLoader;
+  bool m_enableWorkspaceTaskbar = false;
+  bool m_taskbarWithIcon = false;
+  std::string m_taskbarFormatBefore;
+  std::string m_taskbarFormatAfter;
 
   std::vector<std::regex> m_ignoreWorkspaces;
 

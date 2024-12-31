@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "util/regex_collection.hpp"
+#include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -563,8 +564,9 @@ void Workspaces::onConfigReloaded() {
 
 auto Workspaces::parseConfig(const Json::Value &config) -> void {
   const auto &configFormat = config["format"];
-  m_format = configFormat.isString() ? configFormat.asString() : "{name}";
-  m_withIcon = m_format.find("{icon}") != std::string::npos;
+  m_formatBefore = configFormat.isString() ? configFormat.asString() : "{name}";
+  m_withIcon = m_formatBefore.find("{icon}") != std::string::npos;
+  auto withWindows = m_formatBefore.find("{windows}") != std::string::npos;
 
   if (m_withIcon && m_iconsMap.empty()) {
     populateIconsMap(config["format-icons"]);
@@ -581,6 +583,15 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
   populateWindowRewriteConfig(config);
+
+  if (withWindows) {
+    populateWorkspaceTaskbarConfig(config);
+  }
+  if (m_enableWorkspaceTaskbar) {
+    auto parts = split(m_formatBefore, "{windows}", 1);
+    m_formatBefore = parts[0];
+    m_formatAfter = parts.size() > 1 ? parts[1] : "";
+  }
 }
 
 auto Workspaces::populateIconsMap(const Json::Value &formatIcons) -> void {
@@ -651,6 +662,29 @@ auto Workspaces::populateWindowRewriteConfig(const Json::Value &config) -> void 
   m_windowRewriteRules = util::RegexCollection(
       windowRewrite, windowRewriteDefault,
       [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
+}
+
+auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> void {
+  const auto &workspaceTaskbar = config["workspace-taskbar"];
+  if (!workspaceTaskbar.isObject()) {
+    spdlog::debug("workspace-taskbar is not defined or is not an object, using default rules.");
+    return;
+  }
+
+  populateBoolConfig(workspaceTaskbar, "enable", m_enableWorkspaceTaskbar);
+
+  if (workspaceTaskbar["format"].isString()) {
+    /* The user defined a format string, use it */
+    auto parts = split(workspaceTaskbar["format"].asString(), "{icon}", 1);
+    m_taskbarFormatBefore = parts[0];
+    if (parts.size() > 1) {
+      m_taskbarWithIcon = true;
+      m_taskbarFormatAfter = parts[1];
+    }
+  } else {
+    /* The default is to only show the icon */
+    m_taskbarWithIcon = true;
+  }
 }
 
 void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payload) {
@@ -881,7 +915,7 @@ void Workspaces::updateWorkspaceStates() {
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
-    workspace->update(m_format, workspaceIcon);
+    workspace->update(workspaceIcon);
   }
 }
 
