@@ -56,11 +56,11 @@ class Workspace {
   void setOutput(std::string const& value) { m_output = value; };
   bool containsWindow(WindowAddress const& addr) const { return m_windowMap.contains(addr); }
   void insertWindow(WindowCreationPayload create_window_paylod);
-  std::string removeWindow(WindowAddress const& addr);
+  WindowRepr removeWindow(WindowAddress const& addr);
   void initializeWindowMap(const Json::Value& clients_data);
 
   bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
-  std::optional<std::string> closeWindow(WindowAddress const& addr);
+  std::optional<WindowRepr> closeWindow(WindowAddress const& addr);
 
   void update(const std::string& format, const std::string& icon);
 
@@ -78,7 +78,7 @@ class Workspace {
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
-  std::map<WindowAddress, std::string> m_windowMap;
+  std::map<WindowAddress, WindowRepr, std::less<>> m_windowMap;
 
   Gtk::Button m_button;
   Gtk::Box m_content;

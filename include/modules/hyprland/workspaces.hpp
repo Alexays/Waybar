@@ -17,6 +17,7 @@
 #include "modules/hyprland/windowcreationpayload.hpp"
 #include "modules/hyprland/workspace.hpp"
 #include "util/enum.hpp"
+#include "util/icon_loader.hpp"
 #include "util/regex_collection.hpp"
 
 using WindowAddress = std::string;
@@ -45,6 +46,7 @@ class Workspaces : public AModule, public EventHandler {
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
+  const IconLoader& iconLoader() const { return m_iconLoader; }
 
  private:
   void onEvent(const std::string& e) override;
@@ -119,7 +121,7 @@ class Workspaces : public AModule, public EventHandler {
   // Map for windows stored in workspaces not present in the current bar.
   // This happens when the user has multiple monitors (hence, multiple bars)
   // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
-  std::map<WindowAddress, std::string> m_orphanWindowMap;
+  std::map<WindowAddress, WindowRepr> m_orphanWindowMap;
 
   enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
   util::EnumParser<SortMethod> m_enumParser;
@@ -136,6 +138,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
 
+  IconLoader m_iconLoader;
   bool m_withIcon;
   uint64_t m_monitorId;
   std::string m_activeWorkspaceName;

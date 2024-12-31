@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "modules/hyprland/workspaces.hpp"
+#include "util/icon_loader.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -31,7 +32,13 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
                                                false);
 
   m_button.set_relief(Gtk::RELIEF_NONE);
-  m_content.set_center_widget(m_label);
+  if (true) {
+    // TODO-WorkspaceTaskbar: Allow vertical?
+    m_content.set_orientation(Gtk::ORIENTATION_HORIZONTAL);
+    m_content.pack_start(m_label, false, false);
+  } else {
+    m_content.set_center_widget(m_label);
+  }
   m_button.add(m_content);
 
   initializeWindowMap(clients_data);
@@ -46,7 +53,7 @@ void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condi
   }
 }
 
-std::optional<std::string> Workspace::closeWindow(WindowAddress const &addr) {
+std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const &addr) {
   if (m_windowMap.contains(addr)) {
     return removeWindow(addr);
   }
@@ -108,8 +115,8 @@ bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_paylod
   return false;
 }
 
-std::string Workspace::removeWindow(WindowAddress const &addr) {
-  std::string windowRepr = m_windowMap[addr];
+WindowRepr Workspace::removeWindow(WindowAddress const &addr) {
+  WindowRepr windowRepr = m_windowMap[addr];
   m_windowMap.erase(addr);
   return windowRepr;
 }
@@ -199,21 +206,53 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
   std::string windows;
-  auto windowSeparator = m_workspaceManager.getWindowSeparator();
+  // TODO-WorkspaceTaskbar
+  if (false) {
+    auto windowSeparator = m_workspaceManager.getWindowSeparator();
 
-  bool isNotFirst = false;
+    bool isNotFirst = false;
 
-  for (auto &[_pid, window_repr] : m_windowMap) {
-    if (isNotFirst) {
-      windows.append(windowSeparator);
+    for (auto &[_pid, window_repr] : m_windowMap) {
+      if (isNotFirst) {
+        windows.append(windowSeparator);
+      }
+      isNotFirst = true;
+      windows.append(window_repr.repr_rewrite);
     }
-    isNotFirst = true;
-    windows.append(window_repr);
   }
 
   m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
                                  fmt::arg("name", name()), fmt::arg("icon", icon),
                                  fmt::arg("windows", windows)));
+
+  auto children = m_content.get_children();
+  for (auto child : children) {
+    if (child != &m_label) {
+      m_content.remove(*child);
+    }
+  }
+
+  for (auto &[_addr, window_repr] : m_windowMap) {
+    auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
+    auto window_icon = Gtk::make_managed<Gtk::Image>();
+    auto window_label = Gtk::make_managed<Gtk::Label>(window_repr.window_title);
+
+    // TODO-WorkspaceTaskbar: customizable max width and ellipsize
+    window_label->set_max_width_chars(20);
+    window_label->set_ellipsize(Pango::ELLIPSIZE_END);
+
+    // TODO-WorkspaceTaskbar: support themes
+    auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr.window_class);
+    // TODO-WorkspaceTaskbar: icon size
+    m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, 24);
+
+    window_box->pack_start(*window_icon, false, false);
+    window_box->pack_start(*window_label, true, true);
+    window_box->set_tooltip_text(window_repr.window_title);
+
+    m_content.pack_start(*window_box, true, false);
+    window_box->show_all();
+  }
 }
 
 }  // namespace waybar::modules::hyprland

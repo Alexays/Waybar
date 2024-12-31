@@ -481,7 +481,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
 
   std::string workspaceName = payload.substr(nextCommaIdx + 1, payload.length() - nextCommaIdx);
 
-  std::string windowRepr;
+  WindowRepr windowRepr;
 
   // If the window was still queued to be created, just change its destination
   // and exit
