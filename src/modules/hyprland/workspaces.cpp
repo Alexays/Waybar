@@ -685,6 +685,23 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
     /* The default is to only show the icon */
     m_taskbarWithIcon = true;
   }
+
+  auto iconTheme = workspaceTaskbar["icon-theme"];
+  if (iconTheme.isArray()) {
+    for (auto &c : iconTheme) {
+      m_iconLoader.add_custom_icon_theme(c.asString());
+    }
+  } else if (iconTheme.isString()) {
+    m_iconLoader.add_custom_icon_theme(iconTheme.asString());
+  }
+
+  if (workspaceTaskbar["icon-size"].isInt()) {
+    m_taskbarIconSize = workspaceTaskbar["icon-size"].asInt();
+  }
+  if (workspaceTaskbar["orientation"].isString() &&
+      toLower(workspaceTaskbar["orientation"].asString()) == "vertical") {
+    m_taskbarOrientation = Gtk::ORIENTATION_VERTICAL;
+  }
 }
 
 void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payload) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtkmm/button.h>
+#include <gtkmm/enums.h>
 #include <gtkmm/label.h>
 #include <json/value.h>
 
@@ -46,6 +47,8 @@ class Workspaces : public AModule, public EventHandler {
   auto formatAfter() const -> std::string { return m_formatAfter; }
   auto taskbarFormatBefore() const -> std::string { return m_taskbarFormatBefore; }
   auto taskbarFormatAfter() const -> std::string { return m_taskbarFormatAfter; }
+  auto taskbarIconSize() const -> int { return m_taskbarIconSize; }
+  auto taskbarOrientation() const -> Gtk::Orientation { return m_taskbarOrientation; }
 
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
@@ -160,6 +163,8 @@ class Workspaces : public AModule, public EventHandler {
   bool m_taskbarWithIcon = false;
   std::string m_taskbarFormatBefore;
   std::string m_taskbarFormatAfter;
+  int m_taskbarIconSize = 16;
+  Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
 
   std::vector<std::regex> m_ignoreWorkspaces;
 
