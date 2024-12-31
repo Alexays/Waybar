@@ -117,6 +117,7 @@ void Workspaces::doUpdate() {
   for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
     const auto &ws = *it;
 
+    // TODO: this is broken, fix it
     auto pos = ws["idx"].asUInt() - 1;
     if (alloutputs) pos = it - my_workspaces.cbegin();
 

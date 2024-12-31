@@ -1,11 +1,20 @@
 #include "ALabel.hpp"
 
+#include <giomm/simpleactiongroup.h>
+#include <gtkmm/builder.h>
+#include <spdlog/spdlog.h>
+
+#include "config.hpp"
+#include "util/command.hpp"
+
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
                bool enable_scroll)
-    : AModule(config, name, id, config["format-alt"].isString() || enable_click, enable_scroll),
+    : AModule(config, name, id,
+              config["format-alt"].isString() || config["menu"].isString() || enable_click,
+              enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
                     ? std::chrono::seconds::max()
@@ -46,6 +55,44 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       label_.set_yalign(align);
     } else {
       label_.set_xalign(align);
+    }
+  }
+
+  if (config_["menu"].isString()) {
+    // Create the menu
+    try {
+      // Check that the file exists
+      std::string menuFile = config_["menu-file"].asString();
+
+      // there might be "~" or "$HOME" in original path, try to expand it.
+      auto result = Config::tryExpandPath(menuFile, "");
+      if (result.empty()) {
+        throw std::runtime_error("Failed to exapnd file: " + menuFile);
+      }
+
+      menuFile = result.front();
+      auto builder = Gtk::Builder::create_from_file(menuFile);
+      auto menuModel = builder->get_object<Gio::MenuModel>("menu");
+      if (menuModel == nullptr) {
+        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
+      }
+      auto actionGroup = Gio::SimpleActionGroup::create();
+
+      auto actions = config_["menu-actions"];
+      for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
+        actionGroup->add_action(
+            it.key().asString(),
+            sigc::bind(sigc::mem_fun(*this, &ALabel::handleMenu), it->asString()));
+      }
+      menu_ = std::make_unique<Gtk::PopoverMenu>(menuModel, Gtk::PopoverMenu::Flags::NESTED);
+      menu_->set_has_arrow(false);
+      menu_->set_parent(label_);
+
+      label_.insert_action_group("menu", actionGroup);
+
+      // Read the menu descriptor file
+    } catch (const std::exception& e) {
+      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
   }
 
@@ -127,6 +174,8 @@ void waybar::ALabel::handleToggle(int n_press, double dx, double dy) {
   AModule::handleToggle(n_press, dx, dy);
 }
 
+void ALabel::handleMenu(std::string cmd) const { waybar::util::command::exec(cmd, "menu"); }
+
 std::string ALabel::getState(uint8_t value, bool lesser) {
   if (!config_["states"].isObject()) {
     return "";
@@ -157,5 +206,11 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
 }
 
 Gtk::Widget& ALabel::root() { return label_; };
+
+void ALabel::handleClick(const std::string& name) {
+  if (menu_ != nullptr && config_["menu"].asString() == name) {
+    menu_->popup();
+  }
+}
 
 }  // namespace waybar

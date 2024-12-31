@@ -66,6 +66,8 @@ class AModule : public IModule {
   virtual bool handleScroll(double dx, double dy);
   virtual void handleMouseEnter(double x, double y);
   virtual void handleMouseLeave();
+  // Allow subclass to hook into specific
+  virtual void handleClick(const std::string &name);
 
  private:
   const bool isTooltip;
@@ -103,7 +105,7 @@ class AModule : public IModule {
       {{9u, 1, Gdk::Event::Type::BUTTON_RELEASE}, "on-click-forward-release"},
       {{9u, 2, Gdk::Event::Type::BUTTON_PRESS}, "on-double-click-forward"},
       {{9u, 3, Gdk::Event::Type::BUTTON_PRESS}, "on-triple-click-forward"}};
-  void handleClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype);
+  void handleRawClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype);
   void makeControllClick();
   void makeControllScroll();
   void makeControllMotion();
