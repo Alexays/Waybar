@@ -26,10 +26,19 @@ namespace waybar::modules::hyprland {
 
 class Workspaces;
 
+struct WindowRepr {
+  std::string window_class;
+  std::string window_title;
+  std::string repr_rewrite;
+
+ public:
+  bool empty() const { return repr_rewrite.empty(); }
+};
+
 class WindowCreationPayload {
  public:
   WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
-                        std::string window_repr);
+                        WindowRepr window_repr);
   WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
                         std::string window_class, std::string window_title);
   WindowCreationPayload(Json::Value const& client_data);
@@ -37,7 +46,7 @@ class WindowCreationPayload {
   int incrementTimeSpentUncreated();
   bool isEmpty(Workspaces& workspace_manager);
   bool reprIsReady() const { return std::holds_alternative<Repr>(m_window); }
-  std::string repr(Workspaces& workspace_manager);
+  WindowRepr repr(Workspaces& workspace_manager);
 
   std::string getWorkspaceName() const { return m_workspaceName; }
   WindowAddress getAddress() const { return m_windowAddress; }
@@ -48,7 +57,7 @@ class WindowCreationPayload {
   void clearAddr();
   void clearWorkspaceName();
 
-  using Repr = std::string;
+  using Repr = WindowRepr;
   using ClassAndTitle = std::pair<std::string, std::string>;
   std::variant<Repr, ClassAndTitle> m_window;
 

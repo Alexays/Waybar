@@ -20,7 +20,7 @@ WindowCreationPayload::WindowCreationPayload(Json::Value const &client_data)
 }
 
 WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
-                                             WindowAddress window_address, std::string window_repr)
+                                             WindowAddress window_address, WindowRepr window_repr)
     : m_window(std::move(window_repr)),
       m_windowAddress(std::move(window_address)),
       m_workspaceName(std::move(workspace_name)) {
@@ -92,13 +92,13 @@ void WindowCreationPayload::moveToWorksace(std::string &new_workspace_name) {
   m_workspaceName = new_workspace_name;
 }
 
-std::string WindowCreationPayload::repr(Workspaces &workspace_manager) {
+WindowRepr WindowCreationPayload::repr(Workspaces &workspace_manager) {
   if (std::holds_alternative<Repr>(m_window)) {
     return std::get<Repr>(m_window);
   }
   if (std::holds_alternative<ClassAndTitle>(m_window)) {
     auto [window_class, window_title] = std::get<ClassAndTitle>(m_window);
-    return workspace_manager.getRewrite(window_class, window_title);
+    return {window_class, window_title, workspace_manager.getRewrite(window_class, window_title)};
   }
   // Unreachable
   spdlog::error("WorkspaceWindow::repr: Unreachable");
