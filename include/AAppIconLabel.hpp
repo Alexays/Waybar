@@ -1,7 +1,6 @@
 #pragma once
 
-#include <gtkmm/box.h>
-#include <gtkmm/image.h>
+#include <gtkmm/icontheme.h>
 
 #include "AIconLabel.hpp"
 
@@ -19,9 +18,12 @@ class AAppIconLabel : public AIconLabel {
   void updateAppIconName(const std::string &app_identifier,
                          const std::string &alternative_app_identifier);
   void updateAppIcon();
+
+ private:
   unsigned app_icon_size_{24};
   bool update_app_icon_{true};
   std::string app_icon_name_;
+  Glib::RefPtr<const Gtk::IconTheme> gtkTheme_;
 };
 
 }  // namespace waybar

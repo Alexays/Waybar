@@ -1,33 +1,25 @@
 #pragma once
 
-#include <fmt/format.h>
-
 #include <filesystem>
 #if defined(__linux__)
 #include <sys/inotify.h>
 #endif
 
-#include <algorithm>
-#include <fstream>
-#include <string>
-#include <vector>
-
 #include "ALabel.hpp"
-#include "bar.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
 namespace fs = std::filesystem;
 
-class Battery : public ALabel {
+class Battery final : public ALabel {
  public:
-  Battery(const std::string&, const waybar::Bar&, const Json::Value&);
+  Battery(const std::string&, const Json::Value&);
   virtual ~Battery();
   auto update() -> void override;
 
  private:
-  static inline const fs::path data_dir_ = "/sys/class/power_supply/";
+  static inline const fs::path data_dir_{"/sys/class/power_supply/"};
 
   void refreshBatteries();
   void worker();
@@ -44,7 +36,6 @@ class Battery : public ALabel {
   std::mutex battery_list_mutex_;
   std::string old_status_;
   bool warnFirstTime_{true};
-  const Bar& bar_;
 
   util::SleeperThread thread_;
   util::SleeperThread thread_battery_update_;

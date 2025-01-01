@@ -1,5 +1,7 @@
 #include "modules/load.hpp"
 
+#include <fmt/format.h>
+
 // In the 80000 version of fmt library authors decided to optimize imports
 // and moved declarations required for fmt::dynamic_format_arg_store in new
 // header fmt/args.h
@@ -31,9 +33,9 @@ auto waybar::modules::Load::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
-    event_box_.show();
+    label_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load1", load1));

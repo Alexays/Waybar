@@ -1,17 +1,7 @@
 #pragma once
 
-#include <gtkmm/button.h>
-#include <gtkmm/label.h>
 #include <json/value.h>
 
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <regex>
-#include <string>
-#include <vector>
-
-#include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "modules/hyprland/windowcreationpayload.hpp"
@@ -22,8 +12,6 @@
 using WindowAddress = std::string;
 
 namespace waybar::modules::hyprland {
-
-class Workspaces;
 
 class Workspaces : public AModule, public EventHandler {
  public:

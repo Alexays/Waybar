@@ -1,31 +1,21 @@
 #pragma once
 
-#include <gdk/gdk.h>
-#include <glibmm/refptr.h>
-#include <gtkmm/box.h>
+#include <giomm/desktopappinfo.h>
 #include <gtkmm/button.h>
 #include <gtkmm/icontheme.h>
 #include <gtkmm/image.h>
 #include <gtkmm/label.h>
-#include <wayland-client.h>
 
-#include <map>
-#include <memory>
-#include <string>
 #include <unordered_set>
-#include <vector>
 
-#include "AModule.hpp"
 #include "bar.hpp"
-#include "client.hpp"
-#include "giomm/desktopappinfo.h"
-#include "util/json.hpp"
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
 namespace waybar::modules::wlr {
 
 struct widget_geometry {
-  int x, y, w, h;
+  double x, y;
+  int w, h;
 };
 
 class Taskbar;
@@ -45,13 +35,13 @@ class Task {
     INVALID = (1 << 4)
   };
   // made public so TaskBar can reorder based on configuration.
-  Gtk::Button button;
+  Glib::RefPtr<Gtk::Button> const button;
   struct widget_geometry minimize_hint;
 
  private:
   static uint32_t global_id;
+  Glib::RefPtr<Gtk::GestureClick> const controllClick_;
 
- private:
   const waybar::Bar &bar_;
   const Json::Value &config_;
   Taskbar *tbar_;
@@ -80,15 +70,9 @@ class Task {
   std::string app_id_;
   uint32_t state_ = 0;
 
-  int32_t drag_start_x;
-  int32_t drag_start_y;
-  int32_t drag_start_button = -1;
-
- private:
   std::string repr() const;
   std::string state_string(bool = false) const;
   void set_minimize_hint();
-  void on_button_size_allocated(Gtk::Allocation &alloc);
   void set_app_info_from_app_id_list(const std::string &app_id_list);
   bool image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme> &icon_theme,
                        Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size);
@@ -105,7 +89,6 @@ class Task {
   bool active() const { return state_ & ACTIVE; }
   bool fullscreen() const { return state_ & FULLSCREEN; }
 
- public:
   /* Callbacks for the wlr protocol */
   void handle_title(const char *);
   void handle_app_id(const char *);
@@ -116,22 +99,14 @@ class Task {
   void handle_closed();
 
   /* Callbacks for Gtk events */
-  bool handle_clicked(GdkEventButton *);
-  bool handle_button_release(GdkEventButton *);
-  bool handle_motion_notify(GdkEventMotion *);
-  void handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext> &context,
-                            Gtk::SelectionData &selection_data, guint info, guint time);
-  void handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext> &context, int x, int y,
-                                 Gtk::SelectionData selection_data, guint info, guint time);
+  void handleClick(int n_press, double dx, double dy);
+  bool handleDropData(const Glib::ValueBase &, double, double);
 
- public:
   bool operator==(const Task &) const;
   bool operator!=(const Task &) const;
 
- public:
   void update();
 
- public:
   /* Interaction with the tasks */
   void maximize(bool);
   void minimize(bool);
@@ -147,6 +122,7 @@ class Taskbar : public waybar::AModule {
   Taskbar(const std::string &, const waybar::Bar &, const Json::Value &);
   ~Taskbar();
   void update();
+  operator Gtk::Widget &() override;
 
  private:
   const waybar::Bar &bar_;
@@ -169,10 +145,9 @@ class Taskbar : public waybar::AModule {
   void handle_toplevel_create(struct zwlr_foreign_toplevel_handle_v1 *);
   void handle_finished();
 
- public:
-  void add_button(Gtk::Button &);
-  void move_button(Gtk::Button &, int);
-  void remove_button(Gtk::Button &);
+  void add_button(Glib::RefPtr<Gtk::Button>);
+  void move_button(Glib::RefPtr<Gtk::Button>, int);
+  void remove_button(Glib::RefPtr<Gtk::Button>);
   void remove_task(uint32_t);
 
   bool show_output(struct wl_output *) const;

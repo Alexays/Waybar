@@ -23,7 +23,7 @@ typedef struct {
 
   /// Returns the waybar widget allocated for this module
   /// @param obj Waybar CFFI object pointer
-  GtkContainer* (*get_root_widget)(wbcffi_module* obj);
+  GtkWidget* (*get_root_widget)(wbcffi_module* obj);
 
   /// Queues a request for calling wbcffi_update() on the next GTK main event
   /// loop iteration

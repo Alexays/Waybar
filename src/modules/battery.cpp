@@ -1,14 +1,15 @@
 #include "modules/battery.hpp"
 
-#include <algorithm>
+#include <spdlog/spdlog.h>
+
+#include <fstream>
+
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
-#include <spdlog/spdlog.h>
 
-#include <iostream>
-waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60), bar_(bar) {
+waybar::modules::Battery::Battery(const std::string& id, const Json::Value& config)
+    : ALabel(config, "battery", id, "{capacity}%", 60) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
@@ -659,7 +660,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 auto waybar::modules::Battery::update() -> void {
 #if defined(__linux__)
   if (batteries_.empty()) {
-    event_box_.hide();
+    label_.hide();
     return;
   }
 #endif
@@ -712,9 +713,9 @@ auto waybar::modules::Battery::update() -> void {
     format = config_["format-" + state].asString();
   }
   if (format.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
-    event_box_.show();
+    label_.show();
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(
         fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
@@ -726,10 +727,11 @@ auto waybar::modules::Battery::update() -> void {
 }
 
 void waybar::modules::Battery::setBarClass(std::string& state) {
-  auto classes = bar_.window.get_style_context()->list_classes();
-  const std::string prefix = "battery-";
+  // Drop style
+  auto classes = label_.get_css_classes();
+  const Glib::ustring prefix{"battery-"};
 
-  auto old_class_it = std::find_if(classes.begin(), classes.end(), [&prefix](auto classname) {
+  auto old_class_it = std::find_if(classes.cbegin(), classes.cend(), [&prefix](auto classname) {
     return classname.rfind(prefix, 0) == 0;
   });
 
@@ -738,7 +740,7 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar doesn't have any `battery-` class
   if (old_class_it == classes.end()) {
     if (!state.empty()) {
-      bar_.window.get_style_context()->add_class(new_class);
+      label_.get_style_context()->add_class(new_class);
     }
     return;
   }
@@ -748,14 +750,14 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar has a `battery-` class,
   // but `state` is empty
   if (state.empty()) {
-    bar_.window.get_style_context()->remove_class(old_class);
+    label_.get_style_context()->remove_class(old_class);
     return;
   }
 
   // If the bar has a `battery-` class,
   // and `state` is NOT empty
   if (old_class != new_class) {
-    bar_.window.get_style_context()->remove_class(old_class);
-    bar_.window.get_style_context()->add_class(new_class);
+    label_.get_style_context()->remove_class(old_class);
+    label_.get_style_context()->add_class(new_class);
   }
 }

@@ -37,9 +37,9 @@ auto waybar::modules::Cpu::update() -> void {
   }
 
   if (format.empty()) {
-    event_box_.hide();
+    label_.hide();
   } else {
-    event_box_.show();
+    label_.show();
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load", load1));

@@ -1,14 +1,8 @@
 #pragma once
 
-#include <fmt/format.h>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 
-#include <string_view>
-#include <unordered_map>
-
-#include "AModule.hpp"
-#include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
@@ -16,11 +10,12 @@
 
 namespace waybar::modules::sway {
 
-class Workspaces : public AModule, public sigc::trackable {
+class Workspaces final : public AModule, public sigc::trackable {
  public:
   Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Workspaces() override = default;
   auto update() -> void override;
+  operator Gtk::Widget&() override;
 
  private:
   static constexpr std::string_view workspace_switch_cmd_ = "workspace {} \"{}\"";
@@ -41,7 +36,7 @@ class Workspaces : public AModule, public sigc::trackable {
   std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t getWorkspaceIndex(const std::string& name) const;
   static std::string trimWorkspaceName(std::string);
-  bool handleScroll(GdkEventScroll* /*unused*/) override;
+  bool handleScroll(double dx, double dy) override;
 
   const Bar& bar_;
   std::vector<Json::Value> workspaces_;

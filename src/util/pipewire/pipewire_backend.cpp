@@ -1,7 +1,5 @@
 #include "util/pipewire/pipewire_backend.hpp"
 
-#include "util/pipewire/privacy_node_info.hpp"
-
 namespace waybar::util::PipewireBackend {
 
 static void getNodeInfo(void *data_, const struct pw_node_info *info) {

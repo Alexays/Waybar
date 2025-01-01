@@ -15,12 +15,12 @@ std::string PrivacyNodeInfo::getName() {
   return name;
 }
 
-std::string PrivacyNodeInfo::getIconName() {
+std::string PrivacyNodeInfo::getIconName(const Glib::RefPtr<const Gtk::IconTheme> theme) {
   const std::vector<std::string *> names{&application_icon_name, &pipewire_access_portal_app_id,
                                          &application_name, &node_name};
   std::string name = "application-x-executable-symbolic";
   for (const auto &item : names) {
-    if (item != nullptr && !item->empty() && DefaultGtkIconThemeWrapper::has_icon(*item)) {
+    if (item != nullptr && !item->empty() && theme->has_icon(*item)) {
       return *item;
     }
   }

@@ -98,11 +98,11 @@ void Window::update() {
 void Window::setClass(const std::string &className, bool enable) {
   auto styleContext = bar_.window.get_style_context();
   if (enable) {
-    if (!styleContext->has_class(className)) {
-      styleContext->add_class(className);
+    if (!label_.get_style_context()->has_class(className)) {
+      label_.get_style_context()->add_class(className);
     }
   } else {
-    styleContext->remove_class(className);
+    label_.get_style_context()->remove_class(className);
   }
 }
 

@@ -84,10 +84,10 @@ void waybar::CssReloadHelper::monitorChanges() {
 
 void waybar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& file,
                                                Glib::RefPtr<Gio::File> const& other_type,
-                                               Gio::FileMonitorEvent event_type) {
+                                               Gio::FileMonitor::Event event_type) {
   // Multiple events are fired on file changed (attributes, write, changes done hint, etc.), only
   // fire for one
-  if (event_type == Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
+  if (event_type == Gio::FileMonitor::Event::CHANGES_DONE_HINT) {
     spdlog::debug("Reloading style, file changed: {}", file->get_path());
     m_callback();
   }

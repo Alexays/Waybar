@@ -1,18 +1,8 @@
 #include "modules/user.hpp"
 
 #include <fmt/chrono.h>
+#include <glibmm/fileutils.h>
 #include <glibmm/miscutils.h>
-#include <unistd.h>
-
-#include <algorithm>
-#include <chrono>
-
-#include "gdkmm/cursor.h"
-#include "gdkmm/event.h"
-#include "gdkmm/types.h"
-#include "glibmm/fileutils.h"
-#include "sigc++/functors/mem_fun.h"
-#include "sigc++/functors/ptr_fun.h"
 
 #if HAVE_CPU_LINUX
 #include <sys/sysinfo.h>
@@ -34,9 +24,10 @@ User::User(const std::string& id, const Json::Value& config)
   this->init_update_worker();
 }
 
-bool User::handleToggle(GdkEventButton* const& e) {
+void User::handleToggle(int n_press, double dx, double dy) {
   if (AIconLabel::config_["open-on-click"].isBool() &&
-      AIconLabel::config_["open-on-click"].asBool() && e->button == LEFT_MOUSE_BUTTON_CODE) {
+      AIconLabel::config_["open-on-click"].asBool() &&
+      controllClick_->get_current_button() == LEFT_MOUSE_BUTTON_CODE) {
     std::string openPath = this->get_user_home_dir();
     if (AIconLabel::config_["open-path"].isString()) {
       std::string customPath = AIconLabel::config_["open-path"].asString();
@@ -47,7 +38,6 @@ bool User::handleToggle(GdkEventButton* const& e) {
 
     Gio::AppInfo::launch_default_for_uri("file:///" + openPath);
   }
-  return true;
 }
 
 long User::uptime_as_seconds() {
@@ -108,7 +98,7 @@ void User::init_default_user_avatar(int width, int height) {
 }
 
 void User::init_user_avatar(const std::string& path, int width, int height) {
-  if (Glib::file_test(path, Glib::FILE_TEST_EXISTS)) {
+  if (Glib::file_test(path, Glib::FileTest::EXISTS)) {
     Glib::RefPtr<Gdk::Pixbuf> pixbuf_ = Gdk::Pixbuf::create_from_file(path, width, height);
     AIconLabel::image_.set(pixbuf_);
   } else {

@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include "modules/memory.hpp"
 
 static unsigned zfsArcSize() {

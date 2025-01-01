@@ -1,5 +1,6 @@
 #include "modules/river/layout.hpp"
 
+#include <glibmm/markup.h>
 #include <spdlog/spdlog.h>
 #include <wayland-client.h>
 

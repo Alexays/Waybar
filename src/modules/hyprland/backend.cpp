@@ -1,17 +1,6 @@
 #include "modules/hyprland/backend.hpp"
 
-#include <netdb.h>
-#include <netinet/in.h>
 #include <spdlog/spdlog.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
-
-#include <filesystem>
-#include <string>
-#include <thread>
 
 namespace waybar::modules::hyprland {
 

@@ -112,7 +112,6 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     box_.get_style_context()->add_class(id);
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
 
   // Default to 9 tags, cap at 32
   const int num_tags =
@@ -130,22 +129,25 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     }
 
     auto &button = buttons_[tag];
-    button.set_relief(Gtk::RELIEF_NONE);
-    box_.pack_start(button, false, false, 0);
+    button.set_has_frame(false);
+    box_.append(button);
 
     if (!config_["disable-click"].asBool()) {
+      AModule::bindEvents(button);
+
       if (set_tags.isArray() && !set_tags.empty())
-        button.signal_clicked().connect(sigc::bind(
-            sigc::mem_fun(*this, &Tags::handle_primary_clicked), set_tags[tag].asUInt()));
+        controllClick_->signal_released().connect(
+            sigc::bind(sigc::mem_fun(*this, &Tags::handleRlse), set_tags[tag].asUInt()), true);
       else
-        button.signal_clicked().connect(
-            sigc::bind(sigc::mem_fun(*this, &Tags::handle_primary_clicked), (1 << tag)));
+        controllClick_->signal_released().connect(
+            sigc::bind(sigc::mem_fun(*this, &Tags::handleRlse), (1 << tag)), true);
+
       if (toggle_tags.isArray() && !toggle_tags.empty())
-        button.signal_button_press_event().connect(sigc::bind(
-            sigc::mem_fun(*this, &Tags::handle_button_press), toggle_tags[tag].asUInt()));
+        controllClick_->signal_pressed().connect(
+            sigc::bind(sigc::mem_fun(*this, &Tags::handlePress), toggle_tags[tag].asUInt()), true);
       else
-        button.signal_button_press_event().connect(
-            sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), (1 << tag)));
+        controllClick_->signal_pressed().connect(
+            sigc::bind(sigc::mem_fun(*this, &Tags::handlePress), (1 << tag)), true);
     }
     button.show();
   }
@@ -167,7 +169,9 @@ Tags::~Tags() {
   }
 }
 
-void Tags::handle_primary_clicked(uint32_t tag) {
+Tags::operator Gtk::Widget &() { return box_; };
+
+void Tags::handleRlse(int n_press, double dx, double dy, uint32_t tag) {
   // Send river command to select tag on left mouse click
   zriver_command_callback_v1 *callback;
   zriver_control_v1_add_argument(control_, "set-focused-tags");
@@ -176,8 +180,8 @@ void Tags::handle_primary_clicked(uint32_t tag) {
   zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
 }
 
-bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
-  if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
+void Tags::handlePress(int n_press, double dx, double dy, uint32_t tag) {
+  if (controllClick_->get_current_button() == 3) {
     // Send river command to toggle tag on right mouse click
     zriver_command_callback_v1 *callback;
     zriver_control_v1_add_argument(control_, "toggle-focused-tags");
@@ -185,7 +189,6 @@ bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
     callback = zriver_control_v1_run_command(control_, seat_);
     zriver_command_callback_v1_add_listener(callback, &command_callback_listener_impl, nullptr);
   }
-  return true;
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {

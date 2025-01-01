@@ -37,8 +37,9 @@ class UPower final : public AIconLabel {
     guint64 time_empty{0u};
     gchar *icon_name{(char *)'\0'};
     bool upDeviceValid{false};
-    UpDeviceState state;
-    UpDeviceKind kind;
+    UpDeviceState state{UP_DEVICE_STATE_UNKNOWN};
+    UpDeviceLevel level{UP_DEVICE_LEVEL_UNKNOWN};
+    UpDeviceKind kind{UP_DEVICE_KIND_UNKNOWN};
     char *nativePath{(char *)'\0'};
     char *model{(char *)'\0'};
   };
@@ -50,6 +51,7 @@ class UPower final : public AIconLabel {
   Glib::ustring label_markup_;
   std::mutex mutex_;
   Glib::RefPtr<Gtk::IconTheme> gtkTheme_;
+  const char *lastWarningLevel_{nullptr};
   bool sleeping_;
 
   // Technical functions

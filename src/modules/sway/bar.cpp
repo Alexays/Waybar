@@ -2,9 +2,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include <sstream>
-#include <stdexcept>
-
 #include "bar.hpp"
 #include "modules/sway/ipc/ipc.hpp"
 
@@ -12,8 +9,8 @@ namespace waybar::modules::sway {
 
 BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
   {
-    sigc::connection handle =
-        ipc_.signal_cmd.connect(sigc::mem_fun(*this, &BarIpcClient::onInitialConfig));
+    sigc::connection handle{
+        ipc_.signal_cmd.connect(sigc::mem_fun(*this, &BarIpcClient::onInitialConfig))};
     ipc_.sendCmd(IPC_GET_BAR_CONFIG, bar_.bar_id);
 
     handle.disconnect();
@@ -23,8 +20,8 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
   subscribe_events.append("bar_state_update");
   subscribe_events.append("barconfig_update");
 
-  bool has_mode = isModuleEnabled("sway/mode");
-  bool has_workspaces = isModuleEnabled("sway/workspaces");
+  bool has_mode{isModuleEnabled("sway/mode")};
+  bool has_workspaces{isModuleEnabled("sway/workspaces")};
 
   if (has_mode) {
     subscribe_events.append("mode");
@@ -62,7 +59,7 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
 
 bool BarIpcClient::isModuleEnabled(std::string name) {
   for (const auto& section : {"modules-left", "modules-center", "modules-right"}) {
-    if (const auto& modules = bar_.config.get(section, {}); modules.isArray()) {
+    if (const auto& modules{bar_.config.get(section, {})}; modules.isArray()) {
       for (const auto& module : modules) {
         if (module.asString().rfind(name, 0) == 0) {
           return true;
@@ -75,38 +72,38 @@ bool BarIpcClient::isModuleEnabled(std::string name) {
 
 struct swaybar_config parseConfig(const Json::Value& payload) {
   swaybar_config conf;
-  if (auto id = payload["id"]; id.isString()) {
+  if (auto id{payload["id"]}; id.isString()) {
     conf.id = id.asString();
   }
-  if (auto mode = payload["mode"]; mode.isString()) {
+  if (auto mode{payload["mode"]}; mode.isString()) {
     conf.mode = mode.asString();
   }
-  if (auto hs = payload["hidden_state"]; hs.isString()) {
+  if (auto hs{payload["hidden_state"]}; hs.isString()) {
     conf.hidden_state = hs.asString();
   }
   return conf;
 }
 
 void BarIpcClient::onInitialConfig(const struct Ipc::ipc_response& res) {
-  auto payload = parser_.parse(res.payload);
-  if (auto success = payload.get("success", true); !success.asBool()) {
-    auto err = payload.get("error", "Unknown error");
+  auto payload{parser_.parse(res.payload)};
+  if (auto success{payload.get("success", true)}; !success.asBool()) {
+    auto err{payload.get("error", "Unknown error")};
     throw std::runtime_error(err.asString());
   }
-  auto config = parseConfig(payload);
+  auto config{parseConfig(payload)};
   onConfigUpdate(config);
 }
 
 void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
   try {
-    auto payload = parser_.parse(res.payload);
+    auto payload{parser_.parse(res.payload)};
     switch (res.type) {
       case IPC_EVENT_WORKSPACE:
         if (payload.isMember("change")) {
           // only check and send signal if the workspace update reason was because of a urgent
           // change
           if (payload["change"] == "urgent") {
-            auto urgent = payload["current"]["urgent"];
+            auto urgent{payload["current"]["urgent"]};
             if (urgent.asBool()) {
               // Event for a new urgency, update the visibly
               signal_urgency_(true);
@@ -139,7 +136,7 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
           signal_visible_(payload["visible_by_modifier"].asBool());
         } else {
           // configuration update
-          auto config = parseConfig(payload);
+          auto config{parseConfig(payload)};
           signal_config_(std::move(config));
         }
         break;
@@ -152,7 +149,7 @@ void BarIpcClient::onIpcEvent(const struct Ipc::ipc_response& res) {
 void BarIpcClient::onCmd(const struct Ipc::ipc_response& res) {
   if (res.type == IPC_GET_WORKSPACES) {
     try {
-      auto payload = parser_.parse(res.payload);
+      auto payload{parser_.parse(res.payload)};
       for (auto& ws : payload) {
         if (ws["urgent"].asBool()) {
           spdlog::debug("Found workspace {} with urgency set. Stopping search.", ws["name"]);
@@ -209,7 +206,7 @@ void BarIpcClient::onUrgencyUpdate(bool visible_by_urgency) {
 }
 
 void BarIpcClient::update() {
-  bool visible = visible_by_modifier_ || visible_by_mode_ || visible_by_urgency_;
+  bool visible{visible_by_modifier_ || visible_by_mode_ || visible_by_urgency_};
   if (bar_config_.mode == "invisible") {
     visible = false;
   } else if (bar_config_.mode != "hide" || bar_config_.hidden_state != "hide") {
