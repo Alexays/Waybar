@@ -142,6 +142,11 @@ Addressed by *network*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{ifname}*: Name of the network interface.

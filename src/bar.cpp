@@ -523,13 +523,44 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
 }
 
 auto waybar::Bar::setupWidgets() -> void {
+  bool expand_left = config["expand-left"].isBool() ? config["expand-left"].asBool() : false;
+  bool expand_center = config["expand-center"].isBool() ? config["expand-center"].asBool() : false;
+  bool expand_right = config["expand-right"].isBool() ? config["expand-right"].asBool() : false;
+  bool no_center = config["no-center"].isBool() ? config["no-center"].asBool() : false;
+
+  box_.set_shrink_center_last(true);
+  // TODO: implement set_expand to set hexpend or vexpend depending on orientation
+  if (expand_left) {
+    setExpand(left_);
+  }
+  if (expand_center) {
+    setExpand(center_);
+  }
+  if (expand_right) {
+    setExpand(right_);
+  }
   box_.set_start_widget(left_);
-  if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
-    box_.set_center_widget(center_);
-  } else {
-    box_.set_start_widget(center_);
+  if (!no_center) {
+    if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
+      box_.set_center_widget(center_);
+    } else {
+      right_.prepend(center_);
+      if (!expand_center) {
+        // If we don't want a fixed center, and center isn't set to "expand", then
+        // we actually do want center to expand, but not fill, so that it uses up all
+        // the space in the middle
+        if (box_.get_orientation() == Gtk::Orientation::HORIZONTAL) {
+          center_.set_halign(Gtk::Align::CENTER);
+          center_.set_hexpand(true);
+        } else {
+          center_.set_valign(Gtk::Align::CENTER);
+          center_.set_vexpand(true);
+        }
+      }
+    }
   }
   box_.set_end_widget(right_);
+
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
   setupAltFormatKeyForModuleList("modules-right");
@@ -537,14 +568,24 @@ auto waybar::Bar::setupWidgets() -> void {
 
   Factory factory(*this, config);
   getModules(factory, "modules-left");
-  getModules(factory, "modules-center");
+  if (!no_center) {
+    getModules(factory, "modules-center");
+  }
   getModules(factory, "modules-right");
+
   for (auto const& module : modules_left_) {
+    if (module->expandEnabled()) {
+      setExpand(*module);
+    }
     left_.append(*module);
   }
-  for (auto const& module : modules_center_) {
-    center_.append(*module);
+
+  if (!no_center) {
+    for (auto const& module : modules_center_) {
+      center_.append(*module);
+    }
   }
+
   for (auto const& module : modules_right_) {
     right_.append(*module);
   }
@@ -616,4 +657,11 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
 
 void waybar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
+}
+void waybar::Bar::setExpand(Gtk::Widget& widget) {
+  if (box_.get_orientation() == Gtk::Orientation::HORIZONTAL) {
+    widget.set_hexpand(true);
+  } else {
+    widget.set_vexpand(true);
+  }
 }

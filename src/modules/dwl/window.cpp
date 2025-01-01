@@ -9,6 +9,7 @@
 
 #include "client.hpp"
 #include "dwl-ipc-unstable-v2-client-protocol.h"
+#include "glibmm/markup.h"
 #include "util/rewrite_string.hpp"
 
 namespace waybar::modules::dwl {
@@ -97,11 +98,17 @@ Window::~Window() {
   }
 }
 
-void Window::handle_title(const char *title) { title_ = title; }
+void Window::handle_title(const char *title) {
+  title_ = Glib::Markup::escape_text(title);
+}
 
-void Window::handle_appid(const char *appid) { appid_ = appid; }
+void Window::handle_appid(const char *appid) {
+  appid_ = Glib::Markup::escape_text(appid);
+}
 
-void Window::handle_layout_symbol(const char *layout_symbol) { layout_symbol_ = layout_symbol; }
+void Window::handle_layout_symbol(const char *layout_symbol) {
+  layout_symbol_ = Glib::Markup::escape_text(layout_symbol);
+}
 
 void Window::handle_layout(const uint32_t layout) { layout_ = layout; }
 

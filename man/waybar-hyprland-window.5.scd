@@ -35,6 +35,11 @@ Addressed by *hyprland/window*
 	default: 24 ++
 	Option to change the size of the application icon.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 See the output of "hyprctl clients" for examples
 

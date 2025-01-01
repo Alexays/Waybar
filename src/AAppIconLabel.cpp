@@ -121,7 +121,7 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
   }
 
   try {
-    Glib::RefPtr<Glib::KeyFile> desktop_file;
+    Glib::RefPtr<Glib::KeyFile> desktop_file = Glib::KeyFile::create();
     desktop_file->load_from_file(desktop_file_path.value());
     return desktop_file->get_string("Desktop Entry", "Icon");
   } catch (Glib::FileError& error) {

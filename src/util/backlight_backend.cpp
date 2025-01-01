@@ -149,8 +149,14 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
 
   // Connect to the login interface
   login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
-      Gio::DBus::BusType::SYSTEM, "org.freedesktop.login1", "/org/freedesktop/login1/session/self",
+      Gio::DBus::BusType::SYSTEM, "org.freedesktop.login1", "/org/freedesktop/login1/session/auto",
       "org.freedesktop.login1.Session");
+
+  if (!login_proxy_) {
+    login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
+        Gio::DBus::BusType::SYSTEM, "org.freedesktop.login1",
+        "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
+  }
 
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};

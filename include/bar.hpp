@@ -88,6 +88,8 @@ class Bar : public sigc::trackable {
   void onConfigure(int width, int height);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
+  // Set hexpend or vexpand to true, depending on orientation
+  void setExpand(Gtk::Widget &widget);
 
   Glib::RefPtr<Gdk::Surface> gdk_surface_;
   int x_global;

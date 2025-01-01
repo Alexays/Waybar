@@ -43,7 +43,6 @@ class Network final : public ALabel {
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
 
   int ifid_;
-  sa_family_t family_;
   struct sockaddr_nl nladdr_ = {0};
   struct nl_sock* sock_ = nullptr;
   struct nl_sock* ev_sock_ = nullptr;

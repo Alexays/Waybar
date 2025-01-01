@@ -45,6 +45,11 @@ Addressed by *niri/workspaces*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, or index for unnamed workspaces,

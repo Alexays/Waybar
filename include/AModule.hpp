@@ -22,6 +22,8 @@ class AModule : public IModule {
   /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 
+  bool expandEnabled() const;
+
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
@@ -52,6 +54,7 @@ class AModule : public IModule {
 
  private:
   const bool isTooltip;
+  const bool isExpand;
   const bool isAfter{true};
   bool enableClick_{false};
   bool enableScroll_{false};

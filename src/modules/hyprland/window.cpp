@@ -5,10 +5,18 @@
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
+#include <shared_mutex>
+#include <thread>
+
 namespace waybar::modules::hyprland {
+
+std::shared_mutex windowIpcSmtx;
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar) {
+
+  std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
+
   modulesReady = true;
   separateOutputs_ = config["separate-outputs"].asBool();
 
@@ -16,27 +24,28 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     gIPC = std::make_unique<IPC>();
   }
 
-  queryActiveWorkspace();
-  update();
-  dp.emit();
-
   // register for hyprland ipc
   gIPC->registerForIPC("activewindow", this);
   gIPC->registerForIPC("closewindow", this);
   gIPC->registerForIPC("movewindow", this);
   gIPC->registerForIPC("changefloatingmode", this);
   gIPC->registerForIPC("fullscreen", this);
+
+  windowIpcUniqueLock.unlock();
+
+  queryActiveWorkspace();
+  update();
+  dp.emit();
 }
 
 Window::~Window() {
+  std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
   gIPC->unregisterForIPC(this);
-  // wait for possible event handler to finish
-  std::lock_guard<std::mutex> lg(mutex_);
 }
 
 auto Window::update() -> void {
-  // fix ampersands
-  std::lock_guard<std::mutex> lg(mutex_);
+
+  std::shared_lock<std::shared_mutex> windowIpcShareLock(windowIpcSmtx);
 
   std::string windowName = waybar::util::sanitize_string(workspace_.last_window_title);
   std::string windowAddress = workspace_.last_window;
@@ -137,7 +146,8 @@ auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
 }
 
 void Window::queryActiveWorkspace() {
-  std::lock_guard<std::mutex> lg(mutex_);
+
+  std::shared_lock<std::shared_mutex> windowIpcShareLock(windowIpcSmtx);
 
   if (separateOutputs_) {
     workspace_ = getActiveWorkspace(this->bar_.output->name);
@@ -182,12 +192,6 @@ void Window::queryActiveWorkspace() {
       // Fullscreen windows look like they are solo
       if (fullscreen_) {
         solo_ = true;
-      }
-
-      // Grouped windows have a tab bar and therefore don't look fullscreen or solo
-      if (windowData_.grouped) {
-        fullscreen_ = false;
-        solo_ = false;
       }
 
       if (solo_) {

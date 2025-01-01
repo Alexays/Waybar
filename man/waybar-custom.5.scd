@@ -138,6 +138,11 @@ Addressed by *custom/<name>*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # RETURN-TYPE
 
 When *return-type* is set to *json*, Waybar expects the *exec*-script  to output its data in JSON format.

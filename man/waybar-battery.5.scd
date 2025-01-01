@@ -122,6 +122,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{capacity}*: Capacity in percentage

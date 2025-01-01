@@ -8,6 +8,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     : name_(name),
       config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
+      isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       enableClick_{enable_click},
       enableScroll_{enable_scroll},
       curDefault{Gdk::Cursor::create("default")},
@@ -240,6 +241,7 @@ bool AModule::handleScroll(double dx, double dy) {
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }
+bool AModule::expandEnabled() const { return isExpand; }
 
 AModule::operator Gtk::Widget&() { return this->operator Gtk::Widget&(); };
 
