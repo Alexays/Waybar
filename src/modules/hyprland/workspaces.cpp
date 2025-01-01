@@ -466,6 +466,7 @@ void Workspaces::onWindowOpened(std::string const &payload) {
 void Workspaces::onWindowClosed(std::string const &addr) {
   spdlog::trace("Window closed: {}", addr);
   updateWindowCount();
+  m_orphanWindowMap.erase(addr);
   for (auto &workspace : m_workspaces) {
     if (workspace->closeWindow(addr)) {
       break;
