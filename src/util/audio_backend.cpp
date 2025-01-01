@@ -103,7 +103,7 @@ void AudioBackend::contextStateCb(pa_context *c, void *data) {
  */
 void AudioBackend::subscribeCb(pa_context *context, pa_subscription_event_type_t type, uint32_t idx,
                                void *data) {
-  unsigned facility{type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK};
+  unsigned facility{(unsigned int)type & (unsigned int)PA_SUBSCRIPTION_EVENT_FACILITY_MASK};
   unsigned operation{type & PA_SUBSCRIPTION_EVENT_TYPE_MASK};
   if (operation != PA_SUBSCRIPTION_EVENT_CHANGE) {
     return;

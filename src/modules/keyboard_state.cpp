@@ -202,7 +202,7 @@ KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::
     while (1) {
       int BUF_LEN = 1024 * (sizeof(struct inotify_event) + 16);
       char buf[BUF_LEN];
-      int length = read(fd, buf, 1024);
+      ssize_t length = read(fd, buf, 1024);
       if (length < 0) {
         spdlog::error("Failed to read inotify: {}", strerror(errno));
         return;

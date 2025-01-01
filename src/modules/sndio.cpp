@@ -155,7 +155,7 @@ bool Sndio::handleScroll(double dx, double dy) {
     step = config_["scroll-step"].asInt();
   }
 
-  int new_volume = volume_;
+  long new_volume = volume_;
   if (muted_) {
     new_volume = old_volume_;
   }
@@ -165,12 +165,12 @@ bool Sndio::handleScroll(double dx, double dy) {
   } else if (dir == SCROLL_DIR::DOWN) {
     new_volume -= step;
   }
-  new_volume = std::clamp(new_volume, 0, static_cast<int>(maxval_));
+  new_volume = std::clamp(new_volume, 0L, static_cast<long>(maxval_));
 
   // quits muted mode if volume changes
   muted_ = false;
 
-  sioctl_setval(hdl_, addr_, new_volume);
+  sioctl_setval(hdl_, addr_, static_cast<unsigned int>(new_volume));
 
   return true;
 }

@@ -10,7 +10,7 @@ namespace ffi {
 extern "C" {
 using wbcffi_module = struct wbcffi_module;
 
-using wbcffi_init_info = struct {
+struct wbcffi_init_info {
   wbcffi_module* obj;
   const char* waybar_version;
   GtkBox* (*get_root_widget)(wbcffi_module*);
