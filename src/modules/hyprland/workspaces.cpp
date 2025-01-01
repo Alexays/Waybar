@@ -509,6 +509,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
 
   // ...and then add it to the new workspace
   if (!windowRepr.empty()) {
+    m_orphanWindowMap.erase(windowAddress);
     m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowRepr);
   }
 }
