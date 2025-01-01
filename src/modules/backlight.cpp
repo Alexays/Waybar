@@ -20,7 +20,7 @@ auto waybar::modules::Backlight::update() -> void {
     }
 
     if (best->get_powered()) {
-      label_.show();
+      set_visible(true);
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
       std::string desc = fmt::format(fmt::runtime(format_), fmt::arg("percent", percent),
@@ -41,7 +41,7 @@ auto waybar::modules::Backlight::update() -> void {
         }
       }
     } else {
-      label_.hide();
+      set_visible(false);
     }
   } else {
     if (previous_best_device == nullptr) {

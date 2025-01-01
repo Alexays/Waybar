@@ -660,7 +660,7 @@ const std::string waybar::modules::Battery::formatTimeRemaining(float hoursRemai
 auto waybar::modules::Battery::update() -> void {
 #if defined(__linux__)
   if (batteries_.empty()) {
-    label_.hide();
+    set_visible(false);
     return;
   }
 #endif
@@ -701,9 +701,9 @@ auto waybar::modules::Battery::update() -> void {
                     fmt::arg("health", fmt::format("{:.3}", health))));
   }
   if (!old_status_.empty()) {
-    label_.get_style_context()->remove_class(old_status_);
+    get_style_context()->remove_class(old_status_);
   }
-  label_.get_style_context()->add_class(status);
+  get_style_context()->add_class(status);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
@@ -713,9 +713,9 @@ auto waybar::modules::Battery::update() -> void {
     format = config_["format-" + state].asString();
   }
   if (format.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
-    label_.show();
+    set_visible(true);
     auto icons = std::vector<std::string>{status + "-" + state, status, state};
     label_.set_markup(fmt::format(
         fmt::runtime(format), fmt::arg("capacity", capacity), fmt::arg("power", power),
@@ -740,7 +740,7 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar doesn't have any `battery-` class
   if (old_class_it == classes.end()) {
     if (!state.empty()) {
-      label_.get_style_context()->add_class(new_class);
+      get_style_context()->add_class(new_class);
     }
     return;
   }
@@ -750,14 +750,14 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar has a `battery-` class,
   // but `state` is empty
   if (state.empty()) {
-    label_.get_style_context()->remove_class(old_class);
+    get_style_context()->remove_class(old_class);
     return;
   }
 
   // If the bar has a `battery-` class,
   // and `state` is NOT empty
   if (old_class != new_class) {
-    label_.get_style_context()->remove_class(old_class);
-    label_.get_style_context()->add_class(new_class);
+    get_style_context()->remove_class(old_class);
+    get_style_context()->add_class(new_class);
   }
 }

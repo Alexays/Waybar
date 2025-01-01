@@ -66,9 +66,9 @@ auto Window::update() -> void {
   }
 
   if (!old_app_id_.empty() && ((mode & 2) == 0 || old_app_id_ != app_id_) &&
-      label_.get_style_context()->has_class(old_app_id_)) {
+      get_style_context()->has_class(old_app_id_)) {
     spdlog::trace("Removing app_id class: {}", old_app_id_);
-    label_.get_style_context()->remove_class(old_app_id_);
+    get_style_context()->remove_class(old_app_id_);
     old_app_id_ = "";
   }
 
@@ -79,9 +79,9 @@ auto Window::update() -> void {
   setClass("stacked", ((mode & 16) > 0));
   setClass("tiled", ((mode & 32) > 0));
 
-  if ((mode & 2) > 0 && !app_id_.empty() && !label_.get_style_context()->has_class(app_id_)) {
+  if ((mode & 2) > 0 && !app_id_.empty() && !get_style_context()->has_class(app_id_)) {
     spdlog::trace("Adding app_id class: {}", app_id_);
-    label_.get_style_context()->add_class(app_id_);
+    get_style_context()->add_class(app_id_);
     old_app_id_ = app_id_;
   }
 
@@ -101,11 +101,11 @@ auto Window::update() -> void {
 
 void Window::setClass(std::string classname, bool enable) {
   if (enable) {
-    if (!label_.get_style_context()->has_class(classname)) {
-      label_.get_style_context()->add_class(classname);
+    if (!get_style_context()->has_class(classname)) {
+      get_style_context()->add_class(classname);
     }
   } else {
-    label_.get_style_context()->remove_class(classname);
+    get_style_context()->remove_class(classname);
   }
 }
 

@@ -111,11 +111,11 @@ auto SystemdFailedUnits::update() -> void {
 
   // Set state class.
   const std::string status = nr_failed == 0 ? "ok" : "degraded";
-  if (!last_status.empty() && label_.get_style_context()->has_class(last_status)) {
-    label_.get_style_context()->remove_class(last_status);
+  if (!last_status.empty() && get_style_context()->has_class(last_status)) {
+    get_style_context()->remove_class(last_status);
   }
-  if (!label_.get_style_context()->has_class(status)) {
-    label_.get_style_context()->add_class(status);
+  if (!get_style_context()->has_class(status)) {
+    get_style_context()->add_class(status);
   }
   last_status = status;
 

@@ -156,9 +156,9 @@ auto PowerProfilesDaemon::update() -> void {
 
     // Set CSS class
     if (!currentStyle_.empty()) {
-      label_.get_style_context()->remove_class(currentStyle_);
+      get_style_context()->remove_class(currentStyle_);
     }
-    label_.get_style_context()->add_class(profile.name);
+    get_style_context()->add_class(profile.name);
     currentStyle_ = profile.name;
     label_.set_visible(true);
   } else {

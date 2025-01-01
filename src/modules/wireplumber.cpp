@@ -307,9 +307,9 @@ auto waybar::modules::Wireplumber::update() -> void {
 
   if (muted_) {
     format = config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
-    label_.get_style_context()->add_class("muted");
+    get_style_context()->add_class("muted");
   } else {
-    label_.get_style_context()->remove_class("muted");
+    get_style_context()->remove_class("muted");
   }
 
   int vol = round(volume_ * 100.0);

@@ -59,7 +59,7 @@ void Window::doUpdate() {
     const auto sanitizedTitle = waybar::util::sanitize_string(title);
     const auto sanitizedAppId = waybar::util::sanitize_string(appId);
 
-    label_.show();
+    set_visible(true);
     label_.set_markup(waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", sanitizedTitle),
                     fmt::arg("app_id", sanitizedAppId)),
@@ -82,7 +82,7 @@ void Window::doUpdate() {
       oldAppId_ = appId;
     }
   } else {
-    label_.hide();
+    set_visible(false);
     updateAppIconName("", "");
     setClass("solo", false);
     if (!oldAppId_.empty()) setClass(oldAppId_, false);
@@ -98,11 +98,11 @@ void Window::update() {
 void Window::setClass(const std::string &className, bool enable) {
   auto styleContext = bar_.window.get_style_context();
   if (enable) {
-    if (!label_.get_style_context()->has_class(className)) {
-      label_.get_style_context()->add_class(className);
+    if (!get_style_context()->has_class(className)) {
+      get_style_context()->add_class(className);
     }
   } else {
-    label_.get_style_context()->remove_class(className);
+    get_style_context()->remove_class(className);
   }
 }
 

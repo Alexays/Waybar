@@ -196,10 +196,10 @@ auto waybar::modules::Bluetooth::update() -> void {
   }
 
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
-    if (in_next_state && !label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->add_class(style_class);
-    } else if (!in_next_state && label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->remove_class(style_class);
+    if (in_next_state && !get_style_context()->has_class(style_class)) {
+      get_style_context()->add_class(style_class);
+    } else if (!in_next_state && get_style_context()->has_class(style_class)) {
+      get_style_context()->remove_class(style_class);
     }
   };
   update_style_context("discoverable", cur_controller_ ? cur_controller_->discoverable : false);
@@ -212,9 +212,9 @@ auto waybar::modules::Bluetooth::update() -> void {
   state_ = state;
 
   if (format_.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
-    label_.show();
+    set_visible(true);
     label_.set_markup(fmt::format(
         fmt::runtime(format_), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),

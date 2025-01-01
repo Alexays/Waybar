@@ -216,11 +216,11 @@ void Window::onEvent(const std::string& ev) {
 
 void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {
-    if (!box_.get_style_context()->has_class(classname)) {
-      box_.get_style_context()->add_class(classname);
+    if (!get_style_context()->has_class(classname)) {
+      get_style_context()->add_class(classname);
     }
   } else {
-    box_.get_style_context()->remove_class(classname);
+    get_style_context()->remove_class(classname);
   }
 }
 

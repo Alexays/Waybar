@@ -80,7 +80,7 @@ Mode::Mode(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     spdlog::error("wl_seat not advertised");
   }
 
-  label_.hide();
+  set_visible(false);
   ALabel::update();
 
   seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
@@ -97,15 +97,15 @@ Mode::~Mode() {
 
 void Mode::handle_mode(const char *mode) {
   if (format_.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
     if (!mode_.empty()) {
-      label_.get_style_context()->remove_class(mode_);
+      get_style_context()->remove_class(mode_);
     }
 
-    label_.get_style_context()->add_class(mode);
+    get_style_context()->add_class(mode);
     label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(mode).raw()));
-    label_.show();
+    set_visible(true);
   }
 
   mode_ = mode;

@@ -14,11 +14,12 @@ class AIconLabel : public ALabel {
              bool enable_click = false, bool enable_scroll = false);
   virtual ~AIconLabel() = default;
   auto update() -> void override;
-  Gtk::Widget &root() override;
 
  protected:
   Gtk::Image image_;
   Gtk::Box box_;
+
+  Gtk::Widget const &child() const override;
 
   bool iconEnabled() const;
 };

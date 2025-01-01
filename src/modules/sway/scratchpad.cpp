@@ -28,7 +28,7 @@ Scratchpad::Scratchpad(const std::string& id, const Json::Value& config)
 }
 auto Scratchpad::update() -> void {
   if (count_ || show_empty_) {
-    label_.show();
+    set_visible(true);
     label_.set_markup(
         fmt::format(fmt::runtime(format_),
                     fmt::arg("icon", getIcon(count_, "", config_["format-icons"].size())),
@@ -37,12 +37,12 @@ auto Scratchpad::update() -> void {
       label_.set_tooltip_markup(tooltip_text_);
     }
   } else {
-    label_.hide();
+    set_visible(false);
   }
   if (count_) {
-    label_.get_style_context()->remove_class("empty");
+    get_style_context()->remove_class("empty");
   } else {
-    label_.get_style_context()->add_class("empty");
+    get_style_context()->add_class("empty");
   }
   ALabel::update();
 }

@@ -31,9 +31,9 @@ auto waybar::modules::CpuUsage::update() -> void {
   }
 
   if (format.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
-    label_.show();
+    set_visible(true);
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("usage", total_usage));

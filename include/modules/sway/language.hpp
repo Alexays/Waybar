@@ -8,7 +8,7 @@
 
 namespace waybar::modules::sway {
 
-class Language final : public ALabel, public sigc::trackable {
+class Language final : public ALabel {
  public:
   Language(const std::string& id, const Json::Value& config);
   virtual ~Language() = default;

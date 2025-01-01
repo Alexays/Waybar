@@ -171,21 +171,21 @@ auto waybar::modules::Cava::update() -> void {
       }
 
       label_.set_markup(text_);
-      label_.show();
+      set_visible(true);
       ALabel::update();
-      label_.get_style_context()->add_class("updated");
+      get_style_context()->add_class("updated");
     }
 
-    label_.get_style_context()->remove_class("silent");
+    get_style_context()->remove_class("silent");
   } else {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
     if (hide_on_silence_)
-      label_.hide();
+      set_visible(false);
     else if (config_["format_silent"].isString())
       label_.set_markup(format_silent_);
 
-    label_.get_style_context()->add_class("silent");
-    label_.get_style_context()->remove_class("updated");
+    get_style_context()->add_class("silent");
+    get_style_context()->remove_class("updated");
   }
 }
 

@@ -89,6 +89,8 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
+void AModule::setPopupPosition(Gtk::PositionType position) {}
+
 void AModule::handleToggle(int n_press, double dx, double dy) {
   handleRawClickEvent(controllClick_->get_current_button(), n_press,
                       Gdk::Event::Type::BUTTON_PRESS);

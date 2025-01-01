@@ -47,7 +47,7 @@ auto waybar::modules::Disk::update() -> void {
   */
 
   if (err != 0) {
-    label_.hide();
+    set_visible(false);
     return;
   }
 
@@ -70,9 +70,9 @@ auto waybar::modules::Disk::update() -> void {
   }
 
   if (format.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
-    label_.show();
+    set_visible(true);
     label_.set_markup(fmt::format(
         fmt::runtime(format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
         fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks), fmt::arg("used", used),

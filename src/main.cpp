@@ -74,6 +74,7 @@ int main(int argc, char* argv[]) {
   try {
     auto* client = waybar::Client::inst();
 
+    // TODO: these signal handlers aren't safe, we need to change that
     std::signal(SIGUSR1, [](int /*signal*/) {
       for (auto& bar : waybar::Client::inst()->bars) {
         bar->toggle();

@@ -16,14 +16,14 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
     gIPC = std::make_unique<IPC>();
   }
 
-  label_.hide();
+  set_visible(false);
   ALabel::update();
 
   // Displays widget immediately if always_on_ assuming default submap
   // Needs an actual way to retrive current submap on startup
   if (always_on_) {
     submap_ = default_submap_;
-    label_.get_style_context()->add_class(submap_);
+    get_style_context()->add_class(submap_);
   }
 
   // register for hyprland ipc
@@ -53,13 +53,13 @@ auto Submap::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
   if (submap_.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
     label_.set_markup(fmt::format(fmt::runtime(format_), submap_));
     if (tooltipEnabled()) {
       label_.set_tooltip_text(submap_);
     }
-    label_.show();
+    set_visible(true);
   }
   // Call parent update
   ALabel::update();
@@ -76,7 +76,7 @@ void Submap::onEvent(const std::string& ev) {
   submapName = waybar::util::sanitize_string(submapName);
 
   if (!submap_.empty()) {
-    label_.get_style_context()->remove_class(submap_);
+    get_style_context()->remove_class(submap_);
   }
 
   submap_ = submapName;
@@ -85,7 +85,7 @@ void Submap::onEvent(const std::string& ev) {
     submap_ = default_submap_;
   }
 
-  label_.get_style_context()->add_class(submap_);
+  get_style_context()->add_class(submap_);
 
   spdlog::debug("hyprland submap onevent with {}", submap_);
 

@@ -10,7 +10,7 @@
 
 namespace waybar::modules::dwl {
 
-class Window : public AAppIconLabel, public sigc::trackable {
+class Window : public AAppIconLabel {
  public:
   Window(const std::string &, const waybar::Bar &, const Json::Value &);
   ~Window();

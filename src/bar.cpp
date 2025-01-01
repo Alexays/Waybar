@@ -113,6 +113,22 @@ Glib::ustring to_string(Gtk::PositionType pos) {
   throw std::runtime_error("Invalid Gtk::PositionType");
 }
 
+// Get the preferred position for popups from the position of the bar
+Gtk::PositionType getPopupPosition(Gtk::PositionType pos) {
+  switch (pos) {
+    case Gtk::PositionType::LEFT:
+      return Gtk::PositionType::RIGHT;
+    case Gtk::PositionType::RIGHT:
+      return Gtk::PositionType::LEFT;
+    case Gtk::PositionType::TOP:
+      return Gtk::PositionType::BOTTOM;
+    case Gtk::PositionType::BOTTOM:
+      return Gtk::PositionType::TOP;
+    default:
+      return Gtk::PositionType::TOP;
+  }
+}
+
 /* Deserializer for JSON Object -> map<string compatible type, Value>
  * Assumes that all the values in the object are deserializable to the same type.
  */
@@ -473,6 +489,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
   auto module_list = group != nullptr ? config[pos]["modules"] : config[pos];
   if (module_list.isArray()) {
+    auto popupPosition = getPopupPosition(position);
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
@@ -491,6 +508,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           module = group_module;
         } else {
           module = factory.makeModule(ref, pos);
+          module->setPopupPosition(popupPosition);
         }
 
         std::shared_ptr<AModule> module_sp(module);

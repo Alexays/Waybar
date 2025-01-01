@@ -7,7 +7,7 @@
 
 namespace waybar::modules::sway {
 
-class Window final : public AAppIconLabel, public sigc::trackable {
+class Window final : public AAppIconLabel {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~Window() = default;

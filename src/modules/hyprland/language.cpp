@@ -20,7 +20,7 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   // get the active layout when open
   initLanguage();
 
-  label_.hide();
+  set_visible(false);
   update();
 
   // register for hyprland ipc
@@ -58,10 +58,10 @@ auto Language::update() -> void {
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
 
   if (!format_.empty()) {
-    label_.show();
+    set_visible(true);
     label_.set_markup(layoutName);
   } else {
-    label_.hide();
+    set_visible(false);
   }
 
   ALabel::update();

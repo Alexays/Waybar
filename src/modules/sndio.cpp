@@ -50,8 +50,6 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
       muted_(false) {
   connect_to_sndio();
 
-  label_.show();
-
   thread_ = [this] {
     dp.emit();
 
@@ -100,18 +98,18 @@ auto Sndio::update() -> void {
   unsigned int vol = 100. * static_cast<double>(volume_) / static_cast<double>(maxval_);
 
   if (volume_ == 0) {
-    label_.get_style_context()->add_class("muted");
+    get_style_context()->add_class("muted");
   } else {
-    label_.get_style_context()->remove_class("muted");
+    get_style_context()->remove_class("muted");
   }
 
   auto text =
       fmt::format(fmt::runtime(format), fmt::arg("volume", vol), fmt::arg("raw_value", volume_));
   if (text.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
     label_.set_markup(text);
-    label_.show();
+    set_visible(true);
   }
 
   ALabel::update();

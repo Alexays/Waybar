@@ -53,9 +53,9 @@ auto waybar::modules::Memory::update() -> void {
     }
 
     if (format.empty()) {
-      label_.hide();
+      set_visible(false);
     } else {
-      label_.show();
+      set_visible(true);
       auto icons = std::vector<std::string>{state};
       label_.set_markup(fmt::format(
           fmt::runtime(format), used_ram_percentage,
@@ -82,7 +82,7 @@ auto waybar::modules::Memory::update() -> void {
       }
     }
   } else {
-    label_.hide();
+    set_visible(false);
   }
   // Call parent update
   ALabel::update();

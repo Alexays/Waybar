@@ -121,7 +121,7 @@ Layout::Layout(const std::string &id, const waybar::Bar &bar, const Json::Value 
     spdlog::error("wl_seat not advertised");
   }
 
-  label_.hide();
+  set_visible(false);
   ALabel::update();
 
   seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
@@ -144,22 +144,22 @@ Layout::~Layout() {
 
 void Layout::handle_name(const char *name) {
   if (std::strcmp(name, "") == 0 || format_.empty()) {
-    label_.hide();  // hide empty labels or labels with empty format
+    set_visible(false);  // hide empty labels or labels with empty format
   } else {
-    label_.show();
+    set_visible(true);
     label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(name).raw()));
   }
   ALabel::update();
 }
 
 void Layout::handle_clear() {
-  label_.hide();
+  set_visible(false);
   ALabel::update();
 }
 
 void Layout::handle_focused_output(struct wl_output *output) {
   if (output_ == output) {  // if we focused the output this bar belongs to
-    label_.get_style_context()->add_class("focused");
+    get_style_context()->add_class("focused");
     ALabel::update();
   }
   focused_output_ = output;
@@ -167,7 +167,7 @@ void Layout::handle_focused_output(struct wl_output *output) {
 
 void Layout::handle_unfocused_output(struct wl_output *output) {
   if (output_ == output) {  // if we unfocused the output this bar belongs to
-    label_.get_style_context()->remove_class("focused");
+    get_style_context()->remove_class("focused");
     ALabel::update();
   }
 }

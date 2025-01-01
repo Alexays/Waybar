@@ -33,6 +33,10 @@ class AModule : public IModule {
   virtual auto refresh(int shouldRefresh) -> void {};
   auto doAction(const std::string &name) -> void override;
 
+  // Inform the module which direction Popups (including menus)
+  // should open. The default does nothing.
+  virtual void setPopupPosition(Gtk::PositionType position);
+
   /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 

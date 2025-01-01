@@ -75,9 +75,9 @@ auto waybar::modules::Pulseaudio::update() -> void {
     std::string format_name = "format";
     if (backend->isBluetooth()) {
       format_name = format_name + "-bluetooth";
-      label_.get_style_context()->add_class("bluetooth");
+      get_style_context()->add_class("bluetooth");
     } else {
-      label_.get_style_context()->remove_class("bluetooth");
+      get_style_context()->remove_class("bluetooth");
     }
     if (backend->getSinkMuted()) {
       // Check muted bluetooth format exist, otherwise fallback to default muted format
@@ -85,11 +85,11 @@ auto waybar::modules::Pulseaudio::update() -> void {
         format_name = "format";
       }
       format_name = format_name + "-muted";
-      label_.get_style_context()->add_class("muted");
-      label_.get_style_context()->add_class("sink-muted");
+      get_style_context()->add_class("muted");
+      get_style_context()->add_class("sink-muted");
     } else {
-      label_.get_style_context()->remove_class("muted");
-      label_.get_style_context()->remove_class("sink-muted");
+      get_style_context()->remove_class("muted");
+      get_style_context()->remove_class("sink-muted");
     }
     auto state = getState(sink_volume, true);
     if (!state.empty() && config_[format_name + "-" + state].isString()) {
@@ -101,12 +101,12 @@ auto waybar::modules::Pulseaudio::update() -> void {
   // TODO: find a better way to split source/sink
   std::string format_source = "{volume}%";
   if (backend->getSourceMuted()) {
-    label_.get_style_context()->add_class("source-muted");
+    get_style_context()->add_class("source-muted");
     if (config_["format-source-muted"].isString()) {
       format_source = config_["format-source-muted"].asString();
     }
   } else {
-    label_.get_style_context()->remove_class("source-muted");
+    get_style_context()->remove_class("source-muted");
     if (config_["format-source"].isString()) {
       format_source = config_["format-source"].asString();
     }
@@ -122,10 +122,10 @@ auto waybar::modules::Pulseaudio::update() -> void {
       fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume),
       fmt::arg("source_desc", source_desc), fmt::arg("icon", getIcon(sink_volume, getPulseIcon())));
   if (text.empty()) {
-    label_.hide();
+    set_visible(false);
   } else {
     label_.set_markup(text);
-    label_.show();
+    set_visible(true);
   }
 
   if (tooltipEnabled()) {

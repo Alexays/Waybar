@@ -150,7 +150,7 @@ auto waybar::modules::Custom::update() -> void {
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
-    label_.hide();
+    set_visible(false);
   } else {
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
@@ -163,7 +163,7 @@ auto waybar::modules::Custom::update() -> void {
                              fmt::arg("icon", getIcon(percentage_, alt_)),
                              fmt::arg("percentage", percentage_));
       if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
-        label_.hide();
+        set_visible(false);
       } else {
         label_.set_markup(str);
         if (tooltipEnabled()) {
@@ -183,7 +183,7 @@ auto waybar::modules::Custom::update() -> void {
             }
           }
         }
-        auto style = label_.get_style_context();
+        auto style = get_style_context();
         auto classes{label_.get_css_classes()};
         for (auto const& c : classes) {
           if (c.c_str() == id_) continue;
@@ -195,7 +195,7 @@ auto waybar::modules::Custom::update() -> void {
         style->add_class("flat");
         style->add_class("text-button");
         style->add_class(MODULE_CLASS);
-        label_.show();
+        set_visible(true);
       }
     } catch (const fmt::format_error& e) {
       if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)

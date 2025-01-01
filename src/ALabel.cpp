@@ -21,11 +21,11 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
                     : std::chrono::seconds(
                           config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
       default_format_(format_) {
-  label_.set_name(name);
+  set_name(name);
   if (!id.empty()) {
-    label_.get_style_context()->add_class(id);
+    get_style_context()->add_class(id);
   }
-  label_.get_style_context()->add_class(MODULE_CLASS);
+  get_style_context()->add_class(MODULE_CLASS);
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
     label_.set_ellipsize(Pango::EllipsizeMode::END);
@@ -40,7 +40,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
 
   uint rotate = 0;
-  // gtk4 todo
+  // gtk4 todo, probably need to use css transform
   /*
   if (config_["rotate"].isUInt()) {
     rotate = config["rotate"].asUInt();
@@ -86,9 +86,9 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       }
       menu_ = std::make_unique<Gtk::PopoverMenu>(menuModel, Gtk::PopoverMenu::Flags::NESTED);
       menu_->set_has_arrow(false);
-      menu_->set_parent(label_);
+      menu_->set_parent(*this);
 
-      label_.insert_action_group("menu", actionGroup);
+      insert_action_group("menu", actionGroup);
 
       // Read the menu descriptor file
     } catch (const std::exception& e) {
@@ -106,8 +106,22 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       label_.set_justify(Gtk::Justification::CENTER);
     }
   }
+  label_.set_parent(*this);
 
   AModule::bindEvents(*this);
+}
+
+ALabel::~ALabel() {
+  if (!gobj()) {
+    // If this was a managed widget, the underlying c object was already destroyed
+    // NOTE: if a managed pointer is ever used for this, then we need to listen for signal_destroy
+    // and unparent children in that case.
+    return;
+  }
+  // Iterating over children means that subclasses can just use this destructor.
+  while (Gtk::Widget* child = get_first_child()) {
+    child->unparent();
+  }
 }
 
 auto ALabel::update() -> void { AModule::update(); }
@@ -160,6 +174,12 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
+void ALabel::setPopupPosition(Gtk::PositionType position) {
+  if (menu_) {
+    menu_->set_position(position);
+  }
+}
+
 void waybar::ALabel::handleToggle(int n_press, double dx, double dy) {
   if (config_["format-alt-click"].isUInt() &&
       controllClick_->get_current_button() == config_["format-alt-click"].asUInt()) {
@@ -196,16 +216,14 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
   std::string valid_state;
   for (auto const& state : states) {
     if ((lesser ? value <= state.second : value >= state.second) && valid_state.empty()) {
-      label_.get_style_context()->add_class(state.first);
+      get_style_context()->add_class(state.first);
       valid_state = state.first;
     } else {
-      label_.get_style_context()->remove_class(state.first);
+      get_style_context()->remove_class(state.first);
     }
   }
   return valid_state;
 }
-
-Gtk::Widget& ALabel::root() { return label_; };
 
 void ALabel::handleClick(const std::string& name) {
   if (menu_ != nullptr && config_["menu"].asString() == name) {
@@ -213,4 +231,32 @@ void ALabel::handleClick(const std::string& name) {
   }
 }
 
+Gtk::Widget const& ALabel::child() const { return label_; }
+// this cast is safe because we are calling on a non-const this
+Gtk::Widget& ALabel::child() {
+  return const_cast<Gtk::Widget&>(const_cast<const ALabel*>(this)->child());
+}
+
+Gtk::SizeRequestMode ALabel::get_request_mode_vfunc() const { return child().get_request_mode(); }
+
+void ALabel::measure_vfunc(Gtk::Orientation orientation, int for_size, int& minimum, int& natural,
+                           int& minimum_baseline, int& natural_baseline) const {
+  return child().measure(orientation, for_size, minimum, natural, minimum_baseline,
+                         natural_baseline);
+}
+void ALabel::size_allocate_vfunc(int width, int height, int baseline) {
+  Gtk::Allocation allocation;
+  allocation.set_x(0);
+  allocation.set_y(0);
+  allocation.set_width(width);
+  allocation.set_height(height);
+
+  child().size_allocate(allocation, baseline);
+  if (menu_) {
+    // We need to present the menu as part of this function
+    menu_->present();
+  }
+}
+
+Gtk::Widget& ALabel::root() { return *this; };
 }  // namespace waybar
