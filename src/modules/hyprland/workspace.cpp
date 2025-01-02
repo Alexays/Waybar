@@ -53,8 +53,13 @@ void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condi
 }
 
 std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const &addr) {
-  if (m_windowMap.contains(addr)) {
-    return removeWindow(addr);
+  auto it = std::ranges::find_if(m_windowMap,
+                                 [&addr](const auto &window) { return window.address == addr; });
+  // If the vector contains the address, remove it and return the window representation
+  if (it != m_windowMap.end()) {
+    WindowRepr windowRepr = *it;
+    m_windowMap.erase(it);
+    return windowRepr;
   }
   return std::nullopt;
 }
@@ -101,7 +106,15 @@ void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
     auto repr = create_window_paylod.repr(m_workspaceManager);
 
     if (!repr.empty()) {
-      m_windowMap[create_window_paylod.getAddress()] = repr;
+      auto addr = create_window_paylod.getAddress();
+      auto it = std::ranges::find_if(
+          m_windowMap, [&addr](const auto &window) { return window.address == addr; });
+      // If the vector contains the address, update the window representation, otherwise insert it
+      if (it != m_windowMap.end()) {
+        *it = repr;
+      } else {
+        m_windowMap.emplace_back(repr);
+      }
     }
   }
 };
@@ -112,12 +125,6 @@ bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_paylod
     return true;
   }
   return false;
-}
-
-WindowRepr Workspace::removeWindow(WindowAddress const &addr) {
-  WindowRepr windowRepr = m_windowMap[addr];
-  m_windowMap.erase(addr);
-  return windowRepr;
 }
 
 std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map) {
@@ -212,7 +219,7 @@ void Workspace::update(const std::string &workspace_icon) {
 
     bool isNotFirst = false;
 
-    for (const auto &[_pid, window_repr] : m_windowMap) {
+    for (const auto &window_repr : m_windowMap) {
       if (isNotFirst) {
         windows.append(windowSeparator);
       }
@@ -238,7 +245,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     }
   }
 
-  for (const auto &[_addr, window_repr] : m_windowMap) {
+  for (const auto &window_repr : m_windowMap) {
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_text(window_repr.window_title);
 

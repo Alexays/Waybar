@@ -27,6 +27,7 @@ namespace waybar::modules::hyprland {
 class Workspaces;
 
 struct WindowRepr {
+  std::string address;
   std::string window_class;
   std::string window_title;
   std::string repr_rewrite;
