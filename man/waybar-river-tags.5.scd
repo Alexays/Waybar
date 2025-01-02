@@ -31,6 +31,11 @@ Addressed by *river/tags*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*hide-vacant*: ++
+	typeof: bool ++
+	default: false ++
+	Only show relevant tags: tags that are either focused or have a window on them.
+
 # EXAMPLE
 
 ```
