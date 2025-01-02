@@ -39,9 +39,6 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     }
     server_ = config["server"].asCString();
   }
-
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
 }
 
 auto waybar::modules::MPD::update() -> void {
@@ -354,19 +351,38 @@ void waybar::modules::MPD::fetchState() {
   checkErrors(conn);
 }
 
-bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
-  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || connection_ == nullptr) {
+bool waybar::modules::MPD::handleToggle(GdkEventButton* const& e) {
+  if (connection_ == nullptr) {
     return false;
   }
 
-  if (e->button == 1) {
-    if (state_ == MPD_STATE_PLAY)
+  if (e->button == 1) {  // left-click
+    if (config_["on-click"].isString()) {
+      return ALabel::handleToggle(e);
+    }
+    if (playing()) {
       context_.pause();
-    else
+    } else {
       context_.play();
-  } else if (e->button == 3) {
-    context_.stop();
+    }
+    return true;
   }
 
-  return true;
+  if (e->button == 2) {  // middle-click
+    if (config_["on-click-middle"].isString()) {
+      return ALabel::handleToggle(e);
+    }
+    spdlog::warn("MPD: on-click-middle is not configured");
+    return true;
+  }
+
+  if (e->button == 3) {  // right-click
+    if (config_["on-click-right"].isString()) {
+      return ALabel::handleToggle(e);
+    }
+    context_.stop();
+    return true;
+  }
+
+  return ALabel::handleToggle(e);
 }
