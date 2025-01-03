@@ -21,8 +21,8 @@ const std::vector<std::string> Config::CONFIG_DIRS = {
 
 const char *Config::CONFIG_PATH_ENV = "WAYBAR_CONFIG_DIR";
 
-std::optional<std::string> Config::tryExpandPath(const std::string &base,
-                                                 const std::string &filename) {
+std::vector<std::string> Config::tryExpandPath(const std::string &base,
+                                               const std::string &filename) {
   fs::path path;
 
   if (!filename.empty()) {
@@ -33,33 +33,35 @@ std::optional<std::string> Config::tryExpandPath(const std::string &base,
 
   spdlog::debug("Try expanding: {}", path.string());
 
+  std::vector<std::string> results;
   wordexp_t p;
   if (wordexp(path.c_str(), &p, 0) == 0) {
-    if (access(*p.we_wordv, F_OK) == 0) {
-      std::string result = *p.we_wordv;
-      wordfree(&p);
-      spdlog::debug("Found config file: {}", path.string());
-      return result;
+    for (size_t i = 0; i < p.we_wordc; i++) {
+      if (access(p.we_wordv[i], F_OK) == 0) {
+        results.emplace_back(p.we_wordv[i]);
+        spdlog::debug("Found config file: {}", p.we_wordv[i]);
+      }
     }
     wordfree(&p);
   }
-  return std::nullopt;
+
+  return results;
 }
 
 std::optional<std::string> Config::findConfigPath(const std::vector<std::string> &names,
                                                   const std::vector<std::string> &dirs) {
   if (const char *dir = std::getenv(Config::CONFIG_PATH_ENV)) {
     for (const auto &name : names) {
-      if (auto res = tryExpandPath(dir, name); res) {
-        return res;
+      if (auto res = tryExpandPath(dir, name); !res.empty()) {
+        return res.front();
       }
     }
   }
 
   for (const auto &dir : dirs) {
     for (const auto &name : names) {
-      if (auto res = tryExpandPath(dir, name); res) {
-        return res;
+      if (auto res = tryExpandPath(dir, name); !res.empty()) {
+        return res.front();
       }
     }
   }
@@ -92,11 +94,15 @@ void Config::resolveConfigIncludes(Json::Value &config, int depth) {
   if (includes.isArray()) {
     for (const auto &include : includes) {
       spdlog::info("Including resource file: {}", include.asString());
-      setupConfig(config, tryExpandPath(include.asString(), "").value_or(""), ++depth);
+      for (const auto &match : tryExpandPath(include.asString(), "")) {
+        setupConfig(config, match, depth + 1);
+      }
     }
   } else if (includes.isString()) {
     spdlog::info("Including resource file: {}", includes.asString());
-    setupConfig(config, tryExpandPath(includes.asString(), "").value_or(""), ++depth);
+    for (const auto &match : tryExpandPath(includes.asString(), "")) {
+      setupConfig(config, match, depth + 1);
+    }
   }
 }
 

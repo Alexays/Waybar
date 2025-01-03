@@ -68,11 +68,11 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
       // there might be "~" or "$HOME" in original path, try to expand it.
       auto result = Config::tryExpandPath(menuFile, "");
-      if (!result.has_value()) {
+      if (result.empty()) {
         throw std::runtime_error("Failed to expand file: " + menuFile);
       }
 
-      menuFile = result.value();
+      menuFile = result.front();
       // Read the menu descriptor file
       std::ifstream file(menuFile);
       if (!file.is_open()) {
