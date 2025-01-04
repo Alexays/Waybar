@@ -248,6 +248,18 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
   for (const auto &window_repr : m_windowMap) {
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_text(window_repr.window_title);
+    window_box->get_style_context()->add_class("taskbar-window");
+    auto event_box = Gtk::manage(new Gtk::EventBox());
+    event_box->add(*window_box);
+    event_box->signal_button_press_event().connect(
+        [window_repr](GdkEventButton const *bt) {
+          if (bt->type == GDK_BUTTON_PRESS) {
+            focusWindow(window_repr.address);
+            return true;
+          }
+          return false;
+        },
+        false);
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
                                    fmt::arg("title", window_repr.window_title));
@@ -271,8 +283,8 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
       window_box->pack_start(*window_label_after, true, true);
     }
 
-    m_content.pack_start(*window_box, true, false);
-    window_box->show_all();
+    m_content.pack_start(*event_box, true, false);
+    event_box->show_all();
   }
 
   auto formatAfter = m_workspaceManager.formatAfter();
@@ -282,6 +294,14 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
                                         fmt::arg("icon", workspace_icon)));
     m_content.pack_end(m_labelAfter, false, false);
     m_labelAfter.show();
+  }
+}
+
+void Workspace::focusWindow(WindowAddress const &addr) {
+  try {
+    IPC::getSocket1Reply("dispatch focuswindow address:0x" + addr);
+  } catch (const std::exception &e) {
+    spdlog::error("Failed to dispatch window: {}", e.what());
   }
 }
 
