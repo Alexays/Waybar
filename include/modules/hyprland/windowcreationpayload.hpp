@@ -33,7 +33,7 @@ struct WindowRepr {
   std::string repr_rewrite;
 
  public:
-  bool empty() const { return repr_rewrite.empty(); }
+  bool empty() const { return address.empty(); }
 };
 
 class WindowCreationPayload {
