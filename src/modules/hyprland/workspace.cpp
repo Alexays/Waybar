@@ -32,7 +32,7 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
                                                false);
 
   m_button.set_relief(Gtk::RELIEF_NONE);
-  if (m_workspaceManager.enableWorkspaceTaskbar()) {
+  if (m_workspaceManager.enableTaskbar()) {
     m_content.set_orientation(m_workspaceManager.taskbarOrientation());
     m_content.pack_start(m_labelBefore, false, false);
   } else {
@@ -105,7 +105,7 @@ void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
   if (!create_window_paylod.isEmpty(m_workspaceManager)) {
     auto repr = create_window_paylod.repr(m_workspaceManager);
 
-    if (!repr.empty()) {
+    if (!repr.empty() || m_workspaceManager.enableTaskbar()) {
       auto addr = create_window_paylod.getAddress();
       auto it = std::ranges::find_if(
           m_windowMap, [&addr](const auto &window) { return window.address == addr; });
@@ -213,8 +213,8 @@ void Workspace::update(const std::string &workspace_icon) {
 
   std::string windows;
   // Optimization: The {windows} substitution string is only possible if the taskbar is disabled, no
-  // need to compute this if enableWorkspaceTaskbar() is true
-  if (!m_workspaceManager.enableWorkspaceTaskbar()) {
+  // need to compute this if enableTaskbar() is true
+  if (!m_workspaceManager.enableTaskbar()) {
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
 
     bool isNotFirst = false;
@@ -233,7 +233,7 @@ void Workspace::update(const std::string &workspace_icon) {
                                        fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
                                        fmt::arg("windows", windows)));
 
-  if (m_workspaceManager.enableWorkspaceTaskbar()) {
+  if (m_workspaceManager.enableTaskbar()) {
     updateTaskbar(workspace_icon);
   }
 }

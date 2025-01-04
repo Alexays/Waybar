@@ -589,7 +589,7 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   if (withWindows) {
     populateWorkspaceTaskbarConfig(config);
   }
-  if (m_enableWorkspaceTaskbar) {
+  if (m_enableTaskbar) {
     auto parts = split(m_formatBefore, "{windows}", 1);
     m_formatBefore = parts[0];
     m_formatAfter = parts.size() > 1 ? parts[1] : "";
@@ -673,11 +673,13 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
     return;
   }
 
-  populateBoolConfig(workspaceTaskbar, "enable", m_enableWorkspaceTaskbar);
+  populateBoolConfig(workspaceTaskbar, "enable", m_enableTaskbar);
 
   if (workspaceTaskbar["format"].isString()) {
     /* The user defined a format string, use it */
-    auto parts = split(workspaceTaskbar["format"].asString(), "{icon}", 1);
+    std::string format = workspaceTaskbar["format"].asString();
+    m_taskbarWithTitle = format.find("{title") != std::string::npos; /* {title} or {title.length} */
+    auto parts = split(format, "{icon}", 1);
     m_taskbarFormatBefore = parts[0];
     if (parts.size() > 1) {
       m_taskbarWithIcon = true;
@@ -726,7 +728,7 @@ auto Workspaces::registerIpc() -> void {
   gIPC->registerForIPC("urgent", this);
   gIPC->registerForIPC("configreloaded", this);
 
-  if (windowRewriteConfigUsesTitle()) {
+  if (windowRewriteConfigUsesTitle() || m_taskbarWithTitle) {
     spdlog::info(
         "Registering for Hyprland's 'windowtitle' events because a user-defined window "
         "rewrite rule uses the 'title' field.");

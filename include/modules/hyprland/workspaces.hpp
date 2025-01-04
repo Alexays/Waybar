@@ -39,7 +39,7 @@ class Workspaces : public AModule, public EventHandler {
   auto activeOnly() const -> bool { return m_activeOnly; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
-  auto enableWorkspaceTaskbar() const -> bool { return m_enableWorkspaceTaskbar; }
+  auto enableTaskbar() const -> bool { return m_enableTaskbar; }
   auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
@@ -159,8 +159,9 @@ class Workspaces : public AModule, public EventHandler {
   std::vector<WindowCreationPayload> m_windowsToCreate;
 
   IconLoader m_iconLoader;
-  bool m_enableWorkspaceTaskbar = false;
+  bool m_enableTaskbar = false;
   bool m_taskbarWithIcon = false;
+  bool m_taskbarWithTitle = false;
   std::string m_taskbarFormatBefore;
   std::string m_taskbarFormatAfter;
   int m_taskbarIconSize = 16;
