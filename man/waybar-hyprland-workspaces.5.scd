@@ -210,3 +210,4 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.special*
 - *#workspaces button.urgent*
 - *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)
+- *#workspaces .taskbar-window* (each window in the taskbar)

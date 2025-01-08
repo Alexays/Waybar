@@ -548,12 +548,11 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
     Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
     std::string jsonWindowAddress = fmt::format("0x{}", payload);
 
-    auto client =
-        std::find_if(clientsData.begin(), clientsData.end(), [jsonWindowAddress](auto &client) {
-          return client["address"].asString() == jsonWindowAddress;
-        });
+    auto client = std::ranges::find_if(clientsData, [&jsonWindowAddress](auto &c) {
+      return c["address"].asString() == jsonWindowAddress;
+    });
 
-    if (!client->empty()) {
+    if (client != clientsData.end() && !client->empty()) {
       (*inserter)({*client});
     }
   }
