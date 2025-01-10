@@ -139,7 +139,7 @@ auto waybar::modules::Cava::update() -> void {
     }
   }
 
-  if (silence_ && prm_.sleep_timer) {
+  if (silence_ && prm_.sleep_timer != 0) {
     if (sleep_counter_ <=
         (int)(std::chrono::milliseconds(prm_.sleep_timer * 1s) / frame_time_milsec_)) {
       ++sleep_counter_;
@@ -147,7 +147,7 @@ auto waybar::modules::Cava::update() -> void {
     }
   }
 
-  if (!silence_) {
+  if (!silence_ || prm_.sleep_timer == 0) {
     downThreadDelay(frame_time_milsec_, suspend_silence_delay_);
     // Process: execute cava
     pthread_mutex_lock(&audio_data_.lock);
