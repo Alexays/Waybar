@@ -180,7 +180,7 @@ void Workspaces::initializeWorkspaces() {
 
   // if the workspace rules changed since last initialization, make sure we reset everything:
   for (auto &workspace : m_workspaces) {
-    m_workspacesToRemove.push_back(workspace->name());
+    m_workspacesToRemove.push_back(std::to_string(workspace->id()));
   }
 
   // get all current workspaces
@@ -320,7 +320,7 @@ void Workspaces::onEvent(const std::string &ev) {
     onWorkspaceActivated(payload);
   } else if (eventName == "activespecial") {
     onSpecialWorkspaceActivated(payload);
-  } else if (eventName == "destroyworkspace") {
+  } else if (eventName == "destroyworkspacev2") {
     onWorkspaceDestroyed(payload);
   } else if (eventName == "createworkspacev2") {
     onWorkspaceCreated(payload);
@@ -357,8 +357,10 @@ void Workspaces::onSpecialWorkspaceActivated(std::string const &payload) {
 }
 
 void Workspaces::onWorkspaceDestroyed(std::string const &payload) {
-  if (!isDoubleSpecial(payload)) {
-    m_workspacesToRemove.push_back(payload);
+  std::string workspaceIdStr = payload.substr(0, payload.find(','));
+  std::string workspaceName = payload.substr(workspaceIdStr.size() + 1);
+  if (!isDoubleSpecial(workspaceName)) {
+    m_workspacesToRemove.push_back(workspaceIdStr);
   }
 }
 
@@ -366,24 +368,21 @@ void Workspaces::onWorkspaceCreated(std::string const &payload,
                                     Json::Value const &clientsData) {
   spdlog::debug("Workspace created: {}", payload);
   std::string workspaceIdStr = payload.substr(0, payload.find(','));
-  std::string workspaceName = payload.substr(workspaceIdStr.size() + 1);
   int workspaceId = std::stoi(workspaceIdStr);
 
+  auto const workspaceRules = gIPC->getSocket1JsonReply("workspacerules");
   auto const workspacesJson = gIPC->getSocket1JsonReply("workspaces");
 
-  auto workspaceIgnored = isWorkspaceIgnored(workspaceName);
-  if (!workspaceIgnored) {
-    auto const workspaceRules = gIPC->getSocket1JsonReply("workspacerules");
-    for (Json::Value workspaceJson : workspacesJson) {
-      int currentId = workspaceJson["id"].asInt();
-      std::string currentName = workspaceJson["name"].asString();
-      if (currentId == workspaceId) {
-        // The workspace may have been renamed since creation
-        // Check if the configured ignore rules apply to the new name
-        workspaceIgnored = isWorkspaceIgnored(currentName);
-        if (workspaceIgnored) {
-          break;
-        }
+  for (Json::Value workspaceJson : workspacesJson) {
+    int currentId = workspaceJson["id"].asInt();
+    if (currentId == workspaceId) {
+      std::string name = workspaceJson["name"].asString();
+      // This workspace name is more up-to-date than the one in the event payload.
+      if (isWorkspaceIgnored(name)) {
+        spdlog::trace("Not creating workspace because it is ignored: id={} name={}", workspaceId,
+                      name);
+        break;
+      }
 
         if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
             (showSpecial() || !currentName.starts_with("special")) && !isDoubleSpecial(currentName)) {
@@ -397,17 +396,12 @@ void Workspaces::onWorkspaceCreated(std::string const &payload,
             }
           }
 
-          m_workspacesToCreate.emplace_back(workspaceJson, clientsData);
-          break;
-        }
-      } else {
-        extendOrphans(workspaceId, clientsData);
+        m_workspacesToCreate.emplace_back(workspaceJson, clientsData);
+        break;
       }
+    } else {
+      extendOrphans(workspaceId, clientsData);
     }
-  }
-  if (workspaceIgnored) {
-    spdlog::trace("Not creating workspace because it is ignored: id={} name={}", workspaceId,
-                  workspaceName);
   }
 }
 
@@ -700,17 +694,38 @@ auto Workspaces::registerIpc() -> void {
 }
 
 void Workspaces::removeWorkspacesToRemove() {
-  for (const auto &workspaceName : m_workspacesToRemove) {
-    removeWorkspace(workspaceName);
+  for (const auto &workspaceString: m_workspacesToRemove) {
+    removeWorkspace(workspaceString);
   }
   m_workspacesToRemove.clear();
 }
 
-void Workspaces::removeWorkspace(std::string const &name) {
-  spdlog::debug("Removing workspace {}", name);
+void Workspaces::removeWorkspace(std::string const &workspaceString) {
+  spdlog::debug("Removing workspace {}", workspaceString);
+
+  int id = -100; // workspace IDs range from -99 upwards, so -100 is a good "invalid" value
+  std::string name;
+
+  // TODO: we need to support workspace selectors here
+  // https://wiki.hyprland.org/Configuring/Workspace-Rules/#workspace-selectors
+  try {
+    id = std::stoi(workspaceString);
+  } catch (const std::exception &e) {
+    if (workspaceString.starts_with("special:")) {
+      name = workspaceString.substr(8);
+    } else if (workspaceString.starts_with("name:")) {
+      name = workspaceString.substr(5);
+    } else {
+      name = workspaceString;
+    }
+  }
+
   auto workspace =
       std::find_if(m_workspaces.begin(), m_workspaces.end(), [&](std::unique_ptr<Workspace> &x) {
-        return (name.starts_with("special:") && name.substr(8) == x->name()) || name == x->name();
+        if (name.empty()) {
+          return id == x->id();
+        }
+        return name == x->name();
       });
 
   if (workspace == m_workspaces.end()) {
@@ -719,7 +734,7 @@ void Workspaces::removeWorkspace(std::string const &name) {
   }
 
   if ((*workspace)->isPersistentConfig()) {
-    spdlog::trace("Not removing config persistent workspace {}", name);
+    spdlog::trace("Not removing config persistent workspace {}", (*workspace)->name());
     return;
   }
 
