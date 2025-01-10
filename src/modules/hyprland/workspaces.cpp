@@ -39,7 +39,13 @@ Workspaces::~Workspaces() {
 }
 
 void Workspaces::init() {
+<<<<<<< HEAD
   m_activeWorkspaceName = (m_ipc.getSocket1JsonReply("activeworkspace"))["name"].asString();
+||||||| parent of 24d391b9 (feat(hyprland): support workspacev2)
+  m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
+=======
+  m_activeWorkspaceId = (gIPC->getSocket1JsonReply("activeworkspace"))["id"].asInt();
+>>>>>>> 24d391b9 (feat(hyprland): support workspacev2)
 
   initializeWorkspaces();
   dp.emit();
@@ -306,6 +312,7 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &c
       workspaceData["persistent-rule"] = true;
       m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
     } else {
+      // This can be any workspace selector.
       m_workspacesToRemove.emplace_back(workspace);
     }
   }
@@ -316,7 +323,7 @@ void Workspaces::onEvent(const std::string &ev) {
   std::string eventName(begin(ev), begin(ev) + ev.find_first_of('>'));
   std::string payload = ev.substr(eventName.size() + 2);
 
-  if (eventName == "workspace") {
+  if (eventName == "workspacev2") {
     onWorkspaceActivated(payload);
   } else if (eventName == "activespecial") {
     onSpecialWorkspaceActivated(payload);
@@ -348,7 +355,8 @@ void Workspaces::onEvent(const std::string &ev) {
 }
 
 void Workspaces::onWorkspaceActivated(std::string const &payload) {
-  m_activeWorkspaceName = payload;
+  std::string workspaceIdStr = payload.substr(0, payload.find(','));
+  m_activeWorkspaceId = std::stoi(workspaceIdStr);
 }
 
 void Workspaces::onSpecialWorkspaceActivated(std::string const &payload) {
@@ -409,7 +417,13 @@ void Workspaces::onWorkspaceMoved(std::string const &payload) {
   spdlog::debug("Workspace moved: {}", payload);
 
   // Update active workspace
+<<<<<<< HEAD
   m_activeWorkspaceName = (m_ipc.getSocket1JsonReply("activeworkspace"))["name"].asString();
+||||||| parent of 24d391b9 (feat(hyprland): support workspacev2)
+  m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
+=======
+  m_activeWorkspaceId = (gIPC->getSocket1JsonReply("activeworkspace"))["id"].asInt();
+>>>>>>> 24d391b9 (feat(hyprland): support workspacev2)
 
   if (allOutputs()) return;
 
@@ -432,9 +446,6 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
   std::string newName = payload.substr(payload.find(',') + 1);
   for (auto &workspace : m_workspaces) {
     if (workspace->id() == workspaceId) {
-      if (workspace->name() == m_activeWorkspaceName) {
-        m_activeWorkspaceName = newName;
-      }
       workspace->setName(newName);
       break;
     }
@@ -444,7 +455,16 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
 
 void Workspaces::onMonitorFocused(std::string const &payload) {
   spdlog::trace("Monitor focused: {}", payload);
-  m_activeWorkspaceName = payload.substr(payload.find(',') + 1);
+
+  std::string workspaceName = payload.substr(payload.find(',') + 1);
+
+  // TODO this will be in the payload when we upgrade to focusedmonv2
+  for (auto &workspace : m_workspaces) {
+    if (workspace->name() == workspaceName) {
+      m_activeWorkspaceId = workspace->id();
+      break;
+    }
+  }
 
   for (Json::Value &monitor : m_ipc.getSocket1JsonReply("monitors")) {
     if (monitor["name"].asString() == payload.substr(0, payload.find(','))) {
@@ -672,6 +692,7 @@ void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payloa
 }
 
 auto Workspaces::registerIpc() -> void {
+<<<<<<< HEAD
   m_ipc.registerForIPC("workspace", this);
   m_ipc.registerForIPC("activespecial", this);
   m_ipc.registerForIPC("createworkspace", this);
@@ -684,6 +705,33 @@ auto Workspaces::registerIpc() -> void {
   m_ipc.registerForIPC("movewindow", this);
   m_ipc.registerForIPC("urgent", this);
   m_ipc.registerForIPC("configreloaded", this);
+||||||| parent of 24d391b9 (feat(hyprland): support workspacev2)
+  gIPC->registerForIPC("workspace", this);
+  gIPC->registerForIPC("activespecial", this);
+  gIPC->registerForIPC("createworkspacev2", this);
+  gIPC->registerForIPC("destroyworkspacev2", this);
+  gIPC->registerForIPC("focusedmon", this);
+  gIPC->registerForIPC("moveworkspace", this);
+  gIPC->registerForIPC("renameworkspace", this);
+  gIPC->registerForIPC("openwindow", this);
+  gIPC->registerForIPC("closewindow", this);
+  gIPC->registerForIPC("movewindow", this);
+  gIPC->registerForIPC("urgent", this);
+  gIPC->registerForIPC("configreloaded", this);
+=======
+  gIPC->registerForIPC("workspacev2", this);
+  gIPC->registerForIPC("activespecial", this);
+  gIPC->registerForIPC("createworkspacev2", this);
+  gIPC->registerForIPC("destroyworkspacev2", this);
+  gIPC->registerForIPC("focusedmon", this);
+  gIPC->registerForIPC("moveworkspace", this);
+  gIPC->registerForIPC("renameworkspace", this);
+  gIPC->registerForIPC("openwindow", this);
+  gIPC->registerForIPC("closewindow", this);
+  gIPC->registerForIPC("movewindow", this);
+  gIPC->registerForIPC("urgent", this);
+  gIPC->registerForIPC("configreloaded", this);
+>>>>>>> 24d391b9 (feat(hyprland): support workspacev2)
 
   if (windowRewriteConfigUsesTitle()) {
     spdlog::info(
@@ -703,14 +751,16 @@ void Workspaces::removeWorkspacesToRemove() {
 void Workspaces::removeWorkspace(std::string const &workspaceString) {
   spdlog::debug("Removing workspace {}", workspaceString);
 
-  int id = -100; // workspace IDs range from -99 upwards, so -100 is a good "invalid" value
+  int id;
   std::string name;
 
-  // TODO: we need to support workspace selectors here
-  // https://wiki.hyprland.org/Configuring/Workspace-Rules/#workspace-selectors
   try {
+    // If this succeeds, we have a workspace ID.
     id = std::stoi(workspaceString);
   } catch (const std::exception &e) {
+    // TODO: At some point we want to support all workspace selectors
+    // This is just a subset.
+    // https://wiki.hyprland.org/Configuring/Workspace-Rules/#workspace-selectors
     if (workspaceString.starts_with("special:")) {
       name = workspaceString.substr(8);
     } else if (workspaceString.starts_with("name:")) {
@@ -734,7 +784,7 @@ void Workspaces::removeWorkspace(std::string const &workspaceString) {
   }
 
   if ((*workspace)->isPersistentConfig()) {
-    spdlog::trace("Not removing config persistent workspace {}", (*workspace)->name());
+    spdlog::trace("Not removing config persistent workspace id={} name={}", (*workspace)->id(), (*workspace)->name());
     return;
   }
 
@@ -894,9 +944,15 @@ void Workspaces::updateWorkspaceStates() {
   const std::vector<std::string> visibleWorkspaces = getVisibleWorkspaces();
   auto updatedWorkspaces = m_ipc.getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
-    workspace->setActive(workspace->name() == m_activeWorkspaceName ||
+    workspace->setActive(workspace->id() == m_activeWorkspaceId ||
                          workspace->name() == m_activeSpecialWorkspaceName);
+<<<<<<< HEAD
     if (workspace->isActive() && workspace->isUrgent()) {
+||||||| parent of 24d391b9 (feat(hyprland): support workspacev2)
+    if (workspace->name() == m_activeWorkspaceName && workspace->isUrgent()) {
+=======
+    if (workspace->id() == m_activeWorkspaceId && workspace->isUrgent()) {
+>>>>>>> 24d391b9 (feat(hyprland): support workspacev2)
       workspace->setUrgent(false);
     }
     workspace->setVisible(std::find(visibleWorkspaces.begin(), visibleWorkspaces.end(),
