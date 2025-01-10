@@ -322,7 +322,7 @@ void Workspaces::onEvent(const std::string &ev) {
     onSpecialWorkspaceActivated(payload);
   } else if (eventName == "destroyworkspace") {
     onWorkspaceDestroyed(payload);
-  } else if (eventName == "createworkspace") {
+  } else if (eventName == "createworkspacev2") {
     onWorkspaceCreated(payload);
   } else if (eventName == "focusedmon") {
     onMonitorFocused(payload);
@@ -362,18 +362,31 @@ void Workspaces::onWorkspaceDestroyed(std::string const &payload) {
   }
 }
 
-void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
+void Workspaces::onWorkspaceCreated(std::string const &payload,
                                     Json::Value const &clientsData) {
-  spdlog::debug("Workspace created: {}", workspaceName);
-  auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
+  spdlog::debug("Workspace created: {}", payload);
+  std::string workspaceIdStr = payload.substr(0, payload.find(','));
+  std::string workspaceName = payload.substr(workspaceIdStr.size() + 1);
+  int workspaceId = std::stoi(workspaceIdStr);
 
-  if (!isWorkspaceIgnored(workspaceName)) {
-    auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
+  auto const workspacesJson = gIPC->getSocket1JsonReply("workspaces");
+
+  auto workspaceIgnored = isWorkspaceIgnored(workspaceName);
+  if (!workspaceIgnored) {
+    auto const workspaceRules = gIPC->getSocket1JsonReply("workspacerules");
     for (Json::Value workspaceJson : workspacesJson) {
-      std::string name = workspaceJson["name"].asString();
-      if (name == workspaceName) {
+      int currentId = workspaceJson["id"].asInt();
+      std::string currentName = workspaceJson["name"].asString();
+      if (currentId == workspaceId) {
+        // The workspace may have been renamed since creation
+        // Check if the configured ignore rules apply to the new name
+        workspaceIgnored = isWorkspaceIgnored(currentName);
+        if (workspaceIgnored) {
+          break;
+        }
+
         if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
-            (showSpecial() || !name.starts_with("special")) && !isDoubleSpecial(workspaceName)) {
+            (showSpecial() || !currentName.starts_with("special")) && !isDoubleSpecial(currentName)) {
           for (Json::Value const &rule : workspaceRules) {
             auto ruleWorkspaceName = rule.isMember("defaultName")
                                          ? rule["defaultName"].asString()
@@ -388,11 +401,13 @@ void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
           break;
         }
       } else {
-        extendOrphans(workspaceJson["id"].asInt(), clientsData);
+        extendOrphans(workspaceId, clientsData);
       }
     }
-  } else {
-    spdlog::trace("Not creating workspace because it is ignored: {}", workspaceName);
+  }
+  if (workspaceIgnored) {
+    spdlog::trace("Not creating workspace because it is ignored: id={} name={}", workspaceId,
+                  workspaceName);
   }
 }
 
