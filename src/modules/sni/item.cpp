@@ -124,7 +124,8 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   result.text = get_variant<Glib::ustring>(container.get_child(2));
   auto description = get_variant<Glib::ustring>(container.get_child(3));
   if (!description.empty()) {
-    result.text = fmt::format("<b>{}</b>\n{}", result.text, description);
+    auto escapedDescription = Glib::Markup::escape_text(description);
+    result.text = fmt::format("<b>{}</b>\n{}", result.text, escapedDescription);
   }
   return result;
 }
