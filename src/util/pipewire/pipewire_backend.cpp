@@ -126,7 +126,7 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
   if (proxy == nullptr) return;
 
   auto *pNodeInfo = (PrivacyNodeInfo *)pw_proxy_get_user_data(proxy);
-  new(pNodeInfo) PrivacyNodeInfo{};
+  new (pNodeInfo) PrivacyNodeInfo{};
   pNodeInfo->id = id;
   pNodeInfo->data = this;
   pNodeInfo->type = mediaType;
