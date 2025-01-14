@@ -144,7 +144,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
   button.set_relief(Gtk::RELIEF_NONE);
   if (!config_["disable-click"].asBool()) {
     const auto id = ws["id"].asUInt64();
-    button.signal_pressed().connect([=] {
+    button.signal_clicked().connect([=] {
       try {
         // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
         Json::Value request(Json::objectValue);
