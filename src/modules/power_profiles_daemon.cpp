@@ -29,14 +29,14 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   // method on the proxy to see whether or not something's responding
   // on the other side.
 
-  // NOTE: the DBus adresses are under migration. They should be
+  // NOTE: the DBus addresses are under migration. They should be
   // changed to org.freedesktop.UPower.PowerProfiles at some point.
   //
   // See
   // https://gitlab.freedesktop.org/upower/power-profiles-daemon/-/releases/0.20
   //
   // The old name is still announced for now. Let's rather use the old
-  // adresses for compatibility sake.
+  // addresses for compatibility sake.
   //
   // Revisit this in 2026, systems should be updated by then.
 

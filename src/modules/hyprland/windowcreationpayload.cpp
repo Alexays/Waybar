@@ -88,7 +88,7 @@ bool WindowCreationPayload::isEmpty(Workspaces &workspace_manager) {
 
 int WindowCreationPayload::incrementTimeSpentUncreated() { return m_timeSpentUncreated++; }
 
-void WindowCreationPayload::moveToWorksace(std::string &new_workspace_name) {
+void WindowCreationPayload::moveToWorkspace(std::string &new_workspace_name) {
   m_workspaceName = new_workspace_name;
 }
 
