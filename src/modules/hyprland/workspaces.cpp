@@ -487,7 +487,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
   // and exit
   for (auto &window : m_windowsToCreate) {
     if (window.getAddress() == windowAddress) {
-      window.moveToWorksace(workspaceName);
+      window.moveToWorkspace(workspaceName);
       return;
     }
   }
