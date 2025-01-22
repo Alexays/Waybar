@@ -59,16 +59,33 @@ auto Window::update() -> void {
 
   windowData_.title = windowName;
 
+  std::string label_text;
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(waybar::util::rewriteString(
+    label_text = waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", windowName),
                     fmt::arg("initialTitle", windowData_.initial_title),
                     fmt::arg("class", windowData_.class_name),
                     fmt::arg("initialClass", windowData_.initial_class_name)),
-        config_["rewrite"]));
+        config_["rewrite"]);
+    label_.set_markup(label_text);
   } else {
     label_.hide();
+  }
+
+  if (tooltipEnabled()) {
+    std::string tooltip_format;
+    if (config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    if (!tooltip_format.empty()) {
+      label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
+                    fmt::arg("initialTitle", windowData_.initial_title),
+                    fmt::arg("class", windowData_.class_name),
+                    fmt::arg("initialClass", windowData_.initial_class_name)));
+    } else if (!label_text.empty()){
+      label_.set_tooltip_text(label_text);
+    }
   }
 
   if (focused_) {
@@ -153,7 +170,6 @@ auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
 }
 
 void Window::queryActiveWorkspace() {
-
   std::shared_lock<std::shared_mutex> windowIpcShareLock(windowIpcSmtx);
 
   if (separateOutputs_) {
