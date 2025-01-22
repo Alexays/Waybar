@@ -48,6 +48,8 @@ class Network : public ALabel {
   void clearIface();
   bool wildcardMatch(const std::string& pattern, const std::string& text) const;
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
+  bool pingServer(const std::vector<std::string>& servers);
+  void startPingCheckThread();
 
   int ifid_;
   struct sockaddr_nl nladdr_ = {0};
@@ -71,6 +73,7 @@ class Network : public ALabel {
   std::string essid_;
   std::string bssid_;
   bool carrier_;
+  bool has_internet_access_;
   std::string ifname_;
   std::string ipaddr_;
   std::string gwaddr_;
@@ -81,8 +84,11 @@ class Network : public ALabel {
   std::string signal_strength_app_;
   uint32_t route_priority;
 
+  std::vector<std::string> ping_servers_;
+
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;
+  util::SleeperThread thread_ping_;
 #ifdef WANT_RFKILL
   util::Rfkill rfkill_;
 #endif
