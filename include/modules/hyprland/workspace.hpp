@@ -88,7 +88,7 @@ class Workspace {
   Gtk::Label m_labelAfter;
 
   void updateTaskbar(const std::string& workspace_icon);
-  static void focusWindow(WindowAddress const& addr);
+  bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
 };
 
 }  // namespace waybar::modules::hyprland

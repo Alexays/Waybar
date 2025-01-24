@@ -252,14 +252,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     auto event_box = Gtk::manage(new Gtk::EventBox());
     event_box->add(*window_box);
     event_box->signal_button_press_event().connect(
-        [window_repr](GdkEventButton const *bt) {
-          if (bt->type == GDK_BUTTON_PRESS) {
-            focusWindow(window_repr.address);
-            return true;
-          }
-          return false;
-        },
-        false);
+        sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address));
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
                                    fmt::arg("title", window_repr.window_title));
@@ -297,12 +290,11 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
   }
 }
 
-void Workspace::focusWindow(WindowAddress const &addr) {
-  try {
+bool Workspace::handleClick(const GdkEventButton *event_button, WindowAddress const &addr) const {
+  if (event_button->type == GDK_BUTTON_PRESS) {
     IPC::getSocket1Reply("dispatch focuswindow address:0x" + addr);
-  } catch (const std::exception &e) {
-    spdlog::error("Failed to dispatch window: {}", e.what());
   }
+  return true;
 }
 
 }  // namespace waybar::modules::hyprland
