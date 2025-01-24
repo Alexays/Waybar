@@ -705,6 +705,10 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
       toLower(workspaceTaskbar["orientation"].asString()) == "vertical") {
     m_taskbarOrientation = Gtk::ORIENTATION_VERTICAL;
   }
+
+  if (workspaceTaskbar["on-click-window"].isString()) {
+    m_onClickWindow = workspaceTaskbar["on-click-window"].asString();
+  }
 }
 
 void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payload) {

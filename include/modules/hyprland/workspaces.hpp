@@ -49,6 +49,7 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarFormatAfter() const -> std::string { return m_taskbarFormatAfter; }
   auto taskbarIconSize() const -> int { return m_taskbarIconSize; }
   auto taskbarOrientation() const -> Gtk::Orientation { return m_taskbarOrientation; }
+  auto onClickWindow() const -> std::string { return m_onClickWindow; }
 
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
@@ -166,6 +167,7 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_taskbarFormatAfter;
   int m_taskbarIconSize = 16;
   Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
+  std::string m_onClickWindow;
 
   std::vector<std::regex> m_ignoreWorkspaces;
 

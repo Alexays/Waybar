@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "modules/hyprland/workspaces.hpp"
+#include "util/command.hpp"
 #include "util/icon_loader.hpp"
 
 namespace waybar::modules::hyprland {
@@ -251,8 +252,10 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     window_box->get_style_context()->add_class("taskbar-window");
     auto event_box = Gtk::manage(new Gtk::EventBox());
     event_box->add(*window_box);
-    event_box->signal_button_press_event().connect(
-        sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address));
+    if (m_workspaceManager.onClickWindow() != "") {
+      event_box->signal_button_press_event().connect(
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address));
+    }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
                                    fmt::arg("title", window_repr.window_title));
@@ -292,7 +295,12 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
 
 bool Workspace::handleClick(const GdkEventButton *event_button, WindowAddress const &addr) const {
   if (event_button->type == GDK_BUTTON_PRESS) {
-    IPC::getSocket1Reply("dispatch focuswindow address:0x" + addr);
+    std::string command = std::regex_replace(m_workspaceManager.onClickWindow(),
+                                             std::regex("\\{address\\}"), "0x" + addr);
+    auto res = util::command::execNoRead(command);
+    if (res.exit_code != 0) {
+      spdlog::error("Failed to execute {}: {}", command, res.out);
+    }
   }
   return true;
 }
