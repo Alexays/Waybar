@@ -51,8 +51,8 @@ class Clock final : public ALabel {
   day cldBaseDay_{0};            // calendar Cached day. Is used when today is changing(midnight)
   std::string cldText_{""};      // calendar text to print
   CldMode cldMode_{CldMode::MONTH};
-  auto get_calendar(const year_month_day& today, const year_month_day& ymd,
-                    const time_zone* tz) -> const std::string;
+  auto get_calendar(const year_month_day& today, const year_month_day& ymd, const time_zone* tz)
+      -> const std::string;
 
   // get local time zone
   auto local_zone() -> const time_zone*;
@@ -79,7 +79,7 @@ class Clock final : public ALabel {
   void tz_up();
   void tz_down();
   // Module Action Map
-  static inline std::map<const std::string, void (waybar::modules::Clock::*const)()> actionMap_{
+  static inline std::map<const std::string, void (waybar::modules::Clock::* const)()> actionMap_{
       {"mode", &waybar::modules::Clock::cldModeSwitch},
       {"shift_up", &waybar::modules::Clock::cldShift_up},
       {"shift_down", &waybar::modules::Clock::cldShift_down},

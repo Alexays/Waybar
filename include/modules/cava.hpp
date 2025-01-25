@@ -23,11 +23,11 @@ class Cava final : public ALabel {
   util::SleeperThread thread_;
   util::SleeperThread thread_fetch_input_;
 
-  struct cava::error_s error_ {};          // cava errors
-  struct cava::config_params prm_ {};      // cava parameters
-  struct cava::audio_raw audio_raw_ {};    // cava handled raw audio data(is based on audio_data)
-  struct cava::audio_data audio_data_ {};  // cava audio data
-  struct cava::cava_plan* plan_;           //{new cava_plan{}};
+  struct cava::error_s error_{};          // cava errors
+  struct cava::config_params prm_{};      // cava parameters
+  struct cava::audio_raw audio_raw_{};    // cava handled raw audio data(is based on audio_data)
+  struct cava::audio_data audio_data_{};  // cava audio data
+  struct cava::cava_plan* plan_;          //{new cava_plan{}};
   // Cava API to read audio source
   cava::ptr input_source_;
   // Delay to handle audio source
@@ -44,7 +44,7 @@ class Cava final : public ALabel {
   // Cava method
   void pause_resume();
   // ModuleActionMap
-  static inline std::map<const std::string, void (waybar::modules::Cava::*const)()> actionMap_{
+  static inline std::map<const std::string, void (waybar::modules::Cava::* const)()> actionMap_{
       {"mode", &waybar::modules::Cava::pause_resume}};
 };
 }  // namespace waybar::modules

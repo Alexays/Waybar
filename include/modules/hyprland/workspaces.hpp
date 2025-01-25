@@ -61,8 +61,8 @@ class Workspaces : public AModule, public EventHandler {
   // Config
   void parseConfig(const Json::Value& config);
   auto populateIconsMap(const Json::Value& formatIcons) -> void;
-  static auto populateBoolConfig(const Json::Value& config, const std::string& key,
-                                 bool& member) -> void;
+  static auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
+      -> void;
   auto populateSortByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
