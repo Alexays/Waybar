@@ -5,9 +5,6 @@
 #include <sys/sysctl.h>
 #endif
 #include <spdlog/spdlog.h>
-#include <libudev.h>
-#include <poll.h>
-#include <sys/signalfd.h>
 
 #include <iostream>
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
@@ -17,18 +14,17 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
   if (battery_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
   }
-  udev_ = std::unique_ptr<udev, util::UdevDeleter>(udev_new());
-  if (udev_ == nullptr) {
-    throw std::runtime_error("udev_new failed");
+
+  global_watch_fd_ = inotify_init1(IN_CLOEXEC);
+  if (global_watch_fd_ == -1) {
+    throw std::runtime_error("Unable to listen batteries.");
   }
-  mon_ = std::unique_ptr<udev_monitor, util::UdevMonitorDeleter>(udev_monitor_new_from_netlink(udev_.get(), "kernel"));
-  if (mon_ == nullptr) {
-    throw std::runtime_error("udev monitor new failed");
+
+  // Watch the directory for any added or removed batteries
+  global_watch = inotify_add_watch(global_watch_fd_, data_dir_.c_str(), IN_CREATE | IN_DELETE);
+  if (global_watch < 0) {
+    throw std::runtime_error("Could not watch for battery plug/unplug");
   }
-  if (udev_monitor_filter_add_match_subsystem_devtype(mon_.get(), "power_supply", nullptr) < 0) {
-    throw std::runtime_error("udev failed to add monitor filter");
-  }
-  udev_monitor_enable_receiving(mon_.get());
 #endif
   worker();
 }
@@ -36,6 +32,11 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
 waybar::modules::Battery::~Battery() {
 #if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
+
+  if (global_watch >= 0) {
+    inotify_rm_watch(global_watch_fd_, global_watch);
+  }
+  close(global_watch_fd_);
 
   for (auto it = batteries_.cbegin(), next_it = it; it != batteries_.cend(); it = next_it) {
     ++next_it;
@@ -73,17 +74,11 @@ void waybar::modules::Battery::worker() {
     dp.emit();
   };
   thread_battery_update_ = [this] {
-    poll_fds_[0].revents = 0;
-    poll_fds_[0].events = POLLIN;
-    poll_fds_[0].fd = udev_monitor_get_fd(mon_.get());
-    int ret = poll(poll_fds_.data(), poll_fds_.size(), -1);
-    if (ret < 0) {
+    struct inotify_event event = {0};
+    int nbytes = read(global_watch_fd_, &event, sizeof(event));
+    if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
       thread_.stop();
       return;
-    }
-    if ((poll_fds_[0].revents & POLLIN) != 0) {
-      signalfd_siginfo signal_info;
-      read(poll_fds_[0].fd, &signal_info, sizeof(signal_info));
     }
     refreshBatteries();
     dp.emit();
@@ -673,7 +668,6 @@ auto waybar::modules::Battery::update() -> void {
     status = getAdapterStatus(capacity);
   }
   auto status_pretty = status;
-  puts(status.c_str());
   // Transform to lowercase  and replace space with dash
   std::transform(status.begin(), status.end(), status.begin(),
                  [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
