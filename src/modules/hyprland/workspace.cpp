@@ -297,6 +297,8 @@ bool Workspace::handleClick(const GdkEventButton *event_button, WindowAddress co
   if (event_button->type == GDK_BUTTON_PRESS) {
     std::string command = std::regex_replace(m_workspaceManager.onClickWindow(),
                                              std::regex("\\{address\\}"), "0x" + addr);
+    command = std::regex_replace(command, std::regex("\\{button\\}"),
+                                 std::to_string(event_button->button));
     auto res = util::command::execNoRead(command);
     if (res.exit_code != 0) {
       spdlog::error("Failed to execute {}: {}", command, res.out);
