@@ -102,14 +102,17 @@ void Workspaces::doUpdate() {
       button.set_label(name);
     }
 
+    const auto *property = alloutputs ? "is_focused" : "is_active";
     if (config_["current-only"].asBool()) {
-      const auto *property = alloutputs ? "is_focused" : "is_active";
       if (ws[property].asBool())
         button.show();
       else
         button.hide();
     } else {
-      button.show();
+      if (config_["hide-empty"].asBool() && !ws[property].asBool() && ws["active_window_id"].isNull())
+        button.hide();
+      else
+        button.show();
     }
   }
 
