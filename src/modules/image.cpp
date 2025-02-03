@@ -7,9 +7,9 @@ Image::Image(const std::string& id, const Json::Value& config)
   box_.append(image_);
   box_.set_name("image");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
   AModule::bindEvents(box_);
 
   dp.emit();
@@ -63,11 +63,11 @@ auto waybar::modules::Image::update() -> void {
       }
     }
 
-    box_.get_style_context()->remove_class("empty");
+    box_.remove_css_class("empty");
   } else {
     image_.clear();
     image_.hide();
-    box_.get_style_context()->add_class("empty");
+    box_.add_css_class("empty");
   }
 
   AModule::update();

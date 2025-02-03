@@ -32,12 +32,11 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
   initializeWindowMap(clients_data);
 }
 
-void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
-                      const std::string &class_name) {
+void addOrRemoveClass(Gtk::Widget &widget, bool condition, const std::string &class_name) {
   if (condition) {
-    context->add_class(class_name);
+    widget.add_css_class(class_name);
   } else {
-    context->remove_class(class_name);
+    widget.remove_css_class(class_name);
   }
 }
 
@@ -180,14 +179,13 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   }
   m_button.show();
 
-  auto styleContext = m_button.get_style_context();
-  addOrRemoveClass(styleContext, isActive(), "active");
-  addOrRemoveClass(styleContext, isSpecial(), "special");
-  addOrRemoveClass(styleContext, isEmpty(), "empty");
-  addOrRemoveClass(styleContext, isPersistent(), "persistent");
-  addOrRemoveClass(styleContext, isUrgent(), "urgent");
-  addOrRemoveClass(styleContext, isVisible(), "visible");
-  addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
+  addOrRemoveClass(m_button, isActive(), "active");
+  addOrRemoveClass(m_button, isSpecial(), "special");
+  addOrRemoveClass(m_button, isEmpty(), "empty");
+  addOrRemoveClass(m_button, isPersistent(), "persistent");
+  addOrRemoveClass(m_button, isUrgent(), "urgent");
+  addOrRemoveClass(m_button, isVisible(), "visible");
+  addOrRemoveClass(m_button, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
   std::string windows;
   auto windowSeparator = m_workspaceManager.getWindowSeparator();

@@ -111,21 +111,21 @@ KeyboardState::KeyboardState(const std::string& id, const Bar& bar, const Json::
 
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
-    numlock_label_.get_style_context()->add_class("numlock");
+    numlock_label_.add_css_class("numlock");
     box_.append(numlock_label_);
   }
   if (config_["capslock"].asBool()) {
-    capslock_label_.get_style_context()->add_class("capslock");
+    capslock_label_.add_css_class("capslock");
     box_.append(capslock_label_);
   }
   if (config_["scrolllock"].asBool()) {
-    scrolllock_label_.get_style_context()->add_class("scrolllock");
+    scrolllock_label_.add_css_class("scrolllock");
     box_.append(scrolllock_label_);
   }
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
 
   if (config_["device-path"].isString()) {
     std::string dev_path = config_["device-path"].asString();
@@ -287,9 +287,9 @@ auto KeyboardState::update() -> void {
                     fmt::arg("name", label_state.name))};
     label_state.label.set_markup(text);
     if (label_state.state) {
-      label_state.label.get_style_context()->add_class("locked");
+      label_state.label.add_css_class("locked");
     } else {
-      label_state.label.get_style_context()->remove_class("locked");
+      label_state.label.remove_css_class("locked");
     }
   }
 

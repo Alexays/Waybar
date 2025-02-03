@@ -183,18 +183,12 @@ auto waybar::modules::Custom::update() -> void {
             }
           }
         }
-        auto style = get_style_context();
-        auto classes{label_.get_css_classes()};
-        for (auto const& c : classes) {
-          if (c.c_str() == id_) continue;
-          style->remove_class(c);
-        }
         for (auto const& c : class_) {
-          style->add_class(c);
+          add_css_class(c);
         }
-        style->add_class("flat");
-        style->add_class("text-button");
-        style->add_class(MODULE_CLASS);
+        add_css_class("flat");
+        add_css_class("text-button");
+        add_css_class(MODULE_CLASS);
         set_visible(true);
       }
     } catch (const fmt::format_error& e) {

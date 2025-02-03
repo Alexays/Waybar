@@ -40,9 +40,9 @@ auto Scratchpad::update() -> void {
     set_visible(false);
   }
   if (count_) {
-    get_style_context()->remove_class("empty");
+    remove_css_class("empty");
   } else {
-    get_style_context()->add_class("empty");
+    add_css_class("empty");
   }
   ALabel::update();
 }

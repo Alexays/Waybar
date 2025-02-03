@@ -42,9 +42,9 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
 
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
 
   add_registry_listener(this);
   if (!workspace_manager_) {
@@ -464,22 +464,20 @@ auto Workspace::handle_remove() -> void {
   }
 }
 
-auto add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition,
-                         const std::string &class_name) {
+auto add_or_remove_class(Gtk::Widget &widget, bool condition, const std::string &class_name) {
   if (condition) {
-    context->add_class(class_name);
+    widget.add_css_class(class_name);
   } else {
-    context->remove_class(class_name);
+    widget.remove_css_class(class_name);
   }
 }
 
 auto Workspace::handle_done() -> void {
   spdlog::debug("Workspace {} changed to state {}", id_, state_);
-  auto style_context = button_.get_style_context();
-  add_or_remove_class(style_context, is_active(), "active");
-  add_or_remove_class(style_context, is_urgent(), "urgent");
-  add_or_remove_class(style_context, is_hidden(), "hidden");
-  add_or_remove_class(style_context, is_empty(), "persistent");
+  add_or_remove_class(button_, is_active(), "active");
+  add_or_remove_class(button_, is_urgent(), "urgent");
+  add_or_remove_class(button_, is_hidden(), "hidden");
+  add_or_remove_class(button_, is_empty(), "persistent");
 
   if (workspace_group_.creation_delayed()) {
     return;

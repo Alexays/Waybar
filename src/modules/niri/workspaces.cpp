@@ -10,9 +10,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
 
   if (!gIPC) gIPC = std::make_unique<IPC>();
 
@@ -54,31 +54,30 @@ void Workspaces::doUpdate() {
   for (const auto &ws : my_workspaces) {
     auto bit = buttons_.find(ws["id"].asUInt64());
     auto &button = bit == buttons_.end() ? addButton(ws) : bit->second;
-    auto style_context = button.get_style_context();
 
     if (ws["is_focused"].asBool())
-      style_context->add_class("focused");
+      button.add_css_class("focused");
     else
-      style_context->remove_class("focused");
+      button.remove_css_class("focused");
 
     if (ws["is_active"].asBool())
-      style_context->add_class("active");
+      button.add_css_class("active");
     else
-      style_context->remove_class("active");
+      button.remove_css_class("active");
 
     if (ws["output"]) {
       if (ws["output"].asString() == bar_.output->name)
-        style_context->add_class("current_output");
+        button.add_css_class("current_output");
       else
-        style_context->remove_class("current_output");
+        button.remove_css_class("current_output");
     } else {
-      style_context->remove_class("current_output");
+      button.remove_css_class("current_output");
     }
 
     if (ws["active_window_id"].isNull())
-      style_context->add_class("empty");
+      button.add_css_class("empty");
     else
-      style_context->remove_class("empty");
+      button.remove_css_class("empty");
 
     std::string name;
     if (ws["name"]) {

@@ -19,9 +19,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 
   m_box.set_name("workspaces");
   if (!id.empty()) {
-    m_box.get_style_context()->add_class(id);
+    m_box.add_css_class(id);
   }
-  m_box.get_style_context()->add_class(MODULE_CLASS);
+  m_box.add_css_class(MODULE_CLASS);
 
   if (!gIPC) {
     gIPC = std::make_unique<IPC>();

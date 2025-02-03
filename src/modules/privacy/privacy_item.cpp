@@ -18,15 +18,15 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
       icon_() {
   switch (privacy_type) {
     case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
-      box_.get_style_context()->add_class("audio-in");
+      box_.add_css_class("audio-in");
       iconName = "waybar-privacy-audio-input-symbolic";
       break;
     case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
-      box_.get_style_context()->add_class("audio-out");
+      box_.add_css_class("audio-out");
       iconName = "waybar-privacy-audio-output-symbolic";
       break;
     case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
-      box_.get_style_context()->add_class("screenshare");
+      box_.add_css_class("screenshare");
       iconName = "waybar-privacy-screen-share-symbolic";
       break;
     default:

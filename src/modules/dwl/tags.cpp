@@ -106,9 +106,9 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
 
   box_.set_name("tags");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
 
   // Default to 9 tags, cap at 32
   const uint32_t num_tags{
@@ -176,21 +176,21 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
   // First clear all occupied state
   auto &button = buttons_[tag];
   if (clients) {
-    button.get_style_context()->add_class("occupied");
+    button.add_css_class("occupied");
   } else {
-    button.get_style_context()->remove_class("occupied");
+    button.remove_css_class("occupied");
   }
 
   if (state & TAG_ACTIVE) {
-    button.get_style_context()->add_class("focused");
+    button.add_css_class("focused");
   } else {
-    button.get_style_context()->remove_class("focused");
+    button.remove_css_class("focused");
   }
 
   if (state & TAG_URGENT) {
-    button.get_style_context()->add_class("urgent");
+    button.add_css_class("urgent");
   } else {
-    button.get_style_context()->remove_class("urgent");
+    button.remove_css_class("urgent");
   }
 }
 

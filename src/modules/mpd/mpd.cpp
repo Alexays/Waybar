@@ -88,10 +88,10 @@ std::string waybar::modules::MPD::getFilename() const {
 
 void waybar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
-    get_style_context()->add_class("disconnected");
-    get_style_context()->remove_class("stopped");
-    get_style_context()->remove_class("playing");
-    get_style_context()->remove_class("paused");
+    add_css_class("disconnected");
+    remove_css_class("stopped");
+    remove_css_class("playing");
+    remove_css_class("paused");
 
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
@@ -113,7 +113,7 @@ void waybar::modules::MPD::setLabel() {
     }
     return;
   }
-  get_style_context()->remove_class("disconnected");
+  remove_css_class("disconnected");
 
   auto format = format_;
   Glib::ustring artist, album_artist, album, title;
@@ -127,19 +127,19 @@ void waybar::modules::MPD::setLabel() {
     if (no_song) spdlog::warn("Bug in mpd: no current song but state is not stopped.");
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
-    get_style_context()->add_class("stopped");
-    get_style_context()->remove_class("playing");
-    get_style_context()->remove_class("paused");
+    add_css_class("stopped");
+    remove_css_class("playing");
+    remove_css_class("paused");
   } else {
-    get_style_context()->remove_class("stopped");
+    remove_css_class("stopped");
     if (playing()) {
-      get_style_context()->add_class("playing");
-      get_style_context()->remove_class("paused");
+      add_css_class("playing");
+      remove_css_class("paused");
     } else if (paused()) {
       format = config_["format-paused"].isString() ? config_["format-paused"].asString()
                                                    : config_["format"].asString();
-      get_style_context()->add_class("paused");
-      get_style_context()->remove_class("playing");
+      add_css_class("paused");
+      remove_css_class("playing");
     }
 
     stateIcon = getStateIcon();

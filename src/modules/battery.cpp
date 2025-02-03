@@ -701,9 +701,9 @@ auto waybar::modules::Battery::update() -> void {
                     fmt::arg("health", fmt::format("{:.3}", health))));
   }
   if (!old_status_.empty()) {
-    get_style_context()->remove_class(old_status_);
+    remove_css_class(old_status_);
   }
-  get_style_context()->add_class(status);
+  add_css_class(status);
   old_status_ = status;
   if (!state.empty() && config_["format-" + status + "-" + state].isString()) {
     format = config_["format-" + status + "-" + state].asString();
@@ -740,7 +740,7 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar doesn't have any `battery-` class
   if (old_class_it == classes.end()) {
     if (!state.empty()) {
-      get_style_context()->add_class(new_class);
+      add_css_class(new_class);
     }
     return;
   }
@@ -750,14 +750,14 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   // If the bar has a `battery-` class,
   // but `state` is empty
   if (state.empty()) {
-    get_style_context()->remove_class(old_class);
+    remove_css_class(old_class);
     return;
   }
 
   // If the bar has a `battery-` class,
   // and `state` is NOT empty
   if (old_class != new_class) {
-    get_style_context()->remove_class(old_class);
-    get_style_context()->add_class(new_class);
+    remove_css_class(old_class);
+    add_css_class(new_class);
   }
 }

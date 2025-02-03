@@ -98,9 +98,9 @@ auto Sndio::update() -> void {
   unsigned int vol = 100. * static_cast<double>(volume_) / static_cast<double>(maxval_);
 
   if (volume_ == 0) {
-    get_style_context()->add_class("muted");
+    add_css_class("muted");
   } else {
-    get_style_context()->remove_class("muted");
+    remove_css_class("muted");
   }
 
   auto text =

@@ -96,13 +96,10 @@ void Window::update() {
 }
 
 void Window::setClass(const std::string &className, bool enable) {
-  auto styleContext = bar_.window.get_style_context();
   if (enable) {
-    if (!get_style_context()->has_class(className)) {
-      get_style_context()->add_class(className);
-    }
+    add_css_class(className);
   } else {
-    get_style_context()->remove_class(className);
+    remove_css_class(className);
   }
 }
 

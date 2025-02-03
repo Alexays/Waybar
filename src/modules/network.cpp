@@ -293,8 +293,8 @@ auto waybar::modules::Network::update() -> void {
 
   if (!alt_) {
     auto state = getNetworkState();
-    if (!state_.empty() && get_style_context()->has_class(state_)) {
-      get_style_context()->remove_class(state_);
+    if (!state_.empty() && has_css_class(state_)) {
+      remove_css_class(state_);
     }
     if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
@@ -306,8 +306,8 @@ auto waybar::modules::Network::update() -> void {
     if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
     }
-    if (!get_style_context()->has_class(state)) {
-      get_style_context()->add_class(state);
+    if (!has_css_class(state)) {
+      add_css_class(state);
     }
     format_ = default_format_;
     state_ = state;

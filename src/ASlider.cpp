@@ -10,9 +10,9 @@ ASlider::ASlider(const Json::Value& config, const std::string& name, const std::
       scale_(vertical_ ? Gtk::Orientation::VERTICAL : Gtk::Orientation::HORIZONTAL) {
   scale_.set_name(name);
   if (!id.empty()) {
-    scale_.get_style_context()->add_class(id);
+    scale_.add_css_class(id);
   }
-  scale_.get_style_context()->add_class(MODULE_CLASS);
+  scale_.add_css_class(MODULE_CLASS);
   scale_.signal_value_changed().connect(sigc::mem_fun(*this, &ASlider::onValueChanged));
 
   if (config_["min"].isUInt()) {

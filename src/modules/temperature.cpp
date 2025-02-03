@@ -76,13 +76,13 @@ auto waybar::modules::Temperature::update() -> void {
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
-    get_style_context()->add_class("critical");
+    add_css_class("critical");
   } else if (warning) {
     format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
-    get_style_context()->add_class("warning");
+    add_css_class("warning");
   } else {
-    get_style_context()->remove_class("critical");
-    get_style_context()->remove_class("warning");
+    remove_css_class("critical");
+    remove_css_class("warning");
   }
 
   if (format.empty()) {

@@ -643,20 +643,20 @@ auto Mpris::update() -> void {
   spdlog::debug("mpris[{}]: running update", info.name);
 
   // set css class for player status
-  if (!lastStatus.empty() && get_style_context()->has_class(lastStatus)) {
-    get_style_context()->remove_class(lastStatus);
+  if (!lastStatus.empty() && has_css_class(lastStatus)) {
+    remove_css_class(lastStatus);
   }
-  if (!get_style_context()->has_class(info.status_string)) {
-    get_style_context()->add_class(info.status_string);
+  if (!has_css_class(info.status_string)) {
+    add_css_class(info.status_string);
   }
   lastStatus = info.status_string;
 
   // set css class for player name
-  if (!lastPlayer.empty() && get_style_context()->has_class(lastPlayer)) {
-    get_style_context()->remove_class(lastPlayer);
+  if (!lastPlayer.empty() && has_css_class(lastPlayer)) {
+    remove_css_class(lastPlayer);
   }
-  if (!get_style_context()->has_class(info.name)) {
-    get_style_context()->add_class(info.name);
+  if (!has_css_class(info.name)) {
+    add_css_class(info.name);
   }
   lastPlayer = info.name;
 

@@ -100,10 +100,10 @@ void Mode::handle_mode(const char *mode) {
     set_visible(false);
   } else {
     if (!mode_.empty()) {
-      get_style_context()->remove_class(mode_);
+      remove_css_class(mode_);
     }
 
-    get_style_context()->add_class(mode);
+    add_css_class(mode);
     label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(mode).raw()));
     set_visible(true);
   }

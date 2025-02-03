@@ -459,27 +459,27 @@ void Task::handle_done() {
   spdlog::debug("{} changed", repr());
 
   if (state_ & MAXIMIZED) {
-    button->get_style_context()->add_class("maximized");
+    button->add_css_class("maximized");
   } else if (!(state_ & MAXIMIZED)) {
-    button->get_style_context()->remove_class("maximized");
+    button->remove_css_class("maximized");
   }
 
   if (state_ & MINIMIZED) {
-    button->get_style_context()->add_class("minimized");
+    button->add_css_class("minimized");
   } else if (!(state_ & MINIMIZED)) {
-    button->get_style_context()->remove_class("minimized");
+    button->remove_css_class("minimized");
   }
 
   if (state_ & ACTIVE) {
-    button->get_style_context()->add_class("active");
+    button->add_css_class("active");
   } else if (!(state_ & ACTIVE)) {
-    button->get_style_context()->remove_class("active");
+    button->remove_css_class("active");
   }
 
   if (state_ & FULLSCREEN) {
-    button->get_style_context()->add_class("fullscreen");
+    button->add_css_class("fullscreen");
   } else if (!(state_ & FULLSCREEN)) {
-    button->get_style_context()->remove_class("fullscreen");
+    button->remove_css_class("fullscreen");
   }
 
   if (config_["active-first"].isBool() && config_["active-first"].asBool() && active())
@@ -674,10 +674,10 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
       seat_{nullptr} {
   box_.set_name("taskbar");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  box_.get_style_context()->add_class("empty");
+  box_.add_css_class(MODULE_CLASS);
+  box_.add_css_class("empty");
 
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
@@ -837,7 +837,7 @@ void Taskbar::handle_finished() {
 
 void Taskbar::add_button(Glib::RefPtr<Gtk::Button> bt) {
   box_.append(*bt);
-  box_.get_style_context()->remove_class("empty");
+  box_.remove_css_class("empty");
 }
 
 void Taskbar::move_button(Glib::RefPtr<Gtk::Button> bt, int pos) {
@@ -853,7 +853,7 @@ void Taskbar::move_button(Glib::RefPtr<Gtk::Button> bt, int pos) {
 void Taskbar::remove_button(Glib::RefPtr<Gtk::Button> bt) {
   box_.remove(*bt);
   if (box_.get_children().empty()) {
-    box_.get_style_context()->add_class("empty");
+    box_.add_css_class("empty");
   }
 }
 

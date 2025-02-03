@@ -173,10 +173,10 @@ auto waybar::modules::Cava::update() -> void {
       label_.set_markup(text_);
       set_visible(true);
       ALabel::update();
-      get_style_context()->add_class("updated");
+      add_css_class("updated");
     }
 
-    get_style_context()->remove_class("silent");
+    remove_css_class("silent");
   } else {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
     if (hide_on_silence_)
@@ -184,8 +184,8 @@ auto waybar::modules::Cava::update() -> void {
     else if (config_["format_silent"].isString())
       label_.set_markup(format_silent_);
 
-    get_style_context()->add_class("silent");
-    get_style_context()->remove_class("updated");
+    add_css_class("silent");
+    remove_css_class("updated");
   }
 }
 

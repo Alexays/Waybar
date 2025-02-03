@@ -23,7 +23,7 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
   // Needs an actual way to retrive current submap on startup
   if (always_on_) {
     submap_ = default_submap_;
-    get_style_context()->add_class(submap_);
+    add_css_class(submap_);
   }
 
   // register for hyprland ipc
@@ -76,7 +76,7 @@ void Submap::onEvent(const std::string& ev) {
   submapName = waybar::util::sanitize_string(submapName);
 
   if (!submap_.empty()) {
-    get_style_context()->remove_class(submap_);
+    remove_css_class(submap_);
   }
 
   submap_ = submapName;
@@ -85,7 +85,7 @@ void Submap::onEvent(const std::string& ev) {
     submap_ = default_submap_;
   }
 
-  get_style_context()->add_class(submap_);
+  add_css_class(submap_);
 
   spdlog::debug("hyprland submap onevent with {}", submap_);
 

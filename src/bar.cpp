@@ -160,24 +160,24 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   window.set_name("waybar");
   window.set_decorated(false);
   window.set_child(box_);
-  window.get_style_context()->add_class(output->name);
-  window.get_style_context()->add_class(config["name"].asString());
+  window.add_css_class(output->name);
+  window.add_css_class(config["name"].asString());
 
   from_json(config["position"], position);
   orientation = (position == Gtk::PositionType::LEFT || position == Gtk::PositionType::RIGHT)
                     ? Gtk::Orientation::VERTICAL
                     : Gtk::Orientation::HORIZONTAL;
 
-  window.get_style_context()->add_class(to_string(position));
+  window.add_css_class(to_string(position));
 
   left_.set_orientation(orientation);
   center_.set_orientation(orientation);
   right_.set_orientation(orientation);
   box_.set_orientation(orientation);
 
-  left_.get_style_context()->add_class("modules-left");
-  center_.get_style_context()->add_class("modules-center");
-  right_.get_style_context()->add_class("modules-right");
+  left_.add_css_class("modules-left");
+  center_.add_css_class("modules-center");
+  right_.add_css_class("modules-right");
 
   if (config["spacing"].isInt()) {
     int spacing = config["spacing"].asInt();
@@ -308,19 +308,18 @@ waybar::Bar::~Bar() = default;
 void waybar::Bar::setMode(const std::string& mode) {
   using namespace std::literals::string_literals;
 
-  auto style = window.get_style_context();
   /* remove styles added by previous setMode calls */
-  style->remove_class("mode-"s + last_mode_);
+  window.remove_css_class("mode-"s + last_mode_);
 
   auto it = configured_modes.find(mode);
   if (it != configured_modes.end()) {
     last_mode_ = mode;
-    style->add_class("mode-"s + last_mode_);
+    window.add_css_class("mode-"s + last_mode_);
     setMode(it->second);
   } else {
     spdlog::warn("Unknown mode \"{}\" requested", mode);
     last_mode_ = MODE_DEFAULT;
-    style->add_class("mode-"s + last_mode_);
+    window.add_css_class("mode-"s + last_mode_);
     setMode(configured_modes.at(MODE_DEFAULT));
   }
 }
@@ -345,10 +344,10 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
   setPassThrough(passthrough_ = mode.passthrough);
 
   if (mode.visible) {
-    window.get_style_context()->remove_class("hidden");
+    window.remove_css_class("hidden");
     window.set_opacity(1);
   } else {
-    window.get_style_context()->add_class("hidden");
+    window.add_css_class("hidden");
     window.set_opacity(0);
   }
   /*

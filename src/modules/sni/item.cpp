@@ -188,15 +188,11 @@ void Item::setStatus(const Glib::ustring& value) {
   Glib::ustring lower = value.lowercase();
   event_box.set_visible(show_passive_ || lower.compare("passive") != 0);
 
-  auto style = event_box.get_style_context();
-  for (const auto& class_name : style->list_classes()) {
-    style->remove_class(class_name);
-  }
   if (lower.compare("needsattention") == 0) {
     // convert status to dash-case for CSS
     lower = "needs-attention";
   }
-  style->add_class(lower);
+  event_box.set_css_classes({lower});
 }
 
 void Item::getUpdatedProperties() {

@@ -23,9 +23,9 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       default_format_(format_) {
   set_name(name);
   if (!id.empty()) {
-    get_style_context()->add_class(id);
+    add_css_class(id);
   }
-  get_style_context()->add_class(MODULE_CLASS);
+  add_css_class(MODULE_CLASS);
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
     label_.set_ellipsize(Pango::EllipsizeMode::END);
@@ -40,14 +40,12 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
   }
 
   uint rotate = 0;
-  // gtk4 todo, probably need to use css transform
-  /*
   if (config_["rotate"].isUInt()) {
     rotate = config["rotate"].asUInt();
     if (not(rotate == 0 || rotate == 90 || rotate == 180 || rotate == 270))
-      spdlog::warn("'rotate' is only supported in 90 degree increments {} is not valid.", rotate);
-    label_.set_angle(rotate);
-  }*/
+      spdlog::error("'rotate' is only supported in 90 degree increments {} is not valid.", rotate);
+    // TODO
+  }
 
   if (config_["align"].isDouble()) {
     auto align = config_["align"].asFloat();
@@ -216,10 +214,10 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
   std::string valid_state;
   for (auto const& state : states) {
     if ((lesser ? value <= state.second : value >= state.second) && valid_state.empty()) {
-      get_style_context()->add_class(state.first);
+      add_css_class(state.first);
       valid_state = state.first;
     } else {
-      get_style_context()->remove_class(state.first);
+      remove_css_class(state.first);
     }
   }
   return valid_state;

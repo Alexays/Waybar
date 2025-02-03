@@ -119,7 +119,7 @@ void Window::handle_focused_view(const char *title) {
 
 void Window::handle_focused_output(struct wl_output *output) {
   if (output_ == output) {  // if we focused the output this bar belongs to
-    get_style_context()->add_class("focused");
+    add_css_class("focused");
     ALabel::update();
   }
   focused_output_ = output;
@@ -127,7 +127,7 @@ void Window::handle_focused_output(struct wl_output *output) {
 
 void Window::handle_unfocused_output(struct wl_output *output) {
   if (output_ == output) {  // if we unfocused the output this bar belongs to
-    get_style_context()->remove_class("focused");
+    remove_css_class("focused");
     ALabel::update();
   }
 }

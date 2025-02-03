@@ -49,9 +49,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   }
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
 
   if (!config["disable-scroll"].asBool() || config["enable-bar-scroll"].asBool()) {
     controllScroll_->signal_scroll().connect(sigc::mem_fun(*this, &Workspaces::handleScroll), true);
@@ -302,38 +302,38 @@ auto Workspaces::update() -> void {
     }
     bool noNodes = (*it)["nodes"].empty() && (*it)["floating_nodes"].empty();
     if (hasFlag((*it), "focused")) {
-      button.get_style_context()->add_class("focused");
+      button.add_css_class("focused");
     } else {
-      button.get_style_context()->remove_class("focused");
+      button.remove_css_class("focused");
     }
     if (hasFlag((*it), "visible") || ((*it)["output"].isString() && noNodes)) {
-      button.get_style_context()->add_class("visible");
+      button.add_css_class("visible");
     } else {
-      button.get_style_context()->remove_class("visible");
+      button.remove_css_class("visible");
     }
     if (hasFlag((*it), "urgent")) {
-      button.get_style_context()->add_class("urgent");
+      button.add_css_class("urgent");
     } else {
-      button.get_style_context()->remove_class("urgent");
+      button.remove_css_class("urgent");
     }
     if ((*it)["target_output"].isString()) {
-      button.get_style_context()->add_class("persistent");
+      button.add_css_class("persistent");
     } else {
-      button.get_style_context()->remove_class("persistent");
+      button.remove_css_class("persistent");
     }
     if (noNodes) {
-      button.get_style_context()->add_class("empty");
+      button.add_css_class("empty");
     } else {
-      button.get_style_context()->remove_class("empty");
+      button.remove_css_class("empty");
     }
     if ((*it)["output"].isString()) {
       if (((*it)["output"].asString()) == bar_.output->name) {
-        button.get_style_context()->add_class("current_output");
+        button.add_css_class("current_output");
       } else {
-        button.get_style_context()->remove_class("current_output");
+        button.remove_css_class("current_output");
       }
     } else {
-      button.get_style_context()->remove_class("current_output");
+      button.remove_css_class("current_output");
     }
     std::string output = (*it)["name"].asString();
     std::string windows = "";

@@ -183,12 +183,12 @@ auto Gamemode::update() -> void {
   // CSS status class
   const std::string status = gamemodeRunning && gameCount > 0 ? "running" : "";
   // Remove last status if it exists
-  if (!lastStatus.empty() && box_.get_style_context()->has_class(lastStatus)) {
-    box_.get_style_context()->remove_class(lastStatus);
+  if (!lastStatus.empty() && box_.has_css_class(lastStatus)) {
+    box_.remove_css_class(lastStatus);
   }
   // Add the new status class to the Box
-  if (!status.empty() && !box_.get_style_context()->has_class(status)) {
-    box_.get_style_context()->add_class(status);
+  if (!status.empty() && !box_.has_css_class(status)) {
+    box_.add_css_class(status);
   }
   lastStatus = status;
 

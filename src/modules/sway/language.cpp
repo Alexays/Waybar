@@ -117,9 +117,9 @@ auto Language::update() -> void {
 }
 
 auto Language::set_current_layout(std::string current_layout) -> void {
-  get_style_context()->remove_class(layout_.short_name);
+  remove_css_class(layout_.short_name);
   layout_ = layouts_map_[current_layout];
-  get_style_context()->add_class(layout_.short_name);
+  add_css_class(layout_.short_name);
 }
 
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {

@@ -24,7 +24,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
       revealer_box_{vertical ? Gtk::Orientation::VERTICAL : Gtk::Orientation::HORIZONTAL, 0} {
   box_.set_name(name_);
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
 
   // default orientation: orthogonal to parent
@@ -63,7 +63,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     revealer_.set_transition_duration(transition_duration);
     revealer_.set_reveal_child(false);
 
-    revealer_.get_style_context()->add_class("drawer");
+    revealer_.add_css_class("drawer");
 
     revealer_.set_child(revealer_box_);
     if (left_to_right)
@@ -118,7 +118,7 @@ void Group::addWidget(Gtk::Widget& widget) {
   getBox().prepend(widget);
 
   if (is_drawer_ && !is_first_widget_) {
-    widget.get_style_context()->add_class(add_class_to_drawer_children_);
+    widget.add_css_class(add_class_to_drawer_children_);
   }
 
   is_first_widget_ = false;

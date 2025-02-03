@@ -196,10 +196,10 @@ auto waybar::modules::Bluetooth::update() -> void {
   }
 
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
-    if (in_next_state && !get_style_context()->has_class(style_class)) {
-      get_style_context()->add_class(style_class);
-    } else if (!in_next_state && get_style_context()->has_class(style_class)) {
-      get_style_context()->remove_class(style_class);
+    if (in_next_state && !has_css_class(style_class)) {
+      add_css_class(style_class);
+    } else if (!in_next_state && has_css_class(style_class)) {
+      remove_css_class(style_class);
     }
   };
   update_style_context("discoverable", cur_controller_ ? cur_controller_->discoverable : false);

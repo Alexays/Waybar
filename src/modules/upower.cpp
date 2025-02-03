@@ -212,17 +212,16 @@ auto UPower::update() -> void {
   // Get CSS status
   const auto status{getDeviceStatus(upDevice_.state)};
   // Remove last status if it exists
-  if (!lastStatus_.empty() && box_.get_style_context()->has_class(lastStatus_))
-    box_.get_style_context()->remove_class(lastStatus_);
-  if (!box_.get_style_context()->has_class(status)) box_.get_style_context()->add_class(status);
+  if (!lastStatus_.empty() && box_.has_css_class(lastStatus_)) box_.remove_css_class(lastStatus_);
+  if (!box_.has_css_class(status)) box_.add_css_class(status);
   lastStatus_ = status;
 
   const char *warning_level = getDeviceWarningLevel(upDevice_.level);
-  if (lastWarningLevel_ && box_.get_style_context()->has_class(lastWarningLevel_)) {
-    box_.get_style_context()->remove_class(lastWarningLevel_);
+  if (lastWarningLevel_ && box_.has_css_class(lastWarningLevel_)) {
+    box_.remove_css_class(lastWarningLevel_);
   }
-  if (warning_level && !box_.get_style_context()->has_class(warning_level)) {
-    box_.get_style_context()->add_class(warning_level);
+  if (warning_level && !box_.has_css_class(warning_level)) {
+    box_.add_css_class(warning_level);
   }
   lastWarningLevel_ = warning_level;
 
@@ -425,7 +424,8 @@ icon_name: \"{3}\". time-to-empty: \"{4}\". time-to-full: \"{5}\". temperature: 
 native_path: \"{7}\". model: \"{8}\". level: \"{9}\"",
         fmt::format_int(upDevice_.kind).str(), fmt::format_int(upDevice_.state).str(),
         upDevice_.percentage, upDevice_.icon_name, upDevice_.time_empty, upDevice_.time_full,
-        upDevice_.temperature, upDevice_.nativePath, upDevice_.model, fmt::format_int(upDevice_.level).str());
+        upDevice_.temperature, upDevice_.nativePath, upDevice_.model,
+        fmt::format_int(upDevice_.level).str());
   }
 }
 

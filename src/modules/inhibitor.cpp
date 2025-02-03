@@ -113,10 +113,10 @@ auto Inhibitor::activated() -> bool { return handle_ != -1; }
 auto Inhibitor::update() -> void {
   std::string status_text = activated() ? "activated" : "deactivated";
 
-  get_style_context()->remove_class(activated() ? "deactivated" : "activated");
+  remove_css_class(activated() ? "deactivated" : "activated");
   label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("status", status_text),
                                 fmt::arg("icon", getIcon(0, status_text))));
-  get_style_context()->add_class(status_text);
+  add_css_class(status_text);
 
   if (tooltipEnabled()) {
     label_.set_tooltip_text(status_text);
