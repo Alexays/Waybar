@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "util/regex_collection.hpp"
+#include "util/string.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -465,6 +466,7 @@ void Workspaces::onWindowOpened(std::string const &payload) {
 void Workspaces::onWindowClosed(std::string const &addr) {
   spdlog::trace("Window closed: {}", addr);
   updateWindowCount();
+  m_orphanWindowMap.erase(addr);
   for (auto &workspace : m_workspaces) {
     if (workspace->closeWindow(addr)) {
       break;
@@ -481,7 +483,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
 
   std::string workspaceName = payload.substr(nextCommaIdx + 1, payload.length() - nextCommaIdx);
 
-  std::string windowRepr;
+  WindowRepr windowRepr;
 
   // If the window was still queued to be created, just change its destination
   // and exit
@@ -507,6 +509,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
 
   // ...and then add it to the new workspace
   if (!windowRepr.empty()) {
+    m_orphanWindowMap.erase(windowAddress);
     m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowRepr);
   }
 }
@@ -545,12 +548,11 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
     Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
     std::string jsonWindowAddress = fmt::format("0x{}", payload);
 
-    auto client =
-        std::find_if(clientsData.begin(), clientsData.end(), [jsonWindowAddress](auto &client) {
-          return client["address"].asString() == jsonWindowAddress;
-        });
+    auto client = std::ranges::find_if(clientsData, [&jsonWindowAddress](auto &c) {
+      return c["address"].asString() == jsonWindowAddress;
+    });
 
-    if (!client->empty()) {
+    if (client != clientsData.end() && !client->empty()) {
       (*inserter)({*client});
     }
   }
@@ -563,8 +565,9 @@ void Workspaces::onConfigReloaded() {
 
 auto Workspaces::parseConfig(const Json::Value &config) -> void {
   const auto &configFormat = config["format"];
-  m_format = configFormat.isString() ? configFormat.asString() : "{name}";
-  m_withIcon = m_format.find("{icon}") != std::string::npos;
+  m_formatBefore = configFormat.isString() ? configFormat.asString() : "{name}";
+  m_withIcon = m_formatBefore.find("{icon}") != std::string::npos;
+  auto withWindows = m_formatBefore.find("{windows}") != std::string::npos;
 
   if (m_withIcon && m_iconsMap.empty()) {
     populateIconsMap(config["format-icons"]);
@@ -581,6 +584,15 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
   populateWindowRewriteConfig(config);
+
+  if (withWindows) {
+    populateWorkspaceTaskbarConfig(config);
+  }
+  if (m_enableTaskbar) {
+    auto parts = split(m_formatBefore, "{windows}", 1);
+    m_formatBefore = parts[0];
+    m_formatAfter = parts.size() > 1 ? parts[1] : "";
+  }
 }
 
 auto Workspaces::populateIconsMap(const Json::Value &formatIcons) -> void {
@@ -653,6 +665,52 @@ auto Workspaces::populateWindowRewriteConfig(const Json::Value &config) -> void 
       [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
 }
 
+auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> void {
+  const auto &workspaceTaskbar = config["workspace-taskbar"];
+  if (!workspaceTaskbar.isObject()) {
+    spdlog::debug("workspace-taskbar is not defined or is not an object, using default rules.");
+    return;
+  }
+
+  populateBoolConfig(workspaceTaskbar, "enable", m_enableTaskbar);
+
+  if (workspaceTaskbar["format"].isString()) {
+    /* The user defined a format string, use it */
+    std::string format = workspaceTaskbar["format"].asString();
+    m_taskbarWithTitle = format.find("{title") != std::string::npos; /* {title} or {title.length} */
+    auto parts = split(format, "{icon}", 1);
+    m_taskbarFormatBefore = parts[0];
+    if (parts.size() > 1) {
+      m_taskbarWithIcon = true;
+      m_taskbarFormatAfter = parts[1];
+    }
+  } else {
+    /* The default is to only show the icon */
+    m_taskbarWithIcon = true;
+  }
+
+  auto iconTheme = workspaceTaskbar["icon-theme"];
+  if (iconTheme.isArray()) {
+    for (auto &c : iconTheme) {
+      m_iconLoader.add_custom_icon_theme(c.asString());
+    }
+  } else if (iconTheme.isString()) {
+    m_iconLoader.add_custom_icon_theme(iconTheme.asString());
+  }
+
+  if (workspaceTaskbar["icon-size"].isInt()) {
+    m_taskbarIconSize = workspaceTaskbar["icon-size"].asInt();
+  }
+  if (workspaceTaskbar["orientation"].isString() &&
+      toLower(workspaceTaskbar["orientation"].asString()) == "vertical") {
+    m_taskbarOrientation = Gtk::ORIENTATION_VERTICAL;
+  }
+
+  if (workspaceTaskbar["on-click-window"].isString()) {
+    m_onClickWindow = workspaceTaskbar["on-click-window"].asString();
+  }
+}
+
 void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payload) {
   if (!create_window_payload.isEmpty(*this)) {
     m_orphanWindowMap[create_window_payload.getAddress()] = create_window_payload.repr(*this);
@@ -673,7 +731,7 @@ auto Workspaces::registerIpc() -> void {
   gIPC->registerForIPC("urgent", this);
   gIPC->registerForIPC("configreloaded", this);
 
-  if (windowRewriteConfigUsesTitle()) {
+  if (windowRewriteConfigUsesTitle() || m_taskbarWithTitle) {
     spdlog::info(
         "Registering for Hyprland's 'windowtitle' events because a user-defined window "
         "rewrite rule uses the 'title' field.");
@@ -881,7 +939,7 @@ void Workspaces::updateWorkspaceStates() {
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
-    workspace->update(m_format, workspaceIcon);
+    workspace->update(workspaceIcon);
   }
 }
 
