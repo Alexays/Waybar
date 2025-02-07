@@ -29,6 +29,7 @@
 #ifdef HAVE_DWL
 #include "modules/dwl/tags.hpp"
 #include "modules/dwl/window.hpp"
+#include "modules/dwl/layout.hpp"
 #endif
 #ifdef HAVE_HYPRLAND
 #include "modules/hyprland/language.hpp"
@@ -195,6 +196,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "dwl/window") {
       return new waybar::modules::dwl::Window(id, bar_, config_[name]);
+    }
+    if (ref == "dwl/layout") {
+      return new waybar::modules::dwl::Layout(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_HYPRLAND

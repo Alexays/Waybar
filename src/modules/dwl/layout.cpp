@@ -1,10 +1,5 @@
-#include "modules/dwl/window.hpp"
+#include "modules/dwl/layout.hpp"
 
-#include <gdkmm/pixbuf.h>
-#include <glibmm/fileutils.h>
-#include <glibmm/keyfile.h>
-#include <glibmm/miscutils.h>
-#include <gtkmm/enums.h>
 #include <spdlog/spdlog.h>
 
 #include "client.hpp"
@@ -28,23 +23,23 @@ static void set_tag(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t tag
 }
 
 static void set_layout_symbol(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *layout) {
-  // Intentionally empty
+  static_cast<Layout *>(data)->handle_layout_symbol(layout);
 }
 
 static void title(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *title) {
-  static_cast<Window *>(data)->handle_title(title);
-}
-
-static void dwl_frame(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
-  static_cast<Window *>(data)->handle_frame();
-}
-
-static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t layout) {
   // Intentionally empty
 }
 
+static void dwl_frame(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
+  static_cast<Layout *>(data)->handle_frame();
+}
+
+static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t layout) {
+  static_cast<Layout *>(data)->handle_layout(layout);
+}
+
 static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid) {
-  static_cast<Window *>(data)->handle_appid(appid);
+  // Intentionally empty
 };
 
 static const zdwl_ipc_output_v2_listener output_status_listener_impl{
@@ -61,7 +56,7 @@ static const zdwl_ipc_output_v2_listener output_status_listener_impl{
 static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
                           const char *interface, uint32_t version) {
   if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
-    static_cast<Window *>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2 *>(
+    static_cast<Layout *>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2 *>(
         (zdwl_ipc_manager_v2 *)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
   }
 }
@@ -73,8 +68,8 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar) {
+Layout::Layout(const std::string &id, const Bar &bar, const Json::Value &config)
+    : waybar::ALabel(config, "layout", id, "{layout}", false, false, false, false), bar_(bar) {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
 
@@ -92,25 +87,20 @@ Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
   zdwl_ipc_manager_v2_destroy(status_manager_);
 }
 
-Window::~Window() {
+Layout::~Layout() {
   if (output_status_ != nullptr) {
     zdwl_ipc_output_v2_destroy(output_status_);
   }
 }
 
-void Window::handle_title(const char *title) { title_ = Glib::Markup::escape_text(title); }
+void Layout::handle_layout_symbol(const char *layout_symbol) {
+  layout_symbol_ = Glib::Markup::escape_text(layout_symbol);
+}
 
-void Window::handle_appid(const char *appid) { appid_ = Glib::Markup::escape_text(appid); }
+void Layout::handle_layout(const uint32_t layout) { layout_ = layout; }
 
-void Window::handle_frame() {
-  label_.set_markup(waybar::util::rewriteString(
-      fmt::format(fmt::runtime(format_), fmt::arg("title", title_), fmt::arg("app_id", appid_)),
-      config_["rewrite"]));
-  updateAppIconName(appid_, "");
-  updateAppIcon();
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(title_);
-  }
+void Layout::handle_frame() {
+  label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("layout", layout_symbol_)));
 }
 
 }  // namespace waybar::modules::dwl
