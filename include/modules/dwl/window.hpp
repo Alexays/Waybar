@@ -19,6 +19,7 @@ class Window : public AAppIconLabel, public sigc::trackable {
   void handle_layout(const uint32_t layout);
   void handle_title(const char *title);
   void handle_appid(const char *ppid);
+  void handle_active(const uint32_t active);
   void handle_layout_symbol(const char *layout_symbol);
   void handle_frame();
 
@@ -30,6 +31,7 @@ class Window : public AAppIconLabel, public sigc::trackable {
   std::string title_;
   std::string appid_;
   std::string layout_symbol_;
+  bool active_;
   uint32_t layout_;
 
   struct zdwl_ipc_output_v2 *output_status_;

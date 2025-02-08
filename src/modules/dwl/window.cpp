@@ -19,7 +19,7 @@ static void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
 }
 
 static void active(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t active) {
-  // Intentionally empty
+  static_cast<Window *>(data)->handle_active(active);
 }
 
 static void set_tag(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t tag, uint32_t state,
@@ -74,7 +74,9 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
                                                             .global_remove = handle_global_remove};
 
 Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar) {
+    : AAppIconLabel(config, "window", id, "{}", 0, true),
+      bar_(bar),
+      active_(false) {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
 
@@ -102,6 +104,8 @@ void Window::handle_title(const char *title) { title_ = Glib::Markup::escape_tex
 
 void Window::handle_appid(const char *appid) { appid_ = Glib::Markup::escape_text(appid); }
 
+void Window::handle_active(const uint32_t active) { active_ = active != 0; }
+
 void Window::handle_layout_symbol(const char *layout_symbol) {
   layout_symbol_ = Glib::Markup::escape_text(layout_symbol);
 }
@@ -117,6 +121,11 @@ void Window::handle_frame() {
   updateAppIcon();
   if (tooltipEnabled()) {
     label_.set_tooltip_text(title_);
+  }
+  if (active_) {
+    box_.get_style_context()->add_class("active");
+  } else {
+    box_.get_style_context()->remove_class("active");
   }
 }
 
