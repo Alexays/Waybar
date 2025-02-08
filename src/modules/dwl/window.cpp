@@ -76,7 +76,15 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
 Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
     : AAppIconLabel(config, "window", id, "{}", 0, true),
       bar_(bar),
-      active_(false) {
+      active_(false),
+      hide_inactive_(false),
+      hide_empty_(false) {
+  if (config_["hide-inactive"].isBool()) {
+    hide_inactive_ = config["hide-inactive"].asBool();
+  }
+  if (config_["hide-empty"].isBool()) {
+    hide_empty_ = config["hide-empty"].asBool();
+  }
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
 
@@ -122,10 +130,18 @@ void Window::handle_frame() {
   if (tooltipEnabled()) {
     label_.set_tooltip_text(title_);
   }
-  if (active_) {
-    box_.get_style_context()->add_class("active");
+  if (hide_empty_ && title_.empty()) {
+      box_.set_visible(false);
   } else {
-    box_.get_style_context()->remove_class("active");
+    if (active_) {
+      box_.get_style_context()->add_class("active");
+      box_.set_visible(true);
+    } else {
+      box_.get_style_context()->remove_class("active");
+      if (hide_inactive_) {
+        box_.set_visible(false);
+      }
+    }
   }
 }
 
