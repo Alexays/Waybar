@@ -31,6 +31,11 @@ Addressed by *sway/workspaces*
 	default: false ++
 	If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
 
+*reverse-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, scrolling up will switch to the previous workspace and scrolling down will switch to the next workspace. If set to true, the behavior will be reversed.
+
 *disable-click*: ++
 	typeof: bool ++
 	default: false ++
