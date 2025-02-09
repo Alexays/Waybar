@@ -14,6 +14,7 @@
 
 #include "AModule.hpp"
 #include "group.hpp"
+#include "util/kill_signal.hpp"
 #include "xdg-output-unstable-v1-client-protocol.h"
 
 namespace waybar {
@@ -68,7 +69,11 @@ class Bar : public sigc::trackable {
   void setMode(const std::string &mode);
   void setVisible(bool value);
   void toggle();
+  void show();
+  void hide();
   void handleSignal(int);
+  util::KillSignalAction getOnSigusr1Action();
+  util::KillSignalAction getOnSigusr2Action();
 
   struct waybar_output *output;
   Json::Value config;
@@ -118,6 +123,9 @@ class Bar : public sigc::trackable {
   std::unique_ptr<BarIpcClient> _ipc_client;
 #endif
   std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
+
+  waybar::util::KillSignalAction onSigusr1;
+  waybar::util::KillSignalAction onSigusr2;
 };
 
 }  // namespace waybar
