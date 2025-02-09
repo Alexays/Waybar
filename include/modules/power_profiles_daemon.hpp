@@ -24,7 +24,7 @@ class PowerProfilesDaemon : public ALabel {
   void getAllPropsCb(Glib::RefPtr<Gio::AsyncResult> &r);
   void setPropCb(Glib::RefPtr<Gio::AsyncResult> &r);
   void populateInitState();
-  bool handleToggle(GdkEventButton *const &e) override;
+  void handleToggle(int n_press, double dx, double dy) override;
 
  private:
   // True if we're connected to the dbug interface. False if we're

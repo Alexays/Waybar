@@ -9,6 +9,7 @@ class ASlider : public AModule {
  public:
   ASlider(const Json::Value& config, const std::string& name, const std::string& id);
   virtual void onValueChanged();
+  Gtk::Widget& root() override;
 
  protected:
   bool vertical_ = false;

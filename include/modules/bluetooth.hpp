@@ -4,15 +4,10 @@
 #ifdef WANT_RFKILL
 #include "util/rfkill.hpp"
 #endif
-#include <gio/gio.h>
-
-#include <optional>
-#include <string>
-#include <vector>
 
 namespace waybar::modules {
 
-class Bluetooth : public ALabel {
+class Bluetooth final : public ALabel {
   struct ControllerInfo {
     std::string path;
     std::string address;

@@ -1,17 +1,12 @@
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <string>
+#include <giomm/dbusproxy.h>
+#include <gtkmm/box.h>
+#include <gtkmm/icontheme.h>
+#include <gtkmm/image.h>
+#include <gtkmm/label.h>
 
-#include "ALabel.hpp"
-#include "giomm/dbusconnection.h"
-#include "giomm/dbusproxy.h"
-#include "glibconfig.h"
-#include "gtkmm/box.h"
-#include "gtkmm/image.h"
-#include "gtkmm/label.h"
-#include "gtkmm/overlay.h"
+#include "AModule.hpp"
 
 namespace waybar::modules {
 
@@ -20,6 +15,7 @@ class Gamemode : public AModule {
   Gamemode(const std::string &, const Json::Value &);
   virtual ~Gamemode();
   auto update() -> void override;
+  Gtk::Widget &root() override;
 
  private:
   const std::string DEFAULT_ICON_NAME = "input-gaming-symbolic";
@@ -39,7 +35,7 @@ class Gamemode : public AModule {
                  const Glib::VariantContainerBase &arguments);
 
   void getData();
-  bool handleToggle(GdkEventButton *const &) override;
+  void handleToggle(int n_press, double dx, double dy) override;
 
   // Config
   std::string format = DEFAULT_FORMAT;
@@ -70,6 +66,7 @@ class Gamemode : public AModule {
   guint login1_id;
   Glib::RefPtr<Gio::DBus::Proxy> gamemode_proxy;
   Glib::RefPtr<Gio::DBus::Connection> system_connection;
+  Glib::RefPtr<Gtk::IconTheme> gtkTheme_;
   bool gamemodeRunning;
   guint gamemodeWatcher_id;
 };

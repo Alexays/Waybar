@@ -40,8 +40,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
     server_ = config["server"].asCString();
   }
 
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &MPD::handlePlayPause));
+  controllClick_->signal_pressed().connect(sigc::mem_fun(*this, &MPD::handlePlayPause), false);
 }
 
 auto waybar::modules::MPD::update() -> void {
@@ -89,19 +88,19 @@ std::string waybar::modules::MPD::getFilename() const {
 
 void waybar::modules::MPD::setLabel() {
   if (connection_ == nullptr) {
-    label_.get_style_context()->add_class("disconnected");
-    label_.get_style_context()->remove_class("stopped");
-    label_.get_style_context()->remove_class("playing");
-    label_.get_style_context()->remove_class("paused");
+    add_css_class("disconnected");
+    remove_css_class("stopped");
+    remove_css_class("playing");
+    remove_css_class("paused");
 
     auto format = config_["format-disconnected"].isString()
                       ? config_["format-disconnected"].asString()
                       : "disconnected";
     if (format.empty()) {
       label_.set_markup(format);
-      label_.show();
+      set_visible(true);
     } else {
-      label_.hide();
+      set_visible(false);
     }
 
     if (tooltipEnabled()) {
@@ -114,7 +113,7 @@ void waybar::modules::MPD::setLabel() {
     }
     return;
   }
-  label_.get_style_context()->remove_class("disconnected");
+  remove_css_class("disconnected");
 
   auto format = format_;
   Glib::ustring artist, album_artist, album, title;
@@ -128,19 +127,19 @@ void waybar::modules::MPD::setLabel() {
     if (no_song) spdlog::warn("Bug in mpd: no current song but state is not stopped.");
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
-    label_.get_style_context()->add_class("stopped");
-    label_.get_style_context()->remove_class("playing");
-    label_.get_style_context()->remove_class("paused");
+    add_css_class("stopped");
+    remove_css_class("playing");
+    remove_css_class("paused");
   } else {
-    label_.get_style_context()->remove_class("stopped");
+    remove_css_class("stopped");
     if (playing()) {
-      label_.get_style_context()->add_class("playing");
-      label_.get_style_context()->remove_class("paused");
+      add_css_class("playing");
+      remove_css_class("paused");
     } else if (paused()) {
       format = config_["format-paused"].isString() ? config_["format-paused"].asString()
                                                    : config_["format"].asString();
-      label_.get_style_context()->add_class("paused");
-      label_.get_style_context()->remove_class("playing");
+      add_css_class("paused");
+      remove_css_class("playing");
     }
 
     stateIcon = getStateIcon();
@@ -186,9 +185,9 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
         fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename));
     if (text.empty()) {
-      label_.hide();
+      set_visible(false);
     } else {
-      label_.show();
+      set_visible(true);
       label_.set_markup(text);
     }
   } catch (fmt::format_error const& e) {
@@ -354,19 +353,17 @@ void waybar::modules::MPD::fetchState() {
   checkErrors(conn);
 }
 
-bool waybar::modules::MPD::handlePlayPause(GdkEventButton* const& e) {
-  if (e->type == GDK_2BUTTON_PRESS || e->type == GDK_3BUTTON_PRESS || connection_ == nullptr) {
-    return false;
-  }
+void waybar::modules::MPD::handlePlayPause(int n_press, double dx, double dy) {
+  if (n_press != 1 || connection_ == nullptr) return;
 
-  if (e->button == 1) {
+  auto button{controllClick_->get_current_button()};
+
+  if (button == 1u) {
     if (state_ == MPD_STATE_PLAY)
       context_.pause();
     else
       context_.play();
-  } else if (e->button == 3) {
+  } else if (button == 3u) {
     context_.stop();
   }
-
-  return true;
 }

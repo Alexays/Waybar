@@ -1,6 +1,7 @@
 #pragma once
 
 #include <pipewire/pipewire.h>
+#include <sigc++/signal.h>
 
 #include <unordered_map>
 
@@ -9,7 +10,7 @@
 
 namespace waybar::util::PipewireBackend {
 
-class PipewireBackend {
+class PipewireBackend final {
  private:
   pw_thread_loop* mainloop_;
   pw_context* context_;
@@ -27,7 +28,7 @@ class PipewireBackend {
   struct PrivateConstructorTag {};
 
  public:
-  sigc::signal<void> privacy_nodes_changed_signal_event;
+  sigc::signal<void()> privacy_nodes_changed_signal_event;
 
   std::unordered_map<uint32_t, PrivacyNodeInfo*> privacy_nodes;
   std::mutex mutex_;

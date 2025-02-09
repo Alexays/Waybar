@@ -1,13 +1,13 @@
 #pragma once
 
+#include <giomm/file.h>
+#include <giomm/filemonitor.h>
+#include <glibmm/refptr.h>
+
 #include <functional>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include "giomm/file.h"
-#include "giomm/filemonitor.h"
-#include "glibmm/refptr.h"
 
 struct pollfd;
 
@@ -37,7 +37,7 @@ class CssReloadHelper {
 
   void handleFileChange(Glib::RefPtr<Gio::File> const& file,
                         Glib::RefPtr<Gio::File> const& other_type,
-                        Gio::FileMonitorEvent event_type);
+                        Gio::FileMonitor::Event event_type);
 
  private:
   std::string m_cssFile;

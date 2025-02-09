@@ -13,9 +13,9 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
   box_.set_name("tray");
   event_box_.add(box_);
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
+  box_.add_css_class(MODULE_CLASS);
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
   }

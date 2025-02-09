@@ -1,10 +1,6 @@
 #include "modules/bluetooth.hpp"
 
-#include <fmt/format.h>
 #include <spdlog/spdlog.h>
-
-#include <algorithm>
-#include <sstream>
 
 #include "util/scope_guard.hpp"
 
@@ -200,10 +196,10 @@ auto waybar::modules::Bluetooth::update() -> void {
   }
 
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
-    if (in_next_state && !label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->add_class(style_class);
-    } else if (!in_next_state && label_.get_style_context()->has_class(style_class)) {
-      label_.get_style_context()->remove_class(style_class);
+    if (in_next_state && !has_css_class(style_class)) {
+      add_css_class(style_class);
+    } else if (!in_next_state && has_css_class(style_class)) {
+      remove_css_class(style_class);
     }
   };
   update_style_context("discoverable", cur_controller_ ? cur_controller_->discoverable : false);
@@ -216,9 +212,9 @@ auto waybar::modules::Bluetooth::update() -> void {
   state_ = state;
 
   if (format_.empty()) {
-    event_box_.hide();
+    set_visible(false);
   } else {
-    event_box_.show();
+    set_visible(true);
     label_.set_markup(fmt::format(
         fmt::runtime(format_), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),

@@ -1,16 +1,8 @@
 #include "modules/wlr/workspace_manager.hpp"
 
-#include <gdk/gdkwayland.h>
-#include <gtkmm.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-#include <iterator>
-#include <stdexcept>
-#include <vector>
-
 #include "client.hpp"
-#include "gtkmm/widget.h"
 #include "modules/wlr/workspace_manager_binding.hpp"
 
 namespace waybar::modules::wlr {
@@ -50,10 +42,9 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
 
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
 
   add_registry_listener(this);
   if (!workspace_manager_) {
@@ -114,7 +105,12 @@ auto WorkspaceManager::sort_workspaces() -> void {
 
   std::sort(all_workspaces.begin(), all_workspaces.end(), workspace_comparator());
   for (size_t i = 0; i < all_workspaces.size(); ++i) {
-    box_.reorder_child(all_workspaces[i].get()->get_button_ref(), i);
+    if (i == 0) {
+      box_.reorder_child_at_start(all_workspaces[i].get()->get_button_ref());
+    } else {
+      box_.reorder_child_after(all_workspaces[i].get()->get_button_ref(),
+                               all_workspaces[i - 1].get()->get_button_ref());
+    }
   }
 }
 
@@ -160,6 +156,8 @@ auto WorkspaceManager::update() -> void {
   }
   AModule::update();
 }
+
+Gtk::Widget &WorkspaceManager::root() { return box_; }
 
 WorkspaceManager::~WorkspaceManager() {
   if (!workspace_manager_) {
@@ -253,9 +251,7 @@ auto WorkspaceGroup::creation_delayed() const -> bool {
   return workspace_manager_.creation_delayed();
 }
 
-auto WorkspaceGroup::add_button(Gtk::Button &button) -> void {
-  box_.pack_start(button, false, false);
-}
+auto WorkspaceGroup::add_button(Gtk::Button &button) -> void { box_.append(button); }
 
 WorkspaceGroup::~WorkspaceGroup() {
   if (!workspace_group_handle_) {
@@ -366,7 +362,12 @@ auto WorkspaceGroup::commit() -> void { workspace_manager_.commit(); }
 auto WorkspaceGroup::sort_workspaces() -> void {
   std::sort(workspaces_.begin(), workspaces_.end(), workspace_manager_.workspace_comparator());
   for (size_t i = 0; i < workspaces_.size(); ++i) {
-    box_.reorder_child(workspaces_[i]->get_button_ref(), i);
+    if (i == 0) {
+      box_.reorder_child_at_start(workspaces_[i]->get_button_ref());
+    } else {
+      box_.reorder_child_after(workspaces_[i]->get_button_ref(),
+                               workspaces_[i - 1]->get_button_ref());
+    }
   }
 }
 
@@ -379,7 +380,8 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
       workspace_group_(workspace_group),
       workspace_handle_(workspace),
       id_(id),
-      name_(name) {
+      name_(name),
+      controllClick_{Gtk::GestureClick::create()} {
   if (workspace) {
     add_workspace_listener(workspace, this);
   } else {
@@ -401,21 +403,21 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
   /* Handle click events if configured */
   if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
       config_["on-click-right"].isString()) {
-    button_.add_events(Gdk::BUTTON_PRESS_MASK);
-    button_.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handle_clicked),
-                                                false);
+    controllClick_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+    controllClick_->signal_released().connect(sigc::mem_fun(*this, &Workspace::handleClick), false);
+    button_.add_controller(controllClick_);
   }
 
-  button_.set_relief(Gtk::RELIEF_NONE);
-  content_.set_center_widget(label_);
-  button_.add(content_);
+  button_.set_has_frame(false);
+  content_.append(label_);
+  button_.set_child(content_);
 
   if (!workspace_group.is_visible()) {
     return;
   }
 
   workspace_group.add_button(button_);
-  button_.show_all();
+  button_.show();
 }
 
 Workspace::~Workspace() {
@@ -462,29 +464,27 @@ auto Workspace::handle_remove() -> void {
   }
 }
 
-auto add_or_remove_class(Glib::RefPtr<Gtk::StyleContext> context, bool condition,
-                         const std::string &class_name) {
+auto add_or_remove_class(Gtk::Widget &widget, bool condition, const std::string &class_name) {
   if (condition) {
-    context->add_class(class_name);
+    widget.add_css_class(class_name);
   } else {
-    context->remove_class(class_name);
+    widget.remove_css_class(class_name);
   }
 }
 
 auto Workspace::handle_done() -> void {
   spdlog::debug("Workspace {} changed to state {}", id_, state_);
-  auto style_context = button_.get_style_context();
-  add_or_remove_class(style_context, is_active(), "active");
-  add_or_remove_class(style_context, is_urgent(), "urgent");
-  add_or_remove_class(style_context, is_hidden(), "hidden");
-  add_or_remove_class(style_context, is_empty(), "persistent");
+  add_or_remove_class(button_, is_active(), "active");
+  add_or_remove_class(button_, is_urgent(), "urgent");
+  add_or_remove_class(button_, is_hidden(), "hidden");
+  add_or_remove_class(button_, is_empty(), "persistent");
 
   if (workspace_group_.creation_delayed()) {
     return;
   }
 
   if (workspace_group_.active_only() && (is_active() || is_urgent())) {
-    button_.show_all();
+    button_.show();
   } else if (workspace_group_.active_only() && !(is_active() || is_urgent())) {
     button_.hide();
   }
@@ -518,18 +518,20 @@ auto Workspace::get_icon() -> std::string {
   return name_;
 }
 
-auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
+void Workspace::handleClick(int n_press, double dx, double dy) {
+  auto currButton{controllClick_->get_current_button()};
+
   std::string action;
-  if (config_["on-click"].isString() && bt->button == 1) {
+  if (config_["on-click"].isString() && currButton == 1) {
     action = config_["on-click"].asString();
-  } else if (config_["on-click-middle"].isString() && bt->button == 2) {
+  } else if (config_["on-click-middle"].isString() && currButton == 2) {
     action = config_["on-click-middle"].asString();
-  } else if (config_["on-click-right"].isString() && bt->button == 3) {
+  } else if (config_["on-click-right"].isString() && currButton == 3) {
     action = config_["on-click-right"].asString();
   }
 
   if (action.empty())
-    return true;
+    return;
   else if (action == "activate") {
     zext_workspace_handle_v1_activate(workspace_handle_);
   } else if (action == "close") {
@@ -539,11 +541,9 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
   }
 
   workspace_group_.commit();
-
-  return true;
 }
 
-auto Workspace::show() -> void { button_.show_all(); }
+auto Workspace::show() -> void { button_.show(); }
 auto Workspace::hide() -> void { button_.hide(); }
 
 auto Workspace::handle_name(const std::string &name) -> void {

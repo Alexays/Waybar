@@ -1,12 +1,5 @@
 #include "group.hpp"
 
-#include <fmt/format.h>
-
-#include <util/command.hpp>
-
-#include "gtkmm/enums.h"
-#include "gtkmm/widget.h"
-
 namespace waybar {
 
 Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
@@ -18,20 +11,20 @@ Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
    */
 
   if (is_vertical) {
-    return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
+    return Gtk::RevealerTransitionType::SLIDE_UP;
   }
 
-  return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
+  return Gtk::RevealerTransitionType::SLIDE_LEFT;
 }
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
              bool vertical)
     : AModule(config, name, id, true, true),
-      box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
-      revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
-  box.set_name(name_);
+      box_{vertical ? Gtk::Orientation::VERTICAL : Gtk::Orientation::HORIZONTAL, 0},
+      revealer_box_{vertical ? Gtk::Orientation::VERTICAL : Gtk::Orientation::HORIZONTAL, 0} {
+  box_.set_name(name_);
   if (!id.empty()) {
-    box.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
 
   // default orientation: orthogonal to parent
@@ -40,102 +33,97 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
   if (orientation == "inherit") {
     // keep orientation passed
   } else if (orientation == "orthogonal") {
-    box.set_orientation(vertical ? Gtk::ORIENTATION_HORIZONTAL : Gtk::ORIENTATION_VERTICAL);
+    box_.set_orientation(vertical ? Gtk::Orientation::HORIZONTAL : Gtk::Orientation::VERTICAL);
   } else if (orientation == "vertical") {
-    box.set_orientation(Gtk::ORIENTATION_VERTICAL);
+    box_.set_orientation(Gtk::Orientation::VERTICAL);
   } else if (orientation == "horizontal") {
-    box.set_orientation(Gtk::ORIENTATION_HORIZONTAL);
+    box_.set_orientation(Gtk::Orientation::HORIZONTAL);
   } else {
     throw std::runtime_error("Invalid orientation value: " + orientation);
   }
 
   if (config_["drawer"].isObject()) {
-    is_drawer = true;
+    is_drawer_ = true;
 
     const auto& drawer_config = config_["drawer"];
     const int transition_duration =
         (drawer_config["transition-duration"].isInt() ? drawer_config["transition-duration"].asInt()
                                                       : 500);
-    add_class_to_drawer_children =
+    add_class_to_drawer_children_ =
         (drawer_config["children-class"].isString() ? drawer_config["children-class"].asString()
                                                     : "drawer-child");
     const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
-    click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    click_to_reveal_ = drawer_config["click-to-reveal"].asBool();
 
     auto transition_type = getPreferredTransitionType(vertical);
 
-    revealer.set_transition_type(transition_type);
-    revealer.set_transition_duration(transition_duration);
-    revealer.set_reveal_child(false);
+    revealer_.set_transition_type(transition_type);
+    revealer_.set_transition_duration(transition_duration);
+    revealer_.set_reveal_child(false);
 
-    revealer.get_style_context()->add_class("drawer");
+    revealer_.add_css_class("drawer");
 
-    revealer.add(revealer_box);
-
-    if (left_to_right) {
-      box.pack_end(revealer);
-    } else {
-      box.pack_start(revealer);
-    }
+    revealer_.set_child(revealer_box_);
+    if (left_to_right)
+      box_.append(revealer_);
+    else
+      box_.prepend(revealer_);
   }
 
-  event_box_.add(box);
+  AModule::bindEvents(box_);
 }
 
 void Group::show_group() {
-  box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  revealer.set_reveal_child(true);
+  box_.set_state_flags(Gtk::StateFlags::PRELIGHT);
+  revealer_.set_reveal_child(true);
 }
 
 void Group::hide_group() {
-  box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  revealer.set_reveal_child(false);
+  box_.unset_state_flags(Gtk::StateFlags::PRELIGHT);
+  revealer_.set_reveal_child(false);
 }
 
-bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
-  if (!click_to_reveal) {
+void Group::handleMouseEnter(double x, double y) {
+  if (!click_to_reveal_) {
     show_group();
   }
-  return false;
 }
 
-bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+void Group::handleMouseLeave() {
+  if (!click_to_reveal_ && AModule::controllScroll_->get_current_event()->get_crossing_detail() !=
+                               Gdk::NotifyType::INFERIOR) {
     hide_group();
   }
-  return false;
 }
 
-bool Group::handleToggle(GdkEventButton* const& e) {
-  if (!click_to_reveal || e->button != 1) {
-    return false;
+void Group::handleToggle(int n_press, double dx, double dy) {
+  if (click_to_reveal_ && AModule::controllClick_->get_current_button() == 1 /* left click */) {
+    if (box_.get_state_flags() == Gtk::StateFlags::PRELIGHT) {
+      hide_group();
+    } else {
+      show_group();
+    }
   }
-  if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
-    hide_group();
-  } else {
-    show_group();
-  }
-  return true;
 }
 
 auto Group::update() -> void {
   // noop
 }
 
-Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
+Gtk::Box& Group::getBox() { return is_drawer_ ? (is_first_widget_ ? box_ : revealer_box_) : box_; }
 
 void Group::addWidget(Gtk::Widget& widget) {
-  getBox().pack_start(widget, false, false);
+  getBox().prepend(widget);
 
-  if (is_drawer && !is_first_widget) {
-    widget.get_style_context()->add_class(add_class_to_drawer_children);
+  if (is_drawer_ && !is_first_widget_) {
+    widget.add_css_class(add_class_to_drawer_children_);
   }
 
-  is_first_widget = false;
+  is_first_widget_ = false;
 }
 
-Group::operator Gtk::Widget&() { return event_box_; }
+Gtk::Widget& Group::root() { return box_; }
 
 }  // namespace waybar

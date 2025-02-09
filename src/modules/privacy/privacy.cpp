@@ -1,11 +1,5 @@
 #include "modules/privacy/privacy.hpp"
 
-#include <json/value.h>
-#include <spdlog/spdlog.h>
-
-#include <string>
-
-#include "AModule.hpp"
 #include "modules/privacy/privacy_item.hpp"
 
 namespace waybar::modules::privacy {
@@ -21,10 +15,8 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
       nodes_audio_in(),
       nodes_audio_out(),
       visibility_conn(),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+      box_(Gtk::Orientation::HORIZONTAL, 0) {
   box_.set_name(name_);
-
-  event_box_.add(box_);
 
   // Icon Spacing
   if (config_["icon-spacing"].isUInt()) {
@@ -69,9 +61,11 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
       auto& [nodePtr, nodeType] = iter->second;
       auto* item = Gtk::make_managed<PrivacyItem>(module, nodeType, nodePtr, pos, iconSize,
                                                   transition_duration);
-      box_.add(*item);
+      box_.append(*item);
     }
   }
+
+  AModule::bindEvents(box_);
 
   backend = util::PipewireBackend::PipewireBackend::getInstance();
   backend->privacy_nodes_changed_signal_event.connect(
@@ -124,9 +118,10 @@ auto Privacy::update() -> void {
   bool useAudioOut = false;
 
   mutex_.lock();
-  for (Gtk::Widget* widget : box_.get_children()) {
-    auto* module = dynamic_cast<PrivacyItem*>(widget);
-    if (module == nullptr) continue;
+  auto children{box_.observe_children()};  // Inefficient
+  for (guint i{0u}; i < children->get_n_items(); ++i) {
+    auto module = dynamic_pointer_cast<PrivacyItem>(children->get_object(i));
+    if (!module) continue;
     switch (module->privacy_type) {
       case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
         setScreenshare = true;
@@ -153,12 +148,12 @@ auto Privacy::update() -> void {
   bool isVisible = (setScreenshare && useScreenshare) || (setAudioIn && useAudioIn) ||
                    (setAudioOut && useAudioOut);
 
-  if (isVisible != event_box_.get_visible()) {
+  if (isVisible != box_.get_visible()) {
     // Disconnect any previous connection so that it doesn't get activated in
     // the future, hiding the module when it should be visible
     visibility_conn.disconnect();
     if (isVisible) {
-      event_box_.set_visible(true);
+      box_.set_visible(true);
     } else {
       // Hides the widget when all of the privacy_item revealers animations
       // have finished animating
@@ -171,7 +166,7 @@ auto Privacy::update() -> void {
                 visible |= setAudioIn && !nodes_audio_in.empty();
                 visible |= setAudioOut && !nodes_audio_out.empty();
                 mutex_.unlock();
-                event_box_.set_visible(visible);
+                box_.set_visible(visible);
                 return false;
               },
               *this),
@@ -182,5 +177,7 @@ auto Privacy::update() -> void {
   // Call parent update
   AModule::update();
 }
+
+Gtk::Widget& Privacy::root() { return box_; };
 
 }  // namespace waybar::modules::privacy

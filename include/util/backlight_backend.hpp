@@ -1,14 +1,6 @@
 #pragma once
 
 #include <libudev.h>
-#include <spdlog/spdlog.h>
-
-#include <chrono>
-#include <mutex>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <vector>
 
 #include "giomm/dbusproxy.h"
 #include "util/backend_common.hpp"

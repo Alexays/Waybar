@@ -1,3 +1,5 @@
+#include <fmt/format.h>
+
 #include "modules/memory.hpp"
 
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
@@ -51,9 +53,9 @@ auto waybar::modules::Memory::update() -> void {
     }
 
     if (format.empty()) {
-      event_box_.hide();
+      set_visible(false);
     } else {
-      event_box_.show();
+      set_visible(true);
       auto icons = std::vector<std::string>{state};
       label_.set_markup(fmt::format(
           fmt::runtime(format), used_ram_percentage,
@@ -80,7 +82,7 @@ auto waybar::modules::Memory::update() -> void {
       }
     }
   } else {
-    event_box_.hide();
+    set_visible(false);
   }
   // Call parent update
   ALabel::update();

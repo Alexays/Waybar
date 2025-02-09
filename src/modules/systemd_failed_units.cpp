@@ -1,7 +1,5 @@
 #include "modules/systemd_failed_units.hpp"
 
-#include <giomm/dbusproxy.h>
-#include <glibmm/variant.h>
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
@@ -29,8 +27,8 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
   /* Default to enable both "system" and "user". */
   if (!config["system"].isBool() || config["system"].asBool()) {
     system_proxy = Gio::DBus::Proxy::create_for_bus_sync(
-        Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.systemd1",
-        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties");
+        Gio::DBus::BusType::SYSTEM, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+        "org.freedesktop.DBus.Properties");
     if (!system_proxy) {
       throw std::runtime_error("Unable to connect to systemwide systemd DBus!");
     }
@@ -38,8 +36,8 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
   }
   if (!config["user"].isBool() || config["user"].asBool()) {
     user_proxy = Gio::DBus::Proxy::create_for_bus_sync(
-        Gio::DBus::BusType::BUS_TYPE_SESSION, "org.freedesktop.systemd1",
-        "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties");
+        Gio::DBus::BusType::SESSION, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+        "org.freedesktop.DBus.Properties");
     if (!user_proxy) {
       throw std::runtime_error("Unable to connect to user systemd DBus!");
     }
@@ -85,7 +83,7 @@ void SystemdFailedUnits::updateData() {
         }
       }
     } catch (Glib::Error& e) {
-      spdlog::error("Failed to get {} failed units: {}", kind, e.what().c_str());
+      spdlog::error("Failed to get {} failed units: {}", kind, e.what());
     }
     return 0;
   };
@@ -104,20 +102,20 @@ auto SystemdFailedUnits::update() -> void {
 
   // Hide if needed.
   if (nr_failed == 0 && hide_on_ok) {
-    event_box_.set_visible(false);
+    label_.set_visible(false);
     return;
   }
-  if (!event_box_.get_visible()) {
-    event_box_.set_visible(true);
+  if (!label_.get_visible()) {
+    label_.set_visible(true);
   }
 
   // Set state class.
   const std::string status = nr_failed == 0 ? "ok" : "degraded";
-  if (!last_status.empty() && label_.get_style_context()->has_class(last_status)) {
-    label_.get_style_context()->remove_class(last_status);
+  if (!last_status.empty() && has_css_class(last_status)) {
+    remove_css_class(last_status);
   }
-  if (!label_.get_style_context()->has_class(status)) {
-    label_.get_style_context()->add_class(status);
+  if (!has_css_class(status)) {
+    add_css_class(status);
   }
   last_status = status;
 

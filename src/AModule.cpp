@@ -1,13 +1,6 @@
 #include "AModule.hpp"
 
-#include <fmt/format.h>
-#include <spdlog/spdlog.h>
-
 #include <util/command.hpp>
-
-#include "gdk/gdk.h"
-#include "gdkmm/cursor.h"
-
 namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
@@ -16,8 +9,10 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
-      distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      enableClick_{enable_click},
+      enableScroll_{enable_scroll},
+      curDefault{Gdk::Cursor::create("default")},
+      curPoint{Gdk::Cursor::create("pointer")} {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
 
@@ -33,49 +28,37 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
 
-  event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseEnter));
-  event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseLeave));
-
   // configure events' user commands
   // hasUserEvents is true if any element from eventMap_ is satisfying the condition in the lambda
-  bool hasUserEvents =
+  bool hasPressEvents =
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
         // True if there is any non-release type event
-        return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
+        return eventEntry.first.evt_type != Gdk::Event::Type::BUTTON_RELEASE &&
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
-
-  if (enable_click || hasUserEvents) {
-    hasUserEvents_ = true;
-    event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
-    event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
+  if (enable_click || hasPressEvents) {
+    hasPressEvents_ = true;
   } else {
-    hasUserEvents_ = false;
+    hasPressEvents_ = false;
   }
 
-  bool hasReleaseEvent =
+  hasReleaseEvents_ =
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
-        // True if there is any non-release type event
-        return eventEntry.first.second == GdkEventType::GDK_BUTTON_RELEASE &&
+        // True if there is any release type event
+        return eventEntry.first.evt_type == Gdk::Event::Type::BUTTON_RELEASE &&
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
-  if (hasReleaseEvent) {
-    event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
-    event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
-  }
-  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
-      config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
-      enable_scroll) {
-    event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
-  }
+
+  makeControllClick();
+  makeControllScroll();
+  makeControllMotion();
 
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
     if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
-      setCursor(Gdk::HAND2);
-    } else if (config_["cursor"].isInt()) {
-      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+      setCursor(curPoint);
+    } else if (config_["cursor"].isString()) {
+      setCursor(config_["cursor"].asString());
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
@@ -106,113 +89,92 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-void AModule::setCursor(Gdk::CursorType const& c) {
-  auto gdk_window = event_box_.get_window();
-  if (gdk_window) {
-    auto cursor = Gdk::Cursor::create(c);
-    gdk_window->set_cursor(cursor);
-  } else {
-    // window may not be accessible yet, in this case,
-    // schedule another call for setting the cursor in 1 sec
-    Glib::signal_timeout().connect_seconds(
-        [this, c]() {
-          setCursor(c);
-          return false;
-        },
-        1);
-  }
+void AModule::setPopupPosition(Gtk::PositionType position) {}
+
+void AModule::handleToggle(int n_press, double dx, double dy) {
+  handleRawClickEvent(controllClick_->get_current_button(), n_press,
+                      Gdk::Event::Type::BUTTON_PRESS);
+}
+void AModule::handleRelease(int n_press, double dx, double dy) {
+  handleRawClickEvent(controllClick_->get_current_button(), n_press,
+                      Gdk::Event::Type::BUTTON_RELEASE);
 }
 
-bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
-  if (auto* module = event_box_.get_child(); module != nullptr) {
-    module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  }
+void AModule::setCursor(const Glib::RefPtr<Gdk::Cursor>& cur) { root().set_cursor(cur); }
+
+void AModule::setCursor(const Glib::ustring& name) { root().set_cursor(name); }
+
+void AModule::handleMouseEnter(double x, double y) {
+  controllMotion_->get_widget()->set_state_flags(Gtk::StateFlags::PRELIGHT);
 
   // Default behavior indicating event availability
-  if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::HAND2);
+  if (hasPressEvents_ && !config_.isMember("cursor")) {
+    setCursor(curPoint);
   }
-
-  return false;
 }
 
-bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
-  if (auto* module = event_box_.get_child(); module != nullptr) {
-    module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
-  }
+void AModule::handleMouseLeave() {
+  controllMotion_->get_widget()->unset_state_flags(Gtk::StateFlags::PRELIGHT);
 
   // Default behavior indicating event availability
-  if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::ARROW);
+  if (hasPressEvents_ && !config_.isMember("cursor")) {
+    setCursor(curDefault);
   }
-
-  return false;
 }
 
-bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
-
-bool AModule::handleRelease(GdkEventButton* const& e) { return handleUserEvent(e); }
-
-bool AModule::handleUserEvent(GdkEventButton* const& e) {
+void AModule::handleRawClickEvent(uint n_button, int n_press, Gdk::Event::Type n_evtype) {
   std::string format{};
-  const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
-      eventMap_.find(std::pair(e->button, e->type))};
-
+  const std::map<MouseEvent, std::string>::const_iterator& rec =
+      eventMap_.find(MouseEvent{n_button, n_press, n_evtype});
   if (rec != eventMap_.cend()) {
-    // First call module actions
+    // First call module action
     this->AModule::doAction(rec->second);
-
     format = rec->second;
+
+    // Second allow subclass to handle the event by name
+    handleClick(rec->second);
   }
 
-  // Check that a menu has been configured
-  if (config_["menu"].isString()) {
-    // Check if the event is the one specified for the "menu" option
-    if (rec->second == config_["menu"].asString()) {
-      // Popup the menu
-      gtk_widget_show_all(GTK_WIDGET(menu_));
-      gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
-    }
-  }
-  // Second call user scripts
+  // Finally call user scripts
   if (!format.empty()) {
     if (config_[format].isString())
       format = config_[format].asString();
     else
       format.clear();
   }
-  if (!format.empty()) {
-    pid_.push_back(util::command::forkExec(format));
-  }
+  if (!format.empty()) pid_.push_back(util::command::forkExec(format));
+
   dp.emit();
-  return true;
 }
 
-AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
+void AModule::handleClick(const std::string& name) {}
+
+const AModule::SCROLL_DIR AModule::getScrollDir(Glib::RefPtr<const Gdk::Event> e) {
   // only affects up/down
   bool reverse = config_["reverse-scrolling"].asBool();
   bool reverse_mouse = config_["reverse-mouse-scrolling"].asBool();
 
   // ignore reverse-scrolling if event comes from a mouse wheel
-  GdkDevice* device = gdk_event_get_source_device((GdkEvent*)e);
-  if (device != nullptr && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
-    reverse = reverse_mouse;
-  }
+  const auto device{e->get_device()};
+  if ((device) && device->get_source() == Gdk::InputSource::MOUSE) reverse = reverse_mouse;
 
-  switch (e->direction) {
-    case GDK_SCROLL_UP:
+  switch (e->get_direction()) {
+    case Gdk::ScrollDirection::UP:
       return reverse ? SCROLL_DIR::DOWN : SCROLL_DIR::UP;
-    case GDK_SCROLL_DOWN:
+    case Gdk::ScrollDirection::DOWN:
       return reverse ? SCROLL_DIR::UP : SCROLL_DIR::DOWN;
-    case GDK_SCROLL_LEFT:
-      return SCROLL_DIR::LEFT;
-    case GDK_SCROLL_RIGHT:
-      return SCROLL_DIR::RIGHT;
-    case GDK_SCROLL_SMOOTH: {
+    case Gdk::ScrollDirection::LEFT:
+      return reverse ? SCROLL_DIR::RIGHT : SCROLL_DIR::LEFT;
+    case Gdk::ScrollDirection::RIGHT:
+      return reverse ? SCROLL_DIR::LEFT : SCROLL_DIR::RIGHT;
+    case Gdk::ScrollDirection::SMOOTH: {
       SCROLL_DIR dir{SCROLL_DIR::NONE};
 
-      distance_scrolled_y_ += e->delta_y;
-      distance_scrolled_x_ += e->delta_x;
+      double delta_x, delta_y;
+      e->get_deltas(delta_x, delta_y);
+
+      distance_scrolled_y_ += delta_y;
+      distance_scrolled_x_ += delta_x;
 
       gdouble threshold = 0;
       if (config_["smooth-scrolling-threshold"].isNumeric()) {
@@ -232,11 +194,11 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
       switch (dir) {
         case SCROLL_DIR::UP:
         case SCROLL_DIR::DOWN:
-          distance_scrolled_y_ = 0;
+          distance_scrolled_y_ = 0.0;
           break;
         case SCROLL_DIR::LEFT:
         case SCROLL_DIR::RIGHT:
-          distance_scrolled_x_ = 0;
+          distance_scrolled_x_ = 0.0;
           break;
         case SCROLL_DIR::NONE:
           break;
@@ -250,32 +212,112 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
   }
 }
 
-bool AModule::handleScroll(GdkEventScroll* e) {
-  auto dir = getScrollDir(e);
-  std::string eventName{};
+bool AModule::handleScroll(double dx, double dy) {
+  currEvent_ = controllScroll_->get_current_event();
 
-  if (dir == SCROLL_DIR::UP)
-    eventName = "on-scroll-up";
-  else if (dir == SCROLL_DIR::DOWN)
-    eventName = "on-scroll-down";
-  else if (dir == SCROLL_DIR::LEFT)
-    eventName = "on-scroll-left";
-  else if (dir == SCROLL_DIR::RIGHT)
-    eventName = "on-scroll-right";
+  if (currEvent_) {
+    std::string format{};
+    const auto dir{getScrollDir(currEvent_)};
 
-  // First call module actions
-  this->AModule::doAction(eventName);
-  // Second call user scripts
-  if (config_[eventName].isString())
-    pid_.push_back(util::command::forkExec(config_[eventName].asString()));
+    if (dir == SCROLL_DIR::UP)
+      format = "on-scroll-up";
+    else if (dir == SCROLL_DIR::DOWN)
+      format = "on-scroll-down";
+    else if (dir == SCROLL_DIR::LEFT)
+      format = "on-scroll-left";
+    else if (dir == SCROLL_DIR::RIGHT)
+      format = "on-scroll-right";
 
-  dp.emit();
+    // First call module action
+    this->AModule::doAction(format);
+    // Second call user scripts
+    if (config_[format].isString())
+      pid_.push_back(util::command::forkExec(config_[format].asString()));
+
+    dp.emit();
+  }
+
   return true;
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }
 bool AModule::expandEnabled() const { return isExpand; }
 
-AModule::operator Gtk::Widget&() { return event_box_; }
+void AModule::bindEvents(Gtk::Widget& wg) {
+  wg.set_cursor(curDefault);
+
+  if (!controllClick_) makeControllClick();
+  if (!controllScroll_) makeControllScroll();
+  if (!controllMotion_) makeControllMotion();
+
+  if (controllClick_) wg.add_controller(controllClick_);
+  if (controllScroll_) wg.add_controller(controllScroll_);
+  if (controllMotion_) wg.add_controller(controllMotion_);
+}
+
+void AModule::unBindEvents() {
+  removeControllClick();
+  removeControllScroll();
+  removeControllMotion();
+}
+
+void AModule::makeControllClick() {
+  if (enableClick_ || hasPressEvents_ || hasReleaseEvents_) {
+    controllClick_ = Gtk::GestureClick::create();
+    controllClick_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+    controllClick_->set_button(0u);
+
+    if (enableClick_ || hasPressEvents_)
+      controllClick_->signal_pressed().connect(sigc::mem_fun(*this, &AModule::handleToggle),
+                                               isAfter);
+    if (hasReleaseEvents_)
+      controllClick_->signal_released().connect(sigc::mem_fun(*this, &AModule::handleRelease),
+                                                isAfter);
+  }
+}
+
+void AModule::makeControllScroll() {
+  if (enableScroll_ || config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
+      config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString()) {
+    controllScroll_ = Gtk::EventControllerScroll::create();
+    controllScroll_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+    controllScroll_->set_flags(Gtk::EventControllerScroll::Flags::BOTH_AXES);
+    controllScroll_->signal_scroll().connect(sigc::mem_fun(*this, &AModule::handleScroll), isAfter);
+  }
+}
+
+void AModule::makeControllMotion() {
+  controllMotion_ = Gtk::EventControllerMotion::create();
+  controllMotion_->signal_enter().connect(sigc::mem_fun(*this, &AModule::handleMouseEnter));
+  controllMotion_->signal_leave().connect(sigc::mem_fun(*this, &AModule::handleMouseLeave));
+}
+
+static void removeControll(Glib::RefPtr<Gtk::EventController> controll) {
+  if (controll) {
+    Gtk::Widget* widget{controll->get_widget()};
+    if (widget) widget->remove_controller(controll);
+  }
+}
+
+void AModule::removeControllClick() {
+  if (controllClick_) {
+    removeControll(controllClick_);
+    controllClick_ = nullptr;
+  }
+}
+
+void AModule::removeControllScroll() {
+  if (controllScroll_) {
+    removeControll(controllScroll_);
+    controllScroll_ = nullptr;
+  }
+}
+
+void AModule::removeControllMotion() {
+  if (controllMotion_) {
+    removeControll(controllMotion_);
+    controllMotion_ = nullptr;
+  }
+}
 
 }  // namespace waybar

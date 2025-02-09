@@ -1,20 +1,14 @@
 #pragma once
 
-#include <fmt/format.h>
 #include <xkbcommon/xkbregistry.h>
 
-#include <map>
-#include <string>
-
 #include "ALabel.hpp"
-#include "bar.hpp"
-#include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::sway {
 
-class Language : public ALabel, public sigc::trackable {
+class Language final : public ALabel {
  public:
   Language(const std::string& id, const Json::Value& config);
   virtual ~Language() = default;

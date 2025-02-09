@@ -1,15 +1,10 @@
 #pragma once
 
 #include <glibmm/dispatcher.h>
-#include <sigc++/signal.h>
 
-#include <functional>
 #include <mutex>
 #include <queue>
 #include <thread>
-#include <tuple>
-#include <type_traits>
-#include <utility>
 
 namespace waybar {
 
@@ -35,7 +30,7 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
       signal_t::emit(std::forward<EmitArgs>(args)...);
     } else {
       {
-        std::unique_lock lock(mutex_);
+        std::unique_lock lock{mutex_};
         queue_.emplace(std::forward<EmitArgs>(args)...);
       }
       dp_.emit();
@@ -52,11 +47,11 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
   using slot_t = decltype(std::declval<signal_t>().make_slot());
   using arg_tuple_t = std::tuple<std::decay_t<Args>...>;
   // ensure that unwrapped methods are not accessible
-  using signal_t::emit_reverse;
+  using signal_t::emit;
   using signal_t::make_slot;
 
   void handle_event() {
-    for (std::unique_lock lock(mutex_); !queue_.empty(); lock.lock()) {
+    for (std::unique_lock lock{mutex_}; !queue_.empty(); lock.lock()) {
       auto args = queue_.front();
       queue_.pop();
       lock.unlock();

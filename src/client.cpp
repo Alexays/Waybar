@@ -1,12 +1,12 @@
 #include "client.hpp"
 
-#include <gtk-layer-shell.h>
+#include <gtk4-layer-shell.h>
+#include <gtkmm/application.h>
+#include <gtkmm/icontheme.h>
 #include <spdlog/spdlog.h>
 
 #include <iostream>
-#include <utility>
 
-#include "gtkmm/icontheme.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
@@ -178,15 +178,12 @@ const std::string waybar::Client::getStyle(const std::string &style,
 
 auto waybar::Client::setupCss(const std::string &css_file) -> void {
   css_provider_ = Gtk::CssProvider::create();
-  style_context_ = Gtk::StyleContext::create();
 
   // Load our css file, wherever that may be hiding
-  if (!css_provider_->load_from_path(css_file)) {
-    throw std::runtime_error("Can't open style file");
-  }
+  css_provider_->load_from_path(css_file);
   // there's always only one screen
-  style_context_->add_provider_for_screen(Gdk::Screen::get_default(), css_provider_,
-                                          GTK_STYLE_PROVIDER_PRIORITY_USER);
+  Gtk::StyleContext::add_provider_for_display(Gdk::Display::get_default(), css_provider_,
+                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void waybar::Client::bindInterfaces() {
@@ -206,13 +203,23 @@ void waybar::Client::bindInterfaces() {
     throw std::runtime_error("Failed to acquire required resources.");
   }
   // add existing outputs and subscribe to updates
-  for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
-    auto monitor = gdk_display->get_monitor(i);
-    handleMonitorAdded(monitor);
+  //  auto monitors{gdk_display->get_monitors()};
+  for (guint i{0}; i < monitors_->get_n_items(); ++i) {
+    handleMonitorAdded(std::dynamic_pointer_cast<Gdk::Monitor>(monitors_->get_object(i)));
   }
-  gdk_display->signal_monitor_added().connect(sigc::mem_fun(*this, &Client::handleMonitorAdded));
-  gdk_display->signal_monitor_removed().connect(
-      sigc::mem_fun(*this, &Client::handleMonitorRemoved));
+
+  monitors_->signal_items_changed().connect(
+      [=, this](const guint &position, const guint &removed, const guint &added) {
+        for (auto i{removed}; i >= 0; --i) {
+          handleMonitorRemoved(
+              std::dynamic_pointer_cast<Gdk::Monitor>(monitors_->get_object(position + i)));
+        }
+
+        for (auto i{added}; i >= 0; --i) {
+          handleMonitorAdded(
+              std::dynamic_pointer_cast<Gdk::Monitor>(monitors_->get_object(position + i)));
+        }
+      });
 }
 
 int waybar::Client::main(int argc, char *argv[]) {
@@ -245,13 +252,8 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
-                                     Gio::APPLICATION_HANDLES_COMMAND_LINE);
-
-  // Initialize Waybars GTK resources with our custom icons
-  auto theme = Gtk::IconTheme::get_default();
-  theme->add_resource_path("/fr/arouillard/waybar/icons");
-
+  gtk_app = Gtk::Application::create("fr.arouillard.waybar",
+                                     Gio::Application::Flags::HANDLES_COMMAND_LINE);
   gdk_display = Gdk::Display::get_default();
   if (!gdk_display) {
     throw std::runtime_error("Can't find display");
@@ -259,7 +261,13 @@ int waybar::Client::main(int argc, char *argv[]) {
   if (!GDK_IS_WAYLAND_DISPLAY(gdk_display->gobj())) {
     throw std::runtime_error("Bar need to run under Wayland");
   }
+
+  // Initialize Waybars GTK resources with our custom icons
+  auto theme{Gtk::IconTheme::get_for_display(gdk_display)};
+  theme->add_resource_path("/fr/arouillard/waybar/icons");
+
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
+  monitors_ = gdk_display->get_monitors();
   config.load(config_opt);
   if (!portal) {
     portal = std::make_unique<waybar::Portal>();
@@ -286,9 +294,10 @@ int waybar::Client::main(int argc, char *argv[]) {
 
   bindInterfaces();
   gtk_app->hold();
-  gtk_app->run();
+  gtk_app->run(argc, argv);
   m_cssReloadHelper.reset();  // stop watching css file
   bars.clear();
+
   return 0;
 }
 

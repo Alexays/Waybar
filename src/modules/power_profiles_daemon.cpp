@@ -39,8 +39,7 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   // adresses for compatibility sake.
   //
   // Revisit this in 2026, systems should be updated by then.
-
-  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SYSTEM, "net.hadess.PowerProfiles",
+  Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::SYSTEM, "net.hadess.PowerProfiles",
                                    "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles",
                                    sigc::mem_fun(*this, &PowerProfilesDaemon::busConnectedCb));
   // Schedule update to set the initial visibility
@@ -57,9 +56,6 @@ void PowerProfilesDaemon::busConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r) {
     // Connect active profile callback
   } catch (const std::exception& e) {
     spdlog::error("Failed to create the power profiles daemon DBus proxy: {}", e.what());
-  } catch (const Glib::Error& e) {
-    spdlog::error("Failed to create the power profiles daemon DBus proxy: {}",
-                  std::string(e.what()));
   }
 }
 
@@ -79,8 +75,6 @@ void PowerProfilesDaemon::getAllPropsCb(Glib::RefPtr<Gio::AsyncResult>& r) {
     populateInitState();
   } catch (const std::exception& err) {
     spdlog::error("Failed to query power-profiles-daemon via dbus: {}", err.what());
-  } catch (const Glib::Error& err) {
-    spdlog::error("Failed to query power-profiles-daemon via dbus: {}", std::string(err.what()));
   }
 }
 
@@ -162,21 +156,23 @@ auto PowerProfilesDaemon::update() -> void {
 
     // Set CSS class
     if (!currentStyle_.empty()) {
-      label_.get_style_context()->remove_class(currentStyle_);
+      remove_css_class(currentStyle_);
     }
-    label_.get_style_context()->add_class(profile.name);
+    add_css_class(profile.name);
     currentStyle_ = profile.name;
-    event_box_.set_visible(true);
+    label_.set_visible(true);
   } else {
-    event_box_.set_visible(false);
+    label_.set_visible(false);
   }
 
   ALabel::update();
 }
 
-bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
-  if (e->type == GdkEventType::GDK_BUTTON_PRESS && connected_) {
-    if (e->button == 1) /* left click */ {
+void PowerProfilesDaemon::handleToggle(int n_press, double dx, double dy) {
+  if (Gdk::Event::Type::BUTTON_PRESS ==
+          (AModule::controllClick_->get_current_event())->get_event_type() &&
+      connected_) {
+    if (AModule::controllClick_->get_current_button() == 1 /* left click */) {
       activeProfile_++;
       if (activeProfile_ == availableProfiles_.end()) {
         activeProfile_ = availableProfiles_.begin();
@@ -196,7 +192,6 @@ bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
     powerProfilesProxy_->call("org.freedesktop.DBus.Properties.Set",
                               sigc::mem_fun(*this, &PowerProfilesDaemon::setPropCb), callArgs);
   }
-  return true;
 }
 
 void PowerProfilesDaemon::setPropCb(Glib::RefPtr<Gio::AsyncResult>& r) {
@@ -205,8 +200,6 @@ void PowerProfilesDaemon::setPropCb(Glib::RefPtr<Gio::AsyncResult>& r) {
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Failed to set the active power profile: {}", e.what());
-  } catch (const Glib::Error& e) {
-    spdlog::error("Failed to set the active power profile: {}", std::string(e.what()));
   }
 }
 

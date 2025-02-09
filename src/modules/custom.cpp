@@ -135,23 +135,22 @@ void waybar::modules::Custom::handleEvent() {
   }
 }
 
-bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
-  auto ret = ALabel::handleScroll(e);
+bool waybar::modules::Custom::handleScroll(double dx, double dy) {
+  auto ret = ALabel::handleScroll(dx, dy);
   handleEvent();
   return ret;
 }
 
-bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
-  auto ret = ALabel::handleToggle(e);
+void waybar::modules::Custom::handleToggle(int n_press, double dx, double dy) {
+  ALabel::handleToggle(n_press, dx, dy);
   handleEvent();
-  return ret;
 }
 
 auto waybar::modules::Custom::update() -> void {
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
-    event_box_.hide();
+    set_visible(false);
   } else {
     if (config_["return-type"].asString() == "json") {
       parseOutputJson();
@@ -164,7 +163,7 @@ auto waybar::modules::Custom::update() -> void {
                              fmt::arg("icon", getIcon(percentage_, alt_)),
                              fmt::arg("percentage", percentage_));
       if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
-        event_box_.hide();
+        set_visible(false);
       } else {
         label_.set_markup(str);
         if (tooltipEnabled()) {
@@ -175,28 +174,22 @@ auto waybar::modules::Custom::update() -> void {
                 fmt::arg("icon", getIcon(percentage_, alt_)), fmt::arg("percentage", percentage_));
             label_.set_tooltip_markup(tooltip);
           } else if (text_ == tooltip_) {
-            if (label_.get_tooltip_markup() != str) {
+            if (label_.get_tooltip_markup().c_str() != str) {
               label_.set_tooltip_markup(str);
             }
           } else {
-            if (label_.get_tooltip_markup() != tooltip_) {
+            if (label_.get_tooltip_markup().c_str() != tooltip_) {
               label_.set_tooltip_markup(tooltip_);
             }
           }
         }
-        auto style = label_.get_style_context();
-        auto classes = style->list_classes();
-        for (auto const& c : classes) {
-          if (c == id_) continue;
-          style->remove_class(c);
-        }
         for (auto const& c : class_) {
-          style->add_class(c);
+          add_css_class(c);
         }
-        style->add_class("flat");
-        style->add_class("text-button");
-        style->add_class(MODULE_CLASS);
-        event_box_.show();
+        add_css_class("flat");
+        add_css_class("text-button");
+        add_css_class(MODULE_CLASS);
+        set_visible(true);
       }
     } catch (const fmt::format_error& e) {
       if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)

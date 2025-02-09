@@ -3,10 +3,7 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
-#include <chrono>
-#include <iomanip>
 #include <regex>
-#include <sstream>
 
 #include "util/ustring_clen.hpp"
 
@@ -118,19 +115,17 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       }
     } else
       cldMonCols_ = 1;
+
     if (config_[kCldPlaceholder]["on-scroll"].isInt()) {
       cldShift_ = config_[kCldPlaceholder]["on-scroll"].asInt();
-      event_box_.add_events(Gdk::LEAVE_NOTIFY_MASK);
-      event_box_.signal_leave_notify_event().connect([this](GdkEventCrossing*) {
-        cldCurrShift_ = months{0};
-        return false;
-      });
+      AModule::controllMotion_->set_propagation_phase(Gtk::PropagationPhase::TARGET);
+      AModule::controllMotion_->signal_leave().connect([this]() { cldCurrShift_ = months{0}; });
     }
   }
 
   if (tooltipEnabled()) {
     label_.set_has_tooltip(true);
-    label_.signal_query_tooltip().connect(sigc::mem_fun(*this, &Clock::query_tlp_cb));
+    label_.signal_query_tooltip().connect(sigc::mem_fun(*this, &Clock::query_tlp_cb), false);
   }
 
   thread_ = [this] {

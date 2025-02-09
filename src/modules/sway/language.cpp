@@ -1,15 +1,7 @@
 #include "modules/sway/language.hpp"
 
-#include <fmt/core.h>
-#include <json/json.h>
 #include <spdlog/spdlog.h>
-#include <xkbcommon/xkbregistry.h>
 
-#include <cstring>
-#include <string>
-#include <vector>
-
-#include "modules/sway/ipc/ipc.hpp"
 #include "util/string.hpp"
 
 namespace waybar::modules::sway {
@@ -97,7 +89,7 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   if (hide_single_ && layouts_map_.size() <= 1) {
-    event_box_.hide();
+    set_visible(false);
     return;
   }
   auto display_layout = trim(fmt::format(
@@ -118,16 +110,16 @@ auto Language::update() -> void {
     }
   }
 
-  event_box_.show();
+  set_visible(true);
 
   // Call parent update
   ALabel::update();
 }
 
 auto Language::set_current_layout(std::string current_layout) -> void {
-  label_.get_style_context()->remove_class(layout_.short_name);
+  remove_css_class(layout_.short_name);
   layout_ = layouts_map_[current_layout];
-  label_.get_style_context()->add_class(layout_.short_name);
+  add_css_class(layout_.short_name);
 }
 
 auto Language::init_layouts_map(const std::vector<std::string>& used_layouts) -> void {

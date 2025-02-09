@@ -10,10 +10,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   box_.set_name("workspaces");
   if (!id.empty()) {
-    box_.get_style_context()->add_class(id);
+    box_.add_css_class(id);
   }
-  box_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(box_);
+  box_.add_css_class(MODULE_CLASS);
 
   if (!gIPC) gIPC = std::make_unique<IPC>();
 
@@ -55,31 +54,30 @@ void Workspaces::doUpdate() {
   for (const auto &ws : my_workspaces) {
     auto bit = buttons_.find(ws["id"].asUInt64());
     auto &button = bit == buttons_.end() ? addButton(ws) : bit->second;
-    auto style_context = button.get_style_context();
 
     if (ws["is_focused"].asBool())
-      style_context->add_class("focused");
+      button.add_css_class("focused");
     else
-      style_context->remove_class("focused");
+      button.remove_css_class("focused");
 
     if (ws["is_active"].asBool())
-      style_context->add_class("active");
+      button.add_css_class("active");
     else
-      style_context->remove_class("active");
+      button.remove_css_class("active");
 
     if (ws["output"]) {
       if (ws["output"].asString() == bar_.output->name)
-        style_context->add_class("current_output");
+        button.add_css_class("current_output");
       else
-        style_context->remove_class("current_output");
+        button.remove_css_class("current_output");
     } else {
-      style_context->remove_class("current_output");
+      button.remove_css_class("current_output");
     }
 
     if (ws["active_window_id"].isNull())
-      style_context->add_class("empty");
+      button.add_css_class("empty");
     else
-      style_context->remove_class("empty");
+      button.remove_css_class("empty");
 
     std::string name;
     if (ws["name"]) {
@@ -114,14 +112,21 @@ void Workspaces::doUpdate() {
   }
 
   // Refresh the button order.
+  Gtk::Widget *prev_button = nullptr;
   for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
     const auto &ws = *it;
 
+    // TODO: this is broken, fix it
     auto pos = ws["idx"].asUInt() - 1;
     if (alloutputs) pos = it - my_workspaces.cbegin();
 
     auto &button = buttons_[ws["id"].asUInt64()];
-    box_.reorder_child(button, pos);
+    if (prev_button == nullptr) {
+      box_.reorder_child_at_start(button);
+    } else {
+      box_.reorder_child_after(button, *prev_button);
+    }
+    prev_button = &button;
   }
 }
 
@@ -129,6 +134,8 @@ void Workspaces::update() {
   doUpdate();
   AModule::update();
 }
+
+Gtk::Widget &Workspaces::root() { return box_; };
 
 Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
   std::string name;
@@ -140,11 +147,12 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
 
   auto pair = buttons_.emplace(ws["id"].asUInt64(), name);
   auto &&button = pair.first->second;
-  box_.pack_start(button, false, false, 0);
-  button.set_relief(Gtk::RELIEF_NONE);
+  box_.append(button);
+  button.set_has_frame(false);
   if (!config_["disable-click"].asBool()) {
+    AModule::bindEvents(button);
     const auto id = ws["id"].asUInt64();
-    button.signal_pressed().connect([=] {
+    controllClick_->signal_pressed().connect([=](int n_press, double dx, double dy) {
       try {
         // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
         Json::Value request(Json::objectValue);

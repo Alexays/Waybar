@@ -1,18 +1,13 @@
 #pragma once
 
-#include <fmt/format.h>
-
-#include <tuple>
-
 #include "AAppIconLabel.hpp"
-#include "bar.hpp"
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::sway {
 
-class Window : public AAppIconLabel, public sigc::trackable {
+class Window final : public AAppIconLabel {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~Window() = default;

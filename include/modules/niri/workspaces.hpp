@@ -14,6 +14,7 @@ class Workspaces : public AModule, public EventHandler {
   Workspaces(const std::string &, const Bar &, const Json::Value &);
   ~Workspaces() override;
   void update() override;
+  Gtk::Widget &root() override;
 
  private:
   void onEvent(const Json::Value &ev) override;
