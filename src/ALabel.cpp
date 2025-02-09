@@ -39,17 +39,19 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     label_.set_width_chars(config_["min-length"].asUInt());
   }
 
-  uint rotate = 0;
   if (config_["rotate"].isUInt()) {
-    rotate = config["rotate"].asUInt();
-    if (not(rotate == 0 || rotate == 90 || rotate == 180 || rotate == 270))
-      spdlog::error("'rotate' is only supported in 90 degree increments {} is not valid.", rotate);
-    // TODO
+    rotate_ = config["rotate"].asUInt() % 360;
+    if (not(rotate_ == 0 || rotate_ == 90 || rotate_ == 180 || rotate_ == 270)) {
+      spdlog::error(
+          "'rotate' is only supported in 90 degree increments {} is not valid. Falling back to 0.",
+          rotate_);
+      rotate_ = 0;
+    }
   }
 
   if (config_["align"].isDouble()) {
     auto align = config_["align"].asFloat();
-    if (rotate == 90 || rotate == 270) {
+    if (rotate_ == 90 || rotate_ == 270) {
       label_.set_yalign(align);
     } else {
       label_.set_xalign(align);
@@ -235,21 +237,68 @@ Gtk::Widget& ALabel::child() {
   return const_cast<Gtk::Widget&>(const_cast<const ALabel*>(this)->child());
 }
 
-Gtk::SizeRequestMode ALabel::get_request_mode_vfunc() const { return child().get_request_mode(); }
+// Test if the angle is vertical
+static bool isVertical(uint angle) { return angle == 90 || angle == 270; }
+
+Gtk::SizeRequestMode ALabel::get_request_mode_vfunc() const {
+  auto mode = child().get_request_mode();
+  if (isVertical(rotate_)) {
+    // we need to use the opposite mode from the child
+    switch (mode) {
+      case Gtk::SizeRequestMode::HEIGHT_FOR_WIDTH:
+        return Gtk::SizeRequestMode::WIDTH_FOR_HEIGHT;
+      case Gtk::SizeRequestMode::WIDTH_FOR_HEIGHT:
+        return Gtk::SizeRequestMode::HEIGHT_FOR_WIDTH;
+      default:
+        return mode;
+    }
+  } else {
+    return mode;
+  }
+}
 
 void ALabel::measure_vfunc(Gtk::Orientation orientation, int for_size, int& minimum, int& natural,
                            int& minimum_baseline, int& natural_baseline) const {
-  return child().measure(orientation, for_size, minimum, natural, minimum_baseline,
-                         natural_baseline);
+  bool vertical = isVertical(rotate_);
+  if (vertical) {
+    // the rotation is perpindicular, so we need to reverse the orientation.
+    if (orientation == Gtk::Orientation::HORIZONTAL) {
+      orientation = Gtk::Orientation::VERTICAL;
+    } else {
+      orientation = Gtk::Orientation::HORIZONTAL;
+    }
+  }
+  child().measure(orientation, for_size, minimum, natural, minimum_baseline, natural_baseline);
+  if (vertical) {
+    // If we are rotated, the baseline doesn't make sense
+    minimum_baseline = -1;
+    natural_baseline = -1;
+  }
 }
 void ALabel::size_allocate_vfunc(int width, int height, int baseline) {
-  Gtk::Allocation allocation;
-  allocation.set_x(0);
-  allocation.set_y(0);
-  allocation.set_width(width);
-  allocation.set_height(height);
+  // I can't find a C++ wrapper for Gsk
+  GskTransform* transform = nullptr;
+  if (rotate_ != 0) {
+    // In order to rotate about the center, we need to translate to the center of the
+    // allocation, rotate, then translate back
+    float centerx = static_cast<float>(width) / 2.0f;
+    float centery = static_cast<float>(height) / 2.0f;
+    Gdk::Graphene::Point point{centerx, centery};
+    transform = gsk_transform_translate(nullptr, point.gobj());
+    transform = gsk_transform_rotate(transform, rotate_);
+    if (isVertical(rotate_)) {
+      point.set_y(-centery);
+      point.set_x(-centerx);
+    } else {
+      point.set_x(-centerx);
+      point.set_y(-centery);
+    }
+    transform = gsk_transform_translate(transform, point.gobj());
+  }
 
-  child().size_allocate(allocation, baseline);
+  // For some reason there isn't a gtkmm equivalent of this
+  gtk_widget_allocate(GTK_WIDGET(child().gobj()), width, height, baseline, transform);
+
   if (menu_) {
     // We need to present the menu as part of this function
     menu_->present();

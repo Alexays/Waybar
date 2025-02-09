@@ -51,6 +51,7 @@ class ALabel : public AModule, public Gtk::Widget {
 
  private:
   void handleMenu(std::string cmd) const;
+  uint rotate_{0};
 };
 
 }  // namespace waybar
