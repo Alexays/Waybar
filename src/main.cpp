@@ -6,7 +6,9 @@
 #include <list>
 #include <mutex>
 
+#include "bar.hpp"
 #include "client.hpp"
+#include "util/backend_common.hpp"
 
 std::mutex reap_mtx;
 std::list<pid_t> reap;
@@ -70,21 +72,47 @@ void startSignalThread() {
   }
 }
 
+waybar::util::KillSignalAction getActionForBar(waybar::Bar* bar, int signal) {
+  switch (signal) {
+    case SIGUSR1:
+      return bar->getOnSigusr1Action();
+    case SIGUSR2:
+      return bar->getOnSigusr2Action();
+    default:
+      return waybar::util::KillSignalAction::NOOP;
+  }
+}
+
+void handleUserSignal(int signal) {
+  for (auto& bar : waybar::Client::inst()->bars) {
+    switch (getActionForBar(bar.get(), signal)) {
+      case waybar::util::KillSignalAction::HIDE:
+        bar->hide();
+        break;
+      case waybar::util::KillSignalAction::SHOW:
+        bar->show();
+        break;
+      case waybar::util::KillSignalAction::TOGGLE:
+        bar->toggle();
+        break;
+      case waybar::util::KillSignalAction::RELOAD:
+        spdlog::info("Reloading...");
+        reload = true;
+        waybar::Client::inst()->reset();
+        return;
+      case waybar::util::KillSignalAction::NOOP:
+        break;
+    }
+  }
+}
+
 int main(int argc, char* argv[]) {
   try {
     auto* client = waybar::Client::inst();
 
-    std::signal(SIGUSR1, [](int /*signal*/) {
-      for (auto& bar : waybar::Client::inst()->bars) {
-        bar->toggle();
-      }
-    });
+    std::signal(SIGUSR1, [](int /*signal*/) { handleUserSignal(SIGUSR1); });
 
-    std::signal(SIGUSR2, [](int /*signal*/) {
-      spdlog::info("Reloading...");
-      reload = true;
-      waybar::Client::inst()->reset();
-    });
+    std::signal(SIGUSR2, [](int /*signal*/) { handleUserSignal(SIGUSR2); });
 
     std::signal(SIGINT, [](int /*signal*/) {
       spdlog::info("Quitting.");
