@@ -294,7 +294,8 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &c
     if (!rule["persistent"].asBool()) {
       continue;
     }
-    auto const &workspace = rule["workspaceString"].asString();
+    auto const &workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
+                                                         : rule["workspaceString"].asString();
     auto const &monitor = rule["monitor"].asString();
     // create this workspace persistently if:
     // 1. the allOutputs config option is enabled
@@ -375,7 +376,10 @@ void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
         if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
             (showSpecial() || !name.starts_with("special")) && !isDoubleSpecial(workspaceName)) {
           for (Json::Value const &rule : workspaceRules) {
-            if (rule["workspaceString"].asString() == workspaceName) {
+            auto ruleWorkspaceName = rule.isMember("defaultName")
+                                         ? rule["defaultName"].asString()
+                                         : rule["workspaceString"].asString();
+            if (ruleWorkspaceName == workspaceName) {
               workspaceJson["persistent-rule"] = rule["persistent"].asBool();
               break;
             }
