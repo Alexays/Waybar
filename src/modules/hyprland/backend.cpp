@@ -45,7 +45,7 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
 
 IPC::IPC() {
   // will start IPC and relay events to parseIPC
-  ipcThread_ = std::jthread([this]() { socketListener(); });
+  ipcThread_ = std::thread([this]() { socketListener(); });
 }
 
 IPC::~IPC() {

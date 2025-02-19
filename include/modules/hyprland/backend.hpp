@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <list>
-#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -38,7 +37,7 @@ class IPC {
   void socketListener();
   void parseIPC(const std::string&);
 
-  std::jthread ipcThread_;
+  std::thread ipcThread_;
   std::mutex callbackMutex_;
   util::JsonParser parser_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;

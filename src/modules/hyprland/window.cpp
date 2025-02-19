@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <shared_mutex>
-#include <thread>
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
