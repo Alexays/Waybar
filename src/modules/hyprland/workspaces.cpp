@@ -866,7 +866,7 @@ void Workspaces::updateWorkspaceStates() {
   for (auto &workspace : m_workspaces) {
     workspace->setActive(workspace->name() == m_activeWorkspaceName ||
                          workspace->name() == m_activeSpecialWorkspaceName);
-    if (workspace->name() == m_activeWorkspaceName && workspace->isUrgent()) {
+    if (workspace->isActive() && workspace->isUrgent()) {
       workspace->setUrgent(false);
     }
     workspace->setVisible(std::find(visibleWorkspaces.begin(), visibleWorkspaces.end(),
