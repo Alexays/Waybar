@@ -37,6 +37,8 @@ class Language : public waybar::ALabel, public EventHandler {
   util::JsonParser parser_;
 
   Layout layout_;
+
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

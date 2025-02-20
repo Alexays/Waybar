@@ -13,7 +13,10 @@
 namespace waybar::modules::hyprland {
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, false), m_bar(bar), m_box(bar.orientation, 0) {
+    : AModule(config, "workspaces", id, false, false),
+      m_bar(bar),
+      m_box(bar.orientation, 0),
+      m_ipc(IPC::inst()) {
   modulesReady = true;
   parseConfig(config);
 
@@ -24,23 +27,19 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   m_box.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(m_box);
 
-  if (!gIPC) {
-    gIPC = std::make_unique<IPC>();
-  }
-
   setCurrentMonitorId();
   init();
   registerIpc();
 }
 
 Workspaces::~Workspaces() {
-  gIPC->unregisterForIPC(this);
+  m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(m_mutex);
 }
 
 void Workspaces::init() {
-  m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
+  m_activeWorkspaceName = (m_ipc.getSocket1JsonReply("activeworkspace"))["name"].asString();
 
   initializeWorkspaces();
   dp.emit();
@@ -161,7 +160,7 @@ std::string Workspaces::getRewrite(std::string window_class, std::string window_
 
 std::vector<std::string> Workspaces::getVisibleWorkspaces() {
   std::vector<std::string> visibleWorkspaces;
-  auto monitors = gIPC->getSocket1JsonReply("monitors");
+  auto monitors = IPC::inst().getSocket1JsonReply("monitors");
   for (const auto &monitor : monitors) {
     auto ws = monitor["activeWorkspace"];
     if (ws.isObject() && ws["name"].isString()) {
@@ -185,8 +184,8 @@ void Workspaces::initializeWorkspaces() {
   }
 
   // get all current workspaces
-  auto const workspacesJson = gIPC->getSocket1JsonReply("workspaces");
-  auto const clientsJson = gIPC->getSocket1JsonReply("clients");
+  auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
+  auto const clientsJson = m_ipc.getSocket1JsonReply("clients");
 
   for (Json::Value workspaceJson : workspacesJson) {
     std::string workspaceName = workspaceJson["name"].asString();
@@ -285,7 +284,7 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
 void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &clientsJson) {
   spdlog::info("Loading persistent workspaces from Hyprland workspace rules");
 
-  auto const workspaceRules = gIPC->getSocket1JsonReply("workspacerules");
+  auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
   for (Json::Value const &rule : workspaceRules) {
     if (!rule["workspaceString"].isString()) {
       spdlog::warn("Workspace rules: invalid workspaceString, skipping: {}", rule);
@@ -366,10 +365,10 @@ void Workspaces::onWorkspaceDestroyed(std::string const &payload) {
 void Workspaces::onWorkspaceCreated(std::string const &workspaceName,
                                     Json::Value const &clientsData) {
   spdlog::debug("Workspace created: {}", workspaceName);
-  auto const workspacesJson = gIPC->getSocket1JsonReply("workspaces");
+  auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
 
   if (!isWorkspaceIgnored(workspaceName)) {
-    auto const workspaceRules = gIPC->getSocket1JsonReply("workspacerules");
+    auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
     for (Json::Value workspaceJson : workspacesJson) {
       std::string name = workspaceJson["name"].asString();
       if (name == workspaceName) {
@@ -401,7 +400,7 @@ void Workspaces::onWorkspaceMoved(std::string const &payload) {
   spdlog::debug("Workspace moved: {}", payload);
 
   // Update active workspace
-  m_activeWorkspaceName = (gIPC->getSocket1JsonReply("activeworkspace"))["name"].asString();
+  m_activeWorkspaceName = (m_ipc.getSocket1JsonReply("activeworkspace"))["name"].asString();
 
   if (allOutputs()) return;
 
@@ -409,7 +408,7 @@ void Workspaces::onWorkspaceMoved(std::string const &payload) {
   std::string monitorName = payload.substr(payload.find(',') + 1);
 
   if (m_bar.output->name == monitorName) {
-    Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
+    Json::Value clientsData = m_ipc.getSocket1JsonReply("clients");
     onWorkspaceCreated(workspaceName, clientsData);
   } else {
     spdlog::debug("Removing workspace because it was moved to another monitor: {}");
@@ -438,7 +437,7 @@ void Workspaces::onMonitorFocused(std::string const &payload) {
   spdlog::trace("Monitor focused: {}", payload);
   m_activeWorkspaceName = payload.substr(payload.find(',') + 1);
 
-  for (Json::Value &monitor : gIPC->getSocket1JsonReply("monitors")) {
+  for (Json::Value &monitor : m_ipc.getSocket1JsonReply("monitors")) {
     if (monitor["name"].asString() == payload.substr(0, payload.find(','))) {
       auto name = monitor["specialWorkspace"]["name"].asString();
       m_activeSpecialWorkspaceName = !name.starts_with("special:") ? name : name.substr(8);
@@ -546,7 +545,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
   }
 
   if (inserter.has_value()) {
-    Json::Value clientsData = gIPC->getSocket1JsonReply("clients");
+    Json::Value clientsData = m_ipc.getSocket1JsonReply("clients");
     std::string jsonWindowAddress = fmt::format("0x{}", payload);
 
     auto client =
@@ -664,24 +663,24 @@ void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payloa
 }
 
 auto Workspaces::registerIpc() -> void {
-  gIPC->registerForIPC("workspace", this);
-  gIPC->registerForIPC("activespecial", this);
-  gIPC->registerForIPC("createworkspace", this);
-  gIPC->registerForIPC("destroyworkspace", this);
-  gIPC->registerForIPC("focusedmon", this);
-  gIPC->registerForIPC("moveworkspace", this);
-  gIPC->registerForIPC("renameworkspace", this);
-  gIPC->registerForIPC("openwindow", this);
-  gIPC->registerForIPC("closewindow", this);
-  gIPC->registerForIPC("movewindow", this);
-  gIPC->registerForIPC("urgent", this);
-  gIPC->registerForIPC("configreloaded", this);
+  m_ipc.registerForIPC("workspace", this);
+  m_ipc.registerForIPC("activespecial", this);
+  m_ipc.registerForIPC("createworkspace", this);
+  m_ipc.registerForIPC("destroyworkspace", this);
+  m_ipc.registerForIPC("focusedmon", this);
+  m_ipc.registerForIPC("moveworkspace", this);
+  m_ipc.registerForIPC("renameworkspace", this);
+  m_ipc.registerForIPC("openwindow", this);
+  m_ipc.registerForIPC("closewindow", this);
+  m_ipc.registerForIPC("movewindow", this);
+  m_ipc.registerForIPC("urgent", this);
+  m_ipc.registerForIPC("configreloaded", this);
 
   if (windowRewriteConfigUsesTitle()) {
     spdlog::info(
         "Registering for Hyprland's 'windowtitle' events because a user-defined window "
         "rewrite rule uses the 'title' field.");
-    gIPC->registerForIPC("windowtitle", this);
+    m_ipc.registerForIPC("windowtitle", this);
   }
 }
 
@@ -716,7 +715,7 @@ void Workspaces::removeWorkspace(std::string const &name) {
 void Workspaces::setCurrentMonitorId() {
   // get monitor ID from name (used by persistent workspaces)
   m_monitorId = 0;
-  auto monitors = gIPC->getSocket1JsonReply("monitors");
+  auto monitors = m_ipc.getSocket1JsonReply("monitors");
   auto currentMonitor = std::find_if(
       monitors.begin(), monitors.end(),
       [this](const Json::Value &m) { return m["name"].asString() == m_bar.output->name; });
@@ -792,7 +791,7 @@ void Workspaces::sortWorkspaces() {
 }
 
 void Workspaces::setUrgentWorkspace(std::string const &windowaddress) {
-  const Json::Value clientsJson = gIPC->getSocket1JsonReply("clients");
+  const Json::Value clientsJson = m_ipc.getSocket1JsonReply("clients");
   int workspaceId = -1;
 
   for (Json::Value clientJson : clientsJson) {
@@ -816,7 +815,7 @@ auto Workspaces::update() -> void {
 }
 
 void Workspaces::updateWindowCount() {
-  const Json::Value workspacesJson = gIPC->getSocket1JsonReply("workspaces");
+  const Json::Value workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
     auto workspaceJson =
         std::find_if(workspacesJson.begin(), workspacesJson.end(), [&](Json::Value const &x) {
@@ -863,7 +862,7 @@ bool Workspaces::updateWindowsToCreate() {
 
 void Workspaces::updateWorkspaceStates() {
   const std::vector<std::string> visibleWorkspaces = getVisibleWorkspaces();
-  auto updatedWorkspaces = gIPC->getSocket1JsonReply("workspaces");
+  auto updatedWorkspaces = m_ipc.getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
     workspace->setActive(workspace->name() == m_activeWorkspaceName ||
                          workspace->name() == m_activeSpecialWorkspaceName);
