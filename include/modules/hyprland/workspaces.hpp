@@ -37,6 +37,7 @@ class Workspaces : public AModule, public EventHandler {
   auto activeOnly() const -> bool { return m_activeOnly; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
+  auto barScroll() const -> bool { return m_barScroll; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
 
@@ -93,6 +94,9 @@ class Workspaces : public AModule, public EventHandler {
 
   int windowRewritePriorityFunction(std::string const& window_rule);
 
+  // scroll events
+  bool handleScroll(GdkEventScroll* e) override;
+
   // Update methods
   void doUpdate();
   void removeWorkspacesToRemove();
@@ -114,6 +118,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_activeOnly = false;
   bool m_specialVisibleOnly = false;
   bool m_moveToMonitor = false;
+  bool m_barScroll = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
