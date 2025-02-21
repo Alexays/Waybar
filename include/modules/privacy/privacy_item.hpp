@@ -17,8 +17,8 @@ namespace waybar::modules::privacy {
 class PrivacyItem : public Gtk::Revealer {
  public:
   PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
-              std::list<PrivacyNodeInfo *> *nodes, const std::string &pos, const uint icon_size,
-              const uint transition_duration);
+              std::list<PrivacyNodeInfo *> *nodes, Gtk::Orientation orientation,
+              const std::string &pos, const uint icon_size, const uint transition_duration);
 
   enum PrivacyNodeType privacy_type;
 

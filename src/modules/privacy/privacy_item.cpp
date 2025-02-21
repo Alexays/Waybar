@@ -11,8 +11,9 @@
 namespace waybar::modules::privacy {
 
 PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
-                         std::list<PrivacyNodeInfo *> *nodes_, const std::string &pos,
-                         const uint icon_size, const uint transition_duration)
+                         std::list<PrivacyNodeInfo *> *nodes_, Gtk::Orientation orientation,
+                         const std::string &pos, const uint icon_size,
+                         const uint transition_duration)
     : Gtk::Revealer(),
       privacy_type(privacy_type_),
       nodes(nodes_),
@@ -40,16 +41,24 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
   // Set the reveal transition to not look weird when sliding in
   if (pos == "modules-left") {
-    set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
+    set_transition_type(orientation == Gtk::ORIENTATION_HORIZONTAL
+                            ? Gtk::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT
+                            : Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
   } else if (pos == "modules-center") {
     set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_CROSSFADE);
   } else if (pos == "modules-right") {
-    set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_LEFT);
+    set_transition_type(orientation == Gtk::ORIENTATION_HORIZONTAL
+                            ? Gtk::REVEALER_TRANSITION_TYPE_SLIDE_LEFT
+                            : Gtk::REVEALER_TRANSITION_TYPE_SLIDE_UP);
   }
   set_transition_duration(transition_duration);
 
   box_.set_name("privacy-item");
-  box_.add(icon_);
+
+  // We use `set_center_widget` instead of `add` to make sure the icon is
+  // centered even if the orientation is vertical
+  box_.set_center_widget(icon_);
+
   icon_.set_pixel_size(icon_size);
   add(box_);
 

@@ -15,13 +15,14 @@ using util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
 using util::PipewireBackend::PRIVACY_NODE_TYPE_NONE;
 using util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT;
 
-Privacy::Privacy(const std::string& id, const Json::Value& config, const std::string& pos)
+Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientation orientation,
+                 const std::string& pos)
     : AModule(config, "privacy", id),
       nodes_screenshare(),
       nodes_audio_in(),
       nodes_audio_out(),
       visibility_conn(),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+      box_(orientation, 0) {
   box_.set_name(name_);
 
   event_box_.add(box_);
@@ -67,8 +68,8 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, const std::st
     auto iter = typeMap.find(type);
     if (iter != typeMap.end()) {
       auto& [nodePtr, nodeType] = iter->second;
-      auto* item = Gtk::make_managed<PrivacyItem>(module, nodeType, nodePtr, pos, iconSize,
-                                                  transition_duration);
+      auto* item = Gtk::make_managed<PrivacyItem>(module, nodeType, nodePtr, orientation, pos,
+                                                  iconSize, transition_duration);
       box_.add(*item);
     }
   }
