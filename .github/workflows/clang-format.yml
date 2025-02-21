@@ -17,4 +17,4 @@ jobs:
           source: "."
           extensions: "hpp,h,cpp,c"
           style: "file:.clang-format"
-          clangFormatVersion: 18
+          clangFormatVersion: 19
