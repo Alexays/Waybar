@@ -41,6 +41,11 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to true, only the active or focused workspace will be shown.
 
+*only-populated*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only workspaces that contain windows will be shown.
+
 *on-update*: ++
 	typeof: string ++
 	Command to execute when the module is updated.
