@@ -1,4 +1,5 @@
 #include "modules/sni/tray.hpp"
+#include "modules/sni/icon_manager.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -20,6 +21,9 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     box_.set_spacing(config_["spacing"].asUInt());
   }
   nb_hosts_ += 1;
+  if (config_["icons"].isObject()) {
+    IconManager::instance().setIconsConfig(config_["icons"]);
+  }
   dp.emit();
 }
 

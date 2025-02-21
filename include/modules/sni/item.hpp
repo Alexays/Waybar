@@ -62,6 +62,7 @@ class Item : public sigc::trackable {
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
+  void setCustomIcon(const std::string& id);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
   void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
