@@ -538,11 +538,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         return NL_OK;
       }
 
-      if ((ifa->ifa_family != AF_INET && net->addr_pref_ == ip_addr_pref::IPV4) ||
-          (ifa->ifa_family != AF_INET6 && net->addr_pref_ == ip_addr_pref::IPV6)) {
-        return NL_OK;
-      }
-
       // We ignore address mark as scope for the link or host,
       // which should leave scope global addresses.
       if (ifa->ifa_scope >= RT_SCOPE_LINK) {
