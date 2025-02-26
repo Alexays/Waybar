@@ -24,7 +24,7 @@ Addressed by *network*
 *family*: ++
 	typeof: string ++
 	default: *ipv4* ++
-	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present.
+	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present. Set it to ipv4_6 to display both.
 
 *format*: ++
 	typeof: string  ++
