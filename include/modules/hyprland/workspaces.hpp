@@ -78,6 +78,7 @@ class Workspaces : public AModule, public EventHandler {
                           Json::Value const& clientsData = Json::Value::nullRef);
   void onWorkspaceMoved(std::string const& payload);
   void onWorkspaceRenamed(std::string const& payload);
+  static int parseWorkspaceId(std::string const& workspaceIdStr);
 
   // monitor events
   void onMonitorFocused(std::string const& payload);
@@ -92,6 +93,12 @@ class Workspaces : public AModule, public EventHandler {
   void onConfigReloaded();
 
   int windowRewritePriorityFunction(std::string const& window_rule);
+
+  // event payload management
+  template<typename... Args>
+  static std::string makePayload(Args const&... args);
+  static std::pair<std::string, std::string> splitDoublePayload(std::string const& payload);
+  static std::tuple<std::string, std::string, std::string> splitTriplePayload(std::string const& payload);
 
   // Update methods
   void doUpdate();
@@ -138,7 +145,7 @@ class Workspaces : public AModule, public EventHandler {
 
   bool m_withIcon;
   uint64_t m_monitorId;
-  std::string m_activeWorkspaceName;
+  int m_activeWorkspaceId;
   std::string m_activeSpecialWorkspaceName;
   std::vector<std::unique_ptr<Workspace>> m_workspaces;
   std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
