@@ -19,6 +19,7 @@
 #include "glibmm/error.h"
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
+#include "util/command.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
@@ -580,28 +581,18 @@ bool Task::handle_clicked(GdkEventButton *bt) {
     drag_start_y = bt->y;
   }
 
-  std::string action;
-  auto actions = tbar_->task_actions();
-
-  if (actions.contains("on-click") && bt->button == 1)
-    action = actions["on-click"];
-  else if (actions.contains("on-click-middle") && bt->button == 2)
-    action = actions["on-click-middle"];
-  else if (actions.contains("on-click-right") && bt->button == 3)
-    action = actions["on-click-right"];
-
+  auto action = tbar_->task_actions()[bt->button];
   if (action.empty()) {
-    spdlog::trace("wlr/taskbar: no action bound");
-    return true;
+    spdlog::trace("wlr/taskbar: no action bound for button {}", bt->button);
   } else if (action == "activate") {
-    spdlog::trace("wlr/taskbar: activate");
+    spdlog::trace("wlr/taskbar: button {} activate", bt->button);
     activate();
   } else if (action == "minimize") {
-    spdlog::trace("wlr/taskbar: minimize");
+    spdlog::trace("wlr/taskbar: button {} minimize", bt->button);
     set_minimize_hint();
     minimize(!minimized());
   } else if (action == "minimize-raise") {
-    spdlog::trace("wlr/taskbar: minimize-raise");
+    spdlog::trace("wlr/taskbar: button {} minimize-raise", bt->button);
     set_minimize_hint();
     if (minimized())
       minimize(false);
@@ -610,18 +601,22 @@ bool Task::handle_clicked(GdkEventButton *bt) {
     else
       activate();
   } else if (action == "maximize") {
-    spdlog::trace("wlr/taskbar: maximize");
+    spdlog::trace("wlr/taskbar: button {} maximize", bt->button);
     maximize(!maximized());
   } else if (action == "fullscreen") {
-    spdlog::trace("wlr/taskbar: fullscreen");
+    spdlog::trace("wlr/taskbar: button {} fullscreen", bt->button);
     fullscreen(!fullscreen());
   } else if (action == "close") {
-    spdlog::trace("wlr/taskbar: close");
+    spdlog::trace("wlr/taskbar: button {} close", bt->button);
     close();
   } else {
-    // this should probably not happen anymore
-    spdlog::trace("wlr/taskbar: unknown action");
-    spdlog::warn("Unknown action {}", action);
+    spdlog::trace("wlr/taskbar: button {} unknown action {} run as command", bt->button, action);
+
+    std::string cmd_action =
+        fmt::format(fmt::runtime(action), fmt::arg("title", title_), fmt::arg("app_id", app_id_),
+                    fmt::arg("state", state_string()));
+
+    tbar_->push_back_pid(util::command::forkExec(cmd_action));
   }
 
   drag_start_button = -1;
@@ -847,30 +842,64 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   const std::vector<std::string> actions = {"activate", "minimize",   "minimize-raise",
                                             "maximize", "fullscreen", "close"};
   // valid triggers for the actions
-  const std::vector<std::string> triggers = {"on-click", "on-click-right", "on-click-middle"};
+  const std::map<std::string, guint> trigger_buttons = {
+      {"on-click", 1}, {"on-click-right", 3}, {"on-click-middle", 2}};
 
-  for (auto &t : triggers) {
-    if (config_["actions"].isObject() && config["actions"][t].isString()) {
-      if (std::find(actions.begin(), actions.end(), config_["actions"][t].asString()) !=
-          actions.end()) {
-        task_actions_.emplace(t, config["actions"][t].asString());
+  if (config_["actions"].isObject()) {
+    for (const auto &a : config_["actions"].getMemberNames()) {
+      if (!config_["actions"][a].isString()) continue;
+
+      auto action = config_["actions"][a].asString();
+      auto tb = trigger_buttons.find(a);
+
+      if (tb == trigger_buttons.end()) {
+        spdlog::warn("wlr/taskbar: ignoring unknown trigger {}", a);
+        continue;
+      }
+
+      task_actions_[tb->second] = action;
+
+      if (std::find(actions.begin(), actions.end(), action) != actions.end()) {
+        spdlog::trace("wlr/taskbar: action {} added for trigger {}/button {}", action, a,
+                      tb->second);
       } else {
-        spdlog::warn("wlr/taskbar: unknown action {}", config["actions"][t].asString());
+        spdlog::trace("wlr/taskbar: command {} added for trigger {}/button {}", action, a,
+                      tb->second);
       }
     }
+  }
 
-    // commands can still be executed by AModule on the whole module.
-    // But if it is an action, it should ideally be within "actions", give a warning.
-    // If there was an action within the actions object, ignore this one.
-    if (config_[t].isString() &&
-        std::find(actions.begin(), actions.end(), config_[t].asString()) != actions.end()) {
-      if (task_actions_.emplace(t, config_[t].asString()).second) {
-        spdlog::warn("wlr/taskbar: {} action should be within actions object", t);
+  /* Actual commands can still be executed by AModule on the whole module.
+
+    But if it is a known action rather than a command, it should ideally be within "actions", give a
+    deprecation warning. Remove the whole section in the future.
+
+    If there already was an action correctly specified within the actions object, ignore the one on
+    the module, also with a warning. */
+  for (const auto &t : trigger_buttons) {
+    if (!config_[t.first].isString()) continue;
+
+    auto action = config_[t.first].asString();
+    if (std::find(actions.begin(), actions.end(), action) != actions.end()) {
+      if (task_actions_[t.second].empty()) {
+        task_actions_[t.second] = action;
+        spdlog::warn(
+            "wlr/taskbar: known action {} for trigger {} should be within actions object. Placing "
+            "them directly in the module is deprecated. Please note that AModule still executes "
+            "this a as a command on the whole taskbar, which may cause error messages.",
+            action, t.first);
       } else {
         spdlog::warn(
-            "wlr/taskbar: ignoring action {} because there is another within the actions object",
-            t);
+            "wlr/taskbar: ignoring known action {} for trigger {} because there is an action "
+            "specified within the actions object. Please note that AModule still executes this "
+            "as a command on the whole taskbar, which may cause error messages.",
+            action, t.first);
       }
+    } else {
+      spdlog::warn(
+          "wlr/taskbar: {}/{} command will be executed on whole taskbar rather than individual "
+          "tasks. If that's not what you wanted, consider actions object.",
+          t.first, action);
     }
   }
 
@@ -1012,6 +1041,8 @@ bool Taskbar::all_outputs() const {
   return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
 }
 
+void Taskbar::push_back_pid(pid_t pid) { pid_children_.push_back(pid); }
+
 const std::vector<Glib::RefPtr<Gtk::IconTheme>> &Taskbar::icon_themes() const {
   return icon_themes_;
 }
@@ -1022,6 +1053,6 @@ const std::map<std::string, std::string> &Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
 }
 
-const std::map<std::string, std::string> &Taskbar::task_actions() const { return task_actions_; }
+const std::array<std::string, 4> &Taskbar::task_actions() const { return task_actions_; }
 
 } /* namespace waybar::modules::wlr */
