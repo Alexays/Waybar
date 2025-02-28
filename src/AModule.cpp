@@ -1,5 +1,6 @@
 #include "AModule.hpp"
 
+#include <fmt/core.h>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
@@ -182,7 +183,12 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
       format.clear();
   }
   if (!format.empty()) {
-    pid_.push_back(util::command::forkExec(format));
+    const int width = gdk_window_get_width(e->window);
+    const int height = gdk_window_get_height(e->window);
+    const std::string cmd =
+        fmt::format(fmt::runtime(format), fmt::arg("x", (int)round(100. * e->x / width)),
+                    fmt::arg("y", (int)round(100. * e->y / height)));
+    pid_.push_back(util::command::forkExec(cmd));
   }
   dp.emit();
   return true;
