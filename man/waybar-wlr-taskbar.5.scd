@@ -13,6 +13,10 @@ a compositor that implements the foreign-toplevel-manager interface.
 
 Addressed by *wlr/taskbar*
 
+*actions*: ++
+    typeof: object ++
+    Actions that can be triggered by clicking on the task button. Valid triggers within actions are *on-click*, *on-click-middle* and *on-click-right*. These can contain *click actions* as well as commands. The commands can have format replacements, see *format replacements*.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
@@ -59,15 +63,15 @@ Addressed by *wlr/taskbar*
 
 *on-click*: ++
 	typeof: string ++
-	The action which should be triggered when clicking on the application button with the left mouse button. Needs to be defined in actions object.
+	May be defined on the module rather than in the actions object. If it contains a command, it is executed by AModule on the whole taskbar rather than individual tasks, and regardless of whether the same trigger is present in the actions object. If it contains an action (deprecated), the action is executed on individual tasks but if the same trigger was already defined in an actions object, the action from the actions object has preference.
 
 *on-click-middle*: ++
 	typeof: string ++
-	The action which should be triggered when clicking on the application button with the middle mouse button. Needs to be defined in actions object.
+	See *on-click*.
 
 *on-click-right*: ++
 	typeof: string ++
-	The action which should be triggered when clicking on the application button with the right mouse button. Needs to be defined in actions object.
+	See *on-click*.
 
 *on-update*: ++
 	typeof: string ++
@@ -87,9 +91,9 @@ Addressed by *wlr/taskbar*
 
 # FORMAT REPLACEMENTS
 
-*{icon}*: The icon of the application.
+*{icon}*: The icon of the application. Not available for actions command.
 
-*{name}*: The application name as in desktop file if appropriate desktop files are found, otherwise same as {app_id}
+*{name}*: The application name as in desktop file if appropriate desktop files are found, otherwise same as {app_id}. Not available for actions command.
 
 *{title}*: The title of the application.
 
@@ -97,7 +101,7 @@ Addressed by *wlr/taskbar*
 
 *{state}*: The state (minimized, maximized, active, fullscreen) of the application.
 
-*{short_state}*: The state (minimize == m, maximized == M, active == A, fullscreen == F) represented as one character of the application.
+*{short_state}*: The state (minimize == m, maximized == M, active == A, fullscreen == F) represented as one character of the application. Not available for actions command.
 
 # CLICK ACTIONS
 
@@ -136,7 +140,8 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 	"actions" : {
 		"on-click": "activate",
 		"on-click-middle": "close",
-        },
+		"on-click-right": "xmessage {title} {app_id} {state}"
+    },
 	"ignore-list": [
 	    "Alacritty"
 	],

@@ -157,7 +157,7 @@ class Taskbar : public waybar::AModule {
   std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
   std::unordered_set<std::string> ignore_list_;
   std::map<std::string, std::string> app_ids_replace_map_;
-  std::map<std::string, std::string> task_actions_;
+  std::array<std::string, 4> task_actions_;
 
   struct zwlr_foreign_toplevel_manager_v1 *manager_;
   struct wl_seat *seat_;
@@ -180,10 +180,12 @@ class Taskbar : public waybar::AModule {
   bool show_output(struct wl_output *) const;
   bool all_outputs() const;
 
+  void push_back_pid(pid_t pid);
+
   const std::vector<Glib::RefPtr<Gtk::IconTheme>> &icon_themes() const;
   const std::unordered_set<std::string> &ignore_list() const;
   const std::map<std::string, std::string> &app_ids_replace_map() const;
-  const std::map<std::string, std::string> &task_actions() const;
+  const std::array<std::string, 4> &task_actions() const;
 };
 
 } /* namespace waybar::modules::wlr */
