@@ -246,7 +246,8 @@ by config name or other parameters.
 *show*    Switches state to visible (per bar).
 *hide*    Switches state to hidden (per bar).
 *toggle*  Switches state between visible and hidden (per bar).
-*reload*  Reloads whole waybar.
+*reload*  Reloads all waybars of current waybar process (basically equivalent to
+restarting with updated config which sets initial visibility values).
 *noop*    Does nothing when the kill signal is received.
 
 # MULTI OUTPUT CONFIGURATION
