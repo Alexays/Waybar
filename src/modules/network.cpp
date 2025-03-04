@@ -339,8 +339,9 @@ auto waybar::modules::Network::update() -> void {
       fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
       fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
       fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
-      fmt::arg("netmask", netmask_), fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_),
-      fmt::arg("cidr", cidr_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
+      fmt::arg("netmask", netmask_), fmt::arg("netmask6", netmask6_),
+      fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
+      fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
       fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
       fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
@@ -371,9 +372,9 @@ auto waybar::modules::Network::update() -> void {
           fmt::runtime(tooltip_format), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
           fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
           fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
-          fmt::arg("netmask", netmask_), fmt::arg("ipaddr", final_ipaddr_),
-          fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
-          fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
+          fmt::arg("netmask", netmask_), fmt::arg("netmask6", netmask6_),
+          fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
+          fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
                    pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
@@ -417,6 +418,7 @@ void waybar::modules::Network::clearIface() {
   ipaddr6_.clear();
   gwaddr_.clear();
   netmask_.clear();
+  netmask6_.clear();
   carrier_ = false;
   cidr_ = 0;
   cidr6_ = 0;
@@ -571,14 +573,14 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
                   net->netmask_ = inet_ntop(ifa->ifa_family, &netmask, ipaddr, sizeof(ipaddr));
                 }
                 case AF_INET6: {
-                  struct in6_addr netmask;
+                  struct in6_addr netmask6;
                   for (int i = 0; i < 16; i++) {
                     int v = (i + 1) * 8 - ifa->ifa_prefixlen;
                     if (v < 0) v = 0;
                     if (v > 8) v = 8;
-                    netmask.s6_addr[i] = ~0 << v;
+                    netmask6.s6_addr[i] = ~0 << v;
                   }
-                  net->netmask_ = inet_ntop(ifa->ifa_family, &netmask, ipaddr, sizeof(ipaddr));
+                  net->netmask6_ = inet_ntop(ifa->ifa_family, &netmask6, ipaddr, sizeof(ipaddr));
                 }
               }
               spdlog::debug("network: {}, new addr {}/{}", net->ifname_, net->ipaddr_, net->cidr_);
@@ -588,6 +590,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
               net->cidr_ = 0;
               net->cidr6_ = 0;
               net->netmask_.clear();
+              net->netmask6_.clear();
               spdlog::debug("network: {} addr deleted {}/{}", net->ifname_,
                             inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)),
                             ifa->ifa_prefixlen);

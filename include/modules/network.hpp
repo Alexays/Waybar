@@ -79,6 +79,7 @@ class Network : public ALabel {
   std::string ipaddr6_;
   std::string gwaddr_;
   std::string netmask_;
+  std::string netmask6_;
   int cidr_;
   int cidr6_;
   int32_t signal_strength_dbm_;

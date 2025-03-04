@@ -155,9 +155,13 @@ Addressed by *network*
 
 *{gwaddr}*: The default gateway for the interface
 
-*{netmask}*: The subnetmask corresponding to the IP.
+*{netmask}*: The subnetmask corresponding to the IP(V4).
 
-*{cidr}*: The subnetmask corresponding to the IP in CIDR notation.
+*{netmask6}*: The subnetmask corresponding to the IP(V6). 
+
+*{cidr}*: The subnetmask corresponding to the IP(V4) in CIDR notation.
+
+*{cidr6}*: The subnetmask corresponding to the IP(V6) in CIDR notation.
 
 *{essid}*: Name (SSID) of the wireless network.
 
