@@ -230,8 +230,8 @@ For example, to toggle the bar programmatically, you can invoke `killall -SIGUSR
 
 ## User signal configuration
 
-Config parameters `on_sigusr1` and `on_sigusr2` change what happens when bars receive
-`SIGUSR1` and `SIGUSR2` signals.
+Config parameters *on_sigusr1* and *on_sigusr2* change what happens when bars receive
+*SIGUSR1* and *SIGUSR2* signals.
 
 This means that commands `killall -SIGUSR1 waybar` and `killall -SIGUSR2 waybar`
 can perform user-configured action.
@@ -241,7 +241,7 @@ perform more complex `show`/`hide`/`reload` logic for each instance of Waybar.
 One can find the PID e.g. by doing `pgrep -a waybar` which could then match
 by config name or other parameters.
 
-### Kill parameter meanings
+## Kill parameter meanings
 
 *show*    Switches state to visible (per bar).
 *hide*    Switches state to hidden (per bar).

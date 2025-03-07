@@ -124,8 +124,8 @@ class Bar : public sigc::trackable {
 #endif
   std::vector<std::shared_ptr<waybar::AModule>> modules_all_;
 
-  waybar::util::KillSignalAction onSigusr1;
-  waybar::util::KillSignalAction onSigusr2;
+  waybar::util::KillSignalAction onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
+  waybar::util::KillSignalAction onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
 };
 
 }  // namespace waybar
