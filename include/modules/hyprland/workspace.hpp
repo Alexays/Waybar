@@ -89,6 +89,7 @@ class Workspace {
 
   void updateTaskbar(const std::string& workspace_icon);
   bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

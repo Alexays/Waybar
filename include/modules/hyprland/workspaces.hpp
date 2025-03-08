@@ -174,6 +174,7 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

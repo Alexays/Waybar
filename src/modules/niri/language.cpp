@@ -9,7 +9,7 @@
 namespace waybar::modules::niri {
 
 Language::Language(const std::string &id, const Bar &bar, const Json::Value &config)
-    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "language", id, "{}", 0, false), bar_(bar) {
   label_.hide();
 
   if (!gIPC) gIPC = std::make_unique<IPC>();
