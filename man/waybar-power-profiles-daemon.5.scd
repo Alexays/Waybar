@@ -25,7 +25,7 @@ $XDG_CONFIG_HOME/waybar/config
 :[ Message displayed on the bar. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name.
 |[ *tooltip-format*
 :[ string
-:[ "Power profile: {profile}\\nDriver: {driver}"
+:[ "Power profile: {profile}\\nCPU driver: {cpu_driver}\\nPlatform driver: {platform_driver}"
 :[ Messaged displayed in the module tooltip. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name.
 |[ *tooltip*
 :[ bool
@@ -51,7 +51,7 @@ Compact display (default config):
 ```
 "power-profiles-daemon": {
   "format": "{icon}",
-  "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+  "tooltip-format": "Power profile: {profile}\nCPU driver: {cpu_driver}\nPlatform driver: {platform_driver}",
   "tooltip": true,
   "format-icons": {
     "default": "",
@@ -67,7 +67,7 @@ Display the full profile name:
 ```
 "power-profiles-daemon": {
   "format": "{icon}   {profile}",
-  "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+  "tooltip-format": "Power profile: {profile}\nCPU driver: {cpu_driver}\nPlatform driver: {platform_driver}",
   "tooltip": true,
   "format-icons": {
     "default": "",
