@@ -333,6 +333,15 @@ if get_option('niri')
     )
 endif
 
+if true
+    add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/wayfire/backend.cpp',
+        'src/modules/wayfire/window.cpp',
+        'src/modules/wayfire/workspaces.cpp',
+    )
+endif
+
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += files('src/modules/network.cpp')
