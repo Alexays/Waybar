@@ -27,6 +27,8 @@ in
 
     # downstream patch should not affect upstream
     patches = [];
+    # nixpkgs checks version, no need when building locally
+    nativeInstallCheckInputs = [];
 
     buildInputs = (builtins.filter (p: p.pname != "wireplumber") oldAttrs.buildInputs) ++ [
         pkgs.wireplumber
