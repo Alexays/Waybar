@@ -16,6 +16,8 @@
 #include "util/rfkill.hpp"
 #endif
 
+enum ip_addr_pref : uint8_t { IPV4, IPV6, IPV4_6 };
+
 namespace waybar::modules {
 
 class Network : public ALabel {
@@ -50,6 +52,7 @@ class Network : public ALabel {
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
 
   int ifid_;
+  ip_addr_pref addr_pref_;
   struct sockaddr_nl nladdr_ = {0};
   struct nl_sock* sock_ = nullptr;
   struct nl_sock* ev_sock_ = nullptr;
@@ -73,9 +76,12 @@ class Network : public ALabel {
   bool carrier_;
   std::string ifname_;
   std::string ipaddr_;
+  std::string ipaddr6_;
   std::string gwaddr_;
   std::string netmask_;
+  std::string netmask6_;
   int cidr_;
+  int cidr6_;
   int32_t signal_strength_dbm_;
   uint8_t signal_strength_;
   std::string signal_strength_app_;
