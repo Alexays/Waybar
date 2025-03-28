@@ -598,8 +598,8 @@ bool Task::handle_motion_notify(GdkEventMotion *mn) {
     /* start drag in addition to other assigned action */
     auto target_list = Gtk::TargetList::create(target_entries);
     auto refptr = Glib::RefPtr<Gtk::TargetList>(target_list);
-    auto drag_context =
-        button.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent *)mn);
+    auto drag_context = button.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button,
+                                          (GdkEvent *)mn, -1, -1);
   }
 
   return false;
