@@ -63,6 +63,9 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
     click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    always_visible_class =
+      (drawer_config["always-visible-class"].isString() ? drawer_config["always-visible-class"].asString()
+                              : "");
 
     auto transition_type = getPreferredTransitionType(vertical);
 
@@ -89,9 +92,52 @@ void Group::show_group() {
   revealer.set_reveal_child(true);
 }
 
+void Group::update_always_visible_modules() {
+  if (always_visible_class.empty()) {
+    return;
+  }
+
+  for (auto* event_box : revealer_box.get_children()) {
+    if (auto container = dynamic_cast<Gtk::Container*>(event_box)) {
+      for (auto* base_element : container->get_children()) {
+        if (base_element->get_style_context()->has_class("active")) {
+          event_box->get_style_context()->remove_class(add_class_to_drawer_children);
+
+          revealer_box.remove(*event_box);
+          box.pack_end(*event_box, false, false);
+          event_box->show();
+        }
+      }
+    }
+  }
+
+  for (auto* event_box : box.get_children()) {
+    if (event_box == &revealer) {
+      continue;
+    }
+    if (box.get_children().size() <= 2) {
+      break;
+    }
+    if (auto container = dynamic_cast<Gtk::Container*>(event_box)) {
+      for (auto* base_element : container->get_children()) {
+        if (!base_element->get_style_context()->has_class("active")) {
+          event_box->get_style_context()->add_class(add_class_to_drawer_children);
+
+          box.remove(*event_box);
+          revealer_box.pack_start(*event_box, false, false);
+          event_box->show();
+        }
+      }
+    }
+  }
+
+}
+
 void Group::hide_group() {
   box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
+
+  Group::update_always_visible_modules();
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
@@ -121,7 +167,7 @@ bool Group::handleToggle(GdkEventButton* const& e) {
 }
 
 auto Group::update() -> void {
-  // noop
+  Group::update_always_visible_modules();
 }
 
 Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
