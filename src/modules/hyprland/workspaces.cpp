@@ -185,10 +185,17 @@ void Workspaces::initializeWorkspaces() {
 
   // get all current workspaces
   auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
+  auto const workspacerulesJson = m_ipc.getSocket1JsonReply("workspacerules");
   auto const clientsJson = m_ipc.getSocket1JsonReply("clients");
 
   for (Json::Value workspaceJson : workspacesJson) {
     std::string workspaceName = workspaceJson["name"].asString();
+    for (Json::Value workspaceRule: workspacerulesJson) {
+      if (workspaceJson["id"].asString() == workspaceRule["workspaceString"].asString() &&
+        workspaceRule["persistent"] == true) {
+        workspaceJson["persistent-rule"] = true;
+      }
+    }
     if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
         (!workspaceName.starts_with("special") || showSpecial()) &&
         !isWorkspaceIgnored(workspaceName)) {
@@ -198,13 +205,11 @@ void Workspaces::initializeWorkspaces() {
     }
   }
 
-  spdlog::debug("Initializing persistent workspaces");
+  spdlog::debug("Initializing persistent workspaces from config");
   if (m_persistentWorkspaceConfig.isObject()) {
     // a persistent workspace config is defined, so use that instead of workspace rules
     loadPersistentWorkspacesFromConfig(clientsJson);
   }
-  // load Hyprland's workspace rules
-  loadPersistentWorkspacesFromWorkspaceRules(clientsJson);
 }
 
 bool isDoubleSpecial(std::string const &workspace_name) {
@@ -278,36 +283,6 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
     auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
     workspaceData["persistent-config"] = true;
     m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
-  }
-}
-
-void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &clientsJson) {
-  spdlog::info("Loading persistent workspaces from Hyprland workspace rules");
-
-  auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
-  for (Json::Value const &rule : workspaceRules) {
-    if (!rule["workspaceString"].isString()) {
-      spdlog::warn("Workspace rules: invalid workspaceString, skipping: {}", rule);
-      continue;
-    }
-    if (!rule["persistent"].asBool()) {
-      continue;
-    }
-    auto const &workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
-                                                         : rule["workspaceString"].asString();
-    auto const &monitor = rule["monitor"].asString();
-    // create this workspace persistently if:
-    // 1. the allOutputs config option is enabled
-    // 2. the rule's monitor is the current monitor
-    // 3. no monitor is specified in the rule => assume it needs to be persistent on every monitor
-    if (allOutputs() || m_bar.output->name == monitor || monitor.empty()) {
-      // => persistent workspace should be shown on this monitor
-      auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
-      workspaceData["persistent-rule"] = true;
-      m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
-    } else {
-      m_workspacesToRemove.emplace_back(workspace);
-    }
   }
 }
 
