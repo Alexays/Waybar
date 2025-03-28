@@ -100,7 +100,7 @@ void Group::update_always_visible_modules() {
   for (auto* event_box : revealer_box.get_children()) {
     if (auto container = dynamic_cast<Gtk::Container*>(event_box)) {
       for (auto* base_element : container->get_children()) {
-        if (base_element->get_style_context()->has_class("active")) {
+        if (base_element->get_style_context()->has_class(always_visible_class)) {
           event_box->get_style_context()->remove_class(add_class_to_drawer_children);
 
           revealer_box.remove(*event_box);
@@ -120,7 +120,7 @@ void Group::update_always_visible_modules() {
     }
     if (auto container = dynamic_cast<Gtk::Container*>(event_box)) {
       for (auto* base_element : container->get_children()) {
-        if (!base_element->get_style_context()->has_class("active")) {
+        if (!base_element->get_style_context()->has_class(always_visible_class)) {
           event_box->get_style_context()->add_class(add_class_to_drawer_children);
 
           box.remove(*event_box);
