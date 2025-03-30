@@ -17,7 +17,7 @@ class Group : public AModule {
   operator Gtk::Widget &() override;
 
   virtual Gtk::Box &getBox();
-  void addWidget(Gtk::Widget &widget);
+  void addWidget(AModule* module);
 
  protected:
   Gtk::Box box;
@@ -33,7 +33,10 @@ class Group : public AModule {
   bool handleToggle(GdkEventButton *const &ev) override;
   void show_group();
   void hide_group();
-  void update_always_visible_modules();
+  void manage_visibility(AModule* module);
+  void show_widget(Gtk::Widget& widget);
+  void hide_widget(Gtk::Widget& widget);
+  void hide_current_widget_if_inactive();
 };
 
 }  // namespace waybar

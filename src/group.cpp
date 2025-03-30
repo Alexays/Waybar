@@ -92,52 +92,57 @@ void Group::show_group() {
   revealer.set_reveal_child(true);
 }
 
-void Group::update_always_visible_modules() {
-  if (always_visible_class.empty()) {
-    return;
-  }
+void Group::hide_widget(Gtk::Widget& widget) {
+  widget.get_style_context()->add_class(add_class_to_drawer_children);
+  box.remove(widget);
+  revealer_box.pack_start(widget, false, false);
+}
 
-  for (auto* event_box : revealer_box.get_children()) {
-    if (auto container = dynamic_cast<Gtk::Container*>(event_box)) {
-      for (auto* base_element : container->get_children()) {
-        if (base_element->get_style_context()->has_class(always_visible_class)) {
-          event_box->get_style_context()->remove_class(add_class_to_drawer_children);
+void Group::show_widget(Gtk::Widget& widget) {
+  widget.get_style_context()->remove_class(add_class_to_drawer_children);
+  revealer_box.remove(widget);
+  box.pack_end(widget, false, false);
+}
 
-          revealer_box.remove(*event_box);
-          box.pack_end(*event_box, false, false);
-          event_box->show();
-        }
-      }
-    }
-  }
-
+void Group::hide_current_widget_if_inactive() {
   for (auto* event_box : box.get_children()) {
     if (event_box == &revealer) {
       continue;
     }
-    if (box.get_children().size() <= 2) {
-      break;
-    }
-    if (auto container = dynamic_cast<Gtk::Container*>(event_box)) {
-      for (auto* base_element : container->get_children()) {
-        if (!base_element->get_style_context()->has_class(always_visible_class)) {
-          event_box->get_style_context()->add_class(add_class_to_drawer_children);
-
-          box.remove(*event_box);
-          revealer_box.pack_start(*event_box, false, false);
-          event_box->show();
+    if (auto event_box_container = dynamic_cast<Gtk::Container*>(event_box)) {
+      for (auto* the_only_visible : event_box_container->get_children()) {
+        if (!the_only_visible->get_style_context()->has_class(always_visible_class)) {
+          hide_widget(*event_box);
         }
       }
     }
   }
+}
 
+void Group::manage_visibility(AModule* module) {
+  Gtk::Widget& widget = *module;
+
+  if (auto container = dynamic_cast<Gtk::Container*>(&widget)) {
+    for (auto* base_element : container->get_children()) {
+      if (base_element->get_style_context()->has_class(always_visible_class)) {
+        if (box.get_children().size() == 2) {
+          Group::hide_current_widget_if_inactive();
+        }
+        show_widget(widget);
+      } else {
+        // Do not hide if it's the only widget + revealer
+        if (box.get_children().size() <= 2) {
+          return;
+        }
+        hide_widget(widget);
+      }
+    }
+  }
 }
 
 void Group::hide_group() {
   box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
-
-  Group::update_always_visible_modules();
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
@@ -167,12 +172,14 @@ bool Group::handleToggle(GdkEventButton* const& e) {
 }
 
 auto Group::update() -> void {
-  Group::update_always_visible_modules();
+  // noop
 }
 
 Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
 
-void Group::addWidget(Gtk::Widget& widget) {
+void Group::addWidget(AModule* module) {
+  Gtk::Widget& widget = *module;
+
   getBox().pack_start(widget, false, false);
 
   if (is_drawer && !is_first_widget) {
@@ -180,6 +187,10 @@ void Group::addWidget(Gtk::Widget& widget) {
   }
 
   is_first_widget = false;
+  
+  if (!always_visible_class.empty()) {
+    module->signal_updated.connect(sigc::mem_fun(*this, &Group::manage_visibility));
+  }
 }
 
 Group::operator Gtk::Widget&() { return event_box_; }
