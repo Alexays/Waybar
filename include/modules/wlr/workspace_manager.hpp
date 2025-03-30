@@ -12,7 +12,7 @@
 
 #include "AModule.hpp"
 #include "bar.hpp"
-#include "ext-workspace-unstable-v1-client-protocol.h"
+#include "ext-workspace-v1-client-protocol.h"
 
 namespace waybar::modules::wlr {
 
@@ -22,7 +22,7 @@ class WorkspaceGroup;
 class Workspace {
  public:
   Workspace(const waybar::Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-            zext_workspace_handle_v1 *workspace, uint32_t id, std::string name);
+            ext_workspace_handle_v1 *workspace, uint32_t id, std::string name);
   ~Workspace();
   auto update() -> void;
 
@@ -33,10 +33,13 @@ class Workspace {
   auto is_empty() const -> bool { return state_ & static_cast<uint32_t>(State::EMPTY); }
   auto is_persistent() const -> bool { return persistent_; }
   // wlr stuff
+  auto handle_id(const std::string &id) -> void;
   auto handle_name(const std::string &name) -> void;
   auto handle_coordinates(const std::vector<uint32_t> &coordinates) -> void;
-  auto handle_state(const std::vector<uint32_t> &state) -> void;
+  auto handle_state(const uint32_t state) -> void;
+  auto handle_capabilities(uint32_t capabilities) -> void;
   auto handle_remove() -> void;
+
   auto make_persistent() -> void;
   auto handle_duplicate() -> void;
 
@@ -63,7 +66,7 @@ class Workspace {
   WorkspaceGroup &workspace_group_;
 
   // wlr stuff
-  zext_workspace_handle_v1 *workspace_handle_;
+  ext_workspace_handle_v1 *workspace_handle_;
   uint32_t state_ = 0;
 
   uint32_t id_;
@@ -82,7 +85,7 @@ class Workspace {
 class WorkspaceGroup {
  public:
   WorkspaceGroup(const waybar::Bar &bar, Gtk::Box &box, const Json::Value &config,
-                 WorkspaceManager &manager, zext_workspace_group_handle_v1 *workspace_group_handle,
+                 WorkspaceManager &manager, ext_workspace_group_handle_v1 *workspace_group_handle,
                  uint32_t id);
   ~WorkspaceGroup();
   auto update() -> void;
@@ -103,8 +106,10 @@ class WorkspaceGroup {
   auto create_persistent_workspaces() -> void;
 
   // wlr stuff
-  auto handle_workspace_create(zext_workspace_handle_v1 *workspace_handle) -> void;
-  auto handle_remove() -> void;
+  auto handle_capabilities(uint32_t capabilities) -> void;
+  auto handle_workspace_enter(ext_workspace_handle_v1 *workspace_handle) -> void;
+  auto handle_workspace_leave(ext_workspace_handle_v1 *workspace_handle) -> void;
+  auto handle_removed() -> void;
   auto handle_output_enter(wl_output *output) -> void;
   auto handle_output_leave() -> void;
   auto handle_done() -> void;
@@ -118,7 +123,7 @@ class WorkspaceGroup {
   WorkspaceManager &workspace_manager_;
 
   // wlr stuff
-  zext_workspace_group_handle_v1 *workspace_group_handle_;
+  ext_workspace_group_handle_v1 *workspace_group_handle_;
   wl_output *output_ = nullptr;
 
   uint32_t id_;
@@ -145,7 +150,9 @@ class WorkspaceManager : public AModule {
 
   // wlr stuff
   auto register_manager(wl_registry *registry, uint32_t name, uint32_t version) -> void;
-  auto handle_workspace_group_create(zext_workspace_group_handle_v1 *workspace_group_handle)
+  auto handle_workspace_group(ext_workspace_group_handle_v1 *workspace_group_handle)
+      -> void;
+  auto handle_workspace(ext_workspace_handle_v1 *workspace_handle)
       -> void;
   auto handle_done() -> void;
   auto handle_finished() -> void;
@@ -157,7 +164,7 @@ class WorkspaceManager : public AModule {
   std::vector<std::unique_ptr<WorkspaceGroup>> groups_;
 
   // wlr stuff
-  zext_workspace_manager_v1 *workspace_manager_ = nullptr;
+  ext_workspace_manager_v1 *workspace_manager_ = nullptr;
 
   static uint32_t group_global_id;
 

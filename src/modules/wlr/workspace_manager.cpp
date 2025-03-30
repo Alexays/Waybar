@@ -130,17 +130,17 @@ auto WorkspaceManager::register_manager(wl_registry *registry, uint32_t name, ui
   workspace_manager_ = workspace_manager_bind(registry, name, version, this);
 }
 
-auto WorkspaceManager::handle_workspace_group_create(
-    zext_workspace_group_handle_v1 *workspace_group_handle) -> void {
+auto WorkspaceManager::handle_workspace_group(
+    ext_workspace_group_handle_v1 *workspace_group_handle) -> void {
   auto new_id = ++group_global_id;
   groups_.push_back(
       std::make_unique<WorkspaceGroup>(bar_, box_, config_, *this, workspace_group_handle, new_id));
   spdlog::debug("Workspace group {} created", new_id);
 }
 
-auto WorkspaceManager::handle_finished() -> void {
-  zext_workspace_manager_v1_destroy(workspace_manager_);
-  workspace_manager_ = nullptr;
+auto WorkspaceManager::handle_workspace(
+    ext_workspace_handle_v1 *workspace_handle) -> void {
+  spdlog::debug("workspace event");
 }
 
 auto WorkspaceManager::handle_done() -> void {
@@ -148,6 +148,11 @@ auto WorkspaceManager::handle_done() -> void {
     group->handle_done();
   }
   dp.emit();
+}
+
+auto WorkspaceManager::handle_finished() -> void {
+  ext_workspace_manager_v1_destroy(workspace_manager_);
+  workspace_manager_ = nullptr;
 }
 
 auto WorkspaceManager::update() -> void {
@@ -171,13 +176,13 @@ WorkspaceManager::~WorkspaceManager() {
   // Send `stop` request and wait for one roundtrip. This is not quite correct as
   // the protocol encourages us to wait for the .finished event, but it should work
   // with wlroots workspace manager implementation.
-  zext_workspace_manager_v1_stop(workspace_manager_);
+  ext_workspace_manager_v1_stop(workspace_manager_);
   wl_display_roundtrip(display);
 
   // If the .finished handler is still not executed, destroy the workspace manager here.
   if (workspace_manager_) {
     spdlog::warn("Foreign toplevel manager destroyed before .finished event");
-    zext_workspace_manager_v1_destroy(workspace_manager_);
+    ext_workspace_manager_v1_destroy(workspace_manager_);
     workspace_manager_ = nullptr;
   }
 }
@@ -193,11 +198,11 @@ auto WorkspaceManager::remove_workspace_group(uint32_t id) -> void {
 
   groups_.erase(it);
 }
-auto WorkspaceManager::commit() -> void { zext_workspace_manager_v1_commit(workspace_manager_); }
+auto WorkspaceManager::commit() -> void { ext_workspace_manager_v1_commit(workspace_manager_); }
 
 WorkspaceGroup::WorkspaceGroup(const Bar &bar, Gtk::Box &box, const Json::Value &config,
                                WorkspaceManager &manager,
-                               zext_workspace_group_handle_v1 *workspace_group_handle, uint32_t id)
+                               ext_workspace_group_handle_v1 *workspace_group_handle, uint32_t id)
     : bar_(bar),
       box_(box),
       config_(config),
@@ -262,11 +267,15 @@ WorkspaceGroup::~WorkspaceGroup() {
     return;
   }
 
-  zext_workspace_group_handle_v1_destroy(workspace_group_handle_);
+  ext_workspace_group_handle_v1_destroy(workspace_group_handle_);
   workspace_group_handle_ = nullptr;
 }
 
-auto WorkspaceGroup::handle_workspace_create(zext_workspace_handle_v1 *workspace) -> void {
+auto WorkspaceGroup::handle_capabilities(uint32_t capabilities) -> void {
+  spdlog::debug("capabilities event {}", capabilities);
+}
+
+auto WorkspaceGroup::handle_workspace_enter(ext_workspace_handle_v1 *workspace) -> void {
   auto new_id = ++workspace_global_id;
   workspaces_.push_back(std::make_unique<Workspace>(bar_, config_, *this, workspace, new_id, ""));
   spdlog::debug("Workspace {} created", new_id);
@@ -277,8 +286,12 @@ auto WorkspaceGroup::handle_workspace_create(zext_workspace_handle_v1 *workspace
   }
 }
 
-auto WorkspaceGroup::handle_remove() -> void {
-  zext_workspace_group_handle_v1_destroy(workspace_group_handle_);
+auto WorkspaceGroup::handle_workspace_leave(ext_workspace_handle_v1 *workspace) -> void {
+  spdlog::debug("leave event");
+}
+
+auto WorkspaceGroup::handle_removed() -> void {
+  ext_workspace_group_handle_v1_destroy(workspace_group_handle_);
   workspace_group_handle_ = nullptr;
   workspace_manager_.remove_workspace_group(id_);
 }
@@ -373,7 +386,7 @@ auto WorkspaceGroup::sort_workspaces() -> void {
 auto WorkspaceGroup::remove_button(Gtk::Button &button) -> void { box_.remove(button); }
 
 Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
-                     zext_workspace_handle_v1 *workspace, uint32_t id, std::string name)
+                     ext_workspace_handle_v1 *workspace, uint32_t id, std::string name)
     : bar_(bar),
       config_(config),
       workspace_group_(workspace_group),
@@ -424,7 +437,7 @@ Workspace::~Workspace() {
     return;
   }
 
-  zext_workspace_handle_v1_destroy(workspace_handle_);
+  ext_workspace_handle_v1_destroy(workspace_handle_);
   workspace_handle_ = nullptr;
 }
 
@@ -433,26 +446,26 @@ auto Workspace::update() -> void {
                                 fmt::arg("icon", with_icon_ ? get_icon() : "")));
 }
 
-auto Workspace::handle_state(const std::vector<uint32_t> &state) -> void {
+auto Workspace::handle_state(uint32_t state) -> void {
   state_ = 0;
-  for (auto state_entry : state) {
-    switch (state_entry) {
-      case ZEXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE:
-        state_ |= (uint32_t)State::ACTIVE;
-        break;
-      case ZEXT_WORKSPACE_HANDLE_V1_STATE_URGENT:
-        state_ |= (uint32_t)State::URGENT;
-        break;
-      case ZEXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN:
-        state_ |= (uint32_t)State::HIDDEN;
-        break;
-    }
+  if ((state & EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE) == EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE) {
+    state_ |= (uint32_t)State::ACTIVE;
   }
+  if ((state & EXT_WORKSPACE_HANDLE_V1_STATE_URGENT) == EXT_WORKSPACE_HANDLE_V1_STATE_URGENT) {
+    state_ |= (uint32_t)State::URGENT;
+  }
+  if ((state & EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN) == EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN) {
+    state_ |= (uint32_t)State::HIDDEN;
+  }
+}
+
+auto Workspace::handle_capabilities(uint32_t capabilities) -> void {
+  spdlog::debug("capabilities event {}", capabilities);
 }
 
 auto Workspace::handle_remove() -> void {
   if (workspace_handle_) {
-    zext_workspace_handle_v1_destroy(workspace_handle_);
+    ext_workspace_handle_v1_destroy(workspace_handle_);
     workspace_handle_ = nullptr;
   }
   if (!persistent_) {
@@ -531,9 +544,9 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
   if (action.empty())
     return true;
   else if (action == "activate") {
-    zext_workspace_handle_v1_activate(workspace_handle_);
+    ext_workspace_handle_v1_activate(workspace_handle_);
   } else if (action == "close") {
-    zext_workspace_handle_v1_remove(workspace_handle_);
+    ext_workspace_handle_v1_remove(workspace_handle_);
   } else {
     spdlog::warn("Unknown action {}", action);
   }
@@ -545,6 +558,10 @@ auto Workspace::handle_clicked(GdkEventButton *bt) -> bool {
 
 auto Workspace::show() -> void { button_.show_all(); }
 auto Workspace::hide() -> void { button_.hide(); }
+
+auto Workspace::handle_id(const std::string &id) -> void {
+  spdlog::debug("id event {}", id);
+}
 
 auto Workspace::handle_name(const std::string &name) -> void {
   if (name_ != name) {
