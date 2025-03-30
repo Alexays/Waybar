@@ -276,6 +276,17 @@ if true
 endif
 
 if true
+    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/wlr/workspace_manager.cpp',
+        'src/modules/wlr/workspace_manager_binding.cpp',
+    )
+    man_files += files(
+        'man/waybar-wlr-workspaces.5.scd',
+    )
+endif
+
+if true
     add_project_arguments('-DHAVE_RIVER', language: 'cpp')
     src_files += files(
         'src/modules/river/layout.cpp',
@@ -472,17 +483,6 @@ elif tz_dep.found()
 else
     src_files += files('src/modules/simpleclock.cpp')
     man_files += files('man/waybar-clock.5.scd')
-endif
-
-if get_option('experimental')
-    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
-    src_files += files(
-        'src/modules/wlr/workspace_manager.cpp',
-        'src/modules/wlr/workspace_manager_binding.cpp',
-    )
-    man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
-    )
 endif
 
 cava = dependency('cava',
