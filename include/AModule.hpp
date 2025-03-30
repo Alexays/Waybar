@@ -16,12 +16,14 @@ class AModule : public IModule {
 
   ~AModule() override;
   auto update() -> void override;
-  virtual auto refresh(int shouldRefresh) -> void{};
+  virtual auto refresh(int shouldRefresh) -> void {};
   operator Gtk::Widget &() override;
   auto doAction(const std::string &name) -> void override;
 
   /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
+
+  bool expandEnabled() const;
 
  protected:
   // Don't need to make an object directly
@@ -50,6 +52,7 @@ class AModule : public IModule {
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
+  const bool isExpand;
   bool hasUserEvents_;
   std::vector<int> pid_;
   gdouble distance_scrolled_y_;

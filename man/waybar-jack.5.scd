@@ -51,7 +51,7 @@ Addressed by *jack*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -97,6 +97,11 @@ Addressed by *jack*
 *menu-actions*: ++
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

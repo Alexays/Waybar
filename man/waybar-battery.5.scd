@@ -69,7 +69,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *rotate*: ++
 	typeof: integer++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *on-click*: ++
 	typeof: string ++
@@ -121,6 +121,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 *menu-actions*: ++
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

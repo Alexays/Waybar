@@ -42,7 +42,6 @@ void waybar::modules::Image::refresh(int sig) {
 }
 
 auto waybar::modules::Image::update() -> void {
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
   if (config_["path"].isString()) {
     path_ = config_["path"].asString();
   } else if (config_["exec"].isString()) {
@@ -51,19 +50,24 @@ auto waybar::modules::Image::update() -> void {
   } else {
     path_ = "";
   }
-  if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS))
-    pixbuf = Gdk::Pixbuf::create_from_file(path_, size_, size_);
-  else
-    pixbuf = {};
 
-  if (pixbuf) {
+  if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS)) {
+    Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+
+    int scaled_icon_size = size_ * image_.get_scale_factor();
+    pixbuf = Gdk::Pixbuf::create_from_file(path_, scaled_icon_size, scaled_icon_size);
+
+    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
+                                                          image_.get_window());
+    image_.set(surface);
+    image_.show();
+
     if (tooltipEnabled() && !tooltip_.empty()) {
       if (box_.get_tooltip_markup() != tooltip_) {
         box_.set_tooltip_markup(tooltip_);
       }
     }
-    image_.set(pixbuf);
-    image_.show();
+
     box_.get_style_context()->remove_class("empty");
   } else {
     image_.clear();

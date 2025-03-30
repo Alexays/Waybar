@@ -1,9 +1,12 @@
 #include "util/audio_backend.hpp"
 
 #include <fmt/core.h>
+#include <pulse/def.h>
 #include <pulse/error.h>
+#include <pulse/introspect.h>
 #include <pulse/subscribe.h>
 #include <pulse/volume.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cmath>
@@ -139,21 +142,39 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
                               void *data) {
   if (i == nullptr) return;
 
+  auto running = i->state == PA_SINK_RUNNING;
+  auto idle = i->state == PA_SINK_IDLE;
+  spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running, idle);
+
   auto *backend = static_cast<AudioBackend *>(data);
 
   if (!backend->ignored_sinks_.empty()) {
     for (const auto &ignored_sink : backend->ignored_sinks_) {
       if (ignored_sink == i->description) {
+        if (i->name == backend->current_sink_name_) {
+          // If the current sink happens to be ignored it is never considered running
+          // so it will be replaced with another sink.
+          backend->current_sink_running_ = false;
+        }
+
         return;
       }
     }
   }
 
-  if (backend->current_sink_name_ == i->name) {
-    backend->current_sink_running_ = i->state == PA_SINK_RUNNING;
+  backend->default_sink_running_ = backend->default_sink_name == i->name &&
+                                   (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+
+  if (i->name != backend->default_sink_name && !backend->default_sink_running_) {
+    return;
   }
 
-  if (!backend->current_sink_running_ && i->state == PA_SINK_RUNNING) {
+  if (backend->current_sink_name_ == i->name) {
+    backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+  }
+
+  if (!backend->current_sink_running_ &&
+      (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE)) {
     backend->current_sink_name_ = i->name;
     backend->current_sink_running_ = true;
   }
@@ -201,6 +222,7 @@ void AudioBackend::sourceInfoCb(pa_context * /*context*/, const pa_source_info *
 void AudioBackend::serverInfoCb(pa_context *context, const pa_server_info *i, void *data) {
   auto *backend = static_cast<AudioBackend *>(data);
   backend->current_sink_name_ = i->default_sink_name;
+  backend->default_sink_name = i->default_sink_name;
   backend->default_source_name_ = i->default_source_name;
 
   pa_context_get_sink_info_list(context, sinkInfoCb, data);
@@ -214,7 +236,9 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
   volume = std::clamp(volume, min_volume, max_volume);
   pa_cvolume_set(&pa_volume, pa_volume_.channels, volume * volume_tick);
 
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t max_volume) {
@@ -243,31 +267,41 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
       pa_cvolume_dec(&pa_volume, change);
     }
   }
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSinkMute() {
   muted_ = !muted_;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
                                     nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSinkMute(bool mute) {
   muted_ = mute;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
                                     nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSourceMute() {
   source_muted_ = !muted_;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 void AudioBackend::toggleSourceMute(bool mute) {
   source_muted_ = mute;
+  pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
+  pa_threaded_mainloop_unlock(mainloop_);
 }
 
 bool AudioBackend::isBluetooth() {

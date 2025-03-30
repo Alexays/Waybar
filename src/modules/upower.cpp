@@ -358,10 +358,12 @@ void UPower::resetDevices() {
 void UPower::setDisplayDevice() {
   std::lock_guard<std::mutex> guard{mutex_};
 
-  if (nativePath_.empty() && model_.empty()) {
-    // Unref current upDevice
-    if (upDevice_.upDevice != NULL) g_object_unref(upDevice_.upDevice);
+  if (upDevice_.upDevice != NULL) {
+    g_object_unref(upDevice_.upDevice);
+    upDevice_.upDevice = NULL;
+  }
 
+  if (nativePath_.empty() && model_.empty()) {
     upDevice_.upDevice = up_client_get_display_device(upClient_);
     getUpDeviceInfo(upDevice_);
   } else {
@@ -384,10 +386,10 @@ void UPower::setDisplayDevice() {
               displayDevice = upDevice;
             }
           }
-          // Unref current upDevice
-          if (displayDevice.upDevice != NULL) g_object_unref(thisPtr->upDevice_.upDevice);
-          // Reassign new upDevice
-          thisPtr->upDevice_ = displayDevice;
+          // Unref current upDevice if it exists
+          if (displayDevice.upDevice != NULL) {
+            thisPtr->upDevice_ = displayDevice;
+          }
         },
         this);
   }

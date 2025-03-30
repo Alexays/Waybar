@@ -42,7 +42,7 @@ struct bar_margins {
 };
 
 struct bar_mode {
-  std::optional<bar_layer> layer;
+  bar_layer layer;
   bool exclusive;
   bool passthrough;
   bool visible;
@@ -54,7 +54,7 @@ class BarIpcClient;
 }
 #endif  // HAVE_SWAY
 
-class Bar {
+class Bar : public sigc::trackable {
  public:
   using bar_mode_map = std::map<std::string, struct bar_mode>;
   static const bar_mode_map PRESET_MODES;
@@ -66,7 +66,7 @@ class Bar {
   ~Bar();
 
   void setMode(const std::string &mode);
-  void setVisible(bool visible);
+  void setVisible(bool value);
   void toggle();
   void handleSignal(int);
 

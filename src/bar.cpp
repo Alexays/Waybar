@@ -37,19 +37,19 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = true}},
     {"hide",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = false,
       .visible = true}},
     {"invisible",
      {//
-      .layer = std::nullopt,
+      .layer = bar_layer::BOTTOM,
       .exclusive = false,
       .passthrough = true,
       .visible = false}},
     {"overlay",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = true,
       .visible = true}}};
@@ -59,7 +59,7 @@ const std::string Bar::MODE_INVISIBLE = "invisible";
 const std::string_view DEFAULT_BAR_ID = "bar-0";
 
 /* Deserializer for enum bar_layer */
-void from_json(const Json::Value& j, std::optional<bar_layer>& l) {
+void from_json(const Json::Value& j, bar_layer& l) {
   if (j == "bottom") {
     l = bar_layer::BOTTOM;
   } else if (j == "top") {
@@ -132,6 +132,7 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
+      surface(nullptr),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
       x_global(0),
       y_global(0),
@@ -316,13 +317,13 @@ void waybar::Bar::setMode(const std::string& mode) {
 void waybar::Bar::setMode(const struct bar_mode& mode) {
   auto* gtk_window = window.gobj();
 
-  if (mode.layer == bar_layer::BOTTOM) {
-    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_BOTTOM);
-  } else if (mode.layer == bar_layer::TOP) {
-    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_TOP);
+  auto layer = GTK_LAYER_SHELL_LAYER_BOTTOM;
+  if (mode.layer == bar_layer::TOP) {
+    layer = GTK_LAYER_SHELL_LAYER_TOP;
   } else if (mode.layer == bar_layer::OVERLAY) {
-    gtk_layer_set_layer(gtk_window, GTK_LAYER_SHELL_LAYER_OVERLAY);
+    layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
   }
+  gtk_layer_set_layer(gtk_window, layer);
 
   if (mode.exclusive) {
     gtk_layer_auto_exclusive_zone_enable(gtk_window);
@@ -339,6 +340,13 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
     window.get_style_context()->add_class("hidden");
     window.set_opacity(0);
   }
+  /*
+   * All the changes above require `wl_surface_commit`.
+   * gtk-layer-shell schedules a commit on the next frame event in GTK, but this could fail in
+   * certain scenarios, such as fully occluded bar.
+   */
+  gtk_layer_try_force_commit(gtk_window);
+  wl_display_flush(Client::inst()->wl_display);
 }
 
 void waybar::Bar::setPassThrough(bool passthrough) {
@@ -404,7 +412,8 @@ void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   setPassThrough(passthrough_);
 }
 
-void waybar::Bar::setVisible(bool visible) {
+void waybar::Bar::setVisible(bool value) {
+  visible = value;
   if (auto mode = config.get("mode", {}); mode.isString()) {
     setMode(visible ? config["mode"].asString() : MODE_INVISIBLE);
   } else {
@@ -525,13 +534,22 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
 
 auto waybar::Bar::setupWidgets() -> void {
   window.add(box_);
-  box_.pack_start(left_, false, false);
-  if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
-    box_.set_center_widget(center_);
-  } else {
-    box_.pack_start(center_, true, false);
+
+  bool expand_left = config["expand-left"].isBool() ? config["expand-left"].asBool() : false;
+  bool expand_center = config["expand-center"].isBool() ? config["expand-center"].asBool() : false;
+  bool expand_right = config["expand-right"].isBool() ? config["expand-right"].asBool() : false;
+  bool no_center = config["no-center"].isBool() ? config["no-center"].asBool() : false;
+
+  box_.pack_start(left_, expand_left, expand_left);
+  if (!no_center) {
+    if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
+      box_.set_center_widget(center_);
+    } else {
+      spdlog::error("No fixed center_");
+      box_.pack_start(center_, true, expand_center);
+    }
   }
-  box_.pack_end(right_, false, false);
+  box_.pack_end(right_, expand_right, expand_right);
 
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
@@ -540,14 +558,21 @@ auto waybar::Bar::setupWidgets() -> void {
 
   Factory factory(*this, config);
   getModules(factory, "modules-left");
-  getModules(factory, "modules-center");
+  if (!no_center) {
+    getModules(factory, "modules-center");
+  }
   getModules(factory, "modules-right");
+
   for (auto const& module : modules_left_) {
-    left_.pack_start(*module, false, false);
+    left_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
   }
-  for (auto const& module : modules_center_) {
-    center_.pack_start(*module, false, false);
+
+  if (!no_center) {
+    for (auto const& module : modules_center_) {
+      center_.pack_start(*module, false, false);
+    }
   }
+
   std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
     right_.pack_end(*module, false, false);

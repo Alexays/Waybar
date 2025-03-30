@@ -19,7 +19,7 @@ Addressed by *dwl/window*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -83,6 +83,11 @@ Addressed by *dwl/window*
 	typeof: integer ++
 	default: 24 ++
 	Option to change the size of the application icon.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

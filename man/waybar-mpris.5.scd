@@ -107,7 +107,7 @@ The *mpris* module displays currently playing media via libplayerctl.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -147,6 +147,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 *status-icons*: ++
 	typeof: map[string]string ++
 	Allows setting _{status_icon}_ based on player status (playing, paused, stopped).
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 
 # FORMAT REPLACEMENTS

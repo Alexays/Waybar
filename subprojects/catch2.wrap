@@ -1,10 +1,10 @@
 [wrap-file]
-directory = Catch2-3.5.1
-source_url = https://github.com/catchorg/Catch2/archive/v3.5.1.tar.gz
-source_filename = Catch2-3.5.1.tar.gz
-source_hash = 49c3ca7a68f1c8ec71307736bc6ed14fec21631707e1be9af45daf4037e75a08
-# source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/catch2_3.4.0-1/Catch2-3.4.0.tar.gz
-# wrapdb_version = 3.4.0-1
+directory = Catch2-3.7.0
+source_url = https://github.com/catchorg/Catch2/archive/v3.7.0.tar.gz
+source_filename = Catch2-3.7.0.tar.gz
+source_hash = 5b10cd536fa3818112a82820ce0787bd9f2a906c618429e7c4dea639983c8e88
+source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/catch2_3.7.0-1/Catch2-3.7.0.tar.gz
+wrapdb_version = 3.7.0-1
 
 [provide]
 catch2 = catch2_dep

@@ -1,8 +1,12 @@
 #include "AModule.hpp"
 
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
 
 #include <util/command.hpp>
+
+#include "gdk/gdk.h"
+#include "gdkmm/cursor.h"
 
 namespace waybar {
 
@@ -11,6 +15,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     : name_(name),
       config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
+      isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
       distance_scrolled_x_(0.0) {
   // Configure module action Map
@@ -64,6 +69,17 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
+
+  // Respect user configuration of cursor
+  if (config_.isMember("cursor")) {
+    if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
+      setCursor(Gdk::HAND2);
+    } else if (config_["cursor"].isInt()) {
+      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+    } else {
+      spdlog::warn("unknown cursor option configured on module {}", name_);
+    }
+  }
 }
 
 AModule::~AModule() {
@@ -91,9 +107,20 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 void AModule::setCursor(Gdk::CursorType const& c) {
-  auto cursor = Gdk::Cursor::create(c);
   auto gdk_window = event_box_.get_window();
-  gdk_window->set_cursor(cursor);
+  if (gdk_window) {
+    auto cursor = Gdk::Cursor::create(c);
+    gdk_window->set_cursor(cursor);
+  } else {
+    // window may not be accessible yet, in this case,
+    // schedule another call for setting the cursor in 1 sec
+    Glib::signal_timeout().connect_seconds(
+        [this, c]() {
+          setCursor(c);
+          return false;
+        },
+        1);
+  }
 }
 
 bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
@@ -101,9 +128,11 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
     module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
 
-  if (hasUserEvents_) {
+  // Default behavior indicating event availability
+  if (hasUserEvents_ && !config_.isMember("cursor")) {
     setCursor(Gdk::HAND2);
   }
+
   return false;
 }
 
@@ -112,9 +141,11 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
     module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   }
 
-  if (hasUserEvents_) {
+  // Default behavior indicating event availability
+  if (hasUserEvents_ && !config_.isMember("cursor")) {
     setCursor(Gdk::ARROW);
   }
+
   return false;
 }
 
@@ -243,6 +274,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }
+bool AModule::expandEnabled() const { return isExpand; }
 
 AModule::operator Gtk::Widget&() { return event_box_; }
 

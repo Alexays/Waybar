@@ -107,6 +107,10 @@ int main(int argc, char* argv[]) {
       ret = client->main(argc, argv);
     } while (reload);
 
+    std::signal(SIGUSR1, SIG_IGN);
+    std::signal(SIGUSR2, SIG_IGN);
+    std::signal(SIGINT, SIG_IGN);
+
     delete client;
     return ret;
   } catch (const std::exception& e) {

@@ -24,7 +24,7 @@ Addressed by *network*
 *family*: ++
 	typeof: string ++
 	default: *ipv4* ++
-	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present.
+	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present. Set it to ipv4_6 to display both.
 
 *format*: ++
 	typeof: string  ++
@@ -58,7 +58,7 @@ Addressed by *network*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -142,6 +142,11 @@ Addressed by *network*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{ifname}*: Name of the network interface.
@@ -150,11 +155,17 @@ Addressed by *network*
 
 *{gwaddr}*: The default gateway for the interface
 
-*{netmask}*: The subnetmask corresponding to the IP.
+*{netmask}*: The subnetmask corresponding to the IP(V4).
 
-*{cidr}*: The subnetmask corresponding to the IP in CIDR notation.
+*{netmask6}*: The subnetmask corresponding to the IP(V6). 
+
+*{cidr}*: The subnetmask corresponding to the IP(V4) in CIDR notation.
+
+*{cidr6}*: The subnetmask corresponding to the IP(V6) in CIDR notation.
 
 *{essid}*: Name (SSID) of the wireless network.
+
+*{bssid}*: MAC address (BSSID) of the wireless access point.
 
 *{signalStrength}*: Signal strength of the wireless network.
 

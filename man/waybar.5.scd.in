@@ -23,6 +23,21 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 
 # BAR CONFIGURATION
 
+*expand-center* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-center to consume all left over space dynamically.
+
+*expand-left* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
+
+*expand-right* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
+
 *layer* ++
 	typeof: string ++
 	default: bottom ++
@@ -67,6 +82,11 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *margin-<top\|left\|bottom\|right>* ++
 	typeof: integer ++
 	Margins value without units.
+
+*no-center* ++
+	typeof: bool ++
+	default: false ++
+	Option to disable the center modules fully usefull together with expand-\*.
 
 *spacing* ++
 	typeof: integer ++
@@ -181,6 +201,19 @@ A minimal *config* file could look like this:
 }
 ```
 
+# SIGNALS
+
+Waybar accepts the following signals:
+
+*SIGUSR1*
+	Toggles the bar visibility (hides if shown, shows if hidden)
+*SIGUSR2*
+	Reloads (resets) the bar
+*SIGINT*
+	Quits the bar
+
+For example, to toggle the bar programmatically, you can invoke `killall -SIGUSR1 waybar`.
+
 # MULTI OUTPUT CONFIGURATION
 
 ## Limit a configuration to some outputs
@@ -278,6 +311,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: "hidden" ++
 	Defines the CSS class to be applied to the hidden elements.
 
+*click-to-reveal*: ++
+	typeof: bool ++
+	default: false ++
+	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
+
 *transition-left-to-right*: ++
 	typeof: bool ++
 	default: true ++
@@ -318,6 +356,9 @@ A group may hide all but one element, showing them only on mouse hover. In order
 - *waybar-hyprland-submap(5)*
 - *waybar-hyprland-window(5)*
 - *waybar-hyprland-workspaces(5)*
+- *waybar-niri-language(5)*
+- *waybar-niri-window(5)*
+- *waybar-niri-workspaces(5)*
 - *waybar-idle-inhibitor(5)*
 - *waybar-image(5)*
 - *waybar-inhibitor(5)*

@@ -9,6 +9,7 @@ on:
 jobs:
   lockfile:
     runs-on: ubuntu-latest
+    if: github.event_name != 'schedule' || github.repository == 'Alexays/Waybar'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

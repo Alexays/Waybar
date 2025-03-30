@@ -10,12 +10,8 @@
 namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "language", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   modulesReady = true;
-
-  if (!gIPC) {
-    gIPC = std::make_unique<IPC>();
-  }
 
   // get the active layout when open
   initLanguage();
@@ -24,11 +20,11 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   update();
 
   // register for hyprland ipc
-  gIPC->registerForIPC("activelayout", this);
+  m_ipc.registerForIPC("activelayout", this);
 }
 
 Language::~Language() {
-  gIPC->unregisterForIPC(this);
+  m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
 }
@@ -85,7 +81,7 @@ void Language::onEvent(const std::string& ev) {
 }
 
 void Language::initLanguage() {
-  const auto inputDevices = gIPC->getSocket1Reply("devices");
+  const auto inputDevices = m_ipc.getSocket1Reply("devices");
 
   const auto kbName = config_["keyboard-name"].asString();
 

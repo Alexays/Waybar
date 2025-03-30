@@ -43,7 +43,7 @@ The *cpu* module displays the current CPU utilization.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -81,6 +81,11 @@ The *cpu* module displays the current CPU utilization.
 	typeof: bool ++
 	default: true ++
 	Option to disable tooltip on hover.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

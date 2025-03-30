@@ -78,6 +78,11 @@ Addressed by *hyprland/workspaces*
 	If set to id, workspaces will sort by id.
 	If none of those, workspaces will sort with default behavior.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{id}*: id of workspace assigned by compositor

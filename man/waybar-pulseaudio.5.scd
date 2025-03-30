@@ -40,7 +40,7 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -125,6 +125,11 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 *menu-actions*: ++
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

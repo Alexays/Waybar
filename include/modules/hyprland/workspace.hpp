@@ -83,6 +83,7 @@ class Workspace {
   Gtk::Button m_button;
   Gtk::Box m_content;
   Gtk::Label m_label;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

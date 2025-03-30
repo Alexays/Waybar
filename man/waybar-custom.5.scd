@@ -55,8 +55,8 @@ Addressed by *custom/<name>*
 
 *format*: ++
 	typeof: string ++
-	default: {} ++
-	The format, how information should be displayed. On {} data gets inserted.
+	default: {text} ++
+	The format, how information should be displayed. On {text} data gets inserted.
 
 *format-icons*: ++
 	typeof: array ++
@@ -64,7 +64,7 @@ Addressed by *custom/<name>*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -138,6 +138,11 @@ Addressed by *custom/<name>*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # RETURN-TYPE
 
 When *return-type* is set to *json*, Waybar expects the *exec*-script  to output its data in JSON format.
@@ -160,7 +165,7 @@ $text\\n$tooltip\\n$class*
 
 # FORMAT REPLACEMENTS
 
-*{}*: Output of the script.
+*{text}*: Output of the script.
 
 *{percentage}* Percentage which can be set via a json return type.
 
@@ -172,7 +177,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/spotify": {
-	"format": " {}",
+	"format": " {text}",
 	"max-length": 40,
 	"interval": 30, // Remove this if your script is endless and write in loop
 	"exec": "$HOME/.config/waybar/mediaplayer.sh 2> /dev/null", // Script in resources folder
@@ -185,7 +190,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/mpd": {
-	"format": "♪ {}",
+	"format": "♪ {text}",
 	//"max-length": 15,
 	"interval": 10,
 	"exec": "mpc current",
@@ -199,7 +204,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/cmus": {
-	"format": "♪ {}",
+	"format": "♪ {text}",
 	//"max-length": 15,
 	"interval": 10,
 	"exec": "cmus-remote -C \"format_print '%a - %t'\"", // artist - title
@@ -214,7 +219,7 @@ $text\\n$tooltip\\n$class*
 ```
 
 "custom/pacman": {
-	"format": "{}  ",
+	"format": "{text}  ",
 	"interval": "once",
 	"exec": "pacman_packages",
 	"on-click": "update-system",
@@ -226,7 +231,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/pacman": {
-	"format": "{}  ",
+	"format": "{text}  ",
 	"interval": 3600,                     // every hour
 	"exec": "checkupdates | wc -l",       // # of updates
 	"exec-if": "exit 0",                  // always run; consider advanced run conditions

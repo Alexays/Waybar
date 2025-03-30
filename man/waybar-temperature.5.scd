@@ -31,6 +31,10 @@ Addressed by *temperature*
 	typeof: string ++
 	The temperature filename of your *hwmon-path-abs*, e.g. *temp1_input*
 
+*warning-threshold*: ++
+	typeof: integer ++
+	The threshold before it is considered warning (Celsius).
+
 *critical-threshold*: ++
 	typeof: integer ++
 	The threshold before it is considered critical (Celsius).
@@ -39,6 +43,10 @@ Addressed by *temperature*
 	typeof: integer ++
 	default: 10 ++
 	The interval in which the information gets polled.
+
+*format-warning*: ++
+	typeof: string ++
+	The format to use when temperature is considered warning
 
 *format-critical*: ++
 	typeof: string ++
@@ -60,7 +68,7 @@ Addressed by *temperature*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -123,6 +131,11 @@ Addressed by *temperature*
 *menu-actions*: ++
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

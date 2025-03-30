@@ -3,6 +3,7 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <utility>
 
 namespace waybar::util {

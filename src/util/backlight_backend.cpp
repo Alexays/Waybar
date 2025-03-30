@@ -150,10 +150,18 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
     throw std::runtime_error("No backlight found");
   }
 
+#ifdef HAVE_LOGIN_PROXY
   // Connect to the login interface
   login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
       Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
-      "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
+      "/org/freedesktop/login1/session/auto", "org.freedesktop.login1.Session");
+
+  if (!login_proxy_) {
+    login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
+        Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
+        "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
+  }
+#endif
 
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
