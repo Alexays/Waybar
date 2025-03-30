@@ -393,6 +393,9 @@ Workspace::Workspace(const Bar &bar, const Json::Value &config, WorkspaceGroup &
       workspace_handle_(workspace),
       id_(id),
       name_(name) {
+  if (name_.empty()) {
+    name_ = std::to_string(id);
+  }
   if (workspace) {
     add_workspace_listener(workspace, this);
   } else {
