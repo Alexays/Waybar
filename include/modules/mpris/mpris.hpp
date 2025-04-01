@@ -74,6 +74,7 @@ class Mpris : public ALabel {
   std::string ellipsis_;
 
   std::string player_;
+  int player_count;
   std::vector<std::string> ignored_players_;
 
   PlayerctlPlayerManager* manager;

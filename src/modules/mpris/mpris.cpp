@@ -33,6 +33,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
       player_("playerctld"),
+      player_count(0),
       manager(),
       player(),
       last_update_(std::chrono::system_clock::now() - interval_) {
@@ -405,6 +406,7 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
   if (!mpris) return;
 
   spdlog::debug("mpris: name-appeared callback: {}", player_name->name);
+  mpris->player_count++;
 
   if (std::string(player_name->name) != mpris->player_) {
     return;
@@ -425,12 +427,17 @@ auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlaye
   if (!mpris) return;
 
   spdlog::debug("mpris: name-vanished callback: {}", player_name->name);
+  mpris->player_count--;
+
+  if (mpris->player_count <= 0) {
+    mpris->player_count = 0;
+    mpris->event_box_.set_visible(false);
+  }
 
   if (mpris->player_ == "playerctld") {
     mpris->dp.emit();
   } else if (mpris->player_ == player_name->name) {
     mpris->player = nullptr;
-    mpris->event_box_.set_visible(false);
     mpris->dp.emit();
   }
 }
@@ -458,9 +465,6 @@ auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
   if (!mpris) return;
 
   spdlog::debug("mpris: player-stop callback");
-
-  // hide widget
-  mpris->event_box_.set_visible(false);
   // update widget
   mpris->dp.emit();
 }
@@ -647,11 +651,6 @@ auto Mpris::update() -> void {
     return;
   }
   auto info = *opt;
-
-  if (info.status == PLAYERCTL_PLAYBACK_STATUS_STOPPED) {
-    spdlog::debug("mpris[{}]: player stopped, skipping update", info.name);
-    return;
-  }
 
   spdlog::debug("mpris[{}]: running update", info.name);
 
