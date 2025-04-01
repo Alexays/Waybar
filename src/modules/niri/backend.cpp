@@ -171,14 +171,30 @@ void IPC::parseIPC(const std::string &line) {
       windows_.clear();
       const auto &values = payload["windows"];
       std::copy(values.begin(), values.end(), std::back_inserter(windows_));
+    } else if (const auto &payload = ev["WindowsLocationsChanged"]) {
+      for (const auto &win_changes : payload["changes"]) {
+        for (auto &win : windows_) {
+          if (win["id"] == win_changes[0]) {
+            win["location"] = win_changes[1];
+            break;
+          }
+        }
+      }
     } else if (const auto &payload = ev["WindowOpenedOrChanged"]) {
       const auto &window = payload["window"];
       const auto id = window["id"].asUInt64();
-      auto it = std::find_if(windows_.begin(), windows_.end(),
-                             [id](const auto &win) { return win["id"].asUInt64() == id; });
+      auto it = std::ranges::find_if(
+          windows_,
+          [id](const auto &win) {
+            return win["id"].asUInt64() == id;
+          }
+      );
+
+      // Check if window from IPC is a new window.
       if (it == windows_.end()) {
         windows_.push_back(window);
 
+        // Since new window, update all existing windows "is_focused" state.
         if (window["is_focused"].asBool()) {
           for (auto &win : windows_) {
             win["is_focused"] = win["id"].asUInt64() == id;
