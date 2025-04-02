@@ -48,6 +48,7 @@ class MPD : public ALabel {
 
   // GUI-side methods
   bool handlePlayPause(GdkEventButton* const&);
+  bool handleToggle(GdkEventButton* const& e) override;
   void emit() { dp.emit(); }
 
   // MPD-side, Non-GUI methods.
