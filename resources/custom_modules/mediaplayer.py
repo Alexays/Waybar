@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import gi
 gi.require_version("Playerctl", "2.0")
 from gi.repository import Playerctl, GLib
-from gi.repository.Playerctl import Player
 import argparse
 import logging
 import sys
@@ -10,6 +9,7 @@ import signal
 import gi
 import json
 import os
+import subprocess
 from typing import List
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class PlayerManager:
         self.manager.manage_player(player)
         self.on_metadata_changed(player, player.props.metadata)
 
-    def get_players(self) -> List[Player]:
+    def get_players(self) -> List[Playerctl]:
         return self.manager.props.players
 
     def write_output(self, text, player):
@@ -151,16 +151,48 @@ class PlayerManager:
         logger.info(f"Player {player.props.player_name} has vanished")
         self.show_most_important_player()
 
+    def control_player(self, action):
+        if self.selected_player:
+            players = self.get_players()
+            for player in players:
+                if player.props.player_name == self.selected_player:
+                    if action == "play":
+                        subprocess.run(["playerctl", "-p", self.selected_player, "play"])
+                        logger.info(f"Playing {self.selected_player}")
+                    elif action == "pause":
+                        subprocess.run(["playerctl", "-p", self.selected_player, "pause"])
+                        logger.info(f"Paused {self.selected_player}")
+                    elif action == "play-pause":
+                        if player.props.status == "Playing":
+                            subprocess.run(["playerctl", "-p", self.selected_player, "pause"])
+                            logger.info(f"Paused {self.selected_player}")
+                        else:
+                            subprocess.run(["playerctl", "-p", self.selected_player, "play"])
+                            logger.info(f"Playing {self.selected_player}")
+                    elif action == "next":
+                        subprocess.run(["playerctl", "-p", self.selected_player, "next"])
+                        logger.info(f"Next track for {self.selected_player}")
+                    elif action == "previous":
+                        subprocess.run(["playerctl", "-p", self.selected_player, "previous"])
+                        logger.info(f"Previous track for {self.selected_player}")
+                    return
+            logger.warning(f"Player {self.selected_player} not found.")
+        else:
+            logger.warning("No player specified for action.")
+
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
     # Increase verbosity with every occurrence of -v
     parser.add_argument("-v", "--verbose", action="count", default=0)
 
-    parser.add_argument("-x", "--exclude", "- Comma-separated list of excluded player")
+    parser.add_argument("-x", "--exclude", help="Comma-separated list of excluded players")
 
-    # Define for which player we"re listening
+    # Define for which player we're listening
     parser.add_argument("--player")
+
+    # Add a new argument for play/pause action
+    parser.add_argument("--action", choices=["play", "pause", "play-pause", "next", "previous"], help="Action to perform on the specified player")
 
     parser.add_argument("--enable-logging", action="store_true")
 
@@ -178,7 +210,6 @@ def main():
                             format="%(asctime)s %(name)s %(levelname)s:%(lineno)d %(message)s")
 
     # Logging is set by default to WARN and higher.
-    # With every occurrence of -v it's lowered by one
     logger.setLevel(max((3 - arguments.verbose) * 10, 0))
 
     logger.info("Creating player manager")
@@ -188,8 +219,12 @@ def main():
         logger.info(f"Exclude player {arguments.exclude}")
 
     player = PlayerManager(arguments.player, arguments.exclude)
-    player.run()
 
+    # Check if an action is specified and perform it
+    if arguments.action:
+        player.control_player(arguments.action)
+    else:
+        player.run()
 
 if __name__ == "__main__":
     main()
