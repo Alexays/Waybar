@@ -16,7 +16,7 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
   ALabel::update();
 
   // Displays widget immediately if always_on_ assuming default submap
-  // Needs an actual way to retrive current submap on startup
+  // Needs an actual way to retrieve current submap on startup
   if (always_on_) {
     submap_ = default_submap_;
     label_.get_style_context()->add_class(submap_);
