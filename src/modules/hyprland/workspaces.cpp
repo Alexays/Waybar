@@ -79,14 +79,14 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
     const auto keys = workspace_data.getMemberNames();
 
     const auto *k = "persistent-rule";
-    if (std::find(keys.begin(), keys.end(), k) != keys.end()) {
+    if (std::ranges::find(keys, k) != keys.end()) {
       spdlog::debug("Set dynamic persistency of workspace {} to: {}", workspaceName,
                     workspace_data[k].asBool() ? "true" : "false");
       (*workspace)->setPersistentRule(workspace_data[k].asBool());
     }
 
     k = "persistent-config";
-    if (std::find(keys.begin(), keys.end(), k) != keys.end()) {
+    if (std::ranges::find(keys, k) != keys.end()) {
       spdlog::debug("Set config persistency of workspace {} to: {}", workspaceName,
                     workspace_data[k].asBool() ? "true" : "false");
       (*workspace)->setPersistentConfig(workspace_data[k].asBool());
@@ -231,7 +231,7 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
   std::vector<std::string> persistentWorkspacesToCreate;
 
   const std::string currentMonitor = m_bar.output->name;
-  const bool monitorInConfig = std::find(keys.begin(), keys.end(), currentMonitor) != keys.end();
+  const bool monitorInConfig = std::ranges::find(keys, currentMonitor) != keys.end();
   for (const std::string &key : keys) {
     // only add if either:
     // 1. key is the current monitor name
@@ -573,12 +573,11 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
     Json::Value clientsData = m_ipc.getSocket1JsonReply("clients");
     std::string jsonWindowAddress = fmt::format("0x{}", payload);
 
-    auto client =
-        std::find_if(clientsData.begin(), clientsData.end(), [jsonWindowAddress](auto &client) {
-          return client["address"].asString() == jsonWindowAddress;
-        });
+    auto client = std::ranges::find_if(clientsData, [jsonWindowAddress](auto &client) {
+      return client["address"].asString() == jsonWindowAddress;
+    });
 
-    if (!client->empty()) {
+    if (client != clientsData.end() && !client->empty()) {
       (*inserter)({*client});
     }
   }
@@ -760,9 +759,9 @@ void Workspaces::setCurrentMonitorId() {
   // get monitor ID from name (used by persistent workspaces)
   m_monitorId = 0;
   auto monitors = m_ipc.getSocket1JsonReply("monitors");
-  auto currentMonitor = std::find_if(
-      monitors.begin(), monitors.end(),
-      [this](const Json::Value &m) { return m["name"].asString() == m_bar.output->name; });
+  auto currentMonitor = std::ranges::find_if(monitors, [this](const Json::Value &m) {
+    return m["name"].asString() == m_bar.output->name;
+  });
   if (currentMonitor == monitors.end()) {
     spdlog::error("Monitor '{}' does not have an ID? Using 0", m_bar.output->name);
   } else {
@@ -846,9 +845,9 @@ void Workspaces::setUrgentWorkspace(std::string const &windowaddress) {
     }
   }
 
-  auto workspace =
-      std::find_if(m_workspaces.begin(), m_workspaces.end(),
-                   [workspaceId](std::unique_ptr<Workspace> &x) { return x->id() == workspaceId; });
+  auto workspace = std::ranges::find_if(m_workspaces, [workspaceId](std::unique_ptr<Workspace> &x) {
+    return x->id() == workspaceId;
+  });
   if (workspace != m_workspaces.end()) {
     workspace->get()->setUrgent();
   }
@@ -862,11 +861,10 @@ auto Workspaces::update() -> void {
 void Workspaces::updateWindowCount() {
   const Json::Value workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
-    auto workspaceJson =
-        std::find_if(workspacesJson.begin(), workspacesJson.end(), [&](Json::Value const &x) {
-          return x["name"].asString() == workspace->name() ||
-                 (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
-        });
+    auto workspaceJson = std::ranges::find_if(workspacesJson, [&](Json::Value const &x) {
+      return x["name"].asString() == workspace->name() ||
+             (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
+    });
     uint32_t count = 0;
     if (workspaceJson != workspacesJson.end()) {
       try {
@@ -921,12 +919,11 @@ void Workspaces::updateWorkspaceStates() {
     if (m_withIcon) {
       workspaceIcon = workspace->selectIcon(m_iconsMap);
     }
-    auto updatedWorkspace = std::find_if(
-        updatedWorkspaces.begin(), updatedWorkspaces.end(), [&workspace](const auto &w) {
-          auto wNameRaw = w["name"].asString();
-          auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
-          return wName == workspace->name();
-        });
+    auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto &w) {
+      auto wNameRaw = w["name"].asString();
+      auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
+      return wName == workspace->name();
+    });
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
