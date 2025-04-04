@@ -21,7 +21,7 @@ class WorkspaceGroup;
 
 class Workspace {
  public:
-  Workspace(const waybar::Bar &bar, const Json::Value &config, WorkspaceGroup &workspace_group,
+  Workspace(const waybar::Bar &bar, const Json::Value &config,
             ext_workspace_handle_v1 *workspace, uint32_t id, std::string name);
   ~Workspace();
   auto update() -> void;
@@ -41,15 +41,16 @@ class Workspace {
   auto handle_remove() -> void;
 
   auto make_persistent() -> void;
-  auto handle_duplicate() -> void;
 
   auto handle_done() -> void;
   auto handle_clicked(GdkEventButton *bt) -> bool;
   auto show() -> void;
   auto hide() -> void;
   auto get_button_ref() -> Gtk::Button & { return button_; }
+  auto get_workspace_handle() -> ext_workspace_handle_v1 * { return workspace_handle_; }
   auto get_name() -> std::string & { return name_; }
   auto get_coords() -> std::vector<uint32_t> & { return coordinates_; }
+  auto set_workspace_group(WorkspaceGroup *group) -> void { workspace_group_ = group; }
 
   enum class State {
     ACTIVE = (1 << 0),
@@ -63,7 +64,7 @@ class Workspace {
 
   const Bar &bar_;
   const Json::Value &config_;
-  WorkspaceGroup &workspace_group_;
+  WorkspaceGroup *workspace_group_ = nullptr;
 
   // wlr stuff
   ext_workspace_handle_v1 *workspace_handle_;
@@ -95,7 +96,7 @@ class WorkspaceGroup {
   auto remove_workspace(uint32_t id_) -> void;
   auto active_only() const -> bool;
   auto creation_delayed() const -> bool;
-  auto workspaces() -> std::vector<std::unique_ptr<Workspace>> & { return workspaces_; }
+  auto workspaces() -> std::vector<Workspace*> & { return workspaces_; }
   auto persistent_workspaces() -> std::vector<std::string> & { return persistent_workspaces_; }
 
   auto sort_workspaces() -> void;
@@ -116,7 +117,6 @@ class WorkspaceGroup {
   auto commit() -> void;
 
  private:
-  static uint32_t workspace_global_id;
   const waybar::Bar &bar_;
   Gtk::Box &box_;
   const Json::Value &config_;
@@ -127,7 +127,7 @@ class WorkspaceGroup {
   wl_output *output_ = nullptr;
 
   uint32_t id_;
-  std::vector<std::unique_ptr<Workspace>> workspaces_;
+  std::vector<Workspace*> workspaces_;
   bool need_to_sort = false;
   std::vector<std::string> persistent_workspaces_;
   bool persistent_created_ = false;
@@ -142,9 +142,10 @@ class WorkspaceManager : public AModule {
   auto all_outputs() const -> bool { return all_outputs_; }
   auto active_only() const -> bool { return active_only_; }
   auto workspace_comparator() const
-      -> std::function<bool(std::unique_ptr<Workspace> &, std::unique_ptr<Workspace> &)>;
+      -> std::function<bool(Workspace *, Workspace *)>;
   auto creation_delayed() const -> bool { return creation_delayed_; }
 
+  auto get_workspace(ext_workspace_handle_v1 *workspace_handle) -> Workspace *;
   auto sort_workspaces() -> void;
   auto remove_workspace_group(uint32_t id_) -> void;
 
@@ -162,11 +163,13 @@ class WorkspaceManager : public AModule {
   const waybar::Bar &bar_;
   Gtk::Box box_;
   std::vector<std::unique_ptr<WorkspaceGroup>> groups_;
+  std::vector<std::unique_ptr<Workspace>> workspaces_;
 
   // wlr stuff
   ext_workspace_manager_v1 *workspace_manager_ = nullptr;
 
   static uint32_t group_global_id;
+  static uint32_t workspace_global_id;
 
   bool sort_by_name_ = true;
   bool sort_by_coordinates_ = true;
