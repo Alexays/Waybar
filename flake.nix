@@ -13,55 +13,83 @@
     };
   };
 
-  outputs = { self, nixpkgs, treefmt-nix, ... }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      treefmt-nix,
+      ...
+    }:
     let
       inherit (nixpkgs) lib;
-      genSystems = func: lib.genAttrs [
-        "x86_64-linux"
-        "aarch64-linux"
-      ]
-        (system: func (import nixpkgs {
-          inherit system;
-          overlays = with self.overlays; [
-            waybar
-          ];
-        }));
+      genSystems =
+        func:
+        lib.genAttrs
+          [
+            "x86_64-linux"
+            "aarch64-linux"
+          ]
+          (
+            system:
+            func (
+              import nixpkgs {
+                inherit system;
+                overlays = with self.overlays; [
+                  waybar
+                ];
+              }
+            )
+          );
 
-      mkDate = longDate: (lib.concatStringsSep "-" [
-        (builtins.substring 0 4 longDate)
-        (builtins.substring 4 2 longDate)
-        (builtins.substring 6 2 longDate)
-      ]);
+      mkDate =
+        longDate:
+        (lib.concatStringsSep "-" [
+          (builtins.substring 0 4 longDate)
+          (builtins.substring 4 2 longDate)
+          (builtins.substring 6 2 longDate)
+        ]);
 
-      treefmtEval = genSystems (pkgs: treefmt-nix.lib.evalModule pkgs {
-        # Formatting configuration
-        programs = {
-          clang-format.enable = true;
-          nixfmt.enable = true;
-        };
-      });
+      treefmtEval = genSystems (
+        pkgs:
+        treefmt-nix.lib.evalModule pkgs {
+          # Formatting configuration
+          programs = {
+            clang-format.enable = true;
+            nixfmt.enable = true;
+          };
+        }
+      );
     in
     {
-      devShells = genSystems
-        (pkgs:
-          {
-            default =
-              pkgs.mkShell
-                {
-                  name = "waybar-shell";
+      devShells = genSystems (pkgs: {
+        default = pkgs.mkShell {
+          name = "waybar-shell";
 
-                  # inherit attributes from upstream nixpkgs derivation
-                  inherit (pkgs.waybar) buildInputs depsBuildBuild depsBuildBuildPropagated depsBuildTarget
-                    depsBuildTargetPropagated depsHostHost depsHostHostPropagated depsTargetTarget
-                    depsTargetTargetPropagated propagatedBuildInputs propagatedNativeBuildInputs strictDeps;
+          # inherit attributes from upstream nixpkgs derivation
+          inherit (pkgs.waybar)
+            buildInputs
+            depsBuildBuild
+            depsBuildBuildPropagated
+            depsBuildTarget
+            depsBuildTargetPropagated
+            depsHostHost
+            depsHostHostPropagated
+            depsTargetTarget
+            depsTargetTargetPropagated
+            propagatedBuildInputs
+            propagatedNativeBuildInputs
+            strictDeps
+            ;
 
-                  # overrides for local development
-                  nativeBuildInputs = pkgs.waybar.nativeBuildInputs ++ (with pkgs; [
-                    clang-tools
-                    gdb
-                  ]);
-                };
-          });
+          # overrides for local development
+          nativeBuildInputs =
+            pkgs.waybar.nativeBuildInputs
+            ++ (with pkgs; [
+              clang-tools
+              gdb
+            ]);
+        };
+      });
 
       formatter = genSystems (pkgs: treefmtEval.${pkgs.system}.config.build.wrapper);
 
@@ -72,11 +100,15 @@
             waybar = prev.waybar;
             # take the first "version: '...'" from meson.build
             version =
-              (builtins.head (builtins.split "'"
-                (builtins.elemAt
-                  (builtins.split " version: '" (builtins.readFile ./meson.build))
-                  2)))
-              + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+              (builtins.head (
+                builtins.split "'" (
+                  builtins.elemAt (builtins.split " version: '" (builtins.readFile ./meson.build)) 2
+                )
+              ))
+              + "+date="
+              + (mkDate (self.lastModifiedDate or "19700101"))
+              + "_"
+              + (self.shortRev or "dirty");
           };
         };
       };
