@@ -7,9 +7,13 @@
       url = "github:edolstra/flake-compat";
       flake = false;
     };
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, ... }:
+  outputs = { self, nixpkgs, treefmt-nix, ... }:
     let
       inherit (nixpkgs) lib;
       genSystems = func: lib.genAttrs [
@@ -28,6 +32,14 @@
         (builtins.substring 4 2 longDate)
         (builtins.substring 6 2 longDate)
       ]);
+
+      treefmtEval = genSystems (pkgs: treefmt-nix.lib.evalModule pkgs {
+        # Formatting configuration
+        programs = {
+          clang-format.enable = true;
+          nixfmt.enable = true;
+        };
+      });
     in
     {
       devShells = genSystems
@@ -50,6 +62,8 @@
                   ]);
                 };
           });
+
+      formatter = genSystems (pkgs: treefmtEval.${pkgs.system}.config.build.wrapper);
 
       overlays = {
         default = self.overlays.waybar;
