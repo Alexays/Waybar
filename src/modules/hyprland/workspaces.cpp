@@ -578,7 +578,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
           return client["address"].asString() == jsonWindowAddress;
         });
 
-    if (!client->empty()) {
+    if (client != clientsData.end() && !client->empty()) {
       (*inserter)({*client});
     }
   }
