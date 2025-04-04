@@ -45,11 +45,40 @@
 
                   # overrides for local development
                   nativeBuildInputs = pkgs.waybar.nativeBuildInputs ++ (with pkgs; [
+                    nixfmt-rfc-style
                     clang-tools
                     gdb
                   ]);
                 };
           });
+
+      formatter = genSystems (
+        pkgs:
+        pkgs.treefmt.withConfig {
+          settings = [
+            {
+              formatter = {
+                clang-format = {
+                  options = [ "-i" ];
+                  command = lib.getExe' pkgs.clang-tools "clang-format";
+                  excludes = [];
+                  includes = [
+                    "*.c"
+                    "*.cpp"
+                    "*.h"
+                    "*.hpp"
+                  ];
+                };
+                nixfmt = {
+                  command = lib.getExe pkgs.nixfmt-rfc-style;
+                  includes = [ "*.nix" ];
+                };
+              };
+              tree-root-file = ".git/index";
+            }
+          ];
+        }
+      );
 
       overlays = {
         default = self.overlays.waybar;
