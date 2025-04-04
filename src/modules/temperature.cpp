@@ -115,10 +115,10 @@ float waybar::modules::Temperature::getTemperature() {
   auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
 
   // First, try with dev.cpu
-  if ( (sysctlbyname(fmt::format("dev.cpu.{}.temperature", zone).c_str(), &temp, &size,
-                     NULL, 0) == 0) ||
-       (sysctlbyname(fmt::format("hw.acpi.thermal.tz{}.temperature", zone).c_str(), &temp, &size,
-                     NULL, 0) == 0) ) {
+  if ((sysctlbyname(fmt::format("dev.cpu.{}.temperature", zone).c_str(), &temp, &size, NULL, 0) ==
+       0) ||
+      (sysctlbyname(fmt::format("hw.acpi.thermal.tz{}.temperature", zone).c_str(), &temp, &size,
+                    NULL, 0) == 0)) {
     auto temperature_c = ((float)temp - 2732) / 10;
     return temperature_c;
   }
