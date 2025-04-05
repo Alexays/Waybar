@@ -72,7 +72,7 @@ fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
 spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled', 'std_format=disabled', 'tests=disabled'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
-wayland_protos = dependency('wayland-protocols')
+wayland_protos = dependency('wayland-protocols', version : ['>=1.39'])
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0')
@@ -276,6 +276,17 @@ if true
 endif
 
 if true
+    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/wlr/workspace_manager.cpp',
+        'src/modules/wlr/workspace_manager_binding.cpp',
+    )
+    man_files += files(
+        'man/waybar-wlr-workspaces.5.scd',
+    )
+endif
+
+if true
     add_project_arguments('-DHAVE_RIVER', language: 'cpp')
     src_files += files(
         'src/modules/river/layout.cpp',
@@ -472,17 +483,6 @@ elif tz_dep.found()
 else
     src_files += files('src/modules/simpleclock.cpp')
     man_files += files('man/waybar-clock.5.scd')
-endif
-
-if get_option('experimental')
-    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
-    src_files += files(
-        'src/modules/wlr/workspace_manager.cpp',
-        'src/modules/wlr/workspace_manager_binding.cpp',
-    )
-    man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
-    )
 endif
 
 cava = dependency('cava',
