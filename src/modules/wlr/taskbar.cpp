@@ -383,39 +383,38 @@ std::string Task::state_string(bool shortened) const {
 }
 
 void Task::handle_title(const char* title) {
-    title_ = title;
-    hide_if_ignored();
+  if (title_.empty()) {
+    spdlog::debug(fmt::format("Task ({}) setting title to {}", id_, title_));
+  } else {
+    spdlog::debug(fmt::format("Task ({}) overwriting title '{}' with '{}'", id_, title_, title));
+  }
+  title_ = title;
+  hide_if_ignored();
 
-    // Skip if we already have app info or no title
-    if (app_info_ || title_.empty()) {
-        return;
+  if (!with_icon_ && !with_name_ || app_info_) {
+    return;
+  }
+
+  set_app_info_from_app_id_list(title_);
+  name_ = app_info_ ? app_info_->get_display_name() : title;
+
+  if (!with_icon_) {
+    return;
+  }
+
+  int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+  bool found = false;
+  for (auto &icon_theme : tbar_->icon_themes()) {
+    if (image_load_icon(icon_, icon_theme, app_info_, icon_size)) {
+      found = true;
+      break;
     }
+  }
 
-    // Try exact title match
-    app_info_ = get_desktop_app_info(title_);
-
-    // Try lowercase version if still needed
-    if (!app_info_) {
-        std::string lower_title = title_;
-        std::transform(lower_title.begin(), lower_title.end(), lower_title.begin(), ::tolower);
-        app_info_ = get_desktop_app_info(lower_title);
-    }
-
-    // If we found a match, update name and icon
-    if (app_info_) {
-        name_ = app_info_->get_display_name();
-        spdlog::info("Found desktop file via title fallback: {}", name_);
-
-        if (with_icon_) {
-            const int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
-            for (auto& icon_theme : tbar_->icon_themes()) {
-                if (image_load_icon(icon_, icon_theme, app_info_, icon_size)) {
-                    icon_.show();
-                    break;
-                }
-            }
-        }
-    }
+  if (found)
+    icon_.show();
+  else
+    spdlog::debug("Couldn't find icon for {}", title_);
 }
 
 void Task::set_minimize_hint() {
