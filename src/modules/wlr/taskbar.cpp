@@ -382,9 +382,40 @@ std::string Task::state_string(bool shortened) const {
     return res.substr(0, res.size() - 1);
 }
 
-void Task::handle_title(const char *title) {
-  title_ = title;
-  hide_if_ignored();
+void Task::handle_title(const char* title) {
+    title_ = title;
+    hide_if_ignored();
+
+    // Skip if we already have app info or no title
+    if (app_info_ || title_.empty()) {
+        return;
+    }
+
+    // Try exact title match
+    app_info_ = get_desktop_app_info(title_);
+
+    // Try lowercase version if still needed
+    if (!app_info_) {
+        std::string lower_title = title_;
+        std::transform(lower_title.begin(), lower_title.end(), lower_title.begin(), ::tolower);
+        app_info_ = get_desktop_app_info(lower_title);
+    }
+
+    // If we found a match, update name and icon
+    if (app_info_) {
+        name_ = app_info_->get_display_name();
+        spdlog::info("Found desktop file via title fallback: {}", name_);
+
+        if (with_icon_) {
+            const int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+            for (auto& icon_theme : tbar_->icon_themes()) {
+                if (image_load_icon(icon_, icon_theme, app_info_, icon_size)) {
+                    icon_.show();
+                    break;
+                }
+            }
+        }
+    }
 }
 
 void Task::set_minimize_hint() {
