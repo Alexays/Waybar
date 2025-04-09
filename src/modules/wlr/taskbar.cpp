@@ -19,6 +19,7 @@
 #include "glibmm/error.h"
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
+#include "util/command.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
@@ -328,11 +329,6 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
       format_tooltip_ = "{title}";
   }
 
-  /* Handle click events if configured */
-  if (config_["on-click"].isString() || config_["on-click-middle"].isString() ||
-      config_["on-click-right"].isString()) {
-  }
-
   button.add_events(Gdk::BUTTON_PRESS_MASK);
   button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
 
@@ -555,22 +551,18 @@ bool Task::handle_clicked(GdkEventButton *bt) {
     drag_start_y = bt->y;
   }
 
-  std::string action;
-  if (config_["on-click"].isString() && bt->button == 1)
-    action = config_["on-click"].asString();
-  else if (config_["on-click-middle"].isString() && bt->button == 2)
-    action = config_["on-click-middle"].asString();
-  else if (config_["on-click-right"].isString() && bt->button == 3)
-    action = config_["on-click-right"].asString();
-
-  if (action.empty())
-    return true;
-  else if (action == "activate")
+  auto action = tbar_->task_actions()[bt->button];
+  if (action.empty()) {
+    spdlog::trace("wlr/taskbar: no action bound for button {}", bt->button);
+  } else if (action == "activate") {
+    spdlog::trace("wlr/taskbar: button {} activate", bt->button);
     activate();
-  else if (action == "minimize") {
+  } else if (action == "minimize") {
+    spdlog::trace("wlr/taskbar: button {} minimize", bt->button);
     set_minimize_hint();
     minimize(!minimized());
   } else if (action == "minimize-raise") {
+    spdlog::trace("wlr/taskbar: button {} minimize-raise", bt->button);
     set_minimize_hint();
     if (minimized())
       minimize(false);
@@ -578,14 +570,24 @@ bool Task::handle_clicked(GdkEventButton *bt) {
       minimize(true);
     else
       activate();
-  } else if (action == "maximize")
+  } else if (action == "maximize") {
+    spdlog::trace("wlr/taskbar: button {} maximize", bt->button);
     maximize(!maximized());
-  else if (action == "fullscreen")
+  } else if (action == "fullscreen") {
+    spdlog::trace("wlr/taskbar: button {} fullscreen", bt->button);
     fullscreen(!fullscreen());
-  else if (action == "close")
+  } else if (action == "close") {
+    spdlog::trace("wlr/taskbar: button {} close", bt->button);
     close();
-  else
-    spdlog::warn("Unknown action {}", action);
+  } else {
+    spdlog::trace("wlr/taskbar: button {} unknown action {} run as command", bt->button, action);
+
+    std::string cmd_action =
+        fmt::format(fmt::runtime(action), fmt::arg("title", title_), fmt::arg("app_id", app_id_),
+                    fmt::arg("state", state_string()));
+
+    tbar_->push_back_pid(util::command::forkExec(cmd_action));
+  }
 
   drag_start_button = -1;
   return true;
@@ -803,6 +805,71 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     }
   }
 
+  // valid actions
+  const std::vector<std::string> actions = {"activate", "minimize",   "minimize-raise",
+                                            "maximize", "fullscreen", "close"};
+  // valid triggers for the actions
+  const std::map<std::string, guint> trigger_buttons = {
+      {"on-click", 1}, {"on-click-right", 3}, {"on-click-middle", 2}};
+
+  if (config_["actions"].isObject()) {
+    for (const auto &a : config_["actions"].getMemberNames()) {
+      if (!config_["actions"][a].isString()) continue;
+
+      auto action = config_["actions"][a].asString();
+      auto tb = trigger_buttons.find(a);
+
+      if (tb == trigger_buttons.end()) {
+        spdlog::warn("wlr/taskbar: ignoring unknown trigger {}", a);
+        continue;
+      }
+
+      task_actions_[tb->second] = action;
+
+      if (std::find(actions.begin(), actions.end(), action) != actions.end()) {
+        spdlog::trace("wlr/taskbar: action {} added for trigger {}/button {}", action, a,
+                      tb->second);
+      } else {
+        spdlog::trace("wlr/taskbar: command {} added for trigger {}/button {}", action, a,
+                      tb->second);
+      }
+    }
+  }
+
+  /* Actual commands can still be executed by AModule on the whole module.
+
+    But if it is a known action rather than a command, it should ideally be within "actions", give a
+    deprecation warning. Remove the whole section in the future.
+
+    If there already was an action correctly specified within the actions object, ignore the one on
+    the module, also with a warning. */
+  for (const auto &t : trigger_buttons) {
+    if (!config_[t.first].isString()) continue;
+
+    auto action = config_[t.first].asString();
+    if (std::find(actions.begin(), actions.end(), action) != actions.end()) {
+      if (task_actions_[t.second].empty()) {
+        task_actions_[t.second] = action;
+        spdlog::warn(
+            "wlr/taskbar: known action {} for trigger {} should be within actions object. Placing "
+            "them directly in the module is deprecated. Please note that AModule still executes "
+            "this a as a command on the whole taskbar, which may cause error messages.",
+            action, t.first);
+      } else {
+        spdlog::warn(
+            "wlr/taskbar: ignoring known action {} for trigger {} because there is an action "
+            "specified within the actions object. Please note that AModule still executes this "
+            "as a command on the whole taskbar, which may cause error messages.",
+            action, t.first);
+      }
+    } else {
+      spdlog::warn(
+          "wlr/taskbar: {}/{} command will be executed on whole taskbar rather than individual "
+          "tasks. If that's not what you wanted, consider actions object.",
+          t.first, action);
+    }
+  }
+
   icon_themes_.push_back(Gtk::IconTheme::get_default());
 
   for (auto &t : tasks_) {
@@ -861,6 +928,8 @@ static const struct zwlr_foreign_toplevel_manager_v1_listener toplevel_manager_i
     .toplevel = tm_handle_toplevel,
     .finished = tm_handle_finished,
 };
+
+auto Taskbar::doAction(const std::string &name) -> void {}
 
 void Taskbar::register_manager(struct wl_registry *registry, uint32_t name, uint32_t version) {
   if (manager_) {
@@ -939,6 +1008,8 @@ bool Taskbar::all_outputs() const {
   return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
 }
 
+void Taskbar::push_back_pid(pid_t pid) { pid_.push_back(pid); }
+
 const std::vector<Glib::RefPtr<Gtk::IconTheme>> &Taskbar::icon_themes() const {
   return icon_themes_;
 }
@@ -948,5 +1019,7 @@ const std::unordered_set<std::string> &Taskbar::ignore_list() const { return ign
 const std::map<std::string, std::string> &Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
 }
+
+const std::array<std::string, 4> &Taskbar::task_actions() const { return task_actions_; }
 
 } /* namespace waybar::modules::wlr */
