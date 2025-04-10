@@ -94,6 +94,16 @@ void Group::hide_group() {
   revealer.set_reveal_child(false);
 }
 
+void waybar::Group::refresh(int sig) {
+  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+    if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
+      hide_group();
+    } else {
+      show_group();
+    }
+  }
+}
+
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
   if (!click_to_reveal) {
     show_group();

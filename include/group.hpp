@@ -3,6 +3,7 @@
 #include <gtkmm/box.h>
 #include <gtkmm/widget.h>
 #include <json/json.h>
+#include <csignal>
 
 #include "AModule.hpp"
 #include "gtkmm/revealer.h"
@@ -14,6 +15,7 @@ class Group : public AModule {
   Group(const std::string &, const std::string &, const Json::Value &, bool);
   ~Group() override = default;
   auto update() -> void override;
+  void refresh(int /*signal*/);
   operator Gtk::Widget &() override;
 
   virtual Gtk::Box &getBox();
