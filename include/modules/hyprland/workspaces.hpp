@@ -127,7 +127,7 @@ class Workspaces : public AModule, public EventHandler {
 
   // Map for windows stored in workspaces not present in the current bar.
   // This happens when the user has multiple monitors (hence, multiple bars)
-  // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
+  // and doesn't share windows across bars (a.k.a `all-outputs` = false)
   std::map<WindowAddress, std::string> m_orphanWindowMap;
 
   enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
