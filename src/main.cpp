@@ -14,64 +14,6 @@ std::mutex reap_mtx;
 std::list<pid_t> reap;
 volatile bool reload;
 
-void* signalThread(void* args) {
-  int err;
-  int signum;
-  sigset_t mask;
-  sigemptyset(&mask);
-  sigaddset(&mask, SIGCHLD);
-
-  while (true) {
-    err = sigwait(&mask, &signum);
-    if (err != 0) {
-      spdlog::error("sigwait failed: {}", strerror(errno));
-      continue;
-    }
-
-    switch (signum) {
-      case SIGCHLD:
-        spdlog::debug("Received SIGCHLD in signalThread");
-        if (!reap.empty()) {
-          reap_mtx.lock();
-          for (auto it = reap.begin(); it != reap.end(); ++it) {
-            if (waitpid(*it, nullptr, WNOHANG) == *it) {
-              spdlog::debug("Reaped child with PID: {}", *it);
-              it = reap.erase(it);
-            }
-          }
-          reap_mtx.unlock();
-        }
-        break;
-      default:
-        spdlog::debug("Received signal with number {}, but not handling", signum);
-        break;
-    }
-  }
-}
-
-void startSignalThread() {
-  int err;
-  sigset_t mask;
-  sigemptyset(&mask);
-  sigaddset(&mask, SIGCHLD);
-
-  // Block SIGCHLD so it can be handled by the signal thread
-  // Any threads created by this one (the main thread) should not
-  // modify their signal mask to unblock SIGCHLD
-  err = pthread_sigmask(SIG_BLOCK, &mask, nullptr);
-  if (err != 0) {
-    spdlog::error("pthread_sigmask failed in startSignalThread: {}", strerror(err));
-    exit(1);
-  }
-
-  pthread_t thread_id;
-  err = pthread_create(&thread_id, nullptr, signalThread, nullptr);
-  if (err != 0) {
-    spdlog::error("pthread_create failed in startSignalThread: {}", strerror(err));
-    exit(1);
-  }
-}
-
 static int signal_pipe_write_fd;
 
 // Write a single signal to `signal_pipe_write_fd`.
@@ -87,8 +29,8 @@ static void writeSignalToPipe(int signum) {
 // This initializes `signal_pipe_write_fd`, and sets up signal handlers.
 //
 // This function will run forever, emitting every `SIGUSR1`, `SIGUSR2`,
-// `SIGINT`, and `SIGRTMIN + 1`...`SIGRTMAX` signal received to
-// `signal_handler`.
+// `SIGINT`, `SIGCHLD`, and `SIGRTMIN + 1`...`SIGRTMAX` signal received
+// to `signal_handler`.
 static void catchSignals(waybar::SafeSignal<int> &signal_handler) {
   int fd[2];
   pipe(fd);
@@ -108,6 +50,7 @@ static void catchSignals(waybar::SafeSignal<int> &signal_handler) {
   std::signal(SIGUSR1, writeSignalToPipe);
   std::signal(SIGUSR2, writeSignalToPipe);
   std::signal(SIGINT, writeSignalToPipe);
+  std::signal(SIGCHLD, writeSignalToPipe);
 
   for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
     std::signal(sig, writeSignalToPipe);
@@ -156,6 +99,19 @@ static void handleSignalMainThread(int signum) {
       reload = false;
       waybar::Client::inst()->reset();
       break;
+    case SIGCHLD:
+      spdlog::debug("Received SIGCHLD in signalThread");
+      if (!reap.empty()) {
+        reap_mtx.lock();
+        for (auto it = reap.begin(); it != reap.end(); ++it) {
+          if (waitpid(*it, nullptr, WNOHANG) == *it) {
+            spdlog::debug("Reaped child with PID: {}", *it);
+            it = reap.erase(it);
+          }
+        }
+        reap_mtx.unlock();
+      }
+      break;
    default:
       spdlog::debug("Received signal with number {}, but not handling", signum);
       break;
@@ -165,8 +121,6 @@ static void handleSignalMainThread(int signum) {
 int main(int argc, char* argv[]) {
   try {
     auto* client = waybar::Client::inst();
-
-    startSignalThread();
 
     waybar::SafeSignal<int> posix_signal_received;
     posix_signal_received.connect([&](int signum) {
