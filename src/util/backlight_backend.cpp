@@ -227,11 +227,19 @@ const BacklightDevice *BacklightBackend::best_device(const std::vector<Backlight
     return &(*found);
   }
 
-  const auto max = std::max_element(
-      devices.begin(), devices.end(),
-      [](const BacklightDevice &l, const BacklightDevice &r) { return l.get_max() < r.get_max(); });
-
-  return max == devices.end() ? nullptr : &(*max);
+  if (DIR *dir = opendir("/sys/class/backlight")) {
+    while (auto *ent = readdir(dir)) {
+      if (ent->d_name[0] == '.') continue;  // Skip "." and ".."
+      if (auto match = std::find_if(devices.begin(), devices.end(),
+          [ent](const BacklightDevice &d) { return d.name() == ent->d_name; });
+          match != devices.end()) {
+        closedir(dir);
+        return &(*match);
+      }
+    }
+    closedir(dir);
+  }
+  return nullptr;
 }
 
 const BacklightDevice *BacklightBackend::get_previous_best_device() {
