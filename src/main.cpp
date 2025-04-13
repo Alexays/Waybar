@@ -12,7 +12,6 @@
 
 std::mutex reap_mtx;
 std::list<pid_t> reap;
-volatile bool reload;
 
 static int signal_pipe_write_fd;
 
@@ -73,7 +72,10 @@ static void catchSignals(waybar::SafeSignal<int> &signal_handler) {
 }
 
 // Must be called on the main thread.
-static void handleSignalMainThread(int signum) {
+// 
+// If this signal should restart or close the bar, this function will write
+// `true` or `false`, respectively, into `reload`.
+static void handleSignalMainThread(int signum, bool &reload) {
   if (signum >= SIGRTMIN + 1 && signum <= SIGRTMAX) {
     for (auto& bar : waybar::Client::inst()->bars) {
       bar->handleSignal(signum);
@@ -122,9 +124,11 @@ int main(int argc, char* argv[]) {
   try {
     auto* client = waybar::Client::inst();
 
+    bool reload;
+
     waybar::SafeSignal<int> posix_signal_received;
     posix_signal_received.connect([&](int signum) {
-      handleSignalMainThread(signum);
+      handleSignalMainThread(signum, reload);
     });
 
     std::thread signal_thread([&]() {
