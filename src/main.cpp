@@ -22,7 +22,7 @@ static void writeSignalToPipe(int signum) {
 
   // There's not much we can safely do inside of a signal handler.
   // Let's just ignore any errors.
-  (void) amt;
+  (void)amt;
 }
 
 // This initializes `signal_pipe_write_fd`, and sets up signal handlers.
@@ -30,7 +30,7 @@ static void writeSignalToPipe(int signum) {
 // This function will run forever, emitting every `SIGUSR1`, `SIGUSR2`,
 // `SIGINT`, `SIGCHLD`, and `SIGRTMIN + 1`...`SIGRTMAX` signal received
 // to `signal_handler`.
-static void catchSignals(waybar::SafeSignal<int> &signal_handler) {
+static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   int fd[2];
   pipe(fd);
 
@@ -72,10 +72,10 @@ static void catchSignals(waybar::SafeSignal<int> &signal_handler) {
 }
 
 // Must be called on the main thread.
-// 
+//
 // If this signal should restart or close the bar, this function will write
 // `true` or `false`, respectively, into `reload`.
-static void handleSignalMainThread(int signum, bool &reload) {
+static void handleSignalMainThread(int signum, bool& reload) {
   if (signum >= SIGRTMIN + 1 && signum <= SIGRTMAX) {
     for (auto& bar : waybar::Client::inst()->bars) {
       bar->handleSignal(signum);
@@ -114,7 +114,7 @@ static void handleSignalMainThread(int signum, bool &reload) {
         reap_mtx.unlock();
       }
       break;
-   default:
+    default:
       spdlog::debug("Received signal with number {}, but not handling", signum);
       break;
   }
@@ -127,13 +127,9 @@ int main(int argc, char* argv[]) {
     bool reload;
 
     waybar::SafeSignal<int> posix_signal_received;
-    posix_signal_received.connect([&](int signum) {
-      handleSignalMainThread(signum, reload);
-    });
+    posix_signal_received.connect([&](int signum) { handleSignalMainThread(signum, reload); });
 
-    std::thread signal_thread([&]() {
-      catchSignals(posix_signal_received);
-    });
+    std::thread signal_thread([&]() { catchSignals(posix_signal_received); });
 
     // Every `std::thread` must be joined or detached.
     // This thread should run forever, so detach it.
