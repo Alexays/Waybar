@@ -22,10 +22,10 @@ Language::Language(const std::string& id, const Json::Value& config)
   hide_single_ = config["hide-single-layout"].isBool() && config["hide-single-layout"].asBool();
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
   if (format_.find("{}") != std::string::npos || format_.find("{short}") != std::string::npos) {
-    displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortName);
+    displayed_short_flag |= static_cast<std::byte>(DisplayedShortFlag::ShortName);
   }
   if (format_.find("{shortDescription}") != std::string::npos) {
-    displayed_short_flag |= static_cast<std::byte>(DispayedShortFlag::ShortDescription);
+    displayed_short_flag |= static_cast<std::byte>(DisplayedShortFlag::ShortDescription);
   }
   if (config.isMember("tooltip-format")) {
     tooltip_format_ = config["tooltip-format"].asString();

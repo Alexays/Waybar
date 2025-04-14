@@ -42,7 +42,7 @@ class WindowCreationPayload {
   std::string getWorkspaceName() const { return m_workspaceName; }
   WindowAddress getAddress() const { return m_windowAddress; }
 
-  void moveToWorksace(std::string& new_workspace_name);
+  void moveToWorkspace(std::string& new_workspace_name);
 
  private:
   void clearAddr();
