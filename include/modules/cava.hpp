@@ -5,7 +5,16 @@
 
 namespace cava {
 extern "C" {
+// Need sdl_glsl output feature to be enabled on libcava
+#ifndef SDL_GLSL
+#define SDL_GLSL
+#endif
+
 #include <cava/common.h>
+
+#ifdef SDL_GLSL
+#undef SDL_GLSL
+#endif
 }
 }  // namespace cava
 
