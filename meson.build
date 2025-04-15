@@ -306,6 +306,7 @@ if true
         'src/modules/hyprland/language.cpp',
         'src/modules/hyprland/submap.cpp',
         'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
