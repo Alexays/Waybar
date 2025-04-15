@@ -5,12 +5,12 @@
 }:
 let
   libcava = rec {
-    version = "0.10.3";
+    version = "0.10.4";
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
-      rev = version;
-      hash = "sha256-ZDFbI69ECsUTjbhlw2kHRufZbQMu+FQSMmncCJ5pagg=";
+      tag = version;
+      hash = "sha256-9eTDqM+O1tA/3bEfd1apm8LbEcR9CVgELTIspSVPMKM=";
     };
   };
 in
