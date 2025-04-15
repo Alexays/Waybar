@@ -382,7 +382,7 @@ std::string Task::state_string(bool shortened) const {
     return res.substr(0, res.size() - 1);
 }
 
-void Task::handle_title(const char* title) {
+void Task::handle_title(const char *title) {
   if (title_.empty()) {
     spdlog::debug(fmt::format("Task ({}) setting title to {}", id_, title_));
   } else {
