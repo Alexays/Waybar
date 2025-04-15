@@ -1,7 +1,7 @@
 [wrap-file]
-directory = cava-0.10.3
-source_url = https://github.com/LukashonakV/cava/archive/0.10.3.tar.gz
-source_filename = cava-0.10.3.tar.gz
-source_hash = aab0a4ed3f999e8461ad9de63ef8a77f28b6b2011f7dd0c69ba81819d442f6f9
+directory = cava-0.10.4
+source_url = https://github.com/LukashonakV/cava/archive/0.10.4.tar.gz
+source_filename = cava-0.10.4.tar.gz
+source_hash =7bc1c1f9535f2bcc5cd2ae8a2434a2e3a05f5670b1c96316df304137ffc65756
 [provide]
 cava = cava_dep
