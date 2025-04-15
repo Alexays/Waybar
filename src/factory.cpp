@@ -109,6 +109,9 @@
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
+// #ifdef HAVE_LIBVIRT
+#include "modules/virtualization.hpp"
+// #endif
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
@@ -332,6 +335,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
     }
 #endif
+    // #ifdef HAVE_LIBVIRT
+    if (ref == "libvirt") {
+      return new waybar::modules::Virtualization(id, config_[name]);
+    }
+    // #endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
     }
