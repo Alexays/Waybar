@@ -16,29 +16,30 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
     label_(""),
     icon_()
 {
+  this->niri_id_ = win["id"].asUInt();
   this->pid_ = win["pid"].asUInt();
   this->gtk_button_contents_.add(this->icon_);
   this->gtk_button_contents_.add(this->label_);
   this->gtk_button.add(this->gtk_button_contents_);
   this->gtk_button.set_relief(Gtk::RELIEF_NONE);
   this->icon_theme_ = icon_theme;
+  this->icon_size_ = 24;
   this->set_style(cfg);
   this->update(win);
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Taskbar::Button::get_icon_from_app_id(std::string &app_id){
-  auto icon_info = this->icon_theme_->lookup_icon(app_id, 24);
+  auto icon_info = this->icon_theme_->lookup_icon(app_id, this->icon_size_);
   // TODO(luna) Error handling to theme lookup?
-  // TODO(luna) Icon sizing?
   return icon_info.load_icon();
 }
 
 void Taskbar::Button::update_icon() {
   auto pixbuf = this->get_icon_from_app_id(this->app_id_);
-  auto scaled_icon_size = 24; // TODO(luna) Take this from config..
+  auto scaled_icon_size = this->icon_size_;
 
   if (pixbuf) {
-    if (pixbuf->get_width() != scaled_icon_size) {
+    if ((unsigned)pixbuf->get_width() != scaled_icon_size) {
       int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
       pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
     }
@@ -117,6 +118,11 @@ void Taskbar::Button::set_style(const Json::Value &cfg) {
   cfg_key = "inactive-button-format";
   warn_if_missing(cfg, cfg_key);
   this->inactive_button_format_ = format_to_enum(cfg[cfg_key].asString());
+
+  cfg_key = "icon-size";
+  if (!cfg[cfg_key].isNull()) {
+    this->icon_size_ = cfg[cfg_key].asUInt();
+  }
 }
 
 void Taskbar::Button::update(const Json::Value &win) {
