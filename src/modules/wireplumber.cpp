@@ -299,7 +299,7 @@ void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* r
   gboolean success = FALSE;
   g_autoptr(GError) error = nullptr;
 
-  success = wp_core_load_component_finish(self->wp_core_, res, nullptr);
+  success = wp_core_load_component_finish(self->wp_core_, res, &error);
 
   if (success == FALSE) {
     spdlog::error("[{}]: mixer API load failed", self->name_);
