@@ -22,6 +22,10 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
   this->gtk_button_contents_.add(this->label_);
   this->gtk_button.add(this->gtk_button_contents_);
   this->gtk_button.set_relief(Gtk::RELIEF_NONE);
+  this->gtk_button.signal_pressed().connect([this] {
+      try { this->send_niri_ipc_focus(); }
+      catch (const std::exception &e) { spdlog::error("Error switching focus: {}", e.what()); }
+    });
   this->icon_theme_ = icon_theme;
   this->icon_size_ = 24;
   this->set_style(cfg);
@@ -77,6 +81,14 @@ void Taskbar::Button::hide() {
   this->icon_.hide();
   this->gtk_button_contents_.hide();
   this->gtk_button.hide();
+}
+
+void Taskbar::Button::send_niri_ipc_focus() const {
+  Json::Value request(Json::objectValue);
+  auto &action = (request["Action"] = Json::Value(Json::objectValue));
+  auto &focus_window = (action["FocusWindow"] = Json::Value(Json::objectValue));
+  focus_window["id"] = this->niri_id_;
+  IPC::send(request);
 }
 
 void Taskbar::Button::update_app_id(std::string &app_id) {

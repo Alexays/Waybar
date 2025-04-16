@@ -37,6 +37,7 @@ class Taskbar : public AModule, public EventHandler {
     void update_app_id(std::string &app_id);
     void show();
     void hide();
+    void send_niri_ipc_focus() const ;
    public:
     Gtk::Button gtk_button;
     Button(const Json::Value &window, const Json::Value &cfg, const Glib::RefPtr<Gtk::IconTheme> &icon_theme);
