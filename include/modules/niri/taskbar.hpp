@@ -23,9 +23,10 @@ class Taskbar : public AModule, public EventHandler {
       Icon,
       IconAndText,
     };
+    uint niri_id_;
     uint pid_;
-    std::string app_id_;
-    ButtonFormat active_button_format_;
+    uint icon_size_;
+    std::string app_id_; ButtonFormat active_button_format_;
     ButtonFormat inactive_button_format_;
     Glib::RefPtr<Gtk::IconTheme> icon_theme_;
     Gtk::Box gtk_button_contents_;
