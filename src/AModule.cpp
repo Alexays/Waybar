@@ -95,6 +95,7 @@ auto AModule::update() -> void {
   if (config_["on-update"].isString()) {
     pid_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
+  signal_updated.emit(this); 
 }
 // Get mapping between event name and module action name
 // Then call overrided doAction in order to call appropriate module action
