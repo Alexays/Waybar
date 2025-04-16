@@ -176,6 +176,10 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 
   // trigger initial update
   dp.emit();
+
+  // Set up scroll handler
+  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Mpris::handleScroll));
 }
 
 Mpris::~Mpris() {
@@ -618,6 +622,63 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
   }
   if (error) {
     spdlog::error("mpris[{}]: error running builtin on-click action: {}", (*info).name,
+                  error->message);
+    return false;
+  }
+  return true;
+}
+
+bool Mpris::handleScroll(GdkEventScroll* e) {
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
+      config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString()) {
+    return AModule::handleScroll(e);
+  }
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  GError* error = nullptr;
+  waybar::util::ScopeGuard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
+
+  auto info = getPlayerInfo();
+  if (!info) return false;
+
+  switch (dir) {
+    case SCROLL_DIR::UP:
+      if (config_["on-scroll-up"].isString()) {
+        return ALabel::handleScroll(e);
+      }
+      playerctl_player_previous(player, &error);
+      break;
+    case SCROLL_DIR::DOWN:
+      if (config_["on-scroll-down"].isString()) {
+        return ALabel::handleScroll(e);
+      }
+      playerctl_player_next(player, &error);
+      break;
+    case SCROLL_DIR::LEFT:
+      if (config_["on-scroll-left"].isString()) {
+        return ALabel::handleScroll(e);
+      }
+      playerctl_player_previous(player, &error);
+      break;
+    case SCROLL_DIR::RIGHT:
+      if (config_["on-scroll-right"].isString()) {
+        return ALabel::handleScroll(e);
+      }
+      playerctl_player_next(player, &error);
+      break;
+    default:
+      return false;
+  }
+
+  if (error) {
+    spdlog::error("mpris[{}]: error running builtin on-scroll action: {}", (*info).name,
                   error->message);
     return false;
   }
