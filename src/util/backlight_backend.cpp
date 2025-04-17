@@ -230,8 +230,9 @@ const BacklightDevice *BacklightBackend::best_device(const std::vector<Backlight
   if (DIR *dir = opendir("/sys/class/backlight")) {
     while (auto *ent = readdir(dir)) {
       if (ent->d_name[0] == '.') continue;  // Skip "." and ".."
-      if (auto match = std::find_if(devices.begin(), devices.end(),
-          [ent](const BacklightDevice &d) { return d.name() == ent->d_name; });
+      if (auto match =
+              std::find_if(devices.begin(), devices.end(),
+                           [ent](const BacklightDevice &d) { return d.name() == ent->d_name; });
           match != devices.end()) {
         closedir(dir);
         return &(*match);
