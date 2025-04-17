@@ -48,6 +48,8 @@ class Taskbar : public AModule, public EventHandler {
     void destroy();
     std::string get_app_id() { return this->app_id_; };
   };
+  uint get_my_workspace_id();
+  std::vector<Json::Value> get_workspaces_on_output();
 
   void onEvent(const Json::Value &ev) override;
   void doUpdate();
