@@ -1,4 +1,5 @@
 #include "modules/niri/taskbar.hpp"
+#include "util/gtk_icon.hpp"
 #include <gio/gio.h>
 
 #include <gtkmm/button.h>
@@ -34,8 +35,16 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
 
 Glib::RefPtr<Gdk::Pixbuf> Taskbar::Button::get_icon_from_app_id(std::string &app_id){
   auto icon_info = this->icon_theme_->lookup_icon(app_id, this->icon_size_);
-  // TODO(luna) Error handling to theme lookup?
-  return icon_info.load_icon();
+  if (icon_info) {
+    return icon_info.load_icon();
+  }
+
+  // Fallback icon
+  return DefaultGtkIconThemeWrapper::load_icon(
+    "image-missing",
+    this->icon_size_,
+    Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE
+  );
 }
 
 void Taskbar::Button::update_icon() {
@@ -290,7 +299,7 @@ void Taskbar::doUpdate() {
     auto win_iter = std::ranges::find_if(
         my_windows,
         [button_iter](const auto &win) {
-          return win["pid"].asUInt64() == button_iter->first;
+          return win["id"].asUInt64() == button_iter->first;
         });
 
     if (win_iter == my_windows.end()) {
@@ -308,7 +317,7 @@ void Taskbar::doUpdate() {
 
   // Update Buttons
   auto get_button = [this](const Json::Value &win) {
-    auto button_iter = this->buttons_.find(win["pid"].asUInt());
+    auto button_iter = this->buttons_.find(win["id"].asUInt());
     if (button_iter == this->buttons_.end()) { throw false; }
     return &button_iter->second;
   };
@@ -345,11 +354,23 @@ void Taskbar::doUpdate() {
 
   // Refresh the button order.
   // This assumes that `my_windows` is ordered correctly.
-  int pos = 0;
+  uint pos = 0;
+  uint pos_ws_sep = 0;
+  uint last_ws_id = 0;
   for (auto& win : my_windows) {
+    auto win_ws_id = win["workspace_id"].asUInt();
+    if (pos == 0) {
+      last_ws_id = win_ws_id;
+    }
+    else if (last_ws_id != win_ws_id) {
+      last_ws_id = win_ws_id;
+      auto &sep = this->getSeparator(pos_ws_sep++);
+      this->box_.reorder_child(sep, pos++);
+    }
     auto *button = get_button(win);
-    box_.reorder_child(button->gtk_button, pos++);
+    this->box_.reorder_child(button->gtk_button, pos++);
   }
+  this->cleanSeparators(pos_ws_sep);
 }
 
 void Taskbar::update() {
@@ -357,14 +378,28 @@ void Taskbar::update() {
   AModule::update();
 }
 
+Gtk::Separator &Taskbar::getSeparator(uint idx) {
+  while (idx >= this->separators_.size()) {
+    this->separators_.emplace_back();
+  }
+  auto &sep = this->separators_.at(idx);
+  this->box_.pack_start(sep, false, false, 0);
+  sep.show();
+  return this->separators_.at(idx);
+}
+
+void Taskbar::cleanSeparators(uint idx) {
+  this->separators_.erase(this->separators_.begin() + idx, this->separators_.end());
+}
+
 void Taskbar::addButton(const Json::Value &win) {
-  auto key = win["pid"].asUInt64();
-  auto pair = buttons_.emplace(
+  auto key = win["id"].asUInt64();
+  auto pair = this->buttons_.emplace(
     std::piecewise_construct,
     std::forward_as_tuple(key),
     std::forward_as_tuple(win, this->config_, this->icon_theme_)
   );
   auto *button = &pair.first->second;
-  box_.pack_start(button->gtk_button, false, false, 0);
+  this->box_.pack_start(button->gtk_button, false, false, 0);
 }
 }  // namespace waybar::modules::niri
