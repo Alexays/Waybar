@@ -50,6 +50,9 @@ class Taskbar : public AModule, public EventHandler {
   };
   uint get_my_workspace_id();
   std::vector<Json::Value> get_workspaces_on_output();
+  Gtk::Separator &getSeparator(uint idx);
+  void cleanSeparators(uint idx);
+
 
   void onEvent(const Json::Value &ev) override;
   void doUpdate();
@@ -57,6 +60,7 @@ class Taskbar : public AModule, public EventHandler {
 
   const Bar &bar_;
   Gtk::Box box_;
+  std::vector<Gtk::Separator> separators_;
   // Map from niri workspace id to button.
   std::unordered_map<uint64_t, Taskbar::Button> buttons_;
   Glib::RefPtr<Gtk::IconTheme> icon_theme_;
