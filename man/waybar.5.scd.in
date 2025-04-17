@@ -322,6 +322,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
 	When the bar is vertical, it reads as top-to-bottom.
 
+*reveal-by-default*: ++
+	typeof: bool ++
+	default: false ++
+	Whether the child should be revealed when Waybar starts up. This has to be used with click-to-reveal to take effect.
+
 ```
 "group/power": {
     "orientation": "inherit",
