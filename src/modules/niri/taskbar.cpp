@@ -183,48 +183,94 @@ Taskbar::~Taskbar() { gIPC->unregisterForIPC(this); }
 
 void Taskbar::onEvent(const Json::Value &ev) { this->dp.emit(); }
 
-void Taskbar::doUpdate() {
-  auto ipcLock = gIPC->lockData();
-
-  // Get my workspace id
-  std::vector<Json::Value> my_workspaces;
+uint Taskbar::get_my_workspace_id() {
   const auto &workspaces = gIPC->workspaces();
-  auto my_workspace_id = 0;
   auto my_workspace_iter = std::ranges::find_if(
       workspaces,
-      [&](const auto &ws) { // Get ws idx for active ws on same display as bar.
-        bool ws_on_my_output = ws["output"].asString() == bar_.output->name;
+      [this](const auto &ws) { // Get ws idx for active ws on same display as bar.
+        bool ws_on_my_output = ws["output"].asString() == this->bar_.output->name;
         bool ws_is_active = ws["is_active"].asBool();
         return (ws_on_my_output && ws_is_active);
       });
-  if (my_workspace_iter != std::ranges::end(workspaces)) {
-    my_workspace_id = (*my_workspace_iter)["id"].asUInt();
-  } else {
-    spdlog::error("Failed to find workspace for current display output?");
-    return;
+  if (my_workspace_iter == std::ranges::end(workspaces)) {
+    throw "Failed to find a niri workspace on bar display output";
   }
+  return (*my_workspace_iter)["id"].asUInt();
+}
+
+std::vector<Json::Value> Taskbar::get_workspaces_on_output() {
+  std::vector<Json::Value> my_workspaces;
+  const auto &workspaces = gIPC->workspaces();
+  std::ranges::copy_if(
+      workspaces,
+      std::back_inserter(my_workspaces),
+      [this] (const auto &ws) {
+        return ws["output"].asString() == this->bar_.output->name;
+      }
+  );
+  return my_workspaces;
+}
+
+void Taskbar::doUpdate() {
+  auto ipcLock = gIPC->lockData();
+  auto my_workspace_id = this->get_my_workspace_id();
+  std::vector<Json::Value> my_windows;
   spdlog::debug("Updating taskbar on output {} (workspace id {})", bar_.output->name, my_workspace_id);
 
-  // Get windows in my workspace idx
-  std::vector<Json::Value> my_windows;
-  const auto &windows = gIPC->windows();
-  std::ranges::copy_if(
-      windows,
-      std::back_inserter(my_windows),
-      [&](const auto &win) {
-        auto &win_wrk_id = win["workspace_id"];
-        return (! win_wrk_id.isNull()) && (win_wrk_id.asInt() == my_workspace_id);
-      });
+  // Populate my_windows..
+  if(this->config_["show-all-workspaces"]) {
+    auto my_workspaces = this->get_workspaces_on_output();
+    const auto &windows = gIPC->windows();
+      std::ranges::copy_if(
+          windows,
+          std::back_inserter(my_windows),
+          [my_workspaces](const auto &win) {
+            auto &win_ws_id_json = win["workspace_id"];
+            if (win_ws_id_json.isNull()) {
+              return false;
+            }
+            auto win_ws_id = win_ws_id_json.asUInt();
+            for (auto ws : my_workspaces) {
+              if (win_ws_id == ws["id"].asUInt()) {
+                return true;
+              }
+            }
+            return false; // Exhaustion is failure.
+          }
+      );
+    for (auto ws : my_workspaces) {
+      auto ws_id = ws["id"].asUInt();
+      for (auto &win : my_windows) {
+        if (!win["workspace_id"].isNull() && ws_id == win["workspace_id"].asUInt()) {
+          win["workspace_idx"] = ws["idx"];
+        }
+      }
+    }
+  }
+  else {
+    // Get windows just on my workspace idx
+    const auto &windows = gIPC->windows();
+    std::ranges::copy_if(
+        windows,
+        std::back_inserter(my_windows),
+        [my_workspace_id](const auto &win) {
+          auto &win_wrk_id = win["workspace_id"];
+          return (! win_wrk_id.isNull()) && (win_wrk_id.asUInt() == my_workspace_id);
+        }
+    );
+  }
   // Sort the windows vector by indicies.
   // XXX(LUNA) THIS IS BASED ON AN UNMERGED NIRI COMMIT. REVISIT THIS. FIELD NAMES WILL CHANGE.
   std::ranges::sort(
       my_windows,
       [](auto& a, auto& b){
+        if (a["workspace_idx"] != b["workspace_idx"]) {
+          return a["workspace_idx"].asUInt() < b["workspace_idx"].asUInt();
+        }
+
         auto tile_pos_a = a["location"]["tile_pos_in_scrolling_layout"];
         auto tile_pos_b = b["location"]["tile_pos_in_scrolling_layout"];
-
-        // XXX(luna) This could use geometric positions.
-        // Handle windows that are NOT being tiled.
+        // XXX(luna) We could use geometric position if no tiled location?
         if (tile_pos_a.isNull()) {
           return false;
         }
@@ -236,11 +282,7 @@ void Taskbar::doUpdate() {
         auto &a_col = tile_pos_a[0];
         auto &b_row = tile_pos_b[1];
         auto &b_col = tile_pos_b[0];
-
-        if (a_col == b_col) {
-          return a_row < b_row;
-        }
-        return a_col < b_col;
+        return a_col == b_col ? a_row < b_row : a_col < b_col;
       });
 
   // Remove buttons for windows no longer on display (closed, moved, or ws changed).
@@ -255,10 +297,10 @@ void Taskbar::doUpdate() {
       spdlog::debug("{}: Remove Button for {}", bar_.output->name, button_iter->second.get_app_id());
       button_iter = buttons_.erase(button_iter);
     }
-    else if ((*win_iter)["workspace_id"] != my_workspace_id) {
-      spdlog::debug("{}: Remove Button for {}", bar_.output->name, button_iter->second.get_app_id());
-      button_iter = buttons_.erase(button_iter);
-    }
+    //else if ((*win_iter)["workspace_id"] != my_workspace_id) {
+    //  spdlog::debug("{}: Remove Button for {}", bar_.output->name, button_iter->second.get_app_id());
+    //  button_iter = buttons_.erase(button_iter);
+    //}
     else {
       button_iter++;
     }
