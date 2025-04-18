@@ -1,10 +1,11 @@
 #include "modules/niri/taskbar.hpp"
 #include "util/gtk_icon.hpp"
 #include <gio/gio.h>
-
+#include <gio/gdesktopappinfo.h>
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
+#include <cctype>
 
 namespace waybar::modules::niri {
 
@@ -34,7 +35,37 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Taskbar::Button::get_icon_from_app_id(std::string &app_id){
+  spdlog::debug("Attempting to load icon with app_id '{}'", app_id);
   auto icon_info = this->icon_theme_->lookup_icon(app_id, this->icon_size_);
+  if (icon_info) {
+    return icon_info.load_icon();
+  }
+
+  // Assume that app_id might be startup_wm from a desktop file, attempt a lookup.
+  std::string real_app_id = "";
+  gchar ***desktop_list = g_desktop_app_info_search(app_id.c_str());
+  if (desktop_list != nullptr && desktop_list[0] != nullptr) {
+    for (size_t i = 0; desktop_list[0][i] != nullptr; i++) {
+      auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
+      // see https://github.com/Alexays/Waybar/issues/1446
+      if (!tmp_info) { continue; }
+
+      auto startup_class = tmp_info->get_startup_wm_class();
+      auto cmp_ichar = [](auto a, auto b) {
+        return std::tolower(static_cast<unsigned char>(a)) ==
+           std::tolower(static_cast<unsigned char>(b));
+      };
+      if (std::ranges::equal(startup_class, app_id, cmp_ichar)) {
+        real_app_id = tmp_info->get_string("Icon");
+        break;
+      }
+    }
+    g_strfreev(desktop_list[0]);
+  }
+  g_free(desktop_list);
+  // Retry lookup with real_app_id
+  spdlog::debug("Attempting to load icon with found app_id '{}'", real_app_id);
+  icon_info = this->icon_theme_->lookup_icon(real_app_id, this->icon_size_);
   if (icon_info) {
     return icon_info.load_icon();
   }
@@ -122,7 +153,7 @@ void Taskbar::Button::set_style(const Json::Value &cfg) {
     if (format_str == "icon-and-text") {
       return ButtonFormat::IconAndText;
     }
-    spdlog::debug("Using fallback button format for app {}", this->app_id_);
+    spdlog::debug("No valid button style provided for {}", this->app_id_);
     return ButtonFormat::Icon; // Default Fallback
   };
 
