@@ -17,6 +17,7 @@ class SystemdFailedUnits : public ALabel {
  private:
   bool hide_on_ok;
   std::string format_ok;
+  std::string tooltip_format_;
 
   bool update_pending;
   uint32_t nr_failed_system, nr_failed_user;

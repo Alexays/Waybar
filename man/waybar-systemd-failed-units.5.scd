@@ -54,6 +54,21 @@ Addressed by *systemd-failed-units*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Whether to display a tooltip.
+
+*tooltip-format* ++
+	typeof: string ++
+	default: content of *format* ++
+	The format for the tooltip.
+
+*tooltip-with-markup* ++
+	typeof: bool ++
+	default: true ++
+	Whether to accept pango markup in the tooltip.
+
 # FORMAT REPLACEMENTS
 
 *{nr_failed_system}*: Number of failed units from systemwide (PID=1) systemd.
