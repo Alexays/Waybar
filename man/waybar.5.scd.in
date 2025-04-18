@@ -411,6 +411,7 @@ A group may hide all but one element, showing them only on mouse hover. In order
 - *waybar-inhibitor(5)*
 - *waybar-jack(5)*
 - *waybar-keyboard-state(5)*
+- *waybar-libvirt(5)*
 - *waybar-memory(5)*
 - *waybar-mpd(5)*
 - *waybar-mpris(5)*
