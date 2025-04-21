@@ -5,12 +5,12 @@
 }:
 let
   libcava = rec {
-    version = "0.10.3";
+    version = "0.10.4";
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
-      rev = version;
-      hash = "sha256-ZDFbI69ECsUTjbhlw2kHRufZbQMu+FQSMmncCJ5pagg=";
+      tag = version;
+      hash = "sha256-9eTDqM+O1tA/3bEfd1apm8LbEcR9CVgELTIspSVPMKM=";
     };
   };
 in
@@ -27,6 +27,8 @@ in
 
     # downstream patch should not affect upstream
     patches = [];
+    # nixpkgs checks version, no need when building locally
+    nativeInstallCheckInputs = [];
 
     buildInputs = (builtins.filter (p: p.pname != "wireplumber") oldAttrs.buildInputs) ++ [
         pkgs.wireplumber

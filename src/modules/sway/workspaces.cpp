@@ -62,14 +62,13 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     m_formatWindowSeperator = " ";
   }
   const Json::Value &windowRewrite = config["window-rewrite"];
-
-  const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
-  m_windowRewriteDefault =
-      windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
-
-  m_windowRewriteRules = waybar::util::RegexCollection(
-      windowRewrite, m_windowRewriteDefault,
-      [](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
+  if (windowRewrite.isObject()) {
+    const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
+    std::string windowRewriteDefault =
+        windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
+    m_windowRewriteRules = waybar::util::RegexCollection(
+        windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction);
+  }
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
@@ -260,7 +259,9 @@ void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
   if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
       node["name"].isString()) {
     std::string title = g_markup_escape_text(node["name"].asString().c_str(), -1);
-    std::string windowClass = node["app_id"].asString();
+    std::string windowClass = node["app_id"].isString()
+                                  ? node["app_id"].asString()
+                                  : node["window_properties"]["class"].asString();
 
     // Only add window rewrites that can be looked up
     if (!windowClass.empty()) {

@@ -117,7 +117,7 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ 3
 :[ Relevant for *mode=year*. Count of months per row
 |[ *weeks-pos*
-:[ integer
+:[ string
 :[
 :[ The position where week numbers should be displayed. Disabled when is empty.
    Possible values: left|right

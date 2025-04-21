@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.11.0',
+    version: '0.12.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -333,6 +333,10 @@ if get_option('niri')
     )
 endif
 
+if get_option('login-proxy')
+    add_project_arguments('-DHAVE_LOGIN_PROXY', language: 'cpp')
+endif
+
 if libnl.found() and libnlgen.found()
     add_project_arguments('-DHAVE_LIBNL', language: 'cpp')
     src_files += files('src/modules/network.cpp')
@@ -482,7 +486,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.10.3',
+                  version : '>=0.10.4',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
