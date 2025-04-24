@@ -42,7 +42,10 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
     m_labelFontSize = config["windows-system-icon-size"].asInt();
   }
 
-  m_isUsingWindowSystemIcons = config["windows-system-icon"].asBool();
+  auto format = config["format"].asString();
+
+  m_isUsingWindowSystemIcons =
+      config["windows-system-icon"].asBool() && format.find("{windows}") != std::string::npos;
 
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);
   m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
@@ -257,11 +260,14 @@ void Workspace::update(const std::string &format, const std::string &icon) {
 
   bool isNotFirst = false;
 
-  for (auto &[_pid, window_repr] : m_windowMap) {
-    if (isNotFirst) {
-      // windows.append(windowSeparator);
+  if (!m_isUsingWindowSystemIcons) {
+    for (auto &[_pid, window_repr] : m_windowMap) {
+      if (isNotFirst) {
+        windows.append(windowSeparator);
+      }
+      isNotFirst = true;
+      windows.append(std::get<std::string>(window_repr));
     }
-    isNotFirst = true;
   }
 
   m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
