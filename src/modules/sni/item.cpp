@@ -1,16 +1,16 @@
 #include "modules/sni/item.hpp"
-#include "modules/sni/icon_manager.hpp"
 
 #include <gdkmm/general.h>
 #include <glibmm/main.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <fstream>
 #include <map>
-#include <filesystem>
 
 #include "gdk/gdk.h"
+#include "modules/sni/icon_manager.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 
@@ -206,10 +206,10 @@ void Item::setCustomIcon(const std::string& id) {
   std::string custom_icon = IconManager::instance().getIconForApp(id);
   if (!custom_icon.empty()) {
     if (std::filesystem::exists(custom_icon)) {
-        Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
-        icon_name = ""; // icon_name has priority over pixmap
-        icon_pixmap = custom_pixbuf;
-    } else { // if file doesn't exist it's most likely an icon_name
+      Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
+      icon_name = "";  // icon_name has priority over pixmap
+      icon_pixmap = custom_pixbuf;
+    } else {  // if file doesn't exist it's most likely an icon_name
       icon_name = custom_icon;
     }
   }

@@ -1,7 +1,8 @@
 #include "modules/sni/tray.hpp"
-#include "modules/sni/icon_manager.hpp"
 
 #include <spdlog/spdlog.h>
+
+#include "modules/sni/icon_manager.hpp"
 
 namespace waybar::modules::SNI {
 
