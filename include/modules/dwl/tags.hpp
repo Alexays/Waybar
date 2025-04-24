@@ -20,6 +20,8 @@ class Tags : public waybar::AModule {
 
   void handle_primary_clicked(uint32_t tag);
   bool handle_button_press(GdkEventButton *event_button, uint32_t tag);
+  uint32_t get_label_position(std::string label);
+  void add_button(uint32_t tag);
 
   struct zdwl_ipc_manager_v2 *status_manager_;
   struct wl_seat *seat_;
@@ -28,6 +30,7 @@ class Tags : public waybar::AModule {
   const waybar::Bar &bar_;
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
+  bool hide_vacant_;
   struct zdwl_ipc_output_v2 *output_status_;
 };
 
