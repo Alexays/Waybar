@@ -56,6 +56,7 @@ class Workspace {
   void setOutput(std::string const& value) { m_output = value; };
   bool containsWindow(WindowAddress const& addr) const { return m_windowMap.contains(addr); }
   void insertWindow(WindowCreationPayload create_window_paylod);
+
   std::string removeWindow(WindowAddress const& addr);
   void initializeWindowMap(const Json::Value& clients_data);
 
