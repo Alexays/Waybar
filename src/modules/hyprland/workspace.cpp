@@ -30,18 +30,7 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
     m_isSpecial = true;
   }
 
-  m_isUsingWindowSystemIcons = config["windows-system-icon"].asBool();
-
-  m_button.add_events(Gdk::BUTTON_PRESS_MASK);
-  m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
-                                               false);
-  m_button.set_relief(Gtk::RELIEF_NONE);
-  m_content.add(m_label);
-
-  initializeWindowMap(clients_data);
-  m_button.add(m_content);
-
-  if (!config["windows-system-icon-size"].isIntegral()) {
+  if (!config["windows-system-icon-size"].isInt()) {
     auto context = m_label.get_pango_context();
     auto font_desc = context->get_font_description();
 
@@ -52,6 +41,17 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
   } else {
     m_labelFontSize = config["windows-system-icon-size"].asInt();
   }
+
+  m_isUsingWindowSystemIcons = config["windows-system-icon"].asBool();
+
+  m_button.add_events(Gdk::BUTTON_PRESS_MASK);
+  m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
+                                               false);
+  m_button.set_relief(Gtk::RELIEF_NONE);
+  m_content.add(m_label);
+
+  initializeWindowMap(clients_data);
+  m_button.add(m_content);
 }
 
 void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
