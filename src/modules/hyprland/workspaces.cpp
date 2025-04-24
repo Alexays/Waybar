@@ -96,7 +96,9 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
   }
 
   // create new workspace
-  m_workspaces.emplace_back(std::make_unique<Workspace>(workspace_data, *this, clients_data));
+  m_workspaces.emplace_back(
+      std::make_unique<Workspace>(workspace_data, *this, config_, clients_data));
+
   Gtk::Button &newWorkspaceButton = m_workspaces.back()->button();
   m_box.pack_start(newWorkspaceButton, false, false);
   sortWorkspaces();

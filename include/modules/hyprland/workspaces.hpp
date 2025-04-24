@@ -145,6 +145,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
 
+  bool m_systemDefaultWindowIcons = true;
   bool m_withIcon;
   uint64_t m_monitorId;
   int m_activeWorkspaceId;

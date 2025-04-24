@@ -1,16 +1,19 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
+#include <format>
 #include <memory>
 #include <string>
 #include <utility>
+#include <variant>
 
+#include "AAppIconLabel.hpp"
 #include "modules/hyprland/workspaces.hpp"
 
 namespace waybar::modules::hyprland {
 
 Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_manager,
-                     const Json::Value &clients_data)
+                     const Json::Value &config, const Json::Value &clients_data)
     : m_workspaceManager(workspace_manager),
       m_id(workspace_data["id"].asInt()),
       m_name(workspace_data["name"].asString()),
@@ -27,15 +30,28 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
     m_isSpecial = true;
   }
 
+  m_isUsingWindowSystemIcons = config["windows-system-icon"].asBool();
+
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);
   m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
                                                false);
-
   m_button.set_relief(Gtk::RELIEF_NONE);
-  m_content.set_center_widget(m_label);
-  m_button.add(m_content);
+  m_content.add(m_label);
 
   initializeWindowMap(clients_data);
+  m_button.add(m_content);
+
+  if (!config["windows-system-icon-size"].isIntegral()) {
+    auto context = m_label.get_pango_context();
+    auto font_desc = context->get_font_description();
+
+    int size = font_desc.get_size();
+    bool is_absolute = font_desc.get_size_is_absolute();
+
+    m_labelFontSize = is_absolute ? size : size / static_cast<double>(PANGO_SCALE);
+  } else {
+    m_labelFontSize = config["windows-system-icon-size"].asInt();
+  }
 }
 
 void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
@@ -84,15 +100,44 @@ bool Workspace::handleClicked(GdkEventButton *bt) const {
 
 void Workspace::initializeWindowMap(const Json::Value &clients_data) {
   m_windowMap.clear();
+
   for (auto client : clients_data) {
     if (client["workspace"]["id"].asInt() == id()) {
       insertWindow({client});
     }
   }
+
+  // label.update
+  // TODO: insert icon here
+  // windows.append(window_repr);
 }
 
 void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
   if (!create_window_paylod.isEmpty(m_workspaceManager)) {
+    if (m_isUsingWindowSystemIcons && create_window_paylod.isClassReady()) {
+      Json::Value config;
+
+      config["icon"] = true;
+      config["icon-size"] = m_labelFontSize;
+
+      auto windowIconId = std::format("active_windows{}", m_windowMap.size());
+      auto windowIconTitle = std::format("active_windows-{}", id());
+
+      auto label = std::make_shared<AAppIconLabel>(config, windowIconTitle, windowIconId, "{title}",
+                                                   0, true);
+
+      auto window_class = create_window_paylod.getClassAndTitle();
+
+      label->updateAppIconName(window_class.first, window_class.second);
+      label->update();
+
+      m_content.add(*label);
+      m_content.show_all();
+      m_windowMap[create_window_paylod.getAddress()] = label;
+
+      return;
+    }
+
     auto repr = create_window_paylod.repr(m_workspaceManager);
 
     if (!repr.empty()) {
@@ -110,9 +155,17 @@ bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_paylod
 }
 
 std::string Workspace::removeWindow(WindowAddress const &addr) {
-  std::string windowRepr = m_windowMap[addr];
-  m_windowMap.erase(addr);
-  return windowRepr;
+  auto windowValue = m_windowMap[addr];
+
+  if (std::holds_alternative<std::string>(windowValue)) {
+    m_windowMap.erase(addr);
+    return std::get<std::string>(windowValue);
+  } else {
+    m_content.remove(*std::get<std::shared_ptr<AAppIconLabel>>(windowValue));
+
+    m_windowMap.erase(addr);
+    return "";
+  }
 }
 
 std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map) {
@@ -206,10 +259,9 @@ void Workspace::update(const std::string &format, const std::string &icon) {
 
   for (auto &[_pid, window_repr] : m_windowMap) {
     if (isNotFirst) {
-      windows.append(windowSeparator);
+      // windows.append(windowSeparator);
     }
     isNotFirst = true;
-    windows.append(window_repr);
   }
 
   m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),

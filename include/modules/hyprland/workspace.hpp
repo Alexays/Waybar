@@ -14,6 +14,7 @@
 #include <variant>
 #include <vector>
 
+#include "AAppIconLabel.hpp"
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
@@ -27,8 +28,11 @@ namespace waybar::modules::hyprland {
 
 class Workspaces;
 class Workspace {
+  using WindowDataRepr = std::variant<std::string, std::shared_ptr<AAppIconLabel>>;
+
  public:
   explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
+                     const Json::Value& config,
                      const Json::Value& clients_data = Json::Value::nullRef);
   std::string& selectIcon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return m_button; };
@@ -77,8 +81,11 @@ class Workspace {
   bool m_isPersistentConfig = false;  // represents the persistent state in the Waybar config
   bool m_isUrgent = false;
   bool m_isVisible = false;
+  bool m_isUsingWindowSystemIcons = false;
 
-  std::map<WindowAddress, std::string> m_windowMap;
+  std::map<WindowAddress, WindowDataRepr> m_windowMap;
+
+  int m_labelFontSize = 10;
 
   Gtk::Button m_button;
   Gtk::Box m_content;

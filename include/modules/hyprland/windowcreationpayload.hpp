@@ -28,6 +28,8 @@ class Workspaces;
 
 class WindowCreationPayload {
  public:
+  using ClassAndTitle = std::pair<std::string, std::string>;
+
   WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
                         std::string window_repr);
   WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
@@ -37,8 +39,10 @@ class WindowCreationPayload {
   int incrementTimeSpentUncreated();
   bool isEmpty(Workspaces& workspace_manager);
   bool reprIsReady() const { return std::holds_alternative<Repr>(m_window); }
+  bool isClassReady() const { return std::holds_alternative<ClassAndTitle>(m_window); }
   std::string repr(Workspaces& workspace_manager);
 
+  ClassAndTitle getClassAndTitle() { return std::get<ClassAndTitle>(m_window); }
   std::string getWorkspaceName() const { return m_workspaceName; }
   WindowAddress getAddress() const { return m_windowAddress; }
 
@@ -49,7 +53,7 @@ class WindowCreationPayload {
   void clearWorkspaceName();
 
   using Repr = std::string;
-  using ClassAndTitle = std::pair<std::string, std::string>;
+
   std::variant<Repr, ClassAndTitle> m_window;
 
   WindowAddress m_windowAddress;
