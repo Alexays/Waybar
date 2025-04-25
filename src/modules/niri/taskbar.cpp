@@ -13,11 +13,20 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg)
   : Button(win, cfg, Gtk::IconTheme::get_default())
 { }
 
-void send_niri_ipc_focus(uint id) {
+void send_niri_ipc_focus_window(uint id) {
   Json::Value request(Json::objectValue);
   auto &action = (request["Action"] = Json::Value(Json::objectValue));
   auto &focus_window = (action["FocusWindow"] = Json::Value(Json::objectValue));
   focus_window["id"] = id;
+  IPC::send(request);
+}
+
+void send_niri_ipc_focus_workspace(uint id) {
+  Json::Value request(Json::objectValue);
+  auto &action = (request["Action"] = Json::Value(Json::objectValue));
+  auto &focus_window = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
+  auto &reference = (focus_window["reference"] = Json::Value(Json::objectValue));
+  reference["Id"] = id;
   IPC::send(request);
 }
 
@@ -34,7 +43,7 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
   this->gtk_button.add(this->gtk_button_contents_);
   this->gtk_button.set_relief(Gtk::RELIEF_NONE);
   this->gtk_button.signal_pressed().connect([id] {
-      try { send_niri_ipc_focus(id); }
+      try { send_niri_ipc_focus_window(id); }
       catch (const std::exception &e) { spdlog::error("Error switching focus: {}", e.what()); }
     });
   this->icon_theme_ = icon_theme;
@@ -226,18 +235,27 @@ bool Taskbar::Button::cmp(const Button &that) const {
 
 
 Taskbar::Workspace::Workspace(const Json::Value &ws, const Json::Value &config, const Glib::RefPtr<Gtk::IconTheme> &icon_theme)
-  : buttons_(), gtk_box(Gtk::ORIENTATION_HORIZONTAL, 0)
+  : buttons_(), empty_workspace_btn_(), gtk_box(Gtk::ORIENTATION_HORIZONTAL, 0)
 {
   if (ws["id"].isNull()) {
     spdlog::error("Workspace contructor fed invalid workspace Json!");
     throw false;
   }
+  auto id = ws["id"].asUInt();
   auto style = this->gtk_box.get_style_context();
   style->add_class("workspace");
   this->gtk_box.set_name("workspace");
   this->icon_theme_ = icon_theme;
-  this->id_ = ws["id"].asUInt();
+  this->id_ = id;
   this->config_ = config;
+  this->empty_workspace_btn_.hide();
+  this->empty_workspace_btn_.set_relief(Gtk::RELIEF_NONE);
+  this->empty_workspace_btn_.set_label("+");
+  this->empty_workspace_btn_.signal_pressed().connect([id] {
+      try { send_niri_ipc_focus_workspace(id); }
+      catch (const std::exception &e) { spdlog::error("Error switching focus: {}", e.what()); }
+    });
+  this->gtk_box.add(this->empty_workspace_btn_);
   this->update(ws);
 }
 
@@ -247,6 +265,17 @@ bool Taskbar::Workspace::update(const Json::Value &ws) {
   }
   this->idx_ = ws["idx"].asUInt();
   this->name_ = ws["name"].asString();
+  this->is_active_ = ws["is_focused"].asBool();
+  this->is_focused_ = ws["is_focused"].asBool();
+
+  auto empty_btn_style_ctx = this->empty_workspace_btn_.get_style_context();
+  if (this->is_focused_) {
+    empty_btn_style_ctx->add_class("focused");
+    empty_btn_style_ctx->add_class("active");
+  } else {
+    empty_btn_style_ctx->remove_class("focused");
+    empty_btn_style_ctx->remove_class("active");
+  }
 
   return true;
 }
@@ -323,6 +352,15 @@ void Taskbar::Workspace::update_button_order() {
   uint pos = 0;
   for (auto& btn : this->buttons_) {
     this->gtk_box.reorder_child(btn.gtk_button, pos++);
+  }
+}
+
+void Taskbar::Workspace::show() {
+  this->gtk_box.show();
+  if (this->is_empty()) {
+    this->empty_workspace_btn_.show();
+  } else {
+    this->empty_workspace_btn_.hide();
   }
 }
 
@@ -417,13 +455,13 @@ void Taskbar::update_workspaces() {
   for (auto &workspace : this->workspaces_) {
     // niri workspaces indexes start at 1
     auto i = workspace.get_idx() - 1;
-    this->box_.reorder_child(workspace.gtk_box, (i * 2) + 1);
-    if (workspace.get_idx() != 1 && !workspace.is_empty()) {
+    if (workspace.get_idx() != 1 ) {
       spdlog::info("giving it a sep.. {}", i);
       auto &sep = this->getSeparator(i);
       this->box_.reorder_child(sep, (i * 2));
       sep.show();
     }
+    this->box_.reorder_child(workspace.gtk_box, (i * 2) + 1);
   }
   this->cleanSeparators(ws_last_idx);
 }

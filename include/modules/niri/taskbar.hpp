@@ -61,9 +61,12 @@ class Taskbar : public AModule, public EventHandler {
    private:
     uint id_;
     uint idx_;
+    bool is_active_;
+    bool is_focused_;
     Json::Value config_;
     std::string name_;
     std::vector<Button> buttons_;
+    Gtk::Button empty_workspace_btn_;
     void update_button_order();
     Glib::RefPtr<Gtk::IconTheme> icon_theme_;
     Taskbar::Button* update_button(const Json::Value &win);
@@ -73,7 +76,7 @@ class Taskbar : public AModule, public EventHandler {
     uint get_id() const { return this->id_; };
     uint get_idx() const { return this->idx_; };
     bool update(const Json::Value &ws);
-    void show() { this->gtk_box.show(); };
+    void show();
     void hide() { this->gtk_box.hide(); };
     bool update_buttons(const std::vector<Json::Value> &windows);
     bool is_empty() { return this->buttons_.size() == 0; };
