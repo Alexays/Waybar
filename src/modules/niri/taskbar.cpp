@@ -42,6 +42,7 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
   this->gtk_button_contents_.add(this->label_);
   this->gtk_button.add(this->gtk_button_contents_);
   this->gtk_button.set_relief(Gtk::RELIEF_NONE);
+  this->gtk_button.set_name("app-button");
   this->gtk_button.signal_pressed().connect([id] {
       try { send_niri_ipc_focus_window(id); }
       catch (const std::exception &e) { spdlog::error("Error switching focus: {}", e.what()); }
@@ -209,13 +210,7 @@ bool Taskbar::Button::update(const Json::Value &win) {
 
   // Update Style Ctx from Object Fields
   auto style_ctx = this->gtk_button.get_style_context();
-  if (this->is_focused_) {
-    style_ctx->add_class("focused");
-    style_ctx->add_class("active");
-  } else {
-    style_ctx->remove_class("focused");
-    style_ctx->remove_class("active");
-  }
+  this->is_focused_ ? style_ctx->add_class("focused") : style_ctx->remove_class("focused");
 
   this->show();
   return true;
@@ -250,6 +245,7 @@ Taskbar::Workspace::Workspace(const Json::Value &ws, const Json::Value &config, 
   this->config_ = config;
   this->empty_workspace_btn_.hide();
   this->empty_workspace_btn_.set_relief(Gtk::RELIEF_NONE);
+  this->empty_workspace_btn_.set_name("new-workspace-button");
   this->empty_workspace_btn_.set_label("+");
   this->empty_workspace_btn_.signal_pressed().connect([id] {
       try { send_niri_ipc_focus_workspace(id); }
@@ -265,17 +261,8 @@ bool Taskbar::Workspace::update(const Json::Value &ws) {
   }
   this->idx_ = ws["idx"].asUInt();
   this->name_ = ws["name"].asString();
-  this->is_active_ = ws["is_focused"].asBool();
+  this->is_active_ = ws["is_active"].asBool();
   this->is_focused_ = ws["is_focused"].asBool();
-
-  auto empty_btn_style_ctx = this->empty_workspace_btn_.get_style_context();
-  if (this->is_focused_) {
-    empty_btn_style_ctx->add_class("focused");
-    empty_btn_style_ctx->add_class("active");
-  } else {
-    empty_btn_style_ctx->remove_class("focused");
-    empty_btn_style_ctx->remove_class("active");
-  }
 
   return true;
 }
@@ -334,16 +321,6 @@ bool Taskbar::Workspace::update_buttons(const std::vector<Json::Value> &windows)
 
   this->update_button_order();
 
-  // Update Style Ctx from Object Fields
-  auto style_ctx = this->gtk_box.get_style_context();
-  if (this->is_active()) {
-    style_ctx->add_class("focused");
-    style_ctx->add_class("active");
-  } else {
-    style_ctx->remove_class("focused");
-    style_ctx->remove_class("active");
-  }
-
   return true;
 }
 
@@ -356,6 +333,14 @@ void Taskbar::Workspace::update_button_order() {
 }
 
 void Taskbar::Workspace::show() {
+  auto style_ctx = this->empty_workspace_btn_.get_style_context();
+  this->is_active_ ? style_ctx->add_class("active") : style_ctx->remove_class("active");
+  this->is_focused_ ? style_ctx->add_class("focused") : style_ctx->remove_class("focused");
+
+  style_ctx = this->gtk_box.get_style_context();
+  this->is_active_ ? style_ctx->add_class("active") : style_ctx->remove_class("active");
+  this->is_focused_ ? style_ctx->add_class("focused") : style_ctx->remove_class("focused");
+
   this->gtk_box.show();
   if (this->is_empty()) {
     this->empty_workspace_btn_.show();
@@ -451,12 +436,10 @@ void Taskbar::update_workspaces() {
   // Kinda awkward since seperator rules aren't enforced by objects, but by math here.
   // Effectively.. Evens indexes are workspaces, odds are separators.
   uint ws_last_idx = this->workspaces_.size();
-  spdlog::info("Adding ws's of len {}", ws_last_idx);
   for (auto &workspace : this->workspaces_) {
     // niri workspaces indexes start at 1
     auto i = workspace.get_idx() - 1;
     if (workspace.get_idx() != 1 ) {
-      spdlog::info("giving it a sep.. {}", i);
       auto &sep = this->getSeparator(i);
       this->box_.reorder_child(sep, (i * 2));
       sep.show();
