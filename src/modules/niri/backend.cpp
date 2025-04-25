@@ -172,10 +172,15 @@ void IPC::parseIPC(const std::string &line) {
       const auto &values = payload["windows"];
       std::copy(values.begin(), values.end(), std::back_inserter(windows_));
     } else if (const auto &payload = ev["WindowsLocationsChanged"]) {
+      // TODO THIS RELIES ON UNMERGED AN NIRI PR!!! CHECK AFTER IT IS MERGED https://github.com/YaLTeR/niri/pull/1265
       for (const auto &win_changes : payload["changes"]) {
         for (auto &win : windows_) {
           if (win["id"] == win_changes[0]) {
-            win["location"] = win_changes[1];
+            // XXX We are deliberately dropping tile_size data for the sake of
+            // ease of filtering spammed IPCs from moused based window resizing.
+            win["location"] = Json::Value(Json::objectValue);
+            win["location"]["tile_pos_in_scrolling_layout"]
+                = win_changes[1]["tile_pos_in_scrolling_layout"];
             break;
           }
         }
