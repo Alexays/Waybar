@@ -440,17 +440,17 @@ void Taskbar::update_workspaces() {
     // niri workspaces indexes start at 1
     auto i = workspace.get_idx() - 1;
     if (workspace.get_idx() != 1 ) {
-      auto &sep = this->getSeparator(i);
+      auto &sep = this->get_separator(i);
       this->box_.reorder_child(sep, (i * 2));
       sep.show();
     }
     this->box_.reorder_child(workspace.gtk_box, (i * 2) + 1);
   }
-  this->cleanSeparators(ws_last_idx);
+  this->clean_separators(ws_last_idx);
 }
 
 
-void Taskbar::doUpdate() {
+void Taskbar::do_update() {
   auto ipcLock = gIPC->lockData();
   auto my_workspace_id = this->get_my_workspace_id();
   spdlog::debug("Updating taskbar on output {} (workspace id {})", bar_.output->name, my_workspace_id);
@@ -470,11 +470,11 @@ void Taskbar::doUpdate() {
 }
 
 void Taskbar::update() {
-  doUpdate();
+  this->do_update();
   AModule::update();
 }
 
-Gtk::Separator &Taskbar::getSeparator(uint idx) {
+Gtk::Separator &Taskbar::get_separator(uint idx) {
   while (idx >= this->separators_.size()) {
     this->separators_.emplace_back();
   }
@@ -485,7 +485,7 @@ Gtk::Separator &Taskbar::getSeparator(uint idx) {
   return sep;
 }
 
-void Taskbar::cleanSeparators(uint idx) {
+void Taskbar::clean_separators(uint idx) {
   if (idx > this->separators_.size()) {
     return;
   }
