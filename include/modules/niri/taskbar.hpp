@@ -88,12 +88,12 @@ class Taskbar : public AModule, public EventHandler {
   uint get_my_workspace_id();
   void update_workspaces();
   std::vector<Json::Value> get_workspaces_on_output();
-  Gtk::Separator &getSeparator(uint idx);
-  void cleanSeparators(uint idx);
+  Gtk::Separator &get_separator(uint idx);
+  void clean_separators(uint idx);
 
 
   void onEvent(const Json::Value &ev) override;
-  void doUpdate();
+  void do_update();
 
   const Bar &bar_;
   Gtk::Box box_;
