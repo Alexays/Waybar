@@ -158,7 +158,7 @@ void Taskbar::Button::update_app_id(std::string &app_id) {
 }
 
 void Taskbar::Button::set_style(const Json::Value &cfg) {
-  auto format_to_enum = [this](const std::string &format_str) {
+  auto format_to_enum = [](const std::string &format_str) {
     if (format_str == "text") {
       return ButtonFormat::Text;
     }
@@ -168,7 +168,6 @@ void Taskbar::Button::set_style(const Json::Value &cfg) {
     if (format_str == "icon-and-text") {
       return ButtonFormat::IconAndText;
     }
-    spdlog::debug("No valid button style provided for {}", this->app_id_);
     return ButtonFormat::Icon; // Default Fallback
   };
 
@@ -201,6 +200,7 @@ bool Taskbar::Button::update(const Json::Value &win) {
   this->is_focused_ = win["is_focused"].asBool();
   auto app_id = win["app_id"].asString();
   this->update_app_id(app_id);
+  // TODO THIS RELIES ON UNMERGED AN NIRI PR!!! CHECK AFTER IT IS MERGED https://github.com/YaLTeR/niri/pull/1265
   auto tile_pos = win["location"]["tile_pos_in_scrolling_layout"];
   this->is_tiled_ = !tile_pos.isNull();
   if (this->is_tiled_) {
@@ -453,19 +453,42 @@ void Taskbar::update_workspaces() {
 void Taskbar::do_update() {
   auto ipcLock = gIPC->lockData();
   auto my_workspace_id = this->get_my_workspace_id();
-  spdlog::debug("Updating taskbar on output {} (workspace id {})", bar_.output->name, my_workspace_id);
-
-  // TODO: This should only happen on events that provoke it.
-  this->update_workspaces();
-
-  // TODO: This should only happen on events that provoke it.
   const auto &windows = gIPC->windows();
-  for (auto &workspace : this->workspaces_) {
-    workspace.update_buttons(windows);
+  const auto &workspaces = gIPC->workspaces();
+  bool did_update = false;
+
+  if (this->prev_workspaces_ != workspaces) {
+    spdlog::debug(
+        "Updating taskbar workspaces on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
+    this->prev_workspaces_.resize(workspaces.size());
+    std::ranges::copy(workspaces, this->prev_workspaces_.begin());
+    this->update_workspaces();
+    did_update = true;
   }
 
-  for (auto &workspace : this->workspaces_) {
-    workspace.show();
+  if (this->prev_windows_ != windows) {
+    // XXX Assumes the IPC backend ignores window size values to skip updates
+    //     on window resize events.
+    spdlog::debug(
+        "Updating taskbar windows on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
+    this->prev_windows_.resize(windows.size());
+    std::ranges::copy(windows, this->prev_windows_.begin());
+    for (auto &workspace : this->workspaces_) {
+      workspace.update_buttons(windows);
+    }
+    did_update = true;
+  };
+
+  if (did_update) {
+    for (auto &workspace : this->workspaces_) {
+      workspace.show();
+    }
   }
 }
 

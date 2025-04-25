@@ -85,21 +85,22 @@ class Taskbar : public AModule, public EventHandler {
     Button pop_button(uint id);
   };
 
+  std::vector<Json::Value> prev_windows_;
+  std::vector<Json::Value> prev_workspaces_;
+  const Bar &bar_;
+  Gtk::Box box_;
+  std::vector<Gtk::Separator> separators_;
+  std::vector<Taskbar::Workspace> workspaces_;
+  Glib::RefPtr<Gtk::IconTheme> icon_theme_;
+
   uint get_my_workspace_id();
   void update_workspaces();
   std::vector<Json::Value> get_workspaces_on_output();
   Gtk::Separator &get_separator(uint idx);
   void clean_separators(uint idx);
 
-
   void onEvent(const Json::Value &ev) override;
   void do_update();
-
-  const Bar &bar_;
-  Gtk::Box box_;
-  std::vector<Gtk::Separator> separators_;
-  std::vector<Taskbar::Workspace> workspaces_;
-  Glib::RefPtr<Gtk::IconTheme> icon_theme_;
 };
 
 }  // namespace waybar::modules::niri
