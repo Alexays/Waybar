@@ -145,9 +145,16 @@ void Layout::handle_name(const char *name) {
   if (std::strcmp(name, "") == 0 || format_.empty()) {
     label_.hide();  // hide empty labels or labels with empty format
   } else {
-    label_.show();
+    if (!name_.empty()) {
+      label_.get_style_context()->remove_class(name_);
+    }
+
+    label_.get_style_context()->add_class(name);
     label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(name).raw()));
+    label_.show();
+
   }
+  name_ = name;
   ALabel::update();
 }
 
