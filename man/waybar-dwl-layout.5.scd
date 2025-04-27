@@ -1,20 +1,20 @@
-waybar-dwl-window(5)
+waybar-dwl-layout(5)
 
 # NAME
 
-waybar - dwl window module
+waybar - dwl layout module
 
 # DESCRIPTION
 
-The *window* module displays the title of the currently focused window in DWL
+The *layout* module displays the layout of the currently focused workspace in DWL
 
 # CONFIGURATION
 
-Addressed by *dwl/window*
+Addressed by *dwl/layout*
 
 *format*: ++
 	typeof: string ++
-	default: {title} ++
+	default: {layout} ++
 	The format, how information should be displayed.
 
 *rotate*: ++
@@ -65,57 +65,15 @@ Addressed by *dwl/window*
 	typeof: double ++
 	Threshold to be used when scrolling.
 
-*tooltip*: ++
-	typeof: bool ++
-	default: true ++
-	Option to disable tooltip on hover.
-
-*rewrite*: ++
-	typeof: object ++
-	Rules to rewrite the module format output. See *rewrite rules*.
-
-*icon*: ++
-	typeof: bool ++
-	default: false ++
-	Option to hide the application icon.
-
-*icon-size*: ++
-	typeof: integer ++
-	default: 24 ++
-	Option to change the size of the application icon.
-
-*expand*: ++
-	typeof: bool ++
-	default: false ++
-	Enables this module to consume all left over space dynamically.
-
 # FORMAT REPLACEMENTS
 
-*{title}*: The title of the focused window.
-
-*{app_id}*: The app_id of the focused window.
-
-# REWRITE RULES
-
-*rewrite* is an object where keys are regular expressions and values are
-rewrite rules if the expression matches. Rules may contain references to
-captures of the expression.
-
-Regular expression and replacement follow ECMA-script rules.
-
-If no expression matches, the format output is left unchanged.
-
-Invalid expressions (e.g., mismatched parentheses) are skipped.
+*{layout}*: The layout of the focused window.
 
 # EXAMPLES
 
 ```
-"dwl/window": {
-	"format": "{}",
+"dwl/layout": {
+	"format": "{layout}",
 	"max-length": 50,
-	"rewrite": {
-		"(.*) - Mozilla Firefox": "🌎 $1",
-		"(.*) - zsh": "> [$1]"
-	}
 }
 ```
