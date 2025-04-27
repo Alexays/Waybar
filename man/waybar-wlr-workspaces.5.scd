@@ -28,11 +28,11 @@ Addressed by *wlr/workspaces*
 
 *sort-by-coordinates*: ++
 	typeof: bool ++
-	default: true ++
+	default: false ++
 	Should workspaces be sorted by coordinates. ++
 	Note that if both  *sort-by-name* and *sort-by-coordinates* are true sort-by name will be first. If both are false - sort by id will be performed.
 
-*sort-by-number*: ++
+*sort-by-id*: ++
 	typeof: bool ++
 	default: false ++
 	If set to true, workspace names will be sorted numerically. Takes precedence over any other sort-by option.
@@ -49,7 +49,9 @@ Addressed by *wlr/workspaces*
 
 # FORMAT REPLACEMENTS
 
-*{name}*: Name of workspace assigned by compositor
+*{name}*: Name of workspace assigned by compositor.
+
+*{id}*: ID of workspace assigned by compositor.
 
 *{icon}*: Icon, as defined in *format-icons*.
 
@@ -71,16 +73,16 @@ In addition to workspace name matching, the following *format-icons* can be set.
 ```
 "wlr/workspaces": {
 	"format": "{name}: {icon}",
+	"on-click": "activate",
 	"format-icons": {
-		"1": "",
-		"2": "",
-		"3": "",
-		"4": "",
-		"5": "",
+		"Workspace 1": "",
+		"Workspace 2": "",
+		"Workspace 3": "",
+		"Workspace 4": "",
 		"active": "",
 		"default": ""
 	},
-	"sort-by-number": true
+	"sort-by-id": true
 }
 ```
 
