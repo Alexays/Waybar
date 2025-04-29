@@ -146,7 +146,6 @@ void Layout::handle_name(const char *name) {
     label_.hide();  // hide empty labels or labels with empty format
   } else {
     label_.show();
-    std::string escaped_name=Glib::Markup::escape_text(name).raw();
     label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("layout", name),
                                   fmt::arg("icon", getIcon(0, name))));
   }
