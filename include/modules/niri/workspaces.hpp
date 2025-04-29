@@ -6,7 +6,7 @@
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "modules/niri/backend.hpp"
-#include "util/RegexCollection.hpp"  // Added for rewrite rules
+#include "util/regex_collection.hpp" // Added for rewrite rules
 
 namespace waybar::modules::niri {
 
