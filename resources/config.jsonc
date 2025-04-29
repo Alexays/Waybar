@@ -50,6 +50,27 @@
     //         "default": ""
     //     }
     // },
+    "niri/workspaces": {
+        "format": "{icon} {windows}",
+        "format-window-separator": " ",
+        "window-rewrite-default": "",
+        "window-rewrite": {
+            "app_id<firefox>": "",
+            "app_id<dolphin>": "",
+            "app_id<org.gnome.Nautilus>": "",
+            "app_id<thunar>": "",
+            "app_id<foot>": ""
+        },
+        "format-icons": {
+            "1": "1",
+            "2": "2",
+            "3": "3",
+            "4": "4",
+            "5": "5",
+            "active": "",
+            "default": ""
+        }
+    },
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
