@@ -192,20 +192,25 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
 
 // --- Start New Helper Functions ---
 void Workspaces::populateWindowRewriteConfig() {
-  m_windowRewriteRules.clear(); // Clear existing rules before populating
+  // Reconstruct RegexCollection instead of clearing/adding
   const Json::Value &rewrite_rules_config = config_["window-rewrite"];
   if (rewrite_rules_config.isObject()) {
-    for (Json::Value::const_iterator it = rewrite_rules_config.begin();
-         it != rewrite_rules_config.end(); ++it) {
-      if (it.key().isString() && it->isString()) {
-        try {
-           m_windowRewriteRules.add(it.key().asString(), it->asString());
-        } catch (const std::regex_error &e) {
-            spdlog::error("Error parsing regex rule \"{}\": {}", it.key().asString(), e.what());
-        }
+      // Assuming a constructor that takes the Json::Value object exists.
+      // If Niri needs rule prioritization like Hyprland, a priority function
+      // would be needed as a second argument here.
+      try {
+          m_windowRewriteRules = util::RegexCollection(rewrite_rules_config);
+      } catch (const std::exception &e) {
+           spdlog::error("Error initializing RegexCollection: {}", e.what());
+           // Initialize with an empty collection if error occurs
+           m_windowRewriteRules = util::RegexCollection(Json::Value(Json::objectValue));
       }
-    }
+
+  } else {
+       // Initialize with an empty collection if config is not an object
+       m_windowRewriteRules = util::RegexCollection(Json::Value(Json::objectValue));
   }
+
   if (config_.isMember("window-rewrite-default") && config_["window-rewrite-default"].isString()) {
       m_windowRewriteDefault = config_["window-rewrite-default"].asString();
   } else {
@@ -226,24 +231,39 @@ std::string Workspaces::getRewrite(const std::string &app_id, const std::string 
   std::string lookup_key = "app_id<" + app_id + "> title<" + title + ">";
   std::string res = m_windowRewriteRules.get(lookup_key);
   if (!res.empty()) {
-    // Perform substitutions
-    return util::rewriteString(res, {{"app_id", app_id}, {"title", title}});
+    // Create Json::Value for substitutions
+    Json::Value substitutions(Json::objectValue);
+    substitutions["app_id"] = app_id;
+    substitutions["title"] = title;
+    return util::rewriteString(res, substitutions);
   }
   // Fallback to app_id only
   lookup_key = "app_id<" + app_id + ">";
   res = m_windowRewriteRules.get(lookup_key);
    if (!res.empty()) {
-    return util::rewriteString(res, {{"app_id", app_id}, {"title", title}});
+    // Create Json::Value for substitutions
+    Json::Value substitutions(Json::objectValue);
+    substitutions["app_id"] = app_id;
+    substitutions["title"] = title;
+    return util::rewriteString(res, substitutions);
   }
   // Fallback to title only
   lookup_key = "title<" + title + ">";
   res = m_windowRewriteRules.get(lookup_key);
    if (!res.empty()) {
-    return util::rewriteString(res, {{"app_id", app_id}, {"title", title}});
+    // Create Json::Value for substitutions
+    Json::Value substitutions(Json::objectValue);
+    substitutions["app_id"] = app_id;
+    substitutions["title"] = title;
+    return util::rewriteString(res, substitutions);
   }
 
   // No rule matched, return default
-  return m_windowRewriteDefault;
+  // Apply substitutions to default as well, in case it uses placeholders
+  Json::Value substitutions(Json::objectValue);
+  substitutions["app_id"] = app_id;
+  substitutions["title"] = title;
+  return util::rewriteString(m_windowRewriteDefault, substitutions);
 }
 // --- End New Helper Functions ---
 
