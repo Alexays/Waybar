@@ -202,7 +202,7 @@ void Task::handle_title(const char *title) {
     return;
   }
 
-  set_app_info_from_app_id_list(title_);
+  app_info_ = IconLoader::get_app_info_from_app_id_list(title_);
   name_ = app_info_ ? app_info_->get_display_name() : title;
 
   if (!with_icon_) {
@@ -210,15 +210,7 @@ void Task::handle_title(const char *title) {
   }
 
   int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
-  bool found = false;
-  for (auto &icon_theme : tbar_->icon_themes()) {
-    if (image_load_icon(icon_, icon_theme, app_info_, icon_size)) {
-      found = true;
-      break;
-    }
-  }
-
-  if (found)
+  if (tbar_->icon_loader().image_load_icon(icon_, app_info_, icon_size))
     icon_.show();
   else
     spdlog::debug("Couldn't find icon for {}", title_);
