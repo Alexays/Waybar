@@ -28,7 +28,7 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   }
 
   // Fetch functions
-  if (*wbcffi_version == 1) {
+  if (*wbcffi_version == 1 || *wbcffi_version == 2) {
     // Mandatory functions
     hooks_.init = reinterpret_cast<InitFn*>(dlsym(handle, "wbcffi_init"));
     if (!hooks_.init) {
@@ -58,10 +58,14 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   const auto& keys = config.getMemberNames();
   for (size_t i = 0; i < keys.size(); i++) {
     const auto& value = config[keys[i]];
-    if (value.isConvertibleTo(Json::ValueType::stringValue)) {
-      config_entries_stringstor.push_back(config[keys[i]].asString());
+    if (*wbcffi_version == 1) {
+      if (value.isConvertibleTo(Json::ValueType::stringValue)) {
+        config_entries_stringstor.push_back(value.asString());
+      } else {
+        config_entries_stringstor.push_back(value.toStyledString());
+      }
     } else {
-      config_entries_stringstor.push_back(config[keys[i]].toStyledString());
+      config_entries_stringstor.push_back(value.toStyledString());
     }
   }
 

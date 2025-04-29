@@ -7,11 +7,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: DoozyX/clang-format-lint-action@v0.16.2
+      # TODO: bump to clang 19 release
+      # - uses: DoozyX/clang-format-lint-action@v0.18.2
+      - uses: DoozyX/clang-format-lint-action@558090054b3f39e3d6af24f0cd73b319535da809
         name: clang-format
         with:
           source: "."
