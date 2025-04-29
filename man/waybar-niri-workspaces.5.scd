@@ -90,7 +90,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 
 # EXAMPLES
 
-```json
+```
 "niri/workspaces": {
     "format": "{icon} {windows}",
     "format-window-separator": "|",
