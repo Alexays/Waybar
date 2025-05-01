@@ -341,6 +341,8 @@ void Workspaces::onEvent(const std::string &ev) {
     onWorkspaceRenamed(payload);
   } else if (eventName == "windowtitlev2") {
     onWindowTitleEvent(payload);
+  } else if (eventName == "activewindowv2") {
+    onActiveWindowChanged(payload);
   } else if (eventName == "configreloaded") {
     onConfigReloaded();
   }
@@ -561,9 +563,10 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
         (*windowWorkspace)->insertWindow(std::move(wcp));
       };
     } else {
-      auto queuedWindow = std::ranges::find_if(m_windowsToCreate, [payload](auto &windowPayload) {
-        return windowPayload.getAddress() == payload;
-      });
+      auto queuedWindow =
+          std::ranges::find_if(m_windowsToCreate, [&windowAddress](auto &windowPayload) {
+            return windowPayload.getAddress() == windowAddress;
+          });
 
       // If the window was queued, rename it in the queue
       if (queuedWindow != m_windowsToCreate.end()) {
@@ -582,6 +585,28 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
 
     if (client != clientsData.end() && !client->empty()) {
       (*inserter)({*client});
+    }
+  }
+}
+
+void Workspaces::onActiveWindowChanged(WindowAddress const &activeWindowAddress) {
+  spdlog::trace("Active window changed: {}", activeWindowAddress);
+
+  for (auto &[address, window] : m_orphanWindowMap) {
+    if (address == activeWindowAddress) {
+      window.setActive(true);
+    } else {
+      window.setActive(false);
+    }
+  }
+  for (auto const &workspace : m_workspaces) {
+    workspace->setActiveWindow(activeWindowAddress);
+  }
+  for (auto &window : m_windowsToCreate) {
+    if (window.getAddress() == activeWindowAddress) {
+      window.setActive(true);
+    } else {
+      window.setActive(false);
     }
   }
 }
@@ -701,6 +726,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
   }
 
   populateBoolConfig(workspaceTaskbar, "enable", m_enableTaskbar);
+  populateBoolConfig(workspaceTaskbar, "update-active-window", m_updateActiveWindow);
 
   if (workspaceTaskbar["format"].isString()) {
     /* The user defined a format string, use it */
@@ -764,6 +790,12 @@ auto Workspaces::registerIpc() -> void {
         "Registering for Hyprland's 'windowtitlev2' events because a user-defined window "
         "rewrite rule uses the 'title' field.");
     m_ipc.registerForIPC("windowtitlev2", this);
+  }
+  if (m_updateActiveWindow) {
+    spdlog::info(
+        "Registering for Hyprland's 'activewindowv2' events because 'update-active-window' is set "
+        "to true.");
+    m_ipc.registerForIPC("activewindowv2", this);
   }
 }
 

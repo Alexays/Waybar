@@ -103,6 +103,7 @@ class Workspaces : public AModule, public EventHandler {
   void onWindowMoved(std::string const& payload);
 
   void onWindowTitleEvent(std::string const& payload);
+  void onActiveWindowChanged(WindowAddress const& payload);
 
   void onConfigReloaded();
 
@@ -170,6 +171,7 @@ class Workspaces : public AModule, public EventHandler {
 
   IconLoader m_iconLoader;
   bool m_enableTaskbar = false;
+  bool m_updateActiveWindow = false;
   bool m_taskbarWithIcon = false;
   bool m_taskbarWithTitle = false;
   std::string m_taskbarFormatBefore;

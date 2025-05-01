@@ -103,6 +103,16 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
   }
 }
 
+void Workspace::setActiveWindow(WindowAddress const &addr) {
+  for (auto &window : m_windowMap) {
+    if (window.address == addr) {
+      window.setActive(true);
+    } else {
+      window.setActive(false);
+    }
+  }
+}
+
 void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
   if (!create_window_paylod.isEmpty(m_workspaceManager)) {
     auto repr = create_window_paylod.repr(m_workspaceManager);
@@ -259,6 +269,9 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_text(window_repr.window_title);
     window_box->get_style_context()->add_class("taskbar-window");
+    if (window_repr.isActive) {
+      window_box->get_style_context()->add_class("active");
+    }
     auto event_box = Gtk::manage(new Gtk::EventBox());
     event_box->add(*window_box);
     if (m_workspaceManager.onClickWindow() != "") {

@@ -31,9 +31,11 @@ struct WindowRepr {
   std::string window_class;
   std::string window_title;
   std::string repr_rewrite;
+  bool isActive = false;
 
  public:
   bool empty() const { return address.empty(); }
+  void setActive(bool value) { isActive = value; }
 };
 
 class WindowCreationPayload {
@@ -48,6 +50,7 @@ class WindowCreationPayload {
   bool isEmpty(Workspaces& workspace_manager);
   bool reprIsReady() const { return std::holds_alternative<Repr>(m_window); }
   WindowRepr repr(Workspaces& workspace_manager);
+  void setActive(bool value) { m_isActive = value; }
 
   std::string getWorkspaceName() const { return m_workspaceName; }
   WindowAddress getAddress() const { return m_windowAddress; }
@@ -64,6 +67,7 @@ class WindowCreationPayload {
 
   WindowAddress m_windowAddress;
   std::string m_workspaceName;
+  bool m_isActive = false;
 
   int m_timeSpentUncreated = 0;
 };

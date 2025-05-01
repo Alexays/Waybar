@@ -97,9 +97,9 @@ WindowRepr WindowCreationPayload::repr(Workspaces &workspace_manager) {
     return std::get<Repr>(m_window);
   }
   if (std::holds_alternative<ClassAndTitle>(m_window)) {
-    auto [window_class, window_title] = std::get<ClassAndTitle>(m_window);
+    auto const &[window_class, window_title] = std::get<ClassAndTitle>(m_window);
     return {m_windowAddress, window_class, window_title,
-            workspace_manager.getRewrite(window_class, window_title)};
+            workspace_manager.getRewrite(window_class, window_title), m_isActive};
   }
   // Unreachable
   spdlog::error("WorkspaceWindow::repr: Unreachable");

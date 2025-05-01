@@ -60,6 +60,7 @@ class Workspace {
   };
   void insertWindow(WindowCreationPayload create_window_paylod);
   void initializeWindowMap(const Json::Value& clients_data);
+  void setActiveWindow(WindowAddress const& addr);
 
   bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
   std::optional<WindowRepr> closeWindow(WindowAddress const& addr);
