@@ -492,7 +492,8 @@ void Workspaces::onWindowOpened(std::string const &payload) {
 
   std::string windowTitle = payload.substr(nextCommaIdx + 1, payload.length() - nextCommaIdx);
 
-  m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowClass, windowTitle);
+  bool isActive = m_currentActiveWindowAddress == windowAddress;
+  m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowClass, windowTitle, isActive);
 }
 
 void Workspaces::onWindowClosed(std::string const &addr) {
@@ -591,6 +592,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
 
 void Workspaces::onActiveWindowChanged(WindowAddress const &activeWindowAddress) {
   spdlog::trace("Active window changed: {}", activeWindowAddress);
+  m_currentActiveWindowAddress = activeWindowAddress;
 
   for (auto &[address, window] : m_orphanWindowMap) {
     if (address == activeWindowAddress) {

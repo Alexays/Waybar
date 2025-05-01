@@ -43,7 +43,7 @@ class WindowCreationPayload {
   WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
                         WindowRepr window_repr);
   WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
-                        std::string window_class, std::string window_title);
+                        std::string window_class, std::string window_title, bool is_active);
   WindowCreationPayload(Json::Value const& client_data);
 
   int incrementTimeSpentUncreated();

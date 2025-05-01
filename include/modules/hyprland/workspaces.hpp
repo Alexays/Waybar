@@ -179,6 +179,7 @@ class Workspaces : public AModule, public EventHandler {
   int m_taskbarIconSize = 16;
   Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
   std::string m_onClickWindow;
+  std::string m_currentActiveWindowAddress;
 
   std::vector<std::regex> m_ignoreWorkspaces;
 

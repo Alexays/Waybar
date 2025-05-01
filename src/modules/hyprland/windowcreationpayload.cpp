@@ -30,10 +30,11 @@ WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
 
 WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
                                              WindowAddress window_address, std::string window_class,
-                                             std::string window_title)
+                                             std::string window_title, bool is_active)
     : m_window(std::make_pair(std::move(window_class), std::move(window_title))),
       m_windowAddress(std::move(window_address)),
-      m_workspaceName(std::move(workspace_name)) {
+      m_workspaceName(std::move(workspace_name)),
+      m_isActive(is_active) {
   clearAddr();
   clearWorkspaceName();
 }
