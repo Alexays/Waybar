@@ -577,7 +577,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
 
   if (inserter.has_value()) {
     Json::Value clientsData = m_ipc.getSocket1JsonReply("clients");
-    std::string jsonWindowAddress = fmt::format("0x{}", payload);
+    std::string jsonWindowAddress = fmt::format("0x{}", windowAddress);
 
     auto client = std::ranges::find_if(clientsData, [jsonWindowAddress](auto &client) {
       return client["address"].asString() == jsonWindowAddress;
