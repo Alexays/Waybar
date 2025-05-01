@@ -247,7 +247,15 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     }
   }
 
+  bool isFirst = true;
   for (const auto &window_repr : m_windowMap) {
+    if (isFirst) {
+      isFirst = false;
+    } else {
+      auto windowSeparator = Gtk::make_managed<Gtk::Label>(m_workspaceManager.getWindowSeparator());
+      m_content.pack_start(*windowSeparator, false, false);
+      windowSeparator->show();
+    }
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_text(window_repr.window_title);
     window_box->get_style_context()->add_class("taskbar-window");
