@@ -1,5 +1,7 @@
 #include "modules/privacy/privacy_item.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <string>
 
 #include "glibmm/main.h"
@@ -94,22 +96,22 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 }
 
 void PrivacyItem::update_tooltip() {
+  spdlog::trace("update privacy tooltip");
   // Removes all old nodes
   for (auto *child : tooltip_window.get_children()) {
-    delete child;
+    tooltip_window.remove(*child);
   }
-
   for (auto *node : *nodes) {
     Gtk::Box *box = new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 4);
 
     // Set device icon
-    Gtk::Image *node_icon = new Gtk::Image();
+    Gtk::Image *node_icon = Gtk::make_managed<Gtk::Image>();
     node_icon->set_pixel_size(tooltipIconSize);
     node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
     box->add(*node_icon);
 
     // Set model
-    auto *nodeName = new Gtk::Label(node->getName());
+    auto *nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
     box->add(*nodeName);
 
     tooltip_window.add(*box);
