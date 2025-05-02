@@ -757,6 +757,17 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
   if (workspaceTaskbar["on-click-window"].isString()) {
     m_onClickWindow = workspaceTaskbar["on-click-window"].asString();
   }
+
+  if (workspaceTaskbar["ignore-list"].isArray()) {
+    for (auto &windowRegex : workspaceTaskbar["ignore-list"]) {
+      std::string ruleString = windowRegex.asString();
+      try {
+        m_ignoreWindows.emplace_back(ruleString, std::regex_constants::icase);
+      } catch (const std::regex_error &e) {
+        spdlog::error("Invalid rule {}: {}", ruleString, e.what());
+      }
+    }
+  }
 }
 
 void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payload) {

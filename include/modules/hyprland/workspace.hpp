@@ -90,6 +90,7 @@ class Workspace {
 
   void updateTaskbar(const std::string& workspace_icon);
   bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
+  bool shouldSkipWindow(const WindowRepr& window_repr) const;
   IPC& m_ipc;
 };
 

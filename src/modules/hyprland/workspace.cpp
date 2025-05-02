@@ -256,6 +256,9 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
 
   bool isFirst = true;
   for (const auto &window_repr : m_windowMap) {
+    if (shouldSkipWindow(window_repr)) {
+      continue;
+    }
     if (isFirst) {
       isFirst = false;
     } else if (m_workspaceManager.getWindowSeparator() != "") {
@@ -324,6 +327,15 @@ bool Workspace::handleClick(const GdkEventButton *event_button, WindowAddress co
     }
   }
   return true;
+}
+
+bool Workspace::shouldSkipWindow(const WindowRepr &window_repr) const {
+  auto ignore_list = m_workspaceManager.getIgnoredWindows();
+  auto it = std::ranges::find_if(ignore_list, [&window_repr](const auto &ignoreItem) {
+    return std::regex_match(window_repr.window_class, ignoreItem) ||
+           std::regex_match(window_repr.window_title, ignoreItem);
+  });
+  return it != ignore_list.end();
 }
 
 }  // namespace waybar::modules::hyprland

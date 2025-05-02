@@ -51,6 +51,7 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarIconSize() const -> int { return m_taskbarIconSize; }
   auto taskbarOrientation() const -> Gtk::Orientation { return m_taskbarOrientation; }
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
+  auto getIgnoredWindows() const -> std::vector<std::regex> { return m_ignoreWindows; }
 
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
@@ -182,6 +183,7 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_currentActiveWindowAddress;
 
   std::vector<std::regex> m_ignoreWorkspaces;
+  std::vector<std::regex> m_ignoreWindows;
 
   std::mutex m_mutex;
   const Bar& m_bar;
