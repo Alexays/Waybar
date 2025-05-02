@@ -22,7 +22,6 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
     : ALabel(config, "clock", id, "{:%H:%M}", 60, false, false, true),
       m_locale_{std::locale(config_["locale"].isString() ? config_["locale"].asString() : "")},
       m_tlpFmt_{(config_["tooltip-format"].isString()) ? config_["tooltip-format"].asString() : ""},
-      m_tooltip_{new Gtk::Label()},
       cldInTooltip_{m_tlpFmt_.find("{" + kCldPlaceholder + "}") != std::string::npos},
       cldYearShift_{January / 1 / 1900},
       tzInTooltip_{m_tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
@@ -141,7 +140,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
 
 bool waybar::modules::Clock::query_tlp_cb(int, int, bool,
                                           const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
-  tooltip->set_custom(*m_tooltip_.get());
+  tooltip->set_custom(m_tooltip_);
   return true;
 }
 
@@ -174,7 +173,7 @@ auto waybar::modules::Clock::update() -> void {
     }
 
     m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
-    m_tooltip_->set_markup(m_tlpText_);
+    m_tooltip_.set_markup(m_tlpText_);
     label_.trigger_tooltip_query();
   }
 

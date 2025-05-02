@@ -361,7 +361,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   button.set_name("sway-workspace-" + node["name"].asString());
   button.set_relief(Gtk::RELIEF_NONE);
   if (!config_["disable-click"].asBool()) {
-    button.signal_pressed().connect([this, node] {
+    button.signal_clicked().connect([this, node] {
       try {
         if (node["target_output"].isString()) {
           ipc_.sendCmd(IPC_COMMAND,
