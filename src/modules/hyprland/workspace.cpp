@@ -105,11 +105,7 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
 
 void Workspace::setActiveWindow(WindowAddress const &addr) {
   for (auto &window : m_windowMap) {
-    if (window.address == addr) {
-      window.setActive(true);
-    } else {
-      window.setActive(false);
-    }
+    window.setActive(window.address == addr);
   }
 }
 
@@ -244,6 +240,7 @@ void Workspace::update(const std::string &workspace_icon) {
   m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", id()),
                                        fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
                                        fmt::arg("windows", windows)));
+  m_labelBefore.get_style_context()->add_class("workspace-label");
 
   if (m_workspaceManager.enableTaskbar()) {
     updateTaskbar(workspace_icon);
@@ -261,7 +258,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
   for (const auto &window_repr : m_windowMap) {
     if (isFirst) {
       isFirst = false;
-    } else {
+    } else if (m_workspaceManager.getWindowSeparator() != "") {
       auto windowSeparator = Gtk::make_managed<Gtk::Label>(m_workspaceManager.getWindowSeparator());
       m_content.pack_start(*windowSeparator, false, false);
       windowSeparator->show();

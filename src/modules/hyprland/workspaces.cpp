@@ -595,21 +595,13 @@ void Workspaces::onActiveWindowChanged(WindowAddress const &activeWindowAddress)
   m_currentActiveWindowAddress = activeWindowAddress;
 
   for (auto &[address, window] : m_orphanWindowMap) {
-    if (address == activeWindowAddress) {
-      window.setActive(true);
-    } else {
-      window.setActive(false);
-    }
+    window.setActive(address == activeWindowAddress);
   }
   for (auto const &workspace : m_workspaces) {
     workspace->setActiveWindow(activeWindowAddress);
   }
   for (auto &window : m_windowsToCreate) {
-    if (window.getAddress() == activeWindowAddress) {
-      window.setActive(true);
-    } else {
-      window.setActive(false);
-    }
+    window.setActive(window.getAddress() == activeWindowAddress);
   }
 }
 
@@ -953,7 +945,7 @@ auto Workspaces::update() -> void {
 
 void Workspaces::updateWindowCount() {
   const Json::Value workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
-  for (auto &workspace : m_workspaces) {
+  for (auto const &workspace : m_workspaces) {
     auto workspaceJson = std::ranges::find_if(workspacesJson, [&](Json::Value const &x) {
       return x["name"].asString() == workspace->name() ||
              (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
