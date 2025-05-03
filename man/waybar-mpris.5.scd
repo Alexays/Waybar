@@ -47,6 +47,11 @@ The *mpris* module displays currently playing media via libplayerctl.
 	typeof: string ++
 	The status-specific tooltip format.
 
+*tooltip-with-markup*: ++
+	typeof: bool ++
+	default: true ++
+	Whether to accept pango markup in the tooltip.
+
 *artist-len*: ++
 	typeof: integer ++
 	Maximum length of the Artist tag (Wide/Fullwidth Unicode characters count as two). Set to zero to hide the artist in `{dynamic}` tag.
