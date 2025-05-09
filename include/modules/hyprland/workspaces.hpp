@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <regex>
 #include <string>
 #include <vector>
@@ -55,14 +56,14 @@ class Workspaces : public AModule, public EventHandler {
 
   static Json::Value createMonitorWorkspaceData(std::string const& name,
                                                 std::string const& monitor);
-  void removeWorkspace(std::string const& name);
+  void removeWorkspace(std::string const& workspaceString);
   void setUrgentWorkspace(std::string const& windowaddress);
 
   // Config
   void parseConfig(const Json::Value& config);
   auto populateIconsMap(const Json::Value& formatIcons) -> void;
-  static auto populateBoolConfig(const Json::Value& config, const std::string& key,
-                                 bool& member) -> void;
+  static auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
+      -> void;
   auto populateSortByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
@@ -74,10 +75,11 @@ class Workspaces : public AModule, public EventHandler {
   void onWorkspaceActivated(std::string const& payload);
   void onSpecialWorkspaceActivated(std::string const& payload);
   void onWorkspaceDestroyed(std::string const& payload);
-  void onWorkspaceCreated(std::string const& workspaceName,
+  void onWorkspaceCreated(std::string const& payload,
                           Json::Value const& clientsData = Json::Value::nullRef);
   void onWorkspaceMoved(std::string const& payload);
   void onWorkspaceRenamed(std::string const& payload);
+  static std::optional<int> parseWorkspaceId(std::string const& workspaceIdStr);
 
   // monitor events
   void onMonitorFocused(std::string const& payload);
@@ -93,11 +95,18 @@ class Workspaces : public AModule, public EventHandler {
 
   int windowRewritePriorityFunction(std::string const& window_rule);
 
+  // event payload management
+  template <typename... Args>
+  static std::string makePayload(Args const&... args);
+  static std::pair<std::string, std::string> splitDoublePayload(std::string const& payload);
+  static std::tuple<std::string, std::string, std::string> splitTriplePayload(
+      std::string const& payload);
+
   // Update methods
   void doUpdate();
   void removeWorkspacesToRemove();
   void createWorkspacesToCreate();
-  static std::vector<std::string> getVisibleWorkspaces();
+  static std::vector<int> getVisibleWorkspaces();
   void updateWorkspaceStates();
   bool updateWindowsToCreate();
 
@@ -138,7 +147,7 @@ class Workspaces : public AModule, public EventHandler {
 
   bool m_withIcon;
   uint64_t m_monitorId;
-  std::string m_activeWorkspaceName;
+  int m_activeWorkspaceId;
   std::string m_activeSpecialWorkspaceName;
   std::vector<std::unique_ptr<Workspace>> m_workspaces;
   std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
@@ -150,6 +159,7 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

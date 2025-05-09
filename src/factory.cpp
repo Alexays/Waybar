@@ -141,7 +141,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_PIPEWIRE
     if (ref == "privacy") {
-      return new waybar::modules::privacy::Privacy(id, config_[name], pos);
+      return new waybar::modules::privacy::Privacy(id, config_[name], bar_.orientation, pos);
     }
 #endif
 #ifdef HAVE_MPRIS

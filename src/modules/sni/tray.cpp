@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "modules/sni/icon_manager.hpp"
+
 namespace waybar::modules::SNI {
 
 Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
@@ -20,6 +22,9 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     box_.set_spacing(config_["spacing"].asUInt());
   }
   nb_hosts_ += 1;
+  if (config_["icons"].isObject()) {
+    IconManager::instance().setIconsConfig(config_["icons"]);
+  }
   dp.emit();
 }
 
