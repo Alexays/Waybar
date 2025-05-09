@@ -30,7 +30,8 @@ class Taskbar : public AModule, public EventHandler {
     bool is_focused_;
     bool is_tiled_;
     uint icon_size_;
-    std::string app_id_; ButtonFormat active_button_format_;
+    std::string app_id_;
+    ButtonFormat active_button_format_;
     ButtonFormat inactive_button_format_;
     Glib::RefPtr<Gtk::IconTheme> icon_theme_;
     Gtk::Box gtk_button_contents_;
@@ -59,20 +60,30 @@ class Taskbar : public AModule, public EventHandler {
 
   class Workspace {
    private:
+    enum class WorkspaceFormat : std::uint8_t {
+      Default,
+      LabelIdx,
+      LabelWsName,
+    };
     uint id_;
     uint idx_;
     bool is_active_;
     bool is_focused_;
+    WorkspaceFormat active_workspace_format_;
+    WorkspaceFormat inactive_workspace_format_;
     Json::Value config_;
     std::string name_;
     std::vector<Button> buttons_;
     Gtk::Button empty_workspace_btn_;
+    Gtk::Label label_;
     void update_button_order();
     Glib::RefPtr<Gtk::IconTheme> icon_theme_;
     Taskbar::Button* update_button(const Json::Value &win);
+    void set_style(const Json::Value &cfg);
    public:
     Workspace(const Json::Value &ws, const Json::Value &config, const Glib::RefPtr<Gtk::IconTheme> &icon_theme);
     Gtk::Box gtk_box;
+    Gtk::Box gtk_box_buttons;
     uint get_id() const { return this->id_; };
     uint get_idx() const { return this->idx_; };
     bool update(const Json::Value &ws);
