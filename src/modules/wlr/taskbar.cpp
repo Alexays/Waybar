@@ -198,7 +198,7 @@ void Task::handle_title(const char *title) {
   title_ = title;
   hide_if_ignored();
 
-  if (!with_icon_ && !with_name_ || app_info_) {
+  if ((!with_icon_ && !with_name_) || app_info_) {
     return;
   }
 

@@ -179,7 +179,7 @@ void Taskbar::Button::set_style(const Json::Value &cfg) {
       cfg.get("inactive-button-format", format_default).asString()
   );
 
-  this->icon_size_ = cfg.get("icon-size", "24").asUInt();
+  this->icon_size_ = cfg.get("icon-size", 24).asUInt();
 }
 
 bool Taskbar::Button::update(const Json::Value &win) {
@@ -455,7 +455,7 @@ std::vector<Json::Value> Taskbar::get_workspaces_on_output() {
       workspaces,
       std::back_inserter(my_workspaces),
       [this] (const auto &ws) {
-        return ws["output"].asString() == this->bar_.output->name;
+        return ws.get("output", "").asString() == this->bar_.output->name;
       }
   );
   return my_workspaces;
@@ -463,6 +463,9 @@ std::vector<Json::Value> Taskbar::get_workspaces_on_output() {
 
 void Taskbar::update_workspaces() {
   auto ws_vec = this->get_workspaces_on_output();
+  if (ws_vec.empty()) {
+    spdlog::error("Failed to update workspaces on output {}", this->bar_.output->name);
+  }
 
   // Update Workspaces
   for (auto workspace_it = this->workspaces_.begin(); workspace_it != this->workspaces_.end(); ) {
@@ -539,9 +542,19 @@ void Taskbar::do_update() {
   };
 
   if (did_update) {
+    spdlog::debug(
+        "Refreshing taskbar gui on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
     for (auto &workspace : this->workspaces_) {
       workspace.show();
     }
+    spdlog::debug(
+        "Completed update on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
   }
 }
 
