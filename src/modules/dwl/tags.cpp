@@ -143,7 +143,8 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       button.signal_button_press_event().connect(
           sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), i));
     }
-    button.show();
+    if(config_["hide-empty"].asBool())
+      button.set_no_show_all();
     i <<= 1;
   }
 
@@ -183,12 +184,15 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
   auto &button = buttons_[tag];
   if (clients) {
     button.get_style_context()->add_class("occupied");
+    if (config_["hide-empty"].asBool()) button.show();
   } else {
     button.get_style_context()->remove_class("occupied");
+    if (config_["hide-empty"].asBool()) button.hide();
   }
 
   if (state & TAG_ACTIVE) {
     button.get_style_context()->add_class("focused");
+    if (config_["hide-empty"].asBool()) button.show();
   } else {
     button.get_style_context()->remove_class("focused");
   }

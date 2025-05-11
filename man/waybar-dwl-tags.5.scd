@@ -31,11 +31,17 @@ Addressed by *dwl/tags*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*hide-empty*: ++
+	typeof: bool ++
+	default: false ++
+	Hide tags that are neither focused nor occupied.
+
 # EXAMPLE
 
 ```
 "dwl/tags": {
 	"num-tags": 5
+	"hide-empty": true
 }
 ```
 
