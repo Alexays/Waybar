@@ -91,6 +91,12 @@ The *cpu* module displays the current CPU utilization.
 
 *{load}*: Current CPU load.
 
+*{load1}*: CPU load average over the last minute.
+
+*{load5}*: CPU load average over the last 5 minutes.
+
+*{load15}*: CPU load average over the last 15 minutes.
+
 *{usage}*: Current overall CPU usage.
 
 *{usage*{n}*}*: Current CPU core n usage. Cores are numbered from zero, so first core will be {usage0} and 4th will be {usage3}.
