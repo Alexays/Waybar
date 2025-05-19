@@ -70,6 +70,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *default*: Will be shown, when no string matches are found.
 - *focused*: Will be shown, when workspace is focused.
 - *active*: Will be shown, when workspace is active on its output.
+- *empty*: Will be shown, when workspace is empty.
 
 # EXAMPLES
 
