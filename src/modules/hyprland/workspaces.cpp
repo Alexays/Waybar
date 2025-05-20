@@ -772,30 +772,39 @@ void Workspaces::setCurrentMonitorId() {
 
 void Workspaces::sortSpecialCentered() {
   std::vector<std::unique_ptr<Workspace>> specialWorkspaces;
+  std::vector<std::unique_ptr<Workspace>> hidedWorkspaces;
   std::vector<std::unique_ptr<Workspace>> normalWorkspaces;
 
   for (auto &workspace : m_workspaces) {
     if (workspace->isSpecial()) {
       specialWorkspaces.push_back(std::move(workspace));
     } else {
-      normalWorkspaces.push_back(std::move(workspace));
+      if (workspace->button().is_visible()) {
+        normalWorkspaces.push_back(std::move(workspace));
+      } else {
+        hidedWorkspaces.push_back(std::move(workspace));
+      }
     }
   }
   m_workspaces.clear();
 
   size_t center = normalWorkspaces.size() / 2;
 
-  m_workspaces.insert(m_workspaces.end(), 
-                      std::make_move_iterator(normalWorkspaces.begin()), 
+  m_workspaces.insert(m_workspaces.end(),
+                      std::make_move_iterator(normalWorkspaces.begin()),
                       std::make_move_iterator(normalWorkspaces.begin() + center));
 
   m_workspaces.insert(m_workspaces.end(),
-                      std::make_move_iterator(specialWorkspaces.begin()), 
+                      std::make_move_iterator(specialWorkspaces.begin()),
                       std::make_move_iterator(specialWorkspaces.end()));
 
-  m_workspaces.insert(m_workspaces.end(), 
-                      std::make_move_iterator(normalWorkspaces.begin() + center), 
+  m_workspaces.insert(m_workspaces.end(),
+                      std::make_move_iterator(normalWorkspaces.begin() + center),
                       std::make_move_iterator(normalWorkspaces.end()));
+  
+  m_workspaces.insert(m_workspaces.end(),
+                      std::make_move_iterator(hidedWorkspaces.begin()),
+                      std::make_move_iterator(hidedWorkspaces.end()));
 }
 
 void Workspaces::sortWorkspaces() {
