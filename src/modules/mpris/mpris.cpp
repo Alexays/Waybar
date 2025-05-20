@@ -14,7 +14,6 @@ extern "C" {
 
 #include <glib.h>
 #include <spdlog/spdlog.h>
-#include <fstream> // <-- agrega esta línea
 namespace waybar::modules::mpris {
 
 const std::string DEFAULT_FORMAT = "{player} ({status}): {dynamic}";
@@ -584,50 +583,45 @@ errorexit:
 }
 
 bool Mpris::handleToggle(GdkEventButton* const& e) {
+  if (!e || e->type != GdkEventType::GDK_BUTTON_PRESS) {
+    return false;
+  }
+
+  auto info = getPlayerInfo();
+  if (!info) return false;
+
+  struct ButtonAction {
+    guint button;
+    const char* config_key;
+    std::function<void()> builtin_action;
+  };
+
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error) {
       g_error_free(error);
     }
   });
 
-  auto info = getPlayerInfo();
-  if (!info) return false;
+  // Command pattern: encapsulate each button's action
+  const ButtonAction actions[] = {
+    {1, "on-click",          [&]() { playerctl_player_play_pause(player, &error); }},
+    {2, "on-click-middle",   [&]() { playerctl_player_previous(player, &error); }},
+    {3, "on-click-right",    [&]() { playerctl_player_next(player, &error); }},
+    {8, "on-click-backward", [&]() { playerctl_player_previous(player, &error); }},
+    {9, "on-click-forward",  [&]() { playerctl_player_next(player, &error); }},
+  };
 
-  if (e->type == GdkEventType::GDK_BUTTON_PRESS) {
-    switch (e->button) {
-      case 1:  // left-click
-        if (config_["on-click"].isString()) {
-          return ALabel::handleToggle(e);
-        }
-        playerctl_player_play_pause(player, &error);
-        break;
-      case 2:  // middle-click
-        if (config_["on-click-middle"].isString()) {
-          return ALabel::handleToggle(e);
-        }
-        playerctl_player_previous(player, &error);
-        break;
-      case 3:  // right-click
-        if (config_["on-click-right"].isString()) {
-          return ALabel::handleToggle(e);
-        }
-        playerctl_player_next(player, &error);
-        break;
-      case 8:  // side button mouse back on browser
-        if (config_["on-click-backward"].isString()) {
-          return ALabel::handleToggle(e);
-        }
-        playerctl_player_previous(player, &error);
-        break;
-      case 9: // side button mouse forward on browser
-        if (config_["on-click-forward"].isString()) {
-          return ALabel::handleToggle(e);
-        }
-        playerctl_player_next(player, &error);
-        break;
+  for (const auto& action : actions) {
+    if (e->button == action.button) {
+      if (config_[action.config_key].isString()) {
+        return ALabel::handleToggle(e);
+      }
+      action.builtin_action();
+      break;
     }
   }
+
   if (error) {
     spdlog::error("mpris[{}]: error running builtin on-click action: {}", (*info).name,
                   error->message);
