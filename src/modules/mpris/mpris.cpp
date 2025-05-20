@@ -14,7 +14,7 @@ extern "C" {
 
 #include <glib.h>
 #include <spdlog/spdlog.h>
-
+#include <fstream> // <-- agrega esta línea
 namespace waybar::modules::mpris {
 
 const std::string DEFAULT_FORMAT = "{player} ({status}): {dynamic}";
@@ -610,6 +610,18 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
         break;
       case 3:  // right-click
         if (config_["on-click-right"].isString()) {
+          return ALabel::handleToggle(e);
+        }
+        playerctl_player_next(player, &error);
+        break;
+      case 8:  // side button mouse back on browser
+        if (config_["on-click-backward"].isString()) {
+          return ALabel::handleToggle(e);
+        }
+        playerctl_player_previous(player, &error);
+        break;
+      case 9: // side button mouse forward on browser
+        if (config_["on-click-forward"].isString()) {
           return ALabel::handleToggle(e);
         }
         playerctl_player_next(player, &error);
