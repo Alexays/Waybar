@@ -664,6 +664,12 @@ auto Workspaces::populateFormatWindowSeparatorConfig(const Json::Value &config) 
       formatWindowSeparator.isString() ? formatWindowSeparator.asString() : " ";
 }
 
+auto Workspaces::populateFormatWindowsDefault(const Json::Value &config) -> void {
+  const auto &windowDefaultConfig = config["format-windows-default"];
+  m_formatWindowsDefault =
+      windowDefaultConfig.isString() ? windowDefaultConfig.asString() : "";
+}
+
 auto Workspaces::populateWindowRewriteConfig(const Json::Value &config) -> void {
   const auto &windowRewrite = config["window-rewrite"];
   if (!windowRewrite.isObject()) {

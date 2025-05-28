@@ -68,6 +68,7 @@ class Workspaces : public AModule, public EventHandler {
   auto populateSortByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
+  auto populateFormatWindowsDefault(const Json::Value& config) -> void;
   auto populateWindowRewriteConfig(const Json::Value& config) -> void;
 
   void registerIpc();
