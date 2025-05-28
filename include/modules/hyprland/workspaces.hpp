@@ -43,6 +43,7 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
+  std::string& getFormatWindowsDefault() { return m_formatWindowsDefault; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
@@ -67,6 +68,7 @@ class Workspaces : public AModule, public EventHandler {
   auto populateSortByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
+  auto populateFormatWindowsDefault(const Json::Value& config) -> void;
   auto populateWindowRewriteConfig(const Json::Value& config) -> void;
 
   void registerIpc();
@@ -144,6 +146,7 @@ class Workspaces : public AModule, public EventHandler {
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
+  std::string m_formatWindowsDefault;
 
   bool m_withIcon;
   uint64_t m_monitorId;
