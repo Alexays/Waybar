@@ -144,6 +144,7 @@ class Workspaces : public AModule, public EventHandler {
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
+  std::string m_formatWindowsDefault;
 
   bool m_withIcon;
   uint64_t m_monitorId;
