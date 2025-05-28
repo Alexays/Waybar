@@ -607,6 +607,7 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
+  populateFormatWindowsDefault(config);
   populateWindowRewriteConfig(config);
 }
 
