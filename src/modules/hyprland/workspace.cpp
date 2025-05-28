@@ -200,16 +200,22 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
   std::string windows;
-  auto windowSeparator = m_workspaceManager.getWindowSeparator();
 
-  bool isNotFirst = false;
-
-  for (auto &[_pid, window_repr] : m_windowMap) {
-    if (isNotFirst) {
-      windows.append(windowSeparator);
+  if( m_windowMap.empty() ) {
+    windows = fmt::format(fmt::runtime(m_workspaceManager.getFormatWindowsDefault()),
+                          fmt::arg("id", id()), fmt::arg("name", name()),
+                          fmt::arg("icon", icon));
+  }
+  else {
+    auto windowSeparator = m_workspaceManager.getWindowSeparator();
+    bool isNotFirst = false;
+    for (auto &[_pid, window_repr] : m_windowMap) {
+      if (isNotFirst) {
+        windows.append(windowSeparator);
+      }
+      isNotFirst = true;
+      windows.append(window_repr);
     }
-    isNotFirst = true;
-    windows.append(window_repr);
   }
 
   m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
