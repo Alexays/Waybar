@@ -43,6 +43,7 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
+  std::string& getFormatWindowsDefault() { return m_formatWindowsDefault; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
