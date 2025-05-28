@@ -199,6 +199,13 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   addOrRemoveClass(styleContext, isVisible(), "visible");
   addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
+  m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
+                                 fmt::arg("name", name()), fmt::arg("icon", icon),
+                                 fmt::arg("windows", windows( icon ))));
+}
+
+std::string Workspace::windows(const std::string &icon) const
+{
   std::string windows;
 
   if( m_windowMap.empty() ) {
@@ -207,9 +214,9 @@ void Workspace::update(const std::string &format, const std::string &icon) {
                           fmt::arg("icon", icon));
   }
   else {
-    auto windowSeparator = m_workspaceManager.getWindowSeparator();
+    const auto windowSeparator = m_workspaceManager.getWindowSeparator();
     bool isNotFirst = false;
-    for (auto &[_pid, window_repr] : m_windowMap) {
+    for (const auto &[_pid, window_repr] : m_windowMap) {
       if (isNotFirst) {
         windows.append(windowSeparator);
       }
@@ -218,9 +225,7 @@ void Workspace::update(const std::string &format, const std::string &icon) {
     }
   }
 
-  m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
-                                 fmt::arg("name", name()), fmt::arg("icon", icon),
-                                 fmt::arg("windows", windows)));
+  return windows;
 }
 
 }  // namespace waybar::modules::hyprland
