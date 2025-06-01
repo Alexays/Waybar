@@ -1,5 +1,6 @@
 #include "modules/clock.hpp"
 
+#include <glib.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
@@ -358,10 +359,23 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
             }
           }
 
-          os << Glib::ustring::format((cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right,
-                                      std::setfill(L' '),
-                                      std::setw(cldMonColLen_ + ((line < 2) ? cldWnLen_ : 0)),
-                                      getCalendarLine(today, ymTmp, line, firstdow, &m_locale_));
+          // Count wide characters to avoid extra padding
+          size_t wideCharCount = 0;
+          std::string calendarLine = getCalendarLine(today, ymTmp, line, firstdow, &m_locale_);
+          if (line < 2) {
+            for (gchar *data = calendarLine.data(), *end = data + calendarLine.size();
+                 data != nullptr;) {
+              gunichar c = g_utf8_get_char_validated(data, end - data);
+              if (g_unichar_iswide(c)) {
+                wideCharCount++;
+              }
+              data = g_utf8_find_next_char(data, end);
+            }
+          }
+          os << Glib::ustring::format(
+              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right, std::setfill(L' '),
+              std::setw(cldMonColLen_ + ((line < 2) ? cldWnLen_ - wideCharCount : 0)),
+              calendarLine);
 
           // Week numbers on the right
           if (cldWPos_ == WS::RIGHT && line > 0) {
