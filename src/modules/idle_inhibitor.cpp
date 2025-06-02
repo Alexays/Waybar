@@ -5,13 +5,16 @@
 
 std::list<waybar::AModule*> waybar::modules::IdleInhibitor::modules;
 bool waybar::modules::IdleInhibitor::status = false;
+long waybar::modules::IdleInhibitor::deactivationTime = time(nullptr);
 
 waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : ALabel(config, "idle_inhibitor", id, "{status}", 0, false, true),
       bar_(bar),
       idle_inhibitor_(nullptr),
-      pid_(-1) {
+      pid_(-1),
+      timeout(config_["timeout"].asDouble()),
+      timeout_step(config_["timeout-step"].isDouble() ? config_["timeout-step"].asDouble() : 10) {
   if (waybar::Client::inst()->idle_inhibit_manager == nullptr) {
     throw std::runtime_error("idle-inhibit not available");
   }
@@ -21,9 +24,13 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
     toggleStatus();
   }
 
-  event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
+  deactivationTime = time(nullptr) + timeout * 60;
+
+  event_box_.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
+
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &IdleInhibitor::handleScroll));
 
   // Add this to the modules list
   waybar::modules::IdleInhibitor::modules.push_back(this);
@@ -63,7 +70,9 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   }
 
   std::string status_text = status ? "activated" : "deactivated";
+  int timeleft = (deactivationTime - time(nullptr)) / 60;
   label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("status", status_text),
+                                fmt::arg("timeout", timeout), fmt::arg("timeleft", timeleft),
                                 fmt::arg("icon", getIcon(0, status_text))));
   label_.get_style_context()->add_class(status_text);
   if (tooltipEnabled()) {
@@ -77,38 +86,49 @@ auto waybar::modules::IdleInhibitor::update() -> void {
   ALabel::update();
 }
 
-void waybar::modules::IdleInhibitor::toggleStatus() {
+void waybar::modules::IdleInhibitor::toggleStatus(int force_status) {
   status = !status;
+  if (force_status != -1) {
+    status = force_status;
+  }
 
   if (timeout_.connected()) {
     /* cancel any already active timeout handler */
     timeout_.disconnect();
   }
 
-  if (status && config_["timeout"].isNumeric()) {
-    auto timeoutMins = config_["timeout"].asDouble();
-    int timeoutSecs = timeoutMins * 60;
-
+  if (status && timeout) {
+    deactivationTime = time(nullptr) + timeout * 60;
     timeout_ = Glib::signal_timeout().connect_seconds(
         []() {
           /* intentionally not tied to a module instance lifetime
            * as the output with `this` can be disconnected
            */
-          spdlog::info("deactivating idle_inhibitor by timeout");
-          status = false;
+          bool continueRunning = true;
+          int timeleft = (deactivationTime - time(nullptr)) / 60;
+          spdlog::info("updating timeleft. deactivation timestamp: {}, minutes left: {}",
+                       deactivationTime, timeleft);
+          if (timeleft <= 0) {
+            spdlog::info("deactivating idle_inhibitor by timeout");
+            status = false;
+            continueRunning = false;
+          }
           for (auto const& module : waybar::modules::IdleInhibitor::modules) {
             module->update();
           }
-          /* disconnect */
-          return false;
+          return continueRunning;
         },
-        timeoutSecs);
+        60);
   }
 }
 
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   if (e->button == 1) {
-    toggleStatus();
+    if (config_["dynamic-timeout"].asBool()) {
+      toggleStatus(1);
+    } else {
+      toggleStatus();
+    }
 
     // Make all other idle inhibitor modules update
     for (auto const& module : waybar::modules::IdleInhibitor::modules) {
@@ -117,7 +137,41 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
       }
     }
   }
+  if (e->button == 3) {
+    toggleStatus(0);
 
+    // Make all other idle inhibitor modules update
+    for (auto const& module : waybar::modules::IdleInhibitor::modules) {
+      if (module != this) {
+        module->update();
+      }
+    }
+  }
+  if (e->button == 2) {
+    toggleStatus(0);
+    timeout = config_["timeout"].asDouble();
+  }
   ALabel::handleToggle(e);
+  return true;
+}
+
+bool waybar::modules::IdleInhibitor::handleScroll(GdkEventScroll* e) {
+  if (!config_["dynamic-timeout"].asBool()) {
+    return true;
+  }
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+  toggleStatus(0);
+  double step = dir == SCROLL_DIR::UP ? 1 : -1;
+  step *= timeout_step;
+  timeout += step;
+  if (timeout < 0) {
+    timeout = 0;
+  }
+  deactivationTime = time(nullptr) + timeout * 60;
+
+  ALabel::handleScroll(e);
   return true;
 }
