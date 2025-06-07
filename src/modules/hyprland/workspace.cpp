@@ -173,6 +173,10 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
 }
 
 void Workspace::update(const std::string &format, const std::string &icon) {
+  if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
+    m_button.hide();
+    return;
+  }
   // clang-format off
   if (this->m_workspaceManager.activeOnly() && \
      !this->isActive() && \

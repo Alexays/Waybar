@@ -37,6 +37,7 @@ class Workspaces : public AModule, public EventHandler {
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
+  auto persistentOnly() const -> bool { return m_persistentOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
@@ -122,6 +123,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_showSpecial = false;
   bool m_activeOnly = false;
   bool m_specialVisibleOnly = false;
+  bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
   Json::Value m_persistentWorkspaceConfig;
 
