@@ -51,7 +51,7 @@ Addressed by *hyprland/workspaces*
 *persistent-only*: ++
 	typeof: bool ++
 	default: false ++
-	TIf set to true only persistent workspaces will be shown on bar.
+	If set to true, only persistent workspaces will be shown on bar.
 
 *all-outputs*: ++
 	typeof: bool ++
