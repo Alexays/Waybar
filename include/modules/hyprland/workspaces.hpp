@@ -36,6 +36,7 @@ class Workspaces : public AModule, public EventHandler {
   auto allOutputs() const -> bool { return m_allOutputs; }
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
+  auto hideActive() const -> bool { return m_hideActive; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
 
@@ -121,6 +122,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_allOutputs = false;
   bool m_showSpecial = false;
   bool m_activeOnly = false;
+  bool m_hideActive = false;
   bool m_specialVisibleOnly = false;
   bool m_moveToMonitor = false;
   Json::Value m_persistentWorkspaceConfig;
