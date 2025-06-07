@@ -61,7 +61,7 @@ Addressed by *hyprland/workspaces*
 *hide-active*: ++
 	typeof: bool ++
 	default: false ++
-	If set to true, the active workspace will be hidded. Unless a workspace is persistent or special.
+	If set to true, the active workspace will be hidden. Unless a workspace is persistent or special.
 
 *move-to-monitor*: ++
 	typeof: bool ++
