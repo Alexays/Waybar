@@ -772,7 +772,7 @@ void Workspaces::setCurrentMonitorId() {
 
 void Workspaces::sortSpecialCentered() {
   std::vector<std::unique_ptr<Workspace>> specialWorkspaces;
-  std::vector<std::unique_ptr<Workspace>> hidedWorkspaces;
+  std::vector<std::unique_ptr<Workspace>> hiddenWorkspaces;
   std::vector<std::unique_ptr<Workspace>> normalWorkspaces;
 
   for (auto &workspace : m_workspaces) {
@@ -782,7 +782,7 @@ void Workspaces::sortSpecialCentered() {
       if (workspace->button().is_visible()) {
         normalWorkspaces.push_back(std::move(workspace));
       } else {
-        hidedWorkspaces.push_back(std::move(workspace));
+        hiddenWorkspaces.push_back(std::move(workspace));
       }
     }
   }
@@ -803,8 +803,8 @@ void Workspaces::sortSpecialCentered() {
                       std::make_move_iterator(normalWorkspaces.end()));
   
   m_workspaces.insert(m_workspaces.end(),
-                      std::make_move_iterator(hidedWorkspaces.begin()),
-                      std::make_move_iterator(hidedWorkspaces.end()));
+                      std::make_move_iterator(hiddenWorkspaces.begin()),
+                      std::make_move_iterator(hiddenWorkspaces.end()));
 }
 
 void Workspaces::sortWorkspaces() {
