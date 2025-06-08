@@ -96,6 +96,17 @@ the screen or playing audio.
 			"tooltip": true,
 			"tooltip-icon-size": 24
 		}
+	],
+	"ignore-monitor": true,
+	"ignore": [
+		{
+			"type": "audio-in",
+			"name": "cava"
+		},
+		{
+			"type": "screenshare",
+			"name": "obs"
+		}
 	]
 },
 ```
