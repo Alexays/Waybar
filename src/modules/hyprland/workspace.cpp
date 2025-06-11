@@ -124,6 +124,22 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
     }
   }
 
+    // Check if both isActive and isSpecial
+    if (isActive() && isSpecial()) {
+      auto specialActiveIconIt = icons_map.find("special-active");
+      if (specialActiveIconIt != icons_map.end()) {
+        return specialActiveIconIt->second;
+      }
+    }
+  
+    // Check if isActive but not isSpecial
+    if (isActive() && !isSpecial()) {
+      auto normalActiveIconIt = icons_map.find("normal-active");
+      if (normalActiveIconIt != icons_map.end()) {
+        return normalActiveIconIt->second;
+      }
+    }
+
   if (isActive()) {
     auto activeIconIt = icons_map.find("active");
     if (activeIconIt != icons_map.end()) {
@@ -192,6 +208,14 @@ void Workspace::update(const std::string &format, const std::string &icon) {
 
   auto styleContext = m_button.get_style_context();
   addOrRemoveClass(styleContext, isActive(), "active");
+//   // Only add 'active' class if:
+// // (1) This is the special workspace and it is active
+// // OR
+// // (2) No special workspace is active, and this is the normal active one
+//   bool specialIsActive = m_workspaceManager.specialWorkspaceIsActive();
+//   bool applyActive = isActive() && (!specialIsActive || isSpecial());
+//   addOrRemoveClass(styleContext, applyActive, "active");
+
   addOrRemoveClass(styleContext, isSpecial(), "special");
   addOrRemoveClass(styleContext, isEmpty(), "empty");
   addOrRemoveClass(styleContext, isPersistent(), "persistent");

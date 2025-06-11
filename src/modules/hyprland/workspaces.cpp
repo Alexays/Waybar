@@ -46,6 +46,15 @@ void Workspaces::init() {
   dp.emit();
 }
 
+bool Workspaces::specialWorkspaceIsActive() const {
+  for (const auto &workspace : m_workspaces) {
+    if (workspace->isActive() && workspace->isSpecial()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Json::Value Workspaces::createMonitorWorkspaceData(std::string const &name,
                                                    std::string const &monitor) {
   spdlog::trace("Creating persistent workspace: {} on monitor {}", name, monitor);
@@ -60,6 +69,15 @@ Json::Value Workspaces::createMonitorWorkspaceData(std::string const &name,
   workspaceData["monitor"] = monitor;
   workspaceData["windows"] = 0;
   return workspaceData;
+}
+
+void addOrRemoveClassWorkspaces(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
+                      const std::string &class_name) {
+  if (condition) {
+    context->add_class(class_name);
+  } else {
+    context->remove_class(class_name);
+  }
 }
 
 void Workspaces::createWorkspace(Json::Value const &workspace_data,
@@ -856,6 +874,11 @@ void Workspaces::setUrgentWorkspace(std::string const &windowaddress) {
 auto Workspaces::update() -> void {
   doUpdate();
   AModule::update();
+
+  //pol was here
+  bool specialActive = specialWorkspaceIsActive();
+  auto styleContext = m_box.get_style_context();
+  addOrRemoveClassWorkspaces(styleContext, specialActive, "has-special-active");
 }
 
 void Workspaces::updateWindowCount() {

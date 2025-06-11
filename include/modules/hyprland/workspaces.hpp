@@ -46,6 +46,8 @@ class Workspaces : public AModule, public EventHandler {
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
+  bool specialWorkspaceIsActive() const;
+
 
  private:
   void onEvent(const std::string& e) override;
