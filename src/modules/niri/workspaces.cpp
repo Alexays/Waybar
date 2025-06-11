@@ -32,13 +32,22 @@ void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
 
   const auto alloutputs = config_["all-outputs"].asBool();
+  const auto display_cond = config_["display-condition"].asString();
   std::vector<Json::Value> my_workspaces;
   const auto &workspaces = gIPC->workspaces();
-  std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
-               [&](const auto &ws) {
-                 if (alloutputs) return true;
-                 return ws["output"].asString() == bar_.output->name;
-               });
+  std::copy_if(
+      workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
+      [&](const auto &ws) {
+        if (display_cond == "only-populated") {
+          if (ws["active_window_id"].isNull() && !ws["is_active"].asBool()) return false;
+        } else if (display_cond == "keep-named") {
+          if (ws["name"].isNull() && ws["active_window_id"].isNull() && !ws["is_active"].asBool())
+            return false;
+        }
+
+        if (alloutputs) return true;
+        return ws["output"].asString() == bar_.output->name;
+      });
 
   // Remove buttons for removed workspaces.
   for (auto it = buttons_.begin(); it != buttons_.end();) {
