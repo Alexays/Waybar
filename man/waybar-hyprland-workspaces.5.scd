@@ -48,6 +48,11 @@ Addressed by *hyprland/workspaces*
 	default: false ++
 	If this and show-special are to true, special workspaces will be shown only if visible.
 
+*persistent-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only persistent workspaces will be shown on bar.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
