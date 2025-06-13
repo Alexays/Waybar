@@ -24,8 +24,8 @@ class Clock final : public ALabel {
   const std::locale m_locale_;
   // tooltip
   const std::string m_tlpFmt_;
-  std::string m_tlpText_{""};                 // tooltip text to print
-  const Glib::RefPtr<Gtk::Label> m_tooltip_;  // tooltip as a separate Gtk::Label
+  std::string m_tlpText_{""};  // tooltip text to print
+  Gtk::Label m_tooltip_;       // tooltip as a separate Gtk::Label
   bool query_tlp_cb(int, int, bool, const Glib::RefPtr<Gtk::Tooltip>& tooltip);
   // Calendar
   const bool cldInTooltip_;  // calendar in tooltip
