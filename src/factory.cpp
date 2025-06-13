@@ -40,6 +40,7 @@
 #include "modules/niri/language.hpp"
 #include "modules/niri/window.hpp"
 #include "modules/niri/workspaces.hpp"
+#include "modules/niri/taskbar.hpp"
 #endif
 #if defined(__FreeBSD__) || defined(__linux__)
 #include "modules/battery.hpp"
@@ -220,6 +221,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "niri/workspaces") {
       return new waybar::modules::niri::Workspaces(id, bar_, config_[name]);
+    }
+    if (ref == "niri/taskbar") {
+      return new waybar::modules::niri::Taskbar(id, bar_, config_[name]);
     }
 #endif
     if (ref == "idle_inhibitor") {
