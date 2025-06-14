@@ -11,7 +11,7 @@ namespace waybar::modules::wlr {
 
 static void handle_global(void *data, wl_registry *registry, uint32_t name, const char *interface,
                           uint32_t version) {
-  if (std::strcmp(interface, zext_workspace_manager_v1_interface.name) == 0) {
+  if (std::strcmp(interface, ext_workspace_manager_v1_interface.name) == 0) {
     static_cast<WorkspaceManager *>(data)->register_manager(registry, name, version);
   }
 }
@@ -29,76 +29,97 @@ void add_registry_listener(void *data) {
 
   wl_registry_add_listener(registry, &registry_listener_impl, data);
   wl_display_roundtrip(display);
-  wl_display_roundtrip(display);
 }
 
 static void workspace_manager_handle_workspace_group(
-    void *data, zext_workspace_manager_v1 *_, zext_workspace_group_handle_v1 *workspace_group) {
-  static_cast<WorkspaceManager *>(data)->handle_workspace_group_create(workspace_group);
+    void *data, ext_workspace_manager_v1 *_, ext_workspace_group_handle_v1 *workspace_group) {
+  static_cast<WorkspaceManager *>(data)->handle_workspace_group(workspace_group);
 }
 
-static void workspace_manager_handle_done(void *data, zext_workspace_manager_v1 *_) {
+static void workspace_manager_handle_workspace(void *data, ext_workspace_manager_v1 *_,
+                                               ext_workspace_handle_v1 *workspace) {
+  static_cast<WorkspaceManager *>(data)->handle_workspace(workspace);
+}
+
+static void workspace_manager_handle_done(void *data, ext_workspace_manager_v1 *_) {
   static_cast<WorkspaceManager *>(data)->handle_done();
 }
 
-static void workspace_manager_handle_finished(void *data, zext_workspace_manager_v1 *_) {
+static void workspace_manager_handle_finished(void *data, ext_workspace_manager_v1 *_) {
   static_cast<WorkspaceManager *>(data)->handle_finished();
 }
 
-static const zext_workspace_manager_v1_listener workspace_manager_impl = {
+static const ext_workspace_manager_v1_listener workspace_manager_impl = {
     .workspace_group = workspace_manager_handle_workspace_group,
+    .workspace = workspace_manager_handle_workspace,
     .done = workspace_manager_handle_done,
     .finished = workspace_manager_handle_finished,
 };
 
-zext_workspace_manager_v1 *workspace_manager_bind(wl_registry *registry, uint32_t name,
-                                                  uint32_t version, void *data) {
-  auto *workspace_manager = static_cast<zext_workspace_manager_v1 *>(
-      wl_registry_bind(registry, name, &zext_workspace_manager_v1_interface, version));
+ext_workspace_manager_v1 *workspace_manager_bind(wl_registry *registry, uint32_t name,
+                                                 uint32_t version, void *data) {
+  auto *workspace_manager = static_cast<ext_workspace_manager_v1 *>(
+      wl_registry_bind(registry, name, &ext_workspace_manager_v1_interface, version));
 
   if (workspace_manager)
-    zext_workspace_manager_v1_add_listener(workspace_manager, &workspace_manager_impl, data);
+    ext_workspace_manager_v1_add_listener(workspace_manager, &workspace_manager_impl, data);
   else
     spdlog::error("Failed to register manager");
 
   return workspace_manager;
 }
 
-static void workspace_group_handle_output_enter(void *data, zext_workspace_group_handle_v1 *_,
+static void workspace_group_handle_capabilities(void *data, ext_workspace_group_handle_v1 *_,
+                                                uint32_t capabilities) {
+  static_cast<WorkspaceGroup *>(data)->handle_capabilities(capabilities);
+}
+
+static void workspace_group_handle_output_enter(void *data, ext_workspace_group_handle_v1 *_,
                                                 wl_output *output) {
   static_cast<WorkspaceGroup *>(data)->handle_output_enter(output);
 }
 
-static void workspace_group_handle_output_leave(void *data, zext_workspace_group_handle_v1 *_,
+static void workspace_group_handle_output_leave(void *data, ext_workspace_group_handle_v1 *_,
                                                 wl_output *output) {
-  static_cast<WorkspaceGroup *>(data)->handle_output_leave();
+  static_cast<WorkspaceGroup *>(data)->handle_output_leave(output);
 }
 
-static void workspace_group_handle_workspace(void *data, zext_workspace_group_handle_v1 *_,
-                                             zext_workspace_handle_v1 *workspace) {
-  static_cast<WorkspaceGroup *>(data)->handle_workspace_create(workspace);
+static void workspace_group_handle_workspace_enter(void *data, ext_workspace_group_handle_v1 *_,
+                                                   ext_workspace_handle_v1 *workspace) {
+  static_cast<WorkspaceGroup *>(data)->handle_workspace_enter(workspace);
 }
 
-static void workspace_group_handle_remove(void *data, zext_workspace_group_handle_v1 *_) {
-  static_cast<WorkspaceGroup *>(data)->handle_remove();
+static void workspace_group_handle_workspace_leave(void *data, ext_workspace_group_handle_v1 *_,
+                                                   ext_workspace_handle_v1 *workspace) {
+  static_cast<WorkspaceGroup *>(data)->handle_workspace_leave(workspace);
 }
 
-static const zext_workspace_group_handle_v1_listener workspace_group_impl = {
+static void workspace_group_handle_removed(void *data, ext_workspace_group_handle_v1 *_) {
+  static_cast<WorkspaceGroup *>(data)->handle_removed();
+}
+
+static const ext_workspace_group_handle_v1_listener workspace_group_impl = {
+    .capabilities = workspace_group_handle_capabilities,
     .output_enter = workspace_group_handle_output_enter,
     .output_leave = workspace_group_handle_output_leave,
-    .workspace = workspace_group_handle_workspace,
-    .remove = workspace_group_handle_remove};
+    .workspace_enter = workspace_group_handle_workspace_enter,
+    .workspace_leave = workspace_group_handle_workspace_leave,
+    .removed = workspace_group_handle_removed};
 
-void add_workspace_group_listener(zext_workspace_group_handle_v1 *workspace_group_handle,
+void add_workspace_group_listener(ext_workspace_group_handle_v1 *workspace_group_handle,
                                   void *data) {
-  zext_workspace_group_handle_v1_add_listener(workspace_group_handle, &workspace_group_impl, data);
+  ext_workspace_group_handle_v1_add_listener(workspace_group_handle, &workspace_group_impl, data);
 }
 
-void workspace_handle_name(void *data, struct zext_workspace_handle_v1 *_, const char *name) {
+void workspace_handle_name(void *data, struct ext_workspace_handle_v1 *_, const char *name) {
   static_cast<Workspace *>(data)->handle_name(name);
 }
 
-void workspace_handle_coordinates(void *data, struct zext_workspace_handle_v1 *_,
+void workspace_handle_id(void *data, struct ext_workspace_handle_v1 *_, const char *id) {
+  static_cast<Workspace *>(data)->handle_id(id);
+}
+
+void workspace_handle_coordinates(void *data, struct ext_workspace_handle_v1 *_,
                                   struct wl_array *coordinates) {
   std::vector<uint32_t> coords_vec;
   auto coords = static_cast<uint32_t *>(coordinates->data);
@@ -109,28 +130,30 @@ void workspace_handle_coordinates(void *data, struct zext_workspace_handle_v1 *_
   static_cast<Workspace *>(data)->handle_coordinates(coords_vec);
 }
 
-void workspace_handle_state(void *data, struct zext_workspace_handle_v1 *workspace_handle,
-                            struct wl_array *state) {
-  std::vector<uint32_t> state_vec;
-  auto states = static_cast<uint32_t *>(state->data);
-  for (size_t i = 0; i < state->size / sizeof(uint32_t); ++i) {
-    state_vec.push_back(states[i]);
-  }
-
-  static_cast<Workspace *>(data)->handle_state(state_vec);
+void workspace_handle_state(void *data, struct ext_workspace_handle_v1 *workspace_handle,
+                            uint32_t state) {
+  static_cast<Workspace *>(data)->handle_state(state);
 }
 
-void workspace_handle_remove(void *data, struct zext_workspace_handle_v1 *_) {
-  static_cast<Workspace *>(data)->handle_remove();
+static void workspace_handle_capabilities(void *data,
+                                          struct ext_workspace_handle_v1 *workspace_handle,
+                                          uint32_t capabilities) {
+  static_cast<Workspace *>(data)->handle_capabilities(capabilities);
 }
 
-static const zext_workspace_handle_v1_listener workspace_impl = {
+void workspace_handle_removed(void *data, struct ext_workspace_handle_v1 *workspace_handle) {
+  static_cast<Workspace *>(data)->handle_removed();
+}
+
+static const ext_workspace_handle_v1_listener workspace_impl = {
+    .id = workspace_handle_id,
     .name = workspace_handle_name,
     .coordinates = workspace_handle_coordinates,
     .state = workspace_handle_state,
-    .remove = workspace_handle_remove};
+    .capabilities = workspace_handle_capabilities,
+    .removed = workspace_handle_removed};
 
-void add_workspace_listener(zext_workspace_handle_v1 *workspace_handle, void *data) {
-  zext_workspace_handle_v1_add_listener(workspace_handle, &workspace_impl, data);
+void add_workspace_listener(ext_workspace_handle_v1 *workspace_handle, void *data) {
+  ext_workspace_handle_v1_add_listener(workspace_handle, &workspace_impl, data);
 }
 }  // namespace waybar::modules::wlr
