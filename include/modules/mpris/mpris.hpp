@@ -22,6 +22,7 @@ class Mpris : public ALabel {
   virtual ~Mpris();
   auto update() -> void override;
   bool handleToggle(GdkEventButton* const&) override;
+  bool handleScroll(GdkEventScroll*) override;
 
  private:
   static auto onPlayerNameAppeared(PlayerctlPlayerManager*, PlayerctlPlayerName*, gpointer) -> void;
