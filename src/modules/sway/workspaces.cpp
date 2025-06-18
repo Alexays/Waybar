@@ -62,14 +62,13 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
     m_formatWindowSeperator = " ";
   }
   const Json::Value &windowRewrite = config["window-rewrite"];
-
-  const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
-  m_windowRewriteDefault =
-      windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
-
-  m_windowRewriteRules = waybar::util::RegexCollection(
-      windowRewrite, m_windowRewriteDefault,
-      [](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
+  if (windowRewrite.isObject()) {
+    const Json::Value &windowRewriteDefaultConfig = config["window-rewrite-default"];
+    std::string windowRewriteDefault =
+        windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
+    m_windowRewriteRules = waybar::util::RegexCollection(
+        windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction);
+  }
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
@@ -495,16 +494,34 @@ std::string Workspaces::trimWorkspaceName(std::string name) {
   return name;
 }
 
+bool is_focused_recursive(const Json::Value& node) {
+  // If a workspace has a focused container then get_tree will say
+  // that the workspace itself isn't focused.  Therefore we need to
+  // check if any of its nodes are focused as well.
+  // some layouts like tabbed have many nested nodes
+  // all nested nodes must be checked for focused flag
+  if (node["focused"].asBool()) {
+    return true;
+  }
+
+  for (const auto& child : node["nodes"]) {
+    if (is_focused_recursive(child)) {
+      return true;
+    }
+  }
+
+  for (const auto& child : node["floating_nodes"]) {
+    if (is_focused_recursive(child)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void Workspaces::onButtonReady(const Json::Value &node, Gtk::Button &button) {
   if (config_["current-only"].asBool()) {
-    // If a workspace has a focused container then get_tree will say
-    // that the workspace itself isn't focused.  Therefore we need to
-    // check if any of its nodes are focused as well.
-    bool focused = node["focused"].asBool() ||
-                   std::any_of(node["nodes"].begin(), node["nodes"].end(),
-                               [](const auto &child) { return child["focused"].asBool(); });
-
-    if (focused) {
+    if (is_focused_recursive(node)) {
       button.show();
     } else {
       button.hide();

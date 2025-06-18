@@ -199,8 +199,8 @@ const unsigned cldRowsInMonth(const year_month& ym, const weekday& firstdow) {
   return 2u + ceil<weeks>((weekday{ym / 1} - firstdow) + ((ym / last).day() - day{0})).count();
 }
 
-auto cldGetWeekForLine(const year_month& ym, const weekday& firstdow,
-                       const unsigned line) -> const year_month_weekday {
+auto cldGetWeekForLine(const year_month& ym, const weekday& firstdow, const unsigned line)
+    -> const year_month_weekday {
   unsigned index{line - 2};
   if (weekday{ym / 1} == firstdow) ++index;
   return ym / firstdow[index];

@@ -118,8 +118,8 @@ auto WorkspaceManager::sort_workspaces() -> void {
   }
 }
 
-auto WorkspaceManager::register_manager(wl_registry *registry, uint32_t name,
-                                        uint32_t version) -> void {
+auto WorkspaceManager::register_manager(wl_registry *registry, uint32_t name, uint32_t version)
+    -> void {
   if (workspace_manager_) {
     spdlog::warn("Register workspace manager again although already registered!");
     return;

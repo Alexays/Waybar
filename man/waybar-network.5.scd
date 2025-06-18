@@ -24,7 +24,7 @@ Addressed by *network*
 *family*: ++
 	typeof: string ++
 	default: *ipv4* ++
-	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present.
+	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present. Set it to ipv4_6 to display both.
 
 *format*: ++
 	typeof: string  ++
@@ -155,9 +155,13 @@ Addressed by *network*
 
 *{gwaddr}*: The default gateway for the interface
 
-*{netmask}*: The subnetmask corresponding to the IP.
+*{netmask}*: The subnetmask corresponding to the IP(V4).
 
-*{cidr}*: The subnetmask corresponding to the IP in CIDR notation.
+*{netmask6}*: The subnetmask corresponding to the IP(V6). 
+
+*{cidr}*: The subnetmask corresponding to the IP(V4) in CIDR notation.
+
+*{cidr6}*: The subnetmask corresponding to the IP(V6) in CIDR notation.
 
 *{essid}*: Name (SSID) of the wireless network.
 
@@ -167,7 +171,7 @@ Addressed by *network*
 
 *{signaldBm}*: Signal strength of the wireless network in dBm.
 
-*{frequency}*: Frequency of the wireless network in MHz.
+*{frequency}*: Frequency of the wireless network in GHz.
 
 *{bandwidthUpBits}*: Instant up speed in bits/seconds.
 

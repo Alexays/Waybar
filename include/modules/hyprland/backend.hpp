@@ -2,9 +2,9 @@
 
 #include <filesystem>
 #include <list>
-#include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "util/json.hpp"
@@ -19,7 +19,9 @@ class EventHandler {
 
 class IPC {
  public:
-  IPC() { startIPC(); }
+  IPC();
+  ~IPC();
+  static IPC& inst();
 
   void registerForIPC(const std::string& ev, EventHandler* ev_handler);
   void unregisterForIPC(EventHandler* handler);
@@ -32,14 +34,16 @@ class IPC {
   static std::filesystem::path socketFolder_;
 
  private:
-  void startIPC();
+  void socketListener();
   void parseIPC(const std::string&);
 
+  std::thread ipcThread_;
   std::mutex callbackMutex_;
   util::JsonParser parser_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;
+  int socketfd_;  // the hyprland socket file descriptor
+  bool running_ = true;
 };
 
-inline std::unique_ptr<IPC> gIPC;
 inline bool modulesReady = false;
 };  // namespace waybar::modules::hyprland

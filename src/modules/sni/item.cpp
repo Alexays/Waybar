@@ -5,10 +5,12 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <fstream>
 #include <map>
 
 #include "gdk/gdk.h"
+#include "modules/sni/icon_manager.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 
@@ -124,7 +126,8 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   result.text = get_variant<Glib::ustring>(container.get_child(2));
   auto description = get_variant<Glib::ustring>(container.get_child(3));
   if (!description.empty()) {
-    result.text = fmt::format("<b>{}</b>\n{}", result.text, description);
+    auto escapedDescription = Glib::Markup::escape_text(description);
+    result.text = fmt::format("<b>{}</b>\n{}", result.text, escapedDescription);
   }
   return result;
 }
@@ -137,6 +140,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       category = get_variant<std::string>(value);
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
+      setCustomIcon(id);
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
       if (tooltip.text.empty()) {
@@ -196,6 +200,19 @@ void Item::setStatus(const Glib::ustring& value) {
     lower = "needs-attention";
   }
   style->add_class(lower);
+}
+
+void Item::setCustomIcon(const std::string& id) {
+  std::string custom_icon = IconManager::instance().getIconForApp(id);
+  if (!custom_icon.empty()) {
+    if (std::filesystem::exists(custom_icon)) {
+      Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
+      icon_name = "";  // icon_name has priority over pixmap
+      icon_pixmap = custom_pixbuf;
+    } else {  // if file doesn't exist it's most likely an icon_name
+      icon_name = custom_icon;
+    }
+  }
 }
 
 void Item::getUpdatedProperties() {

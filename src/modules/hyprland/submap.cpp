@@ -7,14 +7,10 @@
 namespace waybar::modules::hyprland {
 
 Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "submap", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "submap", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   modulesReady = true;
 
   parseConfig(config);
-
-  if (!gIPC) {
-    gIPC = std::make_unique<IPC>();
-  }
 
   label_.hide();
   ALabel::update();
@@ -27,12 +23,12 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
   }
 
   // register for hyprland ipc
-  gIPC->registerForIPC("submap", this);
+  m_ipc.registerForIPC("submap", this);
   dp.emit();
 }
 
 Submap::~Submap() {
-  gIPC->unregisterForIPC(this);
+  m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
 }

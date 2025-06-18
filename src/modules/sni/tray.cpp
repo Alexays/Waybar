@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include "modules/sni/icon_manager.hpp"
 
 namespace waybar::modules::SNI {
 
@@ -25,6 +26,9 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     show_passive_ = config["show-passive-items"].asBool();
   }
   nb_hosts_ += 1;
+  if (config_["icons"].isObject()) {
+    IconManager::instance().setIconsConfig(config_["icons"]);
+  }
   dp.emit();
 }
 

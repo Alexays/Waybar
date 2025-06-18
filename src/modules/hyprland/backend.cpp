@@ -11,7 +11,6 @@
 
 #include <filesystem>
 #include <string>
-#include <thread>
 
 namespace waybar::modules::hyprland {
 
@@ -44,71 +43,96 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   return socketFolder_;
 }
 
-void IPC::startIPC() {
+IPC::IPC() {
   // will start IPC and relay events to parseIPC
+  ipcThread_ = std::thread([this]() { socketListener(); });
+}
 
-  std::thread([&]() {
-    // check for hyprland
-    const char* his = getenv("HYPRLAND_INSTANCE_SIGNATURE");
-
-    if (his == nullptr) {
-      spdlog::warn("Hyprland is not running, Hyprland IPC will not be available.");
-      return;
+IPC::~IPC() {
+  running_ = false;
+  spdlog::info("Hyprland IPC stopping...");
+  if (socketfd_ != -1) {
+    spdlog::trace("Shutting down socket");
+    if (shutdown(socketfd_, SHUT_RDWR) == -1) {
+      spdlog::error("Hyprland IPC: Couldn't shutdown socket");
     }
-
-    if (!modulesReady) return;
-
-    spdlog::info("Hyprland IPC starting");
-
-    struct sockaddr_un addr;
-    int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
-
-    if (socketfd == -1) {
-      spdlog::error("Hyprland IPC: socketfd failed");
-      return;
+    spdlog::trace("Closing socket");
+    if (close(socketfd_) == -1) {
+      spdlog::error("Hyprland IPC: Couldn't close socket");
     }
+  }
+  ipcThread_.join();
+}
 
-    addr.sun_family = AF_UNIX;
+IPC& IPC::inst() {
+  static IPC ipc;
+  return ipc;
+}
 
-    auto socketPath = IPC::getSocketFolder(his) / ".socket2.sock";
-    strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+void IPC::socketListener() {
+  // check for hyprland
+  const char* his = getenv("HYPRLAND_INSTANCE_SIGNATURE");
 
-    addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
+  if (his == nullptr) {
+    spdlog::warn("Hyprland is not running, Hyprland IPC will not be available.");
+    return;
+  }
 
-    int l = sizeof(struct sockaddr_un);
+  if (!modulesReady) return;
 
-    if (connect(socketfd, (struct sockaddr*)&addr, l) == -1) {
-      spdlog::error("Hyprland IPC: Unable to connect?");
-      return;
-    }
+  spdlog::info("Hyprland IPC starting");
 
-    auto* file = fdopen(socketfd, "r");
+  struct sockaddr_un addr;
+  socketfd_ = socket(AF_UNIX, SOCK_STREAM, 0);
 
-    while (true) {
-      std::array<char, 1024> buffer;  // Hyprland socket2 events are max 1024 bytes
+  if (socketfd_ == -1) {
+    spdlog::error("Hyprland IPC: socketfd failed");
+    return;
+  }
 
-      auto* receivedCharPtr = fgets(buffer.data(), buffer.size(), file);
+  addr.sun_family = AF_UNIX;
 
-      if (receivedCharPtr == nullptr) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        continue;
-      }
+  auto socketPath = IPC::getSocketFolder(his) / ".socket2.sock";
+  strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
 
-      std::string messageReceived(buffer.data());
-      messageReceived = messageReceived.substr(0, messageReceived.find_first_of('\n'));
-      spdlog::debug("hyprland IPC received {}", messageReceived);
+  addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
 
-      try {
-        parseIPC(messageReceived);
-      } catch (std::exception& e) {
-        spdlog::warn("Failed to parse IPC message: {}, reason: {}", messageReceived, e.what());
-      } catch (...) {
-        throw;
-      }
+  int l = sizeof(struct sockaddr_un);
 
+  if (connect(socketfd_, (struct sockaddr*)&addr, l) == -1) {
+    spdlog::error("Hyprland IPC: Unable to connect?");
+    return;
+  }
+  auto* file = fdopen(socketfd_, "r");
+  if (file == nullptr) {
+    spdlog::error("Hyprland IPC: Couldn't open file descriptor");
+    return;
+  }
+  while (running_) {
+    std::array<char, 1024> buffer;  // Hyprland socket2 events are max 1024 bytes
+
+    auto* receivedCharPtr = fgets(buffer.data(), buffer.size(), file);
+
+    if (receivedCharPtr == nullptr) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      continue;
     }
-  }).detach();
+
+    std::string messageReceived(buffer.data());
+    messageReceived = messageReceived.substr(0, messageReceived.find_first_of('\n'));
+    spdlog::debug("hyprland IPC received {}", messageReceived);
+
+    try {
+      parseIPC(messageReceived);
+    } catch (std::exception& e) {
+      spdlog::warn("Failed to parse IPC message: {}, reason: {}", messageReceived, e.what());
+    } catch (...) {
+      throw;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+  spdlog::debug("Hyprland IPC stopped");
 }
 
 void IPC::parseIPC(const std::string& ev) {
