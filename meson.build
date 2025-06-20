@@ -277,13 +277,13 @@ if true
 endif
 
 if wayland_protos.version().version_compare('>=1.39')
-    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
+    add_project_arguments('-DHAVE_EXT_WORKSPACES', language: 'cpp')
     src_files += files(
-        'src/modules/wlr/workspace_manager.cpp',
-        'src/modules/wlr/workspace_manager_binding.cpp',
+        'src/modules/ext/workspace_manager.cpp',
+        'src/modules/ext/workspace_manager_binding.cpp',
     )
     man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
+        'man/waybar-ext-workspaces.5.scd',
     )
 endif
 

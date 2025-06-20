@@ -13,7 +13,7 @@
 #include "bar.hpp"
 #include "ext-workspace-v1-client-protocol.h"
 
-namespace waybar::modules::wlr {
+namespace waybar::modules::ext {
 
 class WorkspaceGroup;
 class Workspace;
@@ -27,13 +27,13 @@ class WorkspaceManager final : public AModule {
   void remove_workspace(uint32_t id);
   void set_needs_sorting() { needs_sorting_ = true; }
 
-  // wlr events
+  // wl events
   void handle_workspace_group(ext_workspace_group_handle_v1 *handle);
   void handle_workspace(ext_workspace_handle_v1 *handle);
   void handle_done();
   void handle_finished();
 
-  // wlr requests
+  // wl requests
   void commit() const;
 
  private:
@@ -72,7 +72,7 @@ class WorkspaceGroup {
   bool has_output(const wl_output *output);
   bool has_workspace(const ext_workspace_handle_v1 *workspace);
 
-  // wlr events
+  // wl events
   void handle_capabilities(uint32_t capabilities);
   void handle_output_enter(wl_output *output);
   void handle_output_leave(wl_output *output);
@@ -105,7 +105,7 @@ class Workspace {
   bool is_hidden() const;
   void update();
 
-  // wlr events
+  // wl events
   void handle_id(const std::string &id);
   void handle_name(const std::string &name);
   void handle_coordinates(const std::vector<uint32_t> &coordinates);
@@ -141,4 +141,4 @@ class Workspace {
   bool needs_updating_ = false;
 };
 
-}  // namespace waybar::modules::wlr
+}  // namespace waybar::modules::ext

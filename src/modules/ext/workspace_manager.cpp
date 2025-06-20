@@ -1,4 +1,4 @@
-#include "modules/wlr/workspace_manager.hpp"
+#include "modules/ext/workspace_manager.hpp"
 
 #include <gdk/gdkwayland.h>
 #include <gtkmm.h>
@@ -10,9 +10,9 @@
 
 #include "client.hpp"
 #include "gtkmm/widget.h"
-#include "modules/wlr/workspace_manager_binding.hpp"
+#include "modules/ext/workspace_manager_binding.hpp"
 
-namespace waybar::modules::wlr {
+namespace waybar::modules::ext {
 
 // WorkspaceManager
 
@@ -29,7 +29,7 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
 
   const auto config_sort_by_number = config_["sort-by-number"];
   if (config_sort_by_number.isBool()) {
-    spdlog::warn("[wlr/workspaces]: Prefer sort-by-id instead of sort-by-number");
+    spdlog::warn("[ext/workspaces]: Prefer sort-by-id instead of sort-by-number");
     sort_by_id_ = config_sort_by_number.asBool();
   }
 
@@ -67,7 +67,7 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
   box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
-  spdlog::debug("[wlr/workspaces]: Workspace manager created");
+  spdlog::debug("[ext/workspaces]: Workspace manager created");
 }
 
 WorkspaceManager::~WorkspaceManager() {
@@ -82,20 +82,20 @@ WorkspaceManager::~WorkspaceManager() {
   }
 
   if (ext_manager_ != nullptr) {
-    spdlog::warn("[wlr/workspaces]: Destroying workspace manager before .finished event");
+    spdlog::warn("[ext/workspaces]: Destroying workspace manager before .finished event");
     ext_workspace_manager_v1_destroy(ext_manager_);
   }
 
-  spdlog::debug("[wlr/workspaces]: Workspace manager destroyed");
+  spdlog::debug("[ext/workspaces]: Workspace manager destroyed");
 }
 
 void WorkspaceManager::register_manager(wl_registry *registry, uint32_t name, uint32_t version) {
   if (ext_manager_ != nullptr) {
-    spdlog::warn("[wlr/workspaces]: Register workspace manager again although already registered!");
+    spdlog::warn("[ext/workspaces]: Register workspace manager again although already registered!");
     return;
   }
   if (version != 1) {
-    spdlog::warn("[wlr/workspaces]: Using different workspace manager protocol version: {}",
+    spdlog::warn("[ext/workspaces]: Using different workspace manager protocol version: {}",
                  version);
   }
 
@@ -107,7 +107,7 @@ void WorkspaceManager::remove_workspace_group(uint32_t id) {
       std::find_if(groups_.begin(), groups_.end(), [id](const auto &g) { return g->id() == id; });
 
   if (it == groups_.end()) {
-    spdlog::warn("[wlr/workspaces]: Can't find workspace group with id {}", id);
+    spdlog::warn("[ext/workspaces]: Can't find workspace group with id {}", id);
     return;
   }
 
@@ -119,7 +119,7 @@ void WorkspaceManager::remove_workspace(uint32_t id) {
                                [id](const auto &w) { return w->id() == id; });
 
   if (it == workspaces_.end()) {
-    spdlog::warn("[wlr/workspaces]: Can't find workspace with id {}", id);
+    spdlog::warn("[ext/workspaces]: Can't find workspace with id {}", id);
     return;
   }
 
@@ -129,7 +129,7 @@ void WorkspaceManager::remove_workspace(uint32_t id) {
 void WorkspaceManager::handle_workspace_group(ext_workspace_group_handle_v1 *handle) {
   const auto new_id = ++group_global_id;
   groups_.push_back(std::make_unique<WorkspaceGroup>(*this, handle, new_id));
-  spdlog::debug("[wlr/workspaces]: Workspace group {} created", new_id);
+  spdlog::debug("[ext/workspaces]: Workspace group {} created", new_id);
 }
 
 void WorkspaceManager::handle_workspace(ext_workspace_handle_v1 *handle) {
@@ -137,13 +137,13 @@ void WorkspaceManager::handle_workspace(ext_workspace_handle_v1 *handle) {
   const auto new_name = std::to_string(++workspace_name);
   workspaces_.push_back(std::make_unique<Workspace>(config_, *this, handle, new_id, new_name));
   set_needs_sorting();
-  spdlog::debug("[wlr/workspaces]: Workspace {} created", new_id);
+  spdlog::debug("[ext/workspaces]: Workspace {} created", new_id);
 }
 
 void WorkspaceManager::handle_done() { dp.emit(); }
 
 void WorkspaceManager::handle_finished() {
-  spdlog::debug("[wlr/workspaces]: Finishing workspace manager");
+  spdlog::debug("[ext/workspaces]: Finishing workspace manager");
   ext_workspace_manager_v1_destroy(ext_manager_);
   ext_manager_ = nullptr;
 }
@@ -151,7 +151,7 @@ void WorkspaceManager::handle_finished() {
 void WorkspaceManager::commit() const { ext_workspace_manager_v1_commit(ext_manager_); }
 
 void WorkspaceManager::update() {
-  spdlog::debug("[wlr/workspaces]: Updating state");
+  spdlog::debug("[ext/workspaces]: Updating state");
 
   if (needs_sorting_) {
     clear_buttons();
@@ -278,7 +278,7 @@ WorkspaceGroup::~WorkspaceGroup() {
   if (ext_handle_ != nullptr) {
     ext_workspace_group_handle_v1_destroy(ext_handle_);
   }
-  spdlog::debug("[wlr/workspaces]: Workspace group {} destroyed", id_);
+  spdlog::debug("[ext/workspaces]: Workspace group {} destroyed", id_);
 }
 
 bool WorkspaceGroup::has_output(const wl_output *output) {
@@ -290,10 +290,10 @@ bool WorkspaceGroup::has_workspace(const ext_workspace_handle_v1 *workspace) {
 }
 
 void WorkspaceGroup::handle_capabilities(uint32_t capabilities) {
-  spdlog::debug("[wlr/workspaces]: Capabilities for workspace group {}:", id_);
+  spdlog::debug("[ext/workspaces]: Capabilities for workspace group {}:", id_);
   if ((capabilities & EXT_WORKSPACE_GROUP_HANDLE_V1_GROUP_CAPABILITIES_CREATE_WORKSPACE) ==
       capabilities) {
-    spdlog::debug("[wlr/workspaces]:     create-workspace");
+    spdlog::debug("[ext/workspaces]:     create-workspace");
   }
 }
 
@@ -318,7 +318,7 @@ void WorkspaceGroup::handle_workspace_leave(ext_workspace_handle_v1 *handle) {
 }
 
 void WorkspaceGroup::handle_removed() {
-  spdlog::debug("[wlr/workspaces]: Removing workspace group {}", id_);
+  spdlog::debug("[ext/workspaces]: Removing workspace group {}", id_);
   workspaces_manager_.remove_workspace_group(id_);
 }
 
@@ -372,7 +372,7 @@ Workspace::~Workspace() {
   if (ext_handle_ != nullptr) {
     ext_workspace_handle_v1_destroy(ext_handle_);
   }
-  spdlog::debug("[wlr/workspaces]: Workspace {} destroyed", id_);
+  spdlog::debug("[ext/workspaces]: Workspace {} destroyed", id_);
 }
 
 bool Workspace::is_active() const {
@@ -440,24 +440,24 @@ void Workspace::handle_state(uint32_t state) {
 }
 
 void Workspace::handle_capabilities(uint32_t capabilities) {
-  spdlog::debug("[wlr/workspaces]: Capabilities for workspace {}:", id_);
+  spdlog::debug("[ext/workspaces]: Capabilities for workspace {}:", id_);
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ACTIVATE) == capabilities) {
-    spdlog::debug("[wlr/workspaces]:     activate");
+    spdlog::debug("[ext/workspaces]:     activate");
   }
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_DEACTIVATE) == capabilities) {
-    spdlog::debug("[wlr/workspaces]:     deactivate");
+    spdlog::debug("[ext/workspaces]:     deactivate");
   }
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_REMOVE) == capabilities) {
-    spdlog::debug("[wlr/workspaces]:     remove");
+    spdlog::debug("[ext/workspaces]:     remove");
   }
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ASSIGN) == capabilities) {
-    spdlog::debug("[wlr/workspaces]:     assign");
+    spdlog::debug("[ext/workspaces]:     assign");
   }
   needs_updating_ = true;
 }
 
 void Workspace::handle_removed() {
-  spdlog::debug("[wlr/workspaces]: Removing workspace {}", id_);
+  spdlog::debug("[ext/workspaces]: Removing workspace {}", id_);
   workspace_manager_.remove_workspace(id_);
 }
 
@@ -480,7 +480,7 @@ bool Workspace::handle_clicked(const GdkEventButton *button) const {
   } else if (action == "close") {
     ext_workspace_handle_v1_remove(ext_handle_);
   } else {
-    spdlog::warn("[wlr/workspaces]: Unknown action {}", action);
+    spdlog::warn("[ext/workspaces]: Unknown action {}", action);
   }
   workspace_manager_.commit();
   return true;
@@ -507,4 +507,4 @@ std::string Workspace::icon() {
   return name_;
 }
 
-}  // namespace waybar::modules::wlr
+}  // namespace waybar::modules::ext
