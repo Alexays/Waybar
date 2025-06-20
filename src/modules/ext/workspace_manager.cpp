@@ -53,11 +53,6 @@ WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar
     all_outputs_ = config_all_outputs.asBool();
   }
 
-  const auto config_active_only = config_["active-only"];
-  if (config_active_only.isBool()) {
-    active_only_ = config_active_only.asBool();
-  }
-
   // setup UI
 
   box_.set_name("workspaces");
@@ -242,15 +237,11 @@ void WorkspaceManager::update_buttons() {
           const bool workspace_on_group = group->has_workspace(workspace->handle());
           return group_on_output && workspace_on_group;
         });
-    const bool active_or_urgent = workspace->is_active() || workspace->is_urgent();
-    const bool valid_workspace_state = (active_or_urgent && active_only_) || !active_only_;
-
-    const bool show_button = workspace_on_any_group_for_output && valid_workspace_state;
     const bool bar_contains_button = has_button(&workspace->button());
 
     // add or remove buttons if needed, update button state
 
-    if (show_button) {
+    if (workspace_on_any_group_for_output) {
       if (!bar_contains_button) {
         // add button to bar
         box_.pack_start(workspace->button(), false, false);
@@ -331,6 +322,16 @@ Workspace::Workspace(const Json::Value &config, WorkspaceManager &manager,
 
   // parse configuration
 
+  const auto &config_active_only = config["active-only"];
+  if (config_active_only.isBool()) {
+    active_only_ = config_active_only.asBool();
+  }
+
+  const auto &config_ignore_hidden = config["ignore-hidden"];
+  if (config_ignore_hidden.isBool()) {
+    ignore_hidden_ = config_ignore_hidden.asBool();
+  }
+
   const auto &config_format = config["format"];
   format_ = config_format.isString() ? config_format.asString() : "{name}";
   with_icon_ = format_.find("{icon}") != std::string::npos;
@@ -375,37 +376,32 @@ Workspace::~Workspace() {
   spdlog::debug("[ext/workspaces]: Workspace {} destroyed", id_);
 }
 
-bool Workspace::is_active() const {
-  return (state_ & EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE) == EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE;
-}
-
-bool Workspace::is_urgent() const {
-  return (state_ & EXT_WORKSPACE_HANDLE_V1_STATE_URGENT) == EXT_WORKSPACE_HANDLE_V1_STATE_URGENT;
-}
-
-bool Workspace::is_hidden() const {
-  return (state_ & EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN) == EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN;
-}
-
 void Workspace::update() {
   if (!needs_updating_) {
     return;
   }
 
-  // update style
+  // update style and visibility
+
   const auto style_context = button_.get_style_context();
   style_context->remove_class("active");
   style_context->remove_class("urgent");
   style_context->remove_class("hidden");
 
-  if (is_active()) {
+  if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE)) {
+    button_.set_visible(true);
     style_context->add_class("active");
   }
-  if (is_urgent()) {
+  if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_URGENT)) {
+    button_.set_visible(true);
     style_context->add_class("urgent");
   }
-  if (is_hidden()) {
+  if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN)) {
+    button_.set_visible(!active_only_ && !ignore_hidden_);
     style_context->add_class("hidden");
+  }
+  if (state_ == 0) {
+    button_.set_visible(!active_only_);
   }
 
   // update label
@@ -487,7 +483,7 @@ bool Workspace::handle_clicked(const GdkEventButton *button) const {
 }
 
 std::string Workspace::icon() {
-  if (is_active()) {
+  if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE)) {
     const auto active_icon_it = icon_map_.find("active");
     if (active_icon_it != icon_map_.end()) {
       return active_icon_it->second;
