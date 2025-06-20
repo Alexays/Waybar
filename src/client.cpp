@@ -86,7 +86,7 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
       }
     }
   } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    spdlog::warn("caught exception in zxdg_output_v1_listener::done: {}", e.what());
   }
 }
 
@@ -97,7 +97,7 @@ void waybar::Client::handleOutputName(void *data, struct zxdg_output_v1 * /*xdg_
     auto &output = client->getOutput(data);
     output.name = name;
   } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    spdlog::warn("caught exception in zxdg_output_v1_listener::name: {}", e.what());
   }
 }
 
@@ -106,13 +106,13 @@ void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 *
   auto *client = waybar::Client::inst();
   try {
     auto &output = client->getOutput(data);
-    const char *open_paren = strrchr(description, '(');
 
     // Description format: "identifier (name)"
-    size_t identifier_length = open_paren - description;
-    output.identifier = std::string(description, identifier_length - 1);
+    auto s = std::string(description);
+    auto pos = s.find(" (");
+    output.identifier = pos != std::string::npos ? s.substr(0, pos) : s;
   } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    spdlog::warn("caught exception in zxdg_output_v1_listener::description: {}", e.what());
   }
 }
 
