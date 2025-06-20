@@ -37,6 +37,17 @@ the screen or playing audio.
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*ignore-monitor* ++
+	typeof: bool ++
+	default: true ++
+	Ignore streams with *stream.monitor* property.
+
+*ignore* ++
+	typeof: array of objects ++
+	default: [] ++
+	Additional streams to be ignored. See *IGNORE CONFIGURATION* for++
+	more information.
+
 # MODULES CONFIGURATION
 
 *type*: ++
@@ -53,6 +64,14 @@ the screen or playing audio.
 	typeof: integer ++
 	default: 24 ++
 	The size of each icon in the tooltip.
+
+# IGNORE CONFIGURATION
+
+*type*: ++
+	typeof: string
+
+*name*: ++
+	typeof: string
 
 # EXAMPLES
 
@@ -76,6 +95,17 @@ the screen or playing audio.
 			"type": "audio-in",
 			"tooltip": true,
 			"tooltip-icon-size": 24
+		}
+	],
+	"ignore-monitor": true,
+	"ignore": [
+		{
+			"type": "audio-in",
+			"name": "cava"
+		},
+		{
+			"type": "screenshare",
+			"name": "obs"
 		}
 	]
 },
