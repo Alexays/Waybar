@@ -50,7 +50,6 @@ class WorkspaceManager final : public AModule {
   bool sort_by_id_ = false;
   bool sort_by_name_ = true;
   bool sort_by_coordinates_ = false;
-  bool active_only_ = false;
   bool all_outputs_ = false;
 
   const waybar::Bar &bar_;
@@ -100,9 +99,6 @@ class Workspace {
   std::string &name() { return name_; }
   std::vector<u_int32_t> &coordinates() { return coordinates_; }
   Gtk::Button &button() { return button_; }
-  bool is_active() const;
-  bool is_urgent() const;
-  bool is_hidden() const;
   void update();
 
   // wl events
@@ -117,6 +113,7 @@ class Workspace {
   bool handle_clicked(const GdkEventButton *button) const;
 
  private:
+  bool has_state(uint32_t state) const { return (state_ & state) == state; }
   std::string icon();
 
   WorkspaceManager &workspace_manager_;
@@ -127,6 +124,8 @@ class Workspace {
   std::string name_;
   std::vector<uint32_t> coordinates_;
 
+  bool active_only_ = false;
+  bool ignore_hidden_ = true;
   std::string format_;
   bool with_icon_ = false;
   static std::map<std::string, std::string> icon_map_;
