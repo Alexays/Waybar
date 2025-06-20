@@ -10,7 +10,7 @@ The *workspaces* module displays the currently used workspaces in wayland compos
 
 # CONFIGURATION
 
-Addressed by *wlr/workspaces*
+Addressed by *ext/workspaces*
 
 *format*: ++
 	typeof: string ++
@@ -71,7 +71,7 @@ In addition to workspace name matching, the following *format-icons* can be set.
 # EXAMPLES
 
 ```
-"wlr/workspaces": {
+"ext/workspaces": {
 	"format": "{name}: {icon}",
 	"on-click": "activate",
 	"format-icons": {

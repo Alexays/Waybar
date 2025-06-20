@@ -1,13 +1,13 @@
-#include "modules/wlr/workspace_manager_binding.hpp"
+#include "modules/ext/workspace_manager_binding.hpp"
 
 #include <spdlog/spdlog.h>
 
 #include <cstdint>
 
 #include "client.hpp"
-#include "modules/wlr/workspace_manager.hpp"
+#include "modules/ext/workspace_manager.hpp"
 
-namespace waybar::modules::wlr {
+namespace waybar::modules::ext {
 
 static void handle_global(void *data, wl_registry *registry, uint32_t name, const char *interface,
                           uint32_t version) {
@@ -156,4 +156,4 @@ static const ext_workspace_handle_v1_listener workspace_impl = {
 void add_workspace_listener(ext_workspace_handle_v1 *workspace_handle, void *data) {
   ext_workspace_handle_v1_add_listener(workspace_handle, &workspace_impl, data);
 }
-}  // namespace waybar::modules::wlr
+}  // namespace waybar::modules::ext
