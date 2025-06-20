@@ -62,7 +62,7 @@ void waybar::modules::Custom::continuousWorker() {
   }
   thread_ = [this, cmd] {
     char* buff = nullptr;
-    waybar::util::ScopeGuard buff_deleter([buff]() {
+    waybar::util::ScopeGuard buff_deleter([&buff]() {
       if (buff) {
         free(buff);
       }
