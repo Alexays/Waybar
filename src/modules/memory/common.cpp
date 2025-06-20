@@ -60,6 +60,7 @@ auto waybar::modules::Memory::update() -> void {
           fmt::arg("icon", getIcon(used_ram_percentage, icons)),
           fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
           fmt::arg("percentage", used_ram_percentage),
+          fmt::arg("swapState", swaptotal == 0 ? "Off" : "On"),
           fmt::arg("swapPercentage", used_swap_percentage), fmt::arg("used", used_ram_gigabytes),
           fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
           fmt::arg("swapAvail", available_swap_gigabytes)));
@@ -72,6 +73,7 @@ auto waybar::modules::Memory::update() -> void {
             fmt::runtime(tooltip_format), used_ram_percentage,
             fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
             fmt::arg("percentage", used_ram_percentage),
+            fmt::arg("swapState", swaptotal == 0 ? "Off" : "On"),
             fmt::arg("swapPercentage", used_swap_percentage), fmt::arg("used", used_ram_gigabytes),
             fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
             fmt::arg("swapAvail", available_swap_gigabytes)));

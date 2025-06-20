@@ -120,6 +120,8 @@ Addressed by *memory*
 
 *{swapAvail}*: Amount of available swap in GiB.
 
+*{swapState}*: Signals if swap is activated or not
+
 # EXAMPLES
 
 ```
