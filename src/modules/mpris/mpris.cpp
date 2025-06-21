@@ -425,9 +425,11 @@ auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlaye
   auto* mpris = static_cast<Mpris*>(data);
   if (!mpris) return;
 
-  spdlog::debug("mpris: player-vanished callback: {}", player_name->name);
+  spdlog::debug("mpris: name-vanished callback: {}", player_name->name);
 
-  if (std::string(player_name->name) == mpris->player_) {
+  if (mpris->player_ == "playerctld") {
+    mpris->dp.emit();
+  } else if (mpris->player_ == player_name->name) {
     mpris->player = nullptr;
     mpris->event_box_.set_visible(false);
     mpris->dp.emit();
@@ -499,6 +501,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
     players = g_list_first(players);
     if (players) player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
+    else return std::nullopt; // no players found, hide the widget
   }
 
   if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
