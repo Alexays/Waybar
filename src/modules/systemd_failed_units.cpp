@@ -68,9 +68,7 @@ auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
   }
 }
 
-void SystemdFailedUnits::updateData() {
-  update_pending = false;
-
+void SystemdFailedUnits::RequestFailedUnits() {
   auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> uint32_t {
     try {
       if (!proxy) return 0;
@@ -93,6 +91,11 @@ void SystemdFailedUnits::updateData() {
   nr_failed_system = load("systemwide", system_proxy);
   nr_failed_user = load("user", user_proxy);
   nr_failed = nr_failed_system + nr_failed_user;
+}
+
+void SystemdFailedUnits::updateData() {
+  update_pending = false;
+  RequestFailedUnits();
   dp.emit();
 }
 

@@ -25,6 +25,7 @@ class SystemdFailedUnits : public ALabel {
 
   void notify_cb(const Glib::ustring &sender_name, const Glib::ustring &signal_name,
                  const Glib::VariantContainerBase &arguments);
+  void RequestFailedUnits();
   void updateData();
 };
 
