@@ -81,9 +81,7 @@ void SystemdFailedUnits::updateData() {
         Glib::VariantBase variant;
         g_variant_get(data.gobj_copy(), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_UINT32)) {
-          uint32_t value = 0;
-          g_variant_get(variant.gobj_copy(), "u", &value);
-          return value;
+          return g_variant_get_uint32(variant.gobj_copy());
         }
       }
     } catch (Glib::Error& e) {
