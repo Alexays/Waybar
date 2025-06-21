@@ -272,7 +272,7 @@ void waybar::modules::Network::worker() {
 
 const std::string waybar::modules::Network::getNetworkState() const {
 #ifdef WANT_RFKILL
-    if (rfkill_.getState()) return "disabled";
+  if (rfkill_.getState()) return "disabled";
 #endif
   if (ifid_ == -1) {
     return "disconnected";

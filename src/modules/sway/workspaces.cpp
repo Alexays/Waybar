@@ -494,7 +494,7 @@ std::string Workspaces::trimWorkspaceName(std::string name) {
   return name;
 }
 
-bool is_focused_recursive(const Json::Value& node) {
+bool is_focused_recursive(const Json::Value &node) {
   // If a workspace has a focused container then get_tree will say
   // that the workspace itself isn't focused.  Therefore we need to
   // check if any of its nodes are focused as well.
@@ -504,13 +504,13 @@ bool is_focused_recursive(const Json::Value& node) {
     return true;
   }
 
-  for (const auto& child : node["nodes"]) {
+  for (const auto &child : node["nodes"]) {
     if (is_focused_recursive(child)) {
       return true;
     }
   }
 
-  for (const auto& child : node["floating_nodes"]) {
+  for (const auto &child : node["floating_nodes"]) {
     if (is_focused_recursive(child)) {
       return true;
     }
