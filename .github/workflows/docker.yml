@@ -3,8 +3,8 @@ name: Build and Push Docker Image
 on:
   workflow_dispatch:
   schedule:
-    # run every night at midnight
-    - cron: '0 0 * * *'
+    # run monthly
+    - cron: '0 0 1 * *'
 
 jobs:
   build-and-push:
