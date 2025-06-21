@@ -103,6 +103,10 @@ void SystemdFailedUnits::updateData() {
 }
 
 auto SystemdFailedUnits::update() -> void {
+  const std::string status = nr_failed == 0 ? "ok" : "degraded";
+
+  if (last_status == status) return;
+
   // Hide if needed.
   if (nr_failed == 0 && hide_on_ok) {
     event_box_.set_visible(false);
@@ -113,7 +117,6 @@ auto SystemdFailedUnits::update() -> void {
   }
 
   // Set state class.
-  const std::string status = nr_failed == 0 ? "ok" : "degraded";
   if (!last_status.empty() && label_.get_style_context()->has_class(last_status)) {
     label_.get_style_context()->remove_class(last_status);
   }
