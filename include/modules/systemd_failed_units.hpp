@@ -19,7 +19,7 @@ class SystemdFailedUnits : public ALabel {
   std::string format_ok;
 
   bool update_pending;
-  uint32_t nr_failed_system, nr_failed_user;
+  uint32_t nr_failed_system, nr_failed_user, nr_failed;
   std::string last_status;
   Glib::RefPtr<Gio::DBus::Proxy> system_proxy, user_proxy;
 

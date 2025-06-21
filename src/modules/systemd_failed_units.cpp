@@ -16,6 +16,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
       update_pending(false),
       nr_failed_system(0),
       nr_failed_user(0),
+      nr_failed(0),
       last_status() {
   if (config["hide-on-ok"].isBool()) {
     hide_on_ok = config["hide-on-ok"].asBool();
@@ -100,7 +101,7 @@ void SystemdFailedUnits::updateData() {
 }
 
 auto SystemdFailedUnits::update() -> void {
-  uint32_t nr_failed = nr_failed_system + nr_failed_user;
+  nr_failed = nr_failed_system + nr_failed_user;
 
   // Hide if needed.
   if (nr_failed == 0 && hide_on_ok) {
