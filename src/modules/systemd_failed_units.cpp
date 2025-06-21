@@ -68,6 +68,34 @@ auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
   }
 }
 
+void SystemdFailedUnits::RequestSystemState() {
+  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> std::string {
+    try {
+      if (!proxy) return "unknown";
+      auto parameters = Glib::VariantContainerBase(
+          g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "SystemState"));
+      Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
+      if (data && data.is_of_type(Glib::VariantType("(v)"))) {
+        Glib::VariantBase variant;
+        g_variant_get(data.gobj_copy(), "(v)", &variant);
+        if (variant && variant.is_of_type(Glib::VARIANT_TYPE_STRING)) {
+          return g_variant_get_string(variant.gobj_copy(), NULL);
+        }
+      }
+    } catch (Glib::Error& e) {
+      spdlog::error("Failed to get {} state: {}", kind, e.what().c_str());
+    }
+    return "unknown";
+  };
+
+  system_state = load("systemwide", system_proxy);
+  user_state = load("user", user_proxy);
+  if (system_state == "running" && user_state == "running")
+    overall_state = "ok";
+  else
+    overall_state = "degraded";
+}
+
 void SystemdFailedUnits::RequestFailedUnits() {
   auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> uint32_t {
     try {
@@ -95,17 +123,18 @@ void SystemdFailedUnits::RequestFailedUnits() {
 
 void SystemdFailedUnits::updateData() {
   update_pending = false;
-  RequestFailedUnits();
+
+  RequestSystemState();
+  if (overall_state == "degraded") RequestFailedUnits();
+
   dp.emit();
 }
 
 auto SystemdFailedUnits::update() -> void {
-  const std::string status = nr_failed == 0 ? "ok" : "degraded";
-
-  if (last_status == status) return;
+  if (last_status == overall_state) return;
 
   // Hide if needed.
-  if (nr_failed == 0 && hide_on_ok) {
+  if (overall_state == "ok" && hide_on_ok) {
     event_box_.set_visible(false);
     return;
   }
@@ -116,14 +145,17 @@ auto SystemdFailedUnits::update() -> void {
   if (!last_status.empty() && label_.get_style_context()->has_class(last_status)) {
     label_.get_style_context()->remove_class(last_status);
   }
-  if (!label_.get_style_context()->has_class(status)) {
-    label_.get_style_context()->add_class(status);
+  if (!label_.get_style_context()->has_class(overall_state)) {
+    label_.get_style_context()->add_class(overall_state);
   }
-  last_status = status;
+
+  last_status = overall_state;
 
   label_.set_markup(fmt::format(
       fmt::runtime(nr_failed == 0 ? format_ok : format_), fmt::arg("nr_failed", nr_failed),
-      fmt::arg("nr_failed_system", nr_failed_system), fmt::arg("nr_failed_user", nr_failed_user)));
+      fmt::arg("nr_failed_system", nr_failed_system), fmt::arg("nr_failed_user", nr_failed_user),
+      fmt::arg("system_state", system_state), fmt::arg("user_state", user_state),
+      fmt::arg("overall_state", overall_state)));
   ALabel::update();
 }
 
