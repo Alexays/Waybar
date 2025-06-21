@@ -73,6 +73,7 @@ void SystemdFailedUnits::updateData() {
 
   auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> uint32_t {
     try {
+      if (!proxy) return 0;
       auto parameters = Glib::VariantContainerBase(
           g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "NFailedUnits"));
       Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
@@ -91,13 +92,8 @@ void SystemdFailedUnits::updateData() {
     return 0;
   };
 
-  if (system_proxy) {
-    nr_failed_system = load("systemwide", system_proxy);
-  }
-  if (user_proxy) {
-    nr_failed_user = load("user", user_proxy);
-  }
-
+  nr_failed_system = load("systemwide", system_proxy);
+  nr_failed_user = load("user", user_proxy);
   nr_failed = nr_failed_system + nr_failed_user;
   dp.emit();
 }
