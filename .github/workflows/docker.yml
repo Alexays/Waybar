@@ -1,14 +1,15 @@
 name: Build and Push Docker Image
 
 on:
+  workflow_dispatch:
   schedule:
-    # run every night at midnight
-    - cron: '0 0 * * *'
+    # run monthly
+    - cron: '0 0 1 * *'
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: github.repository == 'Alexays/Waybar'
+    if: github.event_name != 'schedule' || github.repository == 'Alexays/Waybar'
     strategy:
       fail-fast: false # don't fail the other jobs if one of the images fails to build
       matrix:
