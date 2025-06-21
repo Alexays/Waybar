@@ -97,12 +97,12 @@ void SystemdFailedUnits::updateData() {
   if (user_proxy) {
     nr_failed_user = load("user", user_proxy);
   }
+
+  nr_failed = nr_failed_system + nr_failed_user;
   dp.emit();
 }
 
 auto SystemdFailedUnits::update() -> void {
-  nr_failed = nr_failed_system + nr_failed_user;
-
   // Hide if needed.
   if (nr_failed == 0 && hide_on_ok) {
     event_box_.set_visible(false);
