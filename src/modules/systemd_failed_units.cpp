@@ -16,6 +16,7 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
       update_pending(false),
       nr_failed_system(0),
       nr_failed_user(0),
+      nr_failed(0),
       last_status() {
   if (config["hide-on-ok"].isBool()) {
     hide_on_ok = config["hide-on-ok"].asBool();
@@ -67,11 +68,38 @@ auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
   }
 }
 
-void SystemdFailedUnits::updateData() {
-  update_pending = false;
+void SystemdFailedUnits::RequestSystemState() {
+  auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> std::string {
+    try {
+      if (!proxy) return "unknown";
+      auto parameters = Glib::VariantContainerBase(
+          g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "SystemState"));
+      Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
+      if (data && data.is_of_type(Glib::VariantType("(v)"))) {
+        Glib::VariantBase variant;
+        g_variant_get(data.gobj_copy(), "(v)", &variant);
+        if (variant && variant.is_of_type(Glib::VARIANT_TYPE_STRING)) {
+          return g_variant_get_string(variant.gobj_copy(), NULL);
+        }
+      }
+    } catch (Glib::Error& e) {
+      spdlog::error("Failed to get {} state: {}", kind, e.what().c_str());
+    }
+    return "unknown";
+  };
 
+  system_state = load("systemwide", system_proxy);
+  user_state = load("user", user_proxy);
+  if (system_state == "running" && user_state == "running")
+    overall_state = "ok";
+  else
+    overall_state = "degraded";
+}
+
+void SystemdFailedUnits::RequestFailedUnits() {
   auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> uint32_t {
     try {
+      if (!proxy) return 0;
       auto parameters = Glib::VariantContainerBase(
           g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "NFailedUnits"));
       Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
@@ -79,9 +107,7 @@ void SystemdFailedUnits::updateData() {
         Glib::VariantBase variant;
         g_variant_get(data.gobj_copy(), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_UINT32)) {
-          uint32_t value = 0;
-          g_variant_get(variant.gobj_copy(), "u", &value);
-          return value;
+          return g_variant_get_uint32(variant.gobj_copy());
         }
       }
     } catch (Glib::Error& e) {
@@ -90,40 +116,46 @@ void SystemdFailedUnits::updateData() {
     return 0;
   };
 
-  if (system_proxy) {
-    nr_failed_system = load("systemwide", system_proxy);
-  }
-  if (user_proxy) {
-    nr_failed_user = load("user", user_proxy);
-  }
+  nr_failed_system = load("systemwide", system_proxy);
+  nr_failed_user = load("user", user_proxy);
+  nr_failed = nr_failed_system + nr_failed_user;
+}
+
+void SystemdFailedUnits::updateData() {
+  update_pending = false;
+
+  RequestSystemState();
+  if (overall_state == "degraded") RequestFailedUnits();
+
   dp.emit();
 }
 
 auto SystemdFailedUnits::update() -> void {
-  uint32_t nr_failed = nr_failed_system + nr_failed_user;
+  if (last_status == overall_state) return;
 
   // Hide if needed.
-  if (nr_failed == 0 && hide_on_ok) {
+  if (overall_state == "ok" && hide_on_ok) {
     event_box_.set_visible(false);
     return;
   }
-  if (!event_box_.get_visible()) {
-    event_box_.set_visible(true);
-  }
+
+  event_box_.set_visible(true);
 
   // Set state class.
-  const std::string status = nr_failed == 0 ? "ok" : "degraded";
   if (!last_status.empty() && label_.get_style_context()->has_class(last_status)) {
     label_.get_style_context()->remove_class(last_status);
   }
-  if (!label_.get_style_context()->has_class(status)) {
-    label_.get_style_context()->add_class(status);
+  if (!label_.get_style_context()->has_class(overall_state)) {
+    label_.get_style_context()->add_class(overall_state);
   }
-  last_status = status;
+
+  last_status = overall_state;
 
   label_.set_markup(fmt::format(
       fmt::runtime(nr_failed == 0 ? format_ok : format_), fmt::arg("nr_failed", nr_failed),
-      fmt::arg("nr_failed_system", nr_failed_system), fmt::arg("nr_failed_user", nr_failed_user)));
+      fmt::arg("nr_failed_system", nr_failed_system), fmt::arg("nr_failed_user", nr_failed_user),
+      fmt::arg("system_state", system_state), fmt::arg("user_state", user_state),
+      fmt::arg("overall_state", overall_state)));
   ALabel::update();
 }
 
