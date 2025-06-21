@@ -109,9 +109,8 @@ auto SystemdFailedUnits::update() -> void {
     event_box_.set_visible(false);
     return;
   }
-  if (!event_box_.get_visible()) {
-    event_box_.set_visible(true);
-  }
+
+  event_box_.set_visible(true);
 
   // Set state class.
   if (!last_status.empty() && label_.get_style_context()->has_class(last_status)) {
