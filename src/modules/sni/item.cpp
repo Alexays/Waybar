@@ -388,14 +388,17 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
   icon_theme->rescan_if_needed();
 
-  if (!icon_theme_path.empty() &&
-      icon_theme->lookup_icon(name.c_str(), request_size,
-                              Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
-    return icon_theme->load_icon(name.c_str(), request_size,
-                                 Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+  if (!icon_theme_path.empty()) {
+    auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
+                                             Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+    if (icon_info) {
+      bool is_sym = false;
+      return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
+    }
   }
   return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
-                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE,
+                                               event_box.get_style_context());
 }
 
 double Item::getScaledIconSize() {
