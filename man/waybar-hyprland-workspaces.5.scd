@@ -38,6 +38,10 @@ Addressed by *hyprland/workspaces*
 	default: " " ++
 	The separator to be used between windows in a workspace.
 
+*format-windows-default"*: ++
+	typeof: string ++
+	The format of the windows when the workspace has no windows.
+
 *show-special*: ++
 	typeof: bool ++
 	default: false ++
