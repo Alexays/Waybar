@@ -321,6 +321,18 @@ auto Workspaces::update() -> void {
       button.get_style_context()->remove_class("empty");
     }
     if ((*it)["output"].isString()) {
+      // Simply attempt to remove all output classes every time to reset output classes. This works
+      // even if a class has not been previously added to the style context.
+      for (const auto &oclass : config_["output-classes"]) {
+        button.get_style_context()->remove_class(oclass.asString());
+      }
+      // If output-classes contains a class for output associated with current workspace button, add
+      // the class to its style context.
+      std::string output_name = (*it)["output"].asString();
+      if (config_["output-classes"].isMember(output_name) &&
+          config_["output-classes"][output_name].isString()) {
+        button.get_style_context()->add_class(config_["output-classes"][output_name].asString());
+      }
       if (((*it)["output"].asString()) == bar_.output->name) {
         button.get_style_context()->add_class("current_output");
       } else {
