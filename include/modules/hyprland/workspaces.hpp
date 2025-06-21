@@ -50,6 +50,7 @@ class Workspaces : public AModule, public EventHandler {
  private:
   void onEvent(const std::string& e) override;
   void updateWindowCount();
+  void sortSpecialCentered();
   void sortWorkspaces();
   void createWorkspace(Json::Value const& workspace_data,
                        Json::Value const& clients_data = Json::Value::nullRef);
@@ -130,12 +131,13 @@ class Workspaces : public AModule, public EventHandler {
   // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
   std::map<WindowAddress, std::string> m_orphanWindowMap;
 
-  enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
+  enum class SortMethod { ID, NAME, NUMBER, SPECIAL_CENTERED, DEFAULT };
   util::EnumParser<SortMethod> m_enumParser;
   SortMethod m_sortBy = SortMethod::DEFAULT;
   std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
                                                  {"NAME", SortMethod::NAME},
                                                  {"NUMBER", SortMethod::NUMBER},
+                                                 {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
   std::string m_format;
