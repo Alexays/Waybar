@@ -65,15 +65,36 @@ auto Language::update() -> void {
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
-  auto layoutName = ev.substr(ev.find_last_of(',') + 1);
+
+  const static std::string eventPrefix("activelayout>>");
+
+  if (!ev.starts_with(eventPrefix))
+    return;
+
+  std::string kbName;
+  std::string layoutName;
+  Layout layout;
+
+  // The format of this event data is "activelayout>>KEYBOARDNAME,LAYOUTNAME",
+  // but both KEYBOARDNAME and LAYOUTNAME may contain embedded commas. Try to
+  // split the string at each comma until we find either the configured
+  // keyboard-name or a recognized layout name.
+  for (size_t i = eventPrefix.length(); (i = ev.find_first_of(',', i)) != ev.npos; i++) {
+    kbName = ev.substr(eventPrefix.length(), i - eventPrefix.length());
+    layoutName = waybar::util::sanitize_string(ev.substr(i + 1));
+    layout = getLayout(layoutName);
+
+    if (config_.isMember("keyboard-name") && kbName == config_["keyboard-name"].asString())
+      break;
+
+    if (layout.full_name != "")
+      break;
+  }
 
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
 
-  layoutName = waybar::util::sanitize_string(layoutName);
-
-  layout_ = getLayout(layoutName);
+  layout_ = layout;
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
