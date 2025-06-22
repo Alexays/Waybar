@@ -172,7 +172,6 @@ std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws)
   const auto &icons = config_["format-icons"];
   if (!icons) return value;
 
-
   if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
 
   if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();

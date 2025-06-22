@@ -1,4 +1,5 @@
 #include "modules/gps.hpp"
+
 #include <gps.h>
 #include <spdlog/spdlog.h>
 
@@ -15,15 +16,15 @@
 #endif
 
 namespace {
-  using namespace waybar::util;
-  constexpr const char *DEFAULT_FORMAT = "{mode}";
+using namespace waybar::util;
+constexpr const char* DEFAULT_FORMAT = "{mode}";
 }  // namespace
 
-
 waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
-: ALabel(config, "gps", id, "{}", 5)
+    : ALabel(config, "gps", id, "{}", 5)
 #ifdef WANT_RFKILL
-,rfkill_{RFKILL_TYPE_GPS}
+      ,
+      rfkill_{RFKILL_TYPE_GPS}
 #endif
 {
   thread_ = [this] {
@@ -66,9 +67,9 @@ waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
     }
   };
 
-  #ifdef WANT_RFKILL
+#ifdef WANT_RFKILL
   rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Gps::update)));
-  #endif
+#endif
 }
 
 const std::string waybar::modules::Gps::getFixModeName() const {
@@ -80,9 +81,9 @@ const std::string waybar::modules::Gps::getFixModeName() const {
     case MODE_3D:
       return "fix-3d";
     default:
-      #ifdef WANT_RFKILL
+#ifdef WANT_RFKILL
       if (rfkill_.getState()) return "disabled";
-      #endif
+#endif
       return "disconnected";
   }
 }
@@ -120,18 +121,19 @@ const std::string waybar::modules::Gps::getFixStatusString() const {
       return "PPS Fix";
     default:
 
-      #ifdef WANT_RFKILL
+#ifdef WANT_RFKILL
       if (rfkill_.getState()) return "Disabled";
-      #endif
+#endif
 
       return "Unknown";
   }
 }
 
 auto waybar::modules::Gps::update() -> void {
-  sleep(0);    // Wait for gps status change
+  sleep(0);  // Wait for gps status change
 
-  if ((gps_data_.fix.mode == MODE_NOT_SEEN && hideDisconnected) || (gps_data_.fix.mode == MODE_NO_FIX && hideNoFix)) {
+  if ((gps_data_.fix.mode == MODE_NOT_SEEN && hideDisconnected) ||
+      (gps_data_.fix.mode == MODE_NO_FIX && hideNoFix)) {
     event_box_.set_visible(false);
     return;
   }
@@ -163,7 +165,6 @@ auto waybar::modules::Gps::update() -> void {
     state_ = state;
   }
 
-
   auto format = format_;
 
   fmt::dynamic_format_arg_store<fmt::format_context> store;
@@ -191,7 +192,7 @@ auto waybar::modules::Gps::update() -> void {
 
   auto text = fmt::vformat(format, store);
 
-   if (tooltipEnabled()) {
+  if (tooltipEnabled()) {
     if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
@@ -205,13 +206,11 @@ auto waybar::modules::Gps::update() -> void {
     }
   }
   label_.set_markup(text);
-// Call parent update
-ALabel::update();
+  // Call parent update
+  ALabel::update();
 }
 
 waybar::modules::Gps::~Gps() {
   gps_stream(&gps_data_, WATCH_DISABLE, NULL);
   gps_close(&gps_data_);
 }
-
-

@@ -14,27 +14,27 @@
 
 namespace waybar::modules {
 
-  class Gps : public ALabel {
-  public:
-    Gps(const std::string&, const Json::Value&);
-    virtual ~Gps();
-    auto update() -> void override;
+class Gps : public ALabel {
+ public:
+  Gps(const std::string&, const Json::Value&);
+  virtual ~Gps();
+  auto update() -> void override;
 
-  private:
-    #ifdef WANT_RFKILL
-    util::Rfkill rfkill_;
-    #endif
-    const std::string getFixModeName() const;
-    const std::string getFixModeString() const;
+ private:
+#ifdef WANT_RFKILL
+  util::Rfkill rfkill_;
+#endif
+  const std::string getFixModeName() const;
+  const std::string getFixModeString() const;
 
-    const std::string getFixStatusString() const;
+  const std::string getFixStatusString() const;
 
-    util::SleeperThread thread_, gps_thread_;
-    gps_data_t gps_data_;
-    std::string state_;
+  util::SleeperThread thread_, gps_thread_;
+  gps_data_t gps_data_;
+  std::string state_;
 
-    bool hideDisconnected = true;
-    bool hideNoFix = false;
-  };
+  bool hideDisconnected = true;
+  bool hideNoFix = false;
+};
 
 }  // namespace waybar::modules

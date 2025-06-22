@@ -66,9 +66,10 @@ auto Language::update() -> void {
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
   std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
-  
+
   // Last comma before variants parenthesis, eg:
-  // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl., with dead keys)
+  // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
+  // with dead keys)
   std::string beforParenthesis(begin(ev), begin(ev) + ev.find_last_of('('));
   auto layoutName = ev.substr(beforParenthesis.find_last_of(',') + 1);
 

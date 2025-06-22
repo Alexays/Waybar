@@ -791,25 +791,21 @@ void Workspaces::sortSpecialCentered() {
 
   size_t center = normalWorkspaces.size() / 2;
 
-  m_workspaces.insert(m_workspaces.end(),
-                      std::make_move_iterator(normalWorkspaces.begin()),
+  m_workspaces.insert(m_workspaces.end(), std::make_move_iterator(normalWorkspaces.begin()),
                       std::make_move_iterator(normalWorkspaces.begin() + center));
 
-  m_workspaces.insert(m_workspaces.end(),
-                      std::make_move_iterator(specialWorkspaces.begin()),
+  m_workspaces.insert(m_workspaces.end(), std::make_move_iterator(specialWorkspaces.begin()),
                       std::make_move_iterator(specialWorkspaces.end()));
 
   m_workspaces.insert(m_workspaces.end(),
                       std::make_move_iterator(normalWorkspaces.begin() + center),
                       std::make_move_iterator(normalWorkspaces.end()));
-  
-  m_workspaces.insert(m_workspaces.end(),
-                      std::make_move_iterator(hiddenWorkspaces.begin()),
+
+  m_workspaces.insert(m_workspaces.end(), std::make_move_iterator(hiddenWorkspaces.begin()),
                       std::make_move_iterator(hiddenWorkspaces.end()));
 }
 
 void Workspaces::sortWorkspaces() {
-  
   std::ranges::sort(  //
       m_workspaces, [&](std::unique_ptr<Workspace> &a, std::unique_ptr<Workspace> &b) {
         // Helper comparisons

@@ -712,7 +712,7 @@ void Task::update() {
         fmt::format(fmt::runtime(format_tooltip_), fmt::arg("title", title), fmt::arg("name", name),
                     fmt::arg("app_id", app_id), fmt::arg("state", state_string()),
                     fmt::arg("short_state", state_string(true)));
-    
+
     txt = waybar::util::rewriteString(txt, config_["rewrite"]);
 
     if (markup)

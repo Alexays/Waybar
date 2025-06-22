@@ -610,11 +610,11 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
 
   // Command pattern: encapsulate each button's action
   const ButtonAction actions[] = {
-    {1, "on-click",          [&]() { playerctl_player_play_pause(player, &error); }},
-    {2, "on-click-middle",   [&]() { playerctl_player_previous(player, &error); }},
-    {3, "on-click-right",    [&]() { playerctl_player_next(player, &error); }},
-    {8, "on-click-backward", [&]() { playerctl_player_previous(player, &error); }},
-    {9, "on-click-forward",  [&]() { playerctl_player_next(player, &error); }},
+      {1, "on-click", [&]() { playerctl_player_play_pause(player, &error); }},
+      {2, "on-click-middle", [&]() { playerctl_player_previous(player, &error); }},
+      {3, "on-click-right", [&]() { playerctl_player_next(player, &error); }},
+      {8, "on-click-backward", [&]() { playerctl_player_previous(player, &error); }},
+      {9, "on-click-forward", [&]() { playerctl_player_next(player, &error); }},
   };
 
   for (const auto& action : actions) {
