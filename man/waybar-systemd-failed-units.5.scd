@@ -62,6 +62,12 @@ Addressed by *systemd-failed-units*
 
 *{nr_failed}*: Number of total failed units.
 
+*{systemd_state}:* State of the systemd system session
+
+*{user_state}:* State of the systemd user session
+
+*{overall_state}:* Overall state of the systemd and user session. ("Ok" or "Degraded")
+
 # EXAMPLES
 
 ```

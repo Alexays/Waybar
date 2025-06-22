@@ -60,6 +60,8 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   bool swallowing_;
   bool fullscreen_;
   bool focused_;
+
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

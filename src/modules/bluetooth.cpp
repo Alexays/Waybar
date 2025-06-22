@@ -49,8 +49,8 @@ auto getBoolProperty(GDBusProxy* proxy, const char* property_name) -> bool {
   return false;
 }
 
-auto getOptionalStringProperty(GDBusProxy* proxy,
-                               const char* property_name) -> std::optional<std::string> {
+auto getOptionalStringProperty(GDBusProxy* proxy, const char* property_name)
+    -> std::optional<std::string> {
   auto gvar = g_dbus_proxy_get_cached_property(proxy, property_name);
   if (gvar) {
     std::string property_value = g_variant_get_string(gvar, NULL);
@@ -345,8 +345,8 @@ auto waybar::modules::Bluetooth::onInterfaceAddedOrRemoved(GDBusObjectManager* m
 
 auto waybar::modules::Bluetooth::onInterfaceProxyPropertiesChanged(
     GDBusObjectManagerClient* manager, GDBusObjectProxy* object_proxy, GDBusProxy* interface_proxy,
-    GVariant* changed_properties, const gchar* const* invalidated_properties,
-    gpointer user_data) -> void {
+    GVariant* changed_properties, const gchar* const* invalidated_properties, gpointer user_data)
+    -> void {
   std::string interface_name = g_dbus_proxy_get_interface_name(interface_proxy);
   std::string object_path = g_dbus_object_get_object_path(G_DBUS_OBJECT(object_proxy));
 
@@ -395,8 +395,8 @@ auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object)
   return std::nullopt;
 }
 
-auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object,
-                                                     DeviceInfo& device_info) -> bool {
+auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, DeviceInfo& device_info)
+    -> bool {
   GDBusProxy* proxy_device = G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Device1"));
 
   if (proxy_device != NULL) {
@@ -462,8 +462,9 @@ auto waybar::modules::Bluetooth::findCurController() -> std::optional<Controller
   return controller_info;
 }
 
-auto waybar::modules::Bluetooth::findConnectedDevices(
-    const std::string& cur_controller_path, std::vector<DeviceInfo>& connected_devices) -> void {
+auto waybar::modules::Bluetooth::findConnectedDevices(const std::string& cur_controller_path,
+                                                      std::vector<DeviceInfo>& connected_devices)
+    -> void {
   GList* objects = g_dbus_object_manager_get_objects(manager_.get());
   for (GList* l = objects; l != NULL; l = l->next) {
     GDBusObject* object = G_DBUS_OBJECT(l->data);

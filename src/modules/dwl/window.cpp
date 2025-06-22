@@ -98,13 +98,9 @@ Window::~Window() {
   }
 }
 
-void Window::handle_title(const char *title) {
-  title_ = Glib::Markup::escape_text(title);
-}
+void Window::handle_title(const char *title) { title_ = Glib::Markup::escape_text(title); }
 
-void Window::handle_appid(const char *appid) {
-  appid_ = Glib::Markup::escape_text(appid);
-}
+void Window::handle_appid(const char *appid) { appid_ = Glib::Markup::escape_text(appid); }
 
 void Window::handle_layout_symbol(const char *layout_symbol) {
   layout_symbol_ = Glib::Markup::escape_text(layout_symbol);

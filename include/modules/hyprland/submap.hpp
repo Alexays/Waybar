@@ -28,6 +28,8 @@ class Submap : public waybar::ALabel, public EventHandler {
   std::string submap_;
   bool always_on_ = false;
   std::string default_submap_ = "Default";
+
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

@@ -48,7 +48,7 @@ class Workspaces : public AModule, public sigc::trackable {
   std::vector<std::string> high_priority_named_;
   std::vector<std::string> workspaces_order_;
   Gtk::Box box_;
-  std::string m_formatWindowSeperator;
+  std::string m_formatWindowSeparator;
   util::RegexCollection m_windowRewriteRules;
   util::JsonParser parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;

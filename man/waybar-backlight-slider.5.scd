@@ -40,7 +40,7 @@ The brightness can be controlled by dragging the slider across the bar or clicki
 
 ```
 "modules-right": [
-    "backlight-slider",
+    "backlight/slider",
 ],
 "backlight/slider": {
     "min": 0,

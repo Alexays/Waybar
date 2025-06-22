@@ -383,8 +383,38 @@ std::string Task::state_string(bool shortened) const {
 }
 
 void Task::handle_title(const char *title) {
+  if (title_.empty()) {
+    spdlog::debug(fmt::format("Task ({}) setting title to {}", id_, title_));
+  } else {
+    spdlog::debug(fmt::format("Task ({}) overwriting title '{}' with '{}'", id_, title_, title));
+  }
   title_ = title;
   hide_if_ignored();
+
+  if (!with_icon_ && !with_name_ || app_info_) {
+    return;
+  }
+
+  set_app_info_from_app_id_list(title_);
+  name_ = app_info_ ? app_info_->get_display_name() : title;
+
+  if (!with_icon_) {
+    return;
+  }
+
+  int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+  bool found = false;
+  for (auto &icon_theme : tbar_->icon_themes()) {
+    if (image_load_icon(icon_, icon_theme, app_info_, icon_size)) {
+      found = true;
+      break;
+    }
+  }
+
+  if (found)
+    icon_.show();
+  else
+    spdlog::debug("Couldn't find icon for {}", title_);
 }
 
 void Task::set_minimize_hint() {
