@@ -86,7 +86,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *no-center* ++
 	typeof: bool ++
 	default: false ++
-	Option to disable the center modules fully usefull together with expand-\*.
+	Option to disable the center modules fully useful together with expand-\*.
 
 *spacing* ++
 	typeof: integer ++

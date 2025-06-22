@@ -57,9 +57,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
   if (config_["format-window-separator"].isString()) {
-    m_formatWindowSeperator = config_["format-window-separator"].asString();
+    m_formatWindowSeparator = config_["format-window-separator"].asString();
   } else {
-    m_formatWindowSeperator = " ";
+    m_formatWindowSeparator = " ";
   }
   const Json::Value &windowRewrite = config["window-rewrite"];
   if (windowRewrite.isObject()) {
@@ -271,7 +271,7 @@ void Workspaces::updateWindows(const Json::Value &node, std::string &windows) {
       window = fmt::format(fmt::runtime(window), fmt::arg("name", title),
                            fmt::arg("class", windowClass));
       windows.append(window);
-      windows.append(m_formatWindowSeperator);
+      windows.append(m_formatWindowSeparator);
     }
   }
   for (const Json::Value &child : node["nodes"]) {
@@ -340,7 +340,7 @@ auto Workspaces::update() -> void {
           fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)), fmt::arg("value", output),
           fmt::arg("name", trimWorkspaceName(output)), fmt::arg("index", (*it)["num"].asString()),
           fmt::arg("windows",
-                   windows.substr(0, windows.length() - m_formatWindowSeperator.length())),
+                   windows.substr(0, windows.length() - m_formatWindowSeparator.length())),
           fmt::arg("output", (*it)["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
