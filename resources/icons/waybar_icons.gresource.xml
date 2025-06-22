@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/fr/arouillard/waybar/icons/scalable/actions">
+    <file preprocess="xml-stripblanks">waybar-privacy-audio-input-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">waybar-privacy-audio-output-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">waybar-privacy-screen-share-symbolic.svg</file>
+  </gresource>
+</gresources>

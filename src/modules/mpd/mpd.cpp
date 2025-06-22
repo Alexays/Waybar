@@ -4,6 +4,7 @@
 #include <glibmm/ustring.h>
 #include <spdlog/spdlog.h>
 
+#include <system_error>
 #include <util/sanitize_str.hpp>
 using namespace waybar::util;
 
@@ -52,10 +53,10 @@ auto waybar::modules::MPD::update() -> void {
 
 void waybar::modules::MPD::queryMPD() {
   if (connection_ != nullptr) {
-    spdlog::debug("{}: fetching state information", module_name_);
+    spdlog::trace("{}: fetching state information", module_name_);
     try {
       fetchState();
-      spdlog::debug("{}: fetch complete", module_name_);
+      spdlog::trace("{}: fetch complete", module_name_);
     } catch (std::exception const& e) {
       spdlog::error("{}: {}", module_name_, e.what());
       state_ = MPD_STATE_UNKNOWN;
@@ -254,6 +255,21 @@ std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool act
   }
 }
 
+static bool isServerUnavailable(const std::error_code& ec) {
+  if (ec.category() == std::system_category()) {
+    switch (ec.value()) {
+      case ECONNREFUSED:
+      case ECONNRESET:
+      case ENETDOWN:
+      case ENETUNREACH:
+      case EHOSTDOWN:
+      case ENOENT:
+        return true;
+    }
+  }
+  return false;
+}
+
 void waybar::modules::MPD::tryConnect() {
   if (connection_ != nullptr) {
     return;
@@ -281,6 +297,11 @@ void waybar::modules::MPD::tryConnect() {
       }
       checkErrors(connection_.get());
     }
+  } catch (std::system_error& e) {
+    /* Tone down logs if it's likely that the mpd server is not running */
+    auto level = isServerUnavailable(e.code()) ? spdlog::level::debug : spdlog::level::err;
+    spdlog::log(level, "{}: Failed to connect to MPD: {}", module_name_, e.what());
+    connection_.reset();
   } catch (std::runtime_error& e) {
     spdlog::error("{}: Failed to connect to MPD: {}", module_name_, e.what());
     connection_.reset();
@@ -298,6 +319,12 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
       connection_.reset();
       state_ = MPD_STATE_UNKNOWN;
       throw std::runtime_error("Connection to MPD closed");
+    case MPD_ERROR_SYSTEM:
+      if (auto ec = mpd_connection_get_system_error(conn); ec != 0) {
+        mpd_connection_clear_error(conn);
+        throw std::system_error(ec, std::system_category());
+      }
+      G_GNUC_FALLTHROUGH;
     default:
       if (conn) {
         auto error_message = mpd_connection_get_error_message(conn);

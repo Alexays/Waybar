@@ -3,11 +3,11 @@
 default: build
 
 build:
-	meson build
+	meson setup build
 	ninja -C build
 
 build-debug:
-	meson build --buildtype=debug
+	meson setup build --buildtype=debug
 	ninja -C build
 
 install: build

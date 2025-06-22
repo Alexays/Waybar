@@ -1,4 +1,5 @@
 test_inc = include_directories('../include')
+
 test_dep = [
     catch2,
     fmt,
@@ -6,17 +7,12 @@ test_dep = [
     jsoncpp,
     spdlog,
 ]
+
 test_src = files(
     'main.cpp',
-    'SafeSignal.cpp',
     'config.cpp',
     '../src/config.cpp',
 )
-
-if tz_dep.found()
-  test_dep += tz_dep
-  test_src += files('date.cpp')
-endif
 
 waybar_test = executable(
     'waybar_test',
@@ -28,5 +24,8 @@ waybar_test = executable(
 test(
     'waybar',
     waybar_test,
-    workdir: meson.source_root(),
+    workdir: meson.project_source_root(),
 )
+
+subdir('utils')
+subdir('hyprland')

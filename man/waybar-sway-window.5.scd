@@ -19,19 +19,23 @@ Addressed by *sway/window*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should accept.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -43,7 +47,7 @@ Addressed by *sway/window*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -78,13 +82,13 @@ Addressed by *sway/window*
 
 *offscreen-css-text*: ++
 	typeof: string ++
-	Only effective when both all-outputs and offscreen-style are true. On screens currently not focused, show the given text along with that workspaces styles.
+	Only effective when both all-outputs and offscreen-style are true. On screens currently not focused, show the given text along with that workspace styles.
 
 *show-focused-workspace-name*: ++
 	typeof: bool ++
 	default: false ++
 	If the workspace itself is focused and the workspace contains nodes or floating_nodes, show the workspace name. If not set, text remains empty but styles according to nodes in the workspace are still applied.
-	
+
 *rewrite*: ++
 	typeof: object ++
 	Rules to rewrite the module format output. See *rewrite rules*.
@@ -99,6 +103,11 @@ Addressed by *sway/window*
 	default: 24 ++
 	Option to change the size of the application icon.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{title}*: The title of the focused window.
@@ -106,7 +115,7 @@ Addressed by *sway/window*
 *{app_id}*: The app_id of the focused window.
 
 *{shell}*: The shell of the focused window. It's 'xwayland' when the window is
-running through xwayland, otherwise it's 'xdg-shell'.
+running through xwayland, otherwise, it's 'xdg-shell'.
 
 # REWRITE RULES
 
@@ -124,18 +133,22 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 
 ```
 "sway/window": {
-    "format": "{}",
-    "max-length": 50,
-    "rewrite": {
-      "(.*) - Mozilla Firefox": "🌎 $1",
-      "(.*) - zsh": "> [$1]"
-    }
+	"format": "{}",
+	"max-length": 50,
+	"rewrite": {
+		"(.*) - Mozilla Firefox": "🌎 $1",
+		"(.*) - zsh": "> [$1]"
+	}
 }
 ```
 
 # STYLE
 
 - *#window*
+
+The following classes are applied to the entire Waybar rather than just the
+window widget:
+
 - *window#waybar.empty* When no windows are in the workspace, or screen is not focused and offscreen-css option is not set
 - *window#waybar.solo* When one tiled window is in the workspace
 - *window#waybar.floating* When there are only floating windows in the workspace

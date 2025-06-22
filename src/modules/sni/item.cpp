@@ -5,24 +5,27 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <fstream>
 #include <map>
 
+#include "gdk/gdk.h"
+#include "modules/sni/icon_manager.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
-  bool is_printable(const Glib::VariantBase& value) {
+  bool is_printable(const Glib::VariantBase& value) const {
     auto type = value.get_type_string();
     /* Print only primitive (single character excluding 'v') and short complex types */
     return (type.length() == 1 && islower(type[0]) && type[0] != 'v') || value.get_size() <= 32;
   }
 
   template <typename FormatContext>
-  auto format(const Glib::VariantBase& value, FormatContext& ctx) {
+  auto format(const Glib::VariantBase& value, FormatContext& ctx) const {
     if (is_printable(value)) {
-      return formatter<std::string>::format(value.print(), ctx);
+      return formatter<std::string>::format(static_cast<std::string>(value.print()), ctx);
     } else {
       return formatter<std::string>::format(value.get_type_string(), ctx);
     }
@@ -39,7 +42,8 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
-      icon_theme(Gtk::IconTheme::create()) {
+      icon_theme(Gtk::IconTheme::create()),
+      bar_(bar) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -56,6 +60,8 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
   event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
+  event_box.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseEnter));
+  event_box.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseLeave));
   // initial visibility
   event_box.show_all();
   event_box.set_visible(show_passive_);
@@ -66,6 +72,16 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
                                    cancellable_, interface);
+}
+
+bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
+  event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
+}
+
+bool Item::handleMouseLeave(GdkEventCrossing* const& e) {
+  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
 }
 
 void Item::onConfigure(GdkEventConfigure* ev) { this->updateImage(); }
@@ -110,7 +126,8 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   result.text = get_variant<Glib::ustring>(container.get_child(2));
   auto description = get_variant<Glib::ustring>(container.get_child(3));
   if (!description.empty()) {
-    result.text = fmt::format("<b>{}</b>\n{}", result.text, description);
+    auto escapedDescription = Glib::Markup::escape_text(description);
+    result.text = fmt::format("<b>{}</b>\n{}", result.text, escapedDescription);
   }
   return result;
 }
@@ -123,6 +140,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       category = get_variant<std::string>(value);
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
+      setCustomIcon(id);
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
       if (tooltip.text.empty()) {
@@ -182,6 +200,19 @@ void Item::setStatus(const Glib::ustring& value) {
     lower = "needs-attention";
   }
   style->add_class(lower);
+}
+
+void Item::setCustomIcon(const std::string& id) {
+  std::string custom_icon = IconManager::instance().getIconForApp(id);
+  if (!custom_icon.empty()) {
+    if (std::filesystem::exists(custom_icon)) {
+      Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
+      icon_name = "";  // icon_name has priority over pixmap
+      icon_pixmap = custom_pixbuf;
+    } else {  // if file doesn't exist it's most likely an icon_name
+      icon_name = custom_icon;
+    }
+  }
 }
 
 void Item::getUpdatedProperties() {
@@ -355,33 +386,19 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
-  int tmp_size = 0;
   icon_theme->rescan_if_needed();
-  auto sizes = icon_theme->get_icon_sizes(name.c_str());
 
-  for (auto const& size : sizes) {
-    // -1 == scalable
-    if (size == request_size || size == -1) {
-      tmp_size = request_size;
-      break;
-    } else if (size < request_size) {
-      tmp_size = size;
-    } else if (size > tmp_size && tmp_size > 0) {
-      tmp_size = request_size;
-      break;
+  if (!icon_theme_path.empty()) {
+    auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
+                                             Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+    if (icon_info) {
+      bool is_sym = false;
+      return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
     }
   }
-  if (tmp_size == 0) {
-    tmp_size = request_size;
-  }
-  if (!icon_theme_path.empty() &&
-      icon_theme->lookup_icon(name.c_str(), tmp_size,
-                              Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
-    return icon_theme->load_icon(name.c_str(), tmp_size,
-                                 Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
-  }
-  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), tmp_size,
-                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+  return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
+                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE,
+                                               event_box.get_style_context());
 }
 
 double Item::getScaledIconSize() {
@@ -410,7 +427,8 @@ void Item::makeMenu() {
 
 bool Item::handleClick(GdkEventButton* const& ev) {
   auto parameters = Glib::VariantContainerBase::create_tuple(
-      {Glib::Variant<int>::create(ev->x), Glib::Variant<int>::create(ev->y)});
+      {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
+       Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
   if ((ev->button == 1 && item_is_menu) || ev->button == 3) {
     makeMenu();
     if (gtk_menu != nullptr) {

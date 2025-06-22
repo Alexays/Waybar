@@ -1,11 +1,8 @@
 #pragma once
 
-#ifdef FILESYSTEM_EXPERIMENTAL
-#include <experimental/filesystem>
-#else
-#include <filesystem>
-#endif
 #include <fmt/format.h>
+
+#include <filesystem>
 #if defined(__linux__)
 #include <sys/inotify.h>
 #endif
@@ -16,19 +13,16 @@
 #include <vector>
 
 #include "ALabel.hpp"
+#include "bar.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-#ifdef FILESYSTEM_EXPERIMENTAL
-namespace fs = std::experimental::filesystem;
-#else
 namespace fs = std::filesystem;
-#endif
 
 class Battery : public ALabel {
  public:
-  Battery(const std::string&, const Json::Value&);
+  Battery(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~Battery();
   auto update() -> void override;
 
@@ -38,8 +32,9 @@ class Battery : public ALabel {
   void refreshBatteries();
   void worker();
   const std::string getAdapterStatus(uint8_t capacity) const;
-  const std::tuple<uint8_t, float, std::string, float> getInfos();
+  std::tuple<uint8_t, float, std::string, float, uint16_t, float> getInfos();
   const std::string formatTimeRemaining(float hoursRemaining);
+  void setBarClass(std::string&);
 
   int global_watch;
   std::map<fs::path, int> batteries_;
@@ -49,6 +44,7 @@ class Battery : public ALabel {
   std::mutex battery_list_mutex_;
   std::string old_status_;
   bool warnFirstTime_{true};
+  const Bar& bar_;
 
   util::SleeperThread thread_;
   util::SleeperThread thread_battery_update_;

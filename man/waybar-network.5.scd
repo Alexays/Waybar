@@ -14,7 +14,7 @@ Addressed by *network*
 
 *interface*: ++
 	typeof: string ++
-	Use the defined interface instead of auto detection. Accepts wildcard.
+	Use the defined interface instead of auto-detection. Accepts wildcard.
 
 *interval*: ++
 	typeof: integer ++
@@ -24,7 +24,7 @@ Addressed by *network*
 *family*: ++
 	typeof: string ++
 	default: *ipv4* ++
-	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present.
+	The address family that is used for the format replacement {ipaddr} and to determine if a network connection is present. Set it to ipv4_6 to display both.
 
 *format*: ++
 	typeof: string  ++
@@ -41,7 +41,7 @@ Addressed by *network*
 
 *format-linked*: ++
 	typeof: string ++
-	This format is used when a linked interface with no ip address is displayed.
+	This format is used when a linked interface with no IP address is displayed.
 
 *format-disconnected*: ++
 	typeof: string ++
@@ -58,19 +58,23 @@ Addressed by *network*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should accept.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -82,7 +86,7 @@ Addressed by *network*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -125,6 +129,24 @@ Addressed by *network*
 	typeof: string ++
 	This format is used when the displayed interface is disabled.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{ifname}*: Name of the network interface.
@@ -133,17 +155,23 @@ Addressed by *network*
 
 *{gwaddr}*: The default gateway for the interface
 
-*{netmask}*: The subnetmask corresponding to the IP.
+*{netmask}*: The subnetmask corresponding to the IP(V4).
 
-*{cidr}*: The subnetmask corresponding to the IP in CIDR notation.
+*{netmask6}*: The subnetmask corresponding to the IP(V6). 
+
+*{cidr}*: The subnetmask corresponding to the IP(V4) in CIDR notation.
+
+*{cidr6}*: The subnetmask corresponding to the IP(V6) in CIDR notation.
 
 *{essid}*: Name (SSID) of the wireless network.
+
+*{bssid}*: MAC address (BSSID) of the wireless access point.
 
 *{signalStrength}*: Signal strength of the wireless network.
 
 *{signaldBm}*: Signal strength of the wireless network in dBm.
 
-*{frequency}*: Frequency of the wireless network in MHz.
+*{frequency}*: Frequency of the wireless network in GHz.
 
 *{bandwidthUpBits}*: Instant up speed in bits/seconds.
 

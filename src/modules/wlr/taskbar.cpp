@@ -20,6 +20,7 @@
 #include "glibmm/fileutils.h"
 #include "glibmm/refptr.h"
 #include "util/format.hpp"
+#include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/string.hpp"
 
@@ -28,6 +29,9 @@ namespace waybar::modules::wlr {
 /* Icon loading functions */
 static std::vector<std::string> search_prefix() {
   std::vector<std::string> prefixes = {""};
+
+  std::string home_dir = std::getenv("HOME");
+  prefixes.push_back(home_dir + "/.local/share/");
 
   auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
   if (!xdg_data_dirs) {
@@ -45,9 +49,6 @@ static std::vector<std::string> search_prefix() {
       start = end == std::string::npos ? end : end + 1;
     } while (end != std::string::npos);
   }
-
-  std::string home_dir = std::getenv("HOME");
-  prefixes.push_back(home_dir + "/.local/share/");
 
   for (auto &p : prefixes) spdlog::debug("Using 'desktop' search path prefix: {}", p);
 
@@ -182,11 +183,21 @@ bool Task::image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme>
 
   try {
     pixbuf = icon_theme->load_icon(ret_icon_name, scaled_icon_size, Gtk::ICON_LOOKUP_FORCE_SIZE);
+    spdlog::debug("{} Loaded icon '{}'", repr(), ret_icon_name);
   } catch (...) {
-    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS))
+    if (Glib::file_test(ret_icon_name, Glib::FILE_TEST_EXISTS)) {
       pixbuf = load_icon_from_file(ret_icon_name, scaled_icon_size);
-    else
-      pixbuf = {};
+      spdlog::debug("{} Loaded icon from file '{}'", repr(), ret_icon_name);
+    } else {
+      try {
+        pixbuf = DefaultGtkIconThemeWrapper::load_icon(
+            "image-missing", scaled_icon_size, Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+        spdlog::debug("{} Loaded icon from resource", repr());
+      } catch (...) {
+        pixbuf = {};
+        spdlog::debug("{} Unable to load icon.", repr());
+      }
+    }
   }
 
   if (pixbuf) {
@@ -266,7 +277,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
       handle_{tl_handle},
       seat_{seat},
       id_{global_id++},
-      content_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
+      content_{bar.orientation, 0} {
   zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
   button.set_relief(Gtk::RELIEF_NONE);
@@ -304,6 +315,10 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
     with_icon_ = true;
   }
 
+  if (app_id_.empty()) {
+    handle_app_id("unknown");
+  }
+
   /* Strip spaces at the beginning and end of the format strings */
   format_tooltip_.clear();
   if (!config_["tooltip"].isBool() || config_["tooltip"].asBool()) {
@@ -319,9 +334,7 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
   }
 
   button.add_events(Gdk::BUTTON_PRESS_MASK);
-  button.signal_button_press_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
-  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_button_release),
-                                               false);
+  button.signal_button_release_event().connect(sigc::mem_fun(*this, &Task::handle_clicked), false);
 
   button.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
                                               false);
@@ -370,8 +383,43 @@ std::string Task::state_string(bool shortened) const {
 }
 
 void Task::handle_title(const char *title) {
+  if (title_.empty()) {
+    spdlog::debug(fmt::format("Task ({}) setting title to {}", id_, title_));
+  } else {
+    spdlog::debug(fmt::format("Task ({}) overwriting title '{}' with '{}'", id_, title_, title));
+  }
   title_ = title;
   hide_if_ignored();
+
+  if (!with_icon_ && !with_name_ || app_info_) {
+    return;
+  }
+
+  set_app_info_from_app_id_list(title_);
+  name_ = app_info_ ? app_info_->get_display_name() : title;
+
+  if (!with_icon_) {
+    return;
+  }
+
+  int icon_size = config_["icon-size"].isInt() ? config_["icon-size"].asInt() : 16;
+  bool found = false;
+  for (auto &icon_theme : tbar_->icon_themes()) {
+    if (image_load_icon(icon_, icon_theme, app_info_, icon_size)) {
+      found = true;
+      break;
+    }
+  }
+
+  if (found)
+    icon_.show();
+  else
+    spdlog::debug("Couldn't find icon for {}", title_);
+}
+
+void Task::set_minimize_hint() {
+  zwlr_foreign_toplevel_handle_v1_set_rectangle(handle_, bar_.surface, minimize_hint.x,
+                                                minimize_hint.y, minimize_hint.w, minimize_hint.h);
 }
 
 void Task::hide_if_ignored() {
@@ -392,6 +440,11 @@ void Task::hide_if_ignored() {
 }
 
 void Task::handle_app_id(const char *app_id) {
+  if (app_id_.empty()) {
+    spdlog::debug(fmt::format("Task ({}) setting app_id to {}", id_, app_id));
+  } else {
+    spdlog::debug(fmt::format("Task ({}) overwriting app_id '{}' with '{}'", id_, app_id_, app_id));
+  }
   app_id_ = app_id;
   hide_if_ignored();
 
@@ -429,6 +482,13 @@ void Task::handle_app_id(const char *app_id) {
     spdlog::debug("Couldn't find icon for {}", app_id_);
 }
 
+void Task::on_button_size_allocated(Gtk::Allocation &alloc) {
+  gtk_widget_translate_coordinates(GTK_WIDGET(button.gobj()), GTK_WIDGET(bar_.window.gobj()), 0, 0,
+                                   &minimize_hint.x, &minimize_hint.y);
+  minimize_hint.w = button.get_width();
+  minimize_hint.h = button.get_height();
+}
+
 void Task::handle_output_enter(struct wl_output *output) {
   if (ignored_) {
     spdlog::debug("{} is ignored", repr());
@@ -439,6 +499,8 @@ void Task::handle_output_enter(struct wl_output *output) {
 
   if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
     /* The task entered the output of the current bar make the button visible */
+    button.signal_size_allocate().connect_notify(
+        sigc::mem_fun(this, &Task::on_button_size_allocated));
     tbar_->add_button(button);
     button.show();
     button_visible_ = true;
@@ -507,17 +569,17 @@ void Task::handle_closed() {
   spdlog::debug("{} closed", repr());
   zwlr_foreign_toplevel_handle_v1_destroy(handle_);
   handle_ = nullptr;
-  tbar_->remove_task(id_);
   if (button_visible_) {
     tbar_->remove_button(button);
     button_visible_ = false;
   }
+  tbar_->remove_task(id_);
 }
 
 bool Task::handle_clicked(GdkEventButton *bt) {
   /* filter out additional events for double/triple clicks */
   if (bt->type == GDK_BUTTON_PRESS) {
-    /* save where the button press ocurred in case it becomes a drag */
+    /* save where the button press occurred in case it becomes a drag */
     drag_start_button = bt->button;
     drag_start_x = bt->x;
     drag_start_y = bt->y;
@@ -535,9 +597,11 @@ bool Task::handle_clicked(GdkEventButton *bt) {
     return true;
   else if (action == "activate")
     activate();
-  else if (action == "minimize")
+  else if (action == "minimize") {
+    set_minimize_hint();
     minimize(!minimized());
-  else if (action == "minimize-raise") {
+  } else if (action == "minimize-raise") {
+    set_minimize_hint();
     if (minimized())
       minimize(false);
     else if (active())
@@ -553,12 +617,8 @@ bool Task::handle_clicked(GdkEventButton *bt) {
   else
     spdlog::warn("Unknown action {}", action);
 
-  return true;
-}
-
-bool Task::handle_button_release(GdkEventButton *bt) {
   drag_start_button = -1;
-  return false;
+  return true;
 }
 
 bool Task::handle_motion_notify(GdkEventMotion *mn) {
@@ -710,13 +770,14 @@ static const wl_registry_listener registry_listener_impl = {.global = handle_glo
 Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
     : waybar::AModule(config, "taskbar", id, false, false),
       bar_(bar),
-      box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
+      box_{bar.orientation, 0},
       manager_{nullptr},
       seat_{nullptr} {
   box_.set_name("taskbar");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
@@ -773,6 +834,10 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   }
 
   icon_themes_.push_back(Gtk::IconTheme::get_default());
+
+  for (auto &t : tasks_) {
+    t->handle_app_id(t->app_id().c_str());
+  }
 }
 
 Taskbar::~Taskbar() {
@@ -879,7 +944,7 @@ void Taskbar::move_button(Gtk::Button &bt, int pos) { box_.reorder_child(bt, pos
 
 void Taskbar::remove_button(Gtk::Button &bt) {
   box_.remove(bt);
-  if (tasks_.empty()) {
+  if (box_.get_children().empty()) {
     box_.get_style_context()->add_class("empty");
   }
 }

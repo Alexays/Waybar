@@ -6,7 +6,7 @@ waybar - cpu module
 
 # DESCRIPTION
 
-The *cpu* module displays the current cpu utilization.
+The *cpu* module displays the current CPU utilization.
 
 # CONFIGURATION
 
@@ -30,20 +30,24 @@ The *cpu* module displays the current cpu utilization.
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should accept.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
-	A number of cpu usage states which get activated on certain usage levels. See *waybar-states(5)*.
+	A number of CPU usage states which get activated on certain usage levels. See *waybar-states(5)*.
 
 *on-click*: ++
 	typeof: string  ++
@@ -55,7 +59,7 @@ The *cpu* module displays the current cpu utilization.
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -78,23 +82,28 @@ The *cpu* module displays the current cpu utilization.
 	default: true ++
 	Option to disable tooltip on hover.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
-*{load}*: Current cpu load.
+*{load}*: Current CPU load.
 
-*{usage}*: Current overall cpu usage.
+*{usage}*: Current overall CPU usage.
 
-*{usage*{n}*}*: Current cpu core n usage. Cores are numbered from zero, so first core will be {usage0} and 4th will be {usage3}.
+*{usage*{n}*}*: Current CPU core n usage. Cores are numbered from zero, so first core will be {usage0} and 4th will be {usage3}.
 
-*{avg_frequency}*: Current cpu average frequency (based on all cores) in GHz.
+*{avg_frequency}*: Current CPU average frequency (based on all cores) in GHz.
 
-*{max_frequency}*: Current cpu max frequency (based on the core with the highest frequency) in GHz.
+*{max_frequency}*: Current CPU max frequency (based on the core with the highest frequency) in GHz.
 
-*{min_frequency}*: Current cpu min frequency (based on the core with the lowest frequency) in GHz.
+*{min_frequency}*: Current CPU min frequency (based on the core with the lowest frequency) in GHz.
 
-*{icon}*: Icon for overall cpu usage.
+*{icon}*: Icon for overall CPU usage.
 
-*{icon*{n}*}*: Icon for cpu core n usage. Use like {icon0}.
+*{icon*{n}*}*: Icon for CPU core n usage. Use like {icon0}.
 
 # EXAMPLES
 
@@ -108,7 +117,7 @@ Basic configuration:
 }
 ```
 
-Cpu usage per core rendered as icons:
+CPU usage per core rendered as icons:
 
 ```
 "cpu": {

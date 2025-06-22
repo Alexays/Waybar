@@ -6,12 +6,19 @@
 #include <algorithm>
 #include <sstream>
 
+#include "util/scope_guard.hpp"
+
 namespace {
 
 using GDBusManager = std::unique_ptr<GDBusObjectManager, void (*)(GDBusObjectManager*)>;
 
 auto generateManager() -> GDBusManager {
   GError* error = nullptr;
+  waybar::util::ScopeGuard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
   GDBusObjectManager* manager = g_dbus_object_manager_client_new_for_bus_sync(
       G_BUS_TYPE_SYSTEM,
       GDBusObjectManagerClientFlags::G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_DO_NOT_AUTO_START,
@@ -19,7 +26,6 @@ auto generateManager() -> GDBusManager {
 
   if (error) {
     spdlog::error("g_dbus_object_manager_client_new_for_bus_sync() failed: {}", error->message);
-    g_error_free(error);
   }
 
   auto destructor = [](GDBusObjectManager* manager) {
@@ -92,25 +98,27 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
                    std::back_inserter(device_preference_), [](auto x) { return x.asString(); });
   }
 
-  // NOTE: assumption made that the controller that is selcected stays unchanged
-  // for duration of the module
-  if (!findCurController(cur_controller_)) {
+  if (cur_controller_ = findCurController(); !cur_controller_) {
     if (config_["controller-alias"].isString()) {
-      spdlog::error("findCurController() failed: no bluetooth controller found with alias '{}'",
-                    config_["controller-alias"].asString());
+      spdlog::warn("no bluetooth controller found with alias '{}'",
+                   config_["controller-alias"].asString());
     } else {
-      spdlog::error("findCurController() failed: no bluetooth controller found");
+      spdlog::warn("no bluetooth controller found");
     }
-    event_box_.hide();
-    return;
+    update();
+  } else {
+    // This call only make sense if a controller could be found
+    findConnectedDevices(cur_controller_->path, connected_devices_);
   }
-  findConnectedDevices(cur_controller_.path, connected_devices_);
 
+  g_signal_connect(manager_.get(), "object-added", G_CALLBACK(onObjectAdded), this);
+  g_signal_connect(manager_.get(), "object-removed", G_CALLBACK(onObjectRemoved), this);
   g_signal_connect(manager_.get(), "interface-proxy-properties-changed",
                    G_CALLBACK(onInterfaceProxyPropertiesChanged), this);
   g_signal_connect(manager_.get(), "interface-added", G_CALLBACK(onInterfaceAddedOrRemoved), this);
   g_signal_connect(manager_.get(), "interface-removed", G_CALLBACK(onInterfaceAddedOrRemoved),
                    this);
+
 #ifdef WANT_RFKILL
   rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Bluetooth::update)));
 #endif
@@ -144,12 +152,16 @@ auto waybar::modules::Bluetooth::update() -> void {
 
   std::string state;
   std::string tooltip_format;
-  if (!cur_controller_.powered)
-    state = "off";
-  else if (!connected_devices_.empty())
-    state = "connected";
-  else
-    state = "on";
+  if (cur_controller_) {
+    if (!cur_controller_->powered)
+      state = "off";
+    else if (!connected_devices_.empty())
+      state = "connected";
+    else
+      state = "on";
+  } else {
+    state = "no-controller";
+  }
 #ifdef WANT_RFKILL
   if (rfkill_.getState()) state = "disabled";
 #endif
@@ -187,8 +199,6 @@ auto waybar::modules::Bluetooth::update() -> void {
     tooltip_format = config_["tooltip-format"].asString();
   }
 
-  format_.empty() ? event_box_.hide() : event_box_.show();
-
   auto update_style_context = [this](const std::string& style_class, bool in_next_state) {
     if (in_next_state && !label_.get_style_context()->has_class(style_class)) {
       label_.get_style_context()->add_class(style_class);
@@ -196,25 +206,32 @@ auto waybar::modules::Bluetooth::update() -> void {
       label_.get_style_context()->remove_class(style_class);
     }
   };
-  update_style_context("discoverable", cur_controller_.discoverable);
-  update_style_context("discovering", cur_controller_.discovering);
-  update_style_context("pairable", cur_controller_.pairable);
+  update_style_context("discoverable", cur_controller_ ? cur_controller_->discoverable : false);
+  update_style_context("discovering", cur_controller_ ? cur_controller_->discovering : false);
+  update_style_context("pairable", cur_controller_ ? cur_controller_->pairable : false);
   if (!state_.empty()) {
     update_style_context(state_, false);
   }
   update_style_context(state, true);
   state_ = state;
 
-  label_.set_markup(fmt::format(
-      fmt::runtime(format_), fmt::arg("status", state_),
-      fmt::arg("num_connections", connected_devices_.size()),
-      fmt::arg("controller_address", cur_controller_.address),
-      fmt::arg("controller_address_type", cur_controller_.address_type),
-      fmt::arg("controller_alias", cur_controller_.alias),
-      fmt::arg("device_address", cur_focussed_device_.address),
-      fmt::arg("device_address_type", cur_focussed_device_.address_type),
-      fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
-      fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0))));
+  if (format_.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+    label_.set_markup(fmt::format(
+        fmt::runtime(format_), fmt::arg("status", state_),
+        fmt::arg("num_connections", connected_devices_.size()),
+        fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
+        fmt::arg("controller_address_type",
+                 cur_controller_ ? cur_controller_->address_type : "null"),
+        fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
+        fmt::arg("device_address", cur_focussed_device_.address),
+        fmt::arg("device_address_type", cur_focussed_device_.address_type),
+        fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
+        fmt::arg("device_battery_percentage",
+                 cur_focussed_device_.battery_percentage.value_or(0))));
+  }
 
   if (tooltipEnabled()) {
     bool tooltip_enumerate_connections_ = config_["tooltip-format-enumerate-connected"].isString();
@@ -250,9 +267,10 @@ auto waybar::modules::Bluetooth::update() -> void {
     label_.set_tooltip_text(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
-        fmt::arg("controller_address", cur_controller_.address),
-        fmt::arg("controller_address_type", cur_controller_.address_type),
-        fmt::arg("controller_alias", cur_controller_.alias),
+        fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
+        fmt::arg("controller_address_type",
+                 cur_controller_ ? cur_controller_->address_type : "null"),
+        fmt::arg("controller_alias", cur_controller_ ? cur_controller_->alias : "null"),
         fmt::arg("device_address", cur_focussed_device_.address),
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
         fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_tooltip),
@@ -262,6 +280,46 @@ auto waybar::modules::Bluetooth::update() -> void {
 
   // Call parent update
   ALabel::update();
+}
+
+auto waybar::modules::Bluetooth::onObjectAdded(GDBusObjectManager* manager, GDBusObject* object,
+                                               gpointer user_data) -> void {
+  ControllerInfo info;
+  Bluetooth* bt = static_cast<Bluetooth*>(user_data);
+
+  if (!bt->cur_controller_.has_value() && bt->getControllerProperties(object, info) &&
+      (!bt->config_["controller-alias"].isString() ||
+       bt->config_["controller-alias"].asString() == info.alias)) {
+    bt->cur_controller_ = std::move(info);
+    bt->dp.emit();
+  }
+}
+
+auto waybar::modules::Bluetooth::onObjectRemoved(GDBusObjectManager* manager, GDBusObject* object,
+                                                 gpointer user_data) -> void {
+  Bluetooth* bt = static_cast<Bluetooth*>(user_data);
+  GDBusProxy* proxy_controller;
+
+  if (!bt->cur_controller_.has_value()) {
+    return;
+  }
+
+  proxy_controller = G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Adapter1"));
+
+  if (proxy_controller != NULL) {
+    std::string object_path = g_dbus_object_get_object_path(object);
+
+    if (object_path == bt->cur_controller_->path) {
+      bt->cur_controller_ = bt->findCurController();
+      if (bt->cur_controller_.has_value()) {
+        bt->connected_devices_.clear();
+        bt->findConnectedDevices(bt->cur_controller_->path, bt->connected_devices_);
+      }
+      bt->dp.emit();
+    }
+
+    g_object_unref(proxy_controller);
+  }
 }
 
 // NOTE: only for when the org.bluez.Battery1 interface is added/removed after/before a device is
@@ -274,11 +332,13 @@ auto waybar::modules::Bluetooth::onInterfaceAddedOrRemoved(GDBusObjectManager* m
   std::string object_path = g_dbus_proxy_get_object_path(G_DBUS_PROXY(interface));
   if (interface_name == "org.bluez.Battery1") {
     Bluetooth* bt = static_cast<Bluetooth*>(user_data);
-    auto device = std::find_if(bt->connected_devices_.begin(), bt->connected_devices_.end(),
-                               [object_path](auto d) { return d.path == object_path; });
-    if (device != bt->connected_devices_.end()) {
-      device->battery_percentage = bt->getDeviceBatteryPercentage(object);
-      bt->dp.emit();
+    if (bt->cur_controller_.has_value()) {
+      auto device = std::find_if(bt->connected_devices_.begin(), bt->connected_devices_.end(),
+                                 [object_path](auto d) { return d.path == object_path; });
+      if (device != bt->connected_devices_.end()) {
+        device->battery_percentage = bt->getDeviceBatteryPercentage(object);
+        bt->dp.emit();
+      }
     }
   }
 }
@@ -291,9 +351,14 @@ auto waybar::modules::Bluetooth::onInterfaceProxyPropertiesChanged(
   std::string object_path = g_dbus_object_get_object_path(G_DBUS_OBJECT(object_proxy));
 
   Bluetooth* bt = static_cast<Bluetooth*>(user_data);
+
+  if (!bt->cur_controller_.has_value()) {
+    return;
+  }
+
   if (interface_name == "org.bluez.Adapter1") {
-    if (object_path == bt->cur_controller_.path) {
-      bt->getControllerProperties(G_DBUS_OBJECT(object_proxy), bt->cur_controller_);
+    if (object_path == bt->cur_controller_->path) {
+      bt->getControllerProperties(G_DBUS_OBJECT(object_proxy), *bt->cur_controller_);
       bt->dp.emit();
     }
   } else if (interface_name == "org.bluez.Device1" || interface_name == "org.bluez.Battery1") {
@@ -378,22 +443,23 @@ auto waybar::modules::Bluetooth::getControllerProperties(GDBusObject* object,
   return false;
 }
 
-auto waybar::modules::Bluetooth::findCurController(ControllerInfo& controller_info) -> bool {
-  bool found_controller = false;
+auto waybar::modules::Bluetooth::findCurController() -> std::optional<ControllerInfo> {
+  std::optional<ControllerInfo> controller_info;
 
   GList* objects = g_dbus_object_manager_get_objects(manager_.get());
   for (GList* l = objects; l != NULL; l = l->next) {
     GDBusObject* object = G_DBUS_OBJECT(l->data);
-    if (getControllerProperties(object, controller_info) &&
+    ControllerInfo info;
+    if (getControllerProperties(object, info) &&
         (!config_["controller-alias"].isString() ||
-         config_["controller-alias"].asString() == controller_info.alias)) {
-      found_controller = true;
+         config_["controller-alias"].asString() == info.alias)) {
+      controller_info = std::move(info);
       break;
     }
   }
   g_list_free_full(objects, g_object_unref);
 
-  return found_controller;
+  return controller_info;
 }
 
 auto waybar::modules::Bluetooth::findConnectedDevices(const std::string& cur_controller_path,
@@ -404,7 +470,7 @@ auto waybar::modules::Bluetooth::findConnectedDevices(const std::string& cur_con
     GDBusObject* object = G_DBUS_OBJECT(l->data);
     DeviceInfo device;
     if (getDeviceProperties(object, device) && device.connected &&
-        device.paired_controller == cur_controller_.path) {
+        device.paired_controller == cur_controller_->path) {
       connected_devices.push_back(device);
     }
   }

@@ -12,13 +12,14 @@
 #include "client.hpp"
 #include "modules/sway/ipc/client.hpp"
 #include "util/json.hpp"
+#include "util/regex_collection.hpp"
 
 namespace waybar::modules::sway {
 
 class Workspaces : public AModule, public sigc::trackable {
  public:
   Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
-  virtual ~Workspaces() = default;
+  ~Workspaces() override = default;
   auto update() -> void override;
 
  private:
@@ -27,22 +28,28 @@ class Workspaces : public AModule, public sigc::trackable {
       R"(workspace {} "{}"; move workspace to output "{}"; workspace {} "{}")";
 
   static int convertWorkspaceNameToNum(std::string name);
+  static int windowRewritePriorityFunction(std::string const& window_rule);
 
   void onCmd(const struct Ipc::ipc_response&);
   void onEvent(const struct Ipc::ipc_response&);
   bool filterButtons();
+  static bool hasFlag(const Json::Value&, const std::string&);
+  void updateWindows(const Json::Value&, std::string&);
   Gtk::Button& addButton(const Json::Value&);
   void onButtonReady(const Json::Value&, Gtk::Button&);
   std::string getIcon(const std::string&, const Json::Value&);
-  const std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
+  std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t getWorkspaceIndex(const std::string& name) const;
-  std::string trimWorkspaceName(std::string);
-  bool handleScroll(GdkEventScroll*) override;
+  static std::string trimWorkspaceName(std::string);
+  bool handleScroll(GdkEventScroll* /*unused*/) override;
 
   const Bar& bar_;
   std::vector<Json::Value> workspaces_;
+  std::vector<std::string> high_priority_named_;
   std::vector<std::string> workspaces_order_;
   Gtk::Box box_;
+  std::string m_formatWindowSeparator;
+  util::RegexCollection m_windowRewriteRules;
   util::JsonParser parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
   std::mutex mutex_;

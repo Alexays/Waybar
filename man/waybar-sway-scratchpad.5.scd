@@ -36,6 +36,24 @@ Addressed by *sway/scratchpad*
 	default: {app}: {title} ++
 	The format, how information in the tooltip should be displayed.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{icon}*: Icon, as defined in *format-icons*.
@@ -50,11 +68,11 @@ Addressed by *sway/scratchpad*
 
 ```
 "sway/scratchpad": {
-    "format": "{icon} {count}",
-    "show-empty": false,
-    "format-icons": ["", ""],
-    "tooltip": true,
-    "tooltip-format": "{app}: {title}"
+	"format": "{icon} {count}",
+	"show-empty": false,
+	"format-icons": ["", ""],
+	"tooltip": true,
+	"tooltip-format": "{app}: {title}"
 }
 ```
 

@@ -62,6 +62,7 @@ class Item : public sigc::trackable {
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
+  void setCustomIcon(const std::string& id);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
   void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
@@ -76,6 +77,8 @@ class Item : public sigc::trackable {
   void makeMenu();
   bool handleClick(GdkEventButton* const& /*ev*/);
   bool handleScroll(GdkEventScroll* const&);
+  bool handleMouseEnter(GdkEventCrossing* const&);
+  bool handleMouseLeave(GdkEventCrossing* const&);
 
   // smooth scrolling threshold
   gdouble scroll_threshold_ = 0;
@@ -83,6 +86,8 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+
+  const Bar& bar_;
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;

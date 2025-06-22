@@ -81,7 +81,7 @@ auto supportsLockStates(const libevdev* dev) -> bool {
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
-      box_(bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0),
+      box_(bar.orientation, 0),
       numlock_label_(""),
       capslock_label_(""),
       numlock_format_(config_["format"].isString() ? config_["format"].asString()
@@ -132,6 +132,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   if (config_["device-path"].isString()) {
@@ -140,6 +141,21 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
     if (libinput_devices_.empty()) {
       spdlog::error("keyboard-state: Cannot find device {}", dev_path);
     }
+  }
+
+  auto keys = config_["binding-keys"];
+  if (keys.isArray()) {
+    for (const auto& key : keys) {
+      if (key.isInt()) {
+        binding_keys.insert(key.asInt());
+      } else {
+        spdlog::warn("Cannot read key binding {} as int.", key.asString());
+      }
+    }
+  } else {
+    binding_keys.insert(KEY_CAPSLOCK);
+    binding_keys.insert(KEY_NUMLOCK);
+    binding_keys.insert(KEY_SCROLLLOCK);
   }
 
   DIR* dev_dir = opendir(devices_path_.c_str());
@@ -171,14 +187,8 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
           auto state = libinput_event_keyboard_get_key_state(keyboard_event);
           if (state == LIBINPUT_KEY_STATE_RELEASED) {
             uint32_t key = libinput_event_keyboard_get_key(keyboard_event);
-            switch (key) {
-              case KEY_CAPSLOCK:
-              case KEY_NUMLOCK:
-              case KEY_SCROLLLOCK:
-                dp.emit();
-                break;
-              default:
-                break;
+            if (binding_keys.contains(key)) {
+              dp.emit();
             }
           }
         }

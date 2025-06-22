@@ -1,16 +1,20 @@
+#pragma once
+
 #include <fmt/format.h>
 
-#include "ALabel.hpp"
+#include <string>
+
+#include "AAppIconLabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
 #include "util/json.hpp"
 
 namespace waybar::modules::hyprland {
 
-class Window : public waybar::ALabel, public EventHandler {
+class Window : public waybar::AAppIconLabel, public EventHandler {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&);
-  virtual ~Window();
+  ~Window() override;
 
   auto update() -> void override;
 
@@ -21,26 +25,43 @@ class Window : public waybar::ALabel, public EventHandler {
     std::string last_window;
     std::string last_window_title;
 
-    static auto parse(const Json::Value&) -> Workspace;
+    static auto parse(const Json::Value& value) -> Workspace;
   };
 
-  auto getActiveWorkspace(const std::string&) -> Workspace;
-  auto getActiveWorkspace() -> Workspace;
-  void onEvent(const std::string&) override;
+  struct WindowData {
+    bool floating;
+    int monitor = -1;
+    std::string class_name;
+    std::string initial_class_name;
+    std::string title;
+    std::string initial_title;
+    bool fullscreen;
+    bool grouped;
+
+    static auto parse(const Json::Value&) -> WindowData;
+  };
+
+  static auto getActiveWorkspace(const std::string&) -> Workspace;
+  static auto getActiveWorkspace() -> Workspace;
+  void onEvent(const std::string& ev) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
 
-  bool separate_outputs;
+  bool separateOutputs_;
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
-  std::string last_title_;
+  WindowData windowData_;
   Workspace workspace_;
-  std::string solo_class_;
-  std::string last_solo_class_;
+  std::string soloClass_;
+  std::string lastSoloClass_;
   bool solo_;
-  bool all_floating_;
+  bool allFloating_;
+  bool swallowing_;
   bool fullscreen_;
+  bool focused_;
+
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

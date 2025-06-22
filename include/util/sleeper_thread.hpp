@@ -58,10 +58,22 @@ class SleeperThread {
 
   bool isRunning() const { return do_run_; }
 
+  auto sleep() {
+    std::unique_lock lk(mutex_);
+    CancellationGuard cancel_lock;
+    return condvar_.wait(lk, [this] { return signal_ || !do_run_; });
+  }
+
   auto sleep_for(std::chrono::system_clock::duration dur) {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
-    return condvar_.wait_for(lk, dur, [this] { return signal_ || !do_run_; });
+    constexpr auto max_time_point = std::chrono::steady_clock::time_point::max();
+    auto wait_end = max_time_point;
+    auto now = std::chrono::steady_clock::now();
+    if (now < max_time_point - dur) {
+      wait_end = now + dur;
+    }
+    return condvar_.wait_until(lk, wait_end, [this] { return signal_ || !do_run_; });
   }
 
   auto sleep_until(
@@ -95,6 +107,7 @@ class SleeperThread {
   }
 
   ~SleeperThread() {
+    connection_.disconnect();
     stop();
     if (thread_.joinable()) {
       thread_.join();

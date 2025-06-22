@@ -2,7 +2,7 @@ waybar-wlr-taskbar(5)
 
 # NAME
 
-wlroots - Taskbar module
+waybar - wlr taskbar module
 
 # DESCRIPTION
 
@@ -16,7 +16,7 @@ Addressed by *wlr/taskbar*
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
-	If set to false applications on the waybar's current output will be shown. Otherwise all applications are shown.
+	If set to false applications on the waybar's current output will be shown. Otherwise, all applications are shown.
 
 *format*: ++
 	typeof: string ++
@@ -89,7 +89,7 @@ Addressed by *wlr/taskbar*
 
 *{icon}*: The icon of the application.
 
-*{title}*: The application name as in desktop file if appropriate desktop fils found, otherwise same as {app_id}
+*{name}*: The application name as in desktop file if appropriate desktop files are found, otherwise same as {app_id}
 
 *{title}*: The title of the application.
 

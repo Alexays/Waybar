@@ -1,5 +1,4 @@
 waybar-custom(5)
-
 # NAME
 
 waybar - custom module
@@ -19,14 +18,17 @@ Addressed by *custom/<name>*
 
 *exec-if*: ++
 	typeof: string ++
-	The path to a script, which determines if the script in *exec* should be executed.
+	The path to a script, which determines if the script in *exec* should be executed. ++
 	*exec* will be executed if the exit code of *exec-if* equals 0.
+
+*hide-empty-text*: ++
+	typeof: bool ++
+	Disables the module when output is empty, but format might contain additional static content.
 
 *exec-on-event*: ++
 	typeof: bool ++
 	default: true ++
-	If an event command is set (e.g. *on-click* or *on-scroll-up*) then re-execute the script after
-	executing the event command.
+	If an event command is set (e.g. *on-click* or *on-scroll-up*) then re-execute the script after executing the event command.
 
 *return-type*: ++
 	typeof: string ++
@@ -34,26 +36,27 @@ Addressed by *custom/<name>*
 
 *interval*: ++
 	typeof: integer ++
-	The interval (in seconds) in which the information gets polled.
-	Use *once* if you want to execute the module only on startup.
-	You can update it manually with a signal. If no *interval* is defined,
-	it is assumed that the out script loops it self.
+	The interval (in seconds) in which the information gets polled. ++
+	Use *once* if you want to execute the module only on startup. ++
+	You can update it manually with a signal. If no *interval* or *signal* is defined, it is assumed that the out script loops itself. ++
+	If a *signal* is defined then the script will run once on startup and will only update with a signal.
 
 *restart-interval*: ++
 	typeof: integer ++
-	The restart interval (in seconds).
-	Can't be used with the *interval* option, so only with continuous scripts.
-	Once the script exit, it'll be re-executed after the *restart-interval*.
+	The restart interval (in seconds). ++
+	Can't be used with the *interval* option, so only with continuous scripts. ++
+	Once the script exits, it'll be re-executed after the *restart-interval*.
 
 *signal*: ++
 	typeof: integer ++
-	The signal number used to update the module.
-	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*.
+	The signal number used to update the module. ++
+	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
+	If no interval is defined then a signal will be the only way to update the module.
 
 *format*: ++
 	typeof: string ++
-	default: {} ++
-	The format, how information should be displayed. On {} data gets inserted.
+	default: {text} ++
+	The format, how information should be displayed. On {text} data gets inserted.
 
 *format-icons*: ++
 	typeof: array ++
@@ -61,19 +64,23 @@ Addressed by *custom/<name>*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should accept.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -85,7 +92,7 @@ Addressed by *custom/<name>*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -108,10 +115,33 @@ Addressed by *custom/<name>*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	The tooltip format. If specified, overrides any tooltip output from the script in *exec*. ++
+	Uses the same format replacements as *format*.
+
 *escape*: ++
 	typeof: bool ++
 	default: false ++
 	Option to enable escaping of script output.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # RETURN-TYPE
 
@@ -135,9 +165,9 @@ $text\\n$tooltip\\n$class*
 
 # FORMAT REPLACEMENTS
 
-*{}*: Output of the script.
+*{text}*: Output of the script.
 
-*{percentage}* Percentage which can be set via a json return-type.
+*{percentage}* Percentage which can be set via a json return type.
 
 *{icon}*: An icon from 'format-icons' according to percentage.
 
@@ -147,7 +177,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/spotify": {
-	"format": " {}",
+	"format": " {text}",
 	"max-length": 40,
 	"interval": 30, // Remove this if your script is endless and write in loop
 	"exec": "$HOME/.config/waybar/mediaplayer.sh 2> /dev/null", // Script in resources folder
@@ -160,7 +190,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/mpd": {
-	"format": "♪ {}",
+	"format": "♪ {text}",
 	//"max-length": 15,
 	"interval": 10,
 	"exec": "mpc current",
@@ -174,7 +204,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/cmus": {
-	"format": "♪ {}",
+	"format": "♪ {text}",
 	//"max-length": 15,
 	"interval": 10,
 	"exec": "cmus-remote -C \"format_print '%a - %t'\"", // artist - title
@@ -189,7 +219,7 @@ $text\\n$tooltip\\n$class*
 ```
 
 "custom/pacman": {
-	"format": "{}  ",
+	"format": "{text}  ",
 	"interval": "once",
 	"exec": "pacman_packages",
 	"on-click": "update-system",
@@ -201,7 +231,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/pacman": {
-	"format": "{}  ",
+	"format": "{text}  ",
 	"interval": 3600,                     // every hour
 	"exec": "checkupdates | wc -l",       // # of updates
 	"exec-if": "exit 0",                  // always run; consider advanced run conditions

@@ -6,8 +6,8 @@ waybar - idle_inhibitor module
 
 # DESCRIPTION
 
-The *idle_inhibitor* module can inhibiting the idle behavior such as screen blanking, locking, and
-screensaving, also known as "presentation mode".
+The *idle_inhibitor* module can inhibit the idle behavior such as screen blanking, locking, and
+screensaver, also known as "presentation mode".
 
 # CONFIGURATION
 
@@ -21,19 +21,23 @@ screensaving, also known as "presentation mode".
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should accept.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
@@ -45,7 +49,7 @@ screensaving, also known as "presentation mode".
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -64,13 +68,13 @@ screensaving, also known as "presentation mode".
 	Threshold to be used when scrolling.
 
 *start-activated*: ++
-  typeof: bool ++
-  default: *false* ++
-  Whether the inhibit should be activated when starting waybar.
+	typeof: bool ++
+	default: *false* ++
+	Whether the inhibit should be activated when starting waybar.
 
 *timeout*: ++
 	typeof: double ++
-	The number of minutes the inhibit should last.
+	The number of minutes the inhibition should last.
 
 *tooltip*: ++
 	typeof: bool ++
@@ -85,6 +89,24 @@ screensaving, also known as "presentation mode".
 	typeof: string ++
 	This format is used when the inhibit is deactivated.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu. Cannot be "on-click".
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: status (*activated* or *deactivated*)
@@ -97,9 +119,15 @@ screensaving, also known as "presentation mode".
 "idle_inhibitor": {
 	"format": "{icon}",
 	"format-icons": {
-	    "activated": "",
-	    "deactivated": ""
+		"activated": "",
+		"deactivated": ""
 	},
 	"timeout": 30.5
 }
 ```
+
+# STYLE
+
+- *#idle_inhibitor*
+- *#idle_inhibitor.activated*
+- *#idle_inhibitor.deactivated*

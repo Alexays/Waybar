@@ -27,6 +27,10 @@ class ALabel : public AModule {
 
   bool handleToggle(GdkEventButton *const &e) override;
   virtual std::string getState(uint8_t value, bool lesser = false);
+
+  std::map<std::string, GtkMenuItem *> submenus_;
+  std::map<std::string, std::string> menuActionsMap_;
+  static void handleGtkMenuEvent(GtkMenuItem *menuitem, gpointer data);
 };
 
 }  // namespace waybar

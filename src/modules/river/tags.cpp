@@ -87,7 +87,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       control_{nullptr},
       seat_{nullptr},
       bar_(bar),
-      box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
+      box_{bar.orientation, 0},
       output_status_{nullptr} {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
@@ -111,6 +111,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   // Default to 9 tags, cap at 32
@@ -188,10 +189,20 @@ bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {
+  auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
+    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
     if ((1 << i) & tags) {
+      if (hide_vacant && !visible) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("focused");
     } else {
+      if (hide_vacant && !(occupied || urgent)) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("focused");
     }
   }
@@ -204,20 +215,40 @@ void Tags::handle_view_tags(struct wl_array *view_tags) {
   for (; view_tag < end; ++view_tag) {
     tags |= *view_tag;
   }
+  auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool focused = buttons_[i].get_style_context()->has_class("focused");
+    bool urgent = buttons_[i].get_style_context()->has_class("urgent");
     if ((1 << i) & tags) {
+      if (hide_vacant && !visible) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("occupied");
     } else {
+      if (hide_vacant && !(focused || urgent)) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("occupied");
     }
   }
 }
 
 void Tags::handle_urgent_tags(uint32_t tags) {
+  auto hide_vacant = config_["hide-vacant"].asBool();
   for (size_t i = 0; i < buttons_.size(); ++i) {
+    bool visible = buttons_[i].is_visible();
+    bool occupied = buttons_[i].get_style_context()->has_class("occupied");
+    bool focused = buttons_[i].get_style_context()->has_class("focused");
     if ((1 << i) & tags) {
+      if (hide_vacant && !visible) {
+        buttons_[i].set_visible(true);
+      }
       buttons_[i].get_style_context()->add_class("urgent");
     } else {
+      if (hide_vacant && !(occupied || focused)) {
+        buttons_[i].set_visible(false);
+      }
       buttons_[i].get_style_context()->remove_class("urgent");
     }
   }

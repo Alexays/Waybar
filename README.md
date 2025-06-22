@@ -1,22 +1,24 @@
 # Waybar [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Paypal Donate](https://img.shields.io/badge/Donate-Paypal-2244dd.svg)](https://paypal.me/ARouillard)<br>![Waybar](https://raw.githubusercontent.com/alexays/waybar/master/preview-2.png)
 
 > Highly customizable Wayland bar for Sway and Wlroots based compositors.<br>
-> Available in Arch [community](https://www.archlinux.org/packages/extra/x86_64/waybar/) or
-[AUR](https://aur.archlinux.org/packages/waybar-git/), [Gentoo](https://packages.gentoo.org/packages/gui-apps/waybar), [openSUSE](https://build.opensuse.org/package/show/X11:Wayland/waybar), and [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=waybar).<br>
+> Available in [all major distributions](https://github.com/Alexays/Waybar/wiki/Installation)<br>
 > *Waybar [examples](https://github.com/Alexays/Waybar/wiki/Examples)*
 
 #### Current features
 - Sway (Workspaces, Binding mode, Focused window name)
 - River (Mapping mode, Tags, Focused window name)
-- Hyprland (Focused window name)
-- DWL (Tags) [requires dwl ipc patch](https://github.com/djpohly/dwl/wiki/ipc)
+- Hyprland (Window Icons, Workspaces, Focused window name)
+- Niri (Workspaces, Focused window name, Language)
+- DWL (Tags, Focused window name) [requires dwl ipc patch](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/ipc)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
 - Battery
 - UPower
+- Power profiles daemon
 - Network
 - Bluetooth
 - Pulseaudio
+- Privacy Info
 - Wireplumber
 - Disk
 - Memory
@@ -36,7 +38,7 @@
 
 Waybar is available from a number of Linux distributions:
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/waybar.svg)](https://repology.org/project/waybar/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/waybar.svg?columns=3&header=Waybar%20Downstream%20Packaging)](https://repology.org/project/waybar/versions)
 
 An Ubuntu PPA with more recent versions is available
 [here](https://launchpad.net/~nschloe/+archive/ubuntu/waybar).
@@ -47,7 +49,7 @@ An Ubuntu PPA with more recent versions is available
 ```bash
 $ git clone https://github.com/Alexays/Waybar
 $ cd Waybar
-$ meson build
+$ meson setup build
 $ ninja -C build
 $ ./build/waybar
 # If you want to install it

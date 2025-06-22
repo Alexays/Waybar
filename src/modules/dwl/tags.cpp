@@ -21,11 +21,11 @@ wl_array tags, layouts;
 
 static uint num_tags = 0;
 
-void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
+static void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
 }
 
-void active(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t active) {
+static void active(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t active) {
   // Intentionally empty
 }
 
@@ -37,15 +37,15 @@ static void set_tag(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t tag
                                                            : num_tags & ~(1 << tag);
 }
 
-void set_layout_symbol(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *layout) {
+static void set_layout_symbol(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *layout) {
   // Intentionally empty
 }
 
-void title(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *title) {
+static void title(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *title) {
   // Intentionally empty
 }
 
-void dwl_frame(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
+static void dwl_frame(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
   // Intentionally empty
 }
 
@@ -53,8 +53,8 @@ static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t 
   // Intentionally empty
 }
 
-static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid){
-    // Intentionally empty
+static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid) {
+  // Intentionally empty
 };
 
 static const zdwl_ipc_output_v2_listener output_status_listener_impl{
@@ -93,10 +93,11 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),
-      box_{bar.vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
+      box_{bar.orientation, 0},
       output_status_{nullptr} {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
+
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
 
@@ -113,6 +114,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   // Default to 9 tags, cap at 32
@@ -154,6 +156,9 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
 }
 
 Tags::~Tags() {
+  if (output_status_) {
+    zdwl_ipc_output_v2_destroy(output_status_);
+  }
   if (status_manager_) {
     zdwl_ipc_manager_v2_destroy(status_manager_);
   }

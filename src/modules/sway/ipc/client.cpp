@@ -1,6 +1,7 @@
 #include "modules/sway/ipc/client.hpp"
 
 #include <fcntl.h>
+#include <spdlog/spdlog.h>
 
 #include <stdexcept>
 
@@ -17,12 +18,16 @@ Ipc::~Ipc() {
 
   if (fd_ > 0) {
     // To fail the IPC header
-    write(fd_, "close-sway-ipc", 14);
+    if (write(fd_, "close-sway-ipc", 14) == -1) {
+      spdlog::error("Failed to close sway IPC");
+    }
     close(fd_);
     fd_ = -1;
   }
   if (fd_event_ > 0) {
-    write(fd_event_, "close-sway-ipc", 14);
+    if (write(fd_event_, "close-sway-ipc", 14) == -1) {
+      spdlog::error("Failed to close sway IPC event handler");
+    }
     close(fd_event_);
     fd_event_ = -1;
   }

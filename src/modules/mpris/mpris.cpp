@@ -6,6 +6,8 @@
 #include <sstream>
 #include <string>
 
+#include "util/scope_guard.hpp"
+
 extern "C" {
 #include <playerctl/playerctl.h>
 }
@@ -18,7 +20,7 @@ namespace waybar::modules::mpris {
 const std::string DEFAULT_FORMAT = "{player} ({status}): {dynamic}";
 
 Mpris::Mpris(const std::string& id, const Json::Value& config)
-    : ALabel(config, "mpris", id, DEFAULT_FORMAT, 5, false, true),
+    : ALabel(config, "mpris", id, DEFAULT_FORMAT, 0, false, true),
       tooltip_(DEFAULT_FORMAT),
       artist_len_(-1),
       album_len_(-1),
@@ -83,7 +85,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   // "dynamic-priority" has been kept for backward compatibility
   if (config_["dynamic-importance-order"].isArray() || config_["dynamic-priority"].isArray()) {
     dynamic_prio_.clear();
-    const auto& dynamic_priority = config_["dynamic-importance-order"].isArray() ? config_["dynamic-importance-order"] : config_["dynamic-priority"];
+    const auto& dynamic_priority = config_["dynamic-importance-order"].isArray()
+                                       ? config_["dynamic-importance-order"]
+                                       : config_["dynamic-priority"];
     for (const auto& value : dynamic_priority) {
       if (value.isString()) {
         dynamic_prio_.push_back(value.asString());
@@ -92,9 +96,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
   if (config_["dynamic-order"].isArray()) {
     dynamic_order_.clear();
-    for (auto it = config_["dynamic-order"].begin(); it != config_["dynamic-order"].end(); ++it) {
-      if (it->isString()) {
-        dynamic_order_.push_back(it->asString());
+    for (const auto& item : config_["dynamic-order"]) {
+      if (item.isString()) {
+        dynamic_order_.push_back(item.asString());
       }
     }
   }
@@ -106,15 +110,19 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     player_ = config_["player"].asString();
   }
   if (config_["ignored-players"].isArray()) {
-    for (auto it = config_["ignored-players"].begin(); it != config_["ignored-players"].end();
-         ++it) {
-      if (it->isString()) {
-        ignored_players_.push_back(it->asString());
+    for (const auto& item : config_["ignored-players"]) {
+      if (item.isString()) {
+        ignored_players_.push_back(item.asString());
       }
     }
   }
 
   GError* error = nullptr;
+  waybar::util::ScopeGuard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
   manager = playerctl_player_manager_new(&error);
   if (error) {
     throw std::runtime_error(fmt::format("unable to create MPRIS client: {}", error->message));
@@ -134,13 +142,11 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   } else {
     GList* players = playerctl_list_players(&error);
     if (error) {
-      auto e = fmt::format("unable to list players: {}", error->message);
-      g_error_free(error);
-      throw std::runtime_error(e);
+      throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
 
-    for (auto p = players; p != NULL; p = p->next) {
-      auto pn = static_cast<PlayerctlPlayerName*>(p->data);
+    for (auto* p = players; p != nullptr; p = p->next) {
+      auto* pn = static_cast<PlayerctlPlayerName*>(p->data);
       if (strcmp(pn->name, player_.c_str()) == 0) {
         player = playerctl_player_new_from_name(pn, &error);
         break;
@@ -173,17 +179,14 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 }
 
 Mpris::~Mpris() {
-  if (manager != NULL) g_object_unref(manager);
-  if (player != NULL) g_object_unref(player);
+  if (manager != nullptr) g_object_unref(manager);
+  if (player != nullptr) g_object_unref(player);
 }
 
 auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) -> std::string {
   if (icons.isObject()) {
-    if (icons[key].isString()) {
-      return icons[key].asString();
-    } else if (icons["default"].isString()) {
-      return icons["default"].asString();
-    }
+    if (icons[key].isString()) return icons[key].asString();
+    if (icons["default"].isString()) return icons["default"].asString();
   }
   return "";
 }
@@ -198,7 +201,7 @@ size_t utf8_truncate(std::string& str, size_t width = std::string::npos) {
 
   size_t total_width = 0;
 
-  for (gchar *data = str.data(), *end = data + str.size(); data;) {
+  for (gchar *data = str.data(), *end = data + str.size(); data != nullptr;) {
     gunichar c = g_utf8_get_char_validated(data, end - data);
     if (c == -1U || c == -2U) {
       // invalid unicode, treat string as ascii
@@ -262,7 +265,7 @@ auto Mpris::getLengthStr(const PlayerInfo& info, bool truncated) -> std::string 
     auto length = info.length.value();
     return (truncated && length.substr(0, 3) == "00:") ? length.substr(3) : length;
   }
-  return std::string();
+  return {};
 }
 
 auto Mpris::getPositionStr(const PlayerInfo& info, bool truncated) -> std::string {
@@ -270,7 +273,7 @@ auto Mpris::getPositionStr(const PlayerInfo& info, bool truncated) -> std::strin
     auto position = info.position.value();
     return (truncated && position.substr(0, 3) == "00:") ? position.substr(3) : position;
   }
-  return std::string();
+  return {};
 }
 
 auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> std::string {
@@ -299,9 +302,9 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
                                              "position") != dynamic_order_.end());
 
   if (truncated && dynamic_len_ >= 0) {
-    //Since the first element doesn't present a separator and we don't know a priori which one
-    //it will be, we add a "virtual separatorLen" to the dynamicLen, since we are adding the
-    //separatorLen to all the other lengths.
+    // Since the first element doesn't present a separator and we don't know a priori which one
+    // it will be, we add a "virtual separatorLen" to the dynamicLen, since we are adding the
+    // separatorLen to all the other lengths.
     size_t separatorLen = utf8_width(dynamic_separator_);
     size_t dynamicLen = dynamic_len_ + separatorLen;
     if (showArtist) artistLen += separatorLen;
@@ -312,33 +315,33 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
 
     size_t totalLen = 0;
 
-    for (auto it = dynamic_prio_.begin(); it != dynamic_prio_.end(); ++it) {
-      if (*it == "artist") {
+    for (const auto& item : dynamic_prio_) {
+      if (item == "artist") {
         if (totalLen + artistLen > dynamicLen) {
           showArtist = false;
         } else if (showArtist) {
           totalLen += artistLen;
         }
-      } else if (*it == "album") {
+      } else if (item == "album") {
         if (totalLen + albumLen > dynamicLen) {
           showAlbum = false;
         } else if (showAlbum) {
           totalLen += albumLen;
         }
-      } else if (*it == "title") {
+      } else if (item == "title") {
         if (totalLen + titleLen > dynamicLen) {
           showTitle = false;
         } else if (showTitle) {
           totalLen += titleLen;
         }
-      } else if (*it == "length") {
+      } else if (item == "length") {
         if (totalLen + lengthLen > dynamicLen) {
           showLength = false;
         } else if (showLength) {
           totalLen += lengthLen;
           posLen = std::max((size_t)2, posLen) - 2;
         }
-      } else if (*it == "position") {
+      } else if (item == "position") {
         if (totalLen + posLen > dynamicLen) {
           showPos = false;
         } else if (showPos) {
@@ -361,12 +364,9 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   std::string previousOrder = "";
 
   for (const std::string& order : dynamic_order_) {
-    if ((order == "artist" && showArtist) ||
-        (order == "album" && showAlbum) ||
+    if ((order == "artist" && showArtist) || (order == "album" && showAlbum) ||
         (order == "title" && showTitle)) {
-      if (previousShown &&
-          previousOrder != "length" &&
-          previousOrder != "position") {
+      if (previousShown && previousOrder != "length" && previousOrder != "position") {
         dynamic << dynamic_separator_;
       }
 
@@ -402,7 +402,7 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
 
 auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlayerName* player_name,
                                  gpointer data) -> void {
-  Mpris* mpris = static_cast<Mpris*>(data);
+  auto* mpris = static_cast<Mpris*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: name-appeared callback: {}", player_name->name);
@@ -411,8 +411,7 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
     return;
   }
 
-  GError* error = nullptr;
-  mpris->player = playerctl_player_new_from_name(player_name, &error);
+  mpris->player = playerctl_player_new_from_name(player_name, nullptr);
   g_object_connect(mpris->player, "signal::play", G_CALLBACK(onPlayerPlay), mpris, "signal::pause",
                    G_CALLBACK(onPlayerPause), mpris, "signal::stop", G_CALLBACK(onPlayerStop),
                    mpris, "signal::stop", G_CALLBACK(onPlayerStop), mpris, "signal::metadata",
@@ -423,19 +422,22 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
 
 auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlayerName* player_name,
                                  gpointer data) -> void {
-  Mpris* mpris = static_cast<Mpris*>(data);
+  auto* mpris = static_cast<Mpris*>(data);
   if (!mpris) return;
 
-  spdlog::debug("mpris: player-vanished callback: {}", player_name->name);
+  spdlog::debug("mpris: name-vanished callback: {}", player_name->name);
 
-  if (std::string(player_name->name) == mpris->player_) {
+  if (mpris->player_ == "playerctld") {
+    mpris->dp.emit();
+  } else if (mpris->player_ == player_name->name) {
     mpris->player = nullptr;
+    mpris->event_box_.set_visible(false);
     mpris->dp.emit();
   }
 }
 
 auto Mpris::onPlayerPlay(PlayerctlPlayer* player, gpointer data) -> void {
-  Mpris* mpris = static_cast<Mpris*>(data);
+  auto* mpris = static_cast<Mpris*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-play callback");
@@ -444,7 +446,7 @@ auto Mpris::onPlayerPlay(PlayerctlPlayer* player, gpointer data) -> void {
 }
 
 auto Mpris::onPlayerPause(PlayerctlPlayer* player, gpointer data) -> void {
-  Mpris* mpris = static_cast<Mpris*>(data);
+  auto* mpris = static_cast<Mpris*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-pause callback");
@@ -453,7 +455,7 @@ auto Mpris::onPlayerPause(PlayerctlPlayer* player, gpointer data) -> void {
 }
 
 auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
-  Mpris* mpris = static_cast<Mpris*>(data);
+  auto* mpris = static_cast<Mpris*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-stop callback");
@@ -465,7 +467,7 @@ auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
 }
 
 auto Mpris::onPlayerMetadata(PlayerctlPlayer* player, GVariant* metadata, gpointer data) -> void {
-  Mpris* mpris = static_cast<Mpris*>(data);
+  auto* mpris = static_cast<Mpris*>(data);
   if (!mpris) return;
 
   spdlog::debug("mpris: player-metadata callback");
@@ -479,6 +481,11 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   }
 
   GError* error = nullptr;
+  waybar::util::ScopeGuard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
 
   char* player_status = nullptr;
   auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
@@ -488,14 +495,13 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (player_name == "playerctld") {
     GList* players = playerctl_list_players(&error);
     if (error) {
-      auto e = fmt::format("unable to list players: {}", error->message);
-      g_error_free(error);
-      throw std::runtime_error(e);
+      throw std::runtime_error(fmt::format("unable to list players: {}", error->message));
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
     players = g_list_first(players);
     if (players) player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
+    else return std::nullopt; // no players found, hide the widget
   }
 
   if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
@@ -517,30 +523,30 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .length = std::nullopt,
   };
 
-  if (auto artist_ = playerctl_player_get_artist(player, &error)) {
+  if (auto* artist_ = playerctl_player_get_artist(player, &error)) {
     spdlog::debug("mpris[{}]: artist = {}", info.name, artist_);
     info.artist = artist_;
     g_free(artist_);
   }
   if (error) goto errorexit;
 
-  if (auto album_ = playerctl_player_get_album(player, &error)) {
+  if (auto* album_ = playerctl_player_get_album(player, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
     info.album = album_;
     g_free(album_);
   }
   if (error) goto errorexit;
 
-  if (auto title_ = playerctl_player_get_title(player, &error)) {
+  if (auto* title_ = playerctl_player_get_title(player, &error)) {
     spdlog::debug("mpris[{}]: title = {}", info.name, title_);
     info.title = title_;
     g_free(title_);
   }
   if (error) goto errorexit;
 
-  if (auto length_ = playerctl_player_print_metadata_prop(player, "mpris:length", &error)) {
+  if (auto* length_ = playerctl_player_print_metadata_prop(player, "mpris:length", &error)) {
     spdlog::debug("mpris[{}]: mpris:length = {}", info.name, length_);
-    std::chrono::microseconds len = std::chrono::microseconds(std::strtol(length_, nullptr, 10));
+    auto len = std::chrono::microseconds(std::strtol(length_, nullptr, 10));
     auto len_h = std::chrono::duration_cast<std::chrono::hours>(len);
     auto len_m = std::chrono::duration_cast<std::chrono::minutes>(len - len_h);
     auto len_s = std::chrono::duration_cast<std::chrono::seconds>(len - len_h - len_m);
@@ -557,7 +563,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       error = nullptr;
     } else {
       spdlog::debug("mpris[{}]: position = {}", info.name, position_);
-      std::chrono::microseconds len = std::chrono::microseconds(position_);
+      auto len = std::chrono::microseconds(position_);
       auto len_h = std::chrono::duration_cast<std::chrono::hours>(len);
       auto len_m = std::chrono::duration_cast<std::chrono::minutes>(len - len_h);
       auto len_s = std::chrono::duration_cast<std::chrono::seconds>(len - len_h - len_m);
@@ -568,13 +574,25 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   return info;
 
 errorexit:
-  spdlog::error("mpris[{}]: {}", info.name, error->message);
-  g_error_free(error);
+  std::string errorMsg = error->message;
+  //  When mpris checks for  active player sessions periodically(5 secs), NoActivePlayer error
+  //  message is
+  // thrown when there are no active sessions. This error message is spamming logs without having
+  // any value addition. Log the error only if the error we recceived is not NoActivePlayer.
+  if (errorMsg.rfind("GDBus.Error:com.github.altdesktop.playerctld.NoActivePlayer") ==
+      std::string::npos) {
+    spdlog::error("mpris[{}]: {}", info.name, error->message);
+  }
   return std::nullopt;
 }
 
 bool Mpris::handleToggle(GdkEventButton* const& e) {
   GError* error = nullptr;
+  waybar::util::ScopeGuard error_deleter([error]() {
+    if (error) {
+      g_error_free(error);
+    }
+  });
 
   auto info = getPlayerInfo();
   if (!info) return false;
@@ -588,13 +606,13 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
         playerctl_player_play_pause(player, &error);
         break;
       case 2:  // middle-click
-        if (config_["on-middle-click"].isString()) {
+        if (config_["on-click-middle"].isString()) {
           return ALabel::handleToggle(e);
         }
         playerctl_player_previous(player, &error);
         break;
       case 3:  // right-click
-        if (config_["on-right-click"].isString()) {
+        if (config_["on-click-right"].isString()) {
           return ALabel::handleToggle(e);
         }
         playerctl_player_next(player, &error);
@@ -604,7 +622,6 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
   if (error) {
     spdlog::error("mpris[{}]: error running builtin on-click action: {}", (*info).name,
                   error->message);
-    g_error_free(error);
     return false;
   }
   return true;

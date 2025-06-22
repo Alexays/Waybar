@@ -1,29 +1,35 @@
 name: freebsd
 
-on: [ push, pull_request ]
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-freebsd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  clang:
-    # Run actions in a FreeBSD VM on the macos-12 runner
+  build:
+    # Run actions in a FreeBSD VM on the ubuntu runner
     # https://github.com/actions/runner/issues/385 - for FreeBSD runner support
-    # https://github.com/actions/virtual-environments/issues/4060 - for lack of VirtualBox on MacOS 11 runners
-    runs-on: macos-12
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Test in FreeBSD VM
-      uses: vmactions/freebsd-vm@v0
-      with:
-        mem: 2048
-        usesh: true
-        prepare: |
-          export CPPFLAGS=-isystem/usr/local/include LDFLAGS=-L/usr/local/lib # sndio
-          sed -i '' 's/quarterly/latest/' /etc/pkg/FreeBSD.conf
-          pkg install -y git #  subprojects/date
-          pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
-            libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
-            pkgconf pulseaudio scdoc sndio spdlog wayland-protocols upower \
-            libinotify
-        run: |
-          meson build -Dman-pages=enabled
-          ninja -C build
-          meson test -C build --no-rebuild --print-errorlogs --suite waybar
+      - uses: actions/checkout@v3
+      - name: Test in FreeBSD VM
+        uses: cross-platform-actions/action@v0.25.0
+        timeout-minutes: 180
+        env:
+          CPPFLAGS: '-isystem/usr/local/include'
+          LDFLAGS:  '-L/usr/local/lib'
+        with:
+          operating_system: freebsd
+          version: "14.3"
+          environment_variables: CPPFLAGS LDFLAGS
+          sync_files: runner-to-vm
+          run: |
+            sudo pkg install -y git #  subprojects/date
+            sudo pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
+              libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
+              pkgconf pipewire pulseaudio scdoc sndio spdlog wayland-protocols upower \
+              libinotify
+            meson setup build -Dman-pages=enabled
+            ninja -C build
+            meson test -C build --no-rebuild --print-errorlogs --suite waybar

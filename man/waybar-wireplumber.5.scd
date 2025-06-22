@@ -19,6 +19,11 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	typeof: string ++
 	This format is used when the sound is muted.
 
+*node-type*: ++
+	typeof: string ++
+	default: *Audio/Sink* ++
+	The WirePlumber node type to attach to. Use *Audio/Source* to manage microphones etc.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: *true* ++
@@ -31,7 +36,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -43,16 +48,20 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *min-length*: ++
 	typeof: integer ++
-	The minimum length in characters the module should take up.
+	The minimum length in characters the module should accept.
 
 *align*: ++
 	typeof: float ++
-	The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *scroll-step*: ++
 	typeof: float ++
 	default: 1.0 ++
-	The speed in which to change the volume when scrolling.
+	The speed at which to change the volume when scrolling.
 
 *on-click*: ++
 	typeof: string ++
@@ -64,7 +73,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -83,6 +92,19 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	default: 100 ++
 	The maximum volume that can be set, in percentage.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{volume}*: Volume in percentage.
@@ -91,11 +113,33 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 # EXAMPLES
 
+## Basic:
+
 ```
 "wireplumber": {
-    "format": "{volume}%",
-    "format-muted": "",
-    "on-click": "helvum"
+	"format": "{volume}%",
+	"format-muted": "",
+	"on-click": "helvum"
+}
+```
+
+## Separate Sink and Source Widgets 
+
+```
+"wireplumber#sink": {
+    "format": "{volume}% {icon}",
+    "format-muted": "",
+    "format-icons": ["", "", ""],
+    "on-click": "helvum",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "scroll-step": 5
+},
+"wireplumber#source": {
+    "node-type": "Audio/Source",
+    "format": "{volume}% ",
+    "format-muted": "",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+    "scroll-step": 5
 }
 ```
 

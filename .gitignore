@@ -44,3 +44,9 @@ packagecache
 *.out
 *.app
 /.direnv/
+
+# Nix
+result
+result-*
+
+.ccls-cache

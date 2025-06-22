@@ -13,24 +13,29 @@ The *tags* module displays the current state of tags in dwl.
 Addressed by *dwl/tags*
 
 *num-tags*: ++
-    typeof: uint ++
-    default: 9 ++
-    The number of tags that should be displayed. Max 32.
+	typeof: uint ++
+	default: 9 ++
+	The number of tags that should be displayed. Max 32.
 
 *tag-labels*: ++
-    typeof: array ++
-    The label to display for each tag.
+	typeof: array ++
+	The label to display for each tag.
 
 *disable-click*: ++
-   typeof: bool ++
-   default: false ++
-   If set to false, you can left click to set focused tag. Right click to toggle tag focus. If set to true this behaviour is disabled.
+	typeof: bool ++
+	default: false ++
+	If set to false, you can left-click to set focused tag. Right-click to toggle tag focus. If set to true this behaviour is disabled.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # EXAMPLE
 
 ```
 "dwl/tags": {
-    "num-tags": 5
+	"num-tags": 5
 }
 ```
 

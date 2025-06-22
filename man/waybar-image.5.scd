@@ -13,24 +13,26 @@ The *image* module displays an image from a path.
 *path*: ++
 	typeof: string ++
 	The path to the image.
+
 *exec*: ++
 	typeof: string ++
-	The path to the script, which should return image path file
-	it will only execute if the path is not set
+	The path to the script, which should return image path file. ++
+	It will only execute if the path is not set
+
 *size*: ++
 	typeof: integer ++
 	The width/height to render the image.
 
 *interval*: ++
 	typeof: integer ++
-	The interval (in seconds) to re-render the image.
-	This is useful if the contents of *path* changes.
+	The interval (in seconds) to re-render the image. ++
+	This is useful if the contents of *path* changes. ++
 	If no *interval* is defined, the image will only be rendered once.
 
 *signal*: ++
 	typeof: integer ++
-	The signal number used to update the module.
-	This can be used instead of *interval* if the file changes irregularly.
+	The signal number used to update the module. ++
+	This can be used instead of *interval* if the file changes irregularly. ++
 	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*.
 
 *on-click*: ++
@@ -62,9 +64,14 @@ The *image* module displays an image from a path.
 	default: true ++
 	Option to enable tooltip on hover.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # SCRIPT OUTPUT
 
-Similar to the *custom* module, output values of the script is *newline* separated.
+Similar to the *custom* module, output values of the script are *newline* separated.
 The following is the output format:
 
 ```
@@ -85,3 +92,4 @@ $path\\n$tooltip
 # STYLE
 
 - *#image*
+- *#image.empty*

@@ -6,20 +6,37 @@ waybar - configuration file
 
 # DESCRIPTION
 
-The configuration uses the JSON file format and is named *config*.
+The configuration uses the JSONC file format and is named *config* or *config.jsonc*.
 
 Valid locations for this file are:
 
-- *$XDG_CONFIG_HOME/waybar/config*
-- *~/.config/waybar/config*
-- *~/waybar/config*
-- */etc/xdg/waybar/config*
-- *@sysconfdir@/xdg/waybar/config*
+- *$XDG_CONFIG_HOME/waybar/*
+- *~/.config/waybar/*
+- *~/waybar/*
+- */etc/xdg/waybar/*
+- *@sysconfdir@/xdg/waybar/*
 
-A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config
-Also a minimal example configuration can be found on the at the bottom of this man page.
+A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.jsonc
+Also, a minimal example configuration can be found at the bottom of this man page.
+
+The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(5)* for details.
 
 # BAR CONFIGURATION
+
+*expand-center* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-center to consume all left over space dynamically.
+
+*expand-left* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
+
+*expand-right* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
 
 *layer* ++
 	typeof: string ++
@@ -30,7 +47,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 *output* ++
 	typeof: string|array ++
 	Specifies on which screen this bar will be displayed. Exclamation mark(*!*) can be used to exclude specific output.
-	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
+	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model, and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
 	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
 
 *position* ++
@@ -66,9 +83,14 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	typeof: integer ++
 	Margins value without units.
 
+*no-center* ++
+	typeof: bool ++
+	default: false ++
+	Option to disable the center modules fully useful together with expand-\*.
+
 *spacing* ++
 	typeof: integer ++
-	Size of gaps in between of the different modules.
+	Size of gaps in between the different modules.
 
 *name* ++
 	typeof: string ++
@@ -89,7 +111,7 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	default: *press*
 	Defines the timing of modifier key to reset the bar visibility.
 	To reset the visibility of the bar with the press of the modifier key use *press*.
-	Use *release* to reset the visibility upon the release of the modifier key and only if no other action happened while the key was pressed. This prevents hiding the bar when the modifier is used to switch a workspace, change binding mode or start a keybinding.
+	Use *release* to reset the visibility upon the release of the modifier key and only if no other action happened while the key was pressed. This prevents hiding the bar when the modifier is used to switch a workspace, change binding mode, or start a keybinding.
 
 *exclusive* ++
 	typeof: bool ++
@@ -108,27 +130,26 @@ Also a minimal example configuration can be found on the at the bottom of this m
 	Option to pass any pointer events to the window under the bar.
 	Intended to be used with either *top* or *overlay* layers and without exclusive zone.
 
-*gtk-layer-shell* ++
-	typeof: bool ++
-	default: true ++
-	Option to disable the use of gtk-layer-shell for popups.
-	Only functional if compiled with gtk-layer-shell support.
-
 *ipc* ++
 	typeof: bool ++
 	default: false ++
 	Option to subscribe to the Sway IPC bar configuration and visibility events and control waybar with *swaymsg bar* commands. ++
-	Requires *bar_id* value from sway configuration to be either passed with the *-b* commandline argument or specified with the *id* option.
+	Requires *bar_id* value from sway configuration to be either passed with the *-b* command line argument or specified with the *id* option.
 
 *id* ++
 	typeof: string ++
-	*bar_id* for the Sway IPC. Use this if you need to override the value passed with the *-b bar_id* commandline argument for the specific bar instance.
+	*bar_id* for the Sway IPC. Use this if you need to override the value passed with the *-b bar_id* command line argument for the specific bar instance.
 
 *include* ++
 	typeof: string|array ++
 	Paths to additional configuration files.
 	Each file can contain a single object with any of the bar configuration options. In case of duplicate options, the first defined value takes precedence, i.e. including file -> first included file -> etc. Nested includes are permitted, but make sure to avoid circular imports.
 	For a multi-bar config, the include directive affects only current bar configuration object.
+
+*reload_style_on_change* ++
+	typeof: bool ++
+	default: *false* ++
+	Option to enable reloading the css style if a modification is detected on the style sheet file or any imported css files.
 
 # MODULE FORMAT
 
@@ -142,7 +163,7 @@ e.g.
 # MULTIPLE INSTANCES OF A MODULE
 
 If you want to have a second instance of a module, you can suffix it by a '#' and a custom name.
-For example if you want a second battery module, you can add *"battery#bat2"* to your modules.
+For example, if you want a second battery module, you can add *"battery#bat2"* to your modules.
 To configure the newly added module, you then also add a module configuration with the same name.
 
 This could then look something like this *(this is an incomplete example)*:
@@ -179,6 +200,19 @@ A minimal *config* file could look like this:
 	}
 }
 ```
+
+# SIGNALS
+
+Waybar accepts the following signals:
+
+*SIGUSR1*
+	Toggles the bar visibility (hides if shown, shows if hidden)
+*SIGUSR2*
+	Reloads (resets) the bar
+*SIGINT*
+	Quits the bar
+
+For example, to toggle the bar programmatically, you can invoke `killall -SIGUSR1 waybar`.
 
 # MULTI OUTPUT CONFIGURATION
 
@@ -236,11 +270,22 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 }
 ```
 
-Valid options for the "rotate" property are: 0, 90, 180 and 270.
+Valid options for the "rotate" property are: 0, 90, 180, and 270.
+
+## Swapping icon and label
+
+If a module displays both a label and an icon, it might be desirable to swap them (for instance, for panels on the left or right of the screen, or for user adopting a right-to-left script). This can be achieved with the "swap-icon-label" property, taking a boolean. Example:
+```
+{
+	"sway/window": {
+		"swap-icon-label": true
+	}
+}
+```
 
 ## Grouping modules
 
-Module groups allow stacking modules in the direction orthogonal to the bar direction. When the bar is positioned on the top or bottom of the screen, modules in a group are stacked vertically. Likewise, when positioned on the left or right, modules in a group are stacked horizontally.
+Module groups allow stacking modules in any direction. By default, when the bar is positioned on the top or bottom of the screen, modules in a group are stacked vertically. Likewise, when positioned on the left or right, modules in a group are stacked horizontally. This can be changed with the "orientation" property.
 
 A module group is defined by specifying a module named "group/some-group-name". The group must also be configured with a list of contained modules. Example:
 
@@ -263,38 +308,97 @@ A module group is defined by specifying a module named "group/some-group-name". 
 
 Valid options for the (optional) "orientation" property are: "horizontal", "vertical", "inherit", and "orthogonal" (default).
 
+## Group Drawers
+
+A group may hide all but one element, showing them only on mouse hover. In order to configure this, you can use the `drawer` property, whose value is an object with the following properties:
+
+*transition-duration*: ++
+	typeof: integer ++
+	default: 500 ++
+	Defines the duration of the transition animation in milliseconds.
+
+*children-class*: ++
+	typeof: string ++
+	default: "hidden" ++
+	Defines the CSS class to be applied to the hidden elements.
+
+*click-to-reveal*: ++
+	typeof: bool ++
+	default: false ++
+	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
+
+*transition-left-to-right*: ++
+	typeof: bool ++
+	default: true ++
+	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
+	When the bar is vertical, it reads as top-to-bottom.
+
+```
+"group/power": {
+    "orientation": "inherit",
+    "drawer": {
+        "transition-duration": 500,
+        "children-class": "not-power",
+        "transition-left-to-right": false,
+    },
+    "modules": [
+        "custom/power", // First element is the "group leader" and won't ever be hidden
+        "custom/quit",
+        "custom/lock",
+        "custom/reboot",
+    ]
+},
+```
+
 # SUPPORTED MODULES
 
 - *waybar-backlight(5)*
 - *waybar-battery(5)*
 - *waybar-bluetooth(5)*
+- *waybar-cava(5)*
 - *waybar-clock(5)*
 - *waybar-cpu(5)*
 - *waybar-custom(5)*
 - *waybar-disk(5)*
+- *waybar-dwl-tags(5)*
+- *waybar-dwl-window(5)*
+- *waybar-gamemode(5)*
+- *waybar-hyprland-language(5)*
+- *waybar-hyprland-submap(5)*
+- *waybar-hyprland-window(5)*
+- *waybar-hyprland-workspaces(5)*
+- *waybar-niri-language(5)*
+- *waybar-niri-window(5)*
+- *waybar-niri-workspaces(5)*
 - *waybar-idle-inhibitor(5)*
 - *waybar-image(5)*
+- *waybar-inhibitor(5)*
+- *waybar-jack(5)*
 - *waybar-keyboard-state(5)*
 - *waybar-memory(5)*
 - *waybar-mpd(5)*
 - *waybar-mpris(5)*
 - *waybar-network(5)*
 - *waybar-pulseaudio(5)*
+- *waybar-river-layout(5)*
 - *waybar-river-mode(5)*
 - *waybar-river-tags(5)*
 - *waybar-river-window(5)*
-- *waybar-river-layout(5)*
+- *waybar-sndio(5)*
 - *waybar-states(5)*
+- *waybar-sway-language(5)*
 - *waybar-sway-mode(5)*
 - *waybar-sway-scratchpad(5)*
 - *waybar-sway-window(5)*
 - *waybar-sway-workspaces(5)*
+- *waybar-temperature(5)*
+- *waybar-tray(5)*
+- *waybar-upower(5)*
 - *waybar-wireplumber(5)*
 - *waybar-wlr-taskbar(5)*
 - *waybar-wlr-workspaces(5)*
-- *waybar-temperature(5)*
-- *waybar-tray(5)*
 
 # SEE ALSO
 
 *sway-output(5)*
+*waybar-styles(5)"
