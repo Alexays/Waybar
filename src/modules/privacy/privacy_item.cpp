@@ -96,7 +96,6 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 }
 
 void PrivacyItem::update_tooltip() {
-  spdlog::trace("update privacy tooltip");
   // Removes all old nodes
   for (auto *child : tooltip_window.get_children()) {
     tooltip_window.remove(*child);
