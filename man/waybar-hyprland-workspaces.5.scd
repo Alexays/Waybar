@@ -81,6 +81,7 @@ Addressed by *hyprland/workspaces*
 	If set to number, workspaces will sort by number.
 	If set to name, workspaces will sort by name.
 	If set to id, workspaces will sort by id.
+	If set to special-centered, workspaces will sort by default with special workspaces in the center.
 	If none of those, workspaces will sort with default behavior.
 
 *expand*: ++

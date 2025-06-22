@@ -771,7 +771,45 @@ void Workspaces::setCurrentMonitorId() {
   }
 }
 
+void Workspaces::sortSpecialCentered() {
+  std::vector<std::unique_ptr<Workspace>> specialWorkspaces;
+  std::vector<std::unique_ptr<Workspace>> hiddenWorkspaces;
+  std::vector<std::unique_ptr<Workspace>> normalWorkspaces;
+
+  for (auto &workspace : m_workspaces) {
+    if (workspace->isSpecial()) {
+      specialWorkspaces.push_back(std::move(workspace));
+    } else {
+      if (workspace->button().is_visible()) {
+        normalWorkspaces.push_back(std::move(workspace));
+      } else {
+        hiddenWorkspaces.push_back(std::move(workspace));
+      }
+    }
+  }
+  m_workspaces.clear();
+
+  size_t center = normalWorkspaces.size() / 2;
+
+  m_workspaces.insert(m_workspaces.end(),
+                      std::make_move_iterator(normalWorkspaces.begin()),
+                      std::make_move_iterator(normalWorkspaces.begin() + center));
+
+  m_workspaces.insert(m_workspaces.end(),
+                      std::make_move_iterator(specialWorkspaces.begin()),
+                      std::make_move_iterator(specialWorkspaces.end()));
+
+  m_workspaces.insert(m_workspaces.end(),
+                      std::make_move_iterator(normalWorkspaces.begin() + center),
+                      std::make_move_iterator(normalWorkspaces.end()));
+  
+  m_workspaces.insert(m_workspaces.end(),
+                      std::make_move_iterator(hiddenWorkspaces.begin()),
+                      std::make_move_iterator(hiddenWorkspaces.end()));
+}
+
 void Workspaces::sortWorkspaces() {
+  
   std::ranges::sort(  //
       m_workspaces, [&](std::unique_ptr<Workspace> &a, std::unique_ptr<Workspace> &b) {
         // Helper comparisons
@@ -829,6 +867,9 @@ void Workspaces::sortWorkspaces() {
         // Return a default value if none of the cases match.
         return isNameLess;  // You can adjust this to your specific needs.
       });
+  if (m_sortBy == SortMethod::SPECIAL_CENTERED) {
+    this->sortSpecialCentered();
+  }
 
   for (size_t i = 0; i < m_workspaces.size(); ++i) {
     m_box.reorder_child(m_workspaces[i]->button(), i);
