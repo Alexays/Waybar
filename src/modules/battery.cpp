@@ -1,8 +1,9 @@
 #include "modules/battery.hpp"
-#include "util/command.hpp"
 
 #include <algorithm>
 #include <cctype>
+
+#include "util/command.hpp"
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
@@ -680,7 +681,7 @@ auto waybar::modules::Battery::update() -> void {
   auto status_pretty = status;
   // Transform to lowercase  and replace space with dash
   std::ranges::transform(status.begin(), status.end(), status.begin(),
-                 [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
+                         [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
   auto format = format_;
   auto state = getState(capacity, true);
   processEvents(state, status, capacity);
@@ -771,17 +772,15 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   }
 }
 
-void waybar::modules::Battery::processEvents(std::string& state, std::string& status, uint8_t capacity) {
+void waybar::modules::Battery::processEvents(std::string& state, std::string& status,
+                                             uint8_t capacity) {
   // There are no events specified, skip
   auto events = config_["events"];
   if (!events.isObject() || events.empty()) {
     return;
   }
-  std::string event_name = fmt::format(
-    "on-{}-{}",
-    status == "discharging" ? status : "charging",
-    state.empty() ? std::to_string(capacity) : state
-  );
+  std::string event_name = fmt::format("on-{}-{}", status == "discharging" ? status : "charging",
+                                       state.empty() ? std::to_string(capacity) : state);
   if (last_event_ != event_name) {
     spdlog::debug("battery: triggering event {}", event_name);
     if (events[event_name].isString()) {
