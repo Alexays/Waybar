@@ -545,7 +545,6 @@ auto waybar::Bar::setupWidgets() -> void {
     if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
       box_.set_center_widget(center_);
     } else {
-      spdlog::error("No fixed center_");
       box_.pack_start(center_, true, expand_center);
     }
   }
@@ -569,13 +568,13 @@ auto waybar::Bar::setupWidgets() -> void {
 
   if (!no_center) {
     for (auto const& module : modules_center_) {
-      center_.pack_start(*module, false, false);
+      center_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
     }
   }
 
   std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
-    right_.pack_end(*module, false, false);
+    right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
   }
 }
 
