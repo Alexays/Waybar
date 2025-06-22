@@ -500,8 +500,10 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
     players = g_list_first(players);
-    if (players) player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
-    else return std::nullopt; // no players found, hide the widget
+    if (players)
+      player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
+    else
+      return std::nullopt;  // no players found, hide the widget
   }
 
   if (std::any_of(ignored_players_.begin(), ignored_players_.end(),

@@ -68,7 +68,7 @@ void Submap::onEvent(const std::string& ev) {
     return;
   }
 
-  auto submapName = ev.substr(ev.find_first_of('>') + 2 );
+  auto submapName = ev.substr(ev.find_first_of('>') + 2);
 
   if (!submap_.empty()) {
     label_.get_style_context()->remove_class(submap_);

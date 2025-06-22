@@ -22,8 +22,7 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
 
   if (config_["rotate"].isUInt()) {
     rot = config["rotate"].asUInt() % 360;
-    if ((rot % 90) != 00)
-      rot = 0;
+    if ((rot % 90) != 00) rot = 0;
     rot /= 90;
   }
 
@@ -42,7 +41,7 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
   else
     swap_icon_label = config_["swap-icon-label"].asBool();
 
-  if ( (rot == 0 || rot == 3) ^ swap_icon_label ) {
+  if ((rot == 0 || rot == 3) ^ swap_icon_label) {
     box_.add(image_);
     box_.add(label_);
   } else {
