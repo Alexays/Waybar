@@ -171,7 +171,7 @@ Addressed by *network*
 
 *{signaldBm}*: Signal strength of the wireless network in dBm.
 
-*{frequency}*: Frequency of the wireless network in MHz.
+*{frequency}*: Frequency of the wireless network in GHz.
 
 *{bandwidthUpBits}*: Instant up speed in bits/seconds.
 

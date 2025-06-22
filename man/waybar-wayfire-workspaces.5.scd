@@ -1,21 +1,16 @@
-waybar-niri-workspaces(5)
+waybar-wayfire-workspaces(5)
 
 # NAME
 
-waybar - niri workspaces module
+waybar - wayfire workspaces module
 
 # DESCRIPTION
 
-The *workspaces* module displays the currently used workspaces in niri.
+The *workspaces* module displays the currently used workspaces in wayfire.
 
 # CONFIGURATION
 
-Addressed by *niri/workspaces*
-
-*all-outputs*: ++
-	typeof: bool ++
-	default: false ++
-	If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
+Addressed by *wayfire/workspaces*
 
 *format*: ++
 	typeof: string ++
@@ -52,11 +47,6 @@ Addressed by *niri/workspaces*
 
 # FORMAT REPLACEMENTS
 
-*{value}*: Name of the workspace, or index for unnamed workspaces,
-as defined by niri.
-
-*{name}*: Name of the workspace for named workspaces.
-
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{index}*: Index of the workspace on its output.
@@ -69,24 +59,19 @@ Additional to workspace name matching, the following *format-icons* can be set.
 
 - *default*: Will be shown, when no string matches are found.
 - *focused*: Will be shown, when workspace is focused.
-- *active*: Will be shown, when workspace is active on its output.
-- *urgent*: Will be shown, when workspace has urgent windows.
-- *empty*: Will be shown, when workspace is empty.
 
 # EXAMPLES
 
 ```
-"niri/workspaces": {
+"wayfire/workspaces": {
 	"format": "{icon}",
 	"format-icons": {
-		// Named workspaces
-		// (you need to configure them in niri)
-		"browser": "",
-		"discord": "",
-		"chat": "<b></b>",
-
-		// Icons by state
-		"active": "",
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"focused": "",
 		"default": ""
 	}
 }
@@ -96,10 +81,6 @@ Additional to workspace name matching, the following *format-icons* can be set.
 
 - *#workspaces button*
 - *#workspaces button.focused*: The single focused workspace.
-- *#workspaces button.active*: The workspace is active (visible) on its output.
-- *#workspaces button.urgent*: The workspace has one or more urgent windows.
 - *#workspaces button.empty*: The workspace is empty.
 - *#workspaces button.current_output*: The workspace is from the same output as
   the bar that it is displayed on.
-- *#workspaces button#niri-workspace-<name>*: Workspaces named this, or index
-  for unnamed workspaces.

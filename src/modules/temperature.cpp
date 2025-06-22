@@ -45,7 +45,7 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }
 
-  // check if file_path_ can be used to retrive the temperature
+  // check if file_path_ can be used to retrieve the temperature
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);

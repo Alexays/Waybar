@@ -37,6 +37,7 @@ class Workspaces : public AModule, public EventHandler {
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
+  auto persistentOnly() const -> bool { return m_persistentOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
@@ -50,6 +51,7 @@ class Workspaces : public AModule, public EventHandler {
  private:
   void onEvent(const std::string& e) override;
   void updateWindowCount();
+  void sortSpecialCentered();
   void sortWorkspaces();
   void createWorkspace(Json::Value const& workspace_data,
                        Json::Value const& clients_data = Json::Value::nullRef);
@@ -122,20 +124,22 @@ class Workspaces : public AModule, public EventHandler {
   bool m_showSpecial = false;
   bool m_activeOnly = false;
   bool m_specialVisibleOnly = false;
+  bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
   // This happens when the user has multiple monitors (hence, multiple bars)
-  // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
+  // and doesn't share windows across bars (a.k.a `all-outputs` = false)
   std::map<WindowAddress, std::string> m_orphanWindowMap;
 
-  enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
+  enum class SortMethod { ID, NAME, NUMBER, SPECIAL_CENTERED, DEFAULT };
   util::EnumParser<SortMethod> m_enumParser;
   SortMethod m_sortBy = SortMethod::DEFAULT;
   std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
                                                  {"NAME", SortMethod::NAME},
                                                  {"NUMBER", SortMethod::NUMBER},
+                                                 {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
   std::string m_format;
