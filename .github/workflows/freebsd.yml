@@ -21,7 +21,7 @@ jobs:
           LDFLAGS:  '-L/usr/local/lib'
         with:
           operating_system: freebsd
-          version: "14.1"
+          version: "14.3"
           environment_variables: CPPFLAGS LDFLAGS
           sync_files: runner-to-vm
           run: |
