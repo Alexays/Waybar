@@ -30,8 +30,12 @@ in
   # nixpkgs checks version, no need when building locally
   nativeInstallCheckInputs = [ ];
 
-  buildInputs = (builtins.filter (p: p.pname != "wireplumber") oldAttrs.buildInputs) ++ [
+  buildInputs = (builtins.filter (p:
+    p.pname != "wireplumber" &&
+    p.pname != "gps"
+  ) oldAttrs.buildInputs) ++ [
     pkgs.wireplumber
+    pkgs.gpsd
   ];
 
   postUnpack = ''

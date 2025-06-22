@@ -46,4 +46,5 @@ class IPC {
 };
 
 inline bool modulesReady = false;
+inline std::unique_ptr<IPC> gIPC;
 };  // namespace waybar::modules::hyprland
