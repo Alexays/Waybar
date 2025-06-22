@@ -35,8 +35,7 @@ waybar::modules::Custom::~Custom() {
 
 void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
-    for( int i : this->pid_children_ )
-    {
+    for (int i: this->pid_children_) {
       int status;
       waitpid(i, &status, 0);
     }
