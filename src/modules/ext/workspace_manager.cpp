@@ -281,10 +281,10 @@ bool WorkspaceGroup::has_workspace(const ext_workspace_handle_v1 *workspace) {
 }
 
 void WorkspaceGroup::handle_capabilities(uint32_t capabilities) {
-  spdlog::debug("[ext/workspaces]: Capabilities for workspace group {}:", id_);
+  spdlog::debug("[ext/workspaces]:     Capabilities for workspace group {}:", id_);
   if ((capabilities & EXT_WORKSPACE_GROUP_HANDLE_V1_GROUP_CAPABILITIES_CREATE_WORKSPACE) ==
       capabilities) {
-    spdlog::debug("[ext/workspaces]:     create-workspace");
+    spdlog::debug("[ext/workspaces]:     - create-workspace");
   }
 }
 
@@ -413,12 +413,14 @@ void Workspace::update() {
 }
 
 void Workspace::handle_id(const std::string &id) {
+  spdlog::debug("[ext/workspaces]:     ID for workspace {}: {}", id_, id);
   workspace_id_ = id;
   needs_updating_ = true;
   workspace_manager_.set_needs_sorting();
 }
 
 void Workspace::handle_name(const std::string &name) {
+  spdlog::debug("[ext/workspaces]:     Name for workspace {}: {}", id_, name);
   name_ = name;
   needs_updating_ = true;
   workspace_manager_.set_needs_sorting();
@@ -436,18 +438,18 @@ void Workspace::handle_state(uint32_t state) {
 }
 
 void Workspace::handle_capabilities(uint32_t capabilities) {
-  spdlog::debug("[ext/workspaces]: Capabilities for workspace {}:", id_);
+  spdlog::debug("[ext/workspaces]:     Capabilities for workspace {}:", id_);
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ACTIVATE) == capabilities) {
-    spdlog::debug("[ext/workspaces]:     activate");
+    spdlog::debug("[ext/workspaces]:     - activate");
   }
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_DEACTIVATE) == capabilities) {
-    spdlog::debug("[ext/workspaces]:     deactivate");
+    spdlog::debug("[ext/workspaces]:     - deactivate");
   }
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_REMOVE) == capabilities) {
-    spdlog::debug("[ext/workspaces]:     remove");
+    spdlog::debug("[ext/workspaces]:     - remove");
   }
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ASSIGN) == capabilities) {
-    spdlog::debug("[ext/workspaces]:     assign");
+    spdlog::debug("[ext/workspaces]:     - assign");
   }
   needs_updating_ = true;
 }
