@@ -10,7 +10,6 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "util/SafeSignal.hpp"
-#include "util/backend_common.hpp"
 
 std::mutex reap_mtx;
 std::list<pid_t> reap;
