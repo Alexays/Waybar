@@ -25,6 +25,10 @@ Glib::RefPtr<Gdk::Pixbuf> DefaultGtkIconThemeWrapper::load_icon(
 
   auto icon_info = default_theme->lookup_icon(name, tmp_size, flags);
 
+  if (icon_info == nullptr) {
+    return default_theme->load_icon(name, tmp_size, flags);
+  }
+
   if (style.get() == nullptr) {
     return icon_info.load_icon();
   }
