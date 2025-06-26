@@ -280,7 +280,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 #endif
 
   waybar::util::EnumParser<util::KillSignalAction> m_signalActionEnumParser;
-  const auto& configSigusr1 = config["on_sigusr1"];
+  const auto& configSigusr1 = config["on-sigusr1"];
   if (configSigusr1.isString()) {
     auto strSigusr1 = configSigusr1.asString();
     try {
@@ -289,10 +289,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     } catch (const std::invalid_argument& e) {
       onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
       spdlog::warn(
-          "Invalid string representation for on_sigusr1. Falling back to default mode (toggle).");
+          "Invalid string representation for on-sigusr1. Falling back to default mode (toggle).");
     }
   }
-  const auto& configSigusr2 = config["on_sigusr2"];
+  const auto& configSigusr2 = config["on-sigusr2"];
   if (configSigusr2.isString()) {
     auto strSigusr2 = configSigusr2.asString();
     try {
@@ -301,7 +301,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     } catch (const std::invalid_argument& e) {
       onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
       spdlog::warn(
-          "Invalid string representation for on_sigusr2. Falling back to default mode (reload).");
+          "Invalid string representation for on-sigusr2. Falling back to default mode (reload).");
     }
   }
 
