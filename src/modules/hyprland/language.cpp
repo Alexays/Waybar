@@ -70,8 +70,14 @@ void Language::onEvent(const std::string& ev) {
   // Last comma before variants parenthesis, eg:
   // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
   // with dead keys)
-  std::string beforParenthesis(begin(ev), begin(ev) + ev.find_last_of('('));
-  auto layoutName = ev.substr(beforParenthesis.find_last_of(',') + 1);
+  std::string beforeParenthesis;
+  auto parenthesisPos = ev.find_last_of('(');
+  if (parenthesisPos == std::string::npos) {
+    beforeParenthesis = ev;
+  } else {
+    beforeParenthesis = std::string(begin(ev), begin(ev) + parenthesisPos);
+  }
+  auto layoutName = ev.substr(beforeParenthesis.find_last_of(',') + 1);
 
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
