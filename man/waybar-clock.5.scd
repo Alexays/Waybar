@@ -126,6 +126,12 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ 1
 :[ Value to scroll months/years forward/backward. Can be negative. Is
    configured under *on-scroll* option
+|[ *iso8601*
+:[ bool
+:[ false
+:[ When enabled, the calendar follows the ISO 8601 standard: weeks begin on
+   Monday, and the first week of the year is numbered 1. The default week format is
+   '{:%V}'.
 
 3. Addressed by *clock: calendar: format*
 [- *Option*
