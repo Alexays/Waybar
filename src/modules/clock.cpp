@@ -74,8 +74,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
             cfgMode);
     }
 
-    if (config_[kCldPlaceholder]["iso"].isBool()) {
-      iso8601Calendar_ = config_[kCldPlaceholder]["iso"].asBool();
+    if (config_[kCldPlaceholder]["iso8601"].isBool()) {
+      iso8601Calendar_ = config_[kCldPlaceholder]["iso8601"].asBool();
     }
 
     if (config_[kCldPlaceholder]["weeks-pos"].isString()) {
