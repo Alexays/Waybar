@@ -271,11 +271,12 @@ void waybar::modules::Network::worker() {
 }
 
 const std::string waybar::modules::Network::getNetworkState() const {
+  if (ifid_ == -1 || !carrier_) {
 #ifdef WANT_RFKILL
-  if (rfkill_.getState() && ifid_ == -1) return "disabled";
+    if (rfkill_.getState()) return "disabled";
 #endif
-  if (ifid_ == -1) return "disconnected";
-  if (!carrier_) return "disconnected";
+    return "disconnected";
+  }
   if (ipaddr_.empty() && ipaddr6_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";
