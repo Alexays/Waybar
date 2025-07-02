@@ -145,6 +145,10 @@ waybar::modules::Network::~Network() {
     nl_close(sock_);
     nl_socket_free(sock_);
   }
+  if (station_sock_ != nullptr) {
+    nl_close(station_sock_);
+    nl_socket_free(station_sock_);
+  }
 }
 
 void waybar::modules::Network::createEventSocket() {
@@ -203,6 +207,16 @@ void waybar::modules::Network::createInfoSocket() {
   if (nl80211_id_ < 0) {
     spdlog::warn("Can't resolve nl80211 interface");
   }
+
+  // Create and configure the station_sock_ for NL80211_CMD_GET_STATION
+  station_sock_ = nl_socket_alloc();
+  if (genl_connect(station_sock_) != 0) {
+    throw std::runtime_error("Can't connect to station netlink socket");
+  }
+  if (nl_socket_modify_cb(station_sock_, NL_CB_VALID, NL_CB_CUSTOM, handleStationGet, this) < 0) {
+    throw std::runtime_error("Can't set station callback");
+  }
+  // nl80211_id_ is already resolved from the sock_ setup
 }
 
 void waybar::modules::Network::worker() {
@@ -353,7 +367,9 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")),
+      fmt::arg("rxBitrate", pow_format(rx_bitrate_, "b/s")),
+      fmt::arg("txBitrate", pow_format(tx_bitrate_, "b/s")));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -386,7 +402,9 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
           fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")),
+          fmt::arg("rxBitrate", pow_format(rx_bitrate_, "b/s")),
+          fmt::arg("txBitrate", pow_format(tx_bitrate_, "b/s")));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -892,6 +910,51 @@ int waybar::modules::Network::handleScan(struct nl_msg* msg, void* data) {
   return NL_OK;
 }
 
+int waybar::modules::Network::handleStationGet(struct nl_msg* msg, void* data) {
+  auto net = static_cast<waybar::modules::Network*>(data);
+  auto gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
+  struct nlattr* tb[NL80211_ATTR_MAX + 1];
+
+  if (nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0),
+                nullptr) < 0) {
+    return NL_SKIP;
+  }
+
+  if (tb[NL80211_ATTR_STA_INFO] == nullptr) {
+    return NL_SKIP;
+  }
+
+  struct nlattr* sinfo[NL80211_STA_INFO_MAX + 1];
+  if (nla_parse_nested(sinfo, NL80211_STA_INFO_MAX, tb[NL80211_ATTR_STA_INFO], nullptr) != 0) {
+    return NL_SKIP;
+  }
+
+  if (sinfo[NL80211_STA_INFO_TX_BITRATE] != nullptr) {
+    struct nlattr* tx_br_info[NL80211_RATE_INFO_MAX + 1];
+    if (nla_parse_nested(tx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_TX_BITRATE],
+                         nullptr) == 0) {
+      if (tx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
+        net->tx_bitrate_ = nla_get_u32(tx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
+      } else if (tx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
+        net->tx_bitrate_ = nla_get_u16(tx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
+      }
+    }
+  }
+
+  if (sinfo[NL80211_STA_INFO_RX_BITRATE] != nullptr) {
+    struct nlattr* rx_br_info[NL80211_RATE_INFO_MAX + 1];
+    if (nla_parse_nested(rx_br_info, NL80211_RATE_INFO_MAX, sinfo[NL80211_STA_INFO_RX_BITRATE],
+                         nullptr) == 0) {
+      if (rx_br_info[NL80211_RATE_INFO_BITRATE32] != nullptr) {
+        net->rx_bitrate_ = nla_get_u32(rx_br_info[NL80211_RATE_INFO_BITRATE32]) * pow(10, 5);
+      } else if (rx_br_info[NL80211_RATE_INFO_BITRATE] != nullptr) {
+        net->rx_bitrate_ = nla_get_u16(rx_br_info[NL80211_RATE_INFO_BITRATE]) * pow(10, 5);
+      }
+    }
+  }
+  return NL_OK;
+}
+
 void waybar::modules::Network::parseEssid(struct nlattr** bss) {
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
     auto ies = static_cast<char*>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
@@ -991,5 +1054,38 @@ auto waybar::modules::Network::getInfo() -> void {
     nlmsg_free(nl_msg);
     return;
   }
-  nl_send_sync(sock_, nl_msg);
+  int err = nl_send_sync(sock_, nl_msg);
+  if (err < 0) {
+    spdlog::warn("nl80211: nl_send_sync get_scan error {}", err);
+    // Proceeding here as get_scan might not be essential if we already have ifid_
+  }
+
+  // If connected to an AP, try to get station data for bitrate
+  if (ifid_ > 0 && !bssid_.empty() && nl80211_id_ >= 0) {
+    nl_msg = nlmsg_alloc();
+    if (nl_msg == nullptr) {
+      return;
+    }
+
+    // Convert BSSID string to uint8_t array
+    uint8_t bssid_mac[ETH_ALEN];
+    if (sscanf(bssid_.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &bssid_mac[0], &bssid_mac[1],
+               &bssid_mac[2], &bssid_mac[3], &bssid_mac[4], &bssid_mac[5]) == ETH_ALEN) {
+      if (genlmsg_put(nl_msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id_, 0, 0, /* No DUMP flag */
+                      NL80211_CMD_GET_STATION, 0) == nullptr ||
+          nla_put_u32(nl_msg, NL80211_ATTR_IFINDEX, ifid_) < 0 ||
+          nla_put(nl_msg, NL80211_ATTR_MAC, ETH_ALEN, bssid_mac) < 0) {
+        nlmsg_free(nl_msg);
+        return;
+      }
+      // Use station_sock_ for NL80211_CMD_GET_STATION
+      err = nl_send_sync(station_sock_, nl_msg);
+      if (err < 0) {
+        spdlog::warn("nl80211: nl_send_sync get_station error {}", err);
+      }
+    } else {
+      spdlog::warn("nl80211: Failed to parse BSSID string: {}", bssid_);
+      nlmsg_free(nl_msg);
+    }
+  }
 }
