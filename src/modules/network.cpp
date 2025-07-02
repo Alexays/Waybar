@@ -494,6 +494,8 @@ void waybar::modules::Network::clearIface() {
   signal_strength_ = 0;
   signal_strength_app_.clear();
   frequency_ = 0.0;
+  rx_bitrate_ = 0;
+  tx_bitrate_ = 0;
 }
 
 int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
