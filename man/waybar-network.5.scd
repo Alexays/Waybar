@@ -162,7 +162,7 @@ Addressed by *network*
 
 *{netmask}*: The subnetmask corresponding to the IP(V4).
 
-*{netmask6}*: The subnetmask corresponding to the IP(V6). 
+*{netmask6}*: The subnetmask corresponding to the IP(V6).
 
 *{cidr}*: The subnetmask corresponding to the IP(V4) in CIDR notation.
 
