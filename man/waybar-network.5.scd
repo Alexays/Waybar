@@ -16,6 +16,11 @@ Addressed by *network*
 	typeof: string ++
 	Use the defined interface instead of auto-detection. Accepts wildcard.
 
+*rfkill*: ++
+	typeof: bool ++
+	default: true ++
+	If enabled, the *disabled* format will be used when rfkill is blocking wlan interfaces.
+
 *interval*: ++
 	typeof: integer ++
 	default: 60 ++
@@ -49,7 +54,7 @@ Addressed by *network*
 
 *format-disabled*: ++
 	typeof: string ++
-	This format is used when the displayed interface is disabled.
+	This format is used when rfkill is blocking wlan interfaces.
 
 *format-icons*: ++
 	typeof: array/object ++
@@ -127,7 +132,7 @@ Addressed by *network*
 
 *tooltip-format-disabled*: ++
 	typeof: string ++
-	This format is used when the displayed interface is disabled.
+	This format is used when rfkill is blocking wlan interfaces.
 
 *menu*: ++
 	typeof: string ++
