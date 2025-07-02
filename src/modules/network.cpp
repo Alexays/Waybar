@@ -273,7 +273,11 @@ void waybar::modules::Network::worker() {
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1 || !carrier_) {
 #ifdef WANT_RFKILL
-    if (rfkill_.getState()) return "disabled";
+    bool display_rfkill = true;
+    if (config_["rfkill"].isBool()) {
+      display_rfkill = config_["rfkill"].asBool();
+    }
+    if (rfkill_.getState() && display_rfkill) return "disabled";
 #endif
     return "disconnected";
   }
