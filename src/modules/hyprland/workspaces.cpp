@@ -253,10 +253,8 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
       // value is an array => create defined workspaces for this monitor
       if (canCreate) {
         for (const Json::Value &workspace : value) {
-          if (workspace.isInt()) {
-            spdlog::debug("Creating workspace {} on monitor {}", workspace, currentMonitor);
-            persistentWorkspacesToCreate.emplace_back(std::to_string(workspace.asInt()));
-          }
+          spdlog::debug("Creating workspace {} on monitor {}", workspace, currentMonitor);
+          persistentWorkspacesToCreate.emplace_back(workspace.asString());
         }
       } else {
         // key is the workspace and value is array of monitors to create on
