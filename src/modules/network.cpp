@@ -405,6 +405,7 @@ void waybar::modules::Network::clearIface() {
   netmask_.clear();
   netmask6_.clear();
   carrier_ = false;
+  is_p2p_ = false;
   cidr_ = 0;
   cidr6_ = 0;
   signal_strength_dbm_ = 0;
