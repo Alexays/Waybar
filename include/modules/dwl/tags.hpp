@@ -28,6 +28,7 @@ class Tags : public waybar::AModule {
   const waybar::Bar &bar_;
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
+  bool hide_vacant_;
   struct zdwl_ipc_output_v2 *output_status_;
 };
 
