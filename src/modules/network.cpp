@@ -494,6 +494,11 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
           net->ifname_ = new_ifname;
           net->ifid_ = ifi->ifi_index;
           if (ifi->ifi_flags & IFF_POINTOPOINT) net->is_p2p_ = true;
+          if ((ifi->ifi_flags & IFF_UP) == 0) {
+            // With some network drivers (e.g. mt7921e), the interface may
+            // report having a carrier even though interface is down.
+            carrier = false;
+          }
           if (carrier.has_value()) {
             net->carrier_ = carrier.value();
           }
