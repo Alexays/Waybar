@@ -78,25 +78,7 @@ waybar::modules::Network::readBandwidthUsage() {
 }
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
-      ifid_(-1),
-      addr_pref_(IPV4),
-      efd_(-1),
-      ev_fd_(-1),
-      want_route_dump_(false),
-      want_link_dump_(false),
-      want_addr_dump_(false),
-      dump_in_progress_(false),
-      is_p2p_(false),
-      cidr_(0),
-      cidr6_(0),
-      signal_strength_dbm_(0),
-      signal_strength_(0),
-#ifdef WANT_RFKILL
-      rfkill_{RFKILL_TYPE_WLAN},
-#endif
-      frequency_(0.0) {
-
+    : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
