@@ -10,7 +10,7 @@ The *workspaces* module displays the currently used workspaces in wayland compos
 
 # CONFIGURATION
 
-Addressed by *wlr/workspaces*
+Addressed by *ext/workspaces*
 
 *format*: ++
 	typeof: string ++
@@ -24,18 +24,18 @@ Addressed by *wlr/workspaces*
 *sort-by-name*: ++
 	typeof: bool ++
 	default: true ++
-	Should workspaces be sorted by name.
+	Should workspaces be sorted by name. Workspace names will be sorted numerically when all names are numbers.
 
 *sort-by-coordinates*: ++
 	typeof: bool ++
-	default: true ++
+	default: false ++
 	Should workspaces be sorted by coordinates. ++
 	Note that if both  *sort-by-name* and *sort-by-coordinates* are true sort-by name will be first. If both are false - sort by id will be performed.
 
-*sort-by-number*: ++
+*sort-by-id*: ++
 	typeof: bool ++
 	default: false ++
-	If set to true, workspace names will be sorted numerically. Takes precedence over any other sort-by option.
+	Should workspaces be sorted by ID. Workspace ID will be sorted numerically when all ID are numbers. Takes precedence over any other sort-by option.
 
 *all-outputs*: ++
 	typeof: bool ++
@@ -47,9 +47,16 @@ Addressed by *wlr/workspaces*
 	default: false ++
 	If set to true only active or urgent workspaces will be shown.
 
+*ignore-hidden*: ++
+	typeof: bool ++
+	default: true ++
+	If set to false hidden workspaces will be shown.
+
 # FORMAT REPLACEMENTS
 
-*{name}*: Name of workspace assigned by compositor
+*{name}*: Name of workspace assigned by compositor.
+
+*{id}*: ID of workspace assigned by compositor.
 
 *{icon}*: Icon, as defined in *format-icons*.
 
@@ -69,18 +76,18 @@ In addition to workspace name matching, the following *format-icons* can be set.
 # EXAMPLES
 
 ```
-"wlr/workspaces": {
+"ext/workspaces": {
 	"format": "{name}: {icon}",
+	"on-click": "activate",
 	"format-icons": {
-		"1": "",
-		"2": "",
-		"3": "",
-		"4": "",
-		"5": "",
+		"Workspace 1": "",
+		"Workspace 2": "",
+		"Workspace 3": "",
+		"Workspace 4": "",
 		"active": "",
 		"default": ""
 	},
-	"sort-by-number": true
+	"sort-by-id": true
 }
 ```
 
