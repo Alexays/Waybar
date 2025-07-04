@@ -687,8 +687,11 @@ auto waybar::modules::Battery::update() -> void {
     std::string tooltip_text_default;
     std::string tooltip_format = "{timeTo}";
     if (time_remaining != 0) {
-      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text_default = time_to + ": " + time_remaining_formatted;
+      if (time_remaining > 0) {
+        tooltip_text_default = std::string("Empty in ") + time_remaining_formatted;
+      } else {
+        tooltip_text_default = std::string("Full in ") + time_remaining_formatted;
+      }
     } else {
       tooltip_text_default = status_pretty;
     }
