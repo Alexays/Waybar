@@ -608,6 +608,7 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
+  populateFormatWindowsDefault(config);
   populateWindowRewriteConfig(config);
 }
 
@@ -663,6 +664,12 @@ auto Workspaces::populateFormatWindowSeparatorConfig(const Json::Value &config) 
   const auto &formatWindowSeparator = config["format-window-separator"];
   m_formatWindowSeparator =
       formatWindowSeparator.isString() ? formatWindowSeparator.asString() : " ";
+}
+
+auto Workspaces::populateFormatWindowsDefault(const Json::Value &config) -> void {
+  const auto &windowDefaultConfig = config["format-windows-default"];
+  m_formatWindowsDefault =
+      windowDefaultConfig.isString() ? windowDefaultConfig.asString() : "";
 }
 
 auto Workspaces::populateWindowRewriteConfig(const Json::Value &config) -> void {

@@ -63,6 +63,7 @@ class Workspace {
   std::optional<std::string> closeWindow(WindowAddress const& addr);
 
   void update(const std::string& format, const std::string& icon);
+  std::string windows(const std::string &icon) const;
 
  private:
   Workspaces& m_workspaceManager;
