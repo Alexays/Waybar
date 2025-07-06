@@ -12,7 +12,7 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   if (config_["tooltip-format"].isString()) {
     tooltipFormat_ = config_["tooltip-format"].asString();
   } else {
-    tooltipFormat_ = "Power profile: {profile}\nDriver: {driver}";
+    tooltipFormat_ = "Power profile: {profile}\nCpuDriver: {cpu_driver}";
   }
   // Fasten your seatbelt, we're up for quite a ride. The rest of the
   // init is performed asynchronously. There's 2 callbacks involved.
@@ -95,15 +95,29 @@ void PowerProfilesDaemon::populateInitState() {
   powerProfilesProxy_->get_cached_property(profilesVariant, "Profiles");
   for (auto& variantDict : profilesVariant.get()) {
     Glib::ustring name;
-    Glib::ustring driver;
+    Glib::ustring cpuDriver;
+    Glib::ustring platformDriver;
     if (auto p = variantDict.find("Profile"); p != variantDict.end()) {
       name = p->second.get();
     }
-    if (auto d = variantDict.find("Driver"); d != variantDict.end()) {
-      driver = d->second.get();
+    if (auto cd = variantDict.find("CpuDriver"); cd != variantDict.end()) {
+      cpuDriver = cd->second.get();
     }
+    if (auto pd = variantDict.find("PlatformDriver"); pd != variantDict.end()) {
+      platformDriver = pd->second.get();
+    }
+
+    if (cpuDriver.empty()) {
+      cpuDriver = "Unavailable";
+      spdlog::warn("Cannot find power profiles daemon cpu driver.");
+    }
+    if (platformDriver.empty()) {
+      platformDriver = "Unavailable";
+      spdlog::warn("Cannot find power profiles daemon platform driver.");
+    }
+
     if (!name.empty()) {
-      availableProfiles_.emplace_back(std::move(name), std::move(driver));
+      availableProfiles_.emplace_back(std::move(name), std::move(cpuDriver), std::move(platformDriver));
     } else {
       spdlog::error(
           "Power profiles daemon: power-profiles-daemon sent us an empty power profile name. "
@@ -153,7 +167,8 @@ auto PowerProfilesDaemon::update() -> void {
     // Set label
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("profile", profile.name));
-    store.push_back(fmt::arg("driver", profile.driver));
+    store.push_back(fmt::arg("cpu_driver", profile.cpuDriver));
+    store.push_back(fmt::arg("platform_driver", profile.platformDriver));
     store.push_back(fmt::arg("icon", getIcon(0, profile.name)));
     label_.set_markup(fmt::vformat(format_, store));
     if (tooltipEnabled()) {
