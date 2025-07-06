@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.12.0',
+    version: '0.13.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -93,6 +93,7 @@ libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
+libgps = dependency('libgps', required: get_option('gps'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -307,6 +308,7 @@ if true
         'src/modules/hyprland/language.cpp',
         'src/modules/hyprland/submap.cpp',
         'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
@@ -331,6 +333,15 @@ if get_option('niri')
         'man/waybar-niri-language.5.scd',
         'man/waybar-niri-window.5.scd',
         'man/waybar-niri-workspaces.5.scd',
+    )
+endif
+
+if true
+    add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/wayfire/backend.cpp',
+        'src/modules/wayfire/window.cpp',
+        'src/modules/wayfire/workspaces.cpp',
     )
 endif
 
@@ -498,6 +509,12 @@ if cava.found()
    man_files += files('man/waybar-cava.5.scd')
 endif
 
+if libgps.found()
+   add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
+   src_files += files('src/modules/gps.cpp')
+   man_files += files('man/waybar-gps.5.scd')
+endif
+
 subdir('protocol')
 
 app_resources = []
@@ -536,7 +553,8 @@ executable(
         libsndio,
         tz_dep,
 		xkbregistry,
-        cava
+        cava,
+        libgps
     ],
     include_directories: inc_dirs,
     install: true,

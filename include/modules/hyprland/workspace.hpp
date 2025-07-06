@@ -58,11 +58,11 @@ class Workspace {
     return std::ranges::any_of(m_windowMap,
                                [&addr](const auto& window) { return window.address == addr; });
   };
-  void insertWindow(WindowCreationPayload create_window_paylod);
+  void insertWindow(WindowCreationPayload create_window_payload);
   void initializeWindowMap(const Json::Value& clients_data);
   void setActiveWindow(WindowAddress const& addr);
 
-  bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
+  bool onWindowOpened(WindowCreationPayload const& create_window_payload);
   std::optional<WindowRepr> closeWindow(WindowAddress const& addr);
 
   void update(const std::string& workspace_icon);

@@ -86,7 +86,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *no-center* ++
 	typeof: bool ++
 	default: false ++
-	Option to disable the center modules fully usefull together with expand-\*.
+	Option to disable the center modules fully useful together with expand-\*.
 
 *spacing* ++
 	typeof: integer ++
@@ -271,6 +271,17 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 ```
 
 Valid options for the "rotate" property are: 0, 90, 180, and 270.
+
+## Swapping icon and label
+
+If a module displays both a label and an icon, it might be desirable to swap them (for instance, for panels on the left or right of the screen, or for user adopting a right-to-left script). This can be achieved with the "swap-icon-label" property, taking a boolean. Example:
+```
+{
+	"sway/window": {
+		"swap-icon-label": true
+	}
+}
+```
 
 ## Grouping modules
 

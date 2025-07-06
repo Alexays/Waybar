@@ -80,6 +80,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If this and show-special are to true, special workspaces will be shown only if visible.
 
+*persistent-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only persistent workspaces will be shown on bar.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
@@ -108,6 +113,7 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	If set to number, workspaces will sort by number.
 	If set to name, workspaces will sort by name.
 	If set to id, workspaces will sort by id.
+	If set to special-centered, workspaces will sort by default with special workspaces in the center.
 	If none of those, workspaces will sort with default behavior.
 
 *expand*: ++

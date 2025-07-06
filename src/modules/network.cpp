@@ -223,8 +223,8 @@ void waybar::modules::Network::worker() {
       std::lock_guard<std::mutex> lock(mutex_);
       if (ifid_ > 0) {
         getInfo();
-        dp.emit();
       }
+      dp.emit();
     }
     thread_timer_.sleep_for(interval_);
   };
@@ -271,12 +271,10 @@ void waybar::modules::Network::worker() {
 }
 
 const std::string waybar::modules::Network::getNetworkState() const {
-  if (ifid_ == -1) {
 #ifdef WANT_RFKILL
-    if (rfkill_.getState()) return "disabled";
+  if (rfkill_.getState() && ifid_ == -1) return "disabled";
 #endif
-    return "disconnected";
-  }
+  if (ifid_ == -1) return "disconnected";
   if (!carrier_) return "disconnected";
   if (ipaddr_.empty() && ipaddr6_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";

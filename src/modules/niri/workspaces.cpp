@@ -20,6 +20,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   gIPC->registerForIPC("WorkspacesChanged", this);
   gIPC->registerForIPC("WorkspaceActivated", this);
   gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
+  gIPC->registerForIPC("WorkspaceUrgencyChanged", this);
 
   dp.emit();
 }
@@ -66,6 +67,11 @@ void Workspaces::doUpdate() {
       style_context->add_class("active");
     else
       style_context->remove_class("active");
+
+    if (ws["is_urgent"].asBool())
+      style_context->add_class("urgent");
+    else
+      style_context->remove_class("urgent");
 
     if (ws["output"]) {
       if (ws["output"].asString() == bar_.output->name)
@@ -165,6 +171,10 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
 std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws) {
   const auto &icons = config_["format-icons"];
   if (!icons) return value;
+
+  if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
+
+  if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
 
   if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
 

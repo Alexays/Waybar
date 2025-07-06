@@ -89,6 +89,11 @@ Addressed by *sway/window*
 	default: false ++
 	If the workspace itself is focused and the workspace contains nodes or floating_nodes, show the workspace name. If not set, text remains empty but styles according to nodes in the workspace are still applied.
 
+*show-hidden-marks*: ++
+	typeof: bool ++
+	default: false ++
+	For the *{marks}* format replacement, include hidden marks that start with an underscore.
+
 *rewrite*: ++
 	typeof: object ++
 	Rules to rewrite the module format output. See *rewrite rules*.
@@ -116,6 +121,8 @@ Addressed by *sway/window*
 
 *{shell}*: The shell of the focused window. It's 'xwayland' when the window is
 running through xwayland, otherwise, it's 'xdg-shell'.
+
+*{marks}*: Marks of the window.
 
 # REWRITE RULES
 

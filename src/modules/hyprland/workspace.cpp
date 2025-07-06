@@ -109,12 +109,12 @@ void Workspace::setActiveWindow(WindowAddress const &addr) {
   }
 }
 
-void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
-  if (!create_window_paylod.isEmpty(m_workspaceManager)) {
-    auto repr = create_window_paylod.repr(m_workspaceManager);
+void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
+  if (!create_window_payload.isEmpty(m_workspaceManager)) {
+    auto repr = create_window_payload.repr(m_workspaceManager);
 
     if (!repr.empty() || m_workspaceManager.enableTaskbar()) {
-      auto addr = create_window_paylod.getAddress();
+      auto addr = create_window_payload.getAddress();
       auto it = std::ranges::find_if(
           m_windowMap, [&addr](const auto &window) { return window.address == addr; });
       // If the vector contains the address, update the window representation, otherwise insert it
@@ -127,9 +127,9 @@ void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
   }
 };
 
-bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_paylod) {
-  if (create_window_paylod.getWorkspaceName() == name()) {
-    insertWindow(create_window_paylod);
+bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_payload) {
+  if (create_window_payload.getWorkspaceName() == name()) {
+    insertWindow(create_window_payload);
     return true;
   }
   return false;
@@ -193,6 +193,10 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
 }
 
 void Workspace::update(const std::string &workspace_icon) {
+  if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
+    m_button.hide();
+    return;
+  }
   // clang-format off
   if (this->m_workspaceManager.activeOnly() && \
      !this->isActive() && \
