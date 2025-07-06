@@ -26,17 +26,49 @@ Addressed by *hyprland/workspaces*
 	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
 	Keys are the rules, while the values are the methods of representation. Values may use the placeholders {class} and {title} to use the window's original class and/or title respectively.
 	Rules may specify `class<...>`, `title<...>`, or both in order to fine-tune the matching.
-	You may assign an empty value to a rule to have it ignored from generating any representation in workspaces.
+	You may assign an empty value to a rule to have it ignored from generating any representation in workspaces. ++
+This setting is ignored if *workspace-taskbar.enable* is set to true.
 
-*window-rewrite-default*:
+*window-rewrite-default*: ++
 	typeof: string ++
 	default: "?" ++
-	The default method of representation for a workspace's window. This will be used for windows whose classes do not match any of the rules in *window-rewrite*.
+	The default method of representation for a workspace's window. This will be used for windows whose classes do not match any of the rules in *window-rewrite*. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
 
 *format-window-separator*: ++
 	typeof: string ++
 	default: " " ++
-	The separator to be used between windows in a workspace.
+	The separator to be used between windows in a workspace. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
+*workspace-taskbar*: ++
+	typeof: object ++
+	Contains settings for the workspace taskbar, an alternative mode for the workspaces module which displays the window icons as images instead of text.
+	
+		*enable*: ++
+	typeof: bool ++
+	default: false ++
+	Enables the workspace taskbar mode.
+
+		*format*: ++
+	typeof: string ++
+	default: {icon} ++
+	Format to use for each window in the workspace taskbar. Available placeholders are {icon} and {title}.
+
+		*icon-size*: ++
+	typeof: int ++
+	default: 16 ++
+	Size of the icons in the workspace taskbar.
+
+		*icon-theme*: ++
+	typeof: string | array ++
+	default: [] ++
+	Icon theme to use for the workspace taskbar. If an array is provided, the first theme that is found for a given icon will be used. If no theme is found (or the array is empty), the default icon theme is used.
+
+		*orientation*: ++
+	typeof: "horizontal" | "vertical" ++
+	default: horizontal ++
+	Direction in which the workspace taskbar is displayed.
 
 *show-special*: ++
 	typeof: bool ++
@@ -184,3 +216,4 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.special*
 - *#workspaces button.urgent*
 - *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)
+- *#workspaces .taskbar-window* (each window in the taskbar)
