@@ -200,7 +200,7 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
     }
   }
   // Sort states
-  std::sort(states.begin(), states.end(), [&lesser](auto& a, auto& b) {
+  std::ranges::sort(states.begin(), states.end(), [&lesser](auto& a, auto& b) {
     return lesser ? a.second < b.second : a.second > b.second;
   });
   std::string valid_state;
