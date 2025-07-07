@@ -6,7 +6,7 @@
 
 #### Current features
 - Sway (Workspaces, Binding mode, Focused window name)
-- River (Mapping mode, Tags, Focused window name)
+- River (Mapping mode, Tags, Focused window name, Layout)
 - Hyprland (Window Icons, Workspaces, Focused window name)
 - Niri (Workspaces, Focused window name, Language)
 - DWL (Tags, Focused window name) [requires dwl ipc patch](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/ipc)
