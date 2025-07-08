@@ -5,12 +5,12 @@
 
 std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
   std::vector<float> frequencies;
-  char buffer[256];
   size_t len;
   int32_t freq;
-  uint32_t i = 0;
 
 #ifndef __OpenBSD__
+  char buffer[256];
+  uint32_t i = 0;
   while (true) {
     len = 4;
     snprintf(buffer, 256, "dev.cpu.%u.freq", i);
@@ -19,11 +19,10 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
     ++i;
   }
 #else
-  size_t sz;
-  int psize, cpuspeed, getMhz[] = {CTL_HW, HW_CPUSPEED};
-  sz = sizeof(cpuspeed);
-  sysctl(getMhz, 2, &cpuspeed, &sz, NULL, 0);
-  frequencies.push_back((float)cpuspeed);
+  int getMhz[] = {CTL_HW, HW_CPUSPEED};
+  len = sizeof(freq);
+  sysctl(getMhz, 2, &freq, &len, NULL, 0);
+  frequencies.push_back((float)freq);
 #endif
 
   if (frequencies.empty()) {
