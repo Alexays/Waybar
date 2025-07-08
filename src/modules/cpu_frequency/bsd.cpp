@@ -10,6 +10,7 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
   int32_t freq;
   uint32_t i = 0;
 
+#ifndef __OpenBSD__
   while (true) {
     len = 4;
     snprintf(buffer, 256, "dev.cpu.%u.freq", i);
@@ -17,6 +18,13 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
     frequencies.push_back(freq);
     ++i;
   }
+#else
+  size_t sz;
+  int psize, cpuspeed, getMhz[] = {CTL_HW, HW_CPUSPEED};
+  sz = sizeof(cpuspeed);
+  sysctl(getMhz, 2, &cpuspeed, &sz, NULL, 0);
+  frequencies.push_back((float)cpuspeed);
+#endif
 
   if (frequencies.empty()) {
     spdlog::warn("cpu/bsd: parseCpuFrequencies failed, not found in sysctl");
