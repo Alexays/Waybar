@@ -704,7 +704,7 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(
+    label_.set_tooltip_markup(
         fmt::format(fmt::runtime(tooltip_format), fmt::arg("timeTo", tooltip_text_default),
                     fmt::arg("power", power), fmt::arg("capacity", capacity),
                     fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
