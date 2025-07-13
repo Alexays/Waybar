@@ -12,8 +12,8 @@
 #include <utility>
 
 #ifdef __OpenBSD__
-#define SIGRTMIN SIGUSR1-1
-#define SIGRTMAX SIGUSR1+1
+#define SIGRTMIN SIGUSR1 - 1
+#define SIGRTMAX SIGUSR1 + 1
 #endif
 
 namespace waybar {
