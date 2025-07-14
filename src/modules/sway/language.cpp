@@ -102,6 +102,7 @@ auto Language::update() -> void {
   }
   auto display_layout = trim(fmt::format(
       fmt::runtime(format_), fmt::arg("short", layout_.short_name),
+      fmt::arg("shortUppercase", capitalize(layout_.short_name)),
       fmt::arg("shortDescription", layout_.short_description), fmt::arg("long", layout_.full_name),
       fmt::arg("variant", layout_.variant), fmt::arg("flag", layout_.country_flag())));
   label_.set_markup(display_layout);
@@ -109,6 +110,7 @@ auto Language::update() -> void {
     if (tooltip_format_ != "") {
       auto tooltip_display_layout = trim(
           fmt::format(fmt::runtime(tooltip_format_), fmt::arg("short", layout_.short_name),
+                      fmt::arg("shortUppercase", capitalize(layout_.short_name)),
                       fmt::arg("shortDescription", layout_.short_description),
                       fmt::arg("long", layout_.full_name), fmt::arg("variant", layout_.variant),
                       fmt::arg("flag", layout_.country_flag())));

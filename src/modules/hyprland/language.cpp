@@ -47,6 +47,7 @@ auto Language::update() -> void {
   } else {
     layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
                                   fmt::arg("short", layout_.short_name),
+                                  fmt::arg("shortUppercase", capitalize(layout_.short_name)),
                                   fmt::arg("shortDescription", layout_.short_description),
                                   fmt::arg("variant", layout_.variant)));
   }

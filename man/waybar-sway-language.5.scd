@@ -54,6 +54,8 @@ Addressed by *sway/language*
 
 *{short}*: Short name of layout (e.g. "us"). Equals to {}.
 
+*{shortUppercase}*: Short name of layout in uppercase (e.g. "US"). Equals to {}.
+
 *{shortDescription}*: Short description of layout (e.g. "en").
 
 *{long}*: Long name of layout (e.g. "English (Dvorak)").
