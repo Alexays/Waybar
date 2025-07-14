@@ -157,7 +157,7 @@ Addressed by *network*
 
 *{netmask}*: The subnetmask corresponding to the IP(V4).
 
-*{netmask6}*: The subnetmask corresponding to the IP(V6). 
+*{netmask6}*: The subnetmask corresponding to the IP(V6).
 
 *{cidr}*: The subnetmask corresponding to the IP(V4) in CIDR notation.
 
@@ -190,6 +190,10 @@ Addressed by *network*
 *{bandwidthDownBytes}*: Instant down speed in bytes/seconds.
 
 *{bandwidthTotalBytes}*: Instant total speed in bytes/seconds.
+
+*{tx_bitrate}*: Link transmit bitrate (e.g., 866.7 Mb/s).
+
+*{rx_bitrate}*: Link receive bitrate (e.g., 866.7 Mb/s).
 
 *{icon}*: Icon, as defined in *format-icons*.
 

@@ -16,6 +16,8 @@
 #include "util/rfkill.hpp"
 #endif
 
+#define ETH_ALEN 6
+
 enum ip_addr_pref : uint8_t { IPV4, IPV6, IPV4_6 };
 
 namespace waybar::modules {
@@ -33,6 +35,7 @@ class Network : public ALabel {
   static int handleEvents(struct nl_msg*, void*);
   static int handleEventsDone(struct nl_msg*, void*);
   static int handleScan(struct nl_msg*, void*);
+  static int handleStationGet(struct nl_msg *msg, void *data);
 
   void askForStateDump(void);
 
@@ -55,6 +58,7 @@ class Network : public ALabel {
   ip_addr_pref addr_pref_;
   struct sockaddr_nl nladdr_ = {0};
   struct nl_sock* sock_ = nullptr;
+  struct nl_sock* station_sock_ = nullptr;
   struct nl_sock* ev_sock_ = nullptr;
   int efd_;
   int ev_fd_;
@@ -93,6 +97,8 @@ class Network : public ALabel {
   util::Rfkill rfkill_;
 #endif
   float frequency_;
+  uint32_t tx_bitrate_;
+  uint32_t rx_bitrate_;
 };
 
 }  // namespace waybar::modules
