@@ -1,6 +1,8 @@
 #include "modules/wireplumber.hpp"
 
 #include <spdlog/spdlog.h>
+#include <cmath>
+#include <string>
 
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
@@ -309,7 +311,7 @@ void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* r
   spdlog::debug("[{}]: loaded mixer API", self->name_);
   g_ptr_array_add(self->apis_, ({
                     WpPlugin* p = wp_plugin_find(self->wp_core_, "mixer-api");
-                    g_object_set(G_OBJECT(p), "scale", 1 /* cubic */, nullptr);
+                    g_object_set(G_OBJECT(p), "scale", 0 /* linear */, nullptr);
                     p;
                   }));
 
@@ -339,9 +341,14 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("muted");
   }
 
-  int vol = round(volume_ * 100.0);
-  std::string markup = fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_),
-                                   fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol)));
+  double vol_cube = pow(volume_, 3);
+  int vol = round(vol_cube * 100.0);
+  double vol_db = 20.0 * log10(volume_);
+
+  std::string markup =
+      fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
+                  fmt::arg("volume_linear", volume_), fmt::arg("volume_cubic", vol_cube),
+                  fmt::arg("volume_db", vol_db), fmt::arg("icon", getIcon(vol)));
   label_.set_markup(markup);
 
   getState(vol);
@@ -352,9 +359,10 @@ auto waybar::modules::Wireplumber::update() -> void {
     }
 
     if (!tooltipFormat.empty()) {
-      label_.set_tooltip_text(fmt::format(fmt::runtime(tooltipFormat),
-                                          fmt::arg("node_name", node_name_),
-                                          fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol))));
+      label_.set_tooltip_text(fmt::format(
+          fmt::runtime(tooltipFormat), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
+          fmt::arg("volume_linear", volume_), fmt::arg("volume_cubic", vol_cube),
+          fmt::arg("volume_db", vol_db), fmt::arg("icon", getIcon(vol))));
     } else {
       label_.set_tooltip_text(node_name_);
     }
@@ -373,28 +381,61 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     return true;
   }
   double maxVolume = 1;
-  double step = 1.0 / 100.0;
+  double step = 1.0;
   if (config_["scroll-step"].isDouble()) {
-    step = config_["scroll-step"].asDouble() / 100.0;
+    step = config_["scroll-step"].asDouble();
   }
   if (config_["max-volume"].isDouble()) {
-    maxVolume = config_["max-volume"].asDouble() / 100.0;
+    maxVolume = config_["max-volume"].asDouble();
   }
 
-  if (step < min_step_) step = min_step_;
+  double vol = volume_;
+  std::string scale = "cubic_percent";
+  if (config_["scroll-scale"].isString()) {
+    scale = config_["scroll-scale"].asString();
+  }
 
-  double newVol = volume_;
+  if (scale == "cubic") {
+    vol = pow(vol, 3);
+  }
+  else if (scale == "db") {
+    vol = log10(vol) * 20.0;
+  }
+  else if (scale == "cubic_percent") {
+    vol = pow(vol, 3) * 100.0;
+  }
+
+
+  double newVol = vol;
   if (dir == SCROLL_DIR::UP) {
-    if (volume_ < maxVolume) {
-      newVol = volume_ + step;
-      if (newVol > maxVolume) newVol = maxVolume;
+    newVol = vol + step;
+  } else if (dir == SCROLL_DIR::DOWN) {
+    newVol = vol - step;
+  }
+
+  if (scale == "cubic") {
+    newVol = cbrt(newVol);
+  }
+  else if (scale == "db") {
+    newVol = exp10(newVol / 20.0);
+  }
+  else if (scale == "cubic_percent") {
+    newVol = cbrt(newVol / 100.0);
+  }
+
+  if (dir == SCROLL_DIR::UP) {
+    if (volume_ + min_step_ > newVol) {
+      newVol = volume_ + min_step_;
     }
   } else if (dir == SCROLL_DIR::DOWN) {
-    if (volume_ > 0) {
-      newVol = volume_ - step;
-      if (newVol < 0) newVol = 0;
+    if (volume_ - min_step_ < newVol) {
+      newVol = volume_ - min_step_;
     }
   }
+
+  if (newVol < 0) newVol = 0;
+  else if (newVol > maxVolume) newVol = maxVolume;
+
   if (newVol != volume_) {
     GVariant* variant = g_variant_new_double(newVol);
     gboolean ret;
