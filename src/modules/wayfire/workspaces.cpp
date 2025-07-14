@@ -74,9 +74,9 @@ auto Workspaces::handleScroll(GdkEventScroll* e) -> bool {
     const auto& wset = ipc->get_wsets().at(output.wset_idx);
     auto n = wset.ws_w * wset.ws_h;
     auto i = (wset.ws_idx() + delta + n) % n;
-    data["x"] = i % wset.ws_w;
-    data["y"] = i / wset.ws_h;
-    data["output-id"] = output.id;
+    data["x"] = Json::Value((uint64_t)i % wset.ws_w);
+    data["y"] = Json::Value((uint64_t)i / wset.ws_h);
+    data["output-id"] = Json::Value((uint64_t)output.id);
   }
   ipc->send("vswitch/set-workspace", std::move(data));
 
@@ -108,9 +108,9 @@ auto Workspaces::update_box() -> void {
     if (!config_["disable-click"].asBool()) {
       btn.signal_pressed().connect([=, this] {
         Json::Value data;
-        data["x"] = i % ws_w;
-        data["y"] = i / ws_h;
-        data["output-id"] = output.id;
+        data["x"] = Json::Value((uint64_t)i % ws_w);
+        data["y"] = Json::Value((uint64_t)i / ws_h);
+        data["output-id"] = Json::Value((uint64_t)output.id);
         ipc->send("vswitch/set-workspace", std::move(data));
       });
     }
