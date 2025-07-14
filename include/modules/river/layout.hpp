@@ -24,6 +24,7 @@ class Layout : public waybar::ALabel {
 
  private:
   const waybar::Bar &bar_;
+  std::string name_;
   struct wl_output *output_;          // stores the output this module belongs to
   struct wl_output *focused_output_;  // stores the currently focused output
   struct zriver_output_status_v1 *output_status_;
