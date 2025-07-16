@@ -13,6 +13,7 @@
       "move-to-monitor": true,
       "format": "{icon} {windows}",
       "format-window-separator": " ",
+      "format-windows-default": "{id}",
       "format-icons": {
         "1": "󰎤",
         "2": "󰎧",
