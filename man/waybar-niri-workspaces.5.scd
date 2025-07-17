@@ -45,6 +45,11 @@ Addressed by *niri/workspaces*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, or index for unnamed workspaces,
@@ -65,6 +70,8 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *default*: Will be shown, when no string matches are found.
 - *focused*: Will be shown, when workspace is focused.
 - *active*: Will be shown, when workspace is active on its output.
+- *urgent*: Will be shown, when workspace has urgent windows.
+- *empty*: Will be shown, when workspace is empty.
 
 # EXAMPLES
 
@@ -90,6 +97,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button*
 - *#workspaces button.focused*: The single focused workspace.
 - *#workspaces button.active*: The workspace is active (visible) on its output.
+- *#workspaces button.urgent*: The workspace has one or more urgent windows.
 - *#workspaces button.empty*: The workspace is empty.
 - *#workspaces button.current_output*: The workspace is from the same output as
   the bar that it is displayed on.

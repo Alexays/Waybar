@@ -75,7 +75,7 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }
 
-  // check if file_path_ can be used to retrive the temperature
+  // check if file_path_ can be used to retrieve the temperature
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
@@ -99,12 +99,17 @@ auto waybar::modules::Temperature::update() -> void {
   uint16_t temperature_f = std::round(temperature * 1.8 + 32);
   uint16_t temperature_k = std::round(temperature + 273.15);
   auto critical = isCritical(temperature_c);
+  auto warning = isWarning(temperature_c);
   auto format = format_;
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
     label_.get_style_context()->add_class("critical");
+  } else if (warning) {
+    format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
+    label_.get_style_context()->add_class("warning");
   } else {
     label_.get_style_context()->remove_class("critical");
+    label_.get_style_context()->remove_class("warning");
   }
 
   if (format.empty()) {
@@ -139,13 +144,17 @@ float waybar::modules::Temperature::getTemperature() {
 
   auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
 
-  if (sysctlbyname(fmt::format("hw.acpi.thermal.tz{}.temperature", zone).c_str(), &temp, &size,
-                   NULL, 0) != 0) {
-    throw std::runtime_error(fmt::format(
-        "sysctl hw.acpi.thermal.tz{}.temperature or dev.cpu.{}.temperature failed", zone, zone));
+  // First, try with dev.cpu
+  if ((sysctlbyname(fmt::format("dev.cpu.{}.temperature", zone).c_str(), &temp, &size, NULL, 0) ==
+       0) ||
+      (sysctlbyname(fmt::format("hw.acpi.thermal.tz{}.temperature", zone).c_str(), &temp, &size,
+                    NULL, 0) == 0)) {
+    auto temperature_c = ((float)temp - 2732) / 10;
+    return temperature_c;
   }
-  auto temperature_c = ((float)temp - 2732) / 10;
-  return temperature_c;
+
+  throw std::runtime_error(fmt::format(
+      "sysctl hw.acpi.thermal.tz{}.temperature and dev.cpu.{}.temperature failed", zone, zone));
 
 #else  // Linux
   std::ifstream temp(file_path_);
@@ -163,6 +172,11 @@ float waybar::modules::Temperature::getTemperature() {
   auto temperature_c = std::strtol(line.c_str(), nullptr, 10) / 1000.0;
   return temperature_c;
 #endif
+}
+
+bool waybar::modules::Temperature::isWarning(uint16_t temperature_c) {
+  return config_["warning-threshold"].isInt() &&
+         temperature_c >= config_["warning-threshold"].asInt();
 }
 
 bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {

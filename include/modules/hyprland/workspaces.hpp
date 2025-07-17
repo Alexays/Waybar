@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <regex>
 #include <string>
 #include <vector>
@@ -36,6 +37,7 @@ class Workspaces : public AModule, public EventHandler {
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
+  auto persistentOnly() const -> bool { return m_persistentOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
@@ -49,20 +51,21 @@ class Workspaces : public AModule, public EventHandler {
  private:
   void onEvent(const std::string& e) override;
   void updateWindowCount();
+  void sortSpecialCentered();
   void sortWorkspaces();
   void createWorkspace(Json::Value const& workspace_data,
                        Json::Value const& clients_data = Json::Value::nullRef);
 
   static Json::Value createMonitorWorkspaceData(std::string const& name,
                                                 std::string const& monitor);
-  void removeWorkspace(std::string const& name);
+  void removeWorkspace(std::string const& workspaceString);
   void setUrgentWorkspace(std::string const& windowaddress);
 
   // Config
   void parseConfig(const Json::Value& config);
   auto populateIconsMap(const Json::Value& formatIcons) -> void;
-  static auto populateBoolConfig(const Json::Value& config, const std::string& key,
-                                 bool& member) -> void;
+  static auto populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
+      -> void;
   auto populateSortByConfig(const Json::Value& config) -> void;
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
@@ -74,10 +77,11 @@ class Workspaces : public AModule, public EventHandler {
   void onWorkspaceActivated(std::string const& payload);
   void onSpecialWorkspaceActivated(std::string const& payload);
   void onWorkspaceDestroyed(std::string const& payload);
-  void onWorkspaceCreated(std::string const& workspaceName,
+  void onWorkspaceCreated(std::string const& payload,
                           Json::Value const& clientsData = Json::Value::nullRef);
   void onWorkspaceMoved(std::string const& payload);
   void onWorkspaceRenamed(std::string const& payload);
+  static std::optional<int> parseWorkspaceId(std::string const& workspaceIdStr);
 
   // monitor events
   void onMonitorFocused(std::string const& payload);
@@ -93,11 +97,18 @@ class Workspaces : public AModule, public EventHandler {
 
   int windowRewritePriorityFunction(std::string const& window_rule);
 
+  // event payload management
+  template <typename... Args>
+  static std::string makePayload(Args const&... args);
+  static std::pair<std::string, std::string> splitDoublePayload(std::string const& payload);
+  static std::tuple<std::string, std::string, std::string> splitTriplePayload(
+      std::string const& payload);
+
   // Update methods
   void doUpdate();
   void removeWorkspacesToRemove();
   void createWorkspacesToCreate();
-  static std::vector<std::string> getVisibleWorkspaces();
+  static std::vector<int> getVisibleWorkspaces();
   void updateWorkspaceStates();
   bool updateWindowsToCreate();
 
@@ -113,20 +124,22 @@ class Workspaces : public AModule, public EventHandler {
   bool m_showSpecial = false;
   bool m_activeOnly = false;
   bool m_specialVisibleOnly = false;
+  bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
   // This happens when the user has multiple monitors (hence, multiple bars)
-  // and doesn't share windows accross bars (a.k.a `all-outputs` = false)
+  // and doesn't share windows across bars (a.k.a `all-outputs` = false)
   std::map<WindowAddress, std::string> m_orphanWindowMap;
 
-  enum class SortMethod { ID, NAME, NUMBER, DEFAULT };
+  enum class SortMethod { ID, NAME, NUMBER, SPECIAL_CENTERED, DEFAULT };
   util::EnumParser<SortMethod> m_enumParser;
   SortMethod m_sortBy = SortMethod::DEFAULT;
   std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
                                                  {"NAME", SortMethod::NAME},
                                                  {"NUMBER", SortMethod::NUMBER},
+                                                 {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
   std::string m_format;
@@ -138,7 +151,7 @@ class Workspaces : public AModule, public EventHandler {
 
   bool m_withIcon;
   uint64_t m_monitorId;
-  std::string m_activeWorkspaceName;
+  int m_activeWorkspaceId;
   std::string m_activeSpecialWorkspaceName;
   std::vector<std::unique_ptr<Workspace>> m_workspaces;
   std::vector<std::pair<Json::Value, Json::Value>> m_workspacesToCreate;
@@ -150,6 +163,7 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

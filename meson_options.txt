@@ -20,3 +20,5 @@ option('jack', type: 'feature', value: 'auto', description: 'Enable support for 
 option('wireplumber', type: 'feature', value: 'auto', description: 'Enable support for WirePlumber')
 option('cava', type: 'feature', value: 'auto', description: 'Enable support for Cava')
 option('niri', type: 'boolean', description: 'Enable support for niri')
+option('login-proxy', type: 'boolean', description: 'Enable interfacing with dbus login interface')
+option('gps', type: 'feature', value: 'auto', description: 'Enable support for gps')

@@ -23,6 +23,8 @@ class AModule : public IModule {
   /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 
+  bool expandEnabled() const;
+
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
@@ -34,6 +36,7 @@ class AModule : public IModule {
   SCROLL_DIR getScrollDir(GdkEventScroll *e);
   bool tooltipEnabled() const;
 
+  std::vector<int> pid_children_;
   const std::string name_;
   const Json::Value &config_;
   Gtk::EventBox event_box_;
@@ -50,8 +53,8 @@ class AModule : public IModule {
  private:
   bool handleUserEvent(GdkEventButton *const &ev);
   const bool isTooltip;
+  const bool isExpand;
   bool hasUserEvents_;
-  std::vector<int> pid_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
   std::map<std::string, std::string> eventActionMap_;

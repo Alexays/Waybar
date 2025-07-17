@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.11.0',
+    version: '0.13.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -93,6 +93,7 @@ libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
+libgps = dependency('libgps', required: get_option('gps'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -306,6 +307,7 @@ if true
         'src/modules/hyprland/language.cpp',
         'src/modules/hyprland/submap.cpp',
         'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
@@ -331,6 +333,19 @@ if get_option('niri')
         'man/waybar-niri-window.5.scd',
         'man/waybar-niri-workspaces.5.scd',
     )
+endif
+
+if true
+    add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/wayfire/backend.cpp',
+        'src/modules/wayfire/window.cpp',
+        'src/modules/wayfire/workspaces.cpp',
+    )
+endif
+
+if get_option('login-proxy')
+    add_project_arguments('-DHAVE_LOGIN_PROXY', language: 'cpp')
 endif
 
 if libnl.found() and libnlgen.found()
@@ -482,7 +497,7 @@ if get_option('experimental')
 endif
 
 cava = dependency('cava',
-                  version : '>=0.10.3',
+                  version : '>=0.10.4',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
@@ -491,6 +506,12 @@ if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
    src_files += files('src/modules/cava.cpp')
    man_files += files('man/waybar-cava.5.scd')
+endif
+
+if libgps.found()
+   add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
+   src_files += files('src/modules/gps.cpp')
+   man_files += files('man/waybar-gps.5.scd')
 endif
 
 subdir('protocol')
@@ -531,7 +552,8 @@ executable(
         libsndio,
         tz_dep,
 		xkbregistry,
-        cava
+        cava,
+        libgps
     ],
     include_directories: inc_dirs,
     install: true,

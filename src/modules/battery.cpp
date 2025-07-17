@@ -273,14 +273,18 @@ waybar::modules::Battery::getInfos() {
       // Scale these by the voltage to get μW/μWh.
 
       uint32_t current_now = 0;
+      int32_t _current_now_int = 0;
       bool current_now_exists = false;
       if (fs::exists(bat / "current_now")) {
         current_now_exists = true;
-        std::ifstream(bat / "current_now") >> current_now;
+        std::ifstream(bat / "current_now") >> _current_now_int;
       } else if (fs::exists(bat / "current_avg")) {
         current_now_exists = true;
-        std::ifstream(bat / "current_avg") >> current_now;
+        std::ifstream(bat / "current_avg") >> _current_now_int;
       }
+      // Documentation ABI allows a negative value when discharging, positive
+      // value when charging.
+      current_now = std::abs(_current_now_int);
 
       if (fs::exists(bat / "time_to_empty_now")) {
         time_to_empty_now_exists = true;
@@ -324,11 +328,15 @@ waybar::modules::Battery::getInfos() {
       }
 
       uint32_t power_now = 0;
+      int32_t _power_now_int = 0;
       bool power_now_exists = false;
       if (fs::exists(bat / "power_now")) {
         power_now_exists = true;
-        std::ifstream(bat / "power_now") >> power_now;
+        std::ifstream(bat / "power_now") >> _power_now_int;
       }
+      // Some drivers (example: Qualcomm) exposes use a negative value when
+      // discharging, positive value when charging.
+      power_now = std::abs(_power_now_int);
 
       uint32_t energy_now = 0;
       bool energy_now_exists = false;
@@ -679,8 +687,11 @@ auto waybar::modules::Battery::update() -> void {
     std::string tooltip_text_default;
     std::string tooltip_format = "{timeTo}";
     if (time_remaining != 0) {
-      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text_default = time_to + ": " + time_remaining_formatted;
+      if (time_remaining > 0) {
+        tooltip_text_default = std::string("Empty in ") + time_remaining_formatted;
+      } else {
+        tooltip_text_default = std::string("Full in ") + time_remaining_formatted;
+      }
     } else {
       tooltip_text_default = status_pretty;
     }
@@ -693,7 +704,7 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(
+    label_.set_tooltip_markup(
         fmt::format(fmt::runtime(tooltip_format), fmt::arg("timeTo", tooltip_text_default),
                     fmt::arg("power", power), fmt::arg("capacity", capacity),
                     fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),

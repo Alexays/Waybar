@@ -55,11 +55,11 @@ class Workspace {
   void setName(std::string const& value) { m_name = value; };
   void setOutput(std::string const& value) { m_output = value; };
   bool containsWindow(WindowAddress const& addr) const { return m_windowMap.contains(addr); }
-  void insertWindow(WindowCreationPayload create_window_paylod);
+  void insertWindow(WindowCreationPayload create_window_payload);
   std::string removeWindow(WindowAddress const& addr);
   void initializeWindowMap(const Json::Value& clients_data);
 
-  bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
+  bool onWindowOpened(WindowCreationPayload const& create_window_payload);
   std::optional<std::string> closeWindow(WindowAddress const& addr);
 
   void update(const std::string& format, const std::string& icon);
@@ -83,6 +83,7 @@ class Workspace {
   Gtk::Button m_button;
   Gtk::Box m_content;
   Gtk::Label m_label;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

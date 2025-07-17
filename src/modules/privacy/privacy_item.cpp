@@ -1,5 +1,7 @@
 #include "modules/privacy/privacy_item.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <string>
 
 #include "glibmm/main.h"
@@ -11,8 +13,9 @@
 namespace waybar::modules::privacy {
 
 PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
-                         std::list<PrivacyNodeInfo *> *nodes_, const std::string &pos,
-                         const uint icon_size, const uint transition_duration)
+                         std::list<PrivacyNodeInfo *> *nodes_, Gtk::Orientation orientation,
+                         const std::string &pos, const uint icon_size,
+                         const uint transition_duration)
     : Gtk::Revealer(),
       privacy_type(privacy_type_),
       nodes(nodes_),
@@ -40,16 +43,24 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
   // Set the reveal transition to not look weird when sliding in
   if (pos == "modules-left") {
-    set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT);
+    set_transition_type(orientation == Gtk::ORIENTATION_HORIZONTAL
+                            ? Gtk::REVEALER_TRANSITION_TYPE_SLIDE_RIGHT
+                            : Gtk::REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
   } else if (pos == "modules-center") {
     set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_CROSSFADE);
   } else if (pos == "modules-right") {
-    set_transition_type(Gtk::REVEALER_TRANSITION_TYPE_SLIDE_LEFT);
+    set_transition_type(orientation == Gtk::ORIENTATION_HORIZONTAL
+                            ? Gtk::REVEALER_TRANSITION_TYPE_SLIDE_LEFT
+                            : Gtk::REVEALER_TRANSITION_TYPE_SLIDE_UP);
   }
   set_transition_duration(transition_duration);
 
   box_.set_name("privacy-item");
-  box_.add(icon_);
+
+  // We use `set_center_widget` instead of `add` to make sure the icon is
+  // centered even if the orientation is vertical
+  box_.set_center_widget(icon_);
+
   icon_.set_pixel_size(icon_size);
   add(box_);
 
@@ -87,20 +98,22 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 void PrivacyItem::update_tooltip() {
   // Removes all old nodes
   for (auto *child : tooltip_window.get_children()) {
+    tooltip_window.remove(*child);
+    // despite the remove, still needs a delete to prevent memory leak. Speculating that this might
+    // work differently in GTK4.
     delete child;
   }
-
   for (auto *node : *nodes) {
-    Gtk::Box *box = new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 4);
+    auto *box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 4);
 
     // Set device icon
-    Gtk::Image *node_icon = new Gtk::Image();
+    auto *node_icon = Gtk::make_managed<Gtk::Image>();
     node_icon->set_pixel_size(tooltipIconSize);
     node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
     box->add(*node_icon);
 
     // Set model
-    auto *nodeName = new Gtk::Label(node->getName());
+    auto *nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
     box->add(*nodeName);
 
     tooltip_window.add(*box);

@@ -23,6 +23,21 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 
 # BAR CONFIGURATION
 
+*expand-center* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-center to consume all left over space dynamically.
+
+*expand-left* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
+
+*expand-right* ++
+	typeof: bool ++
+	default: false ++
+	Enables the modules-left to consume all left over space dynamically.
+
 *layer* ++
 	typeof: string ++
 	default: bottom ++
@@ -67,6 +82,11 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *margin-<top\|left\|bottom\|right>* ++
 	typeof: integer ++
 	Margins value without units.
+
+*no-center* ++
+	typeof: bool ++
+	default: false ++
+	Option to disable the center modules fully useful together with expand-\*.
 
 *spacing* ++
 	typeof: integer ++
@@ -181,6 +201,19 @@ A minimal *config* file could look like this:
 }
 ```
 
+# SIGNALS
+
+Waybar accepts the following signals:
+
+*SIGUSR1*
+	Toggles the bar visibility (hides if shown, shows if hidden)
+*SIGUSR2*
+	Reloads (resets) the bar
+*SIGINT*
+	Quits the bar
+
+For example, to toggle the bar programmatically, you can invoke `killall -SIGUSR1 waybar`.
+
 # MULTI OUTPUT CONFIGURATION
 
 ## Limit a configuration to some outputs
@@ -238,6 +271,17 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 ```
 
 Valid options for the "rotate" property are: 0, 90, 180, and 270.
+
+## Swapping icon and label
+
+If a module displays both a label and an icon, it might be desirable to swap them (for instance, for panels on the left or right of the screen, or for user adopting a right-to-left script). This can be achieved with the "swap-icon-label" property, taking a boolean. Example:
+```
+{
+	"sway/window": {
+		"swap-icon-label": true
+	}
+}
+```
 
 ## Grouping modules
 

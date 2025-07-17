@@ -96,6 +96,10 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ array
 :[
 :[ The actions corresponding to the buttons of the menu.
+|[ *expand*:
+:[ bool
+:[ false
+:[ Enables this module to consume all left over space dynamically.
 
 View all valid format options in *strftime(3)* or have a look https://en.cppreference.com/w/cpp/chrono/duration/formatter
 
@@ -113,7 +117,7 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ 3
 :[ Relevant for *mode=year*. Count of months per row
 |[ *weeks-pos*
-:[ integer
+:[ string
 :[
 :[ The position where week numbers should be displayed. Disabled when is empty.
    Possible values: left|right

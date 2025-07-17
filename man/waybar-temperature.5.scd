@@ -36,6 +36,10 @@ Addressed by *temperature*
 	The substring to search for in */sys/class/hwmon/hwmonX/name* (where hwmonX is any folder in */sys/class/hwmon/*).
 	Waybar will search for every directory in */sys/class/hwmon/* and uses the directory in which the *name* matches *hwmon-by-name*.
 
+*warning-threshold*: ++
+	typeof: integer ++
+	The threshold before it is considered warning (Celsius).
+
 *critical-threshold*: ++
 	typeof: integer ++
 	The threshold before it is considered critical (Celsius).
@@ -44,6 +48,10 @@ Addressed by *temperature*
 	typeof: integer ++
 	default: 10 ++
 	The interval in which the information gets polled.
+
+*format-warning*: ++
+	typeof: string ++
+	The format to use when temperature is considered warning
 
 *format-critical*: ++
 	typeof: string ++
@@ -128,6 +136,11 @@ Addressed by *temperature*
 *menu-actions*: ++
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 

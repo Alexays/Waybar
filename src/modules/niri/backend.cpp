@@ -147,6 +147,17 @@ void IPC::parseIPC(const std::string &line) {
       } else {
         spdlog::error("Active window changed on unknown workspace");
       }
+    } else if (const auto &payload = ev["WorkspaceUrgencyChanged"]) {
+      const auto id = payload["id"].asUInt64();
+      const auto urgent = payload["urgent"].asBool();
+      auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
+                             [id](const auto &ws) { return ws["id"].asUInt64() == id; });
+      if (it != workspaces_.end()) {
+        auto &ws = *it;
+        ws["is_urgent"] = urgent;
+      } else {
+        spdlog::error("Urgency changed for unknown workspace");
+      }
     } else if (const auto &payload = ev["KeyboardLayoutsChanged"]) {
       const auto &layouts = payload["keyboard_layouts"];
       const auto &names = layouts["names"];

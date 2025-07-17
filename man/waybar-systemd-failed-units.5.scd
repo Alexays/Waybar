@@ -49,6 +49,11 @@ Addressed by *systemd-failed-units*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{nr_failed_system}*: Number of failed units from systemwide (PID=1) systemd.
@@ -56,6 +61,12 @@ Addressed by *systemd-failed-units*
 *{nr_failed_user}*: Number of failed units from user systemd.
 
 *{nr_failed}*: Number of total failed units.
+
+*{systemd_state}:* State of the systemd system session
+
+*{user_state}:* State of the systemd user session
+
+*{overall_state}:* Overall state of the systemd and user session. ("Ok" or "Degraded")
 
 # EXAMPLES
 

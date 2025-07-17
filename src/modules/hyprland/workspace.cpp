@@ -18,7 +18,8 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
       m_windows(workspace_data["windows"].asInt()),
       m_isActive(true),
       m_isPersistentRule(workspace_data["persistent-rule"].asBool()),
-      m_isPersistentConfig(workspace_data["persistent-config"].asBool()) {
+      m_isPersistentConfig(workspace_data["persistent-config"].asBool()),
+      m_ipc(IPC::inst()) {
   if (m_name.starts_with("name:")) {
     m_name = m_name.substr(5);
   } else if (m_name.starts_with("special")) {
@@ -58,20 +59,20 @@ bool Workspace::handleClicked(GdkEventButton *bt) const {
     try {
       if (id() > 0) {  // normal
         if (m_workspaceManager.moveToMonitor()) {
-          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
+          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
         } else {
-          gIPC->getSocket1Reply("dispatch workspace " + std::to_string(id()));
+          m_ipc.getSocket1Reply("dispatch workspace " + std::to_string(id()));
         }
       } else if (!isSpecial()) {  // named (this includes persistent)
         if (m_workspaceManager.moveToMonitor()) {
-          gIPC->getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
+          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
         } else {
-          gIPC->getSocket1Reply("dispatch workspace name:" + name());
+          m_ipc.getSocket1Reply("dispatch workspace name:" + name());
         }
       } else if (id() != -99) {  // named special
-        gIPC->getSocket1Reply("dispatch togglespecialworkspace " + name());
+        m_ipc.getSocket1Reply("dispatch togglespecialworkspace " + name());
       } else {  // special
-        gIPC->getSocket1Reply("dispatch togglespecialworkspace");
+        m_ipc.getSocket1Reply("dispatch togglespecialworkspace");
       }
       return true;
     } catch (const std::exception &e) {
@@ -90,19 +91,19 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
   }
 }
 
-void Workspace::insertWindow(WindowCreationPayload create_window_paylod) {
-  if (!create_window_paylod.isEmpty(m_workspaceManager)) {
-    auto repr = create_window_paylod.repr(m_workspaceManager);
+void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
+  if (!create_window_payload.isEmpty(m_workspaceManager)) {
+    auto repr = create_window_payload.repr(m_workspaceManager);
 
     if (!repr.empty()) {
-      m_windowMap[create_window_paylod.getAddress()] = repr;
+      m_windowMap[create_window_payload.getAddress()] = repr;
     }
   }
 };
 
-bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_paylod) {
-  if (create_window_paylod.getWorkspaceName() == name()) {
-    insertWindow(create_window_paylod);
+bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_payload) {
+  if (create_window_payload.getWorkspaceName() == name()) {
+    insertWindow(create_window_payload);
     return true;
   }
   return false;
@@ -172,6 +173,10 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
 }
 
 void Workspace::update(const std::string &format, const std::string &icon) {
+  if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
+    m_button.hide();
+    return;
+  }
   // clang-format off
   if (this->m_workspaceManager.activeOnly() && \
      !this->isActive() && \

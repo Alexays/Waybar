@@ -37,12 +37,21 @@ Addressed by *tray*
 	typeof: string ++
 	Command to execute when the module is updated.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # EXAMPLES
 
 ```
 "tray": {
 	"icon-size": 21,
-	"spacing": 10
+	"spacing": 10,
+  "icons": {
+    "blueman": "bluetooth",
+    "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
+  }
 }
 
 ```
