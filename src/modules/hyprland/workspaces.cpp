@@ -71,12 +71,12 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
   // avoid recreating existing workspaces
   auto workspace =
       std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const &w) {
-        if (workspaceId > 0) {
-          return w->id() == workspaceId;
-        }
-        return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
-               workspaceName == w->name();
-      });
+    if (workspaceId > 0) {
+      return w->id() == workspaceId;
+    }
+    return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
+           workspaceName == w->name();
+  });
 
   if (workspace != m_workspaces.end()) {
     // don't recreate workspace, but update persistency if necessary
@@ -206,8 +206,9 @@ void Workspaces::initializeWorkspaces() {
     // a persistent workspace config is defined, so use that instead of workspace rules
     loadPersistentWorkspacesFromConfig(clientsJson);
   }
-  // load Hyprland's workspace rules
-  loadPersistentWorkspacesFromWorkspaceRules(clientsJson);
+  // persistent workspaces configured with hyprland's workspace rules
+  // are already listed in 'workspacesJson', so we don't need to
+  // load them again.
 }
 
 bool isDoubleSpecial(std::string const &workspace_name) {
@@ -279,37 +280,6 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
     auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
     workspaceData["persistent-config"] = true;
     m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
-  }
-}
-
-void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &clientsJson) {
-  spdlog::info("Loading persistent workspaces from Hyprland workspace rules");
-
-  auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
-  for (Json::Value const &rule : workspaceRules) {
-    if (!rule["workspaceString"].isString()) {
-      spdlog::warn("Workspace rules: invalid workspaceString, skipping: {}", rule);
-      continue;
-    }
-    if (!rule["persistent"].asBool()) {
-      continue;
-    }
-    auto const &workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
-                                                         : rule["workspaceString"].asString();
-    auto const &monitor = rule["monitor"].asString();
-    // create this workspace persistently if:
-    // 1. the allOutputs config option is enabled
-    // 2. the rule's monitor is the current monitor
-    // 3. no monitor is specified in the rule => assume it needs to be persistent on every monitor
-    if (allOutputs() || m_bar.output->name == monitor || monitor.empty()) {
-      // => persistent workspace should be shown on this monitor
-      auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
-      workspaceData["persistent-rule"] = true;
-      m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
-    } else {
-      // This can be any workspace selector.
-      m_workspacesToRemove.emplace_back(workspace);
-    }
   }
 }
 

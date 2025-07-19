@@ -118,7 +118,6 @@ class Workspaces : public AModule, public EventHandler {
   void initializeWorkspaces();
   void setCurrentMonitorId();
   void loadPersistentWorkspacesFromConfig(Json::Value const& clientsJson);
-  void loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& clientsJson);
 
   bool m_allOutputs = false;
   bool m_showSpecial = false;
