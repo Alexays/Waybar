@@ -293,8 +293,11 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &c
     if (!rule["persistent"].asBool()) {
       continue;
     }
-    auto const &workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
+    auto workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
                                                          : rule["workspaceString"].asString();
+    if (workspace.starts_with("name:")) {
+      workspace = workspace.substr(5);
+    }
     auto const &monitor = rule["monitor"].asString();
     // create this workspace persistently if:
     // 1. the allOutputs config option is enabled
