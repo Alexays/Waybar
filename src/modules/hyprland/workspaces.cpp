@@ -69,14 +69,13 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
   spdlog::debug("Creating workspace {}", workspaceName);
 
   // avoid recreating existing workspaces
-  auto workspace =
-      std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const &w) {
-        if (workspaceId > 0) {
-          return w->id() == workspaceId;
-        }
-        return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
-               workspaceName == w->name();
-      });
+  auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const &w) {
+    if (workspaceId > 0) {
+      return w->id() == workspaceId;
+    }
+    return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
+           workspaceName == w->name();
+  });
 
   if (workspace != m_workspaces.end()) {
     // don't recreate workspace, but update persistency if necessary
@@ -295,7 +294,7 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &c
       continue;
     }
     auto workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
-                                                         : rule["workspaceString"].asString();
+                                                  : rule["workspaceString"].asString();
 
     // The prefix "name:" cause mismatches with workspace names taken anywhere else.
     if (workspace.starts_with("name:")) {
