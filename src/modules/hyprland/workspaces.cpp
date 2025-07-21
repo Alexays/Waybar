@@ -64,13 +64,18 @@ Json::Value Workspaces::createMonitorWorkspaceData(std::string const &name,
 
 void Workspaces::createWorkspace(Json::Value const &workspace_data,
                                  Json::Value const &clients_data) {
+  auto workspaceName = workspace_data["name"].asString();
   auto workspaceId = workspace_data["id"].asInt();
-  spdlog::debug("Creating workspace {}", workspaceId);
+  spdlog::debug("Creating workspace {}", workspaceName);
 
   // avoid recreating existing workspaces
   auto workspace =
-      std::ranges::find_if(m_workspaces, [workspaceId](std::unique_ptr<Workspace> const &w) {
-        return workspaceId == w->id();
+      std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const &w) {
+        if (workspaceId > 0) {
+          return w->id() == workspaceId;
+        }
+        return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
+               workspaceName == w->name();
       });
 
   if (workspace != m_workspaces.end()) {
@@ -79,14 +84,14 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
 
     const auto *k = "persistent-rule";
     if (std::ranges::find(keys, k) != keys.end()) {
-      spdlog::debug("Set dynamic persistency of workspace {} to: {}", workspaceId,
+      spdlog::debug("Set dynamic persistency of workspace {} to: {}", workspaceName,
                     workspace_data[k].asBool() ? "true" : "false");
       (*workspace)->setPersistentRule(workspace_data[k].asBool());
     }
 
     k = "persistent-config";
     if (std::ranges::find(keys, k) != keys.end()) {
-      spdlog::debug("Set config persistency of workspace {} to: {}", workspaceId,
+      spdlog::debug("Set config persistency of workspace {} to: {}", workspaceName,
                     workspace_data[k].asBool() ? "true" : "false");
       (*workspace)->setPersistentConfig(workspace_data[k].asBool());
     }
