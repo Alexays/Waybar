@@ -906,8 +906,7 @@ void Workspaces::updateWindowCount() {
   const Json::Value workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
   for (auto &workspace : m_workspaces) {
     auto workspaceJson = std::ranges::find_if(workspacesJson, [&](Json::Value const &x) {
-      return x["name"].asString() == workspace->name() ||
-             (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
+      return x["id"].asInt() == workspace->id();
     });
     uint32_t count = 0;
     if (workspaceJson != workspacesJson.end()) {
@@ -972,9 +971,7 @@ void Workspaces::updateWorkspaceStates() {
       workspaceIcon = workspace->selectIcon(m_iconsMap);
     }
     auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto &w) {
-      auto wNameRaw = w["name"].asString();
-      auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
-      return wName == workspace->name();
+      return w["id"].asInt() == workspace->id();
     });
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
