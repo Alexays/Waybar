@@ -1,4 +1,3 @@
-#include <spdlog/spdlog.h>
 #include "modules/sni/item.hpp"
 
 #include <gdkmm/general.h>
