@@ -609,6 +609,7 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateBoolConfig(config, "persistent-only", m_persistentOnly);
   populateBoolConfig(config, "active-only", m_activeOnly);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
+  populateBoolConfig(config, "unique-icons", m_uniqueIcons);
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);

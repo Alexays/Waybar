@@ -139,6 +139,7 @@ TEST_CASE("Load Hyprland Workspaces bar config", "[config]") {
   REQUIRE(hyprland["active-only"].asBool() == true);
   REQUIRE(hyprland["all-outputs"].asBool() == false);
   REQUIRE(hyprland["move-to-monitor"].asBool() == true);
+  REQUIRE(hyprland["unique-icons"].asBool() == true);
   REQUIRE(hyprland["format"].asString() == "{icon} {windows}");
   REQUIRE(hyprland["format-window-separator"].asString() == " ");
   REQUIRE(hyprland["on-scroll-down"].asString() == "hyprctl dispatch workspace e-1");

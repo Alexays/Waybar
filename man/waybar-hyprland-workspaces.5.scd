@@ -70,6 +70,11 @@ Addressed by *hyprland/workspaces*
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
 	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
 
+*unique-icons*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only one instance of each window icon will be shown per workspace.
+
 *ignore-workspaces*: ++
 	typeof: array ++
 	default: [] ++
