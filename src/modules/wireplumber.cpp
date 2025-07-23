@@ -340,11 +340,20 @@ auto waybar::modules::Wireplumber::update() -> void {
   }
 
   int vol = round(volume_ * 100.0);
+
+  // Get the state and apply state-specific format if available
+  auto state = getState(vol);
+  if (!state.empty()) {
+    std::string format_name = muted_ ? "format-muted" : "format";
+    std::string state_format_name = format_name + "-" + state;
+    if (config_[state_format_name].isString()) {
+      format = config_[state_format_name].asString();
+    }
+  }
+
   std::string markup = fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_),
                                    fmt::arg("volume", vol), fmt::arg("icon", getIcon(vol)));
   label_.set_markup(markup);
-
-  getState(vol);
 
   if (tooltipEnabled()) {
     if (tooltipFormat.empty() && config_["tooltip-format"].isString()) {
