@@ -35,6 +35,7 @@ class Battery : public ALabel {
   std::tuple<uint8_t, float, std::string, float, uint16_t, float> getInfos();
   const std::string formatTimeRemaining(float hoursRemaining);
   void setBarClass(std::string&);
+  void processEvents(std::string& state, std::string& status, uint8_t capacity);
 
   int global_watch;
   std::map<fs::path, int> batteries_;
@@ -43,6 +44,7 @@ class Battery : public ALabel {
   int global_watch_fd_;
   std::mutex battery_list_mutex_;
   std::string old_status_;
+  std::string last_event_;
   bool warnFirstTime_{true};
   const Bar& bar_;
 
