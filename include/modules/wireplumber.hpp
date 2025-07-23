@@ -22,6 +22,7 @@ class Wireplumber : public ALabel {
   void activatePlugins();
   static void updateVolume(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
+  static void updateSourceVolume(waybar::modules::Wireplumber* self, uint32_t id);
   static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
   static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
                                       waybar::modules::Wireplumber* self);
@@ -47,6 +48,10 @@ class Wireplumber : public ALabel {
   uint32_t node_id_{0};
   std::string node_name_;
   gchar* type_;
+  uint32_t source_node_id_;
+  bool source_muted_;
+  double source_volume_;
+  gchar* default_source_name_;
 };
 
 }  // namespace waybar::modules
