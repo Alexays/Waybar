@@ -73,7 +73,7 @@ Addressed by *hyprland/workspaces*
 *unique-icons*: ++
 	typeof: bool ++
 	default: false ++
-	If set to true, only one instance of each window icon will be shown per workspace
+	If set to true, only one instance of each window icon will be shown per workspace.
 
 *ignore-workspaces*: ++
 	typeof: array ++
