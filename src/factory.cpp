@@ -17,8 +17,8 @@
 #ifdef HAVE_WLR_TASKBAR
 #include "modules/wlr/taskbar.hpp"
 #endif
-#ifdef HAVE_WLR_WORKSPACES
-#include "modules/wlr/workspace_manager.hpp"
+#ifdef HAVE_EXT_WORKSPACES
+#include "modules/ext/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
 #include "modules/river/layout.hpp"
@@ -178,9 +178,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
     }
 #endif
-#ifdef HAVE_WLR_WORKSPACES
-    if (ref == "wlr/workspaces") {
-      return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
+#ifdef HAVE_EXT_WORKSPACES
+    if (ref == "ext/workspaces") {
+      return new waybar::modules::ext::WorkspaceManager(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_RIVER
