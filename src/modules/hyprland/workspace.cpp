@@ -1,6 +1,7 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -95,7 +96,10 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
   if (!create_window_payload.isEmpty(m_workspaceManager)) {
     auto repr = create_window_payload.repr(m_workspaceManager);
 
-    if (!repr.empty()) {
+    if (!repr.empty() && (!m_workspaceManager.uniqueIcons() ||
+                          std::ranges::find_if(m_windowMap, [&repr](const auto &x) {
+                            return x.second == repr;
+                          }) == m_windowMap.end())) {
       m_windowMap[create_window_payload.getAddress()] = repr;
     }
   }

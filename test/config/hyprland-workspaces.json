@@ -29,6 +29,7 @@
       "window-rewrite": {
         "title<Steam>": ""
       },
+      "unique-icons": true,
       "window-rewrite-default": "",
       "window-rewrite-separator": " ",
       "sort-by": "number"
