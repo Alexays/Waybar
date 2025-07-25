@@ -9,6 +9,7 @@
 #include <sys/epoll.h>
 
 #include <optional>
+#include <vector>
 
 #include "ALabel.hpp"
 #include "util/sleeper_thread.hpp"
@@ -44,11 +45,11 @@ class Network : public ALabel {
   void parseFreq(struct nlattr**);
   void parseBssid(struct nlattr**);
   bool associatedOrJoined(struct nlattr**);
-  bool checkInterface(std::string name);
+  bool matchInterface(const std::string& ifname, const std::vector<std::string>& altnames,
+                      std::string& matched) const;
   auto getInfo() -> void;
   const std::string getNetworkState() const;
   void clearIface();
-  bool wildcardMatch(const std::string& pattern, const std::string& text) const;
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
 
   int ifid_{-1};
