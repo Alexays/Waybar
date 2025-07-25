@@ -7,6 +7,7 @@
 #include <sys/eventfd.h>
 
 #include <cassert>
+#include <cstring>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -669,7 +670,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       break;
     }
 
-      char temp_gw_addr[INET6_ADDRSTRLEN];
     case RTM_DELROUTE:
       is_del_event = true;
     case RTM_NEWROUTE: {
@@ -680,6 +680,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       int family = rtm->rtm_family;
       ssize_t attrlen = RTM_PAYLOAD(nh);
       struct rtattr *attr = RTM_RTA(rtm);
+      char gateway_addr[INET6_ADDRSTRLEN];
       bool has_gateway = false;
       bool has_destination = false;
       int temp_idx = -1;
@@ -705,7 +706,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
              * If someone ever needs to figure out the gateway address as well,
              * it's here as the attribute payload.
              */
-            inet_ntop(family, RTA_DATA(attr), temp_gw_addr, sizeof(temp_gw_addr));
+            inet_ntop(family, RTA_DATA(attr), gateway_addr, sizeof(gateway_addr));
             has_gateway = true;
             break;
           case RTA_DST: {
@@ -750,8 +751,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
           net->clearIface();
           net->ifid_ = temp_idx;
           net->route_priority = priority;
-          net->gwaddr_ = temp_gw_addr;
-          spdlog::debug("network: new default route via {} on if{} metric {}", temp_gw_addr,
+          net->gwaddr_ = gateway_addr;
+          spdlog::debug("network: new default route via {} on if{} metric {}", gateway_addr,
                         temp_idx, priority);
 
           /* Ask ifname associated with temp_idx as well as carrier status */
