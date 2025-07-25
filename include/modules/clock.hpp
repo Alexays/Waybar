@@ -48,8 +48,9 @@ class Clock final : public ALabel {
   std::string cldYearCached_;          // calendar Year mode. Cached calendar
   date::year_month cldMonShift_;       // calendar Month mode. Cached ym
   std::string cldMonCached_;           // calendar Month mode. Cached calendar
-  date::day cldBaseDay_{0};  // calendar Cached day. Is used when today is changing(midnight)
-  std::string cldText_{""};  // calendar text to print
+  date::day cldBaseDay_{0};      // calendar Cached day. Is used when today is changing(midnight)
+  std::string cldText_{""};      // calendar text to print
+  bool iso8601Calendar_{false};  // whether the calendar is in ISO8601
   CldMode cldMode_{CldMode::MONTH};
   auto get_calendar(const date::year_month_day& today, const date::year_month_day& ymd,
                     const date::time_zone* tz) -> const std::string;
