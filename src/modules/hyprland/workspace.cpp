@@ -178,6 +178,15 @@ void Workspace::update(const std::string &format, const std::string &icon) {
     return;
   }
   // clang-format off
+  if (this->m_workspaceManager.hideActive() && \
+      this->isActive() && \
+      !this->isPersistent() && \
+      !this->isSpecial()) {
+    // clang-format on
+    m_button.hide();
+    return;
+  }
+  // clang-format off
   if (this->m_workspaceManager.activeOnly() && \
      !this->isActive() && \
      !this->isPersistent() && \
