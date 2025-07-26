@@ -38,6 +38,8 @@ void Workspaces::doUpdate() {
   std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
                [&](const auto &ws) {
                  if (alloutputs) return true;
+                 if (config_["output"].isString())
+                   return config_["output"].asString() == ws["output"].asString();
                  return ws["output"].asString() == bar_.output->name;
                });
 
