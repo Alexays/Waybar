@@ -22,6 +22,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
       port_(config_["port"].isUInt() ? config["port"].asUInt() : 0),
       password_(config_["password"].empty() ? "" : config_["password"].asString()),
       timeout_(config_["timeout"].isUInt() ? config_["timeout"].asUInt() * 1'000 : 30'000),
+      playing_interval_(config_["playing-interval"].isUInt() ? config_["playing-interval"].asUInt() : 1'000),
       connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
       song_(nullptr, &mpd_song_free) {
@@ -31,6 +32,10 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
 
   if (!config_["timeout"].isNull() && !config_["timeout"].isUInt()) {
     spdlog::warn("{}: `timeout` configuration should be an unsigned int", module_name_);
+  }
+
+  if (!config_["playing-interval"].isNull() && !config_["playing-interval"].isUInt()) {
+    spdlog::warn("{}: `playing-interval` configuration should be an unsigned int", module_name_);
   }
 
   if (!config["server"].isNull()) {
