@@ -28,6 +28,8 @@ class MPD : public ALabel {
 
   unsigned timeout_;
 
+  unsigned playing_interval_;
+
   detail::unique_connection connection_;
 
   detail::unique_status status_;
@@ -59,6 +61,7 @@ class MPD : public ALabel {
   inline bool stopped() const { return connection_ && state_ == MPD_STATE_STOP; }
   inline bool playing() const { return connection_ && state_ == MPD_STATE_PLAY; }
   inline bool paused() const { return connection_ && state_ == MPD_STATE_PAUSE; }
+  inline unsigned playing_interval() const { return playing_interval_; }
 };
 
 #if !defined(MPD_NOINLINE)
