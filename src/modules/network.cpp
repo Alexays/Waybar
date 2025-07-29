@@ -78,25 +78,7 @@ waybar::modules::Network::readBandwidthUsage() {
 }
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
-      ifid_(-1),
-      addr_pref_(IPV4),
-      efd_(-1),
-      ev_fd_(-1),
-      want_route_dump_(false),
-      want_link_dump_(false),
-      want_addr_dump_(false),
-      dump_in_progress_(false),
-      is_p2p_(false),
-      cidr_(0),
-      cidr6_(0),
-      signal_strength_dbm_(0),
-      signal_strength_(0),
-#ifdef WANT_RFKILL
-      rfkill_{RFKILL_TYPE_WLAN},
-#endif
-      frequency_(0.0) {
-
+    : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
@@ -271,11 +253,16 @@ void waybar::modules::Network::worker() {
 }
 
 const std::string waybar::modules::Network::getNetworkState() const {
+  if (ifid_ == -1 || !carrier_) {
 #ifdef WANT_RFKILL
-  if (rfkill_.getState() && ifid_ == -1) return "disabled";
+    bool display_rfkill = true;
+    if (config_["rfkill"].isBool()) {
+      display_rfkill = config_["rfkill"].asBool();
+    }
+    if (rfkill_.getState() && display_rfkill) return "disabled";
 #endif
-  if (ifid_ == -1) return "disconnected";
-  if (!carrier_) return "disconnected";
+    return "disconnected";
+  }
   if (ipaddr_.empty() && ipaddr6_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";
@@ -418,6 +405,7 @@ void waybar::modules::Network::clearIface() {
   netmask_.clear();
   netmask6_.clear();
   carrier_ = false;
+  is_p2p_ = false;
   cidr_ = 0;
   cidr6_ = 0;
   signal_strength_dbm_ = 0;
@@ -507,6 +495,11 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
           net->ifname_ = new_ifname;
           net->ifid_ = ifi->ifi_index;
           if (ifi->ifi_flags & IFF_POINTOPOINT) net->is_p2p_ = true;
+          if ((ifi->ifi_flags & IFF_UP) == 0) {
+            // With some network drivers (e.g. mt7921e), the interface may
+            // report having a carrier even though interface is down.
+            carrier = false;
+          }
           if (carrier.has_value()) {
             net->carrier_ = carrier.value();
           }

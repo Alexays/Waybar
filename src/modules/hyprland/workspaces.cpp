@@ -66,14 +66,17 @@ Json::Value Workspaces::createMonitorWorkspaceData(std::string const &name,
 void Workspaces::createWorkspace(Json::Value const &workspace_data,
                                  Json::Value const &clients_data) {
   auto workspaceName = workspace_data["name"].asString();
+  auto workspaceId = workspace_data["id"].asInt();
   spdlog::debug("Creating workspace {}", workspaceName);
 
   // avoid recreating existing workspaces
-  auto workspace =
-      std::ranges::find_if(m_workspaces, [workspaceName](std::unique_ptr<Workspace> const &w) {
-        return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
-               workspaceName == w->name();
-      });
+  auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const &w) {
+    if (workspaceId > 0) {
+      return w->id() == workspaceId;
+    }
+    return (workspaceName.starts_with("special:") && workspaceName.substr(8) == w->name()) ||
+           workspaceName == w->name();
+  });
 
   if (workspace != m_workspaces.end()) {
     // don't recreate workspace, but update persistency if necessary
@@ -254,10 +257,8 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
       // value is an array => create defined workspaces for this monitor
       if (canCreate) {
         for (const Json::Value &workspace : value) {
-          if (workspace.isInt()) {
-            spdlog::debug("Creating workspace {} on monitor {}", workspace, currentMonitor);
-            persistentWorkspacesToCreate.emplace_back(std::to_string(workspace.asInt()));
-          }
+          spdlog::debug("Creating workspace {} on monitor {}", workspace, currentMonitor);
+          persistentWorkspacesToCreate.emplace_back(workspace.asString());
         }
       } else {
         // key is the workspace and value is array of monitors to create on
@@ -293,8 +294,13 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &c
     if (!rule["persistent"].asBool()) {
       continue;
     }
-    auto const &workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
-                                                         : rule["workspaceString"].asString();
+    auto workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
+                                                  : rule["workspaceString"].asString();
+
+    // The prefix "name:" cause mismatches with workspace names taken anywhere else.
+    if (workspace.starts_with("name:")) {
+      workspace = workspace.substr(5);
+    }
     auto const &monitor = rule["monitor"].asString();
     // create this workspace persistently if:
     // 1. the allOutputs config option is enabled
@@ -1040,9 +1046,17 @@ bool Workspaces::updateWindowsToCreate() {
 void Workspaces::updateWorkspaceStates() {
   const std::vector<int> visibleWorkspaces = getVisibleWorkspaces();
   auto updatedWorkspaces = m_ipc.getSocket1JsonReply("workspaces");
+
+  auto currentWorkspace = m_ipc.getSocket1JsonReply("activeworkspace");
+  std::string currentWorkspaceName =
+      currentWorkspace.isMember("name") ? currentWorkspace["name"].asString() : "";
+
   for (auto &workspace : m_workspaces) {
+    bool isActiveByName =
+        !currentWorkspaceName.empty() && workspace->name() == currentWorkspaceName;
+
     workspace->setActive(
-        workspace->id() == m_activeWorkspaceId ||
+        workspace->id() == m_activeWorkspaceId || isActiveByName ||
         (workspace->isSpecial() && workspace->name() == m_activeSpecialWorkspaceName));
     if (workspace->isActive() && workspace->isUrgent()) {
       workspace->setUrgent(false);
