@@ -20,7 +20,7 @@ WindowCreationPayload::WindowCreationPayload(Json::Value const &client_data)
 }
 
 WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
-                                             WindowAddress window_address, std::string window_repr)
+                                             WindowAddress window_address, WindowRepr window_repr)
     : m_window(std::move(window_repr)),
       m_windowAddress(std::move(window_address)),
       m_workspaceName(std::move(workspace_name)) {
@@ -30,10 +30,11 @@ WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
 
 WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
                                              WindowAddress window_address, std::string window_class,
-                                             std::string window_title)
+                                             std::string window_title, bool is_active)
     : m_window(std::make_pair(std::move(window_class), std::move(window_title))),
       m_windowAddress(std::move(window_address)),
-      m_workspaceName(std::move(workspace_name)) {
+      m_workspaceName(std::move(workspace_name)),
+      m_isActive(is_active) {
   clearAddr();
   clearWorkspaceName();
 }
@@ -92,13 +93,14 @@ void WindowCreationPayload::moveToWorkspace(std::string &new_workspace_name) {
   m_workspaceName = new_workspace_name;
 }
 
-std::string WindowCreationPayload::repr(Workspaces &workspace_manager) {
+WindowRepr WindowCreationPayload::repr(Workspaces &workspace_manager) {
   if (std::holds_alternative<Repr>(m_window)) {
     return std::get<Repr>(m_window);
   }
   if (std::holds_alternative<ClassAndTitle>(m_window)) {
-    auto [window_class, window_title] = std::get<ClassAndTitle>(m_window);
-    return workspace_manager.getRewrite(window_class, window_title);
+    auto const &[window_class, window_title] = std::get<ClassAndTitle>(m_window);
+    return {m_windowAddress, window_class, window_title,
+            workspace_manager.getRewrite(window_class, window_title), m_isActive};
   }
   // Unreachable
   spdlog::error("WorkspaceWindow::repr: Unreachable");

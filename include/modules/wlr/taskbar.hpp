@@ -19,6 +19,7 @@
 #include "bar.hpp"
 #include "client.hpp"
 #include "giomm/desktopappinfo.h"
+#include "util/icon_loader.hpp"
 #include "util/json.hpp"
 #include "wlr-foreign-toplevel-management-unstable-v1-client-protocol.h"
 
@@ -89,9 +90,6 @@ class Task {
   std::string state_string(bool = false) const;
   void set_minimize_hint();
   void on_button_size_allocated(Gtk::Allocation &alloc);
-  void set_app_info_from_app_id_list(const std::string &app_id_list);
-  bool image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme> &icon_theme,
-                       Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size);
   void hide_if_ignored();
 
  public:
@@ -153,7 +151,7 @@ class Taskbar : public waybar::AModule {
   Gtk::Box box_;
   std::vector<TaskPtr> tasks_;
 
-  std::vector<Glib::RefPtr<Gtk::IconTheme>> icon_themes_;
+  IconLoader icon_loader_;
   std::unordered_set<std::string> ignore_list_;
   std::map<std::string, std::string> app_ids_replace_map_;
 
@@ -178,7 +176,7 @@ class Taskbar : public waybar::AModule {
   bool show_output(struct wl_output *) const;
   bool all_outputs() const;
 
-  const std::vector<Glib::RefPtr<Gtk::IconTheme>> &icon_themes() const;
+  const IconLoader &icon_loader() const;
   const std::unordered_set<std::string> &ignore_list() const;
   const std::map<std::string, std::string> &app_ids_replace_map() const;
 };
