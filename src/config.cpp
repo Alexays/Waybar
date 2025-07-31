@@ -89,7 +89,7 @@ void Config::setupConfig(Json::Value &dst, const std::string &config_file, int d
   mergeConfig(dst, tmp_config);
 }
 
-std::optional<std::string> Config::findIncludePath(const std::string name) {
+std::optional<std::string> Config::findIncludePath(const std::string &name) {
   auto match1 = tryExpandPath(name, "");
   if (!match1.empty()) {
     return match1.front();
