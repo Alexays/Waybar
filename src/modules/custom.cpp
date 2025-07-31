@@ -14,6 +14,9 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       percentage_(0),
       fp_(nullptr),
       pid_(-1) {
+  if (config.isNull()) {
+    spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
+  }
   dp.emit();
   if (!config_["signal"].empty() && config_["interval"].empty() &&
       config_["restart-interval"].empty()) {
