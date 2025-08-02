@@ -15,6 +15,7 @@
 #include "ALabel.hpp"
 #include "bar.hpp"
 #include "util/sleeper_thread.hpp"
+#include "util/upower_backend.hpp"
 
 namespace waybar::modules {
 
@@ -37,7 +38,7 @@ class Battery : public ALabel {
   void setBarClass(std::string&);
 
   int global_watch;
-  std::map<fs::path, int> batteries_;
+  std::set<fs::path> batteries_;
   fs::path adapter_;
   int battery_watch_fd_;
   int global_watch_fd_;
@@ -46,7 +47,8 @@ class Battery : public ALabel {
   bool warnFirstTime_{true};
   const Bar& bar_;
 
-  util::SleeperThread thread_;
+  util::UPowerBackend upower_backend_;
+
   util::SleeperThread thread_battery_update_;
   util::SleeperThread thread_timer_;
 };
