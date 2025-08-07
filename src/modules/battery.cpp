@@ -8,13 +8,10 @@
 
 #include <iostream>
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60), bar_(bar) {
+    : ALabel(config, "battery", id, "{capacity}%", 60),
+      bar_(bar),
+      upower_backend_([this](bool) { dp.emit(); }) {
 #if defined(__linux__)
-  battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
-  if (battery_watch_fd_ == -1) {
-    throw std::runtime_error("Unable to listen batteries.");
-  }
-
   global_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (global_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
@@ -38,15 +35,7 @@ waybar::modules::Battery::~Battery() {
   }
   close(global_watch_fd_);
 
-  for (auto it = batteries_.cbegin(), next_it = it; it != batteries_.cend(); it = next_it) {
-    ++next_it;
-    auto watch_id = (*it).second;
-    if (watch_id >= 0) {
-      inotify_rm_watch(battery_watch_fd_, watch_id);
-    }
-    batteries_.erase(it);
-  }
-  close(battery_watch_fd_);
+  batteries_.clear();
 #endif
 }
 
@@ -64,20 +53,11 @@ void waybar::modules::Battery::worker() {
     dp.emit();
     thread_timer_.sleep_for(interval_);
   };
-  thread_ = [this] {
-    struct inotify_event event = {0};
-    int nbytes = read(battery_watch_fd_, &event, sizeof(event));
-    if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
-      thread_.stop();
-      return;
-    }
-    dp.emit();
-  };
   thread_battery_update_ = [this] {
     struct inotify_event event = {0};
     int nbytes = read(global_watch_fd_, &event, sizeof(event));
     if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
-      thread_.stop();
+      thread_battery_update_.stop();
       return;
     }
     refreshBatteries();
@@ -92,7 +72,7 @@ void waybar::modules::Battery::refreshBatteries() {
   // Mark existing list of batteries as not necessarily found
   std::map<fs::path, bool> check_map;
   for (auto const& bat : batteries_) {
-    check_map[bat.first] = false;
+    check_map[bat] = false;
   }
 
   try {
@@ -124,13 +104,8 @@ void waybar::modules::Battery::refreshBatteries() {
           check_map[node.path()] = true;
           auto search = batteries_.find(node.path());
           if (search == batteries_.end()) {
-            // We've found a new battery save it and start listening for events
-            auto event_path = (node.path() / "uevent");
-            auto wd = inotify_add_watch(battery_watch_fd_, event_path.c_str(), IN_ACCESS);
-            if (wd < 0) {
-              throw std::runtime_error("Could not watch events for " + node.path().string());
-            }
-            batteries_[node.path()] = wd;
+            // We've found a new battery save it
+            batteries_.insert(node.path());
           }
         }
       }
@@ -156,10 +131,6 @@ void waybar::modules::Battery::refreshBatteries() {
   // Remove any batteries that are no longer present and unwatch them
   for (auto const& check : check_map) {
     if (!check.second) {
-      auto watch_id = batteries_[check.first];
-      if (watch_id >= 0) {
-        inotify_rm_watch(battery_watch_fd_, watch_id);
-      }
       batteries_.erase(check.first);
     }
   }
@@ -258,8 +229,7 @@ waybar::modules::Battery::getInfos() {
     float mainBatHealthPercent = 0.0F;
 
     std::string status = "Unknown";
-    for (auto const& item : batteries_) {
-      auto bat = item.first;
+    for (auto const& bat : batteries_) {
       std::string _status;
 
       /* Check for adapter status if battery is not available */
