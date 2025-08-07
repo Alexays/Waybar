@@ -6,6 +6,8 @@
 #include <utility>
 
 #include "modules/hyprland/workspaces.hpp"
+#include "util/command.hpp"
+#include "util/icon_loader.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -32,7 +34,12 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
                                                false);
 
   m_button.set_relief(Gtk::RELIEF_NONE);
-  m_content.set_center_widget(m_label);
+  if (m_workspaceManager.enableTaskbar()) {
+    m_content.set_orientation(m_workspaceManager.taskbarOrientation());
+    m_content.pack_start(m_labelBefore, false, false);
+  } else {
+    m_content.set_center_widget(m_labelBefore);
+  }
   m_button.add(m_content);
 
   initializeWindowMap(clients_data);
@@ -47,9 +54,14 @@ void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condi
   }
 }
 
-std::optional<std::string> Workspace::closeWindow(WindowAddress const &addr) {
-  if (m_windowMap.contains(addr)) {
-    return removeWindow(addr);
+std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const &addr) {
+  auto it = std::ranges::find_if(m_windowMap,
+                                 [&addr](const auto &window) { return window.address == addr; });
+  // If the vector contains the address, remove it and return the window representation
+  if (it != m_windowMap.end()) {
+    WindowRepr windowRepr = *it;
+    m_windowMap.erase(it);
+    return windowRepr;
   }
   return std::nullopt;
 }
@@ -91,12 +103,26 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
   }
 }
 
+void Workspace::setActiveWindow(WindowAddress const &addr) {
+  for (auto &window : m_windowMap) {
+    window.setActive(window.address == addr);
+  }
+}
+
 void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
   if (!create_window_payload.isEmpty(m_workspaceManager)) {
     auto repr = create_window_payload.repr(m_workspaceManager);
 
-    if (!repr.empty()) {
-      m_windowMap[create_window_payload.getAddress()] = repr;
+    if (!repr.empty() || m_workspaceManager.enableTaskbar()) {
+      auto addr = create_window_payload.getAddress();
+      auto it = std::ranges::find_if(
+          m_windowMap, [&addr](const auto &window) { return window.address == addr; });
+      // If the vector contains the address, update the window representation, otherwise insert it
+      if (it != m_windowMap.end()) {
+        *it = repr;
+      } else {
+        m_windowMap.emplace_back(repr);
+      }
     }
   }
 };
@@ -107,12 +133,6 @@ bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_payloa
     return true;
   }
   return false;
-}
-
-std::string Workspace::removeWindow(WindowAddress const &addr) {
-  std::string windowRepr = m_windowMap[addr];
-  m_windowMap.erase(addr);
-  return windowRepr;
 }
 
 std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map) {
@@ -172,7 +192,7 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
   return m_name;
 }
 
-void Workspace::update(const std::string &format, const std::string &icon) {
+void Workspace::update(const std::string &workspace_icon) {
   if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
     m_button.hide();
     return;
@@ -204,21 +224,122 @@ void Workspace::update(const std::string &format, const std::string &icon) {
   addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
 
   std::string windows;
-  auto windowSeparator = m_workspaceManager.getWindowSeparator();
+  // Optimization: The {windows} substitution string is only possible if the taskbar is disabled, no
+  // need to compute this if enableTaskbar() is true
+  if (!m_workspaceManager.enableTaskbar()) {
+    auto windowSeparator = m_workspaceManager.getWindowSeparator();
 
-  bool isNotFirst = false;
+    bool isNotFirst = false;
 
-  for (auto &[_pid, window_repr] : m_windowMap) {
-    if (isNotFirst) {
-      windows.append(windowSeparator);
+    for (const auto &window_repr : m_windowMap) {
+      if (isNotFirst) {
+        windows.append(windowSeparator);
+      }
+      isNotFirst = true;
+      windows.append(window_repr.repr_rewrite);
     }
-    isNotFirst = true;
-    windows.append(window_repr);
   }
 
-  m_label.set_markup(fmt::format(fmt::runtime(format), fmt::arg("id", id()),
-                                 fmt::arg("name", name()), fmt::arg("icon", icon),
-                                 fmt::arg("windows", windows)));
+  auto formatBefore = m_workspaceManager.formatBefore();
+  m_labelBefore.set_markup(fmt::format(fmt::runtime(formatBefore), fmt::arg("id", id()),
+                                       fmt::arg("name", name()), fmt::arg("icon", workspace_icon),
+                                       fmt::arg("windows", windows)));
+  m_labelBefore.get_style_context()->add_class("workspace-label");
+
+  if (m_workspaceManager.enableTaskbar()) {
+    updateTaskbar(workspace_icon);
+  }
+}
+
+void Workspace::updateTaskbar(const std::string &workspace_icon) {
+  for (auto child : m_content.get_children()) {
+    if (child != &m_labelBefore) {
+      m_content.remove(*child);
+    }
+  }
+
+  bool isFirst = true;
+  for (const auto &window_repr : m_windowMap) {
+    if (shouldSkipWindow(window_repr)) {
+      continue;
+    }
+    if (isFirst) {
+      isFirst = false;
+    } else if (m_workspaceManager.getWindowSeparator() != "") {
+      auto windowSeparator = Gtk::make_managed<Gtk::Label>(m_workspaceManager.getWindowSeparator());
+      m_content.pack_start(*windowSeparator, false, false);
+      windowSeparator->show();
+    }
+    auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
+    window_box->set_tooltip_text(window_repr.window_title);
+    window_box->get_style_context()->add_class("taskbar-window");
+    if (window_repr.isActive) {
+      window_box->get_style_context()->add_class("active");
+    }
+    auto event_box = Gtk::manage(new Gtk::EventBox());
+    event_box->add(*window_box);
+    if (m_workspaceManager.onClickWindow() != "") {
+      event_box->signal_button_press_event().connect(
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address));
+    }
+
+    auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
+                                   fmt::arg("title", window_repr.window_title));
+    if (!text_before.empty()) {
+      auto window_label_before = Gtk::make_managed<Gtk::Label>(text_before);
+      window_box->pack_start(*window_label_before, true, true);
+    }
+
+    if (m_workspaceManager.taskbarWithIcon()) {
+      auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr.window_class);
+      int icon_size = m_workspaceManager.taskbarIconSize();
+      auto window_icon = Gtk::make_managed<Gtk::Image>();
+      m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, icon_size);
+      window_box->pack_start(*window_icon, false, false);
+    }
+
+    auto text_after = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatAfter()),
+                                  fmt::arg("title", window_repr.window_title));
+    if (!text_after.empty()) {
+      auto window_label_after = Gtk::make_managed<Gtk::Label>(text_after);
+      window_box->pack_start(*window_label_after, true, true);
+    }
+
+    m_content.pack_start(*event_box, true, false);
+    event_box->show_all();
+  }
+
+  auto formatAfter = m_workspaceManager.formatAfter();
+  if (!formatAfter.empty()) {
+    m_labelAfter.set_markup(fmt::format(fmt::runtime(formatAfter), fmt::arg("id", id()),
+                                        fmt::arg("name", name()),
+                                        fmt::arg("icon", workspace_icon)));
+    m_content.pack_end(m_labelAfter, false, false);
+    m_labelAfter.show();
+  }
+}
+
+bool Workspace::handleClick(const GdkEventButton *event_button, WindowAddress const &addr) const {
+  if (event_button->type == GDK_BUTTON_PRESS) {
+    std::string command = std::regex_replace(m_workspaceManager.onClickWindow(),
+                                             std::regex("\\{address\\}"), "0x" + addr);
+    command = std::regex_replace(command, std::regex("\\{button\\}"),
+                                 std::to_string(event_button->button));
+    auto res = util::command::execNoRead(command);
+    if (res.exit_code != 0) {
+      spdlog::error("Failed to execute {}: {}", command, res.out);
+    }
+  }
+  return true;
+}
+
+bool Workspace::shouldSkipWindow(const WindowRepr &window_repr) const {
+  auto ignore_list = m_workspaceManager.getIgnoredWindows();
+  auto it = std::ranges::find_if(ignore_list, [&window_repr](const auto &ignoreItem) {
+    return std::regex_match(window_repr.window_class, ignoreItem) ||
+           std::regex_match(window_repr.window_title, ignoreItem);
+  });
+  return it != ignore_list.end();
 }
 
 }  // namespace waybar::modules::hyprland
