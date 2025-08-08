@@ -106,19 +106,33 @@ void Config::setupConfig(Json::Value &dst, const std::string &config_file, int d
   mergeConfig(dst, tmp_config);
 }
 
+std::optional<std::string> Config::findIncludePath(const std::string &name) {
+  auto match1 = tryExpandPath(name, "");
+  if (!match1.empty()) {
+    return match1.front();
+  }
+  return findConfigPath({name});
+}
+
 void Config::resolveConfigIncludes(Json::Value &config, int depth) {
   Json::Value includes = config["include"];
   if (includes.isArray()) {
     for (const auto &include : includes) {
       spdlog::info("Including resource file: {}", include.asString());
-      for (const auto &match : tryExpandPath(include.asString(), "")) {
-        setupConfig(config, match, depth + 1);
+      auto match = findIncludePath(include.asString());
+      if (match.has_value()) {
+        setupConfig(config, match.value(), depth + 1);
+      } else {
+        spdlog::warn("Unable to find resource file: {}", include.asString());
       }
     }
   } else if (includes.isString()) {
     spdlog::info("Including resource file: {}", includes.asString());
-    for (const auto &match : tryExpandPath(includes.asString(), "")) {
-      setupConfig(config, match, depth + 1);
+    auto match = findIncludePath(includes.asString());
+    if (match.has_value()) {
+      setupConfig(config, match.value(), depth + 1);
+    } else {
+      spdlog::warn("Unable to find resource file: {}", includes.asString());
     }
   }
 }
