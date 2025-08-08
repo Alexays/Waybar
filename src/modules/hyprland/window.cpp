@@ -13,6 +13,8 @@
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
 
+#include <fmt/format.h>
+
 namespace waybar::modules::hyprland {
 
 std::shared_mutex windowIpcSmtx;
@@ -54,8 +56,15 @@ auto Window::update() -> void {
   std::string label_text;
   if (!format_.empty()) {
     label_.show();
+
+	// If the focused window name is empty and fallback is configured, use fallback text
+	std::string displayTitle = windowName;
+	if (displayTitle.empty() && config_["fallback"].isString()) {
+		displayTitle = config_["fallback"].asString();
+	}
+
     label_text = waybar::util::rewriteString(
-        fmt::format(fmt::runtime(format_), fmt::arg("title", windowName),
+        fmt::format(fmt::runtime(format_), fmt::arg("title", displayTitle),
                     fmt::arg("initialTitle", windowData_.initial_title),
                     fmt::arg("class", windowData_.class_name),
                     fmt::arg("initialClass", windowData_.initial_class_name)),
