@@ -443,10 +443,11 @@ bool Workspaces::handleScroll(GdkEventScroll *e) {
     if (it == workspaces_.end()) {
       return true;
     }
+    bool reverse_scroll = config_["reverse-scroll"].isBool() && config_["reverse-scroll"].asBool();
     if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
-      name = getCycleWorkspace(it, false);
+      name = getCycleWorkspace(it, reverse_scroll ? true : false);
     } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
-      name = getCycleWorkspace(it, true);
+      name = getCycleWorkspace(it, reverse_scroll ? false : true);
     } else {
       return true;
     }
