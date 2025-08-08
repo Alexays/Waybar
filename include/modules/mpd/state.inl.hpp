@@ -8,6 +8,7 @@ inline bool Context::is_paused() const { return mpd_module_->paused(); }
 inline bool Context::is_stopped() const { return mpd_module_->stopped(); }
 
 constexpr inline std::size_t Context::interval() const { return mpd_module_->interval_.count(); }
+inline unsigned Context::playing_interval() const { return mpd_module_->playing_interval(); }
 inline void Context::tryConnect() const { mpd_module_->tryConnect(); }
 inline unique_connection& Context::connection() { return mpd_module_->connection_; }
 constexpr inline mpd_state Context::state() const { return mpd_module_->state_; }
