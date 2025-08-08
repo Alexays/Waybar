@@ -2,7 +2,11 @@
 
 #include <spdlog/spdlog.h>
 #include <unistd.h>
+#ifndef __OpenBSD__
 #include <wordexp.h>
+#else
+#include <glob.h>
+#endif
 
 #include <filesystem>
 #include <fstream>
@@ -34,6 +38,7 @@ std::vector<std::string> Config::tryExpandPath(const std::string &base,
   spdlog::debug("Try expanding: {}", path.string());
 
   std::vector<std::string> results;
+#ifndef __OpenBSD__
   wordexp_t p;
   if (wordexp(path.c_str(), &p, 0) == 0) {
     for (size_t i = 0; i < p.we_wordc; i++) {
@@ -44,6 +49,18 @@ std::vector<std::string> Config::tryExpandPath(const std::string &base,
     }
     wordfree(&p);
   }
+#else
+  glob_t p;
+  if (glob(path.c_str(), 0, NULL, &p) == 0) {
+    for (size_t i = 0; i < p.gl_pathc; i++) {
+      if (access(p.gl_pathv[i], F_OK) == 0) {
+        results.emplace_back(p.gl_pathv[i]);
+        spdlog::debug("Found config file: {}", p.gl_pathv[i]);
+      }
+    }
+    globfree(&p);
+  }
+#endif
 
   return results;
 }
