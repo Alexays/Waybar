@@ -99,11 +99,13 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
   spdlog::debug("[{}]: Updating '{}' node name to: {}", self->name_, self->type_, self->node_name_);
 }
 
-void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber* self, uint32_t id) {
+void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber* self,
+                                                    uint32_t id) {
   spdlog::debug("[{}]: updating source name with node.id {}", self->name_, id);
 
   if (!isValidNodeId(id)) {
-    spdlog::warn("[{}]: '{}' is not a valid source node ID. Ignoring source name update.", self->name_, id);
+    spdlog::warn("[{}]: '{}' is not a valid source node ID. Ignoring source name update.",
+                 self->name_, id);
     return;
   }
 
@@ -160,12 +162,14 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
   self->dp.emit();
 }
 
-void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumber* self, uint32_t id) {
+void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumber* self,
+                                                      uint32_t id) {
   spdlog::debug("[{}]: updating source volume", self->name_);
   GVariant* variant = nullptr;
 
   if (!isValidNodeId(id)) {
-    spdlog::error("[{}]: '{}' is not a valid source node ID. Ignoring source volume update.", self->name_, id);
+    spdlog::error("[{}]: '{}' is not a valid source node ID. Ignoring source volume update.",
+                  self->name_, id);
     return;
   }
 
@@ -206,12 +210,12 @@ void waybar::modules::Wireplumber::onMixerChanged(waybar::modules::Wireplumber* 
   const gchar* name = wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
 
   if (self->node_id_ == id) {
-    spdlog::debug("[{}]: (onMixerChanged: {}) - updating sink volume for node: {}",
-                  self->name_, self->type_, name);
+    spdlog::debug("[{}]: (onMixerChanged: {}) - updating sink volume for node: {}", self->name_,
+                  self->type_, name);
     updateVolume(self, id);
   } else if (self->source_node_id_ == id) {
-    spdlog::debug("[{}]: (onMixerChanged: {}) - updating source volume for node: {}",
-                  self->name_, self->type_, name);
+    spdlog::debug("[{}]: (onMixerChanged: {}) - updating source volume for node: {}", self->name_,
+                  self->type_, name);
     updateSourceVolume(self, id);
   }
 }
@@ -225,17 +229,17 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
 
   if (isValidNodeId(defaultNodeId)) {
     g_autoptr(WpNode) node = static_cast<WpNode*>(
-      wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-                              "=u", defaultNodeId, nullptr));
+        wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
+                                 "=u", defaultNodeId, nullptr));
 
     if (node != nullptr) {
       const gchar* defaultNodeName =
           wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
 
       if (g_strcmp0(self->default_node_name_, defaultNodeName) != 0 ||
-                    self->node_id_ != defaultNodeId) {
-        spdlog::debug("[{}]: Default sink changed to -> Node(name: {}, id: {})",
-                      self->name_, defaultNodeName, defaultNodeId);
+          self->node_id_ != defaultNodeId) {
+        spdlog::debug("[{}]: Default sink changed to -> Node(name: {}, id: {})", self->name_,
+                      defaultNodeName, defaultNodeId);
 
         g_free(self->default_node_name_);
         self->default_node_name_ = g_strdup(defaultNodeName);
@@ -252,17 +256,17 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
 
   if (isValidNodeId(defaultSourceId)) {
     g_autoptr(WpNode) sourceNode = static_cast<WpNode*>(
-      wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-                              "=u", defaultSourceId, nullptr));
+        wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
+                                 "=u", defaultSourceId, nullptr));
 
     if (sourceNode != nullptr) {
       const gchar* defaultSourceName =
-        wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(sourceNode), "node.name");
+          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(sourceNode), "node.name");
 
       if (g_strcmp0(self->default_source_name_, defaultSourceName) != 0 ||
-                    self->source_node_id_ != defaultSourceId) {
-        spdlog::debug("[{}]: Default source changed to -> Node(name: {}, id: {})",
-                      self->name_, defaultSourceName, defaultSourceId);
+          self->source_node_id_ != defaultSourceId) {
+        spdlog::debug("[{}]: Default source changed to -> Node(name: {}, id: {})", self->name_,
+                      defaultSourceName, defaultSourceId);
 
         g_free(self->default_source_name_);
         self->default_source_name_ = g_strdup(defaultSourceName);
@@ -299,8 +303,8 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
   // Get default source
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Source",
                         &self->default_source_name_);
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source", &self->source_node_id_);
-
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source",
+                        &self->source_node_id_);
 
   if (self->default_node_name_ != nullptr) {
     spdlog::debug(
@@ -308,9 +312,8 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
         self->name_, self->type_, self->default_node_name_, self->node_id_);
   }
   if (self->default_source_name_ != nullptr) {
-    spdlog::debug(
-        "[{}]: default source: {} (id: {})",
-        self->name_, self->default_source_name_, self->source_node_id_);
+    spdlog::debug("[{}]: default source: {} (id: {})", self->name_, self->default_source_name_,
+                  self->source_node_id_);
   }
 
   updateVolume(self, self->node_id_);
@@ -459,16 +462,13 @@ auto waybar::modules::Wireplumber::update() -> void {
   }
 
   // Format the source string with actual volume
-  std::string formatted_source = fmt::format(fmt::runtime(format_source),
-                                           fmt::arg("volume", source_vol));
+  std::string formatted_source =
+      fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_vol));
 
-  std::string markup = fmt::format(fmt::runtime(format),
-                                   fmt::arg("node_name", node_name_),
-                                   fmt::arg("volume", vol),
-                                   fmt::arg("icon", getIcon(vol)),
-                                   fmt::arg("format_source", formatted_source),
-                                   fmt::arg("source_volume", source_vol),
-                                   fmt::arg("source_desc", source_name_));
+  std::string markup =
+      fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
+                  fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
+                  fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_));
   label_.set_markup(markup);
 
   if (tooltipEnabled()) {
@@ -477,13 +477,10 @@ auto waybar::modules::Wireplumber::update() -> void {
     }
 
     if (!tooltipFormat.empty()) {
-      label_.set_tooltip_text(fmt::format(fmt::runtime(tooltipFormat),
-                                          fmt::arg("node_name", node_name_),
-                                          fmt::arg("volume", vol),
-                                          fmt::arg("icon", getIcon(vol)),
-                                          fmt::arg("format_source", formatted_source),
-                                          fmt::arg("source_volume", source_vol),
-                                          fmt::arg("source_desc", source_name_)));
+      label_.set_tooltip_text(fmt::format(
+          fmt::runtime(tooltipFormat), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
+          fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
+          fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_)));
     } else {
       label_.set_tooltip_text(node_name_);
     }
