@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+
 #include "modules/sni/icon_manager.hpp"
 
 namespace waybar::modules::SNI {

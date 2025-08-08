@@ -152,7 +152,6 @@ void Layout::handle_name(const char *name) {
     label_.get_style_context()->add_class(name);
     label_.set_markup(fmt::format(fmt::runtime(format_), Glib::Markup::escape_text(name).raw()));
     label_.show();
-
   }
   name_ = name;
   ALabel::update();
