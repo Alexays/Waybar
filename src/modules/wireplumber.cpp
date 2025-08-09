@@ -318,7 +318,8 @@ void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* r
   self->dp.emit();
 
   self->event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  self->event_box_.signal_scroll_event().connect(sigc::mem_fun(*self, &Wireplumber::handleScroll));
+  self->event_box_.signal_scroll_event().connect(
+      sigc::mem_fun(*self, &Wireplumber::handleScrollEvent));
 }
 
 void waybar::modules::Wireplumber::asyncLoadRequiredApiModules() {
@@ -364,9 +365,9 @@ auto waybar::modules::Wireplumber::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::Wireplumber::handleScrollEvent(GdkEventScroll* e) {
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
+    return AModule::handleScrollEvent(e);
   }
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {

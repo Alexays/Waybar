@@ -142,8 +142,8 @@ void waybar::modules::Custom::handleEvent() {
   }
 }
 
-bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
-  auto ret = ALabel::handleScroll(e);
+bool waybar::modules::Custom::handleScrollEvent(GdkEventScroll* e) {
+  auto ret = ALabel::handleScrollEvent(e);
   handleEvent();
   return ret;
 }

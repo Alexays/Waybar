@@ -67,7 +67,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
       enable_scroll) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
+    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScrollEvent));
   }
 
   // Respect user configuration of cursor
@@ -250,7 +250,7 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
   }
 }
 
-bool AModule::handleScroll(GdkEventScroll* e) {
+bool AModule::handleScrollEvent(GdkEventScroll* e) {
   auto dir = getScrollDir(e);
   std::string eventName{};
 
