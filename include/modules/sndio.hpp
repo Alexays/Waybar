@@ -16,7 +16,7 @@ class Sndio : public ALabel {
   auto update() -> void override;
   auto set_desc(struct sioctl_desc *, unsigned int) -> void;
   auto put_val(unsigned int, unsigned int) -> void;
-  bool handleScroll(GdkEventScroll *) override;
+  bool handleScrollEvent(GdkEventScroll *) override;
   bool handleToggle(GdkEventButton *const &) override;
 
  private:
