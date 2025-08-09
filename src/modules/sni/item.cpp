@@ -140,7 +140,25 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       category = get_variant<std::string>(value);
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
-      setCustomIcon(id);
+
+      /*
+       * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as ID
+       * to pass as the custom icon option. I'm avoiding being disruptive and setting that to the ID
+       * itself as I've no idea what this would affect.
+       * The tooltip text is converted to lowercase since that's what (most?) themes expect?
+       * I still haven't found a way for it to pick from theme automatically, although
+       * it might be my theme.
+       */
+      if (id == "chrome_status_icon_1") {
+        Glib::VariantBase value;
+        this->proxy_->get_cached_property(value, "ToolTip");
+        tooltip = get_variant<ToolTip>(value);
+        if (!tooltip.text.empty()) {
+          setCustomIcon(tooltip.text.lowercase());
+        }
+      } else {
+        setCustomIcon(id);
+      }
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
       if (tooltip.text.empty()) {
@@ -203,6 +221,8 @@ void Item::setStatus(const Glib::ustring& value) {
 }
 
 void Item::setCustomIcon(const std::string& id) {
+  spdlog::debug("SNI tray id: {}", id);
+
   std::string custom_icon = IconManager::instance().getIconForApp(id);
   if (!custom_icon.empty()) {
     if (std::filesystem::exists(custom_icon)) {

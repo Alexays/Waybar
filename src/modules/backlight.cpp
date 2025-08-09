@@ -38,10 +38,20 @@ auto waybar::modules::Backlight::update() -> void {
       event_box_.show();
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
-      std::string desc = fmt::format(fmt::runtime(format_), fmt::arg("percent", percent),
+
+      // Get the state and apply state-specific format if available
+      auto state = getState(percent);
+      std::string current_format = format_;
+      if (!state.empty()) {
+        std::string state_format_name = "format-" + state;
+        if (config_[state_format_name].isString()) {
+          current_format = config_[state_format_name].asString();
+        }
+      }
+
+      std::string desc = fmt::format(fmt::runtime(current_format), fmt::arg("percent", percent),
                                      fmt::arg("icon", getIcon(percent)));
       label_.set_markup(desc);
-      getState(percent);
       if (tooltipEnabled()) {
         std::string tooltip_format;
         if (config_["tooltip-format"].isString()) {

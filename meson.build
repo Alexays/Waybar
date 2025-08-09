@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.13.0',
+    version: '0.14.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -183,6 +183,7 @@ src_files = files(
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
     'src/util/gtk_icon.cpp',
+    'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
     'src/util/css_reload_helper.cpp'
 )
@@ -274,6 +275,17 @@ if true
     add_project_arguments('-DHAVE_WLR_TASKBAR', language: 'cpp')
     src_files += files('src/modules/wlr/taskbar.cpp')
     man_files += files('man/waybar-wlr-taskbar.5.scd')
+endif
+
+if wayland_protos.version().version_compare('>=1.39')
+    add_project_arguments('-DHAVE_EXT_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/ext/workspace_manager.cpp',
+        'src/modules/ext/workspace_manager_binding.cpp',
+    )
+    man_files += files(
+        'man/waybar-ext-workspaces.5.scd',
+    )
 endif
 
 if true
@@ -483,17 +495,6 @@ elif tz_dep.found()
 else
     src_files += files('src/modules/simpleclock.cpp')
     man_files += files('man/waybar-clock.5.scd')
-endif
-
-if get_option('experimental')
-    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
-    src_files += files(
-        'src/modules/wlr/workspace_manager.cpp',
-        'src/modules/wlr/workspace_manager_binding.cpp',
-    )
-    man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
-    )
 endif
 
 cava = dependency('cava',

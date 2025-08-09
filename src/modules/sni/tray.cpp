@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
 #include "modules/sni/icon_manager.hpp"
 
 namespace waybar::modules::SNI {
@@ -20,6 +22,9 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
   box_.get_style_context()->add_class(MODULE_CLASS);
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
+  }
+  if (config["show-passive-items"].isBool()) {
+    show_passive_ = config["show-passive-items"].asBool();
   }
   nb_hosts_ += 1;
   if (config_["icons"].isObject()) {
@@ -44,7 +49,15 @@ void Tray::onRemove(std::unique_ptr<Item>& item) {
 
 auto Tray::update() -> void {
   // Show tray only when items are available
-  event_box_.set_visible(!box_.get_children().empty());
+  std::vector<Gtk::Widget*> children = box_.get_children();
+  if (show_passive_) {
+    event_box_.set_visible(!children.empty());
+  } else {
+    event_box_.set_visible(!std::all_of(children.begin(), children.end(), [](Gtk::Widget* child) {
+      return child->get_style_context()->has_class("passive");
+    }));
+  }
+
   // Call parent update
   AModule::update();
 }
