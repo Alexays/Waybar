@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include <chrono>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -25,6 +26,8 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       album_len_(-1),
       title_len_(-1),
       dynamic_len_(-1),
+      dynamic_scroll_(false),
+      scroll_index_(0),
       dynamic_prio_({"title", "artist", "album", "position", "length"}),
       dynamic_order_({"title", "artist", "album", "position", "length"}),
       dynamic_separator_(" - "),
@@ -80,6 +83,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
   if (config["dynamic-len"].isUInt()) {
     dynamic_len_ = config["dynamic-len"].asUInt();
+  }
+  if (config_["dynamic-scroll"].isBool()) {
+    dynamic_scroll_ = config["dynamic-scroll"].asBool();
   }
   // "dynamic-priority" has been kept for backward compatibility
   if (config_["dynamic-importance-order"].isArray() || config_["dynamic-priority"].isArray()) {
@@ -166,7 +172,12 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   // allow setting an interval count that triggers periodic refreshes
-  if (interval_.count() > 0) {
+  if (dynamic_scroll_) {
+    thread_ = [this] {
+      dp.emit();
+      thread_.sleep_for(std::chrono::seconds(2));
+    };
+  } else if (interval_.count() > 0) {
     thread_ = [this] {
       dp.emit();
       thread_.sleep_for(interval_);
@@ -351,7 +362,8 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
     }
   }
 
-  std::stringstream dynamic;
+  std::stringstream dynamic_first;
+  std::stringstream dynamic_second;
   if (html) {
     artist = Glib::Markup::escape_text(artist);
     album = Glib::Markup::escape_text(album);
@@ -366,37 +378,63 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
     if ((order == "artist" && showArtist) || (order == "album" && showAlbum) ||
         (order == "title" && showTitle)) {
       if (previousShown && previousOrder != "length" && previousOrder != "position") {
-        dynamic << dynamic_separator_;
+        dynamic_first << dynamic_separator_;
       }
 
       if (order == "artist") {
-        dynamic << artist;
+        dynamic_first << artist;
       } else if (order == "album") {
-        dynamic << album;
+        dynamic_first << album;
       } else if (order == "title") {
-        dynamic << title;
+        dynamic_first << title;
       }
 
       previousShown = true;
     } else if (order == "length" || order == "position") {
       if (!lengthOrPositionShown && (showLength || showPos)) {
-        if (html) dynamic << "<small>";
-        if (previousShown) dynamic << ' ';
-        dynamic << '[';
+        if (previousShown) dynamic_second << ' ';
+        dynamic_second << '[';
         if (showPos) {
-          dynamic << position;
-          if (showLength) dynamic << '/';
+          dynamic_second << position;
+          if (showLength) dynamic_second << '/';
         }
-        if (showLength) dynamic << length;
-        dynamic << ']';
-        if (!dynamic.str().empty()) dynamic << ' ';
-        if (html) dynamic << "</small>";
+        if (showLength) dynamic_second << length;
+        dynamic_second << ']';
+        if (!dynamic_second.str().empty()) dynamic_second << ' ';
         lengthOrPositionShown = true;
       }
     }
     previousOrder = order;
   }
-  return dynamic.str();
+
+  auto first = dynamic_first.str();
+  auto second = dynamic_second.str();
+
+  if ( scroll_index_ >= first.length() + second.length() ) {
+    scroll_index_ = 0;
+  } else if (scroll_index_ >= first.length() && scroll_index_ < first.length() + second.length()) {
+    dynamic_first.str("");
+    dynamic_first.clear();
+
+    dynamic_second.str("");
+    dynamic_second.clear();
+
+    dynamic_second << second.substr( first.length() - scroll_index_ );
+  } else {
+    dynamic_first.str("");
+    dynamic_first.clear();
+
+    dynamic_first << first.substr( scroll_index_ );
+  }
+  scroll_index_++;
+
+  if (html) {
+    dynamic_first << "<small>";
+    dynamic_second << "</small>";
+  }
+  dynamic_first << dynamic_second.str();
+
+  return dynamic_first.str();
 }
 
 auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlayerName* player_name,
@@ -637,7 +675,8 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
 
 auto Mpris::update() -> void {
   const auto now = std::chrono::system_clock::now();
-  if (now - last_update_ < interval_) return;
+  auto delta = now - last_update_;
+  if (delta < interval_) return;
   last_update_ = now;
 
   auto opt = getPlayerInfo();
