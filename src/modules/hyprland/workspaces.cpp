@@ -1129,7 +1129,7 @@ std::optional<int> Workspaces::parseWorkspaceId(std::string const &workspaceIdSt
   try {
     return workspaceIdStr == "special" ? -99 : std::stoi(workspaceIdStr);
   } catch (std::exception const &e) {
-    spdlog::error("Failed to parse workspace ID: {}", e.what());
+    spdlog::debug("Workspace \"{}\" is not bound to an id: {}", workspaceIdStr, e.what());
     return std::nullopt;
   }
 }
