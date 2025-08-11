@@ -36,10 +36,12 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
   box_.set_spacing(spacing);
 
   bool swap_icon_label = false;
-  if (not config_["swap-icon-label"].isBool())
-    spdlog::warn("'swap-icon-label' must be a bool.");
-  else
-    swap_icon_label = config_["swap-icon-label"].asBool();
+  if (config_.isMember("swap-icon-label")) {
+    if (!config_["swap-icon-label"].isBool())
+      spdlog::warn("'swap-icon-label' must be a bool.");
+    else
+      swap_icon_label = config_["swap-icon-label"].asBool();
+  }
 
   if ((rot == 0 || rot == 3) ^ swap_icon_label) {
     box_.add(image_);
