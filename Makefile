@@ -23,5 +23,9 @@ test:
 	meson test -C build --no-rebuild --verbose --suite waybar
 .PHONY: test
 
+test-detailed:
+	meson test -C build --verbose --print-errorlogs --test-args='--reporter console -s'
+.PHONY: test-detailed
+
 clean:
 	rm -rf build
