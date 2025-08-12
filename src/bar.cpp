@@ -15,6 +15,8 @@
 #include "modules/sway/bar.hpp"
 #endif
 
+#include "util/command.hpp"
+
 namespace waybar {
 static constexpr const char* MIN_HEIGHT_MSG =
     "Requested height: {} is less than the minimum height: {} required by the modules";
@@ -258,6 +260,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   if (config["start_hidden"].asBool()) {
     setVisible(false);
+  }
+
+  if (config["on-scroll-up"].isString() || config["on-scroll-down"].isString() ||
+      config["on-scroll-left"].isString() || config["on-scroll-right"].isString()) {
+    window.add_events(Gdk::SCROLL_MASK);
+    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Bar::handleScroll));
   }
 
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
@@ -511,6 +519,53 @@ void waybar::Bar::handleSignal(int signal) {
 
 waybar::util::KillSignalAction waybar::Bar::getOnSigusr1Action() { return this->onSigusr1; }
 waybar::util::KillSignalAction waybar::Bar::getOnSigusr2Action() { return this->onSigusr2; }
+
+bool _rect_contains_evt(const Gdk::Rectangle& rect, GdkEventScroll* e) {
+  return e->x >= rect.get_x() && e->x < rect.get_x() + rect.get_width() &&
+         e->y >= rect.get_y() && e->y < rect.get_y() + rect.get_height();
+}
+
+bool waybar::Bar::handleScroll(GdkEventScroll* e) {
+  if (_rect_contains_evt(left_.get_allocation(), e) ||
+      _rect_contains_evt(center_.get_allocation(), e) ||
+      _rect_contains_evt(right_.get_allocation(), e)) {
+    return false;
+  }
+
+  std::string eventName{};
+
+  // only affects up/down
+  bool reverse = config["reverse-scrolling"].asBool();
+  bool reverse_mouse = config["reverse-mouse-scrolling"].asBool();
+
+  // ignore reverse-scrolling if event comes from a mouse wheel
+  GdkDevice* device = gdk_event_get_source_device((GdkEvent*)e);
+  if (device != NULL && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
+    reverse = reverse_mouse;
+  }
+
+  switch (e->direction) {
+    case GDK_SCROLL_UP:
+      eventName = (reverse ? "on-scroll-down" : "on-scroll-up");
+      break;
+    case GDK_SCROLL_DOWN:
+      eventName = (reverse ? "on-scroll-up" : "on-scroll-down");
+      break;
+    case GDK_SCROLL_LEFT:
+      eventName = "on-scroll-left";
+      break;
+    case GDK_SCROLL_RIGHT:
+      eventName = "on-scroll-right";
+      break;
+  }
+
+  if (config[eventName].isString()) {
+    util::command::forkExec(config[eventName].asString());
+    return true;
+  }
+
+  return false;
+}
 
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
