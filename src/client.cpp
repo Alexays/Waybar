@@ -86,7 +86,7 @@ void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_
       }
     }
   } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    spdlog::warn("caught exception in zxdg_output_v1_listener::done: {}", e.what());
   }
 }
 
@@ -97,7 +97,7 @@ void waybar::Client::handleOutputName(void *data, struct zxdg_output_v1 * /*xdg_
     auto &output = client->getOutput(data);
     output.name = name;
   } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    spdlog::warn("caught exception in zxdg_output_v1_listener::name: {}", e.what());
   }
 }
 
@@ -106,13 +106,13 @@ void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 *
   auto *client = waybar::Client::inst();
   try {
     auto &output = client->getOutput(data);
-    const char *open_paren = strrchr(description, '(');
 
     // Description format: "identifier (name)"
-    size_t identifier_length = open_paren - description;
-    output.identifier = std::string(description, identifier_length - 1);
+    auto s = std::string(description);
+    auto pos = s.find(" (");
+    output.identifier = pos != std::string::npos ? s.substr(0, pos) : s;
   } catch (const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    spdlog::warn("caught exception in zxdg_output_v1_listener::description: {}", e.what());
   }
 }
 
@@ -151,15 +151,19 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
 
 const std::string waybar::Client::getStyle(const std::string &style,
                                            std::optional<Appearance> appearance = std::nullopt) {
+  auto gtk_settings = Gtk::Settings::get_default();
   std::optional<std::string> css_file;
+
   if (style.empty()) {
     std::vector<std::string> search_files;
     switch (appearance.value_or(portal->getAppearance())) {
       case waybar::Appearance::LIGHT:
         search_files.emplace_back("style-light.css");
+        gtk_settings->property_gtk_application_prefer_dark_theme() = false;
         break;
       case waybar::Appearance::DARK:
         search_files.emplace_back("style-dark.css");
+        gtk_settings->property_gtk_application_prefer_dark_theme() = true;
         break;
       case waybar::Appearance::UNKNOWN:
         break;
@@ -169,9 +173,11 @@ const std::string waybar::Client::getStyle(const std::string &style,
   } else {
     css_file = style;
   }
+
   if (!css_file) {
     throw std::runtime_error("Missing required resource files");
   }
+
   spdlog::info("Using CSS file {}", css_file.value());
   return css_file.value();
 };

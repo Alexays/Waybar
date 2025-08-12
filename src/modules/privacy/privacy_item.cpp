@@ -1,5 +1,7 @@
 #include "modules/privacy/privacy_item.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <string>
 
 #include "glibmm/main.h"
@@ -96,20 +98,22 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 void PrivacyItem::update_tooltip() {
   // Removes all old nodes
   for (auto *child : tooltip_window.get_children()) {
+    tooltip_window.remove(*child);
+    // despite the remove, still needs a delete to prevent memory leak. Speculating that this might
+    // work differently in GTK4.
     delete child;
   }
-
   for (auto *node : *nodes) {
-    Gtk::Box *box = new Gtk::Box(Gtk::ORIENTATION_HORIZONTAL, 4);
+    auto *box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 4);
 
     // Set device icon
-    Gtk::Image *node_icon = new Gtk::Image();
+    auto *node_icon = Gtk::make_managed<Gtk::Image>();
     node_icon->set_pixel_size(tooltipIconSize);
     node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
     box->add(*node_icon);
 
     // Set model
-    auto *nodeName = new Gtk::Label(node->getName());
+    auto *nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
     box->add(*nodeName);
 
     tooltip_window.add(*box);

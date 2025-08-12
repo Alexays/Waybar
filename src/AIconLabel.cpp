@@ -1,6 +1,7 @@
 #include "AIconLabel.hpp"
 
 #include <gdkmm/pixbuf.h>
+#include <spdlog/spdlog.h>
 
 namespace waybar {
 
@@ -17,14 +18,36 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
     box_.get_style_context()->add_class(id);
   }
 
-  box_.set_orientation(Gtk::Orientation::ORIENTATION_HORIZONTAL);
+  int rot = 0;
+
+  if (config_["rotate"].isUInt()) {
+    rot = config["rotate"].asUInt() % 360;
+    if ((rot % 90) != 00) rot = 0;
+    rot /= 90;
+  }
+
+  if ((rot % 2) == 0)
+    box_.set_orientation(Gtk::Orientation::ORIENTATION_HORIZONTAL);
+  else
+    box_.set_orientation(Gtk::Orientation::ORIENTATION_VERTICAL);
   box_.set_name(name);
 
   int spacing = config_["icon-spacing"].isInt() ? config_["icon-spacing"].asInt() : 8;
   box_.set_spacing(spacing);
 
-  box_.add(image_);
-  box_.add(label_);
+  bool swap_icon_label = false;
+  if (not config_["swap-icon-label"].isBool())
+    spdlog::warn("'swap-icon-label' must be a bool.");
+  else
+    swap_icon_label = config_["swap-icon-label"].asBool();
+
+  if ((rot == 0 || rot == 3) ^ swap_icon_label) {
+    box_.add(image_);
+    box_.add(label_);
+  } else {
+    box_.add(label_);
+    box_.add(image_);
+  }
 
   event_box_.add(box_);
 }

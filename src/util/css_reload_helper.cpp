@@ -2,7 +2,13 @@
 
 #include <poll.h>
 #include <spdlog/spdlog.h>
+#ifndef __OpenBSD__
 #include <sys/inotify.h>
+#else
+#include <sys/event.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#endif
 
 #include <filesystem>
 #include <fstream>

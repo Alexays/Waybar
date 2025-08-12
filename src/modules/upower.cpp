@@ -10,7 +10,6 @@ UPower::UPower(const std::string &id, const Json::Value &config)
     : AIconLabel(config, "upower", id, "{percentage}", 0, true, true, true), sleeping_{false} {
   box_.set_name(name_);
   box_.set_spacing(0);
-  box_.set_has_tooltip(AModule::tooltipEnabled());
   // Tooltip box
   contentBox_.set_orientation((box_.get_orientation() == Gtk::ORIENTATION_HORIZONTAL)
                                   ? Gtk::ORIENTATION_VERTICAL
@@ -70,8 +69,10 @@ UPower::UPower(const std::string &id, const Json::Value &config)
   g_signal_connect(upClient_, "device-removed", G_CALLBACK(deviceRemoved_cb), this);
 
   // Subscribe tooltip query events
-  box_.set_has_tooltip();
-  box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::queryTooltipCb), false);
+  box_.set_has_tooltip(AModule::tooltipEnabled());
+  if (AModule::tooltipEnabled()) {
+    box_.signal_query_tooltip().connect(sigc::mem_fun(*this, &UPower::queryTooltipCb), false);
+  }
 
   resetDevices();
   setDisplayDevice();
