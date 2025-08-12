@@ -443,6 +443,9 @@ void Item::makeMenu() {
       gtk_menu->attach_to_widget(event_box);
     }
   }
+  // Manually reset prelight to make sure the tray item doesn't stay in a hover state even though
+  // the menu is focused
+  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
 }
 
 bool Item::handleClick(GdkEventButton* const& ev) {
