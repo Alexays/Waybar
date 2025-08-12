@@ -78,8 +78,6 @@ void IPC::socketListener() {
     return;
   }
 
-  if (!modulesReady) return;
-
   spdlog::info("Hyprland IPC starting");
 
   struct sockaddr_un addr;

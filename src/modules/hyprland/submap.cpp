@@ -2,14 +2,10 @@
 
 #include <spdlog/spdlog.h>
 
-#include "util/sanitize_str.hpp"
-
 namespace waybar::modules::hyprland {
 
 Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "submap", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
-  modulesReady = true;
-
   parseConfig(config);
 
   label_.hide();

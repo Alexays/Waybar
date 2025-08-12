@@ -7,7 +7,6 @@
 #include "AAppIconLabel.hpp"
 #include "bar.hpp"
 #include "modules/hyprland/backend.hpp"
-#include "util/json.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -26,8 +25,8 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
     static auto parse(const Json::Value& value) -> Workspace;
   };
 
-  static auto getActiveWorkspace(const std::string&) -> Workspace;
-  static auto getActiveWorkspace() -> Workspace;
+  auto getActiveWorkspace(const std::string&) -> Workspace;
+  auto getActiveWorkspace() -> Workspace;
   void onEvent(const std::string& ev) override;
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
@@ -36,6 +35,7 @@ class WindowCount : public waybar::AAppIconLabel, public EventHandler {
   std::mutex mutex_;
   const Bar& bar_;
   Workspace workspace_;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland
