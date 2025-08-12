@@ -65,7 +65,7 @@
           nativeBuildInputs =
             pkgs.waybar.nativeBuildInputs
             ++ (with pkgs; [
-              nixfmt-rfc-style
+              nixfmt
               clang-tools
               gdb
             ]);
@@ -89,7 +89,7 @@
                 ];
               };
               nixfmt = {
-                command = lib.getExe pkgs.nixfmt-rfc-style;
+                command = lib.getExe pkgs.nixfmt;
                 includes = [ "*.nix" ];
               };
             };
