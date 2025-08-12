@@ -21,7 +21,6 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
 
-  modulesReady = true;
   separateOutputs_ = config["separate-outputs"].asBool();
 
   // register for hyprland ipc
