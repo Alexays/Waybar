@@ -1,0 +1,6 @@
+{
+    "cpu": {
+        "interval": 2,
+        "format": "goo"
+    }
+}
