@@ -47,6 +47,9 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     user_proxy->signal_signal().connect(sigc::mem_fun(*this, &SystemdFailedUnits::notify_cb));
   }
 
+  if (!user_proxy && !system_proxy)
+    throw std::runtime_error("Neither system nor user status is requested.");
+
   updateData();
   /* Always update for the first time. */
   dp.emit();
