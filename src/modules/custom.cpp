@@ -92,7 +92,9 @@ void waybar::modules::Custom::continuousWorker() {
       if (config_["restart-interval"].isNumeric()) {
         pid_ = -1;
         thread_.sleep_for(std::chrono::milliseconds(
-            static_cast<long>(config_["restart-interval"].asDouble() * 1000)));
+            static_cast<long>(
+                std::max(0.001, // Minimum 1ms to prevent performance issues
+                         config_["restart-interval"].asDouble()) * 1000)));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);

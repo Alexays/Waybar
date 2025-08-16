@@ -11,7 +11,7 @@ The *cpu* module displays the current CPU utilization.
 # CONFIGURATION
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 10 ++
 	The interval in which the information gets polled.
 

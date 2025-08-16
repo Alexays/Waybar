@@ -21,7 +21,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
                     ? std::chrono::milliseconds::max()
                     : std::chrono::milliseconds(
                           static_cast<long>(
-                              (config_["interval"].isNumeric() ? config_["interval"].asDouble() : interval) * 1000))),
+                              std::max(0.001, // Minimum 1ms to prevent performance issues
+                                       config_["interval"].isNumeric() ? config_["interval"].asDouble() : interval) * 1000))),
       default_format_(format_) {
   label_.set_name(name);
   if (!id.empty()) {

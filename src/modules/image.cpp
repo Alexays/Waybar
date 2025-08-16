@@ -14,14 +14,19 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
 
   size_ = config["size"].asInt();
 
-  interval_ = config_["interval"].asInt();
+  interval_ = config_["interval"] == "once"
+                   ? std::chrono::milliseconds::max()
+                   : std::chrono::milliseconds(
+                         static_cast<long>(
+                             std::max(0.001, // Minimum 1ms to prevent performance issues
+                                      config_["interval"].isNumeric() ? config_["interval"].asDouble() : 0) * 1000));
 
   if (size_ == 0) {
     size_ = 16;
   }
 
-  if (interval_ == 0) {
-    interval_ = INT_MAX;
+  if (interval_.count() == 0) {
+    interval_ = std::chrono::milliseconds::max();
   }
 
   delayWorker();
@@ -30,8 +35,7 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
 void waybar::modules::Image::delayWorker() {
   thread_ = [this] {
     dp.emit();
-    auto interval = std::chrono::seconds(interval_);
-    thread_.sleep_for(interval);
+    thread_.sleep_for(interval_);
   };
 }
 
