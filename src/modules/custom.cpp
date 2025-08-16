@@ -89,9 +89,10 @@ void waybar::modules::Custom::continuousWorker() {
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
-      if (config_["restart-interval"].isUInt()) {
+      if (config_["restart-interval"].isNumeric()) {
         pid_ = -1;
-        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+        thread_.sleep_for(std::chrono::milliseconds(
+            static_cast<long>(config_["restart-interval"].asDouble() * 1000)));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
