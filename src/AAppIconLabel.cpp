@@ -63,7 +63,8 @@ std::optional<std::string> getDesktopFilePath(const std::string& app_identifier,
     return {};
   }
 
-  const auto data_dirs = Glib::get_system_data_dirs();
+  auto data_dirs = Glib::get_system_data_dirs();
+  data_dirs.insert(data_dirs.begin(), Glib::get_user_data_dir());
   for (const auto& data_dir : data_dirs) {
     const auto data_app_dir = data_dir + "/applications/";
     auto desktop_file_suffix = app_identifier + ".desktop";
