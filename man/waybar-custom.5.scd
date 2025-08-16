@@ -35,15 +35,17 @@ Addressed by *custom/<name>*
 	See *return-type*
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	The interval (in seconds) in which the information gets polled. ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
 	Use *once* if you want to execute the module only on startup. ++
 	You can update it manually with a signal. If no *interval* or *signal* is defined, it is assumed that the out script loops itself. ++
 	If a *signal* is defined then the script will run once on startup and will only update with a signal.
 
 *restart-interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	The restart interval (in seconds). ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
 	Can't be used with the *interval* option, so only with continuous scripts. ++
 	Once the script exits, it'll be re-executed after the *restart-interval*.
 
