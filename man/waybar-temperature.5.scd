@@ -40,7 +40,7 @@ Addressed by *temperature*
 	The threshold before it is considered critical (Celsius).
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 10 ++
 	The interval in which the information gets polled.
 

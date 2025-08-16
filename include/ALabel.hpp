@@ -21,7 +21,7 @@ class ALabel : public AModule {
  protected:
   Gtk::Label label_;
   std::string format_;
-  const std::chrono::seconds interval_;
+  const std::chrono::milliseconds interval_;
   bool alt_ = false;
   std::string default_format_;
 
