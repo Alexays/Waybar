@@ -17,9 +17,9 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
   interval_ = config_["interval"] == "once"
                    ? std::chrono::milliseconds::max()
                    : std::chrono::milliseconds(
-                         static_cast<long>(
-                             std::max(0.001, // Minimum 1ms to prevent performance issues
-                                      config_["interval"].isNumeric() ? config_["interval"].asDouble() : 0) * 1000));
+                         std::max(1L, // Minimum 1ms due to millisecond precision
+                                  static_cast<long>(
+                                      (config_["interval"].isNumeric() ? config_["interval"].asDouble() : 0) * 1000)));
 
   if (size_ == 0) {
     size_ = 16;

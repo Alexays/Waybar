@@ -13,7 +13,8 @@ The *cpu* module displays the current CPU utilization.
 *interval*: ++
 	typeof: integer or float ++
 	default: 10 ++
-	The interval in which the information gets polled.
+	The interval in which the information gets polled. ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms.
 
 *format*: ++
 	typeof: string  ++
