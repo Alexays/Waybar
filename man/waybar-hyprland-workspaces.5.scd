@@ -55,6 +55,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If true, the active/focused window will have an 'active' class. Could cause higher CPU usage due to more frequent redraws.
 
+		*reverse-direction*: ++
+	typeof: bool ++
+	default: false ++
+	If true, the taskbar windows will be added in reverse order (right to left if orientation is horizontal, bottom to top if vertical).
+
 		*format*: ++
 	typeof: string ++
 	default: {icon} ++
