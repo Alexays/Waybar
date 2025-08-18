@@ -104,8 +104,25 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
 }
 
 void Workspace::setActiveWindow(WindowAddress const &addr) {
-  for (auto &window : m_windowMap) {
-    window.setActive(window.address == addr);
+  std::optional<long> activeIdx;
+  for (size_t i = 0; i < m_windowMap.size(); ++i) {
+    auto &window = m_windowMap[i];
+    bool isActive = (window.address == addr);
+    window.setActive(isActive);
+    if (isActive) {
+      activeIdx = i;
+    }
+  }
+
+  auto activeWindowPos = m_workspaceManager.activeWindowPosition();
+  if (activeIdx.has_value() && activeWindowPos != Workspaces::ActiveWindowPosition::NONE) {
+    auto window = std::move(m_windowMap[*activeIdx]);
+    m_windowMap.erase(m_windowMap.begin() + *activeIdx);
+    if (activeWindowPos == Workspaces::ActiveWindowPosition::FIRST) {
+      m_windowMap.insert(m_windowMap.begin(), std::move(window));
+    } else if (activeWindowPos == Workspaces::ActiveWindowPosition::LAST) {
+      m_windowMap.emplace_back(std::move(window));
+    }
   }
 }
 

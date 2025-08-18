@@ -60,6 +60,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If true, the taskbar windows will be added in reverse order (right to left if orientation is horizontal, bottom to top if vertical).
 
+		*active-window-position*: ++
+	typeof: "none" | "first" | "last" ++
+	default: "none" ++
+	If set to "first", the active window will be moved at the beginning of the taskbar. If set to "last", it will be moved at the end. It will only work if *update-active-window* is set to true.
+
 		*format*: ++
 	typeof: string ++
 	default: {icon} ++

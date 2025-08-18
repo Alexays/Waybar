@@ -776,6 +776,18 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
       }
     }
   }
+
+  if (workspaceTaskbar["active-window-position"].isString()) {
+    auto posStr = workspaceTaskbar["active-window-position"].asString();
+    try {
+      m_activeWindowPosition =
+          m_activeWindowEnumParser.parseStringToEnum(posStr, m_activeWindowPositionMap);
+    } catch (const std::invalid_argument &e) {
+      spdlog::warn(
+          "Invalid string representation for active-window-position. Falling back to 'none'.");
+      m_activeWindowPosition = ActiveWindowPosition::NONE;
+    }
+  }
 }
 
 void Workspaces::registerOrphanWindow(WindowCreationPayload create_window_payload) {

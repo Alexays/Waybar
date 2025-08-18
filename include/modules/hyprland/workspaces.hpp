@@ -55,6 +55,9 @@ class Workspaces : public AModule, public EventHandler {
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
   auto getIgnoredWindows() const -> std::vector<std::regex> { return m_ignoreWindows; }
 
+  enum class ActiveWindowPosition { NONE, FIRST, LAST };
+  auto activeWindowPosition() const -> ActiveWindowPosition { return m_activeWindowPosition; }
+
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
@@ -185,6 +188,13 @@ class Workspaces : public AModule, public EventHandler {
   int m_taskbarIconSize = 16;
   Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
   bool m_taskbarReverseDirection = false;
+  util::EnumParser<ActiveWindowPosition> m_activeWindowEnumParser;
+  ActiveWindowPosition m_activeWindowPosition = ActiveWindowPosition::NONE;
+  std::map<std::string, ActiveWindowPosition> m_activeWindowPositionMap = {
+      {"NONE", ActiveWindowPosition::NONE},
+      {"FIRST", ActiveWindowPosition::FIRST},
+      {"LAST", ActiveWindowPosition::LAST},
+  };
   std::string m_onClickWindow;
   std::string m_currentActiveWindowAddress;
 
