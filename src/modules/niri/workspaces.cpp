@@ -41,6 +41,10 @@ void Workspaces::onEvent(const Json::Value &ev) { dp.emit(); }
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
 
+  // Debug: log global IPC lists
+  spdlog::debug("[niri/workspaces] gIPC workspaces count: {}", gIPC->workspaces().size());
+  spdlog::debug("[niri/workspaces] gIPC windows count: {}", gIPC->windows().size());
+
   const auto alloutputs = config_["all-outputs"].asBool();
   std::vector<Json::Value> my_workspaces;
   const auto &workspaces = gIPC->workspaces();
@@ -63,6 +67,9 @@ void Workspaces::doUpdate() {
 
   // Add buttons for new workspaces, update existing ones.
   for (const auto &ws : my_workspaces) {
+    // Debug: print workspace JSON
+    spdlog::debug("[niri/workspaces] workspace id={} json={} ", ws["id"].asUInt64(), ws.toStyledString());
+
     auto bit = buttons_.find(ws["id"].asUInt64());
     auto &button = bit == buttons_.end() ? addButton(ws) : bit->second;
     auto style_context = button.get_style_context();
@@ -99,17 +106,36 @@ void Workspaces::doUpdate() {
     // --- Start Window Rewrite Logic ---
     std::vector<std::string> window_reps;
     if (ws.isMember("windows") && ws["windows"].isArray()) {
+      spdlog::debug("[niri/workspaces] workspace id={} has {} windows", ws["id"].asUInt64(), ws["windows"].size());
       for (const auto &win : ws["windows"]) {
-        // Niri provides app_id and title directly in the window object
+        spdlog::debug("[niri/workspaces] window json: {}", win.toStyledString());
         std::string app_id = win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
         std::string title = win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
         if (!app_id.empty() || !title.empty()) { // Only add if we have some identifier
-           window_reps.push_back(getRewrite(app_id, title));
+           auto rep = getRewrite(app_id, title);
+           spdlog::debug("[niri/workspaces] rewrite: app_id='{}' title='{}' => '{}'", app_id, title, rep);
+           window_reps.push_back(rep);
+        }
+      }
+    } else {
+      spdlog::debug("[niri/workspaces] workspace id={} has no 'windows' array, collecting from global windows", ws["id"].asUInt64());
+      // Fallback: collect from global windows list by matching workspace_id
+      for (const auto &win : gIPC->windows()) {
+        if (!win.isMember("workspace_id")) continue;
+        if (win["workspace_id"].asUInt64() != ws["id"].asUInt64()) continue;
+        spdlog::debug("[niri/workspaces] global window json: {}", win.toStyledString());
+        std::string app_id = win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
+        std::string title = win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
+        if (!app_id.empty() || !title.empty()) {
+           auto rep = getRewrite(app_id, title);
+           spdlog::debug("[niri/workspaces] rewrite (global): app_id='{}' title='{}' => '{}'", app_id, title, rep);
+           window_reps.push_back(rep);
         }
       }
     }
     // Join representations with the separator
     auto windows_str = fmt::format("{}", fmt::join(window_reps, m_formatWindowSeparator));
+    spdlog::debug("[niri/workspaces] workspace id={} windows_str='{}'", ws["id"].asUInt64(), windows_str);
     // --- End Window Rewrite Logic ---
 
 
