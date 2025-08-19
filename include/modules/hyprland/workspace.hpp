@@ -54,15 +54,18 @@ class Workspace {
   void setWindows(uint value) { m_windows = value; };
   void setName(std::string const& value) { m_name = value; };
   void setOutput(std::string const& value) { m_output = value; };
-  bool containsWindow(WindowAddress const& addr) const { return m_windowMap.contains(addr); }
-  void insertWindow(WindowCreationPayload create_window_paylod);
-  std::string removeWindow(WindowAddress const& addr);
+  bool containsWindow(WindowAddress const& addr) const {
+    return std::ranges::any_of(m_windowMap,
+                               [&addr](const auto& window) { return window.address == addr; });
+  };
+  void insertWindow(WindowCreationPayload create_window_payload);
   void initializeWindowMap(const Json::Value& clients_data);
+  void setActiveWindow(WindowAddress const& addr);
 
-  bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
-  std::optional<std::string> closeWindow(WindowAddress const& addr);
+  bool onWindowOpened(WindowCreationPayload const& create_window_payload);
+  std::optional<WindowRepr> closeWindow(WindowAddress const& addr);
 
-  void update(const std::string& format, const std::string& icon);
+  void update(const std::string& workspace_icon);
 
  private:
   Workspaces& m_workspaceManager;
@@ -78,11 +81,16 @@ class Workspace {
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
-  std::map<WindowAddress, std::string> m_windowMap;
+  std::vector<WindowRepr> m_windowMap;
 
   Gtk::Button m_button;
   Gtk::Box m_content;
-  Gtk::Label m_label;
+  Gtk::Label m_labelBefore;
+  Gtk::Label m_labelAfter;
+
+  void updateTaskbar(const std::string& workspace_icon);
+  bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
+  bool shouldSkipWindow(const WindowRepr& window_repr) const;
   IPC& m_ipc;
 };
 
