@@ -35,7 +35,7 @@ class Workspaces : public AModule, public EventHandler {
   util::RegexCollection m_windowRewriteRules;
   std::string m_windowRewriteDefault;
   std::string m_formatWindowSeparator;
-  std::map<uint64_t, std::vector<std::string>> m_workspaceWindowRepresentations;
+ 
 };
 
 }  // namespace waybar::modules::niri
