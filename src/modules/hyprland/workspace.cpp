@@ -104,8 +104,25 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
 }
 
 void Workspace::setActiveWindow(WindowAddress const &addr) {
-  for (auto &window : m_windowMap) {
-    window.setActive(window.address == addr);
+  std::optional<long> activeIdx;
+  for (size_t i = 0; i < m_windowMap.size(); ++i) {
+    auto &window = m_windowMap[i];
+    bool isActive = (window.address == addr);
+    window.setActive(isActive);
+    if (isActive) {
+      activeIdx = i;
+    }
+  }
+
+  auto activeWindowPos = m_workspaceManager.activeWindowPosition();
+  if (activeIdx.has_value() && activeWindowPos != Workspaces::ActiveWindowPosition::NONE) {
+    auto window = std::move(m_windowMap[*activeIdx]);
+    m_windowMap.erase(m_windowMap.begin() + *activeIdx);
+    if (activeWindowPos == Workspaces::ActiveWindowPosition::FIRST) {
+      m_windowMap.insert(m_windowMap.begin(), std::move(window));
+    } else if (activeWindowPos == Workspaces::ActiveWindowPosition::LAST) {
+      m_windowMap.emplace_back(std::move(window));
+    }
   }
 }
 
@@ -259,9 +276,9 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
   }
 
   bool isFirst = true;
-  for (const auto &window_repr : m_windowMap) {
+  auto processWindow = [&](const WindowRepr &window_repr) {
     if (shouldSkipWindow(window_repr)) {
-      continue;
+      return;  // skip
     }
     if (isFirst) {
       isFirst = false;
@@ -270,6 +287,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
       m_content.pack_start(*windowSeparator, false, false);
       windowSeparator->show();
     }
+
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_text(window_repr.window_title);
     window_box->get_style_context()->add_class("taskbar-window");
@@ -307,6 +325,16 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
 
     m_content.pack_start(*event_box, true, false);
     event_box->show_all();
+  };
+
+  if (m_workspaceManager.taskbarReverseDirection()) {
+    for (auto it = m_windowMap.rbegin(); it != m_windowMap.rend(); ++it) {
+      processWindow(*it);
+    }
+  } else {
+    for (const auto &window_repr : m_windowMap) {
+      processWindow(window_repr);
+    }
   }
 
   auto formatAfter = m_workspaceManager.formatAfter();
