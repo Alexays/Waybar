@@ -331,11 +331,11 @@ auto Workspaces::update() -> void {
     }
     std::string output = (*it)["name"].asString();
     std::string windows = "";
-    if (config_["window-format"].isString()) {
-      updateWindows((*it), windows);
-    }
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
+      if (format.find("{windows}") != std::string::npos) {
+        updateWindows((*it), windows);
+      }
       output = fmt::format(
           fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)), fmt::arg("value", output),
           fmt::arg("name", trimWorkspaceName(output)), fmt::arg("index", (*it)["num"].asString()),
