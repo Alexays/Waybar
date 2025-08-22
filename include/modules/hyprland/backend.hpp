@@ -42,6 +42,7 @@ class IPC {
   util::JsonParser parser_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;
   int socketfd_;  // the hyprland socket file descriptor
+  pid_t socketOwnerPid_;
   bool running_ = true;
 };
 
