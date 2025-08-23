@@ -19,7 +19,6 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
       m_bar(bar),
       m_box(bar.orientation, 0),
       m_ipc(IPC::inst()) {
-  modulesReady = true;
   parseConfig(config);
 
   m_box.set_name("workspaces");
