@@ -63,8 +63,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
   if (cldInTooltip_) {
     if (config_[kCldPlaceholder]["mode"].isString()) {
       const std::string cfgMode{config_[kCldPlaceholder]["mode"].asString()};
-      const std::map<std::string_view, const CldMode&> monthModes{{"month", CldMode::MONTH},
-                                                                  {"year", CldMode::YEAR}};
+      const std::map<std::string, CldMode> monthModes{{"month", CldMode::MONTH},
+                                                      {"year", CldMode::YEAR}};
       if (monthModes.find(cfgMode) != monthModes.end())
         cldMode_ = monthModes.at(cfgMode);
       else
@@ -92,10 +92,8 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       fmtMap_.insert({2, "{}"});
     if (config_[kCldPlaceholder]["format"]["today"].isString()) {
       fmtMap_.insert({3, config_[kCldPlaceholder]["format"]["today"].asString()});
-      cldBaseDay_ =
-          year_month_day{
-              floor<days>(zoned_time{local_zone(), system_clock::now()}.get_local_time())}
-              .day();
+      auto local_time = zoned_time{local_zone(), system_clock::now()}.get_local_time();
+      cldBaseDay_ = year_month_day{floor<days>(local_time)}.day();
     } else
       fmtMap_.insert({3, "{}"});
     if (config_[kCldPlaceholder]["format"]["weeks"].isString() && cldWPos_ != WS::HIDDEN) {
