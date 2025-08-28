@@ -191,8 +191,7 @@ bool Taskbar::Button::update(const Json::Value &win) {
   this->is_focused_ = win["is_focused"].asBool();
   auto app_id = win["app_id"].asString();
   this->update_app_id(app_id);
-  // TODO THIS RELIES ON UNMERGED AN NIRI PR!!! CHECK AFTER IT IS MERGED https://github.com/YaLTeR/niri/pull/1265
-  auto tile_pos = win["location"]["tile_pos_in_scrolling_layout"];
+  auto tile_pos = win["location"]["pos_in_scrolling_layout"];
   this->is_tiled_ = !tile_pos.isNull();
   if (this->is_tiled_) {
     this->tile_pos_col = tile_pos[0].asUInt();
