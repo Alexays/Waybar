@@ -5,6 +5,7 @@
 #include <gtkmm/box.h>
 #include <wayland-client.h>
 #include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbregistry.h>
 
 #include <memory>
 #include <string>
@@ -24,22 +25,28 @@ class KeyboardState : public AModule {
 
  private:
   Gtk::Box box_;
+  Gtk::Label layout_label_;
   Gtk::Label numlock_label_;
   Gtk::Label capslock_label_;
   Gtk::Label scrolllock_label_;
 
+  std::string layout_format_;
   std::string numlock_format_;
   std::string capslock_format_;
   std::string scrolllock_format_;
+  std::string tooltip_format_ = "";
   std::string icon_locked_;
   std::string icon_unlocked_;
+  bool hide_single_;
 
   struct wl_seat *seat_;
   struct wl_keyboard *keyboard_;
   struct xkb_context *xkb_context_;
   struct xkb_state *xkb_state_;
   struct xkb_keymap *xkb_keymap_;
+  struct rxkb_context *rxkb_context_;
 
+  void update_layout(std::string full_name);
   void update_led(Gtk::Label *, std::string format, std::string name, bool locked);
 
  public:

@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <sys/mman.h>
 #include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbregistry.h>
 
 #include <algorithm>
 #include <cctype>
@@ -21,6 +22,46 @@
 #include "util/string.hpp"
 
 namespace waybar::modules {
+
+std::string maybe_str(const char *s) { return s ? std::string(s) : ""; }
+
+std::string get_layout_name(struct xkb_keymap *keymap, struct xkb_state *state) {
+  xkb_layout_index_t n = xkb_keymap_num_layouts(keymap);
+  xkb_layout_index_t i;
+
+  for (i = 0; i < n; i++) {
+    if (xkb_state_layout_index_is_active(state, i, XKB_STATE_LAYOUT_EFFECTIVE)) {
+      return std::string(xkb_keymap_layout_get_name(keymap, i));
+    }
+  }
+  return "";
+}
+
+struct rxkb_layout *get_layout(struct rxkb_context *context, std::string full_name) {
+  if (full_name != "") {
+    struct rxkb_layout *layout = rxkb_layout_first(context);
+
+    while (layout) {
+      if (maybe_str(rxkb_layout_get_description(layout)) == full_name) {
+        return layout;
+      }
+      layout = rxkb_layout_next(layout);
+    }
+  }
+
+  return nullptr;
+}
+
+std::string country_flag(std::string short_name) {
+  if (short_name.size() != 2) return "";
+  unsigned char result[] = "\xf0\x9f\x87\x00\xf0\x9f\x87\x00";
+  result[3] = short_name[0] + 0x45;
+  result[7] = short_name[1] + 0x45;
+  // Check if both emojis are in A-Z symbol bounds
+  if (result[3] < 0xa6 || result[3] > 0xbf) return "";
+  if (result[7] < 0xa6 || result[7] > 0xbf) return "";
+  return std::string{reinterpret_cast<char *>(result)};
+}
 
 static void keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard, uint32_t format,
                             int32_t fd, uint32_t size) {
@@ -92,9 +133,14 @@ KeyboardState::KeyboardState(const std::string &id, const waybar::Bar &bar,
                              const Json::Value &config)
     : waybar::AModule(config, "keyboard-state", id, "{}"),
       box_(bar.orientation, 0),
+      layout_label_(""),
       numlock_label_(""),
       capslock_label_(""),
       scrolllock_label_(""),
+      layout_format_(config_["format"].isString() ? config_["format"].asString()
+                     : config_["format"]["layout"].isString()
+                         ? config_["format"]["layout"].asString()
+                         : "{short}"),
       numlock_format_(config_["format"].isString() ? config_["format"].asString()
                       : config_["format"]["numlock"].isString()
                           ? config_["format"]["numlock"].asString()
@@ -107,18 +153,25 @@ KeyboardState::KeyboardState(const std::string &id, const waybar::Bar &bar,
                          : config_["format"]["scrolllock"].isString()
                              ? config_["format"]["scrolllock"].asString()
                              : "{name} {icon}"),
+      tooltip_format_(config_["tooltip-format"].isString() ? config_["tooltip-format"].asString()
+                                                           : ""),
       icon_locked_(config_["format-icons"]["locked"].isString()
                        ? config_["format-icons"]["locked"].asString()
                        : "locked"),
       icon_unlocked_(config_["format-icons"]["unlocked"].isString()
                          ? config_["format-icons"]["unlocked"].asString()
                          : "unlocked"),
+      hide_single_(config["hide-single-layout"].isBool() && config["hide-single-layout"].asBool()),
       seat_{nullptr},
       keyboard_{nullptr},
       xkb_context_{nullptr},
       xkb_state_{nullptr},
-      xkb_keymap_{nullptr} {
+      xkb_keymap_{nullptr},
+      rxkb_context_{nullptr} {
   box_.set_name("keyboard-state");
+  if (config_["layout"].asBool()) {
+    event_box_.add(box_);
+  }
   if (config_["numlock"].asBool()) {
     numlock_label_.get_style_context()->add_class("numlock");
     box_.pack_end(numlock_label_, false, false, 0);
@@ -131,6 +184,7 @@ KeyboardState::KeyboardState(const std::string &id, const waybar::Bar &bar,
     scrolllock_label_.get_style_context()->add_class("scrolllock");
     box_.pack_end(scrolllock_label_, false, false, 0);
   }
+  box_.pack_end(layout_label_, false, false, 0);
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
@@ -138,6 +192,9 @@ KeyboardState::KeyboardState(const std::string &id, const waybar::Bar &bar,
   event_box_.add(box_);
 
   xkb_context_ = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+
+  rxkb_context_ = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
+  rxkb_context_parse_default_ruleset(rxkb_context_);
 
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
@@ -153,10 +210,14 @@ KeyboardState::KeyboardState(const std::string &id, const waybar::Bar &bar,
 
 KeyboardState::~KeyboardState() {
   xkb_context_unref(xkb_context_);
+  rxkb_context_unref(rxkb_context_);
 }
 
 void KeyboardState::update() {
-  if (xkb_state_) {
+  if (xkb_keymap_ && xkb_state_) {
+    auto full_name = get_layout_name(xkb_keymap_, xkb_state_);
+    update_layout(full_name);
+
     int numlock = xkb_state_led_name_is_active(xkb_state_, XKB_LED_NAME_NUM);
     update_led(&numlock_label_, numlock_format_, "Num", numlock);
 
@@ -168,6 +229,43 @@ void KeyboardState::update() {
   }
 
   AModule::update();
+}
+
+void KeyboardState::update_layout(std::string full_name) {
+  auto layout = get_layout(rxkb_context_, full_name);
+  if (!layout) {
+    return;
+  }
+
+  if (hide_single_) {
+    xkb_layout_index_t n = xkb_keymap_num_layouts(xkb_keymap_);
+    if (n < 2) {
+      layout_label_.hide();
+      return;
+    } else {
+      layout_label_.show();
+    }
+  }
+
+  auto short_name = maybe_str(rxkb_layout_get_name(layout));
+  auto variant = maybe_str(rxkb_layout_get_variant(layout));
+  auto short_description = maybe_str(rxkb_layout_get_brief(layout));
+
+  auto display_layout =
+      trim(fmt::format(fmt::runtime(layout_format_), fmt::arg("short", short_name),
+                       fmt::arg("shortDescription", short_description), fmt::arg("long", full_name),
+                       fmt::arg("variant", variant), fmt::arg("flag", country_flag(short_name))));
+  layout_label_.set_markup(display_layout);
+
+  if (tooltipEnabled()) {
+    if (tooltip_format_ != "") {
+      auto tooltip_display_layout = trim(
+          fmt::format(fmt::runtime(tooltip_format_), fmt::arg("short", short_name),
+                      fmt::arg("shortDescription", short_description), fmt::arg("long", full_name),
+                      fmt::arg("variant", variant), fmt::arg("flag", country_flag(short_name))));
+      layout_label_.set_tooltip_markup(tooltip_display_layout);
+    }
+  }
 }
 
 void KeyboardState::update_led(Gtk::Label *label, std::string format, std::string name,
