@@ -1,89 +1,100 @@
 #include "modules/keyboard_state.hpp"
 
-#include <errno.h>
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
-#include <string.h>
+#include <sys/mman.h>
+#include <xkbcommon/xkbcommon.h>
 
-#include <filesystem>
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <memory>
+#include <sstream>
+#include <utility>
 
-extern "C" {
-#include <fcntl.h>
-#include <libinput.h>
-#include <linux/input-event-codes.h>
-#include <poll.h>
-#include <sys/inotify.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "gdkmm/general.h"
+#include "glibmm/error.h"
+#include "glibmm/refptr.h"
+#include "util/format.hpp"
+#include "util/rewrite_string.hpp"
+#include "util/string.hpp"
+
+namespace waybar::modules {
+
+static void keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard, uint32_t format,
+                            int32_t fd, uint32_t size) {
+  static_cast<KeyboardState *>(data)->handle_keymap(format, fd, size);
 }
 
-class errno_error : public std::runtime_error {
- public:
-  int code;
-  errno_error(int code, const std::string& msg)
-      : std::runtime_error(getErrorMsg(code, msg.c_str())), code(code) {}
-  errno_error(int code, const char* msg) : std::runtime_error(getErrorMsg(code, msg)), code(code) {}
+static void keyboard_enter(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
+                           struct wl_surface *surface, struct wl_array *keys) {
+  /* nop */
+}
 
- private:
-  static auto getErrorMsg(int err, const char* msg) -> std::string {
-    std::string error_msg{msg};
-    error_msg += ": ";
+static void keyboard_leave(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
+                           struct wl_surface *surface) {
+  /* nop */
+}
 
-#if (__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 32)
-    // strerrorname_np gets the error code's name; it's nice to have, but it's a recent GNU
-    // extension
-    const auto errno_name = strerrorname_np(err);
-    error_msg += errno_name;
-    error_msg += " ";
-#endif
+static void keyboard_key(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
+                         uint32_t time, uint32_t key, uint32_t _state) {
+  /* nop */
+}
 
-    const auto errno_str = strerror(err);
-    error_msg += errno_str;
+static void keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard, uint32_t serial,
+                               uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
+                               uint32_t group) {
+  static_cast<KeyboardState *>(data)->handle_modifiers(mods_depressed, mods_latched, mods_locked,
+                                                       group);
+}
 
-    return error_msg;
-  }
+static void keyboard_repeat_info(void *data, struct wl_keyboard *wl_keyboard, int32_t rate,
+                                 int32_t delay) {
+  /* nop */
+}
+
+static const struct wl_keyboard_listener keyboard_impl = {
+    .keymap = keyboard_keymap,
+    .enter = keyboard_enter,
+    .leave = keyboard_leave,
+    .key = keyboard_key,
+    .modifiers = keyboard_modifiers,
+    .repeat_info = keyboard_repeat_info,
 };
 
-auto openFile(const std::string& path, int flags) -> int {
-  int fd = open(path.c_str(), flags);
-  if (fd < 0) {
-    if (errno == EACCES) {
-      throw errno_error(errno, "Can't open " + path + " (are you in the input group?)");
-    } else {
-      throw errno_error(errno, "Can't open " + path);
-    }
+static void seat_capabilities(void *data, struct wl_seat *wl_seat, unsigned int caps) {
+  static_cast<KeyboardState *>(data)->handle_seat_capabilities(caps);
+}
+
+static void seat_name(void *data, struct wl_seat *wl_seat, const char *name) { /* nop */ }
+
+const struct wl_seat_listener seat_impl = {
+    .capabilities = seat_capabilities,
+    .name = seat_name,
+};
+
+static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
+                          const char *interface, uint32_t version) {
+  if (std::strcmp(interface, wl_seat_interface.name) == 0) {
+    static_cast<KeyboardState *>(data)->register_seat(registry, name, version);
   }
-  return fd;
 }
 
-auto closeFile(int fd) -> void {
-  int res = close(fd);
-  if (res < 0) {
-    throw errno_error(errno, "Can't close file");
-  }
+static void handle_global_remove(void *data, struct wl_registry *registry, uint32_t name) {
+  /* nop */
 }
 
-auto openDevice(int fd) -> libevdev* {
-  libevdev* dev;
-  int err = libevdev_new_from_fd(fd, &dev);
-  if (err < 0) {
-    throw errno_error(-err, "Can't create libevdev device");
-  }
-  return dev;
-}
+static const wl_registry_listener registry_listener_impl = {.global = handle_global,
+                                                            .global_remove = handle_global_remove};
 
-auto supportsLockStates(const libevdev* dev) -> bool {
-  return libevdev_has_event_type(dev, EV_LED) && libevdev_has_event_code(dev, EV_LED, LED_NUML) &&
-         libevdev_has_event_code(dev, EV_LED, LED_CAPSL) &&
-         libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
-}
-
-waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
-                                              const Json::Value& config)
-    : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
+KeyboardState::KeyboardState(const std::string &id, const waybar::Bar &bar,
+                             const Json::Value &config)
+    : waybar::AModule(config, "keyboard-state", id, "{}"),
       box_(bar.orientation, 0),
       numlock_label_(""),
       capslock_label_(""),
+      scrolllock_label_(""),
       numlock_format_(config_["format"].isString() ? config_["format"].asString()
                       : config_["format"]["numlock"].isString()
                           ? config_["format"]["numlock"].asString()
@@ -96,26 +107,17 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
                          : config_["format"]["scrolllock"].isString()
                              ? config_["format"]["scrolllock"].asString()
                              : "{name} {icon}"),
-      interval_(
-          std::chrono::seconds(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1)),
       icon_locked_(config_["format-icons"]["locked"].isString()
                        ? config_["format-icons"]["locked"].asString()
                        : "locked"),
       icon_unlocked_(config_["format-icons"]["unlocked"].isString()
                          ? config_["format-icons"]["unlocked"].asString()
                          : "unlocked"),
-      devices_path_("/dev/input/"),
-      libinput_(nullptr),
-      libinput_devices_({}) {
-  static struct libinput_interface interface = {
-      [](const char* path, int flags, void* user_data) { return open(path, flags); },
-      [](int fd, void* user_data) { close(fd); }};
-  if (config_["interval"].isUInt()) {
-    spdlog::warn("keyboard-state: interval is deprecated");
-  }
-
-  libinput_ = libinput_path_create_context(&interface, NULL);
-
+      seat_{nullptr},
+      keyboard_{nullptr},
+      xkb_context_{nullptr},
+      xkb_state_{nullptr},
+      xkb_keymap_{nullptr} {
   box_.set_name("keyboard-state");
   if (config_["numlock"].asBool()) {
     numlock_label_.get_style_context()->add_class("numlock");
@@ -135,191 +137,107 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
   box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
-  if (config_["device-path"].isString()) {
-    std::string dev_path = config_["device-path"].asString();
-    tryAddDevice(dev_path);
-    if (libinput_devices_.empty()) {
-      spdlog::error("keyboard-state: Cannot find device {}", dev_path);
-    }
-  }
+  xkb_context_ = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
-  auto keys = config_["binding-keys"];
-  if (keys.isArray()) {
-    for (const auto& key : keys) {
-      if (key.isInt()) {
-        binding_keys.insert(key.asInt());
-      } else {
-        spdlog::warn("Cannot read key binding {} as int.", key.asString());
-      }
-    }
-  } else {
-    binding_keys.insert(KEY_CAPSLOCK);
-    binding_keys.insert(KEY_NUMLOCK);
-    binding_keys.insert(KEY_SCROLLLOCK);
-  }
+  struct wl_display *display = Client::inst()->wl_display;
+  struct wl_registry *registry = wl_display_get_registry(display);
 
-  DIR* dev_dir = opendir(devices_path_.c_str());
-  if (dev_dir == nullptr) {
-    throw errno_error(errno, "Failed to open " + devices_path_);
-  }
-  dirent* ep;
-  while ((ep = readdir(dev_dir))) {
-    if (ep->d_type == DT_DIR) continue;
-    std::string dev_path = devices_path_ + ep->d_name;
-    tryAddDevice(dev_path);
-  }
+  wl_registry_add_listener(registry, &registry_listener_impl, this);
+  wl_display_roundtrip(display);
 
-  if (libinput_devices_.empty()) {
-    throw errno_error(errno, "Failed to find keyboard device");
-  }
-
-  libinput_thread_ = [this] {
-    dp.emit();
-    while (1) {
-      struct pollfd fd = {libinput_get_fd(libinput_), POLLIN, 0};
-      poll(&fd, 1, -1);
-      libinput_dispatch(libinput_);
-      struct libinput_event* event;
-      while ((event = libinput_get_event(libinput_))) {
-        auto type = libinput_event_get_type(event);
-        if (type == LIBINPUT_EVENT_KEYBOARD_KEY) {
-          auto keyboard_event = libinput_event_get_keyboard_event(event);
-          auto state = libinput_event_keyboard_get_key_state(keyboard_event);
-          if (state == LIBINPUT_KEY_STATE_RELEASED) {
-            uint32_t key = libinput_event_keyboard_get_key(keyboard_event);
-            if (binding_keys.contains(key)) {
-              dp.emit();
-            }
-          }
-        }
-        libinput_event_destroy(event);
-      }
-    }
-  };
-
-  hotplug_thread_ = [this] {
-    int fd;
-    fd = inotify_init();
-    if (fd < 0) {
-      spdlog::error("Failed to initialize inotify: {}", strerror(errno));
-      return;
-    }
-    inotify_add_watch(fd, devices_path_.c_str(), IN_CREATE | IN_DELETE);
-    while (1) {
-      int BUF_LEN = 1024 * (sizeof(struct inotify_event) + 16);
-      char buf[BUF_LEN];
-      int length = read(fd, buf, 1024);
-      if (length < 0) {
-        spdlog::error("Failed to read inotify: {}", strerror(errno));
-        return;
-      }
-      for (int i = 0; i < length;) {
-        struct inotify_event* event = (struct inotify_event*)&buf[i];
-        std::string dev_path = devices_path_ + event->name;
-        if (event->mask & IN_CREATE) {
-          // Wait for device setup
-          int timeout = 10;
-          while (timeout--) {
-            try {
-              int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-              closeFile(fd);
-              break;
-            } catch (const errno_error& e) {
-              if (e.code == EACCES) {
-                sleep(1);
-              }
-            }
-          }
-          tryAddDevice(dev_path);
-        } else if (event->mask & IN_DELETE) {
-          auto it = libinput_devices_.find(dev_path);
-          if (it != libinput_devices_.end()) {
-            spdlog::info("Keyboard {} has been removed.", dev_path);
-            libinput_devices_.erase(it);
-          }
-        }
-        i += sizeof(struct inotify_event) + event->len;
-      }
-    }
-  };
-}
-
-waybar::modules::KeyboardState::~KeyboardState() {
-  for (const auto& [_, dev_ptr] : libinput_devices_) {
-    libinput_path_remove_device(dev_ptr);
+  if (!seat_) {
+    spdlog::error("Failed to get wayland seat");
+    return;
   }
 }
 
-auto waybar::modules::KeyboardState::update() -> void {
-  sleep(0);  // Wait for keyboard status change
-  int numl = 0, capsl = 0, scrolll = 0;
+KeyboardState::~KeyboardState() {
+  xkb_context_unref(xkb_context_);
+}
 
-  try {
-    std::string dev_path;
-    if (config_["device-path"].isString() &&
-        libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
-      dev_path = config_["device-path"].asString();
-    } else {
-      dev_path = libinput_devices_.begin()->first;
-    }
-    int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    auto dev = openDevice(fd);
-    numl = libevdev_get_event_value(dev, EV_LED, LED_NUML);
-    capsl = libevdev_get_event_value(dev, EV_LED, LED_CAPSL);
-    scrolll = libevdev_get_event_value(dev, EV_LED, LED_SCROLLL);
-    libevdev_free(dev);
-    closeFile(fd);
-  } catch (const errno_error& e) {
-    // ENOTTY just means the device isn't an evdev device, skip it
-    if (e.code != ENOTTY) {
-      spdlog::warn(e.what());
-    }
-  }
+void KeyboardState::update() {
+  if (xkb_state_) {
+    int numlock = xkb_state_led_name_is_active(xkb_state_, XKB_LED_NAME_NUM);
+    update_led(&numlock_label_, numlock_format_, "Num", numlock);
 
-  struct {
-    bool state;
-    Gtk::Label& label;
-    const std::string& format;
-    const char* name;
-  } label_states[] = {
-      {(bool)numl, numlock_label_, numlock_format_, "Num"},
-      {(bool)capsl, capslock_label_, capslock_format_, "Caps"},
-      {(bool)scrolll, scrolllock_label_, scrolllock_format_, "Scroll"},
-  };
-  for (auto& label_state : label_states) {
-    std::string text;
-    text = fmt::format(fmt::runtime(label_state.format),
-                       fmt::arg("icon", label_state.state ? icon_locked_ : icon_unlocked_),
-                       fmt::arg("name", label_state.name));
-    label_state.label.set_markup(text);
-    if (label_state.state) {
-      label_state.label.get_style_context()->add_class("locked");
-    } else {
-      label_state.label.get_style_context()->remove_class("locked");
-    }
+    int capslock = xkb_state_led_name_is_active(xkb_state_, XKB_LED_NAME_CAPS);
+    update_led(&capslock_label_, capslock_format_, "Caps", capslock);
+
+    int scrolllock = xkb_state_led_name_is_active(xkb_state_, XKB_LED_NAME_SCROLL);
+    update_led(&scrolllock_label_, scrolllock_format_, "Scroll", scrolllock);
   }
 
   AModule::update();
 }
 
-auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
-  try {
-    int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    auto dev = openDevice(fd);
-    if (supportsLockStates(dev)) {
-      spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
-      if (libinput_devices_.find(dev_path) == libinput_devices_.end()) {
-        auto device = libinput_path_add_device(libinput_, dev_path.c_str());
-        libinput_device_ref(device);
-        libinput_devices_[dev_path] = device;
-      }
-    }
-    libevdev_free(dev);
-    closeFile(fd);
-  } catch (const errno_error& e) {
-    // ENOTTY just means the device isn't an evdev device, skip it
-    if (e.code != ENOTTY) {
-      spdlog::warn(e.what());
-    }
+void KeyboardState::update_led(Gtk::Label *label, std::string format, std::string name,
+                               bool locked) {
+  std::string text =
+      fmt::format(fmt::runtime(format), fmt::arg("icon", locked ? icon_locked_ : icon_unlocked_),
+                  fmt::arg("name", name));
+  label->set_markup(text);
+
+  if (locked) {
+    label->get_style_context()->add_class("locked");
+  } else {
+    label->get_style_context()->remove_class("locked");
   }
 }
+
+void KeyboardState::handle_keymap(uint32_t format, int32_t fd, uint32_t size) {
+  if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
+    close(fd);
+    spdlog::error("unknown keymap format {0}", format);
+    return;
+  }
+  char *map_shm = static_cast<char *>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
+  if (map_shm == MAP_FAILED) {
+    close(fd);
+    spdlog::error("unable to initialize keymap shm");
+    return;
+  }
+
+  xkb_keymap_unref(xkb_keymap_);
+  xkb_state_unref(xkb_state_);
+
+  xkb_keymap_ = xkb_keymap_new_from_string(xkb_context_, map_shm, XKB_KEYMAP_FORMAT_TEXT_V1,
+                                           XKB_KEYMAP_COMPILE_NO_FLAGS);
+  munmap(map_shm, size);
+  close(fd);
+
+  xkb_state_ = xkb_state_new(xkb_keymap_);
+  dp.emit();
+}
+
+void KeyboardState::handle_modifiers(uint32_t mods_depressed, uint32_t mods_latched,
+                                     uint32_t mods_locked, uint32_t group) {
+  if (!xkb_state_) {
+    return;
+  }
+  xkb_state_update_mask(xkb_state_, mods_depressed, mods_latched, mods_locked, 0, 0, group);
+  dp.emit();
+}
+
+void KeyboardState::handle_seat_capabilities(unsigned int caps) {
+  if (keyboard_) {
+    wl_keyboard_release(keyboard_);
+    keyboard_ = nullptr;
+  }
+  if ((caps & WL_SEAT_CAPABILITY_KEYBOARD)) {
+    keyboard_ = wl_seat_get_keyboard(seat_);
+    wl_keyboard_add_listener(keyboard_, &keyboard_impl, this);
+  }
+}
+
+void KeyboardState::register_seat(struct wl_registry *registry, uint32_t name, uint32_t version) {
+  if (seat_) {
+    spdlog::warn("Register seat again although already existing!");
+    return;
+  }
+  version = std::min<uint32_t>(version, wl_seat_interface.version);
+
+  seat_ = static_cast<wl_seat *>(wl_registry_bind(registry, name, &wl_seat_interface, version));
+  wl_seat_add_listener(seat_, &seat_impl, this);
+}
+
+} /* namespace waybar::modules */

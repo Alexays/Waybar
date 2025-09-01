@@ -73,9 +73,6 @@
 #include "modules/backlight.hpp"
 #include "modules/backlight_slider.hpp"
 #endif
-#ifdef HAVE_LIBEVDEV
-#include "modules/keyboard_state.hpp"
-#endif
 #ifdef HAVE_GAMEMODE
 #include "modules/gamemode.hpp"
 #endif
@@ -120,6 +117,7 @@
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
+#include "modules/keyboard_state.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
 
@@ -277,6 +275,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "image") {
       return new waybar::modules::Image(id, config_[name]);
     }
+    if (ref == "keyboard-state") {
+      return new waybar::modules::KeyboardState(id, bar_, config_[name]);
+    }
 #ifdef HAVE_DBUSMENU
     if (ref == "tray") {
       return new waybar::modules::SNI::Tray(id, bar_, config_[name]);
@@ -293,11 +294,6 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "backlight/slider") {
       return new waybar::modules::BacklightSlider(id, config_[name]);
-    }
-#endif
-#ifdef HAVE_LIBEVDEV
-    if (ref == "keyboard-state") {
-      return new waybar::modules::KeyboardState(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_LIBPULSE

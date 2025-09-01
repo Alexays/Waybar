@@ -1,31 +1,28 @@
 #pragma once
 
-#include <fmt/chrono.h>
-#include <gtkmm/label.h>
+#include <gdk/gdk.h>
+#include <glibmm/refptr.h>
+#include <gtkmm/box.h>
+#include <wayland-client.h>
+#include <xkbcommon/xkbcommon.h>
 
-#include <set>
-#include <unordered_map>
+#include <memory>
+#include <string>
 
 #include "AModule.hpp"
 #include "bar.hpp"
-#include "util/sleeper_thread.hpp"
-
-extern "C" {
-#include <libevdev/libevdev.h>
-#include <libinput.h>
-}
+#include "client.hpp"
+#include "util/json.hpp"
 
 namespace waybar::modules {
 
 class KeyboardState : public AModule {
  public:
-  KeyboardState(const std::string&, const waybar::Bar&, const Json::Value&);
-  virtual ~KeyboardState();
-  auto update() -> void override;
+  KeyboardState(const std::string &, const waybar::Bar &, const Json::Value &);
+  ~KeyboardState();
+  void update();
 
  private:
-  auto tryAddDevice(const std::string&) -> void;
-
   Gtk::Box box_;
   Gtk::Label numlock_label_;
   Gtk::Label capslock_label_;
@@ -34,16 +31,23 @@ class KeyboardState : public AModule {
   std::string numlock_format_;
   std::string capslock_format_;
   std::string scrolllock_format_;
-  const std::chrono::seconds interval_;
   std::string icon_locked_;
   std::string icon_unlocked_;
-  std::string devices_path_;
 
-  struct libinput* libinput_;
-  std::unordered_map<std::string, struct libinput_device*> libinput_devices_;
-  std::set<int> binding_keys;
+  struct wl_seat *seat_;
+  struct wl_keyboard *keyboard_;
+  struct xkb_context *xkb_context_;
+  struct xkb_state *xkb_state_;
+  struct xkb_keymap *xkb_keymap_;
 
-  util::SleeperThread libinput_thread_, hotplug_thread_;
+  void update_led(Gtk::Label *, std::string format, std::string name, bool locked);
+
+ public:
+  void register_seat(struct wl_registry *, uint32_t name, uint32_t version);
+  void handle_keymap(uint32_t format, int32_t fd, uint32_t size);
+  void handle_modifiers(uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked,
+                        uint32_t group);
+  void handle_seat_capabilities(unsigned int caps);
 };
 
 }  // namespace waybar::modules
