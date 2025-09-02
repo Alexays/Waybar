@@ -112,6 +112,8 @@ class Workspace {
   // gdk events
   bool handle_clicked(const GdkEventButton *button) const;
 
+  bool ishidden = false;
+
  private:
   bool has_state(uint32_t state) const { return (state_ & state) == state; }
   std::string icon();

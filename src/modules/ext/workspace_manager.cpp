@@ -245,7 +245,9 @@ void WorkspaceManager::update_buttons() {
       if (!bar_contains_button) {
         // add button to bar
         box_.pack_start(workspace->button(), false, false);
-        workspace->button().show_all();
+        if (!workspace->ishidden) {
+          workspace->button().show_all();
+        }
       }
       workspace->update();
     } else {
@@ -389,18 +391,22 @@ void Workspace::update() {
   style_context->remove_class("hidden");
 
   if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE)) {
+    ishidden = false;
     button_.set_visible(true);
     style_context->add_class("active");
   }
   if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_URGENT)) {
+    ishidden = false;
     button_.set_visible(true);
     style_context->add_class("urgent");
   }
   if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN)) {
+    ishidden = true;
     button_.set_visible(!active_only_ && !ignore_hidden_);
     style_context->add_class("hidden");
   }
   if (state_ == 0) {
+    ishidden = false;
     button_.set_visible(!active_only_);
   }
 
