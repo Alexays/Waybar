@@ -136,8 +136,6 @@ class Workspace {
   Gtk::Button button_;
   Gtk::Box content_;
   Gtk::Label label_;
-
-  bool needs_updating_ = false;
 };
 
 }  // namespace waybar::modules::ext
