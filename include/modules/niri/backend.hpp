@@ -36,6 +36,17 @@ class IPC {
   static int connectToSocket();
   void parseIPC(const std::string&);
 
+  bool parseWorkspacesChanged_(const Json::Value &payload);
+  bool parseWorkspaceActivated_(const Json::Value &payload);
+  bool parseWorkspaceActiveWindowChanged_(const Json::Value &payload);
+  bool parseWorkspaceUrgencyChanged_(const Json::Value &payload);
+  bool parseKeyboardLayoutsChanged_(const Json::Value &payload);
+  bool parseKeyboardLayoutsSwitched_(const Json::Value &payload);
+  bool parseWindowsChanged_(const Json::Value &payload);
+  bool parseWindowLayoutsChanged_(const Json::Value &payload);
+  bool parseWindowOpenedOrChanged_(const Json::Value &payload);
+  bool parseWindowClosed_(const Json::Value &payload);
+  bool parseWindowFocusChanged_(const Json::Value &payload);
   std::mutex dataMutex_;
   std::vector<Json::Value> workspaces_;
   std::vector<Json::Value> windows_;

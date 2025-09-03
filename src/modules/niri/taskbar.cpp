@@ -37,7 +37,8 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
 {
   uint id = win["id"].asUInt();
   this->niri_id_ = id;
-  spdlog::debug("Creating new button for app {} with id {}", win["app_id"].asString(), this->niri_id_);
+  spdlog::debug("Niri Taskbar: Creating new button for app {} with id {}",
+      win["app_id"].asString(), this->niri_id_);
   this->gtk_button_contents_.add(this->icon_);
   this->gtk_button_contents_.add(this->label_);
   this->gtk_button.add(this->gtk_button_contents_);
@@ -45,7 +46,9 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
   this->gtk_button.set_name("app-button");
   this->gtk_button.signal_pressed().connect([id] {
       try { send_niri_ipc_focus_window(id); }
-      catch (const std::exception &e) { spdlog::error("Error switching focus: {}", e.what()); }
+      catch (const std::exception &e) {
+        spdlog::error("Niri Taskbar: Error switching focus: {}", e.what());
+      }
     });
   this->icon_theme_ = icon_theme;
   this->set_style(cfg);
@@ -53,7 +56,7 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Taskbar::Button::get_icon_from_app_id(std::string &app_id){
-  spdlog::debug("Attempting to load icon with app_id '{}'", app_id);
+  spdlog::debug("Niri Taskbar: Attempting to load icon with app_id '{}'", app_id);
   auto icon_info = this->icon_theme_->lookup_icon(app_id, this->icon_size_);
   if (icon_info) {
     return icon_info.load_icon();
@@ -82,7 +85,8 @@ Glib::RefPtr<Gdk::Pixbuf> Taskbar::Button::get_icon_from_app_id(std::string &app
   }
   g_free(desktop_list);
   // Retry lookup with real_app_id
-  spdlog::debug("Attempting to load icon with found app_id '{}'", real_app_id);
+  spdlog::debug("Niri Taskbar: Attempting to load icon with found app_id '{}'",
+      real_app_id);
   icon_info = this->icon_theme_->lookup_icon(real_app_id, this->icon_size_);
   if (icon_info) {
     return icon_info.load_icon();
@@ -191,7 +195,7 @@ bool Taskbar::Button::update(const Json::Value &win) {
   this->is_focused_ = win["is_focused"].asBool();
   auto app_id = win["app_id"].asString();
   this->update_app_id(app_id);
-  auto tile_pos = win["location"]["pos_in_scrolling_layout"];
+  auto tile_pos = win["layout"]["pos_in_scrolling_layout"];
   this->is_tiled_ = !tile_pos.isNull();
   if (this->is_tiled_) {
     this->tile_pos_col = tile_pos[0].asUInt();
@@ -227,7 +231,7 @@ Taskbar::Workspace::Workspace(const Json::Value &ws, const Json::Value &config, 
     gtk_box_buttons(Gtk::ORIENTATION_HORIZONTAL, 0)
 {
   if (ws["id"].isNull()) {
-    spdlog::error("Workspace contructor fed invalid workspace Json!");
+    spdlog::error("Niri Taskbar: Workspace contructor fed invalid workspace Json!");
     throw false;
   }
   auto id = ws["id"].asUInt();
@@ -246,7 +250,9 @@ Taskbar::Workspace::Workspace(const Json::Value &ws, const Json::Value &config, 
   this->empty_workspace_btn_.set_relief(Gtk::RELIEF_NONE);
   this->empty_workspace_btn_.signal_pressed().connect([id] {
       try { send_niri_ipc_focus_workspace(id); }
-      catch (const std::exception &e) { spdlog::error("Error switching focus: {}", e.what()); }
+      catch (const std::exception &e) {
+        spdlog::error("Niri Taskbar: Error switching focus: {}", e.what());
+      }
     });
   this->gtk_box_buttons.add(this->empty_workspace_btn_);
   this->set_style(config);
@@ -421,7 +427,7 @@ Taskbar::Taskbar(const std::string &id, const Bar &bar, const Json::Value &confi
 
   gIPC->registerForIPC("WindowsChanged", this);
   gIPC->registerForIPC("WindowOpenedOrChanged", this);
-  gIPC->registerForIPC("WindowsLocationsChanged", this);
+  gIPC->registerForIPC("WindowLayoutsChanged", this);
   gIPC->registerForIPC("WindowFocusChanged", this);
   gIPC->registerForIPC("WindowClosed", this);
 
@@ -442,7 +448,7 @@ uint Taskbar::get_my_workspace_id() {
         return (ws_on_my_output && ws_is_active);
       });
   if (my_workspace_iter == std::ranges::end(workspaces)) {
-    throw "Failed to find a niri workspace on bar display output";
+    throw std::runtime_error("Niri Taskbar: Output has no active Niri Workspace!");
   }
   return (*my_workspace_iter)["id"].asUInt();
 }
@@ -463,7 +469,9 @@ std::vector<Json::Value> Taskbar::get_workspaces_on_output() {
 void Taskbar::update_workspaces() {
   auto ws_vec = this->get_workspaces_on_output();
   if (ws_vec.empty()) {
-    spdlog::error("Failed to update workspaces on output {}", this->bar_.output->name);
+    spdlog::error(
+        "Niri Taskbar: Failed to update workspaces on output {}",
+        this->bar_.output->name);
   }
 
   // Update Workspaces
@@ -507,14 +515,20 @@ void Taskbar::update_workspaces() {
 
 void Taskbar::do_update() {
   auto ipcLock = gIPC->lockData();
-  auto my_workspace_id = this->get_my_workspace_id();
+  uint my_workspace_id = 0;
+  try {
+    my_workspace_id = this->get_my_workspace_id();
+  } catch (const std::exception &e) {
+    spdlog::info("Niri Taskbar: No active workspace for {}.. Skipping.", bar_.output->name);
+    return;
+  }
   const auto &windows = gIPC->windows();
   const auto &workspaces = gIPC->workspaces();
   bool did_update = false;
 
   if (this->prev_workspaces_ != workspaces) {
-    spdlog::debug(
-        "Updating taskbar workspaces on output {} (workspace id {})",
+    spdlog::trace(
+        "Niri Taskbar Updating taskbar workspaces on output {} (workspace id {})",
         bar_.output->name,
         my_workspace_id
     );
@@ -527,8 +541,8 @@ void Taskbar::do_update() {
   if (this->prev_windows_ != windows) {
     // XXX Assumes the IPC backend ignores window size values to skip updates
     //     on window resize events.
-    spdlog::debug(
-        "Updating taskbar windows on output {} (workspace id {})",
+    spdlog::trace(
+        "Niri Taskbar: Updating taskbar windows on output {} (workspace id {})",
         bar_.output->name,
         my_workspace_id
     );
@@ -541,16 +555,16 @@ void Taskbar::do_update() {
   };
 
   if (did_update) {
-    spdlog::debug(
-        "Refreshing taskbar gui on output {} (workspace id {})",
+    spdlog::trace(
+        "Niri Taskbar: Refreshing taskbar gui on output {} (workspace id {})",
         bar_.output->name,
         my_workspace_id
     );
     for (auto &workspace : this->workspaces_) {
       workspace.show();
     }
-    spdlog::debug(
-        "Completed update on output {} (workspace id {})",
+    spdlog::trace(
+        "Niri Taskbar: Completed update on output {} (workspace id {})",
         bar_.output->name,
         my_workspace_id
     );

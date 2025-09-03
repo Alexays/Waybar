@@ -9,7 +9,6 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <iostream>
 #include <string>
 #include <thread>
 
@@ -17,6 +16,13 @@
 #include "giomm/dataoutputstream.h"
 #include "giomm/unixinputstream.h"
 #include "giomm/unixoutputstream.h"
+
+#define JSON_GET_OR_RET(newvar, obj, key) \
+  const Json::Value & newvar = obj[key]; \
+  if (newvar.isNull()) { \
+    spdlog::debug("When setting {}, {}['{}'] returned null", "#newvar", "#obj", "#key"); \
+    return false; \
+  }
 
 namespace waybar::modules::niri {
 
@@ -98,132 +104,235 @@ void IPC::startIPC() {
   }).detach();
 }
 
+bool IPC::parseWorkspacesChanged_(const Json::Value &payload) {
+  workspaces_.clear();
+  JSON_GET_OR_RET(values, payload, "workspaces")
+
+  std::ranges::copy(values, std::back_inserter(workspaces_));
+
+  std::ranges::sort(workspaces_, [](const auto &a, const auto &b) {
+    const auto &aOutput = a["output"].asString();
+    const auto &bOutput = b["output"].asString();
+    const auto aIdx = a["idx"].asUInt();
+    const auto bIdx = b["idx"].asUInt();
+    if (aOutput == bOutput) return aIdx < bIdx;
+    return aOutput < bOutput;
+  });
+
+  return true;
+}
+
+bool IPC::parseWorkspaceActivated_(const Json::Value &payload) {
+  JSON_GET_OR_RET(id_obj, payload, "id");
+  const auto id = id_obj.asUInt64();
+
+  JSON_GET_OR_RET(focused_obj, payload, "focused");
+  const auto focused = focused_obj.asBool();
+
+  auto it = std::ranges::find_if(workspaces_, [id](const auto &ws) {
+      return ws["id"].asUInt64() == id;
+  });
+
+  if (it != workspaces_.end()) {
+    JSON_GET_OR_RET(output_obj, (*it), "output");
+    const auto &output = output_obj.asString();
+    for (auto &ws : workspaces_) {
+      const auto got_activated = (ws["id"].asUInt64() == id);
+      if (ws["output"] == output) {
+        ws["is_active"] = got_activated;
+      }
+      if (focused) {
+        ws["is_focused"] = got_activated;
+      }
+    }
+  } else {
+    spdlog::error("Activated unknown workspace");
+    return false;
+  }
+
+  return true;
+}
+
+bool IPC::parseWorkspaceActiveWindowChanged_(const Json::Value &payload) {
+  JSON_GET_OR_RET(workspace_id_obj, payload, "workspace_id");
+  const auto workspace_id = workspace_id_obj.asUInt64();
+  JSON_GET_OR_RET(active_window_id_obj, payload, "active_window_id");
+
+  auto it = std::ranges::find_if(workspaces_, [workspace_id](const auto &ws) {
+    return ws["id"].asUInt64() == workspace_id;
+  });
+  if (it != workspaces_.end()) {
+    auto &ws = *it;
+    ws["active_window_id"] = active_window_id_obj;
+  } else {
+    spdlog::error("Active window changed on unknown workspace");
+    return false;
+  }
+
+  return true;
+}
+
+bool IPC::parseWorkspaceUrgencyChanged_(const Json::Value &payload) {
+  JSON_GET_OR_RET(id_obj, payload, "id");
+  const auto id = id_obj.asUInt64();
+  JSON_GET_OR_RET(urgent_obj, payload, "urgent");
+  const auto urgent = urgent_obj.asBool();
+
+  auto it = std::ranges::find_if(workspaces_, [id](const auto &ws) {
+    return ws["id"].asUInt64() == id;
+  });
+
+  if (it != workspaces_.end()) {
+    auto &ws = *it;
+    ws["is_urgent"] = urgent;
+  } else {
+    spdlog::error("Urgency changed for unknown workspace");
+    return false;
+  }
+  return true;
+}
+
+bool IPC::parseKeyboardLayoutsChanged_(const Json::Value &payload) {
+  JSON_GET_OR_RET(layouts_obj, payload, "keyboard_layouts");
+  JSON_GET_OR_RET(names_obj, layouts_obj, "names");
+  JSON_GET_OR_RET(keyboard_layout_current_obj, layouts_obj, "current_idx");
+  keyboardLayoutCurrent_ = keyboard_layout_current_obj.asUInt();
+
+  keyboardLayoutNames_.clear();
+  for (const auto &fullName : names_obj) keyboardLayoutNames_.push_back(fullName.asString());
+  return true;
+}
+
+bool IPC::parseKeyboardLayoutsSwitched_(const Json::Value &payload) {
+  JSON_GET_OR_RET(keyboard_layout_current_obj, payload, "idx");
+  keyboardLayoutCurrent_ = keyboard_layout_current_obj.asUInt();
+  return true;
+}
+
+bool IPC::parseWindowsChanged_(const Json::Value &payload) {
+  JSON_GET_OR_RET(windows_obj, payload, "windows");
+  windows_.clear();
+  // XXX This copies the newly RX'd windows into the `windows_` global, but
+  // doesn't validate their contents.
+  std::ranges::copy(windows_obj, std::back_inserter(windows_));
+  return true;
+}
+
+bool IPC::parseWindowLayoutsChanged_(const Json::Value &payload) {
+  JSON_GET_OR_RET(changes_obj, payload, "changes");
+  // Expect Vec<(u64, WindowLayout)>
+  for (const auto &win_changes : changes_obj) {
+    for (auto &win : windows_) {
+      JSON_GET_OR_RET(win_changes_id_obj, win_changes, 0);
+      if (win["id"] == win_changes_id_obj) {
+        JSON_GET_OR_RET(win_layout_obj, win_changes, 1);
+        JSON_GET_OR_RET(win_layout_scrolling_pos_obj, win_layout_obj, "pos_in_scrolling_layout");
+        // XXX We construct a new object with selective copying so that our consumer modules can
+        //     easily ignore unimportant changes.
+        win["layout"] = Json::Value(Json::objectValue);
+        win["layout"]["pos_in_scrolling_layout"] = win_layout_scrolling_pos_obj;
+        break;
+      }
+    }
+  }
+  return true;
+}
+
+bool IPC::parseWindowOpenedOrChanged_(const Json::Value &payload) {
+  JSON_GET_OR_RET(window, payload, "window");
+  JSON_GET_OR_RET(window_id_obj, window, "id");
+  const auto id = window_id_obj.asUInt64();
+
+  auto it = std::ranges::find_if(windows_, [id](const auto &win) {
+    return win["id"].asUInt64() == id;
+  });
+
+  // Check if window from IPC is a new window.
+  if (it == windows_.end()) {
+    windows_.push_back(window);
+
+    // Since new window, update all existing windows "is_focused" state.
+    JSON_GET_OR_RET(window_focused_obj, window, "is_focused");
+    if (window_focused_obj.asBool()) {
+      for (auto &existing_win : windows_) {
+        existing_win["is_focused"] = (existing_win["id"].asUInt64() == id);
+      }
+    }
+  } else {
+    // XXX Copies in input window json data into windows_ without checking.
+    *it = window;
+  }
+  return true;
+}
+
+bool IPC::parseWindowClosed_(const Json::Value &payload) {
+  JSON_GET_OR_RET(id_obj, payload, "id");
+  const auto id = id_obj.asUInt64();
+
+  auto it = std::ranges::find_if(windows_, [id](const auto &win) {
+    return win["id"].asUInt64() == id;
+  });
+
+  if (it != windows_.end()) {
+    windows_.erase(it);
+  } else {
+    spdlog::error("Unknown window closed");
+    return false;
+  }
+  return true;
+}
+
+bool IPC::parseWindowFocusChanged_(const Json::Value &payload) {
+  const auto focused = !payload["id"].isNull();
+  const auto id = payload["id"].asUInt64();
+  for (auto &win : windows_) {
+    win["is_focused"] = focused && win["id"].asUInt64() == id;
+  }
+  return true;
+}
+
 void IPC::parseIPC(const std::string &line) {
+  bool parsed = true;
+  bool parse_ok = false;
   const auto ev = parser_.parse(line);
   const auto members = ev.getMemberNames();
-  if (members.size() != 1) throw std::runtime_error("Event must have a single member");
+  if (members.size() != 1) {
+    throw std::runtime_error("Event must have a single member");
+  }
 
   {
     auto lock = lockData();
 
     if (const auto &payload = ev["WorkspacesChanged"]) {
-      workspaces_.clear();
-      const auto &values = payload["workspaces"];
-      std::copy(values.begin(), values.end(), std::back_inserter(workspaces_));
-
-      std::sort(workspaces_.begin(), workspaces_.end(), [](const auto &a, const auto &b) {
-        const auto &aOutput = a["output"].asString();
-        const auto &bOutput = b["output"].asString();
-        const auto aIdx = a["idx"].asUInt();
-        const auto bIdx = b["idx"].asUInt();
-        if (aOutput == bOutput) return aIdx < bIdx;
-        return aOutput < bOutput;
-      });
+      parse_ok = this->parseWorkspacesChanged_(payload);
     } else if (const auto &payload = ev["WorkspaceActivated"]) {
-      const auto id = payload["id"].asUInt64();
-      const auto focused = payload["focused"].asBool();
-      auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                             [id](const auto &ws) { return ws["id"].asUInt64() == id; });
-      if (it != workspaces_.end()) {
-        const auto &ws = *it;
-        const auto &output = ws["output"].asString();
-        for (auto &ws : workspaces_) {
-          const auto got_activated = (ws["id"].asUInt64() == id);
-          if (ws["output"] == output) ws["is_active"] = got_activated;
-
-          if (focused) ws["is_focused"] = got_activated;
-        }
-      } else {
-        spdlog::error("Activated unknown workspace");
-      }
+      parse_ok = this->parseWorkspaceActivated_(payload);
     } else if (const auto &payload = ev["WorkspaceActiveWindowChanged"]) {
-      const auto workspaceId = payload["workspace_id"].asUInt64();
-      auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [workspaceId](const auto &ws) {
-        return ws["id"].asUInt64() == workspaceId;
-      });
-      if (it != workspaces_.end()) {
-        auto &ws = *it;
-        ws["active_window_id"] = payload["active_window_id"];
-      } else {
-        spdlog::error("Active window changed on unknown workspace");
-      }
+      parse_ok = this->parseWorkspaceActiveWindowChanged_(payload);
     } else if (const auto &payload = ev["WorkspaceUrgencyChanged"]) {
-      const auto id = payload["id"].asUInt64();
-      const auto urgent = payload["urgent"].asBool();
-      auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                             [id](const auto &ws) { return ws["id"].asUInt64() == id; });
-      if (it != workspaces_.end()) {
-        auto &ws = *it;
-        ws["is_urgent"] = urgent;
-      } else {
-        spdlog::error("Urgency changed for unknown workspace");
-      }
+      parse_ok = this->parseWorkspaceUrgencyChanged_(payload);
     } else if (const auto &payload = ev["KeyboardLayoutsChanged"]) {
-      const auto &layouts = payload["keyboard_layouts"];
-      const auto &names = layouts["names"];
-      keyboardLayoutCurrent_ = layouts["current_idx"].asUInt();
-
-      keyboardLayoutNames_.clear();
-      for (const auto &fullName : names) keyboardLayoutNames_.push_back(fullName.asString());
+      parse_ok = this->parseKeyboardLayoutsChanged_(payload);
     } else if (const auto &payload = ev["KeyboardLayoutSwitched"]) {
-      keyboardLayoutCurrent_ = payload["idx"].asUInt();
+      parse_ok = this->parseKeyboardLayoutsSwitched_(payload);
     } else if (const auto &payload = ev["WindowsChanged"]) {
-      windows_.clear();
-      const auto &values = payload["windows"];
-      std::copy(values.begin(), values.end(), std::back_inserter(windows_));
-    } else if (const auto &payload = ev["WindowsLocationsChanged"]) {
-      // TODO THIS RELIES ON UNMERGED AN NIRI PR!!! CHECK AFTER IT IS MERGED https://github.com/YaLTeR/niri/pull/1265
-      for (const auto &win_changes : payload["changes"]) {
-        for (auto &win : windows_) {
-          if (win["id"] == win_changes[0]) {
-            // XXX We are deliberately dropping tile_size data for the sake of
-            // ease of filtering spammed IPCs from moused based window resizing.
-            win["location"] = Json::Value(Json::objectValue);
-            win["location"]["tile_pos_in_scrolling_layout"]
-                = win_changes[1]["tile_pos_in_scrolling_layout"];
-            break;
-          }
-        }
-      }
+      parse_ok = this->parseWindowsChanged_(payload);
+    } else if (const auto &payload = ev["WindowLayoutsChanged"]) {
+      parse_ok = this->parseWindowLayoutsChanged_(payload);
     } else if (const auto &payload = ev["WindowOpenedOrChanged"]) {
-      const auto &window = payload["window"];
-      const auto id = window["id"].asUInt64();
-      auto it = std::ranges::find_if(
-          windows_,
-          [id](const auto &win) {
-            return win["id"].asUInt64() == id;
-          }
-      );
-
-      // Check if window from IPC is a new window.
-      if (it == windows_.end()) {
-        windows_.push_back(window);
-
-        // Since new window, update all existing windows "is_focused" state.
-        if (window["is_focused"].asBool()) {
-          for (auto &win : windows_) {
-            win["is_focused"] = win["id"].asUInt64() == id;
-          }
-        }
-      } else {
-        *it = window;
-      }
+      parse_ok = this->parseWindowOpenedOrChanged_(payload);
     } else if (const auto &payload = ev["WindowClosed"]) {
-      const auto id = payload["id"].asUInt64();
-      auto it = std::find_if(windows_.begin(), windows_.end(),
-                             [id](const auto &win) { return win["id"].asUInt64() == id; });
-      if (it != windows_.end()) {
-        windows_.erase(it);
-      } else {
-        spdlog::error("Unknown window closed");
-      }
+      parse_ok = this->parseWindowClosed_(payload);
     } else if (const auto &payload = ev["WindowFocusChanged"]) {
-      const auto focused = !payload["id"].isNull();
-      const auto id = payload["id"].asUInt64();
-      for (auto &win : windows_) {
-        win["is_focused"] = focused && win["id"].asUInt64() == id;
-      }
+      parse_ok = this->parseWindowFocusChanged_(payload);
+    } else {
+      parsed = false;
     }
+  }
+
+  if (parsed && (!parse_ok)) {
+    spdlog::error("Error parsing IPC: {}", ev);
+    throw std::runtime_error("Message parser returned an error");
   }
 
   std::unique_lock lock(callbackMutex_);

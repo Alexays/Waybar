@@ -41,8 +41,6 @@ class Taskbar : public AModule, public EventHandler {
     void update_icon();
     void update_app_id(std::string &app_id);
     bool is_floating();
-    uint get_col_idx();
-    uint get_row_idx();
    public:
     Gtk::Button gtk_button;
     Button(const Json::Value &window, const Json::Value &cfg, const Glib::RefPtr<Gtk::IconTheme> &icon_theme);
