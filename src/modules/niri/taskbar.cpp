@@ -153,15 +153,23 @@ void Taskbar::Button::hide() {
 
 void Taskbar::Button::update_text_label() {
   auto button_format = this->is_focused() ? this->active_button_format_ : inactive_button_format_;
+  auto trunc_str = [this](const auto &s) {
+    if (s.length() < this->label_max_length_) {
+      return s;
+    }
+
+    return s.substr(0, this->label_max_length_) + "...";
+  };
+
   switch(button_format) {
     case ButtonFormat::AppId:
     case ButtonFormat::IconAndAppId:
     case ButtonFormat::Icon:
-      this->label_.set_label(this->app_id_);
+      this->label_.set_label(trunc_str(this->app_id_));
       break;
     case ButtonFormat::Title:
     case ButtonFormat::IconAndTitle:
-      this->label_.set_label(this->title_);
+      this->label_.set_label(trunc_str(this->title_));
       break;
   }
 }
@@ -214,6 +222,8 @@ void Taskbar::Button::set_style(const Json::Value &cfg) {
   );
 
   this->icon_size_ = cfg.get("icon-size", 24).asUInt();
+
+  this->label_max_length_ = cfg.get("label-max-length", 40).asUInt();
 }
 
 bool Taskbar::Button::update(const Json::Value &win) {

@@ -32,6 +32,7 @@ class Taskbar : public AModule, public EventHandler {
     bool is_focused_;
     bool is_tiled_;
     uint icon_size_;
+    uint label_max_length_;
     std::string app_id_;
     std::string title_;
     ButtonFormat active_button_format_;
