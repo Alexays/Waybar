@@ -37,6 +37,8 @@ Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Gl
 {
   uint id = win["id"].asUInt();
   this->niri_id_ = id;
+  this->app_id_ = "Unset";
+  this->title_ = "Unset";
   spdlog::debug("Niri Taskbar: Creating new button for app {} with id {}",
       win["app_id"].asString(), this->niri_id_);
   this->gtk_button_contents_.add(this->icon_);
@@ -122,7 +124,8 @@ void Taskbar::Button::show() {
   auto button_format = this->is_focused() ? this->active_button_format_ : inactive_button_format_;
 
   switch(button_format) {
-    case ButtonFormat::Text:
+    case ButtonFormat::Title:
+    case ButtonFormat::AppId:
       this->label_.show();
       this->icon_.hide();
       break;
@@ -130,7 +133,8 @@ void Taskbar::Button::show() {
       this->label_.hide();
       this->icon_.show();
       break;
-    case ButtonFormat::IconAndText:
+    case ButtonFormat::IconAndAppId:
+    case ButtonFormat::IconAndTitle:
       this->label_.show();
       this->icon_.show();
       break;
@@ -147,8 +151,29 @@ void Taskbar::Button::hide() {
   this->gtk_button.hide();
 }
 
-void Taskbar::Button::update_app_id(std::string &app_id) {
+void Taskbar::Button::update_text_label() {
+  auto button_format = this->is_focused() ? this->active_button_format_ : inactive_button_format_;
+  switch(button_format) {
+    case ButtonFormat::AppId:
+    case ButtonFormat::IconAndAppId:
+    case ButtonFormat::Icon:
+      this->label_.set_label(this->app_id_);
+      break;
+    case ButtonFormat::Title:
+    case ButtonFormat::IconAndTitle:
+      this->label_.set_label(this->title_);
+      break;
+  }
+}
 
+void Taskbar::Button::update_title(std::string &title) {
+  if (this->title_ == title) {
+    return;
+  }
+  this->title_ = title;
+}
+
+void Taskbar::Button::update_app_id(std::string &app_id) {
   if (this->app_id_ == app_id) {
     return;
   }
@@ -156,21 +181,26 @@ void Taskbar::Button::update_app_id(std::string &app_id) {
   style->remove_class(this->app_id_);
   this->app_id_ = app_id;
   style->add_class(this->app_id_);
-  this->label_.set_label(this->app_id_);
   this->update_icon();
 }
 
 void Taskbar::Button::set_style(const Json::Value &cfg) {
   const auto *format_default = "icon";
   auto format_to_enum = [](const std::string &format_str) {
-    if (format_str == "text") {
-      return ButtonFormat::Text;
+    if (format_str == "app-id") {
+      return ButtonFormat::AppId;
+    }
+    if (format_str == "title") {
+      return ButtonFormat::Title;
     }
     if (format_str == "icon") {
       return ButtonFormat::Icon;
     }
-    if (format_str == "icon-and-text") {
-      return ButtonFormat::IconAndText;
+    if (format_str == "icon-and-title") {
+      return ButtonFormat::IconAndTitle;
+    }
+    if (format_str == "icon-and-app-id") {
+      return ButtonFormat::IconAndAppId;
     }
     return ButtonFormat::Icon; // Default Fallback
   };
@@ -195,6 +225,9 @@ bool Taskbar::Button::update(const Json::Value &win) {
   this->is_focused_ = win["is_focused"].asBool();
   auto app_id = win["app_id"].asString();
   this->update_app_id(app_id);
+  auto title = win["title"].asString();
+  this->update_title(title);
+  this->update_text_label();
   auto tile_pos = win["layout"]["pos_in_scrolling_layout"];
   this->is_tiled_ = !tile_pos.isNull();
   if (this->is_tiled_) {

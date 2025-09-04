@@ -19,9 +19,11 @@ class Taskbar : public AModule, public EventHandler {
   class Button {
    private:
     enum class ButtonFormat : std::uint8_t {
-      Text,
+      AppId,
+      Title,
       Icon,
-      IconAndText,
+      IconAndAppId,
+      IconAndTitle,
     };
     uint niri_id_;
     uint pid_;
@@ -31,6 +33,7 @@ class Taskbar : public AModule, public EventHandler {
     bool is_tiled_;
     uint icon_size_;
     std::string app_id_;
+    std::string title_;
     ButtonFormat active_button_format_;
     ButtonFormat inactive_button_format_;
     Glib::RefPtr<Gtk::IconTheme> icon_theme_;
@@ -39,7 +42,9 @@ class Taskbar : public AModule, public EventHandler {
     Gtk::Image icon_;
     Glib::RefPtr<Gdk::Pixbuf> get_icon_from_app_id(std::string &app_id);
     void update_icon();
+    void update_text_label();
     void update_app_id(std::string &app_id);
+    void update_title(std::string &title);
     bool is_floating();
    public:
     Gtk::Button gtk_button;
