@@ -260,9 +260,9 @@ Taskbar::Workspace::Workspace(const Json::Value &ws, const Json::Value &config, 
 }
 
 void Taskbar::Workspace::set_style(const Json::Value &cfg) {
-  const auto *format_default = "default";
+  const auto *format_default = "no-label";
   auto format_to_enum = [](const std::string &format_str) {
-    if (format_str == "default") {
+    if (format_str == "no-label") {
       return WorkspaceFormat::Default;
     }
     if (format_str == "label-idx") {
