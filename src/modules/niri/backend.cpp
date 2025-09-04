@@ -156,14 +156,13 @@ bool IPC::parseWorkspaceActivated_(const Json::Value &payload) {
 bool IPC::parseWorkspaceActiveWindowChanged_(const Json::Value &payload) {
   JSON_GET_OR_RET(workspace_id_obj, payload, "workspace_id");
   const auto workspace_id = workspace_id_obj.asUInt64();
-  JSON_GET_OR_RET(active_window_id_obj, payload, "active_window_id");
 
   auto it = std::ranges::find_if(workspaces_, [workspace_id](const auto &ws) {
     return ws["id"].asUInt64() == workspace_id;
   });
   if (it != workspaces_.end()) {
     auto &ws = *it;
-    ws["active_window_id"] = active_window_id_obj;
+    ws["active_window_id"] = payload["active_window_id"];
   } else {
     spdlog::error("Active window changed on unknown workspace");
     return false;
@@ -331,7 +330,7 @@ void IPC::parseIPC(const std::string &line) {
   }
 
   if (parsed && (!parse_ok)) {
-    spdlog::error("Error parsing IPC: {}", ev);
+    spdlog::error("Niri IPC: Error parsing IPC: {}", ev);
     throw std::runtime_error("Message parser returned an error");
   }
 
