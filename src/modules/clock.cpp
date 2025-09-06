@@ -30,6 +30,7 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       cldMonShift_{year(1900) / January},
       tzInTooltip_{m_tlpFmt_.find("{" + kTZPlaceholder + "}") != std::string::npos},
       tzCurrIdx_{0},
+      tzTooltipFormat_{config_["timezone-tooltip-format"].isString() ? config_["timezone-tooltip-format"].asString() : ""},
       ordInTooltip_{m_tlpFmt_.find("{" + kOrdPlaceholder + "}") != std::string::npos} {
   m_tlpText_ = m_tlpFmt_;
 
@@ -188,11 +189,23 @@ auto waybar::modules::Clock::getTZtext(sys_seconds now) -> std::string {
   if (tzList_.size() == 1) return "";
 
   std::stringstream os;
+  bool first = true;
   for (size_t tz_idx{0}; tz_idx < tzList_.size(); ++tz_idx) {
-    if (static_cast<int>(tz_idx) == tzCurrIdx_) continue;
+    // Skip current timezone unless timezone-tooltip-format is specified
+    if (static_cast<int>(tz_idx) == tzCurrIdx_ && tzTooltipFormat_.empty()) continue;
+    
     const auto* tz = tzList_[tz_idx] != nullptr ? tzList_[tz_idx] : local_zone();
     auto zt{zoned_time{tz, now}};
-    os << fmt_lib::vformat(m_locale_, format_, fmt_lib::make_format_args(zt)) << '\n';
+    
+    // Add newline before each entry except the first
+    if (!first) {
+      os << '\n';
+    }
+    first = false;
+    
+    // Use timezone-tooltip-format if specified, otherwise use format_
+    const std::string& fmt = tzTooltipFormat_.empty() ? format_ : tzTooltipFormat_;
+    os << fmt_lib::vformat(m_locale_, fmt, fmt_lib::make_format_args(zt));
   }
 
   return os.str();

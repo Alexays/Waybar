@@ -62,6 +62,7 @@ class Clock final : public ALabel {
   std::vector<const date::time_zone*> tzList_;  // time zones list
   int tzCurrIdx_;                               // current time zone index for tzList_
   std::string tzText_{""};                      // time zones text to print
+  std::string tzTooltipFormat_{""};             // optional timezone tooltip format
   util::SleeperThread thread_;
 
   // ordinal date in tooltip
