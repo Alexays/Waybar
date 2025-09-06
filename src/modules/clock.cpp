@@ -191,10 +191,13 @@ auto waybar::modules::Clock::getTZtext(sys_seconds now) -> std::string {
   std::stringstream os;
   bool first = true;
   for (size_t tz_idx{0}; tz_idx < tzList_.size(); ++tz_idx) {
+    // Skip local timezone (nullptr) - never show it in tooltip
+    if (tzList_[tz_idx] == nullptr) continue;
+    
     // Skip current timezone unless timezone-tooltip-format is specified
     if (static_cast<int>(tz_idx) == tzCurrIdx_ && tzTooltipFormat_.empty()) continue;
     
-    const auto* tz = tzList_[tz_idx] != nullptr ? tzList_[tz_idx] : local_zone();
+    const auto* tz = tzList_[tz_idx];
     auto zt{zoned_time{tz, now}};
     
     // Add newline before each entry except the first
