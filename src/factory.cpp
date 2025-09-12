@@ -51,6 +51,7 @@
 #endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
 #include "modules/cpu.hpp"
+#include "modules/cpu_graph.hpp"
 #include "modules/cpu_frequency.hpp"
 #include "modules/cpu_usage.hpp"
 #include "modules/load.hpp"
@@ -252,6 +253,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);
+    }
+    if (ref == "cpu_graph") {
+      return new waybar::modules::CpuGraph(id, config_[name]);
     }
 #if defined(HAVE_CPU_LINUX)
     if (ref == "cpu_frequency") {
