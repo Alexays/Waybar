@@ -159,7 +159,7 @@ auto waybar::modules::Cava::update() -> void {
     // Do transformation under raw data
     audio_raw_fetch(&audio_raw_, &prm_, &rePaint_, plan_);
 
-    if (rePaint_ == 1) {
+    if (rePaint_ == 1 && !label_.get_style_context()->has_class("silent")) {
       text_.clear();
 
       for (int i{0}; i < audio_raw_.number_of_bars; ++i) {
