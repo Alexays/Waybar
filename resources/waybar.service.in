@@ -1,14 +1,46 @@
 [Unit]
-Description=Highly customizable Wayland bar for Sway and Wlroots based compositors
+Description=Highly customizable Wayland bar for Sway and Wlroots based compositors.
 Documentation=https://github.com/Alexays/Waybar/wiki/
+
+## The following can be replaced with a specific session target, e.g.
+#
+# ### waybar-sway.service
+# PartOf=sway-session.target
+# After=sway-session.target
+# Requisite=sway-session.target
 PartOf=graphical-session.target
-After=graphical-session.target
+#After=graphical-session.target
 Requisite=graphical-session.target
 
+## This is necessary for swaync linking.
+# If swaync is already running outside of systemd,
+# swaync.service will fail, be warned!
+Requisite=swaync.service
+
+## If you have multiple units for Waybar, per WM,
+# you may do something like this, in the specific
+# session units:
+#
+# ### waybar-sway.service
+# Conflicts=waybar.service
+# Conflicts=waybar-hypr.service
+
 [Service]
-ExecStart=@prefix@/bin/waybar
+
+## For a specific config file, you can edit this:
+#
+# ### waybar-sway.service
+# ExecStart=/usr/bin/waybar -c /home/<user>/.config/waybar/sway.jsonc
+ExecStart=/usr/bin/waybar
+
 ExecReload=kill -SIGUSR2 $MAINPID
 Restart=on-failure
 
 [Install]
+
+## Like the first section, if you are scoping this
+# to a separate session, edit this, e.g.:
+#
+# ### waybar-sway.service
+# WantedBy=sway-session.target
 WantedBy=graphical-session.target
