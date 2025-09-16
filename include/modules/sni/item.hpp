@@ -26,7 +26,7 @@ struct ToolTip {
 class Item : public sigc::trackable {
  public:
   Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
-  ~Item() = default;
+  ~Item();
 
   std::string bus_name;
   std::string object_path;
