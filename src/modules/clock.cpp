@@ -375,7 +375,7 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
             }
           }
           os << Glib::ustring::format(
-              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right, std::setfill(L' '),
+              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right, std::setfill(' '),
               std::setw(cldMonColLen_ + ((line < 2) ? cldWnLen_ - wideCharCount : 0)),
               calendarLine);
 
