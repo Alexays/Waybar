@@ -469,6 +469,8 @@ bool Workspace::handle_clicked(const GdkEventButton *button) const {
 
   if (action == "activate") {
     ext_workspace_handle_v1_activate(ext_handle_);
+  } else if (action == "deactivate") {
+    ext_workspace_handle_v1_deactivate(ext_handle_);
   } else if (action == "close") {
     ext_workspace_handle_v1_remove(ext_handle_);
   } else {
