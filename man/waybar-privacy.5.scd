@@ -6,72 +6,80 @@ waybar - privacy module
 
 # DESCRIPTION
 
-The *privacy* module displays if any application is capturing audio, sharing ++
+The _privacy_ module displays if any application is capturing audio, sharing ++
 the screen or playing audio.
 
 # CONFIGURATION
 
-*icon-spacing*: ++
-	typeof: integer ++
-	default: 4 ++
-	The spacing between each privacy icon.
+_icon-spacing_: ++
+typeof: integer ++
+default: 4 ++
+The spacing between each privacy icon.
 
-*icon-size*: ++
-	typeof: integer ++
-	default: 20 ++
-	The size of each privacy icon.
+_icon-size_: ++
+typeof: integer ++
+default: 20 ++
+The size of each privacy icon.
 
-*transition-duration*: ++
-	typeof: integer ++
-	default: 250 ++
-	Option to disable tooltip on hover.
+_transition-duration_: ++
+typeof: integer ++
+default: 250 ++
+Option to disable tooltip on hover.
 
-*modules* ++
-	typeof: array of objects ++
-	default: [{"type": "screenshare"}, {"type": "audio-in"}] ++
-	Which privacy modules to monitor. See *MODULES CONFIGURATION* for++
-	more information.
+_modules_ ++
+typeof: array of objects ++
+default: [{"type": "screenshare"}, {"type": "audio-in"}] ++
+Which privacy modules to monitor. See _MODULES CONFIGURATION_ for++
+more information.
 
-*expand*: ++
-	typeof: bool ++
-	default: false ++
-	Enables this module to consume all left over space dynamically.
+_expand_: ++
+typeof: bool ++
+default: false ++
+Enables this module to consume all left over space dynamically.
 
-*ignore-monitor* ++
-	typeof: bool ++
-	default: true ++
-	Ignore streams with *stream.monitor* property.
+_ignore-monitor_ ++
+typeof: bool ++
+default: true ++
+Ignore streams with _stream.monitor_ property.
 
-*ignore* ++
-	typeof: array of objects ++
-	default: [] ++
-	Additional streams to be ignored. See *IGNORE CONFIGURATION* for++
-	more information.
+_ignore_ ++
+typeof: array of objects ++
+default: [] ++
+Additional streams to be ignored. See _IGNORE CONFIGURATION_ for++
+more information.
 
 # MODULES CONFIGURATION
 
-*type*: ++
-	typeof: string ++
-	values: "screenshare", "audio-in", "audio-out" ++
-	Specifies which module to use and configure.
+_type_: ++
+typeof: string ++
+values: "screenshare", "audio-in", "audio-out", "camera" ++
+Specifies which module to use and configure.
 
-*tooltip*: ++
-	typeof: bool ++
-	default: true ++
-	Option to disable tooltip on hover.
+_icon-name_: ++
+typeof: string ++
+Specifies a custom icon for the module.
 
-*tooltip-icon-size*: ++
-	typeof: integer ++
-	default: 24 ++
-	The size of each icon in the tooltip.
+_format_: ++
+typeof: string ++
+Specifies a custom format for the module.
+
+_tooltip_: ++
+typeof: bool ++
+default: true ++
+Option to disable tooltip on hover.
+
+_tooltip-icon-size_: ++
+typeof: integer ++
+default: 24 ++
+The size of each icon in the tooltip.
 
 # IGNORE CONFIGURATION
 
-*type*: ++
-	typeof: string
+_type_: ++
+typeof: string
 
-*name*: ++
-	typeof: string
+_name_: ++
+typeof: string
 
 # EXAMPLES
 
@@ -113,8 +121,9 @@ the screen or playing audio.
 
 # STYLE
 
-- *#privacy*
-- *#privacy-item*
-- *#privacy-item.screenshare*
-- *#privacy-item.audio-in*
-- *#privacy-item.audio-out*
+- _#privacy_
+- _#privacy-item_
+- _#privacy-item.screenshare_
+- _#privacy-item.audio-in_
+- _#privacy-item.audio-out_
+- _#privacy-item.camera_

@@ -6,6 +6,7 @@
 
 #include "gtkmm/box.h"
 #include "gtkmm/image.h"
+#include "gtkmm/label.h"
 #include "gtkmm/revealer.h"
 #include "util/pipewire/privacy_node_info.hpp"
 
@@ -41,6 +42,7 @@ class PrivacyItem : public Gtk::Revealer {
 
   Gtk::Box box_;
   Gtk::Image icon_;
+  Gtk::Label label_;
 
   void update_tooltip();
 };

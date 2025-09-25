@@ -22,7 +22,8 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
       signal_conn(),
       tooltip_window(Gtk::ORIENTATION_VERTICAL, 0),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      icon_() {
+      icon_(),
+      label_() {
   switch (privacy_type) {
     case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
       box_.get_style_context()->add_class("audio-in");
@@ -63,16 +64,19 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
   // We use `set_center_widget` instead of `add` to make sure the icon is
   // centered even if the orientation is vertical
-  box_.set_center_widget(icon_);
-
-  icon_.set_pixel_size(icon_size);
-  add(box_);
-
-  // Icon Name
-  if (config_["icon-name"].isString()) {
-    iconName = config_["icon-name"].asString();
+  if (config_["format"].isString()) {
+    box_.set_center_widget(label_);
+    label_.set_markup(config_["format"].asString());
+  } else {
+    box_.set_center_widget(icon_);
+    icon_.set_pixel_size(icon_size);
+    // Icon Name
+    if (config_["icon-name"].isString()) {
+      iconName = config_["icon-name"].asString();
+    }
+    icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
   }
-  icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
+  add(box_);
 
   // Tooltip Icon Size
   if (config_["tooltip-icon-size"].isUInt()) {
