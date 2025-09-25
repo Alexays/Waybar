@@ -22,6 +22,7 @@ class Privacy : public AModule {
   std::list<PrivacyNodeInfo *> nodes_screenshare;  // Screen is being shared
   std::list<PrivacyNodeInfo *> nodes_audio_in;     // Application is using the microphone
   std::list<PrivacyNodeInfo *> nodes_audio_out;    // Application is outputting audio
+  std::list<PrivacyNodeInfo *> nodes_camera;       // Application is using the camera
 
   std::mutex mutex_;
   sigc::connection visibility_conn;

@@ -36,6 +36,10 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
       box_.get_style_context()->add_class("screenshare");
       iconName = "waybar-privacy-screen-share-symbolic";
       break;
+    case util::PipewireBackend::PRIVACY_NODE_TYPE_CAMERA:
+      box_.get_style_context()->add_class("camera");
+      iconName = "waybar-privacy-camera-symbolic";
+      break;
     default:
     case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
       return;

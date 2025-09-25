@@ -111,7 +111,9 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
   if (lookupStr == nullptr) return;
   std::string mediaClass = lookupStr;
   enum PrivacyNodeType mediaType = PRIVACY_NODE_TYPE_NONE;
-  if (mediaClass == "Stream/Input/Video") {
+  if (mediaClass == "Video/Source") {
+    mediaType = PRIVACY_NODE_TYPE_CAMERA;
+  } else if (mediaClass == "Stream/Input/Video") {
     mediaType = PRIVACY_NODE_TYPE_VIDEO_INPUT;
   } else if (mediaClass == "Stream/Input/Audio") {
     mediaType = PRIVACY_NODE_TYPE_AUDIO_INPUT;

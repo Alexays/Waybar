@@ -12,6 +12,7 @@ namespace waybar::modules::privacy {
 
 using util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT;
 using util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
+using util::PipewireBackend::PRIVACY_NODE_TYPE_CAMERA;
 using util::PipewireBackend::PRIVACY_NODE_TYPE_NONE;
 using util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT;
 
@@ -21,6 +22,7 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
       nodes_screenshare(),
       nodes_audio_in(),
       nodes_audio_out(),
+      nodes_camera(),
       visibility_conn(),
       box_(orientation, 0) {
   box_.set_name(name_);
@@ -55,10 +57,11 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
     }
   }
 
-  std::map<std::string, std::tuple<decltype(&nodes_audio_in), PrivacyNodeType> > typeMap = {
+  std::map<std::string, std::tuple<decltype(&nodes_audio_in), PrivacyNodeType>> typeMap = {
       {"screenshare", {&nodes_screenshare, PRIVACY_NODE_TYPE_VIDEO_INPUT}},
       {"audio-in", {&nodes_audio_in, PRIVACY_NODE_TYPE_AUDIO_INPUT}},
       {"audio-out", {&nodes_audio_out, PRIVACY_NODE_TYPE_AUDIO_OUTPUT}},
+      {"camera", {&nodes_camera, PRIVACY_NODE_TYPE_CAMERA}},
   };
 
   for (const auto& module : modules) {
@@ -104,6 +107,7 @@ void Privacy::onPrivacyNodesChanged() {
   nodes_audio_out.clear();
   nodes_audio_in.clear();
   nodes_screenshare.clear();
+  nodes_camera.clear();
 
   for (auto& node : backend->privacy_nodes) {
     if (ignore_monitor && node.second->is_monitor) continue;
@@ -123,6 +127,9 @@ void Privacy::onPrivacyNodesChanged() {
           case PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
             nodes_audio_out.push_back(node.second);
             break;
+          case PRIVACY_NODE_TYPE_CAMERA:
+            nodes_camera.push_back(node.second);
+            break;
           case PRIVACY_NODE_TYPE_NONE:
             continue;
         }
@@ -141,11 +148,13 @@ auto Privacy::update() -> void {
   bool setScreenshare = false;
   bool setAudioIn = false;
   bool setAudioOut = false;
+  bool setCamera = false;
 
   // used or not
   bool useScreenshare = false;
   bool useAudioIn = false;
   bool useAudioOut = false;
+  bool useCamera = false;
 
   mutex_.lock();
   for (Gtk::Widget* widget : box_.get_children()) {
@@ -167,6 +176,11 @@ auto Privacy::update() -> void {
         useAudioOut = !nodes_audio_out.empty();
         module->set_in_use(useAudioOut);
         break;
+      case util::PipewireBackend::PRIVACY_NODE_TYPE_CAMERA:
+        setCamera = true;
+        useCamera = !nodes_camera.empty();
+        module->set_in_use(useCamera);
+        break;
       case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
         break;
     }
@@ -175,7 +189,7 @@ auto Privacy::update() -> void {
 
   // Hide the whole widget if none are in use
   bool isVisible = (setScreenshare && useScreenshare) || (setAudioIn && useAudioIn) ||
-                   (setAudioOut && useAudioOut);
+                   (setAudioOut && useAudioOut) || (setCamera && useCamera);
 
   if (isVisible != event_box_.get_visible()) {
     // Disconnect any previous connection so that it doesn't get activated in
@@ -188,12 +202,13 @@ auto Privacy::update() -> void {
       // have finished animating
       visibility_conn = Glib::signal_timeout().connect(
           sigc::track_obj(
-              [this, setScreenshare, setAudioOut, setAudioIn]() {
+              [this, setScreenshare, setAudioOut, setAudioIn, setCamera]() {
                 mutex_.lock();
                 bool visible = false;
                 visible |= setScreenshare && !nodes_screenshare.empty();
                 visible |= setAudioIn && !nodes_audio_in.empty();
                 visible |= setAudioOut && !nodes_audio_out.empty();
+                visible |= setCamera && !nodes_camera.empty();
                 mutex_.unlock();
                 event_box_.set_visible(visible);
                 return false;
