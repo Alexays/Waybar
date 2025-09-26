@@ -505,7 +505,7 @@ cava = dependency('cava',
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava.cpp')
+   src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
 endif
 
