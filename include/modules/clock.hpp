@@ -38,39 +38,39 @@ class Clock final : public ALabel {
     5 - tooltip-format
    */
   std::map<int, std::string const> fmtMap_;
-  uint cldMonCols_{3};           // calendar count month columns
-  int cldWnLen_{3};              // calendar week number length
-  const int cldMonColLen_{20};   // calendar month column length
-  WS cldWPos_{WS::HIDDEN};       // calendar week side to print
-  months cldCurrShift_{0};       // calendar months shift
-  int cldShift_{1};              // calendar months shift factor
-  year_month_day cldYearShift_;  // calendar Year mode. Cached ymd
-  std::string cldYearCached_;    // calendar Year mode. Cached calendar
-  year_month cldMonShift_;       // calendar Month mode. Cached ym
-  std::string cldMonCached_;     // calendar Month mode. Cached calendar
-  day cldBaseDay_{0};            // calendar Cached day. Is used when today is changing(midnight)
-  std::string cldText_{""};      // calendar text to print
+  uint cldMonCols_{3};                 // calendar count month columns
+  int cldWnLen_{3};                    // calendar week number length
+  const int cldMonColLen_{20};         // calendar month column length
+  WS cldWPos_{WS::HIDDEN};             // calendar week side to print
+  date::months cldCurrShift_{0};       // calendar months shift
+  int cldShift_{1};                    // calendar months shift factor
+  date::year_month_day cldYearShift_;  // calendar Year mode. Cached ymd
+  std::string cldYearCached_;          // calendar Year mode. Cached calendar
+  date::year_month cldMonShift_;       // calendar Month mode. Cached ym
+  std::string cldMonCached_;           // calendar Month mode. Cached calendar
+  date::day cldBaseDay_{0};  // calendar Cached day. Is used when today is changing(midnight)
+  std::string cldText_{""};  // calendar text to print
   CldMode cldMode_{CldMode::MONTH};
-  auto get_calendar(const year_month_day& today, const year_month_day& ymd, const time_zone* tz)
-      -> const std::string;
+  auto get_calendar(const date::year_month_day& today, const date::year_month_day& ymd,
+                    const date::time_zone* tz) -> const std::string;
 
   // get local time zone
-  auto local_zone() -> const time_zone*;
+  auto local_zone() -> const date::time_zone*;
 
   // time zoned time in tooltip
-  const bool tzInTooltip_;                // if need to print time zones text
-  std::vector<const time_zone*> tzList_;  // time zones list
-  int tzCurrIdx_;                         // current time zone index for tzList_
-  std::string tzText_{""};                // time zones text to print
+  const bool tzInTooltip_;                      // if need to print time zones text
+  std::vector<const date::time_zone*> tzList_;  // time zones list
+  int tzCurrIdx_;                               // current time zone index for tzList_
+  std::string tzText_{""};                      // time zones text to print
   util::SleeperThread thread_;
 
   // ordinal date in tooltip
   const bool ordInTooltip_;
   std::string ordText_{""};
-  auto get_ordinal_date(const year_month_day& today) -> std::string;
+  auto get_ordinal_date(const date::year_month_day& today) -> std::string;
 
-  auto getTZtext(sys_seconds now) -> std::string;
-  auto first_day_of_week() -> weekday;
+  auto getTZtext(date::sys_seconds now) -> std::string;
+  auto first_day_of_week() -> date::weekday;
   // Module actions
   void cldModeSwitch();
   void cldShift_up();

@@ -1,14 +1,16 @@
 #include "modules/battery.hpp"
 
 #include <algorithm>
+#include <cctype>
+
+#include "util/command.hpp"
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
 #include <spdlog/spdlog.h>
 
-#include <iostream>
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60), bar_(bar) {
+    : ALabel(config, "battery", id, "{capacity}%", 60), last_event_(""), bar_(bar) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
@@ -26,6 +28,7 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
     throw std::runtime_error("Could not watch for battery plug/unplug");
   }
 #endif
+  spdlog::debug("battery: worker interval is {}", interval_.count());
   worker();
 }
 
@@ -677,18 +680,22 @@ auto waybar::modules::Battery::update() -> void {
   }
   auto status_pretty = status;
   // Transform to lowercase  and replace space with dash
-  std::transform(status.begin(), status.end(), status.begin(),
-                 [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
+  std::ranges::transform(status.begin(), status.end(), status.begin(),
+                         [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
   auto format = format_;
   auto state = getState(capacity, true);
+  processEvents(state, status, capacity);
   setBarClass(state);
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
   if (tooltipEnabled()) {
     std::string tooltip_text_default;
     std::string tooltip_format = "{timeTo}";
     if (time_remaining != 0) {
-      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text_default = time_to + ": " + time_remaining_formatted;
+      if (time_remaining > 0) {
+        tooltip_text_default = std::string("Empty in ") + time_remaining_formatted;
+      } else {
+        tooltip_text_default = std::string("Full in ") + time_remaining_formatted;
+      }
     } else {
       tooltip_text_default = status_pretty;
     }
@@ -701,7 +708,7 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(
+    label_.set_tooltip_markup(
         fmt::format(fmt::runtime(tooltip_format), fmt::arg("timeTo", tooltip_text_default),
                     fmt::arg("power", power), fmt::arg("capacity", capacity),
                     fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
@@ -765,5 +772,27 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   if (old_class != new_class) {
     bar_.window.get_style_context()->remove_class(old_class);
     bar_.window.get_style_context()->add_class(new_class);
+  }
+}
+
+void waybar::modules::Battery::processEvents(std::string& state, std::string& status,
+                                             uint8_t capacity) {
+  // There are no events specified, skip
+  auto events = config_["events"];
+  if (!events.isObject() || events.empty()) {
+    return;
+  }
+  std::string event_name = fmt::format("on-{}-{}", status == "discharging" ? status : "charging",
+                                       state.empty() ? std::to_string(capacity) : state);
+  if (last_event_ != event_name) {
+    spdlog::debug("battery: triggering event {}", event_name);
+    if (events[event_name].isString()) {
+      std::string exec = events[event_name].asString();
+      // Execute the command if it is not empty
+      if (!exec.empty()) {
+        util::command::exec(exec, "");
+      }
+    }
+    last_event_ = event_name;
   }
 }
