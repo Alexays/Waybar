@@ -66,6 +66,8 @@ void from_json(const Json::Value& j, bar_layer& l) {
     l = bar_layer::BOTTOM;
   } else if (j == "top") {
     l = bar_layer::TOP;
+  } else if (j == "background") {
+    l = bar_layer::BACKGROUND;
   } else if (j == "overlay") {
     l = bar_layer::OVERLAY;
   }
@@ -350,13 +352,15 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
     layer = GTK_LAYER_SHELL_LAYER_TOP;
   } else if (mode.layer == bar_layer::OVERLAY) {
     layer = GTK_LAYER_SHELL_LAYER_OVERLAY;
+  } else if (mode.layer == bar_layer::BACKGROUND) {
+    layer = GTK_LAYER_SHELL_LAYER_BACKGROUND;
   }
   gtk_layer_set_layer(gtk_window, layer);
 
   if (mode.exclusive) {
     gtk_layer_auto_exclusive_zone_enable(gtk_window);
   } else {
-    gtk_layer_set_exclusive_zone(gtk_window, 0);
+    gtk_layer_set_exclusive_zone(gtk_window, -1);
   }
 
   setPassThrough(passthrough_ = mode.passthrough);

@@ -30,6 +30,7 @@ struct waybar_output {
 };
 
 enum class bar_layer : uint8_t {
+  BACKGROUND,
   BOTTOM,
   TOP,
   OVERLAY,
