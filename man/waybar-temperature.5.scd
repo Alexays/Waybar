@@ -160,4 +160,5 @@ Addressed by *temperature*
 # STYLE
 
 - *#temperature*
+- *#temperature.warning*
 - *#temperature.critical*
