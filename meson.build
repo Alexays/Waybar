@@ -69,7 +69,7 @@ is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled', 'std_format=disabled', 'tests=disabled'])
+spdlog = dependency('spdlog', version : ['>=1.15.2'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['std_format=disabled', 'tests=disabled'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -505,7 +505,7 @@ cava = dependency('cava',
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava.cpp')
+   src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
 endif
 
