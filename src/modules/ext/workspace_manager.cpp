@@ -349,11 +349,11 @@ Workspace::Workspace(const Json::Value &config, WorkspaceManager &manager,
   }
   const bool config_on_click_middle = config["on-click-middle"].isString();
   if (config_on_click_middle) {
-    on_click_middle_action_ = config["on-click"].asString();
+    on_click_middle_action_ = config["on-click-middle"].asString();
   }
   const bool config_on_click_right = config["on-click-right"].isString();
   if (config_on_click_right) {
-    on_click_right_action_ = config["on-click"].asString();
+    on_click_right_action_ = config["on-click-right"].asString();
   }
 
   // setup UI
