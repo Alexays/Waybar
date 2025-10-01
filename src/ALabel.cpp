@@ -18,9 +18,11 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
               enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds::max()
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
+                    ? std::chrono::milliseconds::max()
+                    : std::chrono::milliseconds(
+                          std::max(1L, // Minimum 1ms due to millisecond precision
+                                   static_cast<long>(
+                                       (config_["interval"].isNumeric() ? config_["interval"].asDouble() : interval) * 1000)))),
       default_format_(format_) {
   label_.set_name(name);
   if (!id.empty()) {
