@@ -52,8 +52,8 @@ Addressed by *niri/language*
 
 ```
 "niri/language": {
-	"format": "Lang: {long}"
-	"format-en": "AMERICA, HELL YEAH!"
+	"format": "Lang: {long}",
+	"format-en": "AMERICA, HELL YEAH!",
 	"format-tr": "As bayrakları"
 }
 ```
