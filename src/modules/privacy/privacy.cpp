@@ -10,10 +10,11 @@
 
 namespace waybar::modules::privacy {
 
-using util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT;
-using util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
-using util::PipewireBackend::PRIVACY_NODE_TYPE_NONE;
-using util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT;
+using waybar::util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT;
+using waybar::util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT;
+using waybar::util::PipewireBackend::PRIVACY_NODE_TYPE_LOCATION;
+using waybar::util::PipewireBackend::PRIVACY_NODE_TYPE_NONE;
+using waybar::util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT;
 
 Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientation orientation,
                  const std::string& pos)
@@ -21,7 +22,9 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
       nodes_screenshare(),
       nodes_audio_in(),
       nodes_audio_out(),
+      location_in_use(false),
       visibility_conn(),
+      geoclue_timeout_conn(),
       box_(orientation, 0) {
   box_.set_name(name_);
 
@@ -45,20 +48,21 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
 
   // Initialize each privacy module
   Json::Value modules = config_["modules"];
-  // Add Screenshare and Mic usage as default modules if none are specified
+  // Add Screenshare, Mic, and Location usage as default modules if none are specified
   if (!modules.isArray() || modules.empty()) {
     modules = Json::Value(Json::arrayValue);
-    for (const auto& type : {"screenshare", "audio-in"}) {
+    for (const auto& type : {"screenshare", "audio-in", "location"}) {
       Json::Value obj = Json::Value(Json::objectValue);
       obj["type"] = type;
       modules.append(obj);
     }
   }
 
-  std::map<std::string, std::tuple<decltype(&nodes_audio_in), PrivacyNodeType> > typeMap = {
+  std::map<std::string, std::tuple<std::list<PWPrivacyNodeInfo*>*, PrivacyNodeType>> typeMap = {
       {"screenshare", {&nodes_screenshare, PRIVACY_NODE_TYPE_VIDEO_INPUT}},
       {"audio-in", {&nodes_audio_in, PRIVACY_NODE_TYPE_AUDIO_INPUT}},
       {"audio-out", {&nodes_audio_out, PRIVACY_NODE_TYPE_AUDIO_OUTPUT}},
+      {"location", {nullptr, PRIVACY_NODE_TYPE_LOCATION}},
   };
 
   for (const auto& module : modules) {
@@ -68,9 +72,20 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
     auto iter = typeMap.find(type);
     if (iter != typeMap.end()) {
       auto& [nodePtr, nodeType] = iter->second;
-      auto* item = Gtk::make_managed<PrivacyItem>(module, nodeType, nodePtr, orientation, pos,
-                                                  iconSize, transition_duration);
-      box_.add(*item);
+      switch (nodeType) {
+        case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
+        case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
+        case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
+          box_.add(*Gtk::make_managed<PWPrivacyItem>(module, nodeType, nodePtr, orientation, pos,
+                                                     iconSize, transition_duration));
+          break;
+        case util::PipewireBackend::PRIVACY_NODE_TYPE_LOCATION:
+          box_.add(*Gtk::make_managed<GeoCluePrivacyItem>(module, orientation, pos, iconSize,
+                                                          transition_duration));
+          break;
+        case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
+          continue;
+      }
     }
   }
 
@@ -92,20 +107,24 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
     ignore_monitor = config_["ignore-monitor"].asBool();
   }
 
-  backend = util::PipewireBackend::PipewireBackend::getInstance();
-  backend->privacy_nodes_changed_signal_event.connect(
-      sigc::mem_fun(*this, &Privacy::onPrivacyNodesChanged));
+  pw_backend = util::PipewireBackend::PipewireBackend::getInstance();
+  pw_backend->privacy_nodes_changed_signal_event.connect(
+      sigc::mem_fun(*this, &Privacy::onPWPrivacyNodesChanged));
+
+  geoclue_backend = util::GeoClueBackend::GeoClueBackend::getInstance();
+  geoclue_backend->in_use_changed_signal_event.connect(
+      sigc::mem_fun(*this, &Privacy::onGeoCluePrivacyNodesChanged));
 
   dp.emit();
 }
 
-void Privacy::onPrivacyNodesChanged() {
+void Privacy::onPWPrivacyNodesChanged() {
   mutex_.lock();
   nodes_audio_out.clear();
   nodes_audio_in.clear();
   nodes_screenshare.clear();
 
-  for (auto& node : backend->privacy_nodes) {
+  for (auto& node : pw_backend->privacy_nodes) {
     if (ignore_monitor && node.second->is_monitor) continue;
 
     auto iter = ignore.find(std::pair(node.second->type, node.second->node_name));
@@ -123,7 +142,7 @@ void Privacy::onPrivacyNodesChanged() {
           case PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
             nodes_audio_out.push_back(node.second);
             break;
-          case PRIVACY_NODE_TYPE_NONE:
+          default:
             continue;
         }
         break;
@@ -136,38 +155,65 @@ void Privacy::onPrivacyNodesChanged() {
   dp.emit();
 }
 
+bool Privacy::locationTimeout(bool in_use) {
+  location_in_use.store(geoclue_backend->location_in_use);
+  dp.emit();
+
+  return false;
+}
+void Privacy::onGeoCluePrivacyNodesChanged() {
+  geoclue_timeout_conn.disconnect();
+
+  const bool in_use = geoclue_backend->location_in_use;
+  if (in_use) {
+    locationTimeout(in_use);
+  } else {
+    // The GeoClue service is really fast, so wait before hiding, so that the
+    // widget is at least visible for 3 seconds.
+    geoclue_timeout_conn = Glib::signal_timeout().connect_seconds(
+        sigc::bind(sigc::mem_fun(*this, &Privacy::locationTimeout), in_use), 3);
+  }
+}
+
 auto Privacy::update() -> void {
   // set in modules or not
   bool setScreenshare = false;
   bool setAudioIn = false;
   bool setAudioOut = false;
+  bool setLocation = false;
 
   // used or not
   bool useScreenshare = false;
   bool useAudioIn = false;
   bool useAudioOut = false;
+  bool useLocation = false;
 
   mutex_.lock();
   for (Gtk::Widget* widget : box_.get_children()) {
     auto* module = dynamic_cast<PrivacyItem*>(widget);
     if (module == nullptr) continue;
     switch (module->privacy_type) {
-      case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
+      case PRIVACY_NODE_TYPE_VIDEO_INPUT:
         setScreenshare = true;
         useScreenshare = !nodes_screenshare.empty();
         module->set_in_use(useScreenshare);
         break;
-      case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_INPUT:
+      case PRIVACY_NODE_TYPE_AUDIO_INPUT:
         setAudioIn = true;
         useAudioIn = !nodes_audio_in.empty();
         module->set_in_use(useAudioIn);
         break;
-      case util::PipewireBackend::PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
+      case PRIVACY_NODE_TYPE_AUDIO_OUTPUT:
         setAudioOut = true;
         useAudioOut = !nodes_audio_out.empty();
         module->set_in_use(useAudioOut);
         break;
-      case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
+      case PRIVACY_NODE_TYPE_LOCATION:
+        setLocation = true;
+        useLocation = location_in_use;
+        module->set_in_use(useLocation);
+        break;
+      case PRIVACY_NODE_TYPE_NONE:
         break;
     }
   }
@@ -175,7 +221,7 @@ auto Privacy::update() -> void {
 
   // Hide the whole widget if none are in use
   bool isVisible = (setScreenshare && useScreenshare) || (setAudioIn && useAudioIn) ||
-                   (setAudioOut && useAudioOut);
+                   (setAudioOut && useAudioOut) || (setLocation && useLocation);
 
   if (isVisible != event_box_.get_visible()) {
     // Disconnect any previous connection so that it doesn't get activated in
@@ -188,12 +234,13 @@ auto Privacy::update() -> void {
       // have finished animating
       visibility_conn = Glib::signal_timeout().connect(
           sigc::track_obj(
-              [this, setScreenshare, setAudioOut, setAudioIn]() {
+              [this, setScreenshare, setAudioOut, setAudioIn, setLocation]() {
                 mutex_.lock();
                 bool visible = false;
                 visible |= setScreenshare && !nodes_screenshare.empty();
                 visible |= setAudioIn && !nodes_audio_in.empty();
                 visible |= setAudioOut && !nodes_audio_out.empty();
+                visible |= setLocation && location_in_use;
                 mutex_.unlock();
                 event_box_.set_visible(visible);
                 return false;

@@ -392,6 +392,7 @@ if pipewire.found()
         'src/modules/privacy/privacy_item.cpp',
         'src/util/pipewire/pipewire_backend.cpp',
         'src/util/pipewire/privacy_node_info.cpp',
+        'src/util/geoclue_backend.cpp',
     )
     man_files += files('man/waybar-privacy.5.scd')
 endif
