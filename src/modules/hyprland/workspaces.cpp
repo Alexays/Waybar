@@ -728,6 +728,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
 
   populateBoolConfig(workspaceTaskbar, "enable", m_enableTaskbar);
   populateBoolConfig(workspaceTaskbar, "update-active-window", m_updateActiveWindow);
+  populateBoolConfig(workspaceTaskbar, "reverse-direction", m_taskbarReverseDirection);
 
   if (workspaceTaskbar["format"].isString()) {
     /* The user defined a format string, use it */
@@ -773,6 +774,18 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
       } catch (const std::regex_error &e) {
         spdlog::error("Invalid rule {}: {}", ruleString, e.what());
       }
+    }
+  }
+
+  if (workspaceTaskbar["active-window-position"].isString()) {
+    auto posStr = workspaceTaskbar["active-window-position"].asString();
+    try {
+      m_activeWindowPosition =
+          m_activeWindowEnumParser.parseStringToEnum(posStr, m_activeWindowPositionMap);
+    } catch (const std::invalid_argument &e) {
+      spdlog::warn(
+          "Invalid string representation for active-window-position. Falling back to 'none'.");
+      m_activeWindowPosition = ActiveWindowPosition::NONE;
     }
   }
 }
