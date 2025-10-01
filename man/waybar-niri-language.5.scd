@@ -61,3 +61,12 @@ Addressed by *niri/language*
 # STYLE
 
 - *#language*
+
+Additionally, a CSS class matching the current layout's short name is added to the widget. This
+allows per-language styling, for example:
+
+```
+#language.us { color: #00ff00; }
+#language.de { color: #ff0000; }
+#language.fr { color: #0000ff; }
+```
