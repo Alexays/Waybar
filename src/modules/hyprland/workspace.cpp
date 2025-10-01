@@ -268,6 +268,17 @@ void Workspace::update(const std::string &workspace_icon) {
   }
 }
 
+bool Workspace::isEmpty() const {
+  auto ignore_list = m_workspaceManager.getIgnoredWindows();
+  if (ignore_list.empty()) {
+    return m_windows == 0;
+  }
+  // If there are windows but they are all ignored, consider the workspace empty
+  return std::all_of(
+      m_windowMap.begin(), m_windowMap.end(),
+      [this, &ignore_list](const auto &window_repr) { return shouldSkipWindow(window_repr); });
+}
+
 void Workspace::updateTaskbar(const std::string &workspace_icon) {
   for (auto child : m_content.get_children()) {
     if (child != &m_labelBefore) {
