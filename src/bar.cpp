@@ -433,7 +433,18 @@ void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto* gdk_window = window.get_window()->gobj();
+  auto gdk_window_ref = window.get_window();
+  if (!gdk_window_ref) {
+    spdlog::warn("Failed to get GDK window during onMap, deferring surface initialization");
+    return;
+  }
+
+  auto* gdk_window = gdk_window_ref->gobj();
+  if (!gdk_window) {
+    spdlog::warn("GDK window object is null during onMap, deferring surface initialization");
+    return;
+  }
+
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
   configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
 
