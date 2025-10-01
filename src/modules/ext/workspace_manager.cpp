@@ -377,16 +377,19 @@ Workspace::~Workspace() {
 }
 
 void Workspace::update() {
-  if (!needs_updating_) {
-    return;
-  }
+  const auto style_context = button_.get_style_context();
 
   // update style and visibility
 
-  const auto style_context = button_.get_style_context();
-  style_context->remove_class("active");
-  style_context->remove_class("urgent");
-  style_context->remove_class("hidden");
+  if (!has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE)) {
+    style_context->remove_class("active");
+  }
+  if (!has_state(EXT_WORKSPACE_HANDLE_V1_STATE_URGENT)) {
+    style_context->remove_class("urgent");
+  }
+  if (!has_state(EXT_WORKSPACE_HANDLE_V1_STATE_HIDDEN)) {
+    style_context->remove_class("hidden");
+  }
 
   if (has_state(EXT_WORKSPACE_HANDLE_V1_STATE_ACTIVE)) {
     button_.set_visible(true);
@@ -408,34 +411,26 @@ void Workspace::update() {
   label_.set_markup(fmt::format(fmt::runtime(format_), fmt::arg("name", name_),
                                 fmt::arg("id", workspace_id_),
                                 fmt::arg("icon", with_icon_ ? icon() : "")));
-
-  needs_updating_ = false;
 }
 
 void Workspace::handle_id(const std::string &id) {
   spdlog::debug("[ext/workspaces]:     ID for workspace {}: {}", id_, id);
   workspace_id_ = id;
-  needs_updating_ = true;
   workspace_manager_.set_needs_sorting();
 }
 
 void Workspace::handle_name(const std::string &name) {
   spdlog::debug("[ext/workspaces]:     Name for workspace {}: {}", id_, name);
   name_ = name;
-  needs_updating_ = true;
   workspace_manager_.set_needs_sorting();
 }
 
 void Workspace::handle_coordinates(const std::vector<uint32_t> &coordinates) {
   coordinates_ = coordinates;
-  needs_updating_ = true;
   workspace_manager_.set_needs_sorting();
 }
 
-void Workspace::handle_state(uint32_t state) {
-  state_ = state;
-  needs_updating_ = true;
-}
+void Workspace::handle_state(uint32_t state) { state_ = state; }
 
 void Workspace::handle_capabilities(uint32_t capabilities) {
   spdlog::debug("[ext/workspaces]:     Capabilities for workspace {}:", id_);
@@ -451,7 +446,6 @@ void Workspace::handle_capabilities(uint32_t capabilities) {
   if ((capabilities & EXT_WORKSPACE_HANDLE_V1_WORKSPACE_CAPABILITIES_ASSIGN) == capabilities) {
     spdlog::debug("[ext/workspaces]:     - assign");
   }
-  needs_updating_ = true;
 }
 
 void Workspace::handle_removed() {
@@ -475,6 +469,8 @@ bool Workspace::handle_clicked(const GdkEventButton *button) const {
 
   if (action == "activate") {
     ext_workspace_handle_v1_activate(ext_handle_);
+  } else if (action == "deactivate") {
+    ext_workspace_handle_v1_deactivate(ext_handle_);
   } else if (action == "close") {
     ext_workspace_handle_v1_remove(ext_handle_);
   } else {
