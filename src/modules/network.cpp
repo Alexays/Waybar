@@ -363,7 +363,7 @@ auto waybar::modules::Network::update() -> void {
                pow_format(bandwidth_down / (interval_.count() / 1000.0), "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / (interval_.count() / 1000.0), "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
+               pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")),
       fmt::arg("rxBitrate", pow_format(rx_bitrate_, "b/s")),
       fmt::arg("txBitrate", pow_format(tx_bitrate_, "b/s")));
   if (text.compare(label_.get_label()) != 0) {
