@@ -33,6 +33,7 @@ class Language : public ALabel, public EventHandler {
 
   std::vector<Layout> layouts_;
   unsigned current_idx_;
+  std::string last_short_name_;
 };
 
 }  // namespace waybar::modules::niri

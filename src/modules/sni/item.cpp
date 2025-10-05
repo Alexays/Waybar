@@ -74,6 +74,13 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
                                    cancellable_, interface);
 }
 
+Item::~Item() {
+  if (this->gtk_menu != nullptr) {
+    this->gtk_menu->popdown();
+    this->gtk_menu->detach();
+  }
+}
+
 bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
   event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   return false;
@@ -443,6 +450,9 @@ void Item::makeMenu() {
       gtk_menu->attach_to_widget(event_box);
     }
   }
+  // Manually reset prelight to make sure the tray item doesn't stay in a hover state even though
+  // the menu is focused
+  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
 }
 
 bool Item::handleClick(GdkEventButton* const& ev) {

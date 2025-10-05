@@ -172,6 +172,10 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
       // Popup the menu
       gtk_widget_show_all(GTK_WIDGET(menu_));
       gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+      // Manually reset prelight to make sure the module doesn't stay in a hover state
+      if (auto* module = event_box_.get_child(); module != nullptr) {
+        module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+      }
     }
   }
   // Second call user scripts

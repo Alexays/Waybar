@@ -109,7 +109,7 @@
 #include "modules/wireplumber.hpp"
 #endif
 #ifdef HAVE_LIBCAVA
-#include "modules/cava.hpp"
+#include "modules/cava/cava.hpp"
 #endif
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
@@ -343,7 +343,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      return new waybar::modules::Cava(id, config_[name]);
+      return new waybar::modules::cava::Cava(id, config_[name]);
     }
 #endif
 #ifdef HAVE_SYSTEMD_MONITOR

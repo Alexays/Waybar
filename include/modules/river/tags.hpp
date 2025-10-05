@@ -21,6 +21,7 @@ class Tags : public waybar::AModule {
   void handle_view_tags(struct wl_array *tags);
   void handle_urgent_tags(uint32_t tags);
 
+  void handle_show();
   void handle_primary_clicked(uint32_t tag);
   bool handle_button_press(GdkEventButton *event_button, uint32_t tag);
 

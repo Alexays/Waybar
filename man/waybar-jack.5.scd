@@ -45,7 +45,7 @@ Addressed by *jack*
 	The format of information displayed in the tooltip.
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 1 ++
 	The interval in which the information gets polled.
 
