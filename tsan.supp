@@ -1,0 +1,7 @@
+# Suppress common thread issues in dependencies, these are often non-fixable or not an issue.
+# Use it like this (when in repo root): TSAN_OPTIONS="suppressions=./tsan.supp" ./build/waybar
+race:libfontconfig.so
+race:libglib-2.0.so
+race:libpango-1.0.so
+race:libc.so.6
+race:libgio-2.0.so

@@ -17,9 +17,13 @@ class EventHandler {
   virtual ~EventHandler() = default;
 };
 
+/// If you want to use the Hyprland IPC, simply use IPC::inst() to get the singleton instance.
+/// Do not create multiple instances.
 class IPC {
+ protected:
+  IPC();  // use IPC::inst() instead.
+
  public:
-  IPC();
   ~IPC();
   static IPC& inst();
 
@@ -41,11 +45,8 @@ class IPC {
   std::mutex callbackMutex_;
   util::JsonParser parser_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;
-  int socketfd_;  // the hyprland socket file descriptor
+  int socketfd_;         // the hyprland socket file descriptor
   pid_t socketOwnerPid_;
-  bool running_ = true;
+  bool running_ = true;  // the ipcThread will stop running when this is false
 };
-
-inline bool modulesReady = false;
-inline std::unique_ptr<IPC> gIPC;
 };  // namespace waybar::modules::hyprland
