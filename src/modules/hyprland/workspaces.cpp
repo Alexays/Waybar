@@ -925,12 +925,15 @@ void Workspaces::sortWorkspaces() {
         // Helper comparisons
         auto isIdLess = a->id() < b->id();
         auto isNameLess = a->name() < b->name();
+        auto isOutputLess = a->output() < b->output();
 
         switch (m_sortBy) {
           case SortMethod::ID:
             return isIdLess;
           case SortMethod::NAME:
             return isNameLess;
+          case SortMethod::OUTPUT:
+            return isOutputLess;
           case SortMethod::NUMBER:
             try {
               return std::stoi(a->name()) < std::stoi(b->name());
