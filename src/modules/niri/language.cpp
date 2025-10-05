@@ -84,7 +84,7 @@ void Language::doUpdate() {
 
   spdlog::debug("niri language formatted layout name {}", layoutName);
 
-  if (!format_.empty()) {
+  if (!layoutName.empty()) {
     label_.show();
     label_.set_markup(layoutName);
   } else {
