@@ -54,6 +54,34 @@ auto Language::update() -> void {
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(layoutName);
+    
+    // Handle tooltip
+    if (tooltipEnabled()) {
+      std::string tooltip_format;
+      std::string tooltipText;
+      
+      // Check for tooltip-format configuration
+      if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
+        tooltip_format = config_["tooltip-format-" + layout_.short_description + "-" + layout_.variant].asString();
+      } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
+        tooltip_format = config_["tooltip-format-" + layout_.short_description].asString();
+      } else if (config_.isMember("tooltip-format")) {
+        tooltip_format = config_["tooltip-format"].asString();
+      } else {
+        // Default to showing the full name if no tooltip format is specified
+        tooltip_format = "{long}";
+      }
+      
+      // Format the tooltip text
+      tooltipText = trim(fmt::format(fmt::runtime(tooltip_format), 
+                                     fmt::arg("long", layout_.full_name),
+                                     fmt::arg("short", layout_.short_name),
+                                     fmt::arg("shortDescription", layout_.short_description),
+                                     fmt::arg("variant", layout_.variant)));
+      
+      label_.set_tooltip_markup(tooltipText);
+      spdlog::debug("hyprland language tooltip text: {}", tooltipText);
+    }
   } else {
     label_.hide();
   }
