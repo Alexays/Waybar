@@ -27,7 +27,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     auto& target = config_["enable-bar-scroll"].asBool() ? const_cast<Bar&>(bar_).window
                                                          : dynamic_cast<Gtk::Widget&>(box_);
     target.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    target.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+    target.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScrollEvent));
   }
 
   // listen events
@@ -51,7 +51,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 
 Workspaces::~Workspaces() { ipc->unregister_handler(handler); }
 
-auto Workspaces::handleScroll(GdkEventScroll* e) -> bool {
+auto Workspaces::handleScrollEvent(GdkEventScroll* e) -> bool {
   // Ignore emulated scroll events on window
   if (gdk_event_get_pointer_emulated((GdkEvent*)e) != 0) return false;
 

@@ -54,7 +54,7 @@ Sndio::Sndio(const std::string &id, const Json::Value &config)
   event_box_.show();
 
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK | Gdk::BUTTON_PRESS_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Sndio::handleScroll));
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Sndio::handleScrollEvent));
   event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &Sndio::handleToggle));
 
   thread_ = [this] {
@@ -140,11 +140,11 @@ auto Sndio::put_val(unsigned int addr, unsigned int val) -> void {
   }
 }
 
-bool Sndio::handleScroll(GdkEventScroll *e) {
+bool Sndio::handleScrollEvent(GdkEventScroll *e) {
   // change the volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
+    return AModule::handleScrollEvent(e);
   }
 
   // only try to talk to sndio if connected

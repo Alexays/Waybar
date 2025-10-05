@@ -18,8 +18,8 @@ class Pulseaudio : public ALabel {
   auto update() -> void override;
 
  private:
-  bool handleScroll(GdkEventScroll* e) override;
-  const std::vector<std::string> getPulseIcon() const;
+  bool handleScrollEvent(GdkEventScroll* e) override;
+  std::vector<std::string> getPulseIcon() const;
 
   std::shared_ptr<util::AudioBackend> backend = nullptr;
 };
