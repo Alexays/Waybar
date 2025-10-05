@@ -92,7 +92,7 @@ void waybar::modules::Custom::continuousWorker() {
       if (config_["restart-interval"].isNumeric()) {
         pid_ = -1;
         thread_.sleep_for(std::chrono::milliseconds(
-            std::max(1L, // Minimum 1ms due to millisecond precision
+            std::max(1L,  // Minimum 1ms due to millisecond precision
                      static_cast<long>(config_["restart-interval"].asDouble() * 1000))));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
