@@ -152,13 +152,14 @@ class Workspaces : public AModule, public EventHandler {
   // and doesn't share windows across bars (a.k.a `all-outputs` = false)
   std::map<WindowAddress, WindowRepr, std::less<>> m_orphanWindowMap;
 
-  enum class SortMethod { ID, NAME, NUMBER, SPECIAL_CENTERED, DEFAULT };
+  enum class SortMethod { ID, NAME, NUMBER, SPECIAL_CENTERED, OUTPUT, DEFAULT };
   util::EnumParser<SortMethod> m_enumParser;
   SortMethod m_sortBy = SortMethod::DEFAULT;
   std::map<std::string, SortMethod> m_sortMap = {{"ID", SortMethod::ID},
                                                  {"NAME", SortMethod::NAME},
                                                  {"NUMBER", SortMethod::NUMBER},
                                                  {"SPECIAL-CENTERED", SortMethod::SPECIAL_CENTERED},
+                                                 {"OUTPUT", SortMethod::OUTPUT},
                                                  {"DEFAULT", SortMethod::DEFAULT}};
 
   std::string m_formatBefore;

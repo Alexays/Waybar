@@ -142,6 +142,7 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	If set to name, workspaces will sort by name.
 	If set to id, workspaces will sort by id.
 	If set to special-centered, workspaces will sort by default with special workspaces in the center.
+	If set to output, workspaces will sort by the output (monitor) name.
 	If none of those, workspaces will sort with default behavior.
 
 *expand*: ++
