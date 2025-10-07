@@ -103,7 +103,9 @@ void Language::initLanguage() {
 
     searcher = waybar::util::sanitize_string(searcher);
 
+    label_.get_style_context()->remove_class(layout_.short_name);
     layout_ = getLayout(searcher);
+    label_.get_style_context()->add_class(layout_.short_name);
 
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
