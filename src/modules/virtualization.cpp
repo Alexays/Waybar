@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cmath>
+
 using namespace waybar::util;
 using waybar::modules::VMInfo;
 
@@ -35,30 +37,30 @@ waybar::modules::Virtualization::Virtualization(const std::string& id, const Jso
     precision_time_ = config["precision_time"].asInt();
   }
 
-  auto configDomain = config["domains"];
+  const auto& configDomain = config["domains"];
   if (configDomain.isArray()) {
     domains_ = std::vector<std::string>{};
-    for (unsigned int i = 0; i < configDomain.size(); i++) {
-      domains_.push_back(configDomain[i].asString());
+    for (const auto& i : configDomain) {
+      domains_.push_back(i.asString());
     }
   }
 }
 
 void waybar::modules::Virtualization::getDomainInfo(const std::string name, virDomainInfoPtr info) {
-  virConnectPtr con = NULL;
-  virDomainPtr dom = NULL;
+  virConnectPtr con = nullptr;
+  virDomainPtr dom = nullptr;
   int ret = EXIT_FAILURE;
   std::string err = "";
 
   con = virConnectOpenReadOnly(virt_uri_.c_str());
-  if (con == NULL) {
+  if (con == nullptr) {
     err = "Unable to connect to hypervisor: " + virt_uri_;
     goto error;
   }
 
   /* Find the domain of the given name */
   dom = virDomainLookupByName(con, name.c_str());
-  if (dom == NULL) {
+  if (dom == nullptr) {
     err = "Failed to find Domain " + name;
     goto error;
   }
@@ -71,26 +73,27 @@ void waybar::modules::Virtualization::getDomainInfo(const std::string name, virD
   }
 
 error:
-  if (dom != NULL) virDomainFree(dom);
-  if (con != NULL) virConnectClose(con);
+  if (dom != nullptr) virDomainFree(dom);
+  if (con != nullptr) virConnectClose(con);
 
   throw std::runtime_error(err);
 }
 
 std::vector<VMInfo> waybar::modules::Virtualization::getAllDomains() {
-  virConnectPtr con = NULL;
+  virConnectPtr con = nullptr;
   virDomainPtr domain;
   std::vector<VMInfo> VMInfos = {};
-  int numDomains = 0, numActiveDomains = 0, numInactiveDomains = 0;
+  int numActiveDomains = 0;
+  int numInactiveDomains = 0;
 
   con = virConnectOpenReadOnly(virt_uri_.c_str());
-  if (con == NULL) {
+  if (con == nullptr) {
     throw std::runtime_error("Unable to connect to hypervisor: " + virt_uri_);
   }
 
   numActiveDomains = virConnectNumOfDomains(con);
   numInactiveDomains = virConnectNumOfDefinedDomains(con);
-  numDomains = numActiveDomains + numInactiveDomains;
+  int numDomains = numActiveDomains + numInactiveDomains;
 
   if (numDomains == 0) {
     throw std::runtime_error("No domains found");
@@ -100,8 +103,7 @@ std::vector<VMInfo> waybar::modules::Virtualization::getAllDomains() {
   int activeDomains[numDomains] = {0};
 
   numActiveDomains = virConnectListDomains(con, activeDomains, numActiveDomains);
-  numInactiveDomains =
-      virConnectListDefinedDomains(con, (char**)inactiveDomains, numInactiveDomains);
+  numInactiveDomains = virConnectListDefinedDomains(con, inactiveDomains, numInactiveDomains);
 
   // active domains
   virDomainInfo info;
@@ -166,7 +168,7 @@ auto waybar::modules::Virtualization::update() -> void {
 
     const auto stats = getTotalDomainStats(domains);
 
-    unsigned int DOMAIN_MAP[8] = {};
+    std::array<unsigned int, 8> DOMAIN_MAP;
     for (const auto& domain : domains) {
       DOMAIN_MAP[domain.getInfo().state]++;
     }
@@ -240,5 +242,5 @@ float waybar::modules::Virtualization::convertFactor(std::string divisor) {
 
 float waybar::modules::Virtualization::roundToPrecision(float num, int precision) {
   float factor = pow(10, precision);
-  return round(num * factor) / factor;
+  return std::round(num * factor) / factor;
 }
