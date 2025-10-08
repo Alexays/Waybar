@@ -98,6 +98,17 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
   content_.add(icon_);
   content_.add(text_after_);
 
+  if (config_["justify"].isString()) {
+    auto justify_str = config_["justify"].asString();
+    if (justify_str == "left") {
+      content_.set_halign(Gtk::ALIGN_START);
+    } else if (justify_str == "right") {
+      content_.set_halign(Gtk::ALIGN_END);
+    } else if (justify_str == "center") {
+      content_.set_halign(Gtk::ALIGN_CENTER);
+    }
+  }
+
   content_.show();
   button.add(content_);
 
