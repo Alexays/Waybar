@@ -92,6 +92,7 @@ libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
+libvirt = dependency('libvirt', required: get_option('libvirt'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
 libgps = dependency('libgps', required: get_option('gps'))
 
@@ -427,6 +428,11 @@ if libwireplumber.found()
     man_files += files('man/waybar-wireplumber.5.scd')
 endif
 
+if libvirt.found()
+    add_project_arguments('-DHAVE_LIBVIRT', language: 'c')
+    src_files += files('src/modules/virtualization.cpp')
+endif
+
 if dbusmenu_gtk.found()
     add_project_arguments('-DHAVE_DBUSMENU', language: 'cpp')
     src_files += files(
@@ -543,6 +549,7 @@ executable(
         playerctl,
         libpulse,
         libjack,
+        libvirt,
         libwireplumber,
         libudev,
         libinotify,
