@@ -82,6 +82,11 @@ Addressed by *sway/workspaces*
 	typeof: bool ++
 	Whether to sort workspaces alphabetically. Please note this can make "swaymsg workspace prev/next" move to workspaces inconsistent with the ordering shown in Waybar.
 
+*custom-sort*: ++
+	typeof: array ++
+	default: [] ++
+	Defines an explicit ordering for workspace names. Entries earlier in the array appear first. Both full names and the trimmed portion after ":" are matched. Any workspace not listed here falls back to the default ordering (or alphabetical ordering when *alphabetical_sort* is true).
+
 warp-on-scroll: ++
 	typeof: bool ++
 	default: true ++
