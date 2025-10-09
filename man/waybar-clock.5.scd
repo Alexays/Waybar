@@ -39,6 +39,12 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ A list of timezones (as in *timezone*) to use for time display, changed using
    the scroll wheel. Do not specify *timezone* option when *timezones* is specified.
    "" represents the system's local timezone
+|[ *timezone-tooltip-format*
+:[ string
+:[
+:[ Format to use for displaying timezones in the tooltip. When set, this allows showing
+   timezone information (like timezone abbreviations) in the tooltip while keeping the
+   main display clean. Uses the same format options as *format*
 |[ *locale*
 :[ string
 :[
@@ -126,6 +132,12 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ 1
 :[ Value to scroll months/years forward/backward. Can be negative. Is
    configured under *on-scroll* option
+|[ *iso8601*
+:[ bool
+:[ false
+:[ When enabled, the calendar follows the ISO 8601 standard: weeks begin on
+   Monday, and the first week of the year is numbered 1. The default week format is
+   '{:%V}'.
 
 3. Addressed by *clock: calendar: format*
 [- *Option*
@@ -226,6 +238,25 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 	"tooltip": true,
 	"format": "{:%H.%M}",
 	"tooltip-format": "{:%Y-%m-%d}",
+}
+```
+
+4. Show timezone in tooltip only
+
+```
+"clock": {
+	"interval": 60,
+	"format": "{:%H:%M}",
+	"timezone-tooltip-format": "{:%H:%M %Z}",
+	"timezones": [
+		"",
+		"America/Chicago",
+		"America/Los_Angeles",
+		"Europe/Paris",
+		"UTC"
+	],
+	"tooltip": true,
+	"tooltip-format": "{tz_list}"
 }
 ```
 

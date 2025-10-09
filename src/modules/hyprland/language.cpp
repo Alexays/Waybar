@@ -11,8 +11,6 @@ namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
-  modulesReady = true;
-
   // get the active layout when open
   initLanguage();
 
@@ -66,7 +64,18 @@ auto Language::update() -> void {
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
   std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
-  auto layoutName = ev.substr(ev.find_last_of(',') + 1);
+
+  // Last comma before variants parenthesis, eg:
+  // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
+  // with dead keys)
+  std::string beforeParenthesis;
+  auto parenthesisPos = ev.find_last_of('(');
+  if (parenthesisPos == std::string::npos) {
+    beforeParenthesis = ev;
+  } else {
+    beforeParenthesis = std::string(begin(ev), begin(ev) + parenthesisPos);
+  }
+  auto layoutName = ev.substr(beforeParenthesis.find_last_of(',') + 1);
 
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore

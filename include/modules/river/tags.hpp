@@ -23,6 +23,7 @@ class Tags : public waybar::AModule {
   void handle_focused_output(struct wl_output *output);
   void handle_unfocused_output(struct wl_output *output);
 
+  void handle_show();
   void handle_primary_clicked(uint32_t tag);
   bool handle_button_press(GdkEventButton *event_button, uint32_t tag);
 

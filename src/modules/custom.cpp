@@ -14,6 +14,9 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       percentage_(0),
       fp_(nullptr),
       pid_(-1) {
+  if (config.isNull()) {
+    spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
+  }
   dp.emit();
   if (!config_["signal"].empty() && config_["interval"].empty() &&
       config_["restart-interval"].empty()) {
@@ -35,6 +38,13 @@ waybar::modules::Custom::~Custom() {
 
 void waybar::modules::Custom::delayWorker() {
   thread_ = [this] {
+    for (int i : this->pid_children_) {
+      int status;
+      waitpid(i, &status, 0);
+    }
+
+    this->pid_children_.clear();
+
     bool can_update = true;
     if (config_["exec-if"].isString()) {
       output_ = util::command::execNoRead(config_["exec-if"].asString());
@@ -62,7 +72,7 @@ void waybar::modules::Custom::continuousWorker() {
   }
   thread_ = [this, cmd] {
     char* buff = nullptr;
-    waybar::util::ScopeGuard buff_deleter([buff]() {
+    waybar::util::ScopeGuard buff_deleter([&buff]() {
       if (buff) {
         free(buff);
       }
@@ -79,9 +89,11 @@ void waybar::modules::Custom::continuousWorker() {
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
-      if (config_["restart-interval"].isUInt()) {
+      if (config_["restart-interval"].isNumeric()) {
         pid_ = -1;
-        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+        thread_.sleep_for(std::chrono::milliseconds(
+            std::max(1L,  // Minimum 1ms due to millisecond precision
+                     static_cast<long>(config_["restart-interval"].asDouble() * 1000))));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);

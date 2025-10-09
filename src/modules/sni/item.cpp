@@ -1,16 +1,16 @@
 #include "modules/sni/item.hpp"
-#include "modules/sni/icon_manager.hpp"
 
 #include <gdkmm/general.h>
 #include <glibmm/main.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include <filesystem>
 #include <fstream>
 #include <map>
-#include <filesystem>
 
 #include "gdk/gdk.h"
+#include "modules/sni/icon_manager.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 
@@ -72,6 +72,13 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
                                    cancellable_, interface);
+}
+
+Item::~Item() {
+  if (this->gtk_menu != nullptr) {
+    this->gtk_menu->popdown();
+    this->gtk_menu->detach();
+  }
 }
 
 bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
@@ -140,7 +147,25 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       category = get_variant<std::string>(value);
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
-      setCustomIcon(id);
+
+      /*
+       * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as ID
+       * to pass as the custom icon option. I'm avoiding being disruptive and setting that to the ID
+       * itself as I've no idea what this would affect.
+       * The tooltip text is converted to lowercase since that's what (most?) themes expect?
+       * I still haven't found a way for it to pick from theme automatically, although
+       * it might be my theme.
+       */
+      if (id == "chrome_status_icon_1") {
+        Glib::VariantBase value;
+        this->proxy_->get_cached_property(value, "ToolTip");
+        tooltip = get_variant<ToolTip>(value);
+        if (!tooltip.text.empty()) {
+          setCustomIcon(tooltip.text.lowercase());
+        }
+      } else {
+        setCustomIcon(id);
+      }
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
       if (tooltip.text.empty()) {
@@ -203,13 +228,15 @@ void Item::setStatus(const Glib::ustring& value) {
 }
 
 void Item::setCustomIcon(const std::string& id) {
+  spdlog::debug("SNI tray id: {}", id);
+
   std::string custom_icon = IconManager::instance().getIconForApp(id);
   if (!custom_icon.empty()) {
     if (std::filesystem::exists(custom_icon)) {
-        Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
-        icon_name = ""; // icon_name has priority over pixmap
-        icon_pixmap = custom_pixbuf;
-    } else { // if file doesn't exist it's most likely an icon_name
+      Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
+      icon_name = "";  // icon_name has priority over pixmap
+      icon_pixmap = custom_pixbuf;
+    } else {  // if file doesn't exist it's most likely an icon_name
       icon_name = custom_icon;
     }
   }
@@ -388,14 +415,17 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
   icon_theme->rescan_if_needed();
 
-  if (!icon_theme_path.empty() &&
-      icon_theme->lookup_icon(name.c_str(), request_size,
-                              Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
-    return icon_theme->load_icon(name.c_str(), request_size,
-                                 Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+  if (!icon_theme_path.empty()) {
+    auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
+                                             Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+    if (icon_info) {
+      bool is_sym = false;
+      return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
+    }
   }
   return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
-                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE,
+                                               event_box.get_style_context());
 }
 
 double Item::getScaledIconSize() {
@@ -420,6 +450,9 @@ void Item::makeMenu() {
       gtk_menu->attach_to_widget(event_box);
     }
   }
+  // Manually reset prelight to make sure the tray item doesn't stay in a hover state even though
+  // the menu is focused
+  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
 }
 
 bool Item::handleClick(GdkEventButton* const& ev) {

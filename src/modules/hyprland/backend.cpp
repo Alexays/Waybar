@@ -46,9 +46,14 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
 IPC::IPC() {
   // will start IPC and relay events to parseIPC
   ipcThread_ = std::thread([this]() { socketListener(); });
+  socketOwnerPid_ = getpid();
 }
 
 IPC::~IPC() {
+  // Do no stop Hyprland IPC if a child process (with successful fork() but
+  // failed exec()) exits.
+  if (getpid() != socketOwnerPid_) return;
+
   running_ = false;
   spdlog::info("Hyprland IPC stopping...");
   if (socketfd_ != -1) {
@@ -77,8 +82,6 @@ void IPC::socketListener() {
     spdlog::warn("Hyprland is not running, Hyprland IPC will not be available.");
     return;
   }
-
-  if (!modulesReady) return;
 
   spdlog::info("Hyprland IPC starting");
 

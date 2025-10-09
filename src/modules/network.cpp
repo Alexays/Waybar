@@ -1,13 +1,18 @@
 #include "modules/network.hpp"
 
 #include <linux/if.h>
+#include <linux/if_link.h>
+#include <netlink/netlink.h>
 #include <spdlog/spdlog.h>
 #include <sys/eventfd.h>
 
 #include <cassert>
+#include <cstring>
 #include <fstream>
 #include <optional>
 #include <sstream>
+#include <string>
+#include <vector>
 
 #include "util/format.hpp"
 #ifdef WANT_RFKILL
@@ -78,25 +83,7 @@ waybar::modules::Network::readBandwidthUsage() {
 }
 
 waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60),
-      ifid_(-1),
-      addr_pref_(IPV4),
-      efd_(-1),
-      ev_fd_(-1),
-      want_route_dump_(false),
-      want_link_dump_(false),
-      want_addr_dump_(false),
-      dump_in_progress_(false),
-      is_p2p_(false),
-      cidr_(0),
-      cidr6_(0),
-      signal_strength_dbm_(0),
-      signal_strength_(0),
-#ifdef WANT_RFKILL
-      rfkill_{RFKILL_TYPE_WLAN},
-#endif
-      frequency_(0.0) {
-
+    : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
@@ -223,8 +210,8 @@ void waybar::modules::Network::worker() {
       std::lock_guard<std::mutex> lock(mutex_);
       if (ifid_ > 0) {
         getInfo();
-        dp.emit();
       }
+      dp.emit();
     }
     thread_timer_.sleep_for(interval_);
   };
@@ -271,13 +258,16 @@ void waybar::modules::Network::worker() {
 }
 
 const std::string waybar::modules::Network::getNetworkState() const {
-  if (ifid_ == -1) {
+  if (ifid_ == -1 || !carrier_) {
 #ifdef WANT_RFKILL
-    if (rfkill_.getState()) return "disabled";
+    bool display_rfkill = true;
+    if (config_["rfkill"].isBool()) {
+      display_rfkill = config_["rfkill"].asBool();
+    }
+    if (rfkill_.getState() && display_rfkill) return "disabled";
 #endif
     return "disconnected";
   }
-  if (!carrier_) return "disconnected";
   if (ipaddr_.empty() && ipaddr6_.empty()) return "linked";
   if (essid_.empty()) return "ethernet";
   return "wifi";
@@ -343,18 +333,23 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
       fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
-      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
-      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
-      fmt::arg("bandwidthTotalBits",
-               pow_format((bandwidth_up + bandwidth_down) * 8ull / interval_.count(), "b/s")),
-      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
-      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")),
+      fmt::arg("bandwidthDownBits",
+               pow_format(bandwidth_down * 8ull / (interval_.count() / 1000.0), "b/s")),
+      fmt::arg("bandwidthUpBits",
+               pow_format(bandwidth_up * 8ull / (interval_.count() / 1000.0), "b/s")),
+      fmt::arg(
+          "bandwidthTotalBits",
+          pow_format((bandwidth_up + bandwidth_down) * 8ull / (interval_.count() / 1000.0), "b/s")),
+      fmt::arg("bandwidthDownOctets",
+               pow_format(bandwidth_down / (interval_.count() / 1000.0), "o/s")),
+      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / (interval_.count() / 1000.0), "o/s")),
       fmt::arg("bandwidthTotalOctets",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "o/s")),
-      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
-      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
+               pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "o/s")),
+      fmt::arg("bandwidthDownBytes",
+               pow_format(bandwidth_down / (interval_.count() / 1000.0), "B/s")),
+      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / (interval_.count() / 1000.0), "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -401,11 +396,65 @@ auto waybar::modules::Network::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Network::checkInterface(std::string name) {
-  if (config_["interface"].isString()) {
-    return config_["interface"].asString() == name ||
-           wildcardMatch(config_["interface"].asString(), name);
+// https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
+static bool wildcardMatch(const std::string &pattern, const std::string &text) {
+  auto P = int(pattern.size());
+  auto T = int(text.size());
+
+  auto p = 0, fallback_p = -1;
+  auto t = 0, fallback_t = -1;
+
+  while (t < T) {
+    // Wildcard match:
+    if (p < P && pattern[p] == '*') {
+      fallback_p = p++;  // starting point after failures
+      fallback_t = t;    // starting point after failures
+    }
+
+    // Simple match:
+    else if (p < P && (pattern[p] == '?' || pattern[p] == text[t])) {
+      p++;
+      t++;
+    }
+
+    // Failure, fall back just after last matched '*':
+    else if (fallback_p >= 0) {
+      p = fallback_p + 1;  // position just after last matched '*"
+      t = ++fallback_t;    // re-try to match text from here
+    }
+
+    // There were no '*' before, so we fail here:
+    else {
+      return false;
+    }
   }
+
+  // Consume all '*' at the end of pattern:
+  while (p < P && pattern[p] == '*') p++;
+
+  return p == P;
+}
+
+bool waybar::modules::Network::matchInterface(const std::string &ifname,
+                                              const std::vector<std::string> &altnames,
+                                              std::string &matched) const {
+  if (!config_["interface"].isString()) {
+    return false;
+  }
+
+  auto config_ifname = config_["interface"].asString();
+  if (config_ifname == ifname || wildcardMatch(config_ifname, ifname)) {
+    matched = ifname;
+    return true;
+  }
+
+  for (const auto &altname : altnames) {
+    if (config_ifname == altname || wildcardMatch(config_ifname, altname)) {
+      matched = altname;
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -420,6 +469,7 @@ void waybar::modules::Network::clearIface() {
   netmask_.clear();
   netmask6_.clear();
   carrier_ = false;
+  is_p2p_ = false;
   cidr_ = 0;
   cidr6_ = 0;
   signal_strength_dbm_ = 0;
@@ -439,11 +489,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       is_del_event = true;
     case RTM_NEWLINK: {
       struct ifinfomsg *ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-      ssize_t attrlen = IFLA_PAYLOAD(nh);
-      struct rtattr *ifla = IFLA_RTA(ifi);
-      const char *ifname = NULL;
-      size_t ifname_len = 0;
+      struct nlattr *attrs[IFLA_MAX + 1];
+      std::string ifname;
+      std::vector<std::string> altnames;
       std::optional<bool> carrier;
+
+      if (nlmsg_parse(nh, sizeof(*ifi), attrs, IFLA_MAX, nullptr) < 0) {
+        spdlog::error("network: failed to parse netlink attributes");
+        return NL_SKIP;
+      }
 
       if (net->ifid_ != -1 && ifi->ifi_index != net->ifid_) {
         return NL_OK;
@@ -462,26 +516,33 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         return NL_OK;
       }
 
-      for (; RTA_OK(ifla, attrlen); ifla = RTA_NEXT(ifla, attrlen)) {
-        switch (ifla->rta_type) {
-          case IFLA_IFNAME:
-            ifname = static_cast<const char *>(RTA_DATA(ifla));
-            ifname_len = RTA_PAYLOAD(ifla) - 1;  // minus \0
-            if (ifi->ifi_flags & IFF_POINTOPOINT && net->checkInterface(ifname))
-              net->is_p2p_ = true;
-            break;
-          case IFLA_CARRIER: {
-            carrier = *(char *)RTA_DATA(ifla) == 1;
-            break;
+      if (attrs[IFLA_IFNAME] != nullptr) {
+        const char *ifname_ptr = nla_get_string(attrs[IFLA_IFNAME]);
+        size_t ifname_len = nla_len(attrs[IFLA_IFNAME]) - 1;  // minus \0
+        ifname = std::string(ifname_ptr, ifname_len);
+      }
+
+      if (attrs[IFLA_CARRIER] != nullptr) {
+        carrier = nla_get_u8(attrs[IFLA_CARRIER]) == 1;
+      }
+
+      if (attrs[IFLA_PROP_LIST] != nullptr) {
+        struct nlattr *prop;
+        int rem;
+
+        nla_for_each_nested(prop, attrs[IFLA_PROP_LIST], rem) {
+          if (nla_type(prop) == IFLA_ALT_IFNAME) {
+            const char *altname_ptr = nla_get_string(prop);
+            size_t altname_len = nla_len(prop) - 1;  // minus \0
+            altnames.emplace_back(altname_ptr, altname_len);
           }
         }
       }
 
       if (!is_del_event && ifi->ifi_index == net->ifid_) {
         // Update interface information
-        if (net->ifname_.empty() && ifname != NULL) {
-          std::string new_ifname(ifname, ifname_len);
-          net->ifname_ = new_ifname;
+        if (net->ifname_.empty() && !ifname.empty()) {
+          net->ifname_ = ifname;
         }
         if (carrier.has_value()) {
           if (net->carrier_ != *carrier) {
@@ -502,13 +563,25 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
         }
       } else if (!is_del_event && net->ifid_ == -1) {
         // Checking if it's an interface we care about.
-        std::string new_ifname(ifname, ifname_len);
-        if (net->checkInterface(new_ifname)) {
-          spdlog::debug("network: selecting new interface {}/{}", new_ifname, ifi->ifi_index);
+        std::string matched;
+        if (net->matchInterface(ifname, altnames, matched)) {
+          if (ifname == matched) {
+            spdlog::debug("network: selecting new interface {}/{}", ifname, ifi->ifi_index);
+          } else {
+            spdlog::debug("network: selecting new interface {}/{} (matched altname {})", ifname,
+                          ifi->ifi_index, matched);
+          }
 
-          net->ifname_ = new_ifname;
+          net->ifname_ = ifname;
           net->ifid_ = ifi->ifi_index;
-          if (ifi->ifi_flags & IFF_POINTOPOINT) net->is_p2p_ = true;
+          if ((ifi->ifi_flags & IFF_POINTOPOINT) != 0) {
+            net->is_p2p_ = true;
+          }
+          if ((ifi->ifi_flags & IFF_UP) == 0) {
+            // With some network drivers (e.g. mt7921e), the interface may
+            // report having a carrier even though interface is down.
+            carrier = false;
+          }
           if (carrier.has_value()) {
             net->carrier_ = carrier.value();
           }
@@ -602,7 +675,6 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       break;
     }
 
-      char temp_gw_addr[INET6_ADDRSTRLEN];
     case RTM_DELROUTE:
       is_del_event = true;
     case RTM_NEWROUTE: {
@@ -613,6 +685,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       int family = rtm->rtm_family;
       ssize_t attrlen = RTM_PAYLOAD(nh);
       struct rtattr *attr = RTM_RTA(rtm);
+      char gateway_addr[INET6_ADDRSTRLEN];
       bool has_gateway = false;
       bool has_destination = false;
       int temp_idx = -1;
@@ -638,7 +711,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
              * If someone ever needs to figure out the gateway address as well,
              * it's here as the attribute payload.
              */
-            inet_ntop(family, RTA_DATA(attr), temp_gw_addr, sizeof(temp_gw_addr));
+            inet_ntop(family, RTA_DATA(attr), gateway_addr, sizeof(gateway_addr));
             has_gateway = true;
             break;
           case RTA_DST: {
@@ -683,8 +756,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
           net->clearIface();
           net->ifid_ = temp_idx;
           net->route_priority = priority;
-          net->gwaddr_ = temp_gw_addr;
-          spdlog::debug("network: new default route via {} on if{} metric {}", temp_gw_addr,
+          net->gwaddr_ = gateway_addr;
+          spdlog::debug("network: new default route via {} on if{} metric {}", gateway_addr,
                         temp_idx, priority);
 
           /* Ask ifname associated with temp_idx as well as carrier status */
@@ -896,44 +969,4 @@ auto waybar::modules::Network::getInfo() -> void {
     return;
   }
   nl_send_sync(sock_, nl_msg);
-}
-
-// https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
-bool waybar::modules::Network::wildcardMatch(const std::string &pattern,
-                                             const std::string &text) const {
-  auto P = int(pattern.size());
-  auto T = int(text.size());
-
-  auto p = 0, fallback_p = -1;
-  auto t = 0, fallback_t = -1;
-
-  while (t < T) {
-    // Wildcard match:
-    if (p < P && pattern[p] == '*') {
-      fallback_p = p++;  // starting point after failures
-      fallback_t = t;    // starting point after failures
-    }
-
-    // Simple match:
-    else if (p < P && (pattern[p] == '?' || pattern[p] == text[t])) {
-      p++;
-      t++;
-    }
-
-    // Failure, fall back just after last matched '*':
-    else if (fallback_p >= 0) {
-      p = fallback_p + 1;  // position just after last matched '*"
-      t = ++fallback_t;    // re-try to match text from here
-    }
-
-    // There were no '*' before, so we fail here:
-    else {
-      return false;
-    }
-  }
-
-  // Consume all '*' at the end of pattern:
-  while (p < P && pattern[p] == '*') p++;
-
-  return p == P;
 }

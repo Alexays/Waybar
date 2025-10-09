@@ -17,8 +17,6 @@ static constexpr const char* PORTAL_NAMESPACE = "org.freedesktop.appearance";
 static constexpr const char* PORTAL_KEY = "color-scheme";
 }  // namespace waybar
 
-using namespace Gio;
-
 auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_context& ctx) const {
   string_view name;
   switch (c) {
@@ -36,8 +34,8 @@ auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_con
 }
 
 waybar::Portal::Portal()
-    : DBus::Proxy(DBus::Connection::get_sync(DBus::BusType::BUS_TYPE_SESSION), PORTAL_BUS_NAME,
-                  PORTAL_OBJ_PATH, PORTAL_INTERFACE),
+    : Gio::DBus::Proxy(Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION),
+                       PORTAL_BUS_NAME, PORTAL_OBJ_PATH, PORTAL_INTERFACE),
       currentMode(Appearance::UNKNOWN) {
   refreshAppearance();
 };

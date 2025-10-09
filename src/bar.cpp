@@ -8,6 +8,8 @@
 #include "client.hpp"
 #include "factory.hpp"
 #include "group.hpp"
+#include "util/enum.hpp"
+#include "util/kill_signal.hpp"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -277,6 +279,32 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 #endif
 
+  waybar::util::EnumParser<util::KillSignalAction> m_signalActionEnumParser;
+  const auto& configSigusr1 = config["on-sigusr1"];
+  if (configSigusr1.isString()) {
+    auto strSigusr1 = configSigusr1.asString();
+    try {
+      onSigusr1 =
+          m_signalActionEnumParser.parseStringToEnum(strSigusr1, util::userKillSignalActions);
+    } catch (const std::invalid_argument& e) {
+      onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
+      spdlog::warn(
+          "Invalid string representation for on-sigusr1. Falling back to default mode (toggle).");
+    }
+  }
+  const auto& configSigusr2 = config["on-sigusr2"];
+  if (configSigusr2.isString()) {
+    auto strSigusr2 = configSigusr2.asString();
+    try {
+      onSigusr2 =
+          m_signalActionEnumParser.parseStringToEnum(strSigusr2, util::userKillSignalActions);
+    } catch (const std::invalid_argument& e) {
+      onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
+      spdlog::warn(
+          "Invalid string representation for on-sigusr2. Falling back to default mode (reload).");
+    }
+  }
+
   setupWidgets();
   window.show_all();
 
@@ -405,7 +433,18 @@ void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto* gdk_window = window.get_window()->gobj();
+  auto gdk_window_ref = window.get_window();
+  if (!gdk_window_ref) {
+    spdlog::warn("Failed to get GDK window during onMap, deferring surface initialization");
+    return;
+  }
+
+  auto* gdk_window = gdk_window_ref->gobj();
+  if (!gdk_window) {
+    spdlog::warn("GDK window object is null during onMap, deferring surface initialization");
+    return;
+  }
+
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
   configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
 
@@ -422,6 +461,8 @@ void waybar::Bar::setVisible(bool value) {
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
+void waybar::Bar::show() { setVisible(true); }
+void waybar::Bar::hide() { setVisible(false); }
 
 // Converting string to button code rn as to avoid doing it later
 void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
@@ -479,6 +520,9 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
+waybar::util::KillSignalAction waybar::Bar::getOnSigusr1Action() { return this->onSigusr1; }
+waybar::util::KillSignalAction waybar::Bar::getOnSigusr2Action() { return this->onSigusr2; }
+
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
   auto module_list = group != nullptr ? config[pos]["modules"] : config[pos];
@@ -496,7 +540,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto vertical = (group != nullptr ? group->getBox().get_orientation()
                                             : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
 
-          auto* group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
+          auto group_config = config[ref];
+          if (group_config["modules"].isNull()) {
+            spdlog::warn("Group definition '{}' has not been found, group will be hidden", ref);
+          }
+          auto* group_module = new waybar::Group(id_name, class_name, group_config, vertical);
           getModules(factory, ref, group_module);
           module = group_module;
         } else {
@@ -545,7 +593,6 @@ auto waybar::Bar::setupWidgets() -> void {
     if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
       box_.set_center_widget(center_);
     } else {
-      spdlog::error("No fixed center_");
       box_.pack_start(center_, true, expand_center);
     }
   }
@@ -569,13 +616,13 @@ auto waybar::Bar::setupWidgets() -> void {
 
   if (!no_center) {
     for (auto const& module : modules_center_) {
-      center_.pack_start(*module, false, false);
+      center_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
     }
   }
 
   std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
-    right_.pack_end(*module, false, false);
+    right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
   }
 }
 

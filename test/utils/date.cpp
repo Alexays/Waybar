@@ -18,8 +18,10 @@
   return
 #endif
 
+using namespace date;
 using namespace std::literals::chrono_literals;
 namespace fmt_lib = waybar::util::date::format;
+
 /*
  * Check that the date/time formatter with locale and timezone support is working as expected.
  */

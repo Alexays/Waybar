@@ -83,6 +83,7 @@ Addressed by *river/layout*
 
 - *#layout*
 - *#layout.focused* Applied when the output this module's bar belongs to is focused.
+- *#layout.<layout>* Applied when the output this module's bar belongs uses this layout.
 
 # SEE ALSO
 

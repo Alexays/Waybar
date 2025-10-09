@@ -17,10 +17,17 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
               config["format-alt"].isString() || config["menu"].isString() || enable_click,
               enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
+
+      // Leave the default option outside of the std::max(1L, ...), because the zero value
+      // (default) is used in modules/custom.cpp to make the difference between
+      // two types of custom scripts. Fixes #4521.
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds::max()
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
+                    ? std::chrono::milliseconds::max()
+                    : std::chrono::milliseconds(
+                          (config_["interval"].isNumeric()
+                               ? std::max(1L,  // Minimum 1ms due to millisecond precision
+                                          static_cast<long>(config_["interval"].asDouble()) * 1000)
+                               : 1000 * (long)interval))),
       default_format_(format_) {
   label_.set_name(name);
   if (!id.empty()) {
@@ -200,7 +207,7 @@ std::string ALabel::getState(uint8_t value, bool lesser) {
     }
   }
   // Sort states
-  std::sort(states.begin(), states.end(), [&lesser](auto& a, auto& b) {
+  std::ranges::sort(states.begin(), states.end(), [&lesser](auto& a, auto& b) {
     return lesser ? a.second < b.second : a.second > b.second;
   });
   std::string valid_state;

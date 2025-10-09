@@ -49,6 +49,8 @@ void PrivacyNodeInfo::handleNodeEventInfo(const struct pw_node_info *info) {
       pipewire_access_portal_app_id = item->value;
     } else if (strcmp(item->key, PW_KEY_APP_ICON_NAME) == 0) {
       application_icon_name = item->value;
+    } else if (strcmp(item->key, "stream.monitor") == 0) {
+      is_monitor = strcmp(item->value, "true") == 0;
     }
   }
 }
