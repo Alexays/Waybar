@@ -27,15 +27,11 @@ static void listen_urgent_tags(void *data, struct zriver_output_status_v1 *zrive
   static_cast<Tags *>(data)->handle_urgent_tags(tags);
 }
 
-static void listen_focused_view(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
-                                const char *title) {
-  // This module doesn't care
-}
-
-static void listen_mode(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
-                        const char *mode) {
-  // This module doesn't care
-}
+static const zriver_output_status_v1_listener output_status_listener_impl{
+    .focused_tags = listen_focused_tags,
+    .view_tags = listen_view_tags,
+    .urgent_tags = listen_urgent_tags,
+};
 
 static void listen_focused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
                                   struct wl_output *output) {
@@ -47,11 +43,15 @@ static void listen_unfocused_output(void *data, struct zriver_seat_status_v1 *zr
   static_cast<Tags *>(data)->handle_unfocused_output(output);
 }
 
-static const zriver_output_status_v1_listener output_status_listener_impl{
-    .focused_tags = listen_focused_tags,
-    .view_tags = listen_view_tags,
-    .urgent_tags = listen_urgent_tags,
-};
+static void listen_focused_view(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                                const char *title) {
+  // This module doesn't care
+}
+
+static void listen_mode(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
+                        const char *mode) {
+  // This module doesn't care
+}
 
 static const zriver_seat_status_v1_listener seat_status_listener_impl{
     .focused_output = listen_focused_output,
@@ -115,14 +115,13 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       seat_{nullptr},
       bar_(bar),
       box_{bar.orientation, 0},
+      output_{nullptr},
       output_status_{nullptr},
       seat_status_{nullptr} {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
-
-  output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
 
   if (!status_manager_) {
     spdlog::error("river_status_manager_v1 not advertised");
@@ -136,6 +135,10 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   if (!seat_) {
     spdlog::error("wl_seat not advertised");
   }
+
+  output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
+  seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
 
   box_.set_name("tags");
   if (!id.empty()) {
@@ -180,24 +183,12 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     button.show();
   }
 
-  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
-  zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
-
-  seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
-  zriver_seat_status_v1_add_listener(seat_status_, &seat_status_listener_impl, this);
-
-  zriver_status_manager_v1_destroy(status_manager_);
-
   box_.signal_show().connect(sigc::mem_fun(*this, &Tags::handle_show));
 }
 
 Tags::~Tags() {
   if (output_status_) {
     zriver_output_status_v1_destroy(output_status_);
-  }
-
-  if (seat_status_) {
-    zriver_seat_status_v1_destroy(seat_status_);
   }
 
   if (control_) {
@@ -210,12 +201,18 @@ Tags::~Tags() {
 }
 
 void Tags::handle_show() {
-  struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output);
+  spdlog::info("bruh1");
+  
+  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
   zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
+
+  seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
+  zriver_seat_status_v1_add_listener(seat_status_, &seat_status_listener_impl, this);
 
   zriver_status_manager_v1_destroy(status_manager_);
   status_manager_ = nullptr;
+
+  spdlog::info("bruh2");
 }
 
 void Tags::handle_primary_clicked(uint32_t tag) {
