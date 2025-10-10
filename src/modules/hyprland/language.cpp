@@ -105,7 +105,6 @@ void Language::initLanguage() {
 
     searcher = waybar::util::sanitize_string(searcher);
 
-    removeXkbLayoutCssClass();
     layout_ = getLayout(searcher);
     addXkbLayoutCssClass();
 
