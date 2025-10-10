@@ -30,7 +30,7 @@ class Language : public waybar::ALabel, public EventHandler {
     std::string short_description;
   };
 
-  static auto getLayout(const std::string&) -> Layout;
+  auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
   const Bar& bar_;
