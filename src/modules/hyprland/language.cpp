@@ -82,7 +82,11 @@ void Language::onEvent(const std::string& ev) {
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
+  label_.get_style_context()->remove_class(layout_.short_name);
+  spdlog::debug("hyprland language try to remove currently short_name css class {}", layout_.short_name);
   layout_ = getLayout(layoutName);
+  label_.get_style_context()->add_class(layout_.short_name);
+  spdlog::debug("hyprland language add new short_name css class {}", layout_.short_name);
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -103,7 +107,11 @@ void Language::initLanguage() {
 
     searcher = waybar::util::sanitize_string(searcher);
 
+    label_.get_style_context()->remove_class(layout_.short_name);
+    spdlog::debug("hyprland language try to remove currently short_name css class {}", layout_.short_name);
     layout_ = getLayout(searcher);
+    label_.get_style_context()->add_class(layout_.short_name);
+    spdlog::debug("hyprland language add new short_name css class {}", layout_.short_name);
 
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
@@ -118,8 +126,6 @@ auto Language::getLayout(const std::string& fullName) -> Layout {
   rxkb_context_parse_default_ruleset(context);
 
   rxkb_layout* layout = rxkb_layout_first(context);
-  label_.get_style_context()->remove_class(layout_.short_name);
-  spdlog::debug("hyprland language try to remove currently short_name css class {}", layout_.short_name);
   while (layout != nullptr) {
     std::string nameOfLayout = rxkb_layout_get_description(layout);
 
@@ -139,8 +145,6 @@ auto Language::getLayout(const std::string& fullName) -> Layout {
 
     rxkb_context_unref(context);
 
-    label_.get_style_context()->add_class(info.short_name);
-    spdlog::debug("hyprland language add new short_name css class {}", info.short_name);
     return info;
   }
 
