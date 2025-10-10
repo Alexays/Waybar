@@ -3,6 +3,7 @@
 #include <cairomm/context.h>
 #include <fmt/format.h>
 
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <util/command.hpp>
@@ -40,6 +41,17 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
 
   if (config_["y_offset"].isUInt()) {
     y_offset_ = config_["y_offset"].asUInt();
+  }
+
+  if (config_["graph_type"].isString()) {
+    std::string type = config_["graph_type"].asString();
+    if (type == "line") {
+      graph_type_ = GraphType::LINE;
+    } else if (type == "bar") {
+      graph_type_ = GraphType::BAR;
+    } else if (type == "gauge") {
+      graph_type_ = GraphType::GAUGE;
+    }
   }
 
   // If a GTKMenu is requested in the config
@@ -137,19 +149,26 @@ bool AGraph::onDraw(const Cairo::RefPtr<Cairo::Context>& cr) {
     double y = height - (static_cast<double>(value) / 100.0 * height);
     points.emplace_back(x, y);
   }
-
   if (!points.empty()) {
-
-    drawFilledArea(cr, points, height, bg_color);
-
-    drawLine(cr, points, fg_color);
+    switch (graph_type_) {
+      case GraphType::LINE:
+        drawFilledArea(cr, points, height, bg_color);
+        drawLine(cr, points, fg_color);
+        break;
+      case GraphType::BAR:
+        drawBars(cr, width, height, values_.empty() ? 0 : values_.back(), fg_color);
+        break;
+      case GraphType::GAUGE:
+        drawGauge(cr, width, height, values_.empty() ? 0 : values_.back(), fg_color);
+        break;
+    }
   }
 
   return false;
 }
 void AGraph::drawFilledArea(const Cairo::RefPtr<Cairo::Context>& cr,
-                            const std::vector<std::pair<double, double>>& points,
-                            double height, const Gdk::RGBA& bg_color) {
+                            const std::vector<std::pair<double, double>>& points, double height,
+                            const Gdk::RGBA& bg_color) {
   if (points.empty()) return;
 
   double first_x = points.front().first;
@@ -192,6 +211,95 @@ void AGraph::drawPath(const Cairo::RefPtr<Cairo::Context>& cr,
       cr->line_to(point.first, point.second);
     }
   }
+}
+
+void AGraph::drawBars(const Cairo::RefPtr<Cairo::Context>& cr,
+                      double width, double height, int current_value,
+                      const Gdk::RGBA& fg_color) {
+
+  current_value = std::min(100, std::max(0, current_value));
+
+  double green_height = height * (std::min(current_value, 40) / 100.0);
+  cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+  cr->rectangle(0, height - green_height, width, green_height);
+  cr->fill();
+
+  if (current_value > 40) {
+    double yellow_height = height * (std::min(current_value, 75) - 40) / 100.0;
+    cr->set_source_rgba(1.0, 1.0, 0.0, 1.0);
+    cr->rectangle(0, height - green_height - yellow_height, width, yellow_height);
+    cr->fill();
+  }
+
+  if (current_value > 75) {
+    double orange_height = height * (std::min(current_value, 85) - 75) / 100.0;
+    cr->set_source_rgba(1.0, 0.5, 0.0, 1.0);
+    double yellow_height = height * (std::min(current_value, 75) - 40) / 100.0;
+    cr->rectangle(0, height - green_height - yellow_height - orange_height, width,
+                  orange_height);
+    cr->fill();
+  }
+
+  if (current_value > 85) {
+    double red_height = height * (current_value - 85) / 100.0;
+    cr->set_source_rgba(1.0, 0.0, 0.0, 1.0);
+    double yellow_height = height * (std::min(current_value, 75) - 40) / 100.0;
+    double orange_height = height * (std::min(current_value, 85) - 75) / 100.0;
+    cr->rectangle(0, height - green_height - yellow_height - orange_height - red_height, width,
+                  red_height);
+    cr->fill();
+  }
+
+  double value_height = height * (current_value / 100.0);
+  cr->set_source_rgba(0.2, 0.2, 0.2, 0.8);
+  cr->rectangle(0, height - value_height, width, 2);
+  cr->fill();
+}
+
+void AGraph::drawGauge(const Cairo::RefPtr<Cairo::Context>& cr, double width, double height,
+                       int current_value, const Gdk::RGBA& fg_color) {
+  double center_x = width / 2.0;
+  double center_y = height;
+  double radius = height / 2.0;
+
+  cr->set_line_width(10.0);
+
+  double angle1 = M_PI;
+  double angle2 = angle1 + 0.3 * angle1;
+
+  // Green section (0-33%)
+  cr->set_source_rgba(0.0, 1.0, 0.0, 1.0);
+  cr->arc(center_x, center_y, radius, angle1, angle2);
+  cr->stroke();
+
+  // Yellow section (33-66%)
+  angle1 = angle2;
+  angle2 = angle1 + 0.3 * angle1;
+  cr->set_source_rgba(1.0, 1.0, 0.0, 1.0);
+  cr->arc(center_x, center_y, radius, angle1, angle2);
+  cr->stroke();
+
+  // Red section (66-100%)
+  angle1 = angle2;
+  angle2 = 0.0;
+  cr->set_source_rgba(1.0, 0.0, 0.0, 0.8);
+  cr->arc(center_x, center_y, radius, angle1, angle2);
+  cr->stroke();
+
+  // Draw needle
+  double percentage = std::min(100, std::max(0, current_value)) / 100.0;
+  double needle_angle = M_PI * percentage;
+  double needle_length = radius;
+
+  double needle_x = center_x - needle_length * cos(needle_angle);
+  double needle_y = center_y - needle_length * sin(needle_angle);
+
+  cr->set_source_rgba(1.0, 1.0, 1.0, 1.0);
+  cr->set_line_width(2.0);
+  cr->begin_new_path();
+  cr->move_to(center_x, center_y);
+  cr->line_to(needle_x, needle_y);
+  cr->stroke();
 }
 
 }  // namespace waybar
