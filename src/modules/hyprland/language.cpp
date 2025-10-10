@@ -82,7 +82,9 @@ void Language::onEvent(const std::string& ev) {
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
+  label_.get_style_context()->remove_class(layout_.short_name);
   layout_ = getLayout(layoutName);
+  label_.get_style_context()->add_class(layout_.short_name);
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
