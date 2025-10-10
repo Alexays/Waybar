@@ -101,6 +101,17 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
   content_.show();
   button.add(content_);
 
+  // Apply optional label truncation (ellipsize).
+  if (config_["truncate"].isBool() && config_["truncate"].asBool()) {
+    text_before_.set_single_line_mode(true);
+    text_before_.set_ellipsize(Pango::ELLIPSIZE_END);
+    text_before_.set_line_wrap(false);
+
+    text_after_.set_single_line_mode(true);
+    text_after_.set_ellipsize(Pango::ELLIPSIZE_END);
+    text_after_.set_line_wrap(false);
+  }
+
   format_before_.clear();
   format_after_.clear();
 
