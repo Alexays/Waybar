@@ -57,6 +57,11 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
 
+*homogeneous*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, distribute every task button evenly across the taskbar's allocated width. Buttons will automatically resize so that 'N' visible tasks each take '1/N' of the width.
+
 *on-click*: ++
 	typeof: string ++
 	The action which should be triggered when clicking on the application button with the left mouse button.
