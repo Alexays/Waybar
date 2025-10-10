@@ -120,6 +120,7 @@
 #endif
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
+#include "modules/custom_graph.hpp"
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
@@ -365,6 +366,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name);
+    }
+    if (ref.compare(0, 13, "custom-graph/") == 0 && ref.size() > 7) {
+      return new waybar::modules::CustomGraph(ref.substr(7), id, config_[name], bar_.output->name);
     }
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);
