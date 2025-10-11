@@ -74,31 +74,13 @@ libmm-glib lives in:
 
 *{state}*: Modem state.
 
-*{access_technologies}*: List of all the supported access technologies.
-
 *{current_modes}*: List of all the currently active connection modes.
 
 *{preferred_mode}*: The preferred connection mode in use.
 
-*{supported_modes}*: List of all the supported connection modes.
-
-*{current_bands}*: List of all the currently active frequency bands.
-
-*{supported_bands}*: List of all the supported frequency bands.
-
 *{signal_quality}*: Signal quality (0-100).
 
 *{operator_name}*: Name of the network operator.
-
-*{speed_error}*: Speed uncertainty, meters/sec. Can be NaN.
-
-*{climb}*: Vertical speed, meters/sec. Can be NaN.
-
-*{climb_error}*: Vertical speed uncertainty, meters/sec. Can be NaN.
-
-*{satellites_visible}*: Number of satellites visible from the GPS receiver.
-
-*{satellites_used}*: Number of satellites used for the GPS fix.
 
 # EXAMPLES
 
