@@ -58,7 +58,7 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
 
 }
 
-const void waybar::modules::Wwan::updateCurrentModem(){
+void waybar::modules::Wwan::updateCurrentModem(){
   // get 1st modem (or modem with the specified hardware path)
 
   GList* modems = g_dbus_object_manager_get_objects(G_DBUS_OBJECT_MANAGER(manager));
@@ -102,7 +102,7 @@ const void waybar::modules::Wwan::updateCurrentModem(){
   g_list_free_full(modems, g_object_unref);
 }
 
-const std::string getModemStateString(MMModem* modem) {
+std::string getModemStateString(MMModem* modem) {
   switch (mm_modem_get_state(modem)) {
     case MMModemState::MM_MODEM_STATE_FAILED:
       return "Failed";
@@ -133,7 +133,7 @@ const std::string getModemStateString(MMModem* modem) {
   }
 }
 
-const std::string getModemStateFormatString(MMModem* modem) {
+std::string getModemStateFormatString(MMModem* modem) {
   switch (mm_modem_get_state(modem)) {
     case MMModemState::MM_MODEM_STATE_FAILED:
       return "failed";
@@ -154,7 +154,7 @@ const std::string getModemStateFormatString(MMModem* modem) {
   }
 }
 
-const std::string getPreferredModeString(MMModem* modem) {
+std::string getPreferredModeString(MMModem* modem) {
 
   MMModemModeCombination combination;
   mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
@@ -176,7 +176,7 @@ const std::string getPreferredModeString(MMModem* modem) {
 }
 
 
-const std::string getCurrentModesString(MMModem* modem) {
+std::string getCurrentModesString(MMModem* modem) {
 
   MMModemModeCombination combination;
   mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
@@ -200,7 +200,7 @@ const std::string getCurrentModesString(MMModem* modem) {
   return buffer;
 }
 
-const std::string getPowerStateString(MMModem* modem) {
+std::string getPowerStateString(MMModem* modem) {
   MMModemPowerState state = mm_modem_get_power_state(modem);
 
   switch (state) {
@@ -215,7 +215,7 @@ const std::string getPowerStateString(MMModem* modem) {
   }
 }
 
-const std::string getOperatorNameString(MMModem* modem) {
+std::string getOperatorNameString(MMModem* modem) {
 
   MMSim* sim = mm_modem_get_sim_sync(modem, nullptr, nullptr);
 
