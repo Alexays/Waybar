@@ -22,18 +22,6 @@ namespace waybar::modules {
   private:
 
     const void updateCurrentModem();
-    const MMModemState getModemState() const;
-    const std::string getModemStateString() const;
-    const std::string getModemStateFormatString() const;
-    const std::string getAccessTechnologiesString() const;
-    const int getSignalQuality() const;
-    const std::string getPowerStateString() const;
-    const std::string getImeiString() const;
-
-    const MMModemModeCombination getCurrentModes() const;
-    const std::string getPreferredModeString() const;
-    const std::string getCurrentModesString() const;
-    const std::string getOperatorNameString() const;
 
     util::SleeperThread thread_;
     std::string state_;
