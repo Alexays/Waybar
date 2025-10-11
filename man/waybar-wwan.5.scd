@@ -25,9 +25,42 @@ libmm-glib lives in:
 # CONFIGURATION
 
 *format*: ++
+	typeof: string  ++
+	default: *{state}* ++
+	The format, how information should be displayed. This format is used when other formats aren't specified.
+
+*format-failed*: ++
 	typeof: string ++
-	default: {glyph} ++
-	The text format.
+	This format is used when the modem cannot start.
+
+*format-locked*: ++
+	typeof: string ++
+	This format is used when the SIM on the modem is locked.
+
+*format-disabled*: ++
+	typeof: string ++
+	This format is used when the modem is disabled.
+
+*format-enabled*: ++
+	typeof: string ++
+	This format is used when the modem is enabled, but isn't registered to any carrier network.
+
+*format-searching*: ++
+	typeof: string ++
+	This format is used when the modem is looking for a carrier network to register to.
+
+*format-registered*: ++
+	typeof: string ++
+	This format is used when the modem is registered to a network, but no data connection is active.
+
+*format-connected*: ++
+	typeof: string ++
+	This format is used when the modem is registered to a network, and there is an active data connection.
+
+*format-icons*: ++
+	typeof: array/object ++
+	Based on the current signal strength, the corresponding icon gets selected. ++
+	The order is *low* to *high*. Or by the state if it is an object.
 
 *tooltip*: ++
 	typeof: bool ++
@@ -36,8 +69,36 @@ libmm-glib lives in:
 
 *tooltip-format*: ++
 	typeof: strirng ++
-	default: Games running: {glyph} ++
-	The text format of the tooltip.
+	default: {state} ++
+	The format, how information should be displayed in the tooltip. This format is used when other formats aren't specified.
+
+*tooltip-format-failed*: ++
+	typeof: string ++
+	This format is used when the modem cannot start.
+
+*tooltip-format-locked*: ++
+	typeof: string ++
+	This format is used when the SIM on the modem is locked.
+
+*tooltip-format-disabled*: ++
+	typeof: string ++
+	This format is used when the modem is disabled.
+
+*tooltip-format-enabled*: ++
+	typeof: string ++
+	This format is used when the modem is enabled, but isn't registered to any carrier network.
+
+*tooltip-format-searching*: ++
+	typeof: string ++
+	This format is used when the modem is looking for a carrier network to register to.
+
+*tooltip-format-registered*: ++
+	typeof: string ++
+	This format is used when the modem is registered to a network, but no data connection is active.
+
+*tooltip-format-connected*: ++
+	typeof: string ++
+	This format is used when the modem is registered to a network, and there is an active data connection.
 
 *interval*: ++
 	typeof: integer ++
@@ -46,12 +107,10 @@ libmm-glib lives in:
 
 *imei*: ++
 	typeof: string ++
-	default: {glyph} ++
 	Select only the modem with the corresponding imei.
 
 *path*: ++
 	typeof: string ++
-	default: {glyph} ++
 	Select only the modem with the corresponding hardware path.
 
 *hide-failed*: ++
@@ -89,11 +148,9 @@ libmm-glib lives in:
 	"format": "{state}",
 	"format-disabled": "", // an empty format will hide the module
 	"format-locked": "SIM Locked",
-    "format-connected": "{operator_name} {preferred_mode}"
+    "format-connected": "{operator_name} {preferred_mode} | {signal_quality}%"
 	"tooltip-format": "{mode}",
-	"tooltip-format-locked": "{satellites_visible} satellites visible",
-	"tooltip-format-registered": "{satellites_used}/{satellites_visible} satellites used",
-	"tooltip-format-connected": "",
+	"tooltip-format-connected": "{current_modes}",
 	"hide-disconnected": false
 }
 ```

@@ -277,7 +277,10 @@ auto waybar::modules::Wwan::update() -> void {
   store.push_back(fmt::arg("current_modes", getCurrentModesString(current_modem)));
   store.push_back(fmt::arg("preferred_mode", getPreferredModeString(current_modem)));
 
-  store.push_back(fmt::arg("signal_quality", mm_modem_get_signal_quality(current_modem, nullptr)));
+  int percentage = mm_modem_get_signal_quality(current_modem, nullptr);
+  store.push_back(fmt::arg("signal_quality", percentage));
+  store.push_back(fmt::arg("icon", getIcon(percentage)));
+
   store.push_back(fmt::arg("power_state", getPowerStateString(current_modem)));
   store.push_back(fmt::arg("imei", mm_modem_dup_equipment_identifier(current_modem)));
 
