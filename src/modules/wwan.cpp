@@ -154,96 +154,50 @@ const std::string getModemStateFormatString(MMModem* modem) {
   }
 }
 
-const std::string getAccessTechnologiesString(MMModem* modem) {
-  MMModemAccessTechnology technologies = mm_modem_get_access_technologies(modem);
+const std::string getPreferredModeString(MMModem* modem) {
 
-  std::string buffer;
+  MMModemModeCombination combination;
+  mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
 
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_POTS)
-    buffer += "POTS, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_GSM)
-    buffer += "GSM, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT)
-    buffer += "GSM Compact, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_GPRS)
-    buffer += "GPRS, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_EDGE)
-    buffer += "EDGE, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_UMTS)
-    buffer += "UMTS, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_HSDPA)
-    buffer += "HSDPA, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_HSUPA)
-    buffer += "HSUPA, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_HSPA)
-    buffer += "HSPA, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS)
-    buffer += "HSPA+, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_1XRTT)
-    buffer += "1xRTT, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_EVDO0)
-    buffer += "EVDO0, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_EVDOA)
-    buffer += "EVDOA, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_EVDOB)
-    buffer += "EVDOB, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_LTE)
-    buffer += "LTE, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_5GNR)
-    buffer += "5GNR, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_LTE_CAT_M)
-    buffer += "LTE CAT-M, ";
-  if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_LTE_NB_IOT)
-    buffer += "LTE NB-IoT, ";
-
-  if (buffer.length() > 2) {
-    buffer.erase(buffer.length()-2);
-  }
-  return buffer;
-
-}
-
-const std::string stringifyModemMode(MMModemMode mmode) {
-
-  switch (mmode) {
-    case MM_MODEM_MODE_CS:
+  switch (combination.preferred) {
+    case MMModemMode::MM_MODEM_MODE_CS:
       return "CS";
-    case MM_MODEM_MODE_2G:
+    case MMModemMode::MM_MODEM_MODE_2G:
       return "2G";
-    case MM_MODEM_MODE_3G:
+    case MMModemMode::MM_MODEM_MODE_3G:
       return "3G";
-    case MM_MODEM_MODE_4G:
+    case MMModemMode::MM_MODEM_MODE_4G:
       return "4G";
-    case MM_MODEM_MODE_5G:
+    case MMModemMode::MM_MODEM_MODE_5G:
       return "5G";
     default:
       return "No Service";
   }
 }
 
-const MMModemModeCombination getCurrentModes(MMModem* modem) {
-
-  MMModemModeCombination combination;
-
-  mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
-
-  return combination;
-}
-
-const std::string getPreferredModeString(MMModem* modem) {
-
-  MMModemModeCombination combination = getCurrentModes(modem);
-
-  return stringifyModemMode(combination.preferred);
-}
-
 
 const std::string getCurrentModesString(MMModem* modem) {
 
-  MMModemModeCombination combination = getCurrentModes(modem);
+  MMModemModeCombination combination;
+  mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
 
-  // TODO: fix
-  return stringifyModemMode(combination.allowed);
+  std::string buffer;
+
+  if(combination.allowed & MMModemMode::MM_MODEM_MODE_CS)
+    buffer += "CS | ";
+  if(combination.allowed & MMModemMode::MM_MODEM_MODE_2G)
+    buffer += "2G | ";
+  if(combination.allowed & MMModemMode::MM_MODEM_MODE_3G)
+    buffer += "3G | ";
+  if(combination.allowed & MMModemMode::MM_MODEM_MODE_4G)
+    buffer += "4G | ";
+  if(combination.allowed & MMModemMode::MM_MODEM_MODE_5G)
+    buffer += "5G | ";
+
+  if (buffer.length() > 2) {
+    buffer.erase(buffer.length()-2);
+  }
+  return buffer;
 }
 
 const std::string getPowerStateString(MMModem* modem) {
@@ -320,14 +274,8 @@ auto waybar::modules::Wwan::update() -> void {
   fmt::dynamic_format_arg_store<fmt::format_context> store;
   store.push_back(fmt::arg("state", getModemStateString(current_modem)));
 
-  store.push_back(fmt::arg("access_technologies", getAccessTechnologiesString(current_modem)));
-
   store.push_back(fmt::arg("current_modes", getCurrentModesString(current_modem)));
   store.push_back(fmt::arg("preferred_mode", getPreferredModeString(current_modem)));
-  //store.push_back(fmt::arg("supported_modes", getSupportedModesString()));
-
-  //store.push_back(fmt::arg("current_bands", getCurrentBandsString()));
-  //store.push_back(fmt::arg("supported_bands", getSupportedBandsString()));
 
   store.push_back(fmt::arg("signal_quality", mm_modem_get_signal_quality(current_modem, nullptr)));
   store.push_back(fmt::arg("power_state", getPowerStateString(current_modem)));
