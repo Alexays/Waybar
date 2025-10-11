@@ -52,7 +52,6 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
 
   updateCurrentModem();
 
-
   if (config_["hide-disconnected"].isBool()) {
     hideDisconnected = config_["hide-disconnected"].asBool();
   }
@@ -64,9 +63,6 @@ const void waybar::modules::Wwan::updateCurrentModem(){
 
   GList* modems = g_dbus_object_manager_get_objects(G_DBUS_OBJECT_MANAGER(manager));
   if (!modems) {
-    spdlog::warn("No modems found");
-    g_object_unref(manager);
-    g_object_unref(connection);
     return;
   }
 
@@ -77,10 +73,11 @@ const void waybar::modules::Wwan::updateCurrentModem(){
 
     if (config_["path"].isString()) {
       std::string path = config_["path"].asString();
-      std::string other = mm_modem_dup_path(modem);
+      std::string other = mm_modem_dup_physdev(modem);
 
       if(path != other) {
         g_object_unref(modem);
+        modem = nullptr;
         continue;
       }
     }
@@ -91,6 +88,7 @@ const void waybar::modules::Wwan::updateCurrentModem(){
 
       if(imei != other) {
         g_object_unref(modem);
+        modem = nullptr;
         continue;
       }
     }
@@ -98,51 +96,45 @@ const void waybar::modules::Wwan::updateCurrentModem(){
     current_modem = modem;
     g_list_free_full(modems, g_object_unref);
     return;
-}
-// no modems found
-g_list_free_full(modems, g_object_unref);
-}
-
-const MMModemState waybar::modules::Wwan::getModemState() const {
-  if(current_modem == nullptr) {
-    return MMModemState::MM_MODEM_STATE_UNKNOWN;
   }
-  return mm_modem_get_state(current_modem);
+  // no modems found
+  current_modem = nullptr;
+  g_list_free_full(modems, g_object_unref);
 }
 
-const std::string waybar::modules::Wwan::getModemStateString() const {
-  switch (getModemState()) {
+const std::string getModemStateString(MMModem* modem) {
+  switch (mm_modem_get_state(modem)) {
     case MMModemState::MM_MODEM_STATE_FAILED:
-        return "Failed";
+      return "Failed";
     case MMModemState::MM_MODEM_STATE_INITIALIZING:
-        return "Initializing";
+      return "Initializing";
     case MMModemState::MM_MODEM_STATE_LOCKED:
-        return "Locked";
+      return "Locked";
     case MMModemState::MM_MODEM_STATE_DISABLED:
-        return "Disabled";
+      return "Disabled";
     case MMModemState::MM_MODEM_STATE_DISABLING:
-        return "Disabling";
+      return "Disabling";
     case MMModemState::MM_MODEM_STATE_ENABLED:
-        return "Enabled";
+      return "Enabled";
     case MMModemState::MM_MODEM_STATE_ENABLING:
-        return "Enabling";
+      return "Enabling";
     case MMModemState::MM_MODEM_STATE_SEARCHING:
-        return "Searching";
+      return "Searching";
     case MMModemState::MM_MODEM_STATE_REGISTERED:
-        return "Registered";
+      return "Registered";
     case MMModemState::MM_MODEM_STATE_DISCONNECTING:
-        return "Disconnecting";
+      return "Disconnecting";
     case MMModemState::MM_MODEM_STATE_CONNECTING:
-        return "Connecting";
+      return "Connecting";
     case MMModemState::MM_MODEM_STATE_CONNECTED:
-        return "Connected";
+      return "Connected";
     default:
-        return "Unknown";
+      return "Unknown";
   }
 }
 
-const std::string waybar::modules::Wwan::getModemStateFormatString() const {
-  switch (getModemState()) {
+const std::string getModemStateFormatString(MMModem* modem) {
+  switch (mm_modem_get_state(modem)) {
     case MMModemState::MM_MODEM_STATE_FAILED:
       return "failed";
     case MMModemState::MM_MODEM_STATE_LOCKED:
@@ -162,17 +154,9 @@ const std::string waybar::modules::Wwan::getModemStateFormatString() const {
   }
 }
 
-const int waybar::modules::Wwan::getSignalQuality() const {
-  if(current_modem == nullptr) {
-    return MMModemState::MM_MODEM_STATE_UNKNOWN;
-  }
+const std::string getAccessTechnologiesString(MMModem* modem) {
+  MMModemAccessTechnology technologies = mm_modem_get_access_technologies(modem);
 
-  gboolean recent;
-
-  return mm_modem_get_signal_quality(current_modem, &recent);
-}
-
-const std::string stringifyAccessTechnologies(MMModemAccessTechnology technologies) {
   std::string buffer;
 
   if(technologies & MMModemAccessTechnology::MM_MODEM_ACCESS_TECHNOLOGY_POTS)
@@ -219,7 +203,7 @@ const std::string stringifyAccessTechnologies(MMModemAccessTechnology technologi
 
 }
 
-const std::string stringifyModemMode(MMModemMode mmode){
+const std::string stringifyModemMode(MMModemMode mmode) {
 
   switch (mmode) {
     case MM_MODEM_MODE_CS:
@@ -237,57 +221,33 @@ const std::string stringifyModemMode(MMModemMode mmode){
   }
 }
 
-const std::string waybar::modules::Wwan::getAccessTechnologiesString() const {
-
-  if(current_modem == nullptr) {
-    return "";
-  }
-
-  MMModemAccessTechnology technologies = mm_modem_get_access_technologies(current_modem);
-
-  return stringifyAccessTechnologies(technologies);
-}
-
-const MMModemModeCombination waybar::modules::Wwan::getCurrentModes() const {
+const MMModemModeCombination getCurrentModes(MMModem* modem) {
 
   MMModemModeCombination combination;
 
-  mm_modem_get_current_modes(current_modem, &combination.allowed, &combination.preferred);
+  mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
 
   return combination;
 }
 
-const std::string waybar::modules::Wwan::getPreferredModeString() const {
+const std::string getPreferredModeString(MMModem* modem) {
 
-  if(current_modem == nullptr) {
-    return "";
-  }
-
-  MMModemModeCombination combination = getCurrentModes();
+  MMModemModeCombination combination = getCurrentModes(modem);
 
   return stringifyModemMode(combination.preferred);
 }
 
 
-const std::string waybar::modules::Wwan::getCurrentModesString() const {
+const std::string getCurrentModesString(MMModem* modem) {
 
-  if(current_modem == nullptr) {
-    return "";
-  }
-
-  MMModemModeCombination combination = getCurrentModes();
+  MMModemModeCombination combination = getCurrentModes(modem);
 
   // TODO: fix
   return stringifyModemMode(combination.allowed);
 }
 
-const std::string waybar::modules::Wwan::getPowerStateString() const {
-
-  if(current_modem == nullptr) {
-    return "";
-  }
-
-  MMModemPowerState state = mm_modem_get_power_state(current_modem);
+const std::string getPowerStateString(MMModem* modem) {
+  MMModemPowerState state = mm_modem_get_power_state(modem);
 
   switch (state) {
     case MM_MODEM_POWER_STATE_ON:
@@ -301,22 +261,9 @@ const std::string waybar::modules::Wwan::getPowerStateString() const {
   }
 }
 
-const std::string waybar::modules::Wwan::getImeiString() const {
+const std::string getOperatorNameString(MMModem* modem) {
 
-  if(current_modem == nullptr) {
-    return "";
-  }
-
-  return mm_modem_dup_equipment_identifier(current_modem);
-}
-
-const std::string waybar::modules::Wwan::getOperatorNameString() const {
-
-  if(current_modem == nullptr) {
-    return "";
-  }
-
-  MMSim* sim = mm_modem_get_sim_sync(current_modem, nullptr, nullptr);
+  MMSim* sim = mm_modem_get_sim_sync(modem, nullptr, nullptr);
 
   if (sim == nullptr) {
     return "No SIM";
@@ -328,7 +275,6 @@ const std::string waybar::modules::Wwan::getOperatorNameString() const {
 }
 
 auto waybar::modules::Wwan::update() -> void {
-
   if (current_modem == nullptr) {
     event_box_.set_visible(false);
     updateCurrentModem();
@@ -347,7 +293,7 @@ auto waybar::modules::Wwan::update() -> void {
   std::string tooltip_format;
 
   if (!alt_) {
-    std::string state = getModemStateFormatString();
+    std::string state = getModemStateFormatString(current_modem);
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
       label_.get_style_context()->remove_class(state_);
     }
@@ -372,23 +318,22 @@ auto waybar::modules::Wwan::update() -> void {
   auto format = format_;
 
   fmt::dynamic_format_arg_store<fmt::format_context> store;
-  store.push_back(fmt::arg("state", getModemStateString()));
+  store.push_back(fmt::arg("state", getModemStateString(current_modem)));
 
-  store.push_back(fmt::arg("access_technologies", getAccessTechnologiesString()));
+  store.push_back(fmt::arg("access_technologies", getAccessTechnologiesString(current_modem)));
 
-  store.push_back(fmt::arg("current_modes", getCurrentModesString()));
-  store.push_back(fmt::arg("preferred_mode", getPreferredModeString()));
+  store.push_back(fmt::arg("current_modes", getCurrentModesString(current_modem)));
+  store.push_back(fmt::arg("preferred_mode", getPreferredModeString(current_modem)));
   //store.push_back(fmt::arg("supported_modes", getSupportedModesString()));
 
   //store.push_back(fmt::arg("current_bands", getCurrentBandsString()));
   //store.push_back(fmt::arg("supported_bands", getSupportedBandsString()));
 
-  store.push_back(fmt::arg("signal_quality", getSignalQuality()));
-  store.push_back(fmt::arg("power_state", getPowerStateString()));
-  store.push_back(fmt::arg("imei", getImeiString()));
+  store.push_back(fmt::arg("signal_quality", mm_modem_get_signal_quality(current_modem, nullptr)));
+  store.push_back(fmt::arg("power_state", getPowerStateString(current_modem)));
+  store.push_back(fmt::arg("imei", mm_modem_dup_equipment_identifier(current_modem)));
 
-  store.push_back(fmt::arg("operator_name", getOperatorNameString()));
-  //store.push_back(fmt::arg("registration_state", getRegistrationStateString()));
+  store.push_back(fmt::arg("operator_name", getOperatorNameString(current_modem)));
 
   auto text = fmt::vformat(format, store);
 
@@ -411,4 +356,7 @@ auto waybar::modules::Wwan::update() -> void {
 }
 
 waybar::modules::Wwan::~Wwan() {
+  g_object_unref(current_modem);
+  g_object_unref(manager);
+  g_object_unref(connection);
 }

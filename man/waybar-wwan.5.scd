@@ -19,7 +19,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 libmm-glib lives in:
 
 . /usr/lib/libmm-glib.so or /usr/lib64/libmm-glib.so
-. /usr/lib/pkgconfig/libgps.pc or /usr/lib64/pkgconfig/libgps.pc
+. /usr/lib/pkgconfig/libmm-glib.pc or /usr/lib64/pkgconfig/libmm-glib.pc
 . /usr/include/libmm-glib
 
 # CONFIGURATION
@@ -35,7 +35,7 @@ libmm-glib lives in:
 	Option to disable tooltip on hover.
 
 *tooltip-format*: ++
-	typeof: string ++
+	typeof: strirng ++
 	default: Games running: {glyph} ++
 	The text format of the tooltip.
 
@@ -43,6 +43,16 @@ libmm-glib lives in:
 	typeof: integer ++
 	default: 5 ++
 	The interval in which the WWAN information gets polled (e.g. carrier name).
+
+*imei*: ++
+	typeof: string ++
+	default: {glyph} ++
+	Select only the modem with the corresponding imei.
+
+*path*: ++
+	typeof: string ++
+	default: {glyph} ++
+	Select only the modem with the corresponding hardware path.
 
 *hide-failed*: ++
 	typeof: bool ++
@@ -62,25 +72,23 @@ libmm-glib lives in:
 
 # FORMAT REPLACEMENTS
 
-*{mode}*: Fix mode
+*{state}*: Modem state.
 
-*{status}*: Technology used for GPS fix. Not all GPS receivers report this.
+*{access_technologies}*: List of all the supported access technologies.
 
-*{latitude}*: Latitude, decimal degrees. Can be NaN.
+*{current_modes}*: List of all the currently active connection modes.
 
-*{latitude_error}*: Latitude uncertainty, meters. Can be NaN.
+*{preferred_mode}*: The preferred connection mode in use.
 
-*{longitude}*: Longitude, decimal degrees. Can be NaN.
+*{supported_modes}*: List of all the supported connection modes.
 
-*{longitude_error}*: Longitude uncertainty, meters. Can be NaN.
+*{current_bands}*: List of all the currently active frequency bands.
 
-*{altitude_hae}*: Altitude, height above ellipsoid, meters. Can be NaN.
+*{supported_bands}*: List of all the supported frequency bands.
 
-*{altitude_msl}*: Longitude, MSL, meters. Can be NaN.
+*{signal_quality}*: Signal quality (0-100).
 
-*{altitude_error}*: Altitude uncertainty, meters. Can be NaN.
-
-*{speed}*: Speed over ground, meters/sec. Can be NaN.
+*{operator_name}*: Name of the network operator.
 
 *{speed_error}*: Speed uncertainty, meters/sec. Can be NaN.
 
