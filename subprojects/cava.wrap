@@ -1,7 +1,11 @@
-[wrap-file]
-directory = cava-0.10.4
-source_url = https://github.com/LukashonakV/cava/archive/0.10.4.tar.gz
-source_filename = cava-0.10.4.tar.gz
-source_hash =7bc1c1f9535f2bcc5cd2ae8a2434a2e3a05f5670b1c96316df304137ffc65756
+[wrap-git]
+url = https://github.com/LukashonakV/cava.git
+revision = 23efcced43b5a395747b18a2e5f2171fc0925d18
+depth = 1
+
+#directory = cava-0.10.6
+#source_url = https://github.com/LukashonakV/cava/archive/0.10.6.tar.gz
+#source_filename = cava-0.10.6.tar.gz
+#source_hash = e715c4c6a625b8dc063e57e8e81c80e4d1015ec1b98db69a283b2c6770f839f4
 [provide]
 cava = cava_dep

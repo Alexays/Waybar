@@ -43,13 +43,13 @@ class CavaBackend final {
   util::SleeperThread thread_;
   util::SleeperThread read_thread_;
   // Cava API to read audio source
-  ::cava::ptr input_source_;
+  ::cava::ptr input_source_{NULL};
 
   struct ::cava::error_s error_{};          // cava errors
   struct ::cava::config_params prm_{};      // cava parameters
   struct ::cava::audio_raw audio_raw_{};    // cava handled raw audio data(is based on audio_data)
   struct ::cava::audio_data audio_data_{};  // cava audio data
-  struct ::cava::cava_plan* plan_;          //{new cava_plan{}};
+  struct ::cava::cava_plan* plan_{NULL};    //{new cava_plan{}};
 
   std::chrono::seconds fetch_input_delay_{4};
   // Delay to handle audio source
