@@ -14,16 +14,17 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       mixer_api_(nullptr),
       def_nodes_api_(nullptr),
       default_node_name_(nullptr),
-      default_source_name_(nullptr),
       pending_plugins_(0),
       muted_(false),
-      source_muted_(false),
       volume_(0.0),
-      source_volume_(0.0),
       min_step_(0.0),
       node_id_(0),
+      type_(nullptr),
       source_node_id_(0),
-      type_(nullptr) {
+      source_muted_(false),
+      source_volume_(0.0),
+      default_source_name_(nullptr),
+      form_factor_("") {
   waybar::modules::Wireplumber::modules.push_back(this);
 
   wp_init(WP_INIT_PIPEWIRE);
@@ -97,6 +98,21 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
                      : description != nullptr ? description
                                               : "Unknown node name";
   spdlog::debug("[{}]: Updating '{}' node name to: {}", self->name_, self->type_, self->node_name_);
+
+  // find form-factor
+  const auto* devid = wp_properties_get(properties, "device.id");
+  spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
+
+  auto* dev = static_cast<WpDevice*>(wp_object_manager_lookup(
+      self->om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=s", devid, nullptr));
+
+  if (const auto* ff =
+          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(dev), "device.form-factor")) {
+    self->form_factor_ = ff;
+    spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
+  } else {
+    self->form_factor_ = "";
+  }
 }
 
 void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber* self,
@@ -358,6 +374,8 @@ void waybar::modules::Wireplumber::prepare(waybar::modules::Wireplumber* self) {
                                  "=s", self->type_, nullptr);
   wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
                                  "=s", "Audio/Source", nullptr);
+  wp_object_manager_add_interest(om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
+                                 "=s", "Audio/Device", nullptr);
 }
 
 void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
@@ -415,13 +433,55 @@ void waybar::modules::Wireplumber::asyncLoadRequiredApiModules() {
                          this);
 }
 
+static const std::array<std::string, 7> ports = {
+    "headphone", "speaker", "headset", "hands-free", "portable", "car", "hifi",
+};
+
+std::vector<std::string> waybar::modules::Wireplumber::getWPIcon() {
+  std::vector<std::string> res;
+  if (muted_) {
+    res.emplace_back(node_name_ + "-muted");
+  }
+  res.push_back(node_name_);
+  res.push_back(source_name_);
+  std::transform(form_factor_.begin(), form_factor_.end(), form_factor_.begin(), ::tolower);
+  for (auto const& port : ports) {
+    if (form_factor_.find(port) != std::string::npos) {
+      if (muted_) {
+        res.emplace_back(port + "-muted");
+      }
+      res.push_back(port);
+      break;
+    }
+  }
+  if (muted_) {
+    res.emplace_back("default-muted");
+  }
+  return res;
+}
+
 auto waybar::modules::Wireplumber::update() -> void {
   auto format = format_;
   std::string tooltipFormat;
+  std::string format_name = "format";
+
+  // Handle sink bluetooth state
+  const std::string name = default_node_name_ != nullptr ? default_node_name_ : "";
+
+  auto bt = name.find("bluez") != std::string::npos || name.find("a2dp-sink") != std::string::npos;
+  if (bt) {
+    format_name += "-bluetooth";
+    label_.get_style_context()->add_class("bluetooth");
+  } else {
+    label_.get_style_context()->remove_class("bluetooth");
+  }
 
   // Handle sink mute state
   if (muted_) {
-    format = config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
+    // Check muted bluetooth format exists, otherwise fall back to default muted format.
+    if (format_name != "format" && !config_[format_name + "-muted"].isString())
+      format_name = "format";
+    format_name += "-muted";
     label_.get_style_context()->add_class("muted");
     label_.get_style_context()->add_class("sink-muted");
   } else {
@@ -441,13 +501,10 @@ auto waybar::modules::Wireplumber::update() -> void {
 
   // Get the state and apply state-specific format if available
   auto state = getState(vol);
-  if (!state.empty()) {
-    std::string format_name = muted_ ? "format-muted" : "format";
-    std::string state_format_name = format_name + "-" + state;
-    if (config_[state_format_name].isString()) {
-      format = config_[state_format_name].asString();
-    }
-  }
+  if (!state.empty() && config_[format_name + "-" + state].isString())
+    format = config_[format_name + "-" + state].asString();
+  else if (config_[format_name].isString())
+    format = config_[format_name].asString();
 
   // Prepare source format string (similar to PulseAudio)
   std::string format_source = "{volume}%";
@@ -465,10 +522,10 @@ auto waybar::modules::Wireplumber::update() -> void {
   std::string formatted_source =
       fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_vol));
 
-  std::string markup =
-      fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
-                  fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
-                  fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_));
+  std::string markup = fmt::format(
+      fmt::runtime(format), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
+      fmt::arg("icon", getIcon(vol, getWPIcon())), fmt::arg("format_source", formatted_source),
+      fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_));
   label_.set_markup(markup);
 
   if (tooltipEnabled()) {
@@ -479,7 +536,7 @@ auto waybar::modules::Wireplumber::update() -> void {
     if (!tooltipFormat.empty()) {
       label_.set_tooltip_text(fmt::format(
           fmt::runtime(tooltipFormat), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
-          fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
+          fmt::arg("icon", getIcon(vol, getWPIcon())), fmt::arg("format_source", formatted_source),
           fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_)));
     } else {
       label_.set_tooltip_text(node_name_);
