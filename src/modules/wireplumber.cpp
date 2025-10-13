@@ -99,34 +99,19 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
                                               : "Unknown node name";
   spdlog::debug("[{}]: Updating '{}' node name to: {}", self->name_, self->type_, self->node_name_);
 
-  // find form-factor only if sink
-  if (g_strcmp0(self->type_, "Audio/Sink") == 0) {
-    const auto* devid = wp_properties_get(properties, "device.id");
-    spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
+  // find form-factor
+  const auto* devid = wp_properties_get(properties, "device.id");
+  spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
 
-    auto* devproxy = static_cast<WpProxy*>(
-        wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                 "bound-id", "=s", devid, nullptr));
+  auto* dev = static_cast<WpDevice*>(wp_object_manager_lookup(
+      self->om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=s", devid, nullptr));
 
-    if (devproxy == nullptr) {
-      auto err = fmt::format("Object '{}' not found\n", devid);
-      spdlog::error("[{}]: {}", self->name_, err);
-      throw std::runtime_error(err);
-    }
-
-    g_autoptr(WpProperties) devprop =
-        WP_IS_PIPEWIRE_OBJECT(devproxy) != 0
-            ? wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(devproxy))
-            : wp_properties_new_empty();
-    devprop = wp_properties_ensure_unique_owner(devprop);
-
-    if (const auto* ff =
-            wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(devproxy), "device.form-factor")) {
-      self->form_factor_ = ff;
-      spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
-    } else {
-      self->form_factor_ = "";
-    }
+  if (const auto* ff =
+          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(dev), "device.form-factor")) {
+    self->form_factor_ = ff;
+    spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
+  } else {
+    self->form_factor_ = "";
   }
 }
 
@@ -485,8 +470,6 @@ auto waybar::modules::Wireplumber::update() -> void {
 
   auto bt = name.find("bluez") != std::string::npos || name.find("a2dp-sink") != std::string::npos;
   if (bt) {
-    // format =
-    //     config_["format-bluetooth"].isString() ? config_["format-bluetooth"].asString() : format;
     format_name += "-bluetooth";
     label_.get_style_context()->add_class("bluetooth");
   } else {
@@ -495,12 +478,6 @@ auto waybar::modules::Wireplumber::update() -> void {
 
   // Handle sink mute state
   if (muted_) {
-    // if (bt)
-    //   format = config_["format-bluetooth-muted"].isString()
-    //                ? config_["format-bluetooth-muted"].asString()
-    //                : format;
-    // else
-    //   format = config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
     // Check muted bluetooth format exists, otherwise fall back to default muted format.
     if (format_name != "format" && !config_[format_name + "-muted"].isString())
       format_name = "format";
