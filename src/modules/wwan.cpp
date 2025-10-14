@@ -1,8 +1,10 @@
 #include "modules/wwan.hpp"
+
 #include <spdlog/spdlog.h>
 
 #include <cmath>
 #include <cstdio>
+
 #include "ModemManager.h"
 #include "libmm-glib.h"
 
@@ -16,13 +18,12 @@
 #endif
 
 namespace {
-  using namespace waybar::util;
-  constexpr const char *DEFAULT_FORMAT = "{state}";
+using namespace waybar::util;
+constexpr const char* DEFAULT_FORMAT = "{state}";
 }  // namespace
 
-
 waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
-: ALabel(config, "wwan", id, "{}", 5) {
+    : ALabel(config, "wwan", id, "{}", 5) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
@@ -35,13 +36,9 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
     return;
   }
 
-
-  manager = mm_manager_new_sync(
-    connection,
-    G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,
-    nullptr,  // cancellable
-    &error
-  );
+  manager = mm_manager_new_sync(connection, G_DBUS_OBJECT_MANAGER_CLIENT_FLAGS_NONE,
+                                nullptr,  // cancellable
+                                &error);
 
   if (error) {
     spdlog::error("Failed to create ModemManager proxy: " + std::string(error->message));
@@ -55,10 +52,9 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
   if (config_["hide-disconnected"].isBool()) {
     hideDisconnected = config_["hide-disconnected"].asBool();
   }
-
 }
 
-void waybar::modules::Wwan::updateCurrentModem(){
+void waybar::modules::Wwan::updateCurrentModem() {
   // get 1st modem (or modem with the specified hardware path)
 
   GList* modems = g_dbus_object_manager_get_objects(G_DBUS_OBJECT_MANAGER(manager));
@@ -75,7 +71,7 @@ void waybar::modules::Wwan::updateCurrentModem(){
       std::string path = config_["path"].asString();
       std::string other = mm_modem_dup_physdev(modem);
 
-      if(path != other) {
+      if (path != other) {
         g_object_unref(modem);
         modem = nullptr;
         continue;
@@ -86,7 +82,7 @@ void waybar::modules::Wwan::updateCurrentModem(){
       std::string imei = config_["imei"].asString();
       std::string other = mm_modem_dup_equipment_identifier(modem);
 
-      if(imei != other) {
+      if (imei != other) {
         g_object_unref(modem);
         modem = nullptr;
         continue;
@@ -155,7 +151,6 @@ std::string getModemStateFormatString(MMModem* modem) {
 }
 
 std::string getPreferredModeString(MMModem* modem) {
-
   MMModemModeCombination combination;
   mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
 
@@ -175,27 +170,20 @@ std::string getPreferredModeString(MMModem* modem) {
   }
 }
 
-
 std::string getCurrentModesString(MMModem* modem) {
-
   MMModemModeCombination combination;
   mm_modem_get_current_modes(modem, &combination.allowed, &combination.preferred);
 
   std::string buffer;
 
-  if(combination.allowed & MMModemMode::MM_MODEM_MODE_CS)
-    buffer += "CS | ";
-  if(combination.allowed & MMModemMode::MM_MODEM_MODE_2G)
-    buffer += "2G | ";
-  if(combination.allowed & MMModemMode::MM_MODEM_MODE_3G)
-    buffer += "3G | ";
-  if(combination.allowed & MMModemMode::MM_MODEM_MODE_4G)
-    buffer += "4G | ";
-  if(combination.allowed & MMModemMode::MM_MODEM_MODE_5G)
-    buffer += "5G | ";
+  if (combination.allowed & MMModemMode::MM_MODEM_MODE_CS) buffer += "CS | ";
+  if (combination.allowed & MMModemMode::MM_MODEM_MODE_2G) buffer += "2G | ";
+  if (combination.allowed & MMModemMode::MM_MODEM_MODE_3G) buffer += "3G | ";
+  if (combination.allowed & MMModemMode::MM_MODEM_MODE_4G) buffer += "4G | ";
+  if (combination.allowed & MMModemMode::MM_MODEM_MODE_5G) buffer += "5G | ";
 
   if (buffer.length() > 2) {
-    buffer.erase(buffer.length()-2);
+    buffer.erase(buffer.length() - 2);
   }
   return buffer;
 }
@@ -216,7 +204,6 @@ std::string getPowerStateString(MMModem* modem) {
 }
 
 std::string getOperatorNameString(MMModem* modem) {
-
   MMSim* sim = mm_modem_get_sim_sync(modem, nullptr, nullptr);
 
   if (sim == nullptr) {
@@ -267,7 +254,6 @@ auto waybar::modules::Wwan::update() -> void {
     format_ = default_format_;
     state_ = state;
   }
-
 
   auto format = format_;
 
