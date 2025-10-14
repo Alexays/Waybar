@@ -21,7 +21,7 @@ namespace waybar::modules {
 
   private:
 
-    const void updateCurrentModem();
+    void updateCurrentModem();
 
     util::SleeperThread thread_;
     std::string state_;
