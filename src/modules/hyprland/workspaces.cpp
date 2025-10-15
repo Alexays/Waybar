@@ -68,10 +68,9 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
   spdlog::debug("Creating workspace {}", workspaceId);
 
   // avoid recreating existing workspaces
-  auto workspace =
-      std::ranges::find_if(m_workspaces, [workspaceId](std::unique_ptr<Workspace> const &w) {
-        return workspaceId == w->id();
-      });
+  auto workspace = std::ranges::find_if(
+      m_workspaces,
+      [workspaceId](std::unique_ptr<Workspace> const &w) { return workspaceId == w->id(); });
 
   if (workspace != m_workspaces.end()) {
     // don't recreate workspace, but update persistency if necessary
@@ -971,9 +970,8 @@ auto Workspaces::update() -> void {
 void Workspaces::updateWindowCount() {
   const Json::Value workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
   for (auto const &workspace : m_workspaces) {
-    auto workspaceJson = std::ranges::find_if(workspacesJson, [&](Json::Value const &x) {
-      return x["id"].asInt() == workspace->id();
-    });
+    auto workspaceJson = std::ranges::find_if(
+        workspacesJson, [&](Json::Value const &x) { return x["id"].asInt() == workspace->id(); });
     uint32_t count = 0;
     if (workspaceJson != workspacesJson.end()) {
       try {
