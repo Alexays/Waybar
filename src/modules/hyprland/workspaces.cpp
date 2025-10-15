@@ -217,8 +217,6 @@ void Workspaces::initializeWorkspaces() {
     // a persistent workspace config is defined, so use that instead of workspace rules
     loadPersistentWorkspacesFromConfig(clientsJson);
   }
-  // load Hyprland's workspace rules
-  loadPersistentWorkspacesFromWorkspaceRules(clientsJson);
 }
 
 bool isDoubleSpecial(std::string const& workspace_name) {
@@ -290,51 +288,6 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const& clientsJs
     auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
     workspaceData["persistent-config"] = true;
     m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
-  }
-}
-
-void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& clientsJson) {
-  spdlog::info("Loading persistent workspaces from Hyprland workspace rules");
-
-  auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
-  for (Json::Value const& rule : workspaceRules) {
-    if (!rule["workspaceString"].isString()) {
-      spdlog::warn("Workspace rules: invalid workspaceString, skipping: {}", rule);
-      continue;
-    }
-    if (!rule["persistent"].asBool()) {
-      continue;
-    }
-    auto workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
-                                                  : rule["workspaceString"].asString();
-
-    // There could be persistent special workspaces, only show those when show-special is enabled.
-    if (workspace.starts_with("special:") && !showSpecial()) {
-      continue;
-    }
-
-    // The prefix "name:" cause mismatches with workspace names taken anywhere else.
-    if (workspace.starts_with("name:")) {
-      workspace = workspace.substr(5);
-    }
-    auto const& monitor = rule["monitor"].asString();
-    // create this workspace persistently if:
-    // 1. the allOutputs config option is enabled
-    // 2. the rule's monitor is the current monitor
-    // 3. no monitor is specified in the rule => assume it needs to be persistent on every monitor
-    if (allOutputs() || m_bar.output->name == monitor || monitor.empty()) {
-      // => skip ignore-workspaces even if its a persistent
-      if (isWorkspaceIgnored(workspace)) {
-        continue;
-      }
-      // => persistent workspace should be shown on this monitor
-      auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
-      workspaceData["persistent-rule"] = true;
-      m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
-    } else {
-      // This can be any workspace selector.
-      m_workspacesToRemove.emplace_back(workspace);
-    }
   }
 }
 
