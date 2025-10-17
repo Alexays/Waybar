@@ -25,6 +25,7 @@ class PrivacyNodeInfo {
   std::string media_name;
   std::string node_name;
   std::string application_name;
+  bool is_monitor = false;
 
   std::string pipewire_access_portal_app_id;
   std::string application_icon_name;

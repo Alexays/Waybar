@@ -2,7 +2,11 @@
 
 #include <spdlog/spdlog.h>
 #include <unistd.h>
+#ifndef __OpenBSD__
 #include <wordexp.h>
+#else
+#include <glob.h>
+#endif
 
 #include <filesystem>
 #include <fstream>
@@ -34,6 +38,7 @@ std::vector<std::string> Config::tryExpandPath(const std::string &base,
   spdlog::debug("Try expanding: {}", path.string());
 
   std::vector<std::string> results;
+#ifndef __OpenBSD__
   wordexp_t p;
   if (wordexp(path.c_str(), &p, 0) == 0) {
     for (size_t i = 0; i < p.we_wordc; i++) {
@@ -44,6 +49,18 @@ std::vector<std::string> Config::tryExpandPath(const std::string &base,
     }
     wordfree(&p);
   }
+#else
+  glob_t p;
+  if (glob(path.c_str(), 0, NULL, &p) == 0) {
+    for (size_t i = 0; i < p.gl_pathc; i++) {
+      if (access(p.gl_pathv[i], F_OK) == 0) {
+        results.emplace_back(p.gl_pathv[i]);
+        spdlog::debug("Found config file: {}", p.gl_pathv[i]);
+      }
+    }
+    globfree(&p);
+  }
+#endif
 
   return results;
 }
@@ -89,19 +106,49 @@ void Config::setupConfig(Json::Value &dst, const std::string &config_file, int d
   mergeConfig(dst, tmp_config);
 }
 
+std::vector<std::string> Config::findIncludePath(const std::string &name,
+                                                 const std::vector<std::string> &dirs) {
+  auto match1 = tryExpandPath(name, "");
+  if (!match1.empty()) {
+    return match1;
+  }
+  if (const char *dir = std::getenv(Config::CONFIG_PATH_ENV)) {
+    if (auto res = tryExpandPath(dir, name); !res.empty()) {
+      return res;
+    }
+  }
+  for (const auto &dir : dirs) {
+    if (auto res = tryExpandPath(dir, name); !res.empty()) {
+      return res;
+    }
+  }
+
+  return {};
+}
+
 void Config::resolveConfigIncludes(Json::Value &config, int depth) {
   Json::Value includes = config["include"];
   if (includes.isArray()) {
     for (const auto &include : includes) {
       spdlog::info("Including resource file: {}", include.asString());
-      for (const auto &match : tryExpandPath(include.asString(), "")) {
-        setupConfig(config, match, depth + 1);
+      auto matches = findIncludePath(include.asString());
+      if (!matches.empty()) {
+        for (const auto &match : matches) {
+          setupConfig(config, match, depth + 1);
+        }
+      } else {
+        spdlog::warn("Unable to find resource file: {}", include.asString());
       }
     }
   } else if (includes.isString()) {
     spdlog::info("Including resource file: {}", includes.asString());
-    for (const auto &match : tryExpandPath(includes.asString(), "")) {
-      setupConfig(config, match, depth + 1);
+    auto matches = findIncludePath(includes.asString());
+    if (!matches.empty()) {
+      for (const auto &match : matches) {
+        setupConfig(config, match, depth + 1);
+      }
+    } else {
+      spdlog::warn("Unable to find resource file: {}", includes.asString());
     }
   }
 }

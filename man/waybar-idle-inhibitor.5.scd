@@ -125,3 +125,9 @@ screensaver, also known as "presentation mode".
 	"timeout": 30.5
 }
 ```
+
+# STYLE
+
+- *#idle_inhibitor*
+- *#idle_inhibitor.activated*
+- *#idle_inhibitor.deactivated*

@@ -6,14 +6,12 @@
 
 namespace waybar {
 
-using namespace Gio;
-
 enum class Appearance {
   UNKNOWN = 0,
   DARK = 1,
   LIGHT = 2,
 };
-class Portal : private DBus::Proxy {
+class Portal : private Gio::DBus::Proxy {
  public:
   Portal();
   void refreshAppearance();
