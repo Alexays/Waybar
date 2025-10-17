@@ -13,26 +13,40 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       tooltip_format_enabled_{config_["tooltip-format"].isString()},
       percentage_(0),
       fp_(nullptr),
-      pid_(-1) {
+      pid_(-1),
+      shared_mode_(config_["shared"].isBool() && config_["shared"].asBool()) {
   if (config.isNull()) {
     spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
   }
-  dp.emit();
-  if (!config_["signal"].empty() && config_["interval"].empty() &&
-      config_["restart-interval"].empty()) {
-    waitingWorker();
-  } else if (interval_.count() > 0) {
-    delayWorker();
-  } else if (config_["exec"].isString()) {
-    continuousWorker();
+
+  if (shared_mode_) {
+    // Use shared worker backend
+    worker_key_ = computeWorkerKey();
+    CustomExecWorker::inst().subscribe(worker_key_, output_name_, this);
+  } else {
+    // Use dedicated worker (existing behavior)
+    if (!config_["signal"].empty() && config_["interval"].empty() &&
+        config_["restart-interval"].empty()) {
+      waitingWorker();
+    } else if (interval_.count() > 0) {
+      delayWorker();
+    } else if (config_["exec"].isString()) {
+      continuousWorker();
+    }
   }
+
+  dp.emit();
 }
 
 waybar::modules::Custom::~Custom() {
-  if (pid_ != -1) {
-    killpg(pid_, SIGTERM);
-    waitpid(pid_, NULL, 0);
-    pid_ = -1;
+  if (shared_mode_) {
+    CustomExecWorker::inst().unsubscribe(worker_key_, this);
+  } else {
+    if (pid_ != -1) {
+      killpg(pid_, SIGTERM);
+      waitpid(pid_, NULL, 0);
+      pid_ = -1;
+    }
   }
 }
 
@@ -137,13 +151,21 @@ void waybar::modules::Custom::waitingWorker() {
 
 void waybar::modules::Custom::refresh(int sig) {
   if (sig == SIGRTMIN + config_["signal"].asInt()) {
-    thread_.wake_up();
+    if (shared_mode_) {
+      CustomExecWorker::inst().wakeWorker(worker_key_);
+    } else {
+      thread_.wake_up();
+    }
   }
 }
 
 void waybar::modules::Custom::handleEvent() {
   if (!config_["exec-on-event"].isBool() || config_["exec-on-event"].asBool()) {
-    thread_.wake_up();
+    if (shared_mode_) {
+      CustomExecWorker::inst().wakeWorker(worker_key_);
+    } else {
+      thread_.wake_up();
+    }
   }
 }
 
@@ -293,4 +315,23 @@ void waybar::modules::Custom::parseOutputJson() {
     }
     break;
   }
+}
+
+waybar::modules::WorkerKey waybar::modules::Custom::computeWorkerKey() const {
+  waybar::modules::WorkerKey key;
+  key.exec = config_["exec"].asString();
+  key.exec_if = config_["exec-if"].asString();
+  key.interval_ms = config_["interval"].isNumeric()
+                        ? static_cast<int64_t>(config_["interval"].asDouble() * 1000)
+                        : 0;
+  key.restart_interval_ms = config_["restart-interval"].isNumeric()
+                                ? static_cast<int64_t>(config_["restart-interval"].asDouble() * 1000)
+                                : 0;
+  key.signal = config_["signal"].isInt() ? config_["signal"].asInt() : 0;
+  return key;
+}
+
+void waybar::modules::Custom::onExecOutput(const util::command::res& output) {
+  output_ = output;
+  dp.emit();  // Trigger UI update
 }

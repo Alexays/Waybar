@@ -6,18 +6,22 @@
 #include <string>
 
 #include "ALabel.hpp"
+#include "modules/custom_exec_worker.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Custom : public ALabel {
+class Custom : public ALabel, public CustomExecObserver {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&, const std::string&);
   virtual ~Custom();
   auto update() -> void override;
   void refresh(int /*signal*/) override;
+
+  // Implement CustomExecObserver
+  void onExecOutput(const util::command::res& output) override;
 
  private:
   void delayWorker();
@@ -44,6 +48,12 @@ class Custom : public ALabel {
   util::JsonParser parser_;
 
   util::SleeperThread thread_;
+
+  // Shared mode support
+  bool shared_mode_;
+  waybar::modules::WorkerKey worker_key_;
+
+  waybar::modules::WorkerKey computeWorkerKey() const;
 };
 
 }  // namespace waybar::modules
