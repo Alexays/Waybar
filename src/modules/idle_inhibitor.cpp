@@ -195,16 +195,20 @@ void waybar::modules::IdleInhibitor::setupActivityMonitoring() {
     return;
   }
 
+  // Get non-const reference to the window to set up event monitoring
+  // This is safe because we're only setting up signal handlers, not modifying the Bar itself
+  auto& window = const_cast<Gtk::Window&>(bar_.window);
+  
   // Enable motion and key event monitoring on the bar window
-  auto window = bar_.window.get_window();
-  if (window) {
-    window->set_events(window->get_events() | Gdk::POINTER_MOTION_MASK | Gdk::KEY_PRESS_MASK);
+  auto gdk_window = window.get_window();
+  if (gdk_window) {
+    gdk_window->set_events(gdk_window->get_events() | Gdk::POINTER_MOTION_MASK | Gdk::KEY_PRESS_MASK);
   }
 
   // Connect to the bar window's event signals
-  motion_connection_ = bar_.window.signal_motion_notify_event().connect(
+  motion_connection_ = window.signal_motion_notify_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleMotion));
-  key_connection_ = bar_.window.signal_key_press_event().connect(
+  key_connection_ = window.signal_key_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleKey));
 }
 
