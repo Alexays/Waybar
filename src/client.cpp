@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "gtkmm/icontheme.h"
+#include "ext-idle-notify-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
@@ -26,6 +27,9 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
   } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
     client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1 *>(
         wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
+  } else if (strcmp(interface, ext_idle_notifier_v1_interface.name) == 0) {
+    client->idle_notifier = static_cast<struct ext_idle_notifier_v1 *>(
+        wl_registry_bind(registry, name, &ext_idle_notifier_v1_interface, 1));
   }
 }
 

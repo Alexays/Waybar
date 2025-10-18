@@ -10,9 +10,8 @@ namespace waybar::modules {
 
 class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
-  sigc::connection activity_timeout_;
-  sigc::connection motion_connection_;
-  sigc::connection key_connection_;
+  struct ext_idle_notification_v1* idle_notification_;
+  uint32_t idle_timeout_ms_;
 
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
@@ -24,12 +23,11 @@ class IdleInhibitor : public ALabel {
 
  private:
   bool handleToggle(GdkEventButton* const& e) override;
-  bool handleMotion(GdkEventMotion* const& e);
-  bool handleKey(GdkEventKey* const& e);
   void toggleStatus();
-  void resetActivityTimeout();
-  void setupActivityMonitoring();
-  void teardownActivityMonitoring();
+  void setupIdleNotification();
+  void teardownIdleNotification();
+  static void handleIdled(void* data, struct ext_idle_notification_v1* notification);
+  static void handleResumed(void* data, struct ext_idle_notification_v1* notification);
 
   const Bar& bar_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
