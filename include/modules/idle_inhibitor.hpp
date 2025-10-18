@@ -10,7 +10,7 @@ namespace waybar::modules {
 
 class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
-  struct ext_idle_notification_v1* idle_notification_;
+  struct ::ext_idle_notification_v1* idle_notification_;
   uint32_t idle_timeout_ms_;
 
  public:
@@ -26,8 +26,8 @@ class IdleInhibitor : public ALabel {
   void toggleStatus();
   void setupIdleNotification();
   void teardownIdleNotification();
-  static void handleIdled(void* data, struct ext_idle_notification_v1* notification);
-  static void handleResumed(void* data, struct ext_idle_notification_v1* notification);
+  static void handleIdled(void* data, struct ::ext_idle_notification_v1* notification);
+  static void handleResumed(void* data, struct ::ext_idle_notification_v1* notification);
 
   const Bar& bar_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
