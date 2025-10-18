@@ -160,7 +160,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
 }
 
 void waybar::modules::IdleInhibitor::handleIdled(void* data, 
-                                                  struct ::ext_idle_notification_v1* /*notification*/) {
+                                                  ext_idle_notification_v1* /*notification*/) {
   spdlog::info("deactivating idle_inhibitor due to user inactivity");
   status = false;
   for (auto const& module : waybar::modules::IdleInhibitor::modules) {
@@ -169,7 +169,7 @@ void waybar::modules::IdleInhibitor::handleIdled(void* data,
 }
 
 void waybar::modules::IdleInhibitor::handleResumed(void* data,
-                                                    struct ::ext_idle_notification_v1* /*notification*/) {
+                                                    ext_idle_notification_v1* /*notification*/) {
   // User became active again - notification will continue monitoring
   spdlog::debug("user activity detected, idle_inhibitor still active");
 }
