@@ -6,6 +6,8 @@
 #include "bar.hpp"
 #include "client.hpp"
 
+struct ext_idle_notification_v1;
+
 namespace waybar::modules {
 
 class IdleInhibitor : public ALabel {
