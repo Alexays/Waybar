@@ -3,6 +3,7 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <iostream>
 #include <utility>
 
@@ -28,8 +29,11 @@ void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint
     client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1 *>(
         wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
   } else if (strcmp(interface, ext_idle_notifier_v1_interface.name) == 0) {
+    // Bind version 2 if available (for get_input_idle_notification), otherwise version 1
+    auto bind_version = std::min(version, 2u);
     client->idle_notifier = static_cast<struct ext_idle_notifier_v1 *>(
-        wl_registry_bind(registry, name, &ext_idle_notifier_v1_interface, 1));
+        wl_registry_bind(registry, name, &ext_idle_notifier_v1_interface, bind_version));
+    spdlog::debug("Bound ext-idle-notifier-v1 at version {}", bind_version);
   }
 }
 
