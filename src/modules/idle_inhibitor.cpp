@@ -119,6 +119,9 @@ void waybar::modules::IdleInhibitor::toggleStatus() {
 
     // If wait-for-activity is enabled, set up idle notification
     if (wait_for_activity_) {
+      spdlog::debug("idle_inhibitor: wait-for-activity enabled, timeout: {} ms", idle_timeout_ms_);
+      // Tear down any existing notification first to ensure fresh setup
+      teardownIdleNotification();
       setupIdleNotification();
     } else {
       // Original behavior: simple timeout
@@ -163,6 +166,13 @@ void waybar::modules::IdleInhibitor::handleIdled(void* data,
                                                   ext_idle_notification_v1* /*notification*/) {
   spdlog::info("deactivating idle_inhibitor due to user inactivity");
   status = false;
+  
+  // Clean up the notification since we're deactivating
+  auto* self = static_cast<IdleInhibitor*>(data);
+  if (self != nullptr) {
+    self->teardownIdleNotification();
+  }
+  
   for (auto const& module : waybar::modules::IdleInhibitor::modules) {
     module->update();
   }
@@ -175,9 +185,12 @@ void waybar::modules::IdleInhibitor::handleResumed(void* data,
 }
 
 void waybar::modules::IdleInhibitor::setupIdleNotification() {
-  // Don't set up if already exists
+  spdlog::debug("idle_inhibitor: setting up idle notification");
+  
+  // Clean up any existing notification first
   if (idle_notification_ != nullptr) {
-    return;
+    spdlog::debug("idle_inhibitor: cleaning up existing notification before setup");
+    teardownIdleNotification();
   }
 
   auto* client = waybar::Client::inst();
@@ -197,8 +210,14 @@ void waybar::modules::IdleInhibitor::setupIdleNotification() {
   // Create idle notification that monitors all input (not just when inhibitor is active)
   // We use get_idle_notification instead of get_input_idle_notification to respect
   // idle inhibitors from other applications
+  spdlog::debug("idle_inhibitor: creating notification with timeout {} ms", idle_timeout_ms_);
   idle_notification_ = ext_idle_notifier_v1_get_idle_notification(
       client->idle_notifier, idle_timeout_ms_, wl_seat);
+
+  if (idle_notification_ == nullptr) {
+    spdlog::error("idle_inhibitor: failed to create idle notification");
+    return;
+  }
 
   static const struct ext_idle_notification_v1_listener idle_notification_listener = {
       .idled = &IdleInhibitor::handleIdled,
@@ -207,10 +226,12 @@ void waybar::modules::IdleInhibitor::setupIdleNotification() {
 
   ext_idle_notification_v1_add_listener(idle_notification_, &idle_notification_listener, this);
   wl_display_roundtrip(client->wl_display);
+  spdlog::debug("idle_inhibitor: idle notification setup complete");
 }
 
 void waybar::modules::IdleInhibitor::teardownIdleNotification() {
   if (idle_notification_ != nullptr) {
+    spdlog::debug("idle_inhibitor: tearing down idle notification");
     ext_idle_notification_v1_destroy(idle_notification_);
     idle_notification_ = nullptr;
   }
