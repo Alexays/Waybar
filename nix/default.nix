@@ -15,7 +15,7 @@ let
     };
   };
 in
-(waybar.overrideAttrs (oldAttrs: {
+waybar.overrideAttrs (oldAttrs: {
   inherit version;
 
   src = lib.cleanSourceWith {
@@ -43,4 +43,4 @@ in
     patchShebangs .
     popd
   '';
-}))
+})
