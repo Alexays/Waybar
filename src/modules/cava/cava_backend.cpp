@@ -18,7 +18,7 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) {
   // Load cava config
   error_.length = 0;
 
-  if (!load_config(cfgPath, &prm_, false, &error_)) {
+  if (!load_config(cfgPath, &prm_, false, &error_, 0)) {
     spdlog::error("cava backend. Error loading config. {0}", error_.message);
     exit(EXIT_FAILURE);
   }
@@ -26,8 +26,10 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) {
   // Override cava parameters by the user config
   prm_.inAtty = 0;
   prm_.output = ::cava::output_method::OUTPUT_RAW;
-  strcpy(prm_.data_format, "ascii");
-  strcpy(prm_.raw_target, "/dev/stdout");
+  if (prm_.data_format) free(prm_.data_format);
+  prm_.data_format = strdup("ascii");
+  if (prm_.raw_target) free(prm_.raw_target);
+  prm_.raw_target = strdup("/dev/stdout");
   prm_.ascii_range = config["format-icons"].size() - 1;
 
   prm_.bar_width = 2;
@@ -54,7 +56,10 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) {
   if (config["sleep_timer"].isInt()) prm_.sleep_timer = config["sleep_timer"].asInt();
   if (config["method"].isString())
     prm_.input = ::cava::input_method_by_name(config["method"].asString().c_str());
-  if (config["source"].isString()) prm_.audio_source = config["source"].asString().data();
+  if (config["source"].isString()) {
+    if (prm_.audio_source) free(prm_.audio_source);
+    prm_.audio_source = config["source"].asString().data();
+  }
   if (config["sample_rate"].isNumeric()) prm_.samplerate = config["sample_rate"].asLargestInt();
   if (config["sample_bits"].isInt()) prm_.samplebits = config["sample_bits"].asInt();
   if (config["stereo"].isBool()) prm_.stereo = config["stereo"].asBool();
@@ -67,25 +72,14 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) {
   if (config["input_delay"].isInt())
     fetch_input_delay_ = std::chrono::seconds(config["input_delay"].asInt());
 
-  // Make cava parameters configuration
-  plan_ = new ::cava::cava_plan{};
-
   audio_raw_.height = prm_.ascii_range;
   audio_data_.format = -1;
-  audio_data_.source = new char[1 + strlen(prm_.audio_source)];
-  audio_data_.source[0] = '\0';
-  strcpy(audio_data_.source, prm_.audio_source);
-
   audio_data_.rate = 0;
   audio_data_.samples_counter = 0;
   audio_data_.channels = 2;
   audio_data_.IEEE_FLOAT = 0;
-
   audio_data_.input_buffer_size = BUFFER_SIZE * audio_data_.channels;
   audio_data_.cava_buffer_size = audio_data_.input_buffer_size * 8;
-
-  audio_data_.cava_in = new double[audio_data_.cava_buffer_size]{0.0};
-
   audio_data_.terminate = 0;
   audio_data_.suspendFlag = false;
   input_source_ = get_input(&audio_data_, &prm_);
@@ -95,8 +89,9 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) {
     exit(EXIT_FAILURE);
   }
 
+  // Make cava parameters configuration
   // Init cava plan, audio_raw structure
-  audio_raw_init(&audio_data_, &audio_raw_, &prm_, plan_);
+  audio_raw_init(&audio_data_, &audio_raw_, &prm_, &plan_);
   if (!plan_) spdlog::error("cava backend plan is not provided");
   audio_raw_.previous_frame[0] = -1;  // For first Update() call need to rePaint text message
   // Read audio source trough cava API. Cava orginizes this process via infinity loop
@@ -118,8 +113,16 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) {
 waybar::modules::cava::CavaBackend::~CavaBackend() {
   thread_.stop();
   read_thread_.stop();
+  cava_destroy(plan_);
   delete plan_;
   plan_ = nullptr;
+  audio_raw_clean(&audio_raw_);
+  pthread_mutex_lock(&audio_data_.lock);
+  audio_data_.terminate = 1;
+  pthread_mutex_unlock(&audio_data_.lock);
+  config_clean(&prm_);
+  free(audio_data_.source);
+  free(audio_data_.cava_in);
 }
 
 static void upThreadDelay(std::chrono::milliseconds& delay, std::chrono::seconds& delta) {
