@@ -47,6 +47,9 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     user_proxy->signal_signal().connect(sigc::mem_fun(*this, &SystemdFailedUnits::notify_cb));
   }
 
+  if (!user_proxy && !system_proxy)
+    throw std::runtime_error("Neither system nor user status is requested.");
+
   updateData();
   /* Always update for the first time. */
   dp.emit();
@@ -71,7 +74,7 @@ auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
 void SystemdFailedUnits::RequestSystemState() {
   auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> std::string {
     try {
-      if (!proxy) return "unknown";
+      if (!proxy) return "ignored";
       auto parameters = Glib::VariantContainerBase(
           g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "SystemState"));
       Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
@@ -90,7 +93,9 @@ void SystemdFailedUnits::RequestSystemState() {
 
   system_state = load("systemwide", system_proxy);
   user_state = load("user", user_proxy);
-  if (system_state == "running" && user_state == "running")
+
+  if ((system_state == "running" || system_state == "ignored") &&
+      (user_state == "running" || user_state == "ignored"))
     overall_state = "ok";
   else
     overall_state = "degraded";
