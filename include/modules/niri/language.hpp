@@ -29,7 +29,6 @@ class Language : public ALabel, public EventHandler {
   static Layout getLayout(const std::string &fullName);
 
   std::mutex mutex_;
-  const Bar &bar_;
 
   std::vector<Layout> layouts_;
   unsigned current_idx_;

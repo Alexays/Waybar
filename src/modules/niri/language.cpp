@@ -9,7 +9,7 @@
 namespace waybar::modules::niri {
 
 Language::Language(const std::string &id, const Bar &bar, const Json::Value &config)
-    : ALabel(config, "language", id, "{}", 0, false), bar_(bar) {
+    : ALabel(config, "language", id, "{}", 0, false) {
   label_.hide();
 
   if (!gIPC) gIPC = std::make_unique<IPC>();
@@ -129,7 +129,10 @@ Language::Layout Language::getLayout(const std::string &fullName) {
     const auto *descriptionPtr = rxkb_layout_get_brief(layout);
     std::string description = descriptionPtr == nullptr ? "" : std::string(descriptionPtr);
 
-    Layout info = Layout{nameOfLayout, name, variant, description};
+    Layout info = Layout{.full_name = nameOfLayout,
+                         .short_name = name,
+                         .variant = variant,
+                         .short_description = description};
 
     rxkb_context_unref(context);
 
@@ -140,7 +143,7 @@ Language::Layout Language::getLayout(const std::string &fullName) {
 
   spdlog::debug("niri language didn't find matching layout for {}", fullName);
 
-  return Layout{"", "", "", ""};
+  return Layout{.full_name = "", .short_name = "", .variant = "", .short_description = ""};
 }
 
 }  // namespace waybar::modules::niri

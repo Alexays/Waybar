@@ -4,6 +4,8 @@
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
 namespace waybar::modules::niri {
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
@@ -35,16 +37,15 @@ void Workspaces::doUpdate() {
   const auto alloutputs = config_["all-outputs"].asBool();
   std::vector<Json::Value> my_workspaces;
   const auto &workspaces = gIPC->workspaces();
-  std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
-               [&](const auto &ws) {
-                 if (alloutputs) return true;
-                 return ws["output"].asString() == bar_.output->name;
-               });
+  std::ranges::copy_if(workspaces, std::back_inserter(my_workspaces), [&](const auto &ws) {
+    if (alloutputs) return true;
+    return ws["output"].asString() == bar_.output->name;
+  });
 
   // Remove buttons for removed workspaces.
   for (auto it = buttons_.begin(); it != buttons_.end();) {
-    auto ws = std::find_if(my_workspaces.begin(), my_workspaces.end(),
-                           [it](const auto &ws) { return ws["id"].asUInt64() == it->first; });
+    auto ws = std::ranges::find_if(
+        my_workspaces, [it](const auto &ws) { return ws["id"].asUInt64() == it->first; });
     if (ws == my_workspaces.end()) {
       it = buttons_.erase(it);
     } else {
