@@ -17,7 +17,7 @@ class Group : public AModule {
   operator Gtk::Widget &() override;
 
   virtual Gtk::Box &getBox();
-  void addWidget(Gtk::Widget &widget);
+  void addWidget(AModule* module);
 
  protected:
   Gtk::Box box;
@@ -26,12 +26,17 @@ class Group : public AModule {
   bool is_first_widget = true;
   bool is_drawer = false;
   bool click_to_reveal = false;
+  std::string always_visible_class;
   std::string add_class_to_drawer_children;
   bool handleMouseEnter(GdkEventCrossing *const &ev) override;
   bool handleMouseLeave(GdkEventCrossing *const &ev) override;
   bool handleToggle(GdkEventButton *const &ev) override;
   void show_group();
   void hide_group();
+  void manage_visibility(AModule* module);
+  void show_widget(Gtk::Widget& widget);
+  void hide_widget(Gtk::Widget& widget);
+  void hide_current_widget_if_inactive();
 };
 
 }  // namespace waybar
