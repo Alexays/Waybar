@@ -94,6 +94,7 @@ xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
 libgps = dependency('libgps', required: get_option('gps'))
+libmm_glib = dependency('libmm-glib', required: get_option('wwan'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -515,6 +516,12 @@ if libgps.found()
    man_files += files('man/waybar-gps.5.scd')
 endif
 
+if libmm_glib.found()
+   add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
+   src_files += files('src/modules/wwan.cpp')
+   #man_files += files('man/waybar-wwan.5.scd')
+endif
+
 subdir('protocol')
 
 app_resources = []
@@ -554,7 +561,9 @@ executable(
         tz_dep,
 		xkbregistry,
         cava,
-        libgps
+        libgps,
+        libmm_glib
+
     ],
     include_directories: inc_dirs,
     install: true,
