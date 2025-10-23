@@ -21,7 +21,7 @@ waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &
 
   // Set up scroll handler
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScroll));
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Backlight::handleScrollEvent));
 }
 
 auto waybar::modules::Backlight::update() -> void {
@@ -79,10 +79,10 @@ auto waybar::modules::Backlight::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Backlight::handleScrollEvent(GdkEventScroll *e) {
   // Check if the user has set a custom command for scrolling
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
-    return AModule::handleScroll(e);
+    return AModule::handleScrollEvent(e);
   }
 
   // Fail fast if the proxy could not be initialized
