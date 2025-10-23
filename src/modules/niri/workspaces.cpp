@@ -4,9 +4,197 @@
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 
+#include "util/command.hpp"
+#include "util/string.hpp"
+
 namespace waybar::modules::niri {
 
-Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
+std::string getWorkspaceName(const Json::Value& workspace_data) {
+  if (workspace_data["name"]) return workspace_data["name"].asString();
+  return std::to_string(workspace_data["idx"].asUInt());
+}
+
+Workspace::Workspace(const Json::Value& config, const uint64_t id, const std::string& name)
+    : config_(config), id_(id), name_(name) {
+  button_.set_name("niri-workspace-" + name_);
+
+  taskBarConfig_ = config_["workspace-taskbar"];
+  if (taskBarConfig_.get("enable", false).asBool())
+    content_.pack_start(label_, false, false);
+  else
+    content_.set_center_widget(label_);
+  // label_.set_label(name_);
+
+  label_.get_style_context()->add_class("workspace-label");
+  button_.set_relief(Gtk::RELIEF_NONE);
+  if (!config_["disable-click"].asBool()) {
+    button_.signal_pressed().connect([=] {
+      try {
+        // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
+        Json::Value request(Json::objectValue);
+        auto& action = (request["Action"] = Json::Value(Json::objectValue));
+        auto& focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
+        auto& reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
+        reference["Id"] = id_;
+
+        IPC::send(request);
+      } catch (const std::exception& e) {
+        spdlog::error("Error switching workspace: {}", e.what());
+      }
+    });
+  }
+  button_.add(content_);
+}
+
+std::string Workspace::getIcon(const std::string& value, const Json::Value& ws) {
+  const auto& icons = config_["format-icons"];
+  if (!icons) return value;
+
+  if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
+
+  if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
+
+  if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
+
+  if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
+
+  if (ws["name"]) {
+    const auto& name = ws["name"].asString();
+    if (icons[name]) return icons[name].asString();
+  }
+
+  const auto idx = ws["idx"].asString();
+  if (icons[idx]) return icons[idx].asString();
+
+  if (icons["default"]) return icons["default"].asString();
+
+  return value;
+}
+
+void Workspace::updateTaskbar(const std::vector<Json::Value>& windows_data) {
+  if (!taskBarConfig_.get("enable", false).asBool()) return;
+
+  for (auto child : content_.get_children()) {
+    if (child != &label_) {
+      content_.remove(*child);
+    }
+  }
+
+  auto separator = taskBarConfig_.get("separator", " ").asString();
+
+  auto sorted_windows_data = windows_data;
+  std::sort(sorted_windows_data.begin(), sorted_windows_data.end(),
+            [](const Json::Value& a, const Json::Value& b) {
+              auto layoutA = a["layout"];
+              auto layoutB = b["layout"];
+              return layoutA["pos_in_scrolling_layout"][0].asInt() <
+                     layoutB["pos_in_scrolling_layout"][0].asInt();
+            });
+  int window_count = 0;
+  for (const auto& window : sorted_windows_data) {
+    if (window_count++ != 0 && !separator.empty()) {
+      auto windowSeparator = Gtk::make_managed<Gtk::Label>(separator);
+      content_.pack_start(*windowSeparator, false, false);
+    }
+    if (window["workspace_id"].asUInt64() != id_) continue;
+
+    auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
+    window_box->set_tooltip_text(window["title"].asString());
+    window_box->get_style_context()->add_class("taskbar-window");
+    if (window["is_focused"].asBool()) window_box->get_style_context()->add_class("focused");
+    if (window["is_urgent"].asBool()) window_box->get_style_context()->add_class("urgent");
+    auto event_box = Gtk::make_managed<Gtk::EventBox>();
+    event_box->add(*window_box);
+    if (!config_["disable-click"].asBool()) {
+      auto window_click_lambda_func = [](GdkEventButton* event, const uint64_t window_id) -> bool {
+        if (event->type == GDK_BUTTON_PRESS) {
+          try {
+            // {"Action":{"FocusWindow":{"reference":{"Id":1}}}}
+            Json::Value request(Json::objectValue);
+            auto& action = (request["Action"] = Json::Value(Json::objectValue));
+            auto& focusWindow = (action["FocusWindow"] = Json::Value(Json::objectValue));
+            focusWindow["id"] = window_id;
+
+            IPC::send(request);
+          } catch (const std::exception& e) {
+            spdlog::error("Error focusing window: {}", e.what());
+            return false;
+          }
+        }
+        return true;
+      };
+      bool (*func_ptr)(GdkEventButton*, const uint64_t) = window_click_lambda_func;
+      event_box->signal_button_press_event().connect(
+          sigc::bind(sigc::ptr_fun(func_ptr), window["id"].asUInt64()));
+    }
+    auto window_icon = Gtk::make_managed<Gtk::Image>();
+    iconLoader_.image_load_icon(
+        *window_icon, IconLoader::get_app_info_from_app_id_list(window["app_id"].asString()),
+        taskBarConfig_.get("icon-size", 16).asInt());
+    window_box->pack_start(*window_icon, false, false);
+    content_.pack_start(*event_box, false, false);
+  }
+}
+
+void Workspace::update(const Json::Value& workspace_data,
+                       const std::vector<Json::Value>& windows_data, const std::string& display) {
+  auto style_context = button_.get_style_context();
+
+  if (workspace_data["is_focused"].asBool())
+    style_context->add_class("focused");
+  else
+    style_context->remove_class("focused");
+
+  if (workspace_data["is_active"].asBool())
+    style_context->add_class("active");
+  else
+    style_context->remove_class("active");
+
+  if (workspace_data["is_urgent"].asBool())
+    style_context->add_class("urgent");
+  else
+    style_context->remove_class("urgent");
+
+  if (workspace_data["output"]) {
+    if (workspace_data["output"].asString() == display)
+      style_context->add_class("current_output");
+    else
+      style_context->remove_class("current_output");
+  } else {
+    style_context->remove_class("current_output");
+  }
+
+  if (workspace_data["active_window_id"].isNull())
+    style_context->add_class("empty");
+  else
+    style_context->remove_class("empty");
+
+  std::string name = getWorkspaceName(workspace_data);
+  if (config_["format"].isString()) {
+    auto format = config_["format"].asString();
+    name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, workspace_data)),
+                       fmt::arg("value", name), fmt::arg("name", workspace_data["name"].asString()),
+                       fmt::arg("index", workspace_data["idx"].asUInt()),
+                       fmt::arg("output", workspace_data["output"].asString()));
+  }
+  if (!config_["disable-markup"].asBool())
+    label_.set_markup(name);
+  else
+    label_.set_text(name);
+
+  updateTaskbar(windows_data);
+
+  if (config_["current-only"].asBool()) {
+    const auto* property = config_["all-outputs"].asBool() ? "is_focused" : "is_active";
+    if (workspace_data[property].asBool())
+      button_.show_all();
+    else
+      button_.hide();
+  } else
+    button_.show_all();
+}
+
+Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   box_.set_name("workspaces");
   if (!id.empty()) {
@@ -21,112 +209,61 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   gIPC->registerForIPC("WorkspaceActivated", this);
   gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
   gIPC->registerForIPC("WorkspaceUrgencyChanged", this);
+  gIPC->registerForIPC("WindowFocusChanged", this);
+  gIPC->registerForIPC("WindowOpenedOrChanged", this);
 
   dp.emit();
 }
 
 Workspaces::~Workspaces() { gIPC->unregisterForIPC(this); }
 
-void Workspaces::onEvent(const Json::Value &ev) { dp.emit(); }
+void Workspaces::onEvent(const Json::Value& ev) { dp.emit(); }
 
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
 
   const auto alloutputs = config_["all-outputs"].asBool();
   std::vector<Json::Value> my_workspaces;
-  const auto &workspaces = gIPC->workspaces();
+  const auto& workspaces = gIPC->workspaces();
   std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
-               [&](const auto &ws) {
+               [&](const auto& ws) {
                  if (alloutputs) return true;
                  return ws["output"].asString() == bar_.output->name;
                });
 
   // Remove buttons for removed workspaces.
-  for (auto it = buttons_.begin(); it != buttons_.end();) {
+  for (auto it = workspaces_.begin(); it != workspaces_.end();) {
     auto ws = std::find_if(my_workspaces.begin(), my_workspaces.end(),
-                           [it](const auto &ws) { return ws["id"].asUInt64() == it->first; });
+                           [it](const auto& ws) { return ws["id"].asUInt64() == it->first; });
     if (ws == my_workspaces.end()) {
-      it = buttons_.erase(it);
+      it = workspaces_.erase(it);
     } else {
       ++it;
     }
   }
 
+  const auto& windows = gIPC->windows();
   // Add buttons for new workspaces, update existing ones.
-  for (const auto &ws : my_workspaces) {
-    auto bit = buttons_.find(ws["id"].asUInt64());
-    auto &button = bit == buttons_.end() ? addButton(ws) : bit->second;
-    auto style_context = button.get_style_context();
-
-    if (ws["is_focused"].asBool())
-      style_context->add_class("focused");
-    else
-      style_context->remove_class("focused");
-
-    if (ws["is_active"].asBool())
-      style_context->add_class("active");
-    else
-      style_context->remove_class("active");
-
-    if (ws["is_urgent"].asBool())
-      style_context->add_class("urgent");
-    else
-      style_context->remove_class("urgent");
-
-    if (ws["output"]) {
-      if (ws["output"].asString() == bar_.output->name)
-        style_context->add_class("current_output");
-      else
-        style_context->remove_class("current_output");
-    } else {
-      style_context->remove_class("current_output");
-    }
-
-    if (ws["active_window_id"].isNull())
-      style_context->add_class("empty");
-    else
-      style_context->remove_class("empty");
-
-    std::string name;
-    if (ws["name"]) {
-      name = ws["name"].asString();
-    } else {
-      name = std::to_string(ws["idx"].asUInt());
-    }
-    button.set_name("niri-workspace-" + name);
-
-    if (config_["format"].isString()) {
-      auto format = config_["format"].asString();
-      name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
-                         fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
-                         fmt::arg("index", ws["idx"].asUInt()),
-                         fmt::arg("output", ws["output"].asString()));
-    }
-    if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(name);
-    } else {
-      button.set_label(name);
-    }
-
-    if (config_["current-only"].asBool()) {
-      const auto *property = alloutputs ? "is_focused" : "is_active";
-      if (ws[property].asBool())
-        button.show();
-      else
-        button.hide();
-    } else {
-      button.show();
-    }
+  for (const auto& ws : my_workspaces) {
+    std::vector<Json::Value> my_windows;
+    std::copy_if(windows.cbegin(), windows.cend(), std::back_inserter(my_windows),
+                 [&](const auto& win) {
+                   if (alloutputs) return true;
+                   return win["workspace_id"].asUInt64() == ws["id"].asUInt64();
+                 });
+    const auto ws_id = ws["id"].asUInt64();
+    auto found_ws = workspaces_.find(ws_id);
+    if (found_ws == workspaces_.end()) addWorkspace(ws, my_windows);
+    workspaces_.at(ws_id)->update(ws, my_windows, bar_.output->name);
   }
 
-  // Refresh the button order.
   for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
-    const auto &ws = *it;
+    const auto& ws = *it;
 
     auto pos = ws["idx"].asUInt() - 1;
     if (alloutputs) pos = it - my_workspaces.cbegin();
 
-    auto &button = buttons_[ws["id"].asUInt64()];
+    auto& button = workspaces_[ws["id"].asUInt64()]->button();
     box_.reorder_child(button, pos);
   }
 }
@@ -136,61 +273,14 @@ void Workspaces::update() {
   AModule::update();
 }
 
-Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
-  std::string name;
-  if (ws["name"]) {
-    name = ws["name"].asString();
-  } else {
-    name = std::to_string(ws["idx"].asUInt());
-  }
+void Workspaces::addWorkspace(const Json::Value& workspace_data,
+                              const std::vector<Json::Value>& windows_data) {
+  const auto new_workspace_id = workspace_data["id"].asUInt64();
 
-  auto pair = buttons_.emplace(ws["id"].asUInt64(), name);
-  auto &&button = pair.first->second;
-  box_.pack_start(button, false, false, 0);
-  button.set_relief(Gtk::RELIEF_NONE);
-  if (!config_["disable-click"].asBool()) {
-    const auto id = ws["id"].asUInt64();
-    button.signal_pressed().connect([=] {
-      try {
-        // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
-        Json::Value request(Json::objectValue);
-        auto &action = (request["Action"] = Json::Value(Json::objectValue));
-        auto &focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
-        auto &reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
-        reference["Id"] = id;
-
-        IPC::send(request);
-      } catch (const std::exception &e) {
-        spdlog::error("Error switching workspace: {}", e.what());
-      }
-    });
-  }
-  return button;
-}
-
-std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws) {
-  const auto &icons = config_["format-icons"];
-  if (!icons) return value;
-
-  if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
-
-  if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
-
-  if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
-
-  if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
-
-  if (ws["name"]) {
-    const auto &name = ws["name"].asString();
-    if (icons[name]) return icons[name].asString();
-  }
-
-  const auto idx = ws["idx"].asString();
-  if (icons[idx]) return icons[idx].asString();
-
-  if (icons["default"]) return icons["default"].asString();
-
-  return value;
+  auto new_workspace =
+      std::make_unique<Workspace>(config_, new_workspace_id, getWorkspaceName(workspace_data));
+  box_.pack_start(new_workspace->button(), false, false, 0);
+  workspaces_[new_workspace_id] = std::move(new_workspace);
 }
 
 }  // namespace waybar::modules::niri
