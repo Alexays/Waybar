@@ -40,8 +40,8 @@ class CavaBackend final {
 
  private:
   CavaBackend(const Json::Value& config);
-  util::SleeperThread thread_;
   util::SleeperThread read_thread_;
+  sigc::connection out_thread_;
   // Cava API to read audio source
   ::cava::ptr input_source_{NULL};
 
@@ -55,6 +55,7 @@ class CavaBackend final {
   // Delay to handle audio source
   std::chrono::milliseconds frame_time_milsec_{1s};
 
+  const Json::Value& config_;
   int re_paint_{0};
   bool silence_{false};
   bool silence_prev_{false};
@@ -66,6 +67,9 @@ class CavaBackend final {
   void execute();
   bool isSilence();
   void doUpdate(bool force = false);
+  void loadConfig();
+  void freeBackend();
+  void doOutReadConnect();
 
   // Signal
   type_signal_update m_signal_update_;

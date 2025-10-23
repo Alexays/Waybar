@@ -1,6 +1,6 @@
 [wrap-git]
 url = https://github.com/LukashonakV/cava.git
-revision = 23efcced43b5a395747b18a2e5f2171fc0925d18
+revision = ddeecc8a2c9f786a03ff3ce2a29918573ef9c42e
 depth = 1
 
 #directory = cava-0.10.6
