@@ -5,17 +5,17 @@
   version,
 }:
 let
-  libcava = rec {
-    version = "0.10.4";
+  libcava = {
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
-      tag = version;
-      hash = "sha256-9eTDqM+O1tA/3bEfd1apm8LbEcR9CVgELTIspSVPMKM=";
+      # NOTE: Needs to match the cava.wrap
+      rev = "23efcced43b5a395747b18a2e5f2171fc0925d18";
+      hash = "sha256-CNspaoK5KuME0GfaNijpC24BfALngzNi04/VNwPqMvo=";
     };
   };
 in
-(waybar.overrideAttrs (oldAttrs: {
+waybar.overrideAttrs (oldAttrs: {
   inherit version;
 
   src = lib.cleanSourceWith {
@@ -39,8 +39,8 @@ in
 
   postUnpack = ''
     pushd "$sourceRoot"
-    cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava-${libcava.version}
+    cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava
     patchShebangs .
     popd
   '';
-}))
+})
