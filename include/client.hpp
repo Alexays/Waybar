@@ -12,6 +12,7 @@
 
 struct zwp_idle_inhibitor_v1;
 struct zwp_idle_inhibit_manager_v1;
+struct ext_idle_notifier_v1;
 
 namespace waybar {
 
@@ -27,6 +28,7 @@ class Client {
   struct wl_registry *registry = nullptr;
   struct zxdg_output_manager_v1 *xdg_output_manager = nullptr;
   struct zwp_idle_inhibit_manager_v1 *idle_inhibit_manager = nullptr;
+  struct ext_idle_notifier_v1 *idle_notifier = nullptr;
   std::vector<std::unique_ptr<Bar>> bars;
   Config config;
   std::string bar_id;
