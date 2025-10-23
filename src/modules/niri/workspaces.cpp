@@ -15,6 +15,24 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
+  // Parse ignore-workspaces rules.
+  auto ignoreWorkspaces = config["ignore-workspaces"];
+  if (ignoreWorkspaces.isArray()) {
+    for (const auto &workspaceRegex : ignoreWorkspaces) {
+      if (workspaceRegex.isString()) {
+        std::string ruleString = workspaceRegex.asString();
+        try {
+          const std::regex rule{ruleString, std::regex_constants::icase};
+          ignoreWorkspaces_.emplace_back(rule);
+        } catch (const std::regex_error &e) {
+          spdlog::error("Invalid ignore-workspaces rule {}: {}", ruleString, e.what());
+        }
+      } else {
+        spdlog::error("Not a string in ignore-workspaces: '{}'", workspaceRegex);
+      }
+    }
+  }
+
   if (!gIPC) gIPC = std::make_unique<IPC>();
 
   gIPC->registerForIPC("WorkspacesChanged", this);
@@ -37,6 +55,16 @@ void Workspaces::doUpdate() {
   const auto &workspaces = gIPC->workspaces();
   std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
                [&](const auto &ws) {
+                 std::string name;
+                 if (ws["name"]) {
+                   name = ws["name"].asString();
+                 } else {
+                   name = std::to_string(ws["idx"].asUInt());
+                 }
+                 if (isWorkspaceIgnored(name)) {
+                   return false;
+                 }
+
                  if (alloutputs) return true;
                  return ws["output"].asString() == bar_.output->name;
                });
@@ -191,6 +219,15 @@ std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws)
   if (icons["default"]) return icons["default"].asString();
 
   return value;
+}
+
+bool Workspaces::isWorkspaceIgnored(const std::string &name) {
+  for (auto &rule : ignoreWorkspaces_) {
+    if (std::regex_match(name, rule)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace waybar::modules::niri
