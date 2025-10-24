@@ -9,7 +9,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <iostream>
+#include <algorithm>
 #include <string>
 #include <thread>
 
@@ -28,13 +28,13 @@ int IPC::connectToSocket() {
     return -1;
   }
 
-  struct sockaddr_un addr;
   int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (socketfd == -1) {
     throw std::runtime_error("socketfd failed");
   }
 
+  struct sockaddr_un addr;
   addr.sun_family = AF_UNIX;
 
   strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path) - 1);
@@ -109,9 +109,9 @@ void IPC::parseIPC(const std::string &line) {
     if (const auto &payload = ev["WorkspacesChanged"]) {
       workspaces_.clear();
       const auto &values = payload["workspaces"];
-      std::copy(values.begin(), values.end(), std::back_inserter(workspaces_));
+      std::ranges::copy(values, std::back_inserter(workspaces_));
 
-      std::sort(workspaces_.begin(), workspaces_.end(), [](const auto &a, const auto &b) {
+      std::ranges::sort(workspaces_, [](const auto &a, const auto &b) {
         const auto &aOutput = a["output"].asString();
         const auto &bOutput = b["output"].asString();
         const auto aIdx = a["idx"].asUInt();
@@ -122,8 +122,8 @@ void IPC::parseIPC(const std::string &line) {
     } else if (const auto &payload = ev["WorkspaceActivated"]) {
       const auto id = payload["id"].asUInt64();
       const auto focused = payload["focused"].asBool();
-      auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                             [id](const auto &ws) { return ws["id"].asUInt64() == id; });
+      auto it = std::ranges::find_if(workspaces_,
+                                     [id](const auto &ws) { return ws["id"].asUInt64() == id; });
       if (it != workspaces_.end()) {
         const auto &ws = *it;
         const auto &output = ws["output"].asString();
@@ -138,7 +138,7 @@ void IPC::parseIPC(const std::string &line) {
       }
     } else if (const auto &payload = ev["WorkspaceActiveWindowChanged"]) {
       const auto workspaceId = payload["workspace_id"].asUInt64();
-      auto it = std::find_if(workspaces_.begin(), workspaces_.end(), [workspaceId](const auto &ws) {
+      auto it = std::ranges::find_if(workspaces_, [workspaceId](const auto &ws) {
         return ws["id"].asUInt64() == workspaceId;
       });
       if (it != workspaces_.end()) {
@@ -150,8 +150,8 @@ void IPC::parseIPC(const std::string &line) {
     } else if (const auto &payload = ev["WorkspaceUrgencyChanged"]) {
       const auto id = payload["id"].asUInt64();
       const auto urgent = payload["urgent"].asBool();
-      auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                             [id](const auto &ws) { return ws["id"].asUInt64() == id; });
+      auto it = std::ranges::find_if(workspaces_,
+                                     [id](const auto &ws) { return ws["id"].asUInt64() == id; });
       if (it != workspaces_.end()) {
         auto &ws = *it;
         ws["is_urgent"] = urgent;
@@ -170,12 +170,12 @@ void IPC::parseIPC(const std::string &line) {
     } else if (const auto &payload = ev["WindowsChanged"]) {
       windows_.clear();
       const auto &values = payload["windows"];
-      std::copy(values.begin(), values.end(), std::back_inserter(windows_));
+      std::ranges::copy(values, std::back_inserter(windows_));
     } else if (const auto &payload = ev["WindowOpenedOrChanged"]) {
       const auto &window = payload["window"];
       const auto id = window["id"].asUInt64();
-      auto it = std::find_if(windows_.begin(), windows_.end(),
-                             [id](const auto &win) { return win["id"].asUInt64() == id; });
+      auto it = std::ranges::find_if(windows_,
+                                     [id](const auto &win) { return win["id"].asUInt64() == id; });
       if (it == windows_.end()) {
         windows_.push_back(window);
 
@@ -189,8 +189,8 @@ void IPC::parseIPC(const std::string &line) {
       }
     } else if (const auto &payload = ev["WindowClosed"]) {
       const auto id = payload["id"].asUInt64();
-      auto it = std::find_if(windows_.begin(), windows_.end(),
-                             [id](const auto &win) { return win["id"].asUInt64() == id; });
+      auto it = std::ranges::find_if(windows_,
+                                     [id](const auto &win) { return win["id"].asUInt64() == id; });
       if (it != windows_.end()) {
         windows_.erase(it);
       } else {
