@@ -197,6 +197,7 @@ void Task::handle_title(const char *title) {
   }
   title_ = title;
   hide_if_ignored();
+  hide_if_duplicate();
 
   if (!with_icon_ && !with_name_ || app_info_) {
     return;
@@ -221,6 +222,26 @@ void Task::set_minimize_hint() {
                                                 minimize_hint.y, minimize_hint.w, minimize_hint.h);
 }
 
+void Task::hide_if_duplicate() {
+  const auto &squash_list = tbar_->squash_list();
+  bool contains_app =
+      squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
+
+  // Squashes if the app is in the squash list and more than 1 instance is open
+  if (contains_app && (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
+    squashed_ = true;
+    if (button_visible_) {
+      auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+      handle_output_leave(output);
+    }
+  }
+
+  if (!squashed_ && !ignored_) {
+    auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+    handle_output_enter(output);
+  }
+}
+
 void Task::hide_if_ignored() {
   if (tbar_->ignore_list().count(app_id_) || tbar_->ignore_list().count(title_)) {
     ignored_ = true;
@@ -228,7 +249,9 @@ void Task::hide_if_ignored() {
       auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
       handle_output_leave(output);
     }
-  } else {
+  }
+
+  if (!ignored_ && !squashed_) {
     bool is_was_ignored = ignored_;
     ignored_ = false;
     if (is_was_ignored) {
@@ -246,6 +269,7 @@ void Task::handle_app_id(const char *app_id) {
   }
   app_id_ = app_id;
   hide_if_ignored();
+  hide_if_duplicate();
 
   auto ids_replace_map = tbar_->app_ids_replace_map();
   if (ids_replace_map.count(app_id_)) {
@@ -283,6 +307,10 @@ void Task::on_button_size_allocated(Gtk::Allocation &alloc) {
 void Task::handle_output_enter(struct wl_output *output) {
   if (ignored_) {
     spdlog::debug("{} is ignored", repr());
+    return;
+  }
+  if (squashed_) {
+    spdlog::debug("{} was squashed", repr());
     return;
   }
 
@@ -364,6 +392,28 @@ void Task::handle_closed() {
     tbar_->remove_button(button);
     button_visible_ = false;
   }
+
+  const auto &squash_list = tbar_->squash_list();
+  const bool in_squash_list =
+      squash_list.contains("*") || squash_list.contains(title_) || squash_list.contains(app_id_);
+  if (in_squash_list && !squashed_ &&
+      (tbar_->task_id_count(app_id_) > 1 || tbar_->task_title_count(title_) > 1)) {
+    // Find next squashed task with same title or id (excluding ourselves)
+    auto tasks = tbar_->tasks();
+    const auto it = std::ranges::find_if(tasks, [this](auto &&task) {
+      return &task != this && task.squashed_ &&
+             (task.app_id() == app_id_ || task.title() == title_);
+    });
+
+    if (it != tasks.end() && !(*it).ignored_) {
+      Task &task = *it;
+      task.squashed_ = false;
+      tbar_->add_button(task.button);
+      task.button.show();
+      task.button_visible_ = true;
+    }
+  }
+
   tbar_->remove_task(id_);
 }
 
@@ -606,6 +656,13 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
     }
   }
 
+  // Load squash-list
+  if (config_["squash-list"].isArray()) {
+    for (auto &app_name : config_["squash-list"]) {
+      squash_list_.emplace(app_name.asString());
+    }
+  }
+
   // Load app_id remappings
   if (config_["app_ids-mapping"].isObject()) {
     const Json::Value &mapping = config_["app_ids-mapping"];
@@ -753,8 +810,18 @@ const IconLoader &Taskbar::icon_loader() const { return icon_loader_; }
 
 const std::unordered_set<std::string> &Taskbar::ignore_list() const { return ignore_list_; }
 
+const std::unordered_set<std::string> &Taskbar::squash_list() const { return squash_list_; }
+
 const std::map<std::string, std::string> &Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
+}
+
+std::size_t Taskbar::task_id_count(std::string_view id) const {
+  return std::ranges::count_if(tasks_, [=](auto &&task) { return id == task->app_id(); });
+}
+
+std::size_t Taskbar::task_title_count(std::string_view title) const {
+  return std::ranges::count_if(tasks_, [=](auto &&task) { return title == task->title(); });
 }
 
 } /* namespace waybar::modules::wlr */
