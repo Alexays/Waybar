@@ -50,6 +50,21 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
       high_priority_named_.push_back(it.asString());
     }
   }
+  if (config_["custom-sort"].isArray()) {
+    uint16_t priority = 0;
+    for (const auto &entry : config_["custom-sort"]) {
+      if (!entry.isString()) {
+        continue;
+      }
+      auto const name = entry.asString();
+      custom_sort_priorities_.insert_or_assign(name, priority);
+      auto const trimmed = trimWorkspaceName(name);
+      if (trimmed != name) {
+        custom_sort_priorities_.insert_or_assign(trimmed, priority);
+      }
+      ++priority;
+    }
+  }
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
@@ -202,6 +217,20 @@ void Workspaces::onCmd(const struct Ipc::ipc_response &res) {
                     auto rname = rhs["name"].asString();
                     int l = lhs["sort"].asInt();
                     int r = rhs["sort"].asInt();
+
+                    if (!custom_sort_priorities_.empty()) {
+                      auto const lcustom = getCustomSortIndex(lname);
+                      auto const rcustom = getCustomSortIndex(rname);
+                      if (lcustom && rcustom) {
+                        if (*lcustom != *rcustom) {
+                          return *lcustom < *rcustom;
+                        }
+                      } else if (lcustom) {
+                        return true;
+                      } else if (rcustom) {
+                        return false;
+                      }
+                    }
 
                     if (l == r || config_["alphabetical_sort"].asBool()) {
                       // In case both integers are the same, lexicographical
@@ -493,6 +522,24 @@ std::string Workspaces::trimWorkspaceName(std::string name) {
     return name.substr(found + 1);
   }
   return name;
+}
+
+std::optional<uint16_t> Workspaces::getCustomSortIndex(const std::string &name) const {
+  if (custom_sort_priorities_.empty()) {
+    return std::nullopt;
+  }
+  auto it = custom_sort_priorities_.find(name);
+  if (it != custom_sort_priorities_.end()) {
+    return it->second;
+  }
+  auto trimmed = trimWorkspaceName(name);
+  if (trimmed != name) {
+    auto trimmed_it = custom_sort_priorities_.find(trimmed);
+    if (trimmed_it != custom_sort_priorities_.end()) {
+      return trimmed_it->second;
+    }
+  }
+  return std::nullopt;
 }
 
 bool is_focused_recursive(const Json::Value &node) {
