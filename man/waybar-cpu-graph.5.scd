@@ -19,10 +19,6 @@ The *cpu graph* module displays a line graph with the CPU utilization.
 	typeof: integer ++
 	The length in pixels the module should display.
 
-*y_offset*: ++
-	typeof: integer ++
-	The margin in pixels at the bottom of the module.
-
 *datapoints*: ++
 	typeof: integer ++
 	How many data points to show.
@@ -72,8 +68,7 @@ Basic configuration:
 ```
 "cpu_graph": {
 	"interval": 2,
-	"width": 10,
-	"y_offset": 4
+	"width": 10
 }
 ```
 
