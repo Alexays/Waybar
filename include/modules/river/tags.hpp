@@ -20,6 +20,8 @@ class Tags : public waybar::AModule {
   void handle_focused_tags(uint32_t tags);
   void handle_view_tags(struct wl_array *tags);
   void handle_urgent_tags(uint32_t tags);
+  void handle_focused_output(struct wl_output *output);
+  void handle_unfocused_output(struct wl_output *output);
 
   void handle_show();
   void handle_primary_clicked(uint32_t tag);
@@ -31,9 +33,11 @@ class Tags : public waybar::AModule {
 
  private:
   const waybar::Bar &bar_;
+  struct wl_output *output_;          // stores the output this module belongs to
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
   struct zriver_output_status_v1 *output_status_;
+  struct zriver_seat_status_v1 *seat_status_;
 };
 
 } /* namespace waybar::modules::river */
