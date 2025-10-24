@@ -24,7 +24,6 @@ class AGraph : public AModule {
   Gtk::DrawingArea graph_;
   std::deque<int> values_;
   uint16_t datapoints_ = 20;
-  uint16_t y_offset_ = 0;
   GraphType graph_type_ = GraphType::LINE;
 
   void addValue(const int n);
