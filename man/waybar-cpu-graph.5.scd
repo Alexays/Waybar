@@ -1,4 +1,4 @@
-waybar-cpu(5)
+waybar-cpu-graph(5)
 
 # NAME
 
