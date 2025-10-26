@@ -93,7 +93,7 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 
 *weighted-average*: ++
     typeof: bool ++
-    default: false ++
+    default: true ++
     Option to combine multiple batteries with different capacities.
 
 *on-scroll-down*: ++
@@ -180,7 +180,7 @@ The *battery* module allows one to define custom formats based on up to two fact
 Every entry in the *events* object consists of a *<event-name>* (typeof: *string*) and a *<command>* (typeof: *string*). ++
 *<event-name>* can be in one of the following formats:
 
-- *on-<status>-<state>* 
+- *on-<status>-<state>*
 - *on-<status>-<capacity>*
 
 Where:
