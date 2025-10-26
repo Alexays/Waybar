@@ -91,6 +91,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	typeof: string ++
 	Command to execute when scrolling up on the module.
 
+*weighted-average*: ++
+    typeof: bool ++
+    default: false ++
+    Option to combine multiple batteries with different capacities.
+
 *on-scroll-down*: ++
 	typeof: string ++
 	Command to execute when scrolling down on the module.
