@@ -174,16 +174,16 @@ std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws)
 
   if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
 
+  if (ws["name"]) {
+    const auto &name = ws["name"].asString();
+    if (icons[name]) return icons[name].asString();
+  }
+
   if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
 
   if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
 
   if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
-
-  if (ws["name"]) {
-    const auto &name = ws["name"].asString();
-    if (icons[name]) return icons[name].asString();
-  }
 
   const auto idx = ws["idx"].asString();
   if (icons[idx]) return icons[idx].asString();
