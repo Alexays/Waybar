@@ -77,6 +77,7 @@ void Workspace::updateTaskbar(const std::vector<Json::Value>& windows_data) {
   for (auto child : content_.get_children()) {
     if (child != &label_) {
       content_.remove(*child);
+      delete child;
     }
   }
 
@@ -92,11 +93,11 @@ void Workspace::updateTaskbar(const std::vector<Json::Value>& windows_data) {
             });
   int window_count = 0;
   for (const auto& window : sorted_windows_data) {
+    if (window["workspace_id"].asUInt64() != id_) continue;
     if (window_count++ != 0 && !separator.empty()) {
       auto windowSeparator = Gtk::make_managed<Gtk::Label>(separator);
       content_.pack_start(*windowSeparator, false, false);
     }
-    if (window["workspace_id"].asUInt64() != id_) continue;
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_text(window["title"].asString());
