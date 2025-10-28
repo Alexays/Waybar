@@ -554,7 +554,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
         std::shared_ptr<AModule> module_sp(module);
         modules_all_.emplace_back(module_sp);
         if (group != nullptr) {
-          group->addWidget(*module);
+          group->addWidget(module);
         } else {
           if (pos == "modules-left") {
             modules_left_.emplace_back(module_sp);
