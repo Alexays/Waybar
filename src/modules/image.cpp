@@ -1,5 +1,7 @@
 #include "modules/image.hpp"
 
+#include <config.hpp>
+
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.pack_start(image_);
@@ -55,6 +57,10 @@ auto waybar::modules::Image::update() -> void {
   } else {
     path_ = "";
   }
+
+  // expand path if "~" or "$HOME" is present in original path
+  auto result = Config::tryExpandPath(path_, "");
+  path_ = result.empty() ? "" : result.front();
 
   if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS)) {
     Glib::RefPtr<Gdk::Pixbuf> pixbuf;
