@@ -1,5 +1,7 @@
 #include "modules/image.hpp"
 
+#include <config.hpp>
+
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.pack_start(image_);
@@ -26,6 +28,13 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     size_ = 16;
   }
 
+  if (config_["path"].isString()) {
+    auto result = Config::tryExpandPath(config_["path"].asString(), "");
+    path_ = result.empty() ? "" : result.front();
+  } else {
+    path_.clear();
+  }
+
   if (interval_.count() == 0) {
     interval_ = std::chrono::milliseconds::max();
   }
@@ -47,13 +56,12 @@ void waybar::modules::Image::refresh(int sig) {
 }
 
 auto waybar::modules::Image::update() -> void {
-  if (config_["path"].isString()) {
-    path_ = config_["path"].asString();
-  } else if (config_["exec"].isString()) {
+  if (config_["exec"].isString()) {
     output_ = util::command::exec(config_["exec"].asString(), "");
     parseOutputRaw();
-  } else {
-    path_ = "";
+    // expand path if "~" or "$HOME" is present in original path
+    auto result = Config::tryExpandPath(path_, "");
+    path_ = result.empty() ? "" : result.front();
   }
 
   if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS)) {
