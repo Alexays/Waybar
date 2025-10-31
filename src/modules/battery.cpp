@@ -7,9 +7,9 @@
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
-#include <spdlog/spdlog.h>
 #include <libudev.h>
 #include <poll.h>
+#include <spdlog/spdlog.h>
 #include <sys/signalfd.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
@@ -23,7 +23,8 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
   if (udev_ == nullptr) {
     throw std::runtime_error("udev_new failed");
   }
-  mon_ = std::unique_ptr<udev_monitor, util::UdevMonitorDeleter>(udev_monitor_new_from_netlink(udev_.get(), "kernel"));
+  mon_ = std::unique_ptr<udev_monitor, util::UdevMonitorDeleter>(
+      udev_monitor_new_from_netlink(udev_.get(), "kernel"));
   if (mon_ == nullptr) {
     throw std::runtime_error("udev monitor new failed");
   }

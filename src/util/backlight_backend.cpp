@@ -1,5 +1,4 @@
 #include "util/backlight_backend.hpp"
-#include "util/udev_deleter.hpp"
 
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
@@ -8,6 +7,8 @@
 #include <cmath>
 #include <optional>
 #include <utility>
+
+#include "util/udev_deleter.hpp"
 
 namespace {
 class FileDescriptor {

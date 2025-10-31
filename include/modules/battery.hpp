@@ -5,9 +5,7 @@
 #include <filesystem>
 #if defined(__linux__)
 #include <sys/inotify.h>
-#include "util/udev_deleter.hpp"
 #endif
-
 #include <sys/poll.h>
 
 #include <algorithm>
@@ -18,6 +16,7 @@
 #include "ALabel.hpp"
 #include "bar.hpp"
 #include "util/sleeper_thread.hpp"
+#include "util/udev_deleter.hpp"
 
 namespace waybar::modules {
 
