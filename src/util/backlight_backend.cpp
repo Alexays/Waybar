@@ -8,6 +8,8 @@
 #include <optional>
 #include <utility>
 
+#include "util/udev_deleter.hpp"
+
 namespace {
 class FileDescriptor {
  public:
@@ -27,22 +29,6 @@ class FileDescriptor {
 
  private:
   int fd_;
-};
-
-struct UdevDeleter {
-  void operator()(udev *ptr) { udev_unref(ptr); }
-};
-
-struct UdevDeviceDeleter {
-  void operator()(udev_device *ptr) { udev_device_unref(ptr); }
-};
-
-struct UdevEnumerateDeleter {
-  void operator()(udev_enumerate *ptr) { udev_enumerate_unref(ptr); }
-};
-
-struct UdevMonitorDeleter {
-  void operator()(udev_monitor *ptr) { udev_monitor_unref(ptr); }
 };
 
 void check_eq(int rc, int expected, const char *message = "eq, rc was: ") {
