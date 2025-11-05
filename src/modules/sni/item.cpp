@@ -156,15 +156,23 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
        * I still haven't found a way for it to pick from theme automatically, although
        * it might be my theme.
        */
+      std::string icon_id = id;
       if (id == "chrome_status_icon_1") {
         Glib::VariantBase value;
         this->proxy_->get_cached_property(value, "ToolTip");
         tooltip = get_variant<ToolTip>(value);
         if (!tooltip.text.empty()) {
-          setCustomIcon(tooltip.text.lowercase());
+          icon_id = tooltip.text.lowercase();
+          setCustomIcon(icon_id);
         }
       } else {
-        setCustomIcon(id);
+        setCustomIcon(icon_id);
+      }
+
+      // Check if this item should be hidden
+      if (IconManager::instance().isHidden(icon_id)) {
+        spdlog::debug("Hiding tray item with ID: {}", icon_id);
+        is_hidden_ = true;
       }
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
@@ -214,7 +222,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 
 void Item::setStatus(const Glib::ustring& value) {
   Glib::ustring lower = value.lowercase();
-  event_box.set_visible(show_passive_ || lower.compare("passive") != 0);
+  event_box.set_visible(!is_hidden_ && (show_passive_ || lower.compare("passive") != 0));
 
   auto style = event_box.get_style_context();
   for (const auto& class_name : style->list_classes()) {

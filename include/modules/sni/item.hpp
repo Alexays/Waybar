@@ -86,6 +86,8 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+  // hidden via config
+  bool is_hidden_ = false;
 
   const Bar& bar_;
 

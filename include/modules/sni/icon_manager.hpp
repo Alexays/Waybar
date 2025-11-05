@@ -5,6 +5,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 class IconManager {
  public:
@@ -19,7 +20,10 @@ class IconManager {
         std::string app_name = key;
         const Json::Value& icon_value = icons_config[key];
 
-        if (icon_value.isString()) {
+        if (icon_value.isBool() && !icon_value.asBool()) {
+          // false value means hide this app
+          hidden_apps_.insert(app_name);
+        } else if (icon_value.isString()) {
           std::string icon_path = icon_value.asString();
           icons_map_[app_name] = icon_path;
         }
@@ -37,7 +41,12 @@ class IconManager {
     return "";
   }
 
+  bool isHidden(const std::string& app_name) const {
+    return hidden_apps_.find(app_name) != hidden_apps_.end();
+  }
+
  private:
   IconManager() = default;
   std::unordered_map<std::string, std::string> icons_map_;
+  std::unordered_set<std::string> hidden_apps_;
 };
