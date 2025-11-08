@@ -6,7 +6,7 @@
 
 waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
                                 const Json::Value& config, const std::string& output_name)
-    : AGraph(config, "custom-graph" + name, id),
+    : AGraph(config, "custom-graph-" + name, id),
       name_(name),
       output_name_(output_name),
       id_(id),
