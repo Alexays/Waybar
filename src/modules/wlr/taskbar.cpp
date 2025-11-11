@@ -78,8 +78,14 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
     .parent = tl_handle_parent,
 };
 
+static const std::vector<Gtk::TargetEntry> source_entries = {
+    Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)
+};
 static const std::vector<Gtk::TargetEntry> target_entries = {
-    Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)};
+    Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0),
+    Gtk::TargetEntry("text/plain"),
+    Gtk::TargetEntry("application/octet-stream")
+};
 
 Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
            struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat)
@@ -146,12 +152,38 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
   button.signal_motion_notify_event().connect(sigc::mem_fun(*this, &Task::handle_motion_notify),
                                               false);
 
-  button.drag_source_set(target_entries, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
+  button.drag_source_set(source_entries, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
   button.drag_dest_set(target_entries, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
 
   button.signal_drag_data_get().connect(sigc::mem_fun(*this, &Task::handle_drag_data_get), false);
   button.signal_drag_data_received().connect(sigc::mem_fun(*this, &Task::handle_drag_data_received),
                                              false);
+
+  button.signal_drag_motion().connect(sigc::mem_fun(*this, &Task::handle_drag_motion));
+  button.signal_drag_leave().connect(sigc::mem_fun(*this, &Task::handle_drag_leave));
+}
+
+bool Task::handle_drag_motion(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y, guint time) {
+  auto targets = context->list_targets();
+  for (const auto& target : targets) {
+    if (target == "WAYBAR_TOPLEVEL") return true;
+  }
+  if (!activate_timer.connected()) {
+    activate_timer = Glib::signal_timeout().connect(
+      sigc::mem_fun(*this, &Task::handle_activate_timer),
+      500
+    );
+  }
+  return true;
+}
+
+bool Task::handle_activate_timer() {
+  activate();
+  return true;
+}
+
+void Task::handle_drag_leave(const Glib::RefPtr<Gdk::DragContext>& context, guint time) {
+  activate_timer.disconnect();
 }
 
 Task::~Task() {
@@ -417,7 +449,7 @@ bool Task::handle_motion_notify(GdkEventMotion *mn) {
 
   if (button.drag_check_threshold(drag_start_x, drag_start_y, mn->x, mn->y)) {
     /* start drag in addition to other assigned action */
-    auto target_list = Gtk::TargetList::create(target_entries);
+    auto target_list = Gtk::TargetList::create(source_entries);
     auto refptr = Glib::RefPtr<Gtk::TargetList>(target_list);
     auto drag_context =
         button.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent *)mn);
@@ -437,6 +469,8 @@ void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext> &context,
 void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext> &context, int x, int y,
                                      Gtk::SelectionData selection_data, guint info, guint time) {
   spdlog::debug("drag_data_received");
+  auto type = selection_data.get_data_type();
+  if (type != "WAYBAR_TOPLEVEL") return;
   gpointer handle = *(gpointer *)selection_data.get_data();
   auto dragged_button = (Gtk::Button *)handle;
 
