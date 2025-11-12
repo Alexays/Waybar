@@ -241,7 +241,7 @@ $text\\n$tooltip\\n$class*
 }
 ```
 
-Under the premise that intterval is not defined, you can use the signal and update the number of available packages with *pkill -RTMIN+8 waybar*.
+Under the premise that 'interval' is not defined, you can use the signal and update the number of available packages with *pkill -RTMIN+8 waybar*.
 
 # STYLE
 
