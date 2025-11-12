@@ -81,11 +81,6 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
 static const std::vector<Gtk::TargetEntry> source_entries = {
     Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)
 };
-static const std::vector<Gtk::TargetEntry> target_entries = {
-    Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0),
-    Gtk::TargetEntry("text/plain"),
-    Gtk::TargetEntry("application/octet-stream")
-};
 
 Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
            struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat)
@@ -153,7 +148,8 @@ Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
                                               false);
 
   button.drag_source_set(source_entries, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
-  button.drag_dest_set(target_entries, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
+  button.drag_dest_set(source_entries, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
+  gtk_drag_dest_set_track_motion(GTK_WIDGET(button.gobj()), TRUE);
 
   button.signal_drag_data_get().connect(sigc::mem_fun(*this, &Task::handle_drag_data_get), false);
   button.signal_drag_data_received().connect(sigc::mem_fun(*this, &Task::handle_drag_data_received),
