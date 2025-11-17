@@ -10,6 +10,7 @@
 #include <map>
 
 #include "gdk/gdk.h"
+#include "modules/sni/host.hpp"
 #include "modules/sni/icon_manager.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
@@ -37,13 +38,16 @@ namespace waybar::modules::SNI {
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
-Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
+Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
+           Host& host, const ItemOrderMap& orders)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
       icon_theme(Gtk::IconTheme::create()),
-      bar_(bar) {
+      bar_(bar),
+      host_(host),
+      orders_(orders) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -233,6 +237,17 @@ void Item::setStatus(const Glib::ustring& value) {
 
 void Item::setCustomIcon(const std::string& id) {
   spdlog::debug("SNI tray id: {}", id);
+
+  if (order_ == -1) {
+    auto iter = orders_.find(id);
+    if (iter != orders_.end()) {
+      order_ = iter->second;
+      spdlog::debug("reordering tray item {}, order: {}", id, order_);
+    } else {
+      order_ = 0;
+    }
+    host_.reorderItems();
+  }
 
   std::string custom_icon = IconManager::instance().getIconForApp(id);
   if (!custom_icon.empty()) {
