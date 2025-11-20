@@ -15,6 +15,13 @@
 #include <fmt/core.h>
 #endif
 
+extern "C" {
+  waybar::ALabel* new_gps(const std::string& id, const Json::Value& config)
+  {
+    return new waybar::modules::Gps(id, config);
+  }
+}
+
 namespace {
 using namespace waybar::util;
 constexpr const char* DEFAULT_FORMAT = "{mode}";

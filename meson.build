@@ -188,6 +188,13 @@ src_files = files(
     'src/util/css_reload_helper.cpp'
 )
 
+gps_src_files = files(
+    'src/AModule.cpp',
+    'src/ALabel.cpp',
+    'src/config.cpp',
+    'src/util/prepare_for_sleep.cpp',
+)
+
 man_files = files(
     'man/waybar-custom.5.scd',
     'man/waybar-disk.5.scd',
@@ -482,6 +489,9 @@ if get_option('rfkill').enabled() and is_linux
     src_files += files(
         'src/util/rfkill.cpp'
     )
+    gps_src_files += files(
+        'src/util/rfkill.cpp'
+    )
 endif
 
 if have_chrono_timezones
@@ -510,9 +520,22 @@ if cava.found()
 endif
 
 if libgps.found()
-   add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
-   src_files += files('src/modules/gps.cpp')
-   man_files += files('man/waybar-gps.5.scd')
+    add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
+    gps_src_files += files('src/modules/gps.cpp')
+    man_files += files('man/waybar-gps.5.scd')
+    shared_library(
+        'waybar-module-gps',
+        [gps_src_files],
+        name_prefix: '',
+        dependencies: [
+            fmt,
+            gtkmm,
+            jsoncpp,
+            libgps
+        ],
+        include_directories: inc_dirs,
+        install: true,
+    )
 endif
 
 subdir('protocol')
@@ -554,7 +577,6 @@ executable(
         tz_dep,
 		xkbregistry,
         cava,
-        libgps
     ],
     include_directories: inc_dirs,
     install: true,
