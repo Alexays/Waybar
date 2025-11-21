@@ -93,7 +93,9 @@ AModule::~AModule() {
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
-    pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
+    pid_children_.push_back(
+      util::command::forkExec(config_["on-update"].asString(), reap_mtx, reap)
+    );
   }
 }
 // Get mapping between event name and module action name
@@ -186,7 +188,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
       format.clear();
   }
   if (!format.empty()) {
-    pid_children_.push_back(util::command::forkExec(format));
+    pid_children_.push_back(util::command::forkExec(format, reap_mtx, reap));
   }
   dp.emit();
   return true;
@@ -271,7 +273,9 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   this->AModule::doAction(eventName);
   // Second call user scripts
   if (config_[eventName].isString())
-    pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
+    pid_children_.push_back(
+      util::command::forkExec(config_[eventName].asString(), reap_mtx, reap)
+    );
 
   dp.emit();
   return true;

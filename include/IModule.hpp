@@ -2,6 +2,10 @@
 
 #include <gtkmm/widget.h>
 
+#include <sys/types.h>
+#include <list>
+#include <mutex>
+
 namespace waybar {
 
 class IModule {
