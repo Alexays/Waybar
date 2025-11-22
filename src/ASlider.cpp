@@ -5,8 +5,9 @@
 
 namespace waybar {
 
-ASlider::ASlider(const Json::Value& config, const std::string& name, const std::string& id)
-    : AModule(config, name, id, false, false),
+ASlider::ASlider(const Json::Value& config, const std::string& name, const std::string& id,
+		std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, name, id, reap_mtx, reap, false, false),
       vertical_(config_["orientation"].asString() == "vertical"),
       scale_(vertical_ ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL) {
   scale_.set_name(name);
