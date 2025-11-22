@@ -11,9 +11,12 @@
 namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
+                 std::mutex& reap_mtx, std::list<pid_t>& reap,
                  bool enable_click, bool enable_scroll)
     : name_(name),
       config_(config),
+      reap_mtx(reap_mtx),
+      reap(reap),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
@@ -94,7 +97,7 @@ auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
     pid_children_.push_back(
-      util::command::forkExec(config_["on-update"].asString(), reap_mtx, reap)
+      util::command::forkExec(config_["on-update"].asString(), this->reap_mtx, this->reap)
     );
   }
 }
@@ -188,7 +191,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
       format.clear();
   }
   if (!format.empty()) {
-    pid_children_.push_back(util::command::forkExec(format, reap_mtx, reap));
+    pid_children_.push_back(util::command::forkExec(format, this->reap_mtx, this->reap));
   }
   dp.emit();
   return true;
@@ -274,7 +277,7 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   // Second call user scripts
   if (config_[eventName].isString())
     pid_children_.push_back(
-      util::command::forkExec(config_[eventName].asString(), reap_mtx, reap)
+      util::command::forkExec(config_[eventName].asString(), this->reap_mtx, this->reap)
     );
 
   dp.emit();
