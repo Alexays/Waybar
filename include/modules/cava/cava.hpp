@@ -7,7 +7,7 @@ namespace waybar::modules::cava {
 
 class Cava final : public ALabel, public sigc::trackable {
  public:
-  Cava(const std::string&, const Json::Value&);
+  Cava(const std::string&, const Json::Value&, std::mutex& reap_mtx, std::list<pid_t>& reap);
   ~Cava() = default;
   auto onUpdate(const std::string& input) -> void;
   auto onSilence() -> void;

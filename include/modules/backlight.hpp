@@ -17,7 +17,8 @@ namespace waybar::modules {
 
 class Backlight : public ALabel {
  public:
-  Backlight(const std::string &, const Json::Value &);
+  Backlight(const std::string &, const Json::Value &,
+            std::mutex& reap_mtx, std::list<pid_t>& reap);
   virtual ~Backlight() = default;
   auto update() -> void override;
 

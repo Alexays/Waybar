@@ -17,8 +17,9 @@ namespace waybar::modules::sway {
 const std::string Language::XKB_LAYOUT_NAMES_KEY = "xkb_layout_names";
 const std::string Language::XKB_ACTIVE_LAYOUT_NAME_KEY = "xkb_active_layout_name";
 
-Language::Language(const std::string& id, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, true) {
+Language::Language(const std::string& id, const Json::Value& config,
+                   std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "language", id, "{}", reap_mtx, reap, 0, true) {
   hide_single_ = config["hide-single-layout"].isBool() && config["hide-single-layout"].asBool();
   is_variant_displayed = format_.find("{variant}") != std::string::npos;
   if (format_.find("{}") != std::string::npos || format_.find("{short}") != std::string::npos) {

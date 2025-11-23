@@ -16,9 +16,10 @@
 #endif
 
 extern "C" {
-  waybar::ALabel* new_gps(const std::string& id, const Json::Value& config)
+  waybar::ALabel* new_gps(const std::string& id, const Json::Value& config,
+                          std::mutex& reap_mtx, std::list<pid_t>& reap)
   {
-    return new waybar::modules::Gps(id, config);
+    return new waybar::modules::Gps(id, config, reap_mtx, reap);
   }
 }
 
@@ -27,8 +28,9 @@ using namespace waybar::util;
 constexpr const char* DEFAULT_FORMAT = "{mode}";
 }  // namespace
 
-waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config)
-    : ALabel(config, "gps", id, "{}", 5)
+waybar::modules::Gps::Gps(const std::string& id, const Json::Value& config,
+                          std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "gps", id, "{}", reap_mtx, reap, 5)
 #ifdef WANT_RFKILL
       ,
       rfkill_{RFKILL_TYPE_GPS}

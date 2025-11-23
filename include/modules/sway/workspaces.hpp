@@ -18,7 +18,8 @@ namespace waybar::modules::sway {
 
 class Workspaces : public AModule, public sigc::trackable {
  public:
-  Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
+  Workspaces(const std::string&, const waybar::Bar&, const Json::Value&,
+             std::mutex& reap_mtx, std::list<pid_t>& reap);
   ~Workspaces() override = default;
   auto update() -> void override;
 

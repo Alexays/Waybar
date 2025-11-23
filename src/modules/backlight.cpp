@@ -13,8 +13,9 @@
 #include "util/backend_common.hpp"
 #include "util/backlight_backend.hpp"
 
-waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
-    : ALabel(config, "backlight", id, "{percent}%", 2),
+waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config,
+                                      std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "backlight", id, "{percent}%", reap_mtx, reap, 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
   dp.emit();

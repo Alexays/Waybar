@@ -9,8 +9,11 @@
 #endif
 #include <spdlog/spdlog.h>
 
-waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60), last_event_(""), bar_(bar) {
+waybar::modules::Battery::Battery(const std::string& id, const Bar& bar,
+                                  const Json::Value& config,
+                                  std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "battery", id, "{capacity}%", reap_mtx, reap, 60),
+      last_event_(""), bar_(bar) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {

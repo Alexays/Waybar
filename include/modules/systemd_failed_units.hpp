@@ -10,7 +10,8 @@ namespace waybar::modules {
 
 class SystemdFailedUnits : public ALabel {
  public:
-  SystemdFailedUnits(const std::string &, const Json::Value &);
+  SystemdFailedUnits(const std::string &, const Json::Value &,
+                     std::mutex& reap_mtx, std::list<pid_t>& reap);
   virtual ~SystemdFailedUnits();
   auto update() -> void override;
 
