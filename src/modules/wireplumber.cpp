@@ -6,8 +6,9 @@ bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
 std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
 
-waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config)
-    : ALabel(config, "wireplumber", id, "{volume}%"),
+waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config,
+                                          std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "wireplumber", id, "{volume}%", reap_mtx, reap),
       wp_core_(nullptr),
       apis_(nullptr),
       om_(nullptr),
