@@ -30,7 +30,8 @@ class Workspaces;
 
 class Workspaces : public AModule, public EventHandler {
  public:
-  Workspaces(const std::string&, const waybar::Bar&, const Json::Value&);
+  Workspaces(const std::string&, const waybar::Bar&, const Json::Value&,
+             std::mutex& reap_mtx, std::list<pid_t>& reap);
   ~Workspaces() override;
   void update() override;
   void init();

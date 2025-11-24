@@ -12,8 +12,10 @@
 
 namespace waybar::modules::hyprland {
 
-WindowCount::WindowCount(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AAppIconLabel(config, "windowcount", id, "{count}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
+WindowCount::WindowCount(const std::string& id, const Bar& bar, const Json::Value& config,
+                         std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AAppIconLabel(config, "windowcount", id, "{count}", reap_mtx, reap, 0, true),
+      bar_(bar), m_ipc(IPC::inst()) {
   separateOutputs_ =
       config.isMember("separate-outputs") ? config["separate-outputs"].asBool() : true;
 

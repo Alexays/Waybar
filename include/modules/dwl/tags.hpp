@@ -12,7 +12,8 @@ namespace waybar::modules::dwl {
 
 class Tags : public waybar::AModule {
  public:
-  Tags(const std::string &, const waybar::Bar &, const Json::Value &);
+  Tags(const std::string &, const waybar::Bar &, const Json::Value &,
+       std::mutex& reap_mtx, std::list<pid_t>& reap);
   virtual ~Tags();
 
   // Handlers for wayland events

@@ -10,7 +10,8 @@ namespace waybar::modules::niri {
 
 class Language : public ALabel, public EventHandler {
  public:
-  Language(const std::string &, const Bar &, const Json::Value &);
+  Language(const std::string &, const Bar &, const Json::Value &,
+           std::mutex& reap_mtx, std::list<pid_t>& reap);
   ~Language() override;
   void update() override;
 

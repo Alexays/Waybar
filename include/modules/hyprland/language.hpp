@@ -13,7 +13,8 @@ namespace waybar::modules::hyprland {
 
 class Language : public waybar::ALabel, public EventHandler {
  public:
-  Language(const std::string&, const waybar::Bar&, const Json::Value&);
+  Language(const std::string&, const waybar::Bar&, const Json::Value&,
+           std::mutex& reap_mtx, std::list<pid_t>& reap);
   virtual ~Language();
 
   auto update() -> void override;

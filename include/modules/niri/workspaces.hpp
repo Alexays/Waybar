@@ -11,7 +11,8 @@ namespace waybar::modules::niri {
 
 class Workspaces : public AModule, public EventHandler {
  public:
-  Workspaces(const std::string &, const Bar &, const Json::Value &);
+  Workspaces(const std::string &, const Bar &, const Json::Value &,
+             std::mutex& reap_mtx, std::list<pid_t>& reap);
   ~Workspaces() override;
   void update() override;
 

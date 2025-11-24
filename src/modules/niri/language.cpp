@@ -8,8 +8,9 @@
 
 namespace waybar::modules::niri {
 
-Language::Language(const std::string &id, const Bar &bar, const Json::Value &config)
-    : ALabel(config, "language", id, "{}", 0, false), bar_(bar) {
+Language::Language(const std::string &id, const Bar &bar, const Json::Value &config,
+                   std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "language", id, "{}", reap_mtx, reap, 0, false), bar_(bar) {
   label_.hide();
 
   if (!gIPC) gIPC = std::make_unique<IPC>();

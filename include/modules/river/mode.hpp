@@ -10,7 +10,8 @@ namespace waybar::modules::river {
 
 class Mode : public waybar::ALabel {
  public:
-  Mode(const std::string &, const waybar::Bar &, const Json::Value &);
+  Mode(const std::string &, const waybar::Bar &, const Json::Value &,
+       std::mutex& reap_mtx, std::list<pid_t>& reap);
   virtual ~Mode();
 
   // Handlers for wayland events

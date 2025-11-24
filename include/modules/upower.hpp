@@ -12,7 +12,8 @@ namespace waybar::modules {
 
 class UPower final : public AIconLabel {
  public:
-  UPower(const std::string &, const Json::Value &);
+  UPower(const std::string &, const Json::Value &,
+         std::mutex& reap_mtx, std::list<pid_t>& reap;
   virtual ~UPower();
   auto update() -> void override;
 

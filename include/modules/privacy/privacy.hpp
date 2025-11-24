@@ -13,7 +13,8 @@ namespace waybar::modules::privacy {
 
 class Privacy : public AModule {
  public:
-  Privacy(const std::string &, const Json::Value &, Gtk::Orientation, const std::string &pos);
+  Privacy(const std::string &, const Json::Value &, Gtk::Orientation,
+          const std::string &pos, std::mutex& reap_mtx, std::list<pid_t>& reap);
   auto update() -> void override;
 
   void onPrivacyNodesChanged();

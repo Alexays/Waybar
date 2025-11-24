@@ -17,8 +17,10 @@ namespace waybar::modules::hyprland {
 
 std::shared_mutex windowIpcSmtx;
 
-Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
+Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
+               std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AAppIconLabel(config, "window", id, "{title}", reap_mtx, reap, 0, true),
+      bar_(bar), m_ipc(IPC::inst()) {
   std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
 
   separateOutputs_ = config["separate-outputs"].asBool();

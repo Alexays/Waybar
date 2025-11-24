@@ -13,7 +13,8 @@ namespace waybar::modules {
 
 class JACK : public ALabel {
  public:
-  JACK(const std::string &, const Json::Value &);
+  JACK(const std::string &, const Json::Value &,
+       std::mutex& reap_mtx, std::list<pid_t>& reap);
   virtual ~JACK() = default;
   auto update() -> void override;
 

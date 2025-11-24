@@ -18,8 +18,9 @@ namespace waybar::modules::mpris {
 
 const std::string DEFAULT_FORMAT = "{player} ({status}): {dynamic}";
 
-Mpris::Mpris(const std::string& id, const Json::Value& config)
-    : ALabel(config, "mpris", id, DEFAULT_FORMAT, 0, false, true),
+Mpris::Mpris(const std::string& id, const Json::Value& config,
+             std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "mpris", id, DEFAULT_FORMAT, reap_mtx, reap, 0, false, true),
       tooltip_(DEFAULT_FORMAT),
       artist_len_(-1),
       album_len_(-1),

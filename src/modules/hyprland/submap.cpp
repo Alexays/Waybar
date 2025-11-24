@@ -4,8 +4,10 @@
 
 namespace waybar::modules::hyprland {
 
-Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "submap", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
+Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config,
+               std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "submap", id, "{}", reap_mtx, reap, 0, true),
+      bar_(bar), m_ipc(IPC::inst()) {
   parseConfig(config);
 
   label_.hide();
