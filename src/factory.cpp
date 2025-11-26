@@ -108,9 +108,6 @@
 #ifdef HAVE_LIBWIREPLUMBER
 #include "modules/wireplumber.hpp"
 #endif
-#ifdef HAVE_LIBCAVA
-#include "modules/cava/cava.hpp"
-#endif
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
@@ -364,7 +361,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      return new waybar::modules::cava::Cava(id, config_[name], reap_mtx, reap);
+      AModule* (*constructor)(const std::string&, const Json::Value&,
+                              std::mutex&, std::list<pid_t>&);
+      void *symbol = get_symbol("waybar-module-cava.so", "new_cava");
+      constructor = reinterpret_cast<decltype(constructor)>(symbol);
+      return constructor(id, config_[name], reap_mtx, reap);
     }
 #endif
 #ifdef HAVE_SYSTEMD_MONITOR

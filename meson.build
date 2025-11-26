@@ -195,6 +195,13 @@ gps_src_files = files(
     'src/util/prepare_for_sleep.cpp',
 )
 
+cava_src_files = files(
+    'src/AModule.cpp',
+    'src/ALabel.cpp',
+    'src/config.cpp',
+    'src/util/prepare_for_sleep.cpp',
+)
+
 man_files = files(
     'man/waybar-custom.5.scd',
     'man/waybar-disk.5.scd',
@@ -515,7 +522,7 @@ cava = dependency('cava',
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
+   cava_src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
 endif
 
@@ -523,6 +530,23 @@ if libgps.found()
     add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
     gps_src_files += files('src/modules/gps.cpp')
     man_files += files('man/waybar-gps.5.scd')
+endif
+
+if cava.found()
+    shared_library(
+        'waybar-module-cava',
+        [cava_src_files],
+        name_prefix: '',
+        dependencies: [
+            fmt,
+            gtkmm,
+            jsoncpp,
+            spdlog,
+            cava
+        ],
+        include_directories: inc_dirs,
+        install: true,
+    )
 endif
 
 if libgps.found()
@@ -579,7 +603,6 @@ executable(
         libsndio,
         tz_dep,
 		xkbregistry,
-        cava,
     ],
     include_directories: inc_dirs,
     install: true,
