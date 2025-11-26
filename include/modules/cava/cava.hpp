@@ -16,7 +16,7 @@ class Cava final : public ALabel, public sigc::trackable {
  private:
   std::shared_ptr<CavaBackend> backend_;
   // Text to display
-  std::string label_text_{""};
+  Glib::ustring label_text_{""};
   bool hide_on_silence_{false};
   std::string format_silent_{""};
   int ascii_range_{0};

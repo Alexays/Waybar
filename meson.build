@@ -497,10 +497,10 @@ else
     man_files += files('man/waybar-clock.5.scd')
 endif
 
-cava = dependency('cava',
-                  version : '>=0.10.6',
+cava = dependency('libcava',
+                  version : '>=0.10.7',
                   required: get_option('cava'),
-                  fallback : ['cava', 'cava_dep'],
+                  fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
 
 if cava.found()
