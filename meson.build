@@ -523,6 +523,9 @@ if libgps.found()
     add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
     gps_src_files += files('src/modules/gps.cpp')
     man_files += files('man/waybar-gps.5.scd')
+endif
+
+if libgps.found()
     shared_library(
         'waybar-module-gps',
         [gps_src_files],
