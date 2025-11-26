@@ -558,6 +558,7 @@ if libgps.found()
             fmt,
             gtkmm,
             jsoncpp,
+            spdlog,
             libgps
         ],
         include_directories: inc_dirs,
