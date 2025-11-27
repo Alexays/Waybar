@@ -69,8 +69,8 @@ void AudioBackend::connectContext() {
   }
 }
 
-void AudioBackend::contextStateCb(pa_context *c, void *data) {
-  auto *backend = static_cast<AudioBackend *>(data);
+void AudioBackend::contextStateCb(pa_context* c, void* data) {
+  auto* backend = static_cast<AudioBackend*>(data);
   switch (pa_context_get_state(c)) {
     case PA_CONTEXT_TERMINATED:
       backend->mainloop_api_->quit(backend->mainloop_api_, 0);
@@ -107,8 +107,8 @@ void AudioBackend::contextStateCb(pa_context *c, void *data) {
 /*
  * Called when an event we subscribed to occurs.
  */
-void AudioBackend::subscribeCb(pa_context *context, pa_subscription_event_type_t type, uint32_t idx,
-                               void *data) {
+void AudioBackend::subscribeCb(pa_context* context, pa_subscription_event_type_t type, uint32_t idx,
+                               void* data) {
   unsigned facility = type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
   unsigned operation = type & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
   if (operation != PA_SUBSCRIPTION_EVENT_CHANGE) {
@@ -130,8 +130,8 @@ void AudioBackend::subscribeCb(pa_context *context, pa_subscription_event_type_t
 /*
  * Called in response to a volume change request
  */
-void AudioBackend::volumeModifyCb(pa_context *c, int success, void *data) {
-  auto *backend = static_cast<AudioBackend *>(data);
+void AudioBackend::volumeModifyCb(pa_context* c, int success, void* data) {
+  auto* backend = static_cast<AudioBackend*>(data);
   if (success != 0) {
     if ((backend->context_ != nullptr) &&
         pa_context_get_state(backend->context_) == PA_CONTEXT_READY) {
@@ -145,18 +145,18 @@ void AudioBackend::volumeModifyCb(pa_context *c, int success, void *data) {
 /*
  * Called when the requested sink information is ready.
  */
-void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, int /*eol*/,
-                              void *data) {
+void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, int /*eol*/,
+                              void* data) {
   if (i == nullptr) return;
 
   auto running = i->state == PA_SINK_RUNNING;
   auto idle = i->state == PA_SINK_IDLE;
   spdlog::trace("Sink name {} Running:[{}] Idle:[{}]", i->name, running, idle);
 
-  auto *backend = static_cast<AudioBackend *>(data);
+  auto* backend = static_cast<AudioBackend*>(data);
 
   if (!backend->ignored_sinks_.empty()) {
-    for (const auto &ignored_sink : backend->ignored_sinks_) {
+    for (const auto& ignored_sink : backend->ignored_sinks_) {
       if (ignored_sink == i->description) {
         if (i->name == backend->current_sink_name_) {
           // If the current sink happens to be ignored it is never considered running
@@ -205,7 +205,7 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
     backend->desc_ = i->description;
     backend->monitor_ = i->monitor_source_name;
     backend->port_name_ = i->active_port != nullptr ? i->active_port->name : "Unknown";
-    if (const auto *ff = pa_proplist_gets(i->proplist, PA_PROP_DEVICE_FORM_FACTOR)) {
+    if (const auto* ff = pa_proplist_gets(i->proplist, PA_PROP_DEVICE_FORM_FACTOR)) {
       backend->form_factor_ = ff;
     } else {
       backend->form_factor_ = "";
@@ -217,9 +217,9 @@ void AudioBackend::sinkInfoCb(pa_context * /*context*/, const pa_sink_info *i, i
 /*
  * Called when the requested source information is ready.
  */
-void AudioBackend::sourceInfoCb(pa_context * /*context*/, const pa_source_info *i, int /*eol*/,
-                                void *data) {
-  auto *backend = static_cast<AudioBackend *>(data);
+void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i, int /*eol*/,
+                                void* data) {
+  auto* backend = static_cast<AudioBackend*>(data);
   if (i != nullptr && backend->default_source_name_ == i->name) {
     auto source_volume = static_cast<float>(pa_cvolume_avg(&(i->volume))) / float{PA_VOLUME_NORM};
     backend->source_volume_ = std::round(source_volume * 100.0F);
@@ -235,8 +235,8 @@ void AudioBackend::sourceInfoCb(pa_context * /*context*/, const pa_source_info *
  * Called when the requested information on the server is ready. This is
  * used to find the default PulseAudio sink.
  */
-void AudioBackend::serverInfoCb(pa_context *context, const pa_server_info *i, void *data) {
-  auto *backend = static_cast<AudioBackend *>(data);
+void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, void* data) {
+  auto* backend = static_cast<AudioBackend*>(data);
   backend->current_sink_name_ = i->default_sink_name;
   backend->default_sink_name = i->default_sink_name;
   backend->default_source_name_ = i->default_source_name;
@@ -392,9 +392,9 @@ bool AudioBackend::isBluetooth() {
          monitor_.find("bluez") != std::string::npos;
 }
 
-void AudioBackend::setIgnoredSinks(const Json::Value &config) {
+void AudioBackend::setIgnoredSinks(const Json::Value& config) {
   if (config.isArray()) {
-    for (const auto &ignored_sink : config) {
+    for (const auto& ignored_sink : config) {
       if (ignored_sink.isString()) {
         ignored_sinks_.push_back(ignored_sink.asString());
       }

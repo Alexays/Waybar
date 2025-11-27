@@ -11,8 +11,7 @@ namespace waybar::modules {
 
 class Temperature : public ALabel {
  public:
-  Temperature(const std::string&, const Json::Value&,
-              std::mutex&, std::list<pid_t>&);
+  Temperature(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Temperature() = default;
   auto update() -> void override;
 

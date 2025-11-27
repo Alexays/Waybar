@@ -13,9 +13,9 @@
 #include <sys/procctl.h>
 #endif
 
-#include <array>
-
 #include <sys/types.h>
+
+#include <array>
 #include <list>
 #include <mutex>
 

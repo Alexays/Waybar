@@ -13,8 +13,7 @@ namespace waybar::modules::wayfire {
 
 Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config,
                        std::mutex& reap_mtx, std::list<pid_t>& reap)
-    : AModule{config, "workspaces", id, reap_mtx, reap, false,
-              !config["disable-scroll"].asBool()},
+    : AModule{config, "workspaces", id, reap_mtx, reap, false, !config["disable-scroll"].asBool()},
       ipc{IPC::get_instance()},
       handler{[this](const auto&) { dp.emit(); }},
       bar_{bar} {

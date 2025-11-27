@@ -11,8 +11,7 @@ namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config,
                    std::mutex& reap_mtx, std::list<pid_t>& reap)
-    : ALabel(config, "language", id, "{}", reap_mtx, reap, 0, true),
-      bar_(bar), m_ipc(IPC::inst()) {
+    : ALabel(config, "language", id, "{}", reap_mtx, reap, 0, true), bar_(bar), m_ipc(IPC::inst()) {
   // get the active layout when open
   initLanguage();
 

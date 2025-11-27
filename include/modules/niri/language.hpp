@@ -10,14 +10,13 @@ namespace waybar::modules::niri {
 
 class Language : public ALabel, public EventHandler {
  public:
-  Language(const std::string &, const Bar &, const Json::Value &,
-           std::mutex&, std::list<pid_t>&);
+  Language(const std::string&, const Bar&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~Language() override;
   void update() override;
 
  private:
   void updateFromIPC();
-  void onEvent(const Json::Value &ev) override;
+  void onEvent(const Json::Value& ev) override;
   void doUpdate();
 
   struct Layout {
@@ -27,10 +26,10 @@ class Language : public ALabel, public EventHandler {
     std::string short_description;
   };
 
-  static Layout getLayout(const std::string &fullName);
+  static Layout getLayout(const std::string& fullName);
 
   std::mutex mutex_;
-  const Bar &bar_;
+  const Bar& bar_;
 
   std::vector<Layout> layouts_;
   unsigned current_idx_;
