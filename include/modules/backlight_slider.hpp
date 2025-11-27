@@ -9,7 +9,8 @@ namespace waybar::modules {
 
 class BacklightSlider : public ASlider {
  public:
-  BacklightSlider(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
+  BacklightSlider(const std::string&, const Json::Value&,
+                  std::mutex&, std::list<pid_t>&);
   virtual ~BacklightSlider() = default;
 
   void update() override;

@@ -22,8 +22,8 @@ namespace fs = std::filesystem;
 
 class Battery : public ALabel {
  public:
-  Battery(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
-          std::list<pid_t>&);
+  Battery(const std::string&, const waybar::Bar&, const Json::Value&,
+          std::mutex&, std::list<pid_t>&);
   virtual ~Battery();
   auto update() -> void override;
 

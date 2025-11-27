@@ -12,8 +12,8 @@ class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
 
  public:
-  IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
-                std::list<pid_t>&);
+  IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&,
+                std::mutex&, std::list<pid_t>&);
   virtual ~IdleInhibitor();
   auto update() -> void override;
   static std::list<waybar::AModule*> modules;

@@ -78,7 +78,7 @@ class Column {
   class iterator {
     friend Column;
 
-    Column const& m_column;
+    Column const &m_column;
     size_t m_stringIndex = 0;
     size_t m_pos = 0;
 
@@ -86,10 +86,10 @@ class Column {
     size_t m_end = 0;
     bool m_suffix = false;
 
-    iterator(Column const& column, size_t stringIndex)
+    iterator(Column const &column, size_t stringIndex)
         : m_column(column), m_stringIndex(stringIndex) {}
 
-    auto line() const -> std::string const& { return m_column.m_strings[m_stringIndex]; }
+    auto line() const -> std::string const & { return m_column.m_strings[m_stringIndex]; }
 
     auto isBoundary(size_t at) const -> bool {
       assert(at > 0);
@@ -129,18 +129,18 @@ class Column {
       return initial == std::string::npos ? m_column.m_indent : initial;
     }
 
-    auto addIndentAndSuffix(std::string const& plain) const -> std::string {
+    auto addIndentAndSuffix(std::string const &plain) const -> std::string {
       return std::string(indent(), ' ') + (m_suffix ? plain + "-" : plain);
     }
 
    public:
     using difference_type = std::ptrdiff_t;
     using value_type = std::string;
-    using pointer = value_type*;
-    using reference = value_type&;
+    using pointer = value_type *;
+    using reference = value_type &;
     using iterator_category = std::forward_iterator_tag;
 
-    explicit iterator(Column const& column) : m_column(column) {
+    explicit iterator(Column const &column) : m_column(column) {
       assert(m_column.m_width > m_column.m_indent);
       assert(m_column.m_initialIndent == std::string::npos ||
              m_column.m_width > m_column.m_initialIndent);
@@ -154,7 +154,7 @@ class Column {
       return addIndentAndSuffix(line().substr(m_pos, m_len));
     }
 
-    auto operator++() -> iterator& {
+    auto operator++() -> iterator & {
       m_pos += m_len;
       if (m_pos < line().size() && line()[m_pos] == '\n')
         m_pos += 1;
@@ -174,26 +174,26 @@ class Column {
       return prev;
     }
 
-    auto operator==(iterator const& other) const -> bool {
+    auto operator==(iterator const &other) const -> bool {
       return m_pos == other.m_pos && m_stringIndex == other.m_stringIndex &&
              &m_column == &other.m_column;
     }
-    auto operator!=(iterator const& other) const -> bool { return !operator==(other); }
+    auto operator!=(iterator const &other) const -> bool { return !operator==(other); }
   };
   using const_iterator = iterator;
 
-  explicit Column(std::string const& text) { m_strings.push_back(text); }
+  explicit Column(std::string const &text) { m_strings.push_back(text); }
 
-  auto width(size_t newWidth) -> Column& {
+  auto width(size_t newWidth) -> Column & {
     assert(newWidth > 0);
     m_width = newWidth;
     return *this;
   }
-  auto indent(size_t newIndent) -> Column& {
+  auto indent(size_t newIndent) -> Column & {
     m_indent = newIndent;
     return *this;
   }
-  auto initialIndent(size_t newIndent) -> Column& {
+  auto initialIndent(size_t newIndent) -> Column & {
     m_initialIndent = newIndent;
     return *this;
   }
@@ -202,7 +202,7 @@ class Column {
   auto begin() const -> iterator { return iterator(*this); }
   auto end() const -> iterator { return {*this, m_strings.size()}; }
 
-  inline friend std::ostream& operator<<(std::ostream& os, Column const& col) {
+  inline friend std::ostream &operator<<(std::ostream &os, Column const &col) {
     bool first = true;
     for (auto line : col) {
       if (first)
@@ -214,7 +214,7 @@ class Column {
     return os;
   }
 
-  auto operator+(Column const& other) -> Columns;
+  auto operator+(Column const &other) -> Columns;
 
   auto toString() const -> std::string {
     std::ostringstream oss;
@@ -236,34 +236,34 @@ class Columns {
     friend Columns;
     struct EndTag {};
 
-    std::vector<Column> const& m_columns;
+    std::vector<Column> const &m_columns;
     std::vector<Column::iterator> m_iterators;
     size_t m_activeIterators;
 
-    iterator(Columns const& columns, EndTag) : m_columns(columns.m_columns), m_activeIterators(0) {
+    iterator(Columns const &columns, EndTag) : m_columns(columns.m_columns), m_activeIterators(0) {
       m_iterators.reserve(m_columns.size());
 
-      for (auto const& col : m_columns) m_iterators.push_back(col.end());
+      for (auto const &col : m_columns) m_iterators.push_back(col.end());
     }
 
    public:
     using difference_type = std::ptrdiff_t;
     using value_type = std::string;
-    using pointer = value_type*;
-    using reference = value_type&;
+    using pointer = value_type *;
+    using reference = value_type &;
     using iterator_category = std::forward_iterator_tag;
 
-    explicit iterator(Columns const& columns)
+    explicit iterator(Columns const &columns)
         : m_columns(columns.m_columns), m_activeIterators(m_columns.size()) {
       m_iterators.reserve(m_columns.size());
 
-      for (auto const& col : m_columns) m_iterators.push_back(col.begin());
+      for (auto const &col : m_columns) m_iterators.push_back(col.begin());
     }
 
-    auto operator==(iterator const& other) const -> bool {
+    auto operator==(iterator const &other) const -> bool {
       return m_iterators == other.m_iterators;
     }
-    auto operator!=(iterator const& other) const -> bool {
+    auto operator!=(iterator const &other) const -> bool {
       return m_iterators != other.m_iterators;
     }
     auto operator*() const -> std::string {
@@ -284,7 +284,7 @@ class Columns {
       }
       return row;
     }
-    auto operator++() -> iterator& {
+    auto operator++() -> iterator & {
       for (size_t i = 0; i < m_columns.size(); ++i) {
         if (m_iterators[i] != m_columns[i].end()) ++m_iterators[i];
       }
@@ -301,17 +301,17 @@ class Columns {
   auto begin() const -> iterator { return iterator(*this); }
   auto end() const -> iterator { return {*this, iterator::EndTag()}; }
 
-  auto operator+=(Column const& col) -> Columns& {
+  auto operator+=(Column const &col) -> Columns & {
     m_columns.push_back(col);
     return *this;
   }
-  auto operator+(Column const& col) -> Columns {
+  auto operator+(Column const &col) -> Columns {
     Columns combined = *this;
     combined += col;
     return combined;
   }
 
-  inline friend std::ostream& operator<<(std::ostream& os, Columns const& cols) {
+  inline friend std::ostream &operator<<(std::ostream &os, Columns const &cols) {
     bool first = true;
     for (auto line : cols) {
       if (first)
@@ -330,7 +330,7 @@ class Columns {
   }
 };
 
-inline auto Column::operator+(Column const& other) -> Columns {
+inline auto Column::operator+(Column const &other) -> Columns {
   Columns cols;
   cols += *this;
   cols += other;
@@ -381,7 +381,7 @@ class Args {
   std::vector<std::string> m_args;
 
  public:
-  Args(int argc, char const* const* argv) : m_exeName(argv[0]), m_args(argv + 1, argv + argc) {}
+  Args(int argc, char const *const *argv) : m_exeName(argv[0]), m_args(argv + 1, argv + argc) {}
 
   Args(std::initializer_list<std::string> args)
       : m_exeName(*args.begin()), m_args(args.begin() + 1, args.end()) {}
@@ -419,7 +419,7 @@ class TokenStream {
     while (it != itEnd && it->empty()) ++it;
 
     if (it != itEnd) {
-      auto const& next = *it;
+      auto const &next = *it;
       if (isOptPrefix(next[0])) {
         auto delimiterPos = next.find_first_of(" :=");
         if (delimiterPos != std::string::npos) {
@@ -443,7 +443,7 @@ class TokenStream {
   }
 
  public:
-  explicit TokenStream(Args const& args) : TokenStream(args.m_args.begin(), args.m_args.end()) {}
+  explicit TokenStream(Args const &args) : TokenStream(args.m_args.begin(), args.m_args.end()) {}
 
   TokenStream(Iterator it, Iterator itEnd) : it(it), itEnd(itEnd) { loadBuffer(); }
 
@@ -456,12 +456,12 @@ class TokenStream {
     return m_tokenBuffer.front();
   }
 
-  auto operator->() const -> Token const* {
+  auto operator->() const -> Token const * {
     assert(!m_tokenBuffer.empty());
     return &m_tokenBuffer.front();
   }
 
-  auto operator++() -> TokenStream& {
+  auto operator++() -> TokenStream & {
     if (m_tokenBuffer.size() >= 2) {
       m_tokenBuffer.erase(m_tokenBuffer.begin());
     } else {
@@ -488,7 +488,7 @@ class ResultBase {
 template <typename T>
 class ResultValueBase : public ResultBase {
  public:
-  auto value() const -> T const& {
+  auto value() const -> T const & {
     enforceOk();
     return m_value;
   }
@@ -496,13 +496,13 @@ class ResultValueBase : public ResultBase {
  protected:
   ResultValueBase(Type type) : ResultBase(type) {}
 
-  ResultValueBase(ResultValueBase const& other) : ResultBase(other) {
+  ResultValueBase(ResultValueBase const &other) : ResultBase(other) {
     if (m_type == ResultBase::Ok) new (&m_value) T(other.m_value);
   }
 
-  ResultValueBase(Type, T const& value) : ResultBase(Ok) { new (&m_value) T(value); }
+  ResultValueBase(Type, T const &value) : ResultBase(Ok) { new (&m_value) T(value); }
 
-  auto operator=(ResultValueBase const& other) -> ResultValueBase& {
+  auto operator=(ResultValueBase const &other) -> ResultValueBase & {
     if (m_type == ResultBase::Ok) m_value.~T();
     ResultBase::operator=(other);
     if (m_type == ResultBase::Ok) new (&m_value) T(other.m_value);
@@ -528,20 +528,20 @@ template <typename T = void>
 class BasicResult : public ResultValueBase<T> {
  public:
   template <typename U>
-  explicit BasicResult(BasicResult<U> const& other)
+  explicit BasicResult(BasicResult<U> const &other)
       : ResultValueBase<T>(other.type()), m_errorMessage(other.errorMessage()) {
     assert(type() != ResultBase::Ok);
   }
 
   template <typename U>
-  static auto ok(U const& value) -> BasicResult {
+  static auto ok(U const &value) -> BasicResult {
     return {ResultBase::Ok, value};
   }
   static auto ok() -> BasicResult { return {ResultBase::Ok}; }
-  static auto logicError(std::string const& message) -> BasicResult {
+  static auto logicError(std::string const &message) -> BasicResult {
     return {ResultBase::LogicError, message};
   }
-  static auto runtimeError(std::string const& message) -> BasicResult {
+  static auto runtimeError(std::string const &message) -> BasicResult {
     return {ResultBase::RuntimeError, message};
   }
 
@@ -560,7 +560,7 @@ class BasicResult : public ResultValueBase<T> {
 
   std::string m_errorMessage;  // Only populated if resultType is an error
 
-  BasicResult(ResultBase::Type type, std::string const& message)
+  BasicResult(ResultBase::Type type, std::string const &message)
       : ResultValueBase<T>(type), m_errorMessage(message) {
     assert(m_type != ResultBase::Ok);
   }
@@ -573,7 +573,7 @@ enum class ParseResultType { Matched, NoMatch, ShortCircuitAll, ShortCircuitSame
 
 class ParseState {
  public:
-  ParseState(ParseResultType type, TokenStream const& remainingTokens)
+  ParseState(ParseResultType type, TokenStream const &remainingTokens)
       : m_type(type), m_remainingTokens(remainingTokens) {}
 
   auto type() const -> ParseResultType { return m_type; }
@@ -594,7 +594,7 @@ struct HelpColumns {
 };
 
 template <typename T>
-inline auto convertInto(std::string const& source, T& target) -> ParserResult {
+inline auto convertInto(std::string const &source, T &target) -> ParserResult {
   std::stringstream ss;
   ss << source;
   ss >> target;
@@ -603,11 +603,11 @@ inline auto convertInto(std::string const& source, T& target) -> ParserResult {
   else
     return ParserResult::ok(ParseResultType::Matched);
 }
-inline auto convertInto(std::string const& source, std::string& target) -> ParserResult {
+inline auto convertInto(std::string const &source, std::string &target) -> ParserResult {
   target = source;
   return ParserResult::ok(ParseResultType::Matched);
 }
-inline auto convertInto(std::string const& source, bool& target) -> ParserResult {
+inline auto convertInto(std::string const &source, bool &target) -> ParserResult {
   std::string srcLC = source;
   std::transform(srcLC.begin(), srcLC.end(), srcLC.begin(),
                  [](char c) { return static_cast<char>(::tolower(c)); });
@@ -622,7 +622,7 @@ inline auto convertInto(std::string const& source, bool& target) -> ParserResult
 }
 #ifdef CLARA_CONFIG_OPTIONAL_TYPE
 template <typename T>
-inline auto convertInto(std::string const& source, CLARA_CONFIG_OPTIONAL_TYPE<T>& target)
+inline auto convertInto(std::string const &source, CLARA_CONFIG_OPTIONAL_TYPE<T> &target)
     -> ParserResult {
   T temp;
   auto result = convertInto(source, temp);
@@ -633,10 +633,10 @@ inline auto convertInto(std::string const& source, CLARA_CONFIG_OPTIONAL_TYPE<T>
 
 struct NonCopyable {
   NonCopyable() = default;
-  NonCopyable(NonCopyable const&) = delete;
-  NonCopyable(NonCopyable&&) = delete;
-  NonCopyable& operator=(NonCopyable const&) = delete;
-  NonCopyable& operator=(NonCopyable&&) = delete;
+  NonCopyable(NonCopyable const &) = delete;
+  NonCopyable(NonCopyable &&) = delete;
+  NonCopyable &operator=(NonCopyable const &) = delete;
+  NonCopyable &operator=(NonCopyable &&) = delete;
 };
 
 struct BoundRef : NonCopyable {
@@ -645,7 +645,7 @@ struct BoundRef : NonCopyable {
   virtual auto isFlag() const -> bool { return false; }
 };
 struct BoundValueRefBase : BoundRef {
-  virtual auto setValue(std::string const& arg) -> ParserResult = 0;
+  virtual auto setValue(std::string const &arg) -> ParserResult = 0;
 };
 struct BoundFlagRefBase : BoundRef {
   virtual auto setFlag(bool flag) -> ParserResult = 0;
@@ -654,22 +654,22 @@ struct BoundFlagRefBase : BoundRef {
 
 template <typename T>
 struct BoundValueRef : BoundValueRefBase {
-  T& m_ref;
+  T &m_ref;
 
-  explicit BoundValueRef(T& ref) : m_ref(ref) {}
+  explicit BoundValueRef(T &ref) : m_ref(ref) {}
 
-  auto setValue(std::string const& arg) -> ParserResult override { return convertInto(arg, m_ref); }
+  auto setValue(std::string const &arg) -> ParserResult override { return convertInto(arg, m_ref); }
 };
 
 template <typename T>
 struct BoundValueRef<std::vector<T>> : BoundValueRefBase {
-  std::vector<T>& m_ref;
+  std::vector<T> &m_ref;
 
-  explicit BoundValueRef(std::vector<T>& ref) : m_ref(ref) {}
+  explicit BoundValueRef(std::vector<T> &ref) : m_ref(ref) {}
 
   auto isContainer() const -> bool override { return true; }
 
-  auto setValue(std::string const& arg) -> ParserResult override {
+  auto setValue(std::string const &arg) -> ParserResult override {
     T temp;
     auto result = convertInto(arg, temp);
     if (result) m_ref.push_back(temp);
@@ -678,9 +678,9 @@ struct BoundValueRef<std::vector<T>> : BoundValueRefBase {
 };
 
 struct BoundFlagRef : BoundFlagRefBase {
-  bool& m_ref;
+  bool &m_ref;
 
-  explicit BoundFlagRef(bool& ref) : m_ref(ref) {}
+  explicit BoundFlagRef(bool &ref) : m_ref(ref) {}
 
   auto setFlag(bool flag) -> ParserResult override {
     m_ref = flag;
@@ -694,7 +694,7 @@ struct LambdaInvoker {
                 "Lambda must return void or clara::ParserResult");
 
   template <typename L, typename ArgType>
-  static auto invoke(L const& lambda, ArgType const& arg) -> ParserResult {
+  static auto invoke(L const &lambda, ArgType const &arg) -> ParserResult {
     return lambda(arg);
   }
 };
@@ -702,14 +702,14 @@ struct LambdaInvoker {
 template <>
 struct LambdaInvoker<void> {
   template <typename L, typename ArgType>
-  static auto invoke(L const& lambda, ArgType const& arg) -> ParserResult {
+  static auto invoke(L const &lambda, ArgType const &arg) -> ParserResult {
     lambda(arg);
     return ParserResult::ok(ParseResultType::Matched);
   }
 };
 
 template <typename ArgType, typename L>
-inline auto invokeLambda(L const& lambda, std::string const& arg) -> ParserResult {
+inline auto invokeLambda(L const &lambda, std::string const &arg) -> ParserResult {
   ArgType temp{};
   auto result = convertInto(arg, temp);
   return !result ? result
@@ -721,9 +721,9 @@ struct BoundLambda : BoundValueRefBase {
   L m_lambda;
 
   static_assert(UnaryLambdaTraits<L>::isValid, "Supplied lambda must take exactly one argument");
-  explicit BoundLambda(L const& lambda) : m_lambda(lambda) {}
+  explicit BoundLambda(L const &lambda) : m_lambda(lambda) {}
 
-  auto setValue(std::string const& arg) -> ParserResult override {
+  auto setValue(std::string const &arg) -> ParserResult override {
     return invokeLambda<typename UnaryLambdaTraits<L>::ArgType>(m_lambda, arg);
   }
 };
@@ -736,7 +736,7 @@ struct BoundFlagLambda : BoundFlagRefBase {
   static_assert(std::is_same<typename UnaryLambdaTraits<L>::ArgType, bool>::value,
                 "flags must be boolean");
 
-  explicit BoundFlagLambda(L const& lambda) : m_lambda(lambda) {}
+  explicit BoundFlagLambda(L const &lambda) : m_lambda(lambda) {}
 
   auto setFlag(bool flag) -> ParserResult override {
     return LambdaInvoker<typename UnaryLambdaTraits<L>::ReturnType>::invoke(m_lambda, flag);
@@ -751,11 +751,11 @@ class ParserBase {
  public:
   virtual ~ParserBase() = default;
   virtual auto validate() const -> Result { return Result::ok(); }
-  virtual auto parse(std::string const& exeName, TokenStream const& tokens) const
+  virtual auto parse(std::string const &exeName, TokenStream const &tokens) const
       -> InternalParseResult = 0;
   virtual auto cardinality() const -> size_t { return 1; }
 
-  auto parse(Args const& args) const -> InternalParseResult {
+  auto parse(Args const &args) const -> InternalParseResult {
     return parse(args.exeName(), TokenStream(args));
   }
 };
@@ -764,10 +764,10 @@ template <typename DerivedT>
 class ComposableParserImpl : public ParserBase {
  public:
   template <typename T>
-  auto operator|(T const& other) const -> Parser;
+  auto operator|(T const &other) const -> Parser;
 
   template <typename T>
-  auto operator+(T const& other) const -> Parser;
+  auto operator+(T const &other) const -> Parser;
 };
 
 // Common code and state for Args and Opts
@@ -779,30 +779,30 @@ class ParserRefImpl : public ComposableParserImpl<DerivedT> {
   std::string m_hint;
   std::string m_description;
 
-  explicit ParserRefImpl(std::shared_ptr<BoundRef> const& ref) : m_ref(ref) {}
+  explicit ParserRefImpl(std::shared_ptr<BoundRef> const &ref) : m_ref(ref) {}
 
  public:
   template <typename T>
-  ParserRefImpl(T& ref, std::string const& hint)
+  ParserRefImpl(T &ref, std::string const &hint)
       : m_ref(std::make_shared<BoundValueRef<T>>(ref)), m_hint(hint) {}
 
   template <typename LambdaT>
-  ParserRefImpl(LambdaT const& ref, std::string const& hint)
+  ParserRefImpl(LambdaT const &ref, std::string const &hint)
       : m_ref(std::make_shared<BoundLambda<LambdaT>>(ref)), m_hint(hint) {}
 
-  auto operator()(std::string const& description) -> DerivedT& {
+  auto operator()(std::string const &description) -> DerivedT & {
     m_description = description;
-    return static_cast<DerivedT&>(*this);
+    return static_cast<DerivedT &>(*this);
   }
 
-  auto optional() -> DerivedT& {
+  auto optional() -> DerivedT & {
     m_optionality = Optionality::Optional;
-    return static_cast<DerivedT&>(*this);
+    return static_cast<DerivedT &>(*this);
   };
 
-  auto required() -> DerivedT& {
+  auto required() -> DerivedT & {
     m_optionality = Optionality::Required;
-    return static_cast<DerivedT&>(*this);
+    return static_cast<DerivedT &>(*this);
   };
 
   auto isOptional() const -> bool { return m_optionality == Optionality::Optional; }
@@ -822,29 +822,29 @@ class ExeName : public ComposableParserImpl<ExeName> {
   std::shared_ptr<BoundValueRefBase> m_ref;
 
   template <typename LambdaT>
-  static auto makeRef(LambdaT const& lambda) -> std::shared_ptr<BoundValueRefBase> {
+  static auto makeRef(LambdaT const &lambda) -> std::shared_ptr<BoundValueRefBase> {
     return std::make_shared<BoundLambda<LambdaT>>(lambda);
   }
 
  public:
   ExeName() : m_name(std::make_shared<std::string>("<executable>")) {}
 
-  explicit ExeName(std::string& ref) : ExeName() {
+  explicit ExeName(std::string &ref) : ExeName() {
     m_ref = std::make_shared<BoundValueRef<std::string>>(ref);
   }
 
   template <typename LambdaT>
-  explicit ExeName(LambdaT const& lambda) : ExeName() {
+  explicit ExeName(LambdaT const &lambda) : ExeName() {
     m_ref = std::make_shared<BoundLambda<LambdaT>>(lambda);
   }
 
   // The exe name is not parsed out of the normal tokens, but is handled specially
-  auto parse(std::string const&, TokenStream const& tokens) const -> InternalParseResult override {
+  auto parse(std::string const &, TokenStream const &tokens) const -> InternalParseResult override {
     return InternalParseResult::ok(ParseState(ParseResultType::NoMatch, tokens));
   }
 
   auto name() const -> std::string { return *m_name; }
-  auto set(std::string const& newName) -> ParserResult {
+  auto set(std::string const &newName) -> ParserResult {
     auto lastSlash = newName.find_last_of("\\/");
     auto filename = (lastSlash == std::string::npos) ? newName : newName.substr(lastSlash + 1);
 
@@ -860,17 +860,17 @@ class Arg : public ParserRefImpl<Arg> {
  public:
   using ParserRefImpl::ParserRefImpl;
 
-  auto parse(std::string const&, TokenStream const& tokens) const -> InternalParseResult override {
+  auto parse(std::string const &, TokenStream const &tokens) const -> InternalParseResult override {
     auto validationResult = validate();
     if (!validationResult) return InternalParseResult(validationResult);
 
     auto remainingTokens = tokens;
-    auto const& token = *remainingTokens;
+    auto const &token = *remainingTokens;
     if (token.type != TokenType::Argument)
       return InternalParseResult::ok(ParseState(ParseResultType::NoMatch, remainingTokens));
 
     assert(!m_ref->isFlag());
-    auto valueRef = static_cast<detail::BoundValueRefBase*>(m_ref.get());
+    auto valueRef = static_cast<detail::BoundValueRefBase *>(m_ref.get());
 
     auto result = valueRef->setValue(remainingTokens->token);
     if (!result)
@@ -880,7 +880,7 @@ class Arg : public ParserRefImpl<Arg> {
   }
 };
 
-inline auto normaliseOpt(std::string const& optName) -> std::string {
+inline auto normaliseOpt(std::string const &optName) -> std::string {
 #ifdef CLARA_PLATFORM_WINDOWS
   if (optName[0] == '/')
     return "-" + optName.substr(1);
@@ -895,18 +895,18 @@ class Opt : public ParserRefImpl<Opt> {
 
  public:
   template <typename LambdaT>
-  explicit Opt(LambdaT const& ref)
+  explicit Opt(LambdaT const &ref)
       : ParserRefImpl(std::make_shared<BoundFlagLambda<LambdaT>>(ref)) {}
 
-  explicit Opt(bool& ref) : ParserRefImpl(std::make_shared<BoundFlagRef>(ref)) {}
+  explicit Opt(bool &ref) : ParserRefImpl(std::make_shared<BoundFlagRef>(ref)) {}
 
   template <typename LambdaT>
-  Opt(LambdaT const& ref, std::string const& hint) : ParserRefImpl(ref, hint) {}
+  Opt(LambdaT const &ref, std::string const &hint) : ParserRefImpl(ref, hint) {}
 
   template <typename T>
-  Opt(T& ref, std::string const& hint) : ParserRefImpl(ref, hint) {}
+  Opt(T &ref, std::string const &hint) : ParserRefImpl(ref, hint) {}
 
-  auto operator[](std::string const& optName) -> Opt& {
+  auto operator[](std::string const &optName) -> Opt & {
     m_optNames.push_back(optName);
     return *this;
   }
@@ -914,7 +914,7 @@ class Opt : public ParserRefImpl<Opt> {
   auto getHelpColumns() const -> std::vector<HelpColumns> {
     std::ostringstream oss;
     bool first = true;
-    for (auto const& opt : m_optNames) {
+    for (auto const &opt : m_optNames) {
       if (first)
         first = false;
       else
@@ -925,9 +925,9 @@ class Opt : public ParserRefImpl<Opt> {
     return {{oss.str(), m_description}};
   }
 
-  auto isMatch(std::string const& optToken) const -> bool {
+  auto isMatch(std::string const &optToken) const -> bool {
     auto normalisedToken = normaliseOpt(optToken);
-    for (auto const& name : m_optNames) {
+    for (auto const &name : m_optNames) {
       if (normaliseOpt(name) == normalisedToken) return true;
     }
     return false;
@@ -935,26 +935,26 @@ class Opt : public ParserRefImpl<Opt> {
 
   using ParserBase::parse;
 
-  auto parse(std::string const&, TokenStream const& tokens) const -> InternalParseResult override {
+  auto parse(std::string const &, TokenStream const &tokens) const -> InternalParseResult override {
     auto validationResult = validate();
     if (!validationResult) return InternalParseResult(validationResult);
 
     auto remainingTokens = tokens;
     if (remainingTokens && remainingTokens->type == TokenType::Option) {
-      auto const& token = *remainingTokens;
+      auto const &token = *remainingTokens;
       if (isMatch(token.token)) {
         if (m_ref->isFlag()) {
-          auto flagRef = static_cast<detail::BoundFlagRefBase*>(m_ref.get());
+          auto flagRef = static_cast<detail::BoundFlagRefBase *>(m_ref.get());
           auto result = flagRef->setFlag(true);
           if (!result) return InternalParseResult(result);
           if (result.value() == ParseResultType::ShortCircuitAll)
             return InternalParseResult::ok(ParseState(result.value(), remainingTokens));
         } else {
-          auto valueRef = static_cast<detail::BoundValueRefBase*>(m_ref.get());
+          auto valueRef = static_cast<detail::BoundValueRefBase *>(m_ref.get());
           ++remainingTokens;
           if (!remainingTokens)
             return InternalParseResult::runtimeError("Expected argument following " + token.token);
-          auto const& argToken = *remainingTokens;
+          auto const &argToken = *remainingTokens;
           if (argToken.type != TokenType::Argument)
             return InternalParseResult::runtimeError("Expected argument following " + token.token);
           auto result = valueRef->setValue(argToken.token);
@@ -970,7 +970,7 @@ class Opt : public ParserRefImpl<Opt> {
 
   auto validate() const -> Result override {
     if (m_optNames.empty()) return Result::logicError("No options supplied to Opt");
-    for (auto const& name : m_optNames) {
+    for (auto const &name : m_optNames) {
       if (name.empty()) return Result::logicError("Option name cannot be empty");
 #ifdef CLARA_PLATFORM_WINDOWS
       if (name[0] != '-' && name[0] != '/')
@@ -984,12 +984,12 @@ class Opt : public ParserRefImpl<Opt> {
 };
 
 struct Help : Opt {
-  Help(bool& showHelpFlag)
+  Help(bool &showHelpFlag)
       : Opt([&](bool flag) {
           showHelpFlag = flag;
           return ParserResult::ok(ParseResultType::ShortCircuitAll);
         }) {
-    static_cast<Opt&>(*this)("display usage information")["-?"]["-h"]["--help"].optional();
+    static_cast<Opt &>(*this)("display usage information")["-?"]["-h"]["--help"].optional();
   }
 };
 
@@ -998,57 +998,57 @@ struct Parser : ParserBase {
   std::vector<Opt> m_options;
   std::vector<Arg> m_args;
 
-  auto operator|=(ExeName const& exeName) -> Parser& {
+  auto operator|=(ExeName const &exeName) -> Parser & {
     m_exeName = exeName;
     return *this;
   }
 
-  auto operator|=(Arg const& arg) -> Parser& {
+  auto operator|=(Arg const &arg) -> Parser & {
     m_args.push_back(arg);
     return *this;
   }
 
-  auto operator|=(Opt const& opt) -> Parser& {
+  auto operator|=(Opt const &opt) -> Parser & {
     m_options.push_back(opt);
     return *this;
   }
 
-  auto operator|=(Parser const& other) -> Parser& {
+  auto operator|=(Parser const &other) -> Parser & {
     m_options.insert(m_options.end(), other.m_options.begin(), other.m_options.end());
     m_args.insert(m_args.end(), other.m_args.begin(), other.m_args.end());
     return *this;
   }
 
   template <typename T>
-  auto operator|(T const& other) const -> Parser {
+  auto operator|(T const &other) const -> Parser {
     return Parser(*this) |= other;
   }
 
   // Forward deprecated interface with '+' instead of '|'
   template <typename T>
-  auto operator+=(T const& other) -> Parser& {
+  auto operator+=(T const &other) -> Parser & {
     return operator|=(other);
   }
   template <typename T>
-  auto operator+(T const& other) const -> Parser {
+  auto operator+(T const &other) const -> Parser {
     return operator|(other);
   }
 
   auto getHelpColumns() const -> std::vector<HelpColumns> {
     std::vector<HelpColumns> cols;
-    for (auto const& o : m_options) {
+    for (auto const &o : m_options) {
       auto childCols = o.getHelpColumns();
       cols.insert(cols.end(), childCols.begin(), childCols.end());
     }
     return cols;
   }
 
-  void writeToStream(std::ostream& os) const {
+  void writeToStream(std::ostream &os) const {
     if (!m_exeName.name().empty()) {
       os << "usage:\n"
          << "  " << m_exeName.name() << " ";
       bool required = true, first = true;
-      for (auto const& arg : m_args) {
+      for (auto const &arg : m_args) {
         if (first)
           first = false;
         else
@@ -1068,28 +1068,28 @@ struct Parser : ParserBase {
     auto rows = getHelpColumns();
     size_t consoleWidth = CLARA_CONFIG_CONSOLE_WIDTH;
     size_t optWidth = 0;
-    for (auto const& cols : rows) optWidth = (std::max)(optWidth, cols.left.size() + 2);
+    for (auto const &cols : rows) optWidth = (std::max)(optWidth, cols.left.size() + 2);
 
     optWidth = (std::min)(optWidth, consoleWidth / 2);
 
-    for (auto const& cols : rows) {
+    for (auto const &cols : rows) {
       auto row = TextFlow::Column(cols.left).width(optWidth).indent(2) + TextFlow::Spacer(4) +
                  TextFlow::Column(cols.right).width(consoleWidth - 7 - optWidth);
       os << row << std::endl;
     }
   }
 
-  friend auto operator<<(std::ostream& os, Parser const& parser) -> std::ostream& {
+  friend auto operator<<(std::ostream &os, Parser const &parser) -> std::ostream & {
     parser.writeToStream(os);
     return os;
   }
 
   auto validate() const -> Result override {
-    for (auto const& opt : m_options) {
+    for (auto const &opt : m_options) {
       auto result = opt.validate();
       if (!result) return result;
     }
-    for (auto const& arg : m_args) {
+    for (auto const &arg : m_args) {
       auto result = arg.validate();
       if (!result) return result;
     }
@@ -1098,10 +1098,10 @@ struct Parser : ParserBase {
 
   using ParserBase::parse;
 
-  auto parse(std::string const& exeName, TokenStream const& tokens) const
+  auto parse(std::string const &exeName, TokenStream const &tokens) const
       -> InternalParseResult override {
     struct ParserInfo {
-      ParserBase const* parser = nullptr;
+      ParserBase const *parser = nullptr;
       size_t count = 0;
     };
     const size_t totalParsers = m_options.size() + m_args.size();
@@ -1111,8 +1111,8 @@ struct Parser : ParserBase {
 
     {
       size_t i = 0;
-      for (auto const& opt : m_options) parseInfos[i++].parser = &opt;
-      for (auto const& arg : m_args) parseInfos[i++].parser = &arg;
+      for (auto const &opt : m_options) parseInfos[i++].parser = &opt;
+      for (auto const &arg : m_args) parseInfos[i++].parser = &arg;
     }
 
     m_exeName.set(exeName);
@@ -1122,7 +1122,7 @@ struct Parser : ParserBase {
       bool tokenParsed = false;
 
       for (size_t i = 0; i < totalParsers; ++i) {
-        auto& parseInfo = parseInfos[i];
+        auto &parseInfo = parseInfos[i];
         if (parseInfo.parser->cardinality() == 0 ||
             parseInfo.count < parseInfo.parser->cardinality()) {
           result = parseInfo.parser->parse(exeName, result.value().remainingTokens());
@@ -1147,8 +1147,8 @@ struct Parser : ParserBase {
 
 template <typename DerivedT>
 template <typename T>
-auto ComposableParserImpl<DerivedT>::operator|(T const& other) const -> Parser {
-  return Parser() | static_cast<DerivedT const&>(*this) | other;
+auto ComposableParserImpl<DerivedT>::operator|(T const &other) const -> Parser {
+  return Parser() | static_cast<DerivedT const &>(*this) | other;
 }
 }  // namespace detail
 

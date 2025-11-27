@@ -33,14 +33,14 @@ class PrivacyNodeInfo {
   struct spa_hook object_listener;
   struct spa_hook proxy_listener;
 
-  void* data;
+  void *data;
 
   std::string getName();
   std::string getIconName();
 
   // Handlers for PipeWire events
   void handleProxyEventDestroy();
-  void handleNodeEventInfo(const struct pw_node_info* info);
+  void handleNodeEventInfo(const struct pw_node_info *info);
 };
 
 }  // namespace waybar::util::PipewireBackend

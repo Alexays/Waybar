@@ -10,7 +10,8 @@ namespace waybar::modules {
 
 class SystemdFailedUnits : public ALabel {
  public:
-  SystemdFailedUnits(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
+  SystemdFailedUnits(const std::string &, const Json::Value &,
+                     std::mutex&, std::list<pid_t>&);
   virtual ~SystemdFailedUnits();
   auto update() -> void override;
 
@@ -24,8 +25,8 @@ class SystemdFailedUnits : public ALabel {
   std::string last_status;
   Glib::RefPtr<Gio::DBus::Proxy> system_proxy, user_proxy;
 
-  void notify_cb(const Glib::ustring& sender_name, const Glib::ustring& signal_name,
-                 const Glib::VariantContainerBase& arguments);
+  void notify_cb(const Glib::ustring &sender_name, const Glib::ustring &signal_name,
+                 const Glib::VariantContainerBase &arguments);
   void RequestFailedUnits();
   void RequestSystemState();
   void updateData();

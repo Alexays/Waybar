@@ -13,7 +13,8 @@ namespace waybar::modules {
 
 class JACK : public ALabel {
  public:
-  JACK(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
+  JACK(const std::string &, const Json::Value &,
+       std::mutex&, std::list<pid_t>&);
   virtual ~JACK() = default;
   auto update() -> void override;
 
@@ -25,7 +26,7 @@ class JACK : public ALabel {
  private:
   std::string JACKState();
 
-  jack_client_t* client_;
+  jack_client_t *client_;
   jack_nframes_t bufsize_;
   jack_nframes_t samplerate_;
   unsigned int xruns_;
@@ -38,7 +39,7 @@ class JACK : public ALabel {
 
 }  // namespace waybar::modules
 
-int bufSizeCallback(jack_nframes_t size, void* obj);
-int sampleRateCallback(jack_nframes_t rate, void* obj);
-int xrunCallback(void* obj);
-void shutdownCallback(void* obj);
+int bufSizeCallback(jack_nframes_t size, void *obj);
+int sampleRateCallback(jack_nframes_t rate, void *obj);
+int xrunCallback(void *obj);
+void shutdownCallback(void *obj);

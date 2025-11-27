@@ -14,8 +14,8 @@ namespace waybar::modules::sway {
 
 class Window : public AAppIconLabel, public sigc::trackable {
  public:
-  Window(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
-         std::list<pid_t>&);
+  Window(const std::string&, const waybar::Bar&, const Json::Value&,
+         std::mutex&, std::list<pid_t>&);
   virtual ~Window() = default;
   auto update() -> void override;
 

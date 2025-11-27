@@ -13,7 +13,8 @@ namespace waybar::modules {
 
 class Pulseaudio : public ALabel {
  public:
-  Pulseaudio(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
+  Pulseaudio(const std::string&, const Json::Value&,
+             std::mutex&, std::list<pid_t>&);
   virtual ~Pulseaudio() = default;
   auto update() -> void override;
 

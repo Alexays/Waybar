@@ -62,11 +62,11 @@ class Bar : public sigc::trackable {
   static const std::string MODE_DEFAULT;
   static const std::string MODE_INVISIBLE;
 
-  Bar(struct waybar_output* w_output, const Json::Value&);
-  Bar(const Bar&) = delete;
+  Bar(struct waybar_output *w_output, const Json::Value &);
+  Bar(const Bar &) = delete;
   ~Bar();
 
-  void setMode(const std::string& mode);
+  void setMode(const std::string &mode);
   void setVisible(bool value);
   void toggle();
   void show();
@@ -75,9 +75,9 @@ class Bar : public sigc::trackable {
   util::KillSignalAction getOnSigusr1Action();
   util::KillSignalAction getOnSigusr2Action();
 
-  struct waybar_output* output;
+  struct waybar_output *output;
   Json::Value config;
-  struct wl_surface* surface;
+  struct wl_surface *surface;
   bool visible = true;
   Gtk::Window window;
   Gtk::Orientation orientation = Gtk::ORIENTATION_HORIZONTAL;
@@ -91,15 +91,15 @@ class Bar : public sigc::trackable {
 #endif
 
  private:
-  void onMap(GdkEventAny*);
+  void onMap(GdkEventAny *);
   auto setupWidgets() -> void;
-  void getModules(const Factory&, const std::string&, waybar::Group*);
-  void setupAltFormatKeyForModule(const std::string& module_name);
-  void setupAltFormatKeyForModuleList(const char* module_list_name);
-  void setMode(const bar_mode&);
+  void getModules(const Factory &, const std::string &, waybar::Group *);
+  void setupAltFormatKeyForModule(const std::string &module_name);
+  void setupAltFormatKeyForModuleList(const char *module_list_name);
+  void setMode(const bar_mode &);
   void setPassThrough(bool passthrough);
   void setPosition(Gtk::PositionType position);
-  void onConfigure(GdkEventConfigure* ev);
+  void onConfigure(GdkEventConfigure *ev);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
 
