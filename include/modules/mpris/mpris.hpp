@@ -19,7 +19,7 @@ namespace waybar::modules::mpris {
 class Mpris : public ALabel {
  public:
   Mpris(const std::string&, const Json::Value&,
-        std::mutex& reap_mtx, std::list<pid_t>& reap);
+        std::mutex&, std::list<pid_t>&);
   virtual ~Mpris();
   auto update() -> void override;
   bool handleToggle(GdkEventButton* const&) override;

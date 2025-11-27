@@ -26,7 +26,7 @@ class Workspaces : public AModule {
 
  public:
   Workspaces(const std::string& id, const Bar& bar, const Json::Value& config,
-             std::mutex& reap_mtx, std::list<pid_t>& reap);
+             std::mutex&, std::list<pid_t>&);
   ~Workspaces() override;
 };
 

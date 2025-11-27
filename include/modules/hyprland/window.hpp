@@ -14,7 +14,7 @@ namespace waybar::modules::hyprland {
 class Window : public waybar::AAppIconLabel, public EventHandler {
  public:
   Window(const std::string&, const waybar::Bar&, const Json::Value&,
-         std::mutex& reap_mtx, std::list<pid_t>& reap);
+         std::mutex&, std::list<pid_t>&);
   ~Window() override;
 
   auto update() -> void override;

@@ -35,7 +35,7 @@ class MPD : public ALabel {
   detail::unique_song song_;
 
  public:
-  MPD(const std::string&, const Json::Value&, std::mutex& reap_mtx, std::list<pid_t>& reap);
+  MPD(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~MPD() noexcept = default;
   auto update() -> void override;
 

@@ -15,7 +15,7 @@ enum class WS { LEFT, RIGHT, HIDDEN };
 
 class Clock final : public ALabel {
  public:
-  Clock(const std::string&, const Json::Value&, std::mutex& reap_mtx, std::list<pid_t>& reap);
+  Clock(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Clock() = default;
   auto update() -> void override;
   auto doAction(const std::string&) -> void override;

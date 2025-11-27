@@ -13,7 +13,7 @@ class IdleInhibitor : public ALabel {
 
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&,
-                std::mutex& reap_mtx, std::list<pid_t>& reap);
+                std::mutex&, std::list<pid_t>&);
   virtual ~IdleInhibitor();
   auto update() -> void override;
   static std::list<waybar::AModule*> modules;

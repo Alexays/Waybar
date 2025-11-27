@@ -16,7 +16,7 @@ namespace waybar::modules {
 
 class Load : public ALabel {
  public:
-  Load(const std::string&, const Json::Value&, std::mutex& reap_mtx, std::list<pid_t>& reap);
+  Load(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Load() = default;
   auto update() -> void override;
 

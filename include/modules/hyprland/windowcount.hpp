@@ -13,7 +13,7 @@ namespace waybar::modules::hyprland {
 class WindowCount : public waybar::AAppIconLabel, public EventHandler {
  public:
   WindowCount(const std::string&, const waybar::Bar&, const Json::Value&,
-              std::mutex& reap_mtx, std::list<pid_t>& reap);
+              std::mutex&, std::list<pid_t>&);
   ~WindowCount() override;
 
   auto update() -> void override;

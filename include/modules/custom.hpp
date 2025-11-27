@@ -15,7 +15,7 @@ namespace waybar::modules {
 class Custom : public ALabel {
  public:
   Custom(const std::string&, const std::string&, const Json::Value&, const std::string&,
-         std::mutex& reap_mtx, std::list<pid_t>& reap);
+         std::mutex&, std::list<pid_t>&);
   virtual ~Custom();
   auto update() -> void override;
   void refresh(int /*signal*/) override;

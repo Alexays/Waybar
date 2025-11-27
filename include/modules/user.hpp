@@ -10,7 +10,7 @@
 namespace waybar::modules {
 class User : public AIconLabel {
  public:
-  User(const std::string&, const Json::Value&, std::mutex& reap_mtx, std::list<pid_t>& reap);
+  User(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~User() = default;
   auto update() -> void override;
 

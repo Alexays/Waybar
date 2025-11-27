@@ -14,7 +14,7 @@ namespace waybar::modules::hyprland {
 class Submap : public waybar::ALabel, public EventHandler {
  public:
   Submap(const std::string&, const waybar::Bar&, const Json::Value&,
-         std::mutex& reap_mtx, std::list<pid_t>& reap);
+         std::mutex&, std::list<pid_t>&);
   ~Submap() override;
 
   auto update() -> void override;

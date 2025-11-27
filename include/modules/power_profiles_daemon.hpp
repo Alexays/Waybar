@@ -17,7 +17,7 @@ struct Profile {
 class PowerProfilesDaemon : public ALabel {
  public:
   PowerProfilesDaemon(const std::string &, const Json::Value &,
-                      std::mutex& reap_mtx, std::list<pid_t>& reap);
+                      std::mutex&, std::list<pid_t>&);
   auto update() -> void override;
   void profileChangedCb(const Gio::DBus::Proxy::MapChangedProperties &,
                         const std::vector<Glib::ustring> &);

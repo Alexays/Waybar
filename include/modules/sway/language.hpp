@@ -17,7 +17,7 @@ namespace waybar::modules::sway {
 class Language : public ALabel, public sigc::trackable {
  public:
   Language(const std::string& id, const Json::Value& config,
-           std::mutex& reap_mtx, std::list<pid_t>& reap);
+           std::mutex&, std::list<pid_t>&);
   virtual ~Language() = default;
   auto update() -> void override;
 

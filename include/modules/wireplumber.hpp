@@ -13,7 +13,7 @@ namespace waybar::modules {
 class Wireplumber : public ALabel {
  public:
   Wireplumber(const std::string&, const Json::Value&,
-              std::mutex& reap_mtx, std::list<pid_t>& reap);
+              std::mutex&, std::list<pid_t>&);
   virtual ~Wireplumber();
   auto update() -> void override;
 

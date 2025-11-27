@@ -12,7 +12,7 @@ namespace waybar::modules::niri {
 class Window : public AAppIconLabel, public EventHandler {
  public:
   Window(const std::string &, const Bar &, const Json::Value &,
-         std::mutex& reap_mtx, std::list<pid_t>& reap);
+         std::mutex&, std::list<pid_t>&);
   ~Window() override;
   void update() override;
 

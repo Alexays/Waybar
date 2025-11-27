@@ -17,7 +17,7 @@ namespace waybar::modules {
 class CpuFrequency : public ALabel {
  public:
   CpuFrequency(const std::string&, const Json::Value&,
-               std::mutex& reap_mtx, std::list<pid_t>& reap);
+               std::mutex&, std::list<pid_t>&);
   virtual ~CpuFrequency() = default;
   auto update() -> void override;
 

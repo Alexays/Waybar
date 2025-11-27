@@ -30,7 +30,7 @@ struct wbcffi_config_entry {
 class CFFI : public AModule {
  public:
   CFFI(const std::string&, const std::string&, const Json::Value&,
-       std::mutex& reap_mtx, std::list<pid_t>& reap);
+       std::mutex&, std::list<pid_t>&);
   virtual ~CFFI();
 
   virtual auto refresh(int signal) -> void override;
