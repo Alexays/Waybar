@@ -25,10 +25,10 @@
 const static int LEFT_MOUSE_BUTTON_CODE = 1;
 
 namespace waybar::modules {
-User::User(const std::string& id, const Json::Value& config,
-           std::mutex& reap_mtx, std::list<pid_t>& reap)
-    : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", reap_mtx, reap,
-                 60, false, true, true) {
+User::User(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+           std::list<pid_t>& reap)
+    : AIconLabel(config, "user", id, "{user} {work_H}:{work_M}", reap_mtx, reap, 60, false, true,
+                 true) {
   AIconLabel::box_.set_spacing(0);
   if (AIconLabel::iconEnabled()) {
     this->init_avatar(AIconLabel::config_);

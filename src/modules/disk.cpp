@@ -2,8 +2,8 @@
 
 using namespace waybar::util;
 
-waybar::modules::Disk::Disk(const std::string& id, const Json::Value& config,
-                            std::mutex& reap_mtx, std::list<pid_t>& reap)
+waybar::modules::Disk::Disk(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+                            std::list<pid_t>& reap)
     : ALabel(config, "disk", id, "{}%", reap_mtx, reap, 30), path_("/") {
   thread_ = [this] {
     dp.emit();

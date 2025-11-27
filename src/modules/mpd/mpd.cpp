@@ -15,10 +15,9 @@ namespace waybar::modules {
 }  // namespace waybar::modules
 #endif
 
-waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config,
-                          std::mutex& reap_mtx, std::list<pid_t>& reap)
-    : ALabel(config, "mpd", id, "{album} - {artist} - {title}", reap_mtx, reap,
-             5, false, true),
+waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+                          std::list<pid_t>& reap)
+    : ALabel(config, "mpd", id, "{album} - {artist} - {title}", reap_mtx, reap, 5, false, true),
       module_name_(id.empty() ? "mpd" : "mpd#" + id),
       server_(nullptr),
       port_(config_["port"].isUInt() ? config["port"].asUInt() : 0),

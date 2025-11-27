@@ -120,21 +120,21 @@
 extern std::mutex reap_mtx;
 extern std::list<pid_t> reap;
 
-void *get_symbol(const char *path, const char *symbol) {
-   void *handle = dlopen(path, RTLD_NOW);
-   if (!handle) {
-     auto err = fmt::format("Cannot load shared-object: {}", dlerror());
-     throw std::runtime_error(err);
-   }
-   dlerror();
-   void *resolved = dlsym(handle, symbol);
-   char *error = dlerror();
-   if (error != NULL) {
-     auto err = fmt::format("Cannot load shared-object functions: {}", error);
-     dlclose(handle);
-     throw std::runtime_error(err);
-   }
-   return resolved;
+void* get_symbol(const char* path, const char* symbol) {
+  void* handle = dlopen(path, RTLD_NOW);
+  if (!handle) {
+    auto err = fmt::format("Cannot load shared-object: {}", dlerror());
+    throw std::runtime_error(err);
+  }
+  dlerror();
+  void* resolved = dlsym(handle, symbol);
+  char* error = dlerror();
+  if (error != NULL) {
+    auto err = fmt::format("Cannot load shared-object functions: {}", error);
+    dlclose(handle);
+    throw std::runtime_error(err);
+  }
+  return resolved;
 }
 
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
@@ -195,8 +195,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_EXT_WORKSPACES
     if (ref == "ext/workspaces") {
-      return new waybar::modules::ext::WorkspaceManager(id, bar_, config_[name],
-                                                        reap_mtx, reap);
+      return new waybar::modules::ext::WorkspaceManager(id, bar_, config_[name], reap_mtx, reap);
     }
 #endif
 #ifdef HAVE_RIVER
@@ -226,8 +225,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::hyprland::Window(id, bar_, config_[name], reap_mtx, reap);
     }
     if (ref == "hyprland/windowcount") {
-      return new waybar::modules::hyprland::WindowCount(id, bar_, config_[name],
-                                                        reap_mtx, reap);
+      return new waybar::modules::hyprland::WindowCount(id, bar_, config_[name], reap_mtx, reap);
     }
     if (ref == "hyprland/language") {
       return new waybar::modules::hyprland::Language(id, bar_, config_[name], reap_mtx, reap);
@@ -236,8 +234,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::hyprland::Submap(id, bar_, config_[name], reap_mtx, reap);
     }
     if (ref == "hyprland/workspaces") {
-      return new waybar::modules::hyprland::Workspaces(id, bar_, config_[name],
-                                                       reap_mtx, reap);
+      return new waybar::modules::hyprland::Workspaces(id, bar_, config_[name], reap_mtx, reap);
     }
 #endif
 #ifdef HAVE_NIRI
@@ -361,9 +358,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      AModule* (*constructor)(const std::string&, const Json::Value&,
-                              std::mutex&, std::list<pid_t>&);
-      void *symbol = get_symbol("waybar-module-cava.so", "new_cava");
+      AModule* (*constructor)(const std::string&, const Json::Value&, std::mutex&,
+                              std::list<pid_t>&);
+      void* symbol = get_symbol("waybar-module-cava.so", "new_cava");
       constructor = reinterpret_cast<decltype(constructor)>(symbol);
       return constructor(id, config_[name], reap_mtx, reap);
     }
@@ -375,9 +372,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LIBGPS
     if (ref == "gps") {
-      AModule* (*constructor)(const std::string&, const Json::Value&,
-                              std::mutex&, std::list<pid_t>&);
-      void *symbol = get_symbol("waybar-module-gps.so", "new_gps");
+      AModule* (*constructor)(const std::string&, const Json::Value&, std::mutex&,
+                              std::list<pid_t>&);
+      void* symbol = get_symbol("waybar-module-gps.so", "new_gps");
       constructor = reinterpret_cast<decltype(constructor)>(symbol);
       return constructor(id, config_[name], reap_mtx, reap);
     }

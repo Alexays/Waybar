@@ -3,11 +3,10 @@
 #include <spdlog/spdlog.h>
 
 extern "C" {
-  waybar::ALabel* new_cava(const std::string& id, const Json::Value& config,
-                           std::mutex& reap_mtx, std::list<pid_t>& reap)
-  {
-    return new waybar::modules::cava::Cava(id, config, reap_mtx, reap);
-  }
+waybar::ALabel* new_cava(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+                         std::list<pid_t>& reap) {
+  return new waybar::modules::cava::Cava(id, config, reap_mtx, reap);
+}
 }
 
 waybar::modules::cava::Cava::Cava(const std::string& id, const Json::Value& config,
