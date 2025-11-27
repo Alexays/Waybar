@@ -14,11 +14,11 @@
 namespace waybar {
 
 AAppIconLabel::AAppIconLabel(const Json::Value& config, const std::string& name,
-                             const std::string& id, const std::string& format, std::mutex& reap_mtx,
-                             std::list<pid_t>& reap, uint16_t interval, bool ellipsize,
-                             bool enable_click, bool enable_scroll)
-    : AIconLabel(config, name, id, format, reap_mtx, reap, interval, ellipsize, enable_click,
-                 enable_scroll) {
+                             const std::string& id, const std::string& format,
+                             std::mutex& reap_mtx, std::list<pid_t>& reap, uint16_t interval,
+                             bool ellipsize, bool enable_click, bool enable_scroll)
+    : AIconLabel(config, name, id, format, reap_mtx, reap,
+                 interval, ellipsize, enable_click, enable_scroll) {
   // Icon size
   if (config["icon-size"].isUInt()) {
     app_icon_size_ = config["icon-size"].asUInt();

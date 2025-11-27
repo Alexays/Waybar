@@ -11,60 +11,60 @@
 #include "util/clara.hpp"
 #include "util/format.hpp"
 
-waybar::Client* waybar::Client::inst() {
-  static auto* c = new Client();
+waybar::Client *waybar::Client::inst() {
+  static auto *c = new Client();
   return c;
 }
 
-void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint32_t name,
-                                  const char* interface, uint32_t version) {
-  auto* client = static_cast<Client*>(data);
+void waybar::Client::handleGlobal(void *data, struct wl_registry *registry, uint32_t name,
+                                  const char *interface, uint32_t version) {
+  auto *client = static_cast<Client *>(data);
   if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
       version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
-    client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1*>(wl_registry_bind(
+    client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1 *>(wl_registry_bind(
         registry, name, &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
   } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
-    client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1*>(
+    client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1 *>(
         wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
   }
 }
 
-void waybar::Client::handleGlobalRemove(void* data, struct wl_registry* /*registry*/,
+void waybar::Client::handleGlobalRemove(void *data, struct wl_registry * /*registry*/,
                                         uint32_t name) {
   // Nothing here
 }
 
-void waybar::Client::handleOutput(struct waybar_output& output) {
+void waybar::Client::handleOutput(struct waybar_output &output) {
   static const struct zxdg_output_v1_listener xdgOutputListener = {
-      .logical_position = [](void*, struct zxdg_output_v1*, int32_t, int32_t) {},
-      .logical_size = [](void*, struct zxdg_output_v1*, int32_t, int32_t) {},
+      .logical_position = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
+      .logical_size = [](void *, struct zxdg_output_v1 *, int32_t, int32_t) {},
       .done = &handleOutputDone,
       .name = &handleOutputName,
       .description = &handleOutputDescription,
   };
   // owned by output->monitor; no need to destroy
-  auto* wl_output = gdk_wayland_monitor_get_wl_output(output.monitor->gobj());
+  auto *wl_output = gdk_wayland_monitor_get_wl_output(output.monitor->gobj());
   output.xdg_output.reset(zxdg_output_manager_v1_get_xdg_output(xdg_output_manager, wl_output));
   zxdg_output_v1_add_listener(output.xdg_output.get(), &xdgOutputListener, &output);
 }
 
-struct waybar::waybar_output& waybar::Client::getOutput(void* addr) {
+struct waybar::waybar_output &waybar::Client::getOutput(void *addr) {
   auto it = std::find_if(outputs_.begin(), outputs_.end(),
-                         [&addr](const auto& output) { return &output == addr; });
+                         [&addr](const auto &output) { return &output == addr; });
   if (it == outputs_.end()) {
     throw std::runtime_error("Unable to find valid output");
   }
   return *it;
 }
 
-std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output& output) {
+std::vector<Json::Value> waybar::Client::getOutputConfigs(struct waybar_output &output) {
   return config.getOutputConfigs(output.name, output.identifier);
 }
 
-void waybar::Client::handleOutputDone(void* data, struct zxdg_output_v1* /*xdg_output*/) {
-  auto* client = waybar::Client::inst();
+void waybar::Client::handleOutputDone(void *data, struct zxdg_output_v1 * /*xdg_output*/) {
+  auto *client = waybar::Client::inst();
   try {
-    auto& output = client->getOutput(data);
+    auto &output = client->getOutput(data);
     /**
      * Multiple .done events may arrive in batch. In this case libwayland would queue
      * xdg_output.destroy and dispatch all pending events, triggering this callback several times
@@ -80,44 +80,44 @@ void waybar::Client::handleOutputDone(void* data, struct zxdg_output_v1* /*xdg_o
 
       auto configs = client->getOutputConfigs(output);
       if (!configs.empty()) {
-        for (const auto& config : configs) {
+        for (const auto &config : configs) {
           client->bars.emplace_back(std::make_unique<Bar>(&output, config));
         }
       }
     }
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     spdlog::warn("caught exception in zxdg_output_v1_listener::done: {}", e.what());
   }
 }
 
-void waybar::Client::handleOutputName(void* data, struct zxdg_output_v1* /*xdg_output*/,
-                                      const char* name) {
-  auto* client = waybar::Client::inst();
+void waybar::Client::handleOutputName(void *data, struct zxdg_output_v1 * /*xdg_output*/,
+                                      const char *name) {
+  auto *client = waybar::Client::inst();
   try {
-    auto& output = client->getOutput(data);
+    auto &output = client->getOutput(data);
     output.name = name;
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     spdlog::warn("caught exception in zxdg_output_v1_listener::name: {}", e.what());
   }
 }
 
-void waybar::Client::handleOutputDescription(void* data, struct zxdg_output_v1* /*xdg_output*/,
-                                             const char* description) {
-  auto* client = waybar::Client::inst();
+void waybar::Client::handleOutputDescription(void *data, struct zxdg_output_v1 * /*xdg_output*/,
+                                             const char *description) {
+  auto *client = waybar::Client::inst();
   try {
-    auto& output = client->getOutput(data);
+    auto &output = client->getOutput(data);
 
     // Description format: "identifier (name)"
     auto s = std::string(description);
     auto pos = s.find(" (");
     output.identifier = pos != std::string::npos ? s.substr(0, pos) : s;
-  } catch (const std::exception& e) {
+  } catch (const std::exception &e) {
     spdlog::warn("caught exception in zxdg_output_v1_listener::description: {}", e.what());
   }
 }
 
 void waybar::Client::handleMonitorAdded(Glib::RefPtr<Gdk::Monitor> monitor) {
-  auto& output = outputs_.emplace_back();
+  auto &output = outputs_.emplace_back();
   output.monitor = std::move(monitor);
   handleOutput(output);
 }
@@ -146,10 +146,10 @@ void waybar::Client::handleDeferredMonitorRemoval(Glib::RefPtr<Gdk::Monitor> mon
       ++it;
     }
   }
-  outputs_.remove_if([&monitor](const auto& output) { return output.monitor == monitor; });
+  outputs_.remove_if([&monitor](const auto &output) { return output.monitor == monitor; });
 }
 
-const std::string waybar::Client::getStyle(const std::string& style,
+const std::string waybar::Client::getStyle(const std::string &style,
                                            std::optional<Appearance> appearance = std::nullopt) {
   auto gtk_settings = Gtk::Settings::get_default();
   std::optional<std::string> css_file;
@@ -182,7 +182,7 @@ const std::string waybar::Client::getStyle(const std::string& style,
   return css_file.value();
 };
 
-auto waybar::Client::setupCss(const std::string& css_file) -> void {
+auto waybar::Client::setupCss(const std::string &css_file) -> void {
   auto screen = Gdk::Screen::get_default();
   if (!screen) {
     throw std::runtime_error("No default screen");
@@ -229,7 +229,7 @@ void waybar::Client::bindInterfaces() {
       sigc::mem_fun(*this, &Client::handleMonitorRemoved));
 }
 
-int waybar::Client::main(int argc, char* argv[]) {
+int waybar::Client::main(int argc, char *argv[]) {
   bool show_help = false;
   bool show_version = false;
   std::string config_opt;
@@ -290,7 +290,7 @@ int waybar::Client::main(int argc, char* argv[]) {
   if (m_config.isObject() && m_config["reload_style_on_change"].asBool()) {
     m_cssReloadHelper->monitorChanges();
   } else if (m_config.isArray()) {
-    for (const auto& conf : m_config) {
+    for (const auto &conf : m_config) {
       if (conf["reload_style_on_change"].asBool()) {
         m_cssReloadHelper->monitorChanges();
         break;

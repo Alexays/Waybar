@@ -18,7 +18,8 @@ namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
                std::mutex& reap_mtx, std::list<pid_t>& reap)
-    : AAppIconLabel(config, "window", id, "{}", reap_mtx, reap, 0, true), bar_(bar), windowId_(-1) {
+    : AAppIconLabel(config, "window", id, "{}", reap_mtx, reap, 0, true),
+      bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));

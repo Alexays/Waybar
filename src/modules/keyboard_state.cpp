@@ -79,10 +79,10 @@ auto supportsLockStates(const libevdev* dev) -> bool {
 }
 
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
-                                              const Json::Value& config, std::mutex& reap_mtx,
-                                              std::list<pid_t>& reap)
-    : AModule(config, "keyboard-state", id, reap_mtx, reap, false,
-              !config["disable-scroll"].asBool()),
+                                              const Json::Value& config,
+                                              std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, "keyboard-state", id, reap_mtx, reap,
+              false, !config["disable-scroll"].asBool()),
       box_(bar.orientation, 0),
       numlock_label_(""),
       capslock_label_(""),

@@ -1,6 +1,6 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value& config,
+waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config,
                                         std::mutex& reap_mtx, std::list<pid_t>& reap)
     : ALabel(config, "pulseaudio", id, "{volume}%", reap_mtx, reap) {
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -10,7 +10,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value
   backend->setIgnoredSinks(config_["ignored-sinks"]);
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll* e) {
+bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
   // change the pulse volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -52,7 +52,7 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
   res.push_back(backend->getDefaultSourceName());
   std::string nameLC = backend->getSinkPortName() + backend->getFormFactor();
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
-  for (auto const& port : ports) {
+  for (auto const &port : ports) {
     if (nameLC.find(port) != std::string::npos) {
       if (sink_muted) {
         res.emplace_back(port + "-muted");

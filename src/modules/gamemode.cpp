@@ -21,12 +21,10 @@
 #include "util/gtk_icon.hpp"
 
 namespace waybar::modules {
-Gamemode::Gamemode(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
-                   std::list<pid_t>& reap)
+Gamemode::Gamemode(const std::string& id, const Json::Value& config,
+                   std::mutex& reap_mtx, std::list<pid_t>& reap)
     : AModule(config, "gamemode", id, reap_mtx, reap),
-      box_(Gtk::ORIENTATION_HORIZONTAL, 0),
-      icon_(),
-      label_() {
+      box_(Gtk::ORIENTATION_HORIZONTAL, 0), icon_(), label_() {
   box_.pack_start(icon_);
   box_.pack_start(label_);
   box_.set_name(name_);

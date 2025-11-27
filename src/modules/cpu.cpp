@@ -13,8 +13,8 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
-                          std::list<pid_t>& reap)
+waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config,
+                          std::mutex& reap_mtx, std::list<pid_t>& reap)
     : ALabel(config, "cpu", id, "{usage}%", reap_mtx, reap, 10) {
   thread_ = [this] {
     dp.emit();

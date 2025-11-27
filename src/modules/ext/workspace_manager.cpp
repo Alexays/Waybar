@@ -20,12 +20,11 @@ uint32_t WorkspaceManager::group_global_id = 0;
 uint32_t WorkspaceManager::workspace_global_id = 0;
 std::map<std::string, std::string> Workspace::icon_map_;
 
-WorkspaceManager::WorkspaceManager(const std::string& id, const waybar::Bar& bar,
-                                   const Json::Value& config, std::mutex& reap_mtx,
-                                   std::list<pid_t>& reap)
+WorkspaceManager::WorkspaceManager(const std::string &id, const waybar::Bar &bar,
+                                   const Json::Value &config,
+                                   std::mutex& reap_mtx, std::list<pid_t>& reap)
     : waybar::AModule(config, "workspaces", id, reap_mtx, reap, false, false),
-      bar_(bar),
-      box_(bar.orientation, 0) {
+      bar_(bar), box_(bar.orientation, 0) {
   add_registry_listener(this);
 
   // parse configuration
@@ -73,7 +72,7 @@ WorkspaceManager::~WorkspaceManager() {
   groups_.clear();
 
   if (ext_manager_ != nullptr) {
-    auto* display = Client::inst()->wl_display;
+    auto *display = Client::inst()->wl_display;
     // Send `stop` request and wait for one roundtrip.
     ext_workspace_manager_v1_stop(ext_manager_);
     wl_display_roundtrip(display);
@@ -87,7 +86,7 @@ WorkspaceManager::~WorkspaceManager() {
   spdlog::debug("[ext/workspaces]: Workspace manager destroyed");
 }
 
-void WorkspaceManager::register_manager(wl_registry* registry, uint32_t name, uint32_t version) {
+void WorkspaceManager::register_manager(wl_registry *registry, uint32_t name, uint32_t version) {
   if (ext_manager_ != nullptr) {
     spdlog::warn("[ext/workspaces]: Register workspace manager again although already registered!");
     return;
@@ -102,7 +101,7 @@ void WorkspaceManager::register_manager(wl_registry* registry, uint32_t name, ui
 
 void WorkspaceManager::remove_workspace_group(uint32_t id) {
   const auto it =
-      std::find_if(groups_.begin(), groups_.end(), [id](const auto& g) { return g->id() == id; });
+      std::find_if(groups_.begin(), groups_.end(), [id](const auto &g) { return g->id() == id; });
 
   if (it == groups_.end()) {
     spdlog::warn("[ext/workspaces]: Can't find workspace group with id {}", id);
@@ -114,7 +113,7 @@ void WorkspaceManager::remove_workspace_group(uint32_t id) {
 
 void WorkspaceManager::remove_workspace(uint32_t id) {
   const auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
-                               [id](const auto& w) { return w->id() == id; });
+                               [id](const auto &w) { return w->id() == id; });
 
   if (it == workspaces_.end()) {
     spdlog::warn("[ext/workspaces]: Can't find workspace with id {}", id);
@@ -124,13 +123,13 @@ void WorkspaceManager::remove_workspace(uint32_t id) {
   workspaces_.erase(it);
 }
 
-void WorkspaceManager::handle_workspace_group(ext_workspace_group_handle_v1* handle) {
+void WorkspaceManager::handle_workspace_group(ext_workspace_group_handle_v1 *handle) {
   const auto new_id = ++group_global_id;
   groups_.push_back(std::make_unique<WorkspaceGroup>(*this, handle, new_id));
   spdlog::debug("[ext/workspaces]: Workspace group {} created", new_id);
 }
 
-void WorkspaceManager::handle_workspace(ext_workspace_handle_v1* handle) {
+void WorkspaceManager::handle_workspace(ext_workspace_handle_v1 *handle) {
   const auto new_id = ++workspace_global_id;
   const auto new_name = std::to_string(++workspace_name);
   workspaces_.push_back(std::make_unique<Workspace>(config_, *this, handle, new_id, new_name));
@@ -161,7 +160,7 @@ void WorkspaceManager::update() {
   AModule::update();
 }
 
-bool WorkspaceManager::has_button(const Gtk::Button* button) {
+bool WorkspaceManager::has_button(const Gtk::Button *button) {
   const auto buttons = box_.get_children();
   return std::find(buttons.begin(), buttons.end(), button) != buttons.end();
 }
@@ -169,20 +168,20 @@ bool WorkspaceManager::has_button(const Gtk::Button* button) {
 void WorkspaceManager::sort_workspaces() {
   // determine if workspace ID's and names can be sort numerically or literally
 
-  auto is_numeric = [](const std::string& s) {
+  auto is_numeric = [](const std::string &s) {
     return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
   };
 
   auto sort_by_workspace_id_numerically =
       std::all_of(workspaces_.begin(), workspaces_.end(),
-                  [&](const auto& w) { return is_numeric(w->workspace_id()); });
+                  [&](const auto &w) { return is_numeric(w->workspace_id()); });
 
   auto sort_by_name_numerically = std::all_of(workspaces_.begin(), workspaces_.end(),
-                                              [&](const auto& w) { return is_numeric(w->name()); });
+                                              [&](const auto &w) { return is_numeric(w->name()); });
 
   // sort based on configuration setting with sort-by-id as fallback
 
-  std::sort(workspaces_.begin(), workspaces_.end(), [&](const auto& w1, const auto& w2) {
+  std::sort(workspaces_.begin(), workspaces_.end(), [&](const auto &w1, const auto &w2) {
     if (sort_by_id_ || (!sort_by_name_ && !sort_by_coordinates_)) {
       if (w1->workspace_id() == w2->workspace_id()) {
         return w1->id() < w2->id();
@@ -221,7 +220,7 @@ void WorkspaceManager::sort_workspaces() {
 }
 
 void WorkspaceManager::clear_buttons() {
-  for (const auto& workspace : workspaces_) {
+  for (const auto &workspace : workspaces_) {
     if (has_button(&workspace->button())) {
       box_.remove(workspace->button());
     }
@@ -229,13 +228,13 @@ void WorkspaceManager::clear_buttons() {
 }
 
 void WorkspaceManager::update_buttons() {
-  const auto* output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  const auto *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
 
   // go through all workspace
 
-  for (const auto& workspace : workspaces_) {
+  for (const auto &workspace : workspaces_) {
     const bool workspace_on_any_group_for_output =
-        std::any_of(groups_.begin(), groups_.end(), [&](const auto& group) {
+        std::any_of(groups_.begin(), groups_.end(), [&](const auto &group) {
           const bool group_on_output = group->has_output(output) || all_outputs_;
           const bool workspace_on_group = group->has_workspace(workspace->handle());
           return group_on_output && workspace_on_group;
@@ -262,7 +261,7 @@ void WorkspaceManager::update_buttons() {
 
 // WorkspaceGroup
 
-WorkspaceGroup::WorkspaceGroup(WorkspaceManager& manager, ext_workspace_group_handle_v1* handle,
+WorkspaceGroup::WorkspaceGroup(WorkspaceManager &manager, ext_workspace_group_handle_v1 *handle,
                                uint32_t id)
     : workspaces_manager_(manager), ext_handle_(handle), id_(id) {
   add_workspace_group_listener(ext_handle_, this);
@@ -275,11 +274,11 @@ WorkspaceGroup::~WorkspaceGroup() {
   spdlog::debug("[ext/workspaces]: Workspace group {} destroyed", id_);
 }
 
-bool WorkspaceGroup::has_output(const wl_output* output) {
+bool WorkspaceGroup::has_output(const wl_output *output) {
   return std::find(outputs_.begin(), outputs_.end(), output) != outputs_.end();
 }
 
-bool WorkspaceGroup::has_workspace(const ext_workspace_handle_v1* workspace) {
+bool WorkspaceGroup::has_workspace(const ext_workspace_handle_v1 *workspace) {
   return std::find(workspaces_.begin(), workspaces_.end(), workspace) != workspaces_.end();
 }
 
@@ -291,20 +290,20 @@ void WorkspaceGroup::handle_capabilities(uint32_t capabilities) {
   }
 }
 
-void WorkspaceGroup::handle_output_enter(wl_output* output) { outputs_.push_back(output); }
+void WorkspaceGroup::handle_output_enter(wl_output *output) { outputs_.push_back(output); }
 
-void WorkspaceGroup::handle_output_leave(wl_output* output) {
+void WorkspaceGroup::handle_output_leave(wl_output *output) {
   const auto it = std::find(outputs_.begin(), outputs_.end(), output);
   if (it != outputs_.end()) {
     outputs_.erase(it);
   }
 }
 
-void WorkspaceGroup::handle_workspace_enter(ext_workspace_handle_v1* handle) {
+void WorkspaceGroup::handle_workspace_enter(ext_workspace_handle_v1 *handle) {
   workspaces_.push_back(handle);
 }
 
-void WorkspaceGroup::handle_workspace_leave(ext_workspace_handle_v1* handle) {
+void WorkspaceGroup::handle_workspace_leave(ext_workspace_handle_v1 *handle) {
   const auto it = std::find(workspaces_.begin(), workspaces_.end(), handle);
   if (it != workspaces_.end()) {
     workspaces_.erase(it);
@@ -318,30 +317,30 @@ void WorkspaceGroup::handle_removed() {
 
 // Workspace
 
-Workspace::Workspace(const Json::Value& config, WorkspaceManager& manager,
-                     ext_workspace_handle_v1* handle, uint32_t id, const std::string& name)
+Workspace::Workspace(const Json::Value &config, WorkspaceManager &manager,
+                     ext_workspace_handle_v1 *handle, uint32_t id, const std::string &name)
     : workspace_manager_(manager), ext_handle_(handle), id_(id), workspace_id_(name), name_(name) {
   add_workspace_listener(ext_handle_, this);
 
   // parse configuration
 
-  const auto& config_active_only = config["active-only"];
+  const auto &config_active_only = config["active-only"];
   if (config_active_only.isBool()) {
     active_only_ = config_active_only.asBool();
   }
 
-  const auto& config_ignore_hidden = config["ignore-hidden"];
+  const auto &config_ignore_hidden = config["ignore-hidden"];
   if (config_ignore_hidden.isBool()) {
     ignore_hidden_ = config_ignore_hidden.asBool();
   }
 
-  const auto& config_format = config["format"];
+  const auto &config_format = config["format"];
   format_ = config_format.isString() ? config_format.asString() : "{name}";
   with_icon_ = format_.find("{icon}") != std::string::npos;
 
   if (with_icon_ && icon_map_.empty()) {
-    const auto& format_icons = config["format-icons"];
-    for (auto& n : format_icons.getMemberNames()) {
+    const auto &format_icons = config["format-icons"];
+    for (auto &n : format_icons.getMemberNames()) {
       icon_map_.emplace(n, format_icons[n].asString());
     }
   }
@@ -416,19 +415,19 @@ void Workspace::update() {
                                 fmt::arg("icon", with_icon_ ? icon() : "")));
 }
 
-void Workspace::handle_id(const std::string& id) {
+void Workspace::handle_id(const std::string &id) {
   spdlog::debug("[ext/workspaces]:     ID for workspace {}: {}", id_, id);
   workspace_id_ = id;
   workspace_manager_.set_needs_sorting();
 }
 
-void Workspace::handle_name(const std::string& name) {
+void Workspace::handle_name(const std::string &name) {
   spdlog::debug("[ext/workspaces]:     Name for workspace {}: {}", id_, name);
   name_ = name;
   workspace_manager_.set_needs_sorting();
 }
 
-void Workspace::handle_coordinates(const std::vector<uint32_t>& coordinates) {
+void Workspace::handle_coordinates(const std::vector<uint32_t> &coordinates) {
   coordinates_ = coordinates;
   workspace_manager_.set_needs_sorting();
 }
@@ -456,7 +455,7 @@ void Workspace::handle_removed() {
   workspace_manager_.remove_workspace(id_);
 }
 
-bool Workspace::handle_clicked(const GdkEventButton* button) const {
+bool Workspace::handle_clicked(const GdkEventButton *button) const {
   std::string action;
   if (button->button == GDK_BUTTON_PRIMARY) {
     action = on_click_action_;

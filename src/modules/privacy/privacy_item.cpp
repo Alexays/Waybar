@@ -12,9 +12,9 @@
 
 namespace waybar::modules::privacy {
 
-PrivacyItem::PrivacyItem(const Json::Value& config_, enum PrivacyNodeType privacy_type_,
-                         std::list<PrivacyNodeInfo*>* nodes_, Gtk::Orientation orientation,
-                         const std::string& pos, const uint icon_size,
+PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
+                         std::list<PrivacyNodeInfo *> *nodes_, Gtk::Orientation orientation,
+                         const std::string &pos, const uint icon_size,
                          const uint transition_duration)
     : Gtk::Revealer(),
       privacy_type(privacy_type_),
@@ -83,7 +83,7 @@ PrivacyItem::PrivacyItem(const Json::Value& config_, enum PrivacyNodeType privac
     // Sets the window to use when showing the tooltip
     update_tooltip();
     this->signal_query_tooltip().connect(sigc::track_obj(
-        [this](int x, int y, bool keyboard_tooltip, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+        [this](int x, int y, bool keyboard_tooltip, const Glib::RefPtr<Gtk::Tooltip> &tooltip) {
           tooltip->set_custom(tooltip_window);
           return true;
         },
@@ -97,23 +97,23 @@ PrivacyItem::PrivacyItem(const Json::Value& config_, enum PrivacyNodeType privac
 
 void PrivacyItem::update_tooltip() {
   // Removes all old nodes
-  for (auto* child : tooltip_window.get_children()) {
+  for (auto *child : tooltip_window.get_children()) {
     tooltip_window.remove(*child);
     // despite the remove, still needs a delete to prevent memory leak. Speculating that this might
     // work differently in GTK4.
     delete child;
   }
-  for (auto* node : *nodes) {
-    auto* box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 4);
+  for (auto *node : *nodes) {
+    auto *box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 4);
 
     // Set device icon
-    auto* node_icon = Gtk::make_managed<Gtk::Image>();
+    auto *node_icon = Gtk::make_managed<Gtk::Image>();
     node_icon->set_pixel_size(tooltipIconSize);
     node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
     box->add(*node_icon);
 
     // Set model
-    auto* nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
+    auto *nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
     box->add(*nodeName);
 
     tooltip_window.add(*box);

@@ -29,42 +29,42 @@ namespace waybar::modules::wlr {
 /* Task class implementation */
 uint32_t Task::global_id = 0;
 
-static void tl_handle_title(void* data, struct zwlr_foreign_toplevel_handle_v1* handle,
-                            const char* title) {
-  return static_cast<Task*>(data)->handle_title(title);
+static void tl_handle_title(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+                            const char *title) {
+  return static_cast<Task *>(data)->handle_title(title);
 }
 
-static void tl_handle_app_id(void* data, struct zwlr_foreign_toplevel_handle_v1* handle,
-                             const char* app_id) {
-  return static_cast<Task*>(data)->handle_app_id(app_id);
+static void tl_handle_app_id(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+                             const char *app_id) {
+  return static_cast<Task *>(data)->handle_app_id(app_id);
 }
 
-static void tl_handle_output_enter(void* data, struct zwlr_foreign_toplevel_handle_v1* handle,
-                                   struct wl_output* output) {
-  return static_cast<Task*>(data)->handle_output_enter(output);
+static void tl_handle_output_enter(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+                                   struct wl_output *output) {
+  return static_cast<Task *>(data)->handle_output_enter(output);
 }
 
-static void tl_handle_output_leave(void* data, struct zwlr_foreign_toplevel_handle_v1* handle,
-                                   struct wl_output* output) {
-  return static_cast<Task*>(data)->handle_output_leave(output);
+static void tl_handle_output_leave(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+                                   struct wl_output *output) {
+  return static_cast<Task *>(data)->handle_output_leave(output);
 }
 
-static void tl_handle_state(void* data, struct zwlr_foreign_toplevel_handle_v1* handle,
-                            struct wl_array* state) {
-  return static_cast<Task*>(data)->handle_state(state);
+static void tl_handle_state(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+                            struct wl_array *state) {
+  return static_cast<Task *>(data)->handle_state(state);
 }
 
-static void tl_handle_done(void* data, struct zwlr_foreign_toplevel_handle_v1* handle) {
-  return static_cast<Task*>(data)->handle_done();
+static void tl_handle_done(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle) {
+  return static_cast<Task *>(data)->handle_done();
 }
 
-static void tl_handle_parent(void* data, struct zwlr_foreign_toplevel_handle_v1* handle,
-                             struct zwlr_foreign_toplevel_handle_v1* parent) {
+static void tl_handle_parent(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle,
+                             struct zwlr_foreign_toplevel_handle_v1 *parent) {
   /* This is explicitly left blank */
 }
 
-static void tl_handle_closed(void* data, struct zwlr_foreign_toplevel_handle_v1* handle) {
-  return static_cast<Task*>(data)->handle_closed();
+static void tl_handle_closed(void *data, struct zwlr_foreign_toplevel_handle_v1 *handle) {
+  return static_cast<Task *>(data)->handle_closed();
 }
 
 static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_impl = {
@@ -81,8 +81,8 @@ static const struct zwlr_foreign_toplevel_handle_v1_listener toplevel_handle_imp
 static const std::vector<Gtk::TargetEntry> target_entries = {
     Gtk::TargetEntry("WAYBAR_TOPLEVEL", Gtk::TARGET_SAME_APP, 0)};
 
-Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
-           struct zwlr_foreign_toplevel_handle_v1* tl_handle, struct wl_seat* seat)
+Task::Task(const waybar::Bar &bar, const Json::Value &config, Taskbar *tbar,
+           struct zwlr_foreign_toplevel_handle_v1 *tl_handle, struct wl_seat *seat)
     : bar_{bar},
       config_{config},
       tbar_{tbar},
@@ -189,7 +189,7 @@ std::string Task::state_string(bool shortened) const {
     return res.substr(0, res.size() - 1);
 }
 
-void Task::handle_title(const char* title) {
+void Task::handle_title(const char *title) {
   if (title_.empty()) {
     spdlog::debug(fmt::format("Task ({}) setting title to {}", id_, title_));
   } else {
@@ -238,7 +238,7 @@ void Task::hide_if_ignored() {
   }
 }
 
-void Task::handle_app_id(const char* app_id) {
+void Task::handle_app_id(const char *app_id) {
   if (app_id_.empty()) {
     spdlog::debug(fmt::format("Task ({}) setting app_id to {}", id_, app_id));
   } else {
@@ -273,20 +273,20 @@ void Task::handle_app_id(const char* app_id) {
     spdlog::debug("Couldn't find icon for {}", app_id_);
 }
 
-void Task::on_button_size_allocated(Gtk::Allocation& alloc) {
+void Task::on_button_size_allocated(Gtk::Allocation &alloc) {
   gtk_widget_translate_coordinates(GTK_WIDGET(button.gobj()), GTK_WIDGET(bar_.window.gobj()), 0, 0,
                                    &minimize_hint.x, &minimize_hint.y);
   minimize_hint.w = button.get_width();
   minimize_hint.h = button.get_height();
 }
 
-void Task::handle_output_enter(struct wl_output* output) {
+void Task::handle_output_enter(struct wl_output *output) {
   if (ignored_) {
     spdlog::debug("{} is ignored", repr());
     return;
   }
 
-  spdlog::debug("{} entered output {}", repr(), (void*)output);
+  spdlog::debug("{} entered output {}", repr(), (void *)output);
 
   if (!button_visible_ && (tbar_->all_outputs() || tbar_->show_output(output))) {
     /* The task entered the output of the current bar make the button visible */
@@ -299,8 +299,8 @@ void Task::handle_output_enter(struct wl_output* output) {
   }
 }
 
-void Task::handle_output_leave(struct wl_output* output) {
-  spdlog::debug("{} left output {}", repr(), (void*)output);
+void Task::handle_output_leave(struct wl_output *output) {
+  spdlog::debug("{} left output {}", repr(), (void *)output);
 
   if (button_visible_ && !tbar_->all_outputs() && tbar_->show_output(output)) {
     /* The task left the output of the current bar, make the button invisible */
@@ -311,11 +311,11 @@ void Task::handle_output_leave(struct wl_output* output) {
   }
 }
 
-void Task::handle_state(struct wl_array* state) {
+void Task::handle_state(struct wl_array *state) {
   state_ = 0;
   size_t size = state->size / sizeof(uint32_t);
   for (size_t i = 0; i < size; ++i) {
-    auto entry = static_cast<uint32_t*>(state->data)[i];
+    auto entry = static_cast<uint32_t *>(state->data)[i];
     if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED) state_ |= MAXIMIZED;
     if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED) state_ |= MINIMIZED;
     if (entry == ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_ACTIVATED) state_ |= ACTIVE;
@@ -367,7 +367,7 @@ void Task::handle_closed() {
   tbar_->remove_task(id_);
 }
 
-bool Task::handle_clicked(GdkEventButton* bt) {
+bool Task::handle_clicked(GdkEventButton *bt) {
   /* filter out additional events for double/triple clicks */
   if (bt->type == GDK_BUTTON_PRESS) {
     /* save where the button press occurred in case it becomes a drag */
@@ -412,7 +412,7 @@ bool Task::handle_clicked(GdkEventButton* bt) {
   return true;
 }
 
-bool Task::handle_motion_notify(GdkEventMotion* mn) {
+bool Task::handle_motion_notify(GdkEventMotion *mn) {
   if (drag_start_button == -1) return false;
 
   if (button.drag_check_threshold(drag_start_x, drag_start_y, mn->x, mn->y)) {
@@ -420,25 +420,25 @@ bool Task::handle_motion_notify(GdkEventMotion* mn) {
     auto target_list = Gtk::TargetList::create(target_entries);
     auto refptr = Glib::RefPtr<Gtk::TargetList>(target_list);
     auto drag_context =
-        button.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent*)mn);
+        button.drag_begin(refptr, Gdk::DragAction::ACTION_MOVE, drag_start_button, (GdkEvent *)mn);
   }
 
   return false;
 }
 
-void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
-                                Gtk::SelectionData& selection_data, guint info, guint time) {
+void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext> &context,
+                                Gtk::SelectionData &selection_data, guint info, guint time) {
   spdlog::debug("drag_data_get");
-  void* button_addr = (void*)&this->button;
+  void *button_addr = (void *)&this->button;
 
-  selection_data.set("WAYBAR_TOPLEVEL", 32, (const guchar*)&button_addr, sizeof(gpointer));
+  selection_data.set("WAYBAR_TOPLEVEL", 32, (const guchar *)&button_addr, sizeof(gpointer));
 }
 
-void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y,
+void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext> &context, int x, int y,
                                      Gtk::SelectionData selection_data, guint info, guint time) {
   spdlog::debug("drag_data_received");
-  gpointer handle = *(gpointer*)selection_data.get_data();
-  auto dragged_button = (Gtk::Button*)handle;
+  gpointer handle = *(gpointer *)selection_data.get_data();
+  auto dragged_button = (Gtk::Button *)handle;
 
   if (dragged_button == &this->button) return;
 
@@ -447,7 +447,7 @@ void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& conte
 
   if (parent_of_dragged != parent_of_dest) return;
 
-  auto box = (Gtk::Box*)parent_of_dragged;
+  auto box = (Gtk::Box *)parent_of_dragged;
 
   auto position_prop = box->child_property_position(this->button);
   auto position = position_prop.get_value();
@@ -455,9 +455,9 @@ void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& conte
   box->reorder_child(*dragged_button, position);
 }
 
-bool Task::operator==(const Task& o) const { return o.id_ == id_; }
+bool Task::operator==(const Task &o) const { return o.id_ == id_; }
 
-bool Task::operator!=(const Task& o) const { return o.id_ != id_; }
+bool Task::operator!=(const Task &o) const { return o.id_ != id_; }
 
 void Task::update() {
   bool markup = config_["markup"].isBool() ? config_["markup"].asBool() : false;
@@ -545,23 +545,23 @@ void Task::fullscreen(bool set) {
 void Task::close() { zwlr_foreign_toplevel_handle_v1_close(handle_); }
 
 /* Taskbar class implementation */
-static void handle_global(void* data, struct wl_registry* registry, uint32_t name,
-                          const char* interface, uint32_t version) {
+static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
+                          const char *interface, uint32_t version) {
   if (std::strcmp(interface, zwlr_foreign_toplevel_manager_v1_interface.name) == 0) {
-    static_cast<Taskbar*>(data)->register_manager(registry, name, version);
+    static_cast<Taskbar *>(data)->register_manager(registry, name, version);
   } else if (std::strcmp(interface, wl_seat_interface.name) == 0) {
-    static_cast<Taskbar*>(data)->register_seat(registry, name, version);
+    static_cast<Taskbar *>(data)->register_seat(registry, name, version);
   }
 }
 
-static void handle_global_remove(void* data, struct wl_registry* registry, uint32_t name) {
+static void handle_global_remove(void *data, struct wl_registry *registry, uint32_t name) {
   /* Nothing to do here */
 }
 
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Value& config,
+Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config,
                  std::mutex& reap_mtx, std::list<pid_t>& reap)
     : waybar::AModule(config, "taskbar", id, reap_mtx, reap, false, false),
       bar_(bar),
@@ -576,8 +576,8 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
-  struct wl_display* display = Client::inst()->wl_display;
-  struct wl_registry* registry = wl_display_get_registry(display);
+  struct wl_display *display = Client::inst()->wl_display;
+  struct wl_registry *registry = wl_display_get_registry(display);
 
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
@@ -593,7 +593,7 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
 
   /* Get the configured icon theme if specified */
   if (config_["icon-theme"].isArray()) {
-    for (auto& c : config_["icon-theme"]) {
+    for (auto &c : config_["icon-theme"]) {
       icon_loader_.add_custom_icon_theme(c.asString());
     }
   } else if (config_["icon-theme"].isString()) {
@@ -602,28 +602,28 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
 
   // Load ignore-list
   if (config_["ignore-list"].isArray()) {
-    for (auto& app_name : config_["ignore-list"]) {
+    for (auto &app_name : config_["ignore-list"]) {
       ignore_list_.emplace(app_name.asString());
     }
   }
 
   // Load app_id remappings
   if (config_["app_ids-mapping"].isObject()) {
-    const Json::Value& mapping = config_["app_ids-mapping"];
+    const Json::Value &mapping = config_["app_ids-mapping"];
     const std::vector<std::string> app_ids = config_["app_ids-mapping"].getMemberNames();
-    for (auto& app_id : app_ids) {
+    for (auto &app_id : app_ids) {
       app_ids_replace_map_.emplace(app_id, mapping[app_id].asString());
     }
   }
 
-  for (auto& t : tasks_) {
+  for (auto &t : tasks_) {
     t->handle_app_id(t->app_id().c_str());
   }
 }
 
 Taskbar::~Taskbar() {
   if (manager_) {
-    struct wl_display* display = Client::inst()->wl_display;
+    struct wl_display *display = Client::inst()->wl_display;
     /*
      * Send `stop` request and wait for one roundtrip.
      * This is not quite correct as the protocol encourages us to wait for the .finished event,
@@ -641,13 +641,13 @@ Taskbar::~Taskbar() {
 }
 
 void Taskbar::update() {
-  for (auto& t : tasks_) {
+  for (auto &t : tasks_) {
     t->update();
   }
 
   if (config_["sort-by-app-id"].asBool()) {
     std::stable_sort(tasks_.begin(), tasks_.end(),
-                     [](const std::unique_ptr<Task>& a, const std::unique_ptr<Task>& b) {
+                     [](const std::unique_ptr<Task> &a, const std::unique_ptr<Task> &b) {
                        return a->app_id() < b->app_id();
                      });
 
@@ -659,13 +659,13 @@ void Taskbar::update() {
   AModule::update();
 }
 
-static void tm_handle_toplevel(void* data, struct zwlr_foreign_toplevel_manager_v1* manager,
-                               struct zwlr_foreign_toplevel_handle_v1* tl_handle) {
-  return static_cast<Taskbar*>(data)->handle_toplevel_create(tl_handle);
+static void tm_handle_toplevel(void *data, struct zwlr_foreign_toplevel_manager_v1 *manager,
+                               struct zwlr_foreign_toplevel_handle_v1 *tl_handle) {
+  return static_cast<Taskbar *>(data)->handle_toplevel_create(tl_handle);
 }
 
-static void tm_handle_finished(void* data, struct zwlr_foreign_toplevel_manager_v1* manager) {
-  return static_cast<Taskbar*>(data)->handle_finished();
+static void tm_handle_finished(void *data, struct zwlr_foreign_toplevel_manager_v1 *manager) {
+  return static_cast<Taskbar *>(data)->handle_finished();
 }
 
 static const struct zwlr_foreign_toplevel_manager_v1_listener toplevel_manager_impl = {
@@ -673,7 +673,7 @@ static const struct zwlr_foreign_toplevel_manager_v1_listener toplevel_manager_i
     .finished = tm_handle_finished,
 };
 
-void Taskbar::register_manager(struct wl_registry* registry, uint32_t name, uint32_t version) {
+void Taskbar::register_manager(struct wl_registry *registry, uint32_t name, uint32_t version) {
   if (manager_) {
     spdlog::warn("Register foreign toplevel manager again although already existing!");
     return;
@@ -688,7 +688,7 @@ void Taskbar::register_manager(struct wl_registry* registry, uint32_t name, uint
   // limit version to a highest supported by the client protocol file
   version = std::min<uint32_t>(version, zwlr_foreign_toplevel_manager_v1_interface.version);
 
-  manager_ = static_cast<struct zwlr_foreign_toplevel_manager_v1*>(
+  manager_ = static_cast<struct zwlr_foreign_toplevel_manager_v1 *>(
       wl_registry_bind(registry, name, &zwlr_foreign_toplevel_manager_v1_interface, version));
 
   if (manager_)
@@ -697,17 +697,17 @@ void Taskbar::register_manager(struct wl_registry* registry, uint32_t name, uint
     spdlog::debug("Failed to register manager");
 }
 
-void Taskbar::register_seat(struct wl_registry* registry, uint32_t name, uint32_t version) {
+void Taskbar::register_seat(struct wl_registry *registry, uint32_t name, uint32_t version) {
   if (seat_) {
     spdlog::warn("Register seat again although already existing!");
     return;
   }
   version = std::min<uint32_t>(version, wl_seat_interface.version);
 
-  seat_ = static_cast<wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
+  seat_ = static_cast<wl_seat *>(wl_registry_bind(registry, name, &wl_seat_interface, version));
 }
 
-void Taskbar::handle_toplevel_create(struct zwlr_foreign_toplevel_handle_v1* tl_handle) {
+void Taskbar::handle_toplevel_create(struct zwlr_foreign_toplevel_handle_v1 *tl_handle) {
   tasks_.push_back(std::make_unique<Task>(bar_, config_, this, tl_handle, seat_));
 }
 
@@ -716,14 +716,14 @@ void Taskbar::handle_finished() {
   manager_ = nullptr;
 }
 
-void Taskbar::add_button(Gtk::Button& bt) {
+void Taskbar::add_button(Gtk::Button &bt) {
   box_.pack_start(bt, false, false);
   box_.get_style_context()->remove_class("empty");
 }
 
-void Taskbar::move_button(Gtk::Button& bt, int pos) { box_.reorder_child(bt, pos); }
+void Taskbar::move_button(Gtk::Button &bt, int pos) { box_.reorder_child(bt, pos); }
 
-void Taskbar::remove_button(Gtk::Button& bt) {
+void Taskbar::remove_button(Gtk::Button &bt) {
   box_.remove(bt);
   if (box_.get_children().empty()) {
     box_.get_style_context()->add_class("empty");
@@ -732,7 +732,7 @@ void Taskbar::remove_button(Gtk::Button& bt) {
 
 void Taskbar::remove_task(uint32_t id) {
   auto it = std::find_if(std::begin(tasks_), std::end(tasks_),
-                         [id](const TaskPtr& p) { return p->id() == id; });
+                         [id](const TaskPtr &p) { return p->id() == id; });
 
   if (it == std::end(tasks_)) {
     spdlog::warn("Can't find task with id {}", id);
@@ -742,7 +742,7 @@ void Taskbar::remove_task(uint32_t id) {
   tasks_.erase(it);
 }
 
-bool Taskbar::show_output(struct wl_output* output) const {
+bool Taskbar::show_output(struct wl_output *output) const {
   return output == gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
 }
 
@@ -750,11 +750,11 @@ bool Taskbar::all_outputs() const {
   return config_["all-outputs"].isBool() && config_["all-outputs"].asBool();
 }
 
-const IconLoader& Taskbar::icon_loader() const { return icon_loader_; }
+const IconLoader &Taskbar::icon_loader() const { return icon_loader_; }
 
-const std::unordered_set<std::string>& Taskbar::ignore_list() const { return ignore_list_; }
+const std::unordered_set<std::string> &Taskbar::ignore_list() const { return ignore_list_; }
 
-const std::map<std::string, std::string>& Taskbar::app_ids_replace_map() const {
+const std::map<std::string, std::string> &Taskbar::app_ids_replace_map() const {
   return app_ids_replace_map_;
 }
 

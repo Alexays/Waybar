@@ -26,12 +26,12 @@ std::vector<std::string> IconLoader::search_prefix() {
     } while (end != std::string::npos);
   }
 
-  for (auto& p : prefixes) spdlog::debug("Using 'desktop' search path prefix: {}", p);
+  for (auto &p : prefixes) spdlog::debug("Using 'desktop' search path prefix: {}", p);
 
   return prefixes;
 }
 
-Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_by_name(const std::string& app_id) {
+Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_by_name(const std::string &app_id) {
   static std::vector<std::string> prefixes = search_prefix();
 
   std::vector<std::string> app_folders = {"", "applications/", "applications/kde/",
@@ -39,9 +39,9 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_by_name(const std::st
 
   std::vector<std::string> suffixes = {"", ".desktop"};
 
-  for (auto const& prefix : prefixes) {
-    for (auto const& folder : app_folders) {
-      for (auto const& suffix : suffixes) {
+  for (auto const &prefix : prefixes) {
+    for (auto const &folder : app_folders) {
+      for (auto const &suffix : suffixes) {
         auto app_info_ =
             Gio::DesktopAppInfo::create_from_filename(prefix + folder + app_id + suffix);
         if (!app_info_) {
@@ -56,7 +56,7 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_by_name(const std::st
   return {};
 }
 
-Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::string& app_id) {
+Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::string &app_id) {
   auto app_info = get_app_info_by_name(app_id);
   if (app_info) {
     return app_info;
@@ -64,7 +64,7 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
 
   std::string desktop_file = "";
 
-  gchar*** desktop_list = g_desktop_app_info_search(app_id.c_str());
+  gchar ***desktop_list = g_desktop_app_info_search(app_id.c_str());
   if (desktop_list != nullptr && desktop_list[0] != nullptr) {
     for (size_t i = 0; desktop_list[0][i]; i++) {
       if (desktop_file == "") {
@@ -89,7 +89,7 @@ Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_desktop_app_info(const std::st
   return get_app_info_by_name(desktop_file);
 }
 
-Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_icon_from_file(std::string const& icon_path, int size) {
+Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_icon_from_file(std::string const &icon_path, int size) {
   try {
     auto pb = Gdk::Pixbuf::create_from_file(icon_path, size, size);
     return pb;
@@ -99,13 +99,13 @@ Glib::RefPtr<Gdk::Pixbuf> IconLoader::load_icon_from_file(std::string const& ico
 }
 
 std::string IconLoader::get_icon_name_from_icon_theme(
-    const Glib::RefPtr<Gtk::IconTheme>& icon_theme, const std::string& app_id) {
+    const Glib::RefPtr<Gtk::IconTheme> &icon_theme, const std::string &app_id) {
   if (icon_theme->lookup_icon(app_id, 24)) return app_id;
 
   return "";
 }
 
-bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::IconTheme>& icon_theme,
+bool IconLoader::image_load_icon(Gtk::Image &image, const Glib::RefPtr<Gtk::IconTheme> &icon_theme,
                                  Glib::RefPtr<Gio::DesktopAppInfo> app_info, int size) {
   std::string ret_icon_name = "unknown";
   if (app_info) {
@@ -152,16 +152,16 @@ bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::Icon
   return false;
 }
 
-void IconLoader::add_custom_icon_theme(const std::string& theme_name) {
+void IconLoader::add_custom_icon_theme(const std::string &theme_name) {
   auto icon_theme = Gtk::IconTheme::create();
   icon_theme->set_custom_theme(theme_name);
   custom_icon_themes_.push_back(icon_theme);
   spdlog::debug("Use custom icon theme: {}", theme_name);
 }
 
-bool IconLoader::image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopAppInfo> app_info,
+bool IconLoader::image_load_icon(Gtk::Image &image, Glib::RefPtr<Gio::DesktopAppInfo> app_info,
                                  int size) const {
-  for (auto& icon_theme : custom_icon_themes_) {
+  for (auto &icon_theme : custom_icon_themes_) {
     if (image_load_icon(image, icon_theme, app_info, size)) {
       return true;
     }
@@ -170,7 +170,7 @@ bool IconLoader::image_load_icon(Gtk::Image& image, Glib::RefPtr<Gio::DesktopApp
 }
 
 Glib::RefPtr<Gio::DesktopAppInfo> IconLoader::get_app_info_from_app_id_list(
-    const std::string& app_id_list) {
+    const std::string &app_id_list) {
   std::string app_id;
   std::istringstream stream(app_id_list);
   Glib::RefPtr<Gio::DesktopAppInfo> app_info_;

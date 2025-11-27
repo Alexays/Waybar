@@ -9,8 +9,8 @@
 
 namespace waybar::modules {
 
-void ondesc(void* arg, struct sioctl_desc* d, int curval) {
-  auto self = static_cast<Sndio*>(arg);
+void ondesc(void *arg, struct sioctl_desc *d, int curval) {
+  auto self = static_cast<Sndio *>(arg);
   if (d == NULL) {
     // d is NULL when the list is done
     return;
@@ -18,8 +18,8 @@ void ondesc(void* arg, struct sioctl_desc* d, int curval) {
   self->set_desc(d, curval);
 }
 
-void onval(void* arg, unsigned int addr, unsigned int val) {
-  auto self = static_cast<Sndio*>(arg);
+void onval(void *arg, unsigned int addr, unsigned int val) {
+  auto self = static_cast<Sndio *>(arg);
   self->put_val(addr, val);
 }
 
@@ -40,8 +40,8 @@ auto Sndio::connect_to_sndio() -> void {
   pfds_.reserve(sioctl_nfds(hdl_));
 }
 
-Sndio::Sndio(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
-             std::list<pid_t>& reap)
+Sndio::Sndio(const std::string &id, const Json::Value &config,
+             std::mutex& reap_mtx, std::list<pid_t>& reap)
     : ALabel(config, "sndio", id, "{volume}%", reap_mtx, reap, 1, false, true),
       hdl_(nullptr),
       pfds_(0),
@@ -81,7 +81,7 @@ Sndio::Sndio(const std::string& id, const Json::Value& config, std::mutex& reap_
       while (thread_.isRunning()) {
         try {
           connect_to_sndio();
-        } catch (std::runtime_error const& e) {
+        } catch (std::runtime_error const &e) {
           // avoid leaking hdl_
           if (hdl_) {
             sioctl_close(hdl_);
@@ -123,7 +123,7 @@ auto Sndio::update() -> void {
   ALabel::update();
 }
 
-auto Sndio::set_desc(struct sioctl_desc* d, unsigned int val) -> void {
+auto Sndio::set_desc(struct sioctl_desc *d, unsigned int val) -> void {
   std::string name{d->func};
   std::string node_name{d->node0.name};
 
@@ -141,7 +141,7 @@ auto Sndio::put_val(unsigned int addr, unsigned int val) -> void {
   }
 }
 
-bool Sndio::handleScroll(GdkEventScroll* e) {
+bool Sndio::handleScroll(GdkEventScroll *e) {
   // change the volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -181,7 +181,7 @@ bool Sndio::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-bool Sndio::handleToggle(GdkEventButton* const& e) {
+bool Sndio::handleToggle(GdkEventButton *const &e) {
   // toggle mute only when no user provided events are configured
   if (config_["on-click"].isString()) {
     return AModule::handleToggle(e);

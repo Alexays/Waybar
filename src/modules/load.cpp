@@ -9,8 +9,8 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::Load::Load(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
-                            std::list<pid_t>& reap)
+waybar::modules::Load::Load(const std::string& id, const Json::Value& config,
+                            std::mutex& reap_mtx, std::list<pid_t>& reap)
     : ALabel(config, "load", id, "{load1}", reap_mtx, reap, 10) {
   thread_ = [this] {
     dp.emit();
