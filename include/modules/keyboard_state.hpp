@@ -19,8 +19,8 @@ namespace waybar::modules {
 
 class KeyboardState : public AModule {
  public:
-  KeyboardState(const std::string&, const waybar::Bar&, const Json::Value&,
-                std::mutex&, std::list<pid_t>&);
+  KeyboardState(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
+                std::list<pid_t>&);
   virtual ~KeyboardState();
   auto update() -> void override;
 
