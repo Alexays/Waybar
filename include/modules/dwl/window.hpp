@@ -13,7 +13,8 @@ namespace waybar::modules::dwl {
 
 class Window : public AAppIconLabel, public sigc::trackable {
  public:
-  Window(const std::string&, const waybar::Bar&, const Json::Value&);
+  Window(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
+         std::list<pid_t>&);
   ~Window();
 
   void handle_layout(const uint32_t layout);

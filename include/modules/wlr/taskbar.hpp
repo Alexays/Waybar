@@ -142,7 +142,8 @@ using TaskPtr = std::unique_ptr<Task>;
 
 class Taskbar : public waybar::AModule {
  public:
-  Taskbar(const std::string&, const waybar::Bar&, const Json::Value&);
+  Taskbar(const std::string&, const waybar::Bar&, const Json::Value&, std::mutex&,
+          std::list<pid_t>&);
   ~Taskbar();
   void update();
 
