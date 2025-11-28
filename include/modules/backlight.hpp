@@ -17,11 +17,11 @@ namespace waybar::modules {
 
 class Backlight : public ALabel {
  public:
-  Backlight(const std::string &, const Json::Value &);
+  Backlight(const std::string&, const Json::Value&);
   virtual ~Backlight() = default;
   auto update() -> void override;
 
-  bool handleScroll(GdkEventScroll *e) override;
+  bool handleScroll(GdkEventScroll* e) override;
 
   const std::string preferred_device_;
 

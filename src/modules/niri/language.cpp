@@ -8,7 +8,7 @@
 
 namespace waybar::modules::niri {
 
-Language::Language(const std::string &id, const Bar &bar, const Json::Value &config)
+Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, false), bar_(bar) {
   label_.hide();
 
@@ -32,7 +32,7 @@ void Language::updateFromIPC() {
   auto ipcLock = gIPC->lockData();
 
   layouts_.clear();
-  for (const auto &fullName : gIPC->keyboardLayoutNames()) layouts_.push_back(getLayout(fullName));
+  for (const auto& fullName : gIPC->keyboardLayoutNames()) layouts_.push_back(getLayout(fullName));
 
   current_idx_ = gIPC->keyboardLayoutCurrent();
 }
@@ -51,7 +51,7 @@ void Language::doUpdate() {
     label_.hide();
     return;
   }
-  const auto &layout = layouts_[current_idx_];
+  const auto& layout = layouts_[current_idx_];
 
   spdlog::debug("niri language update with full name {}", layout.full_name);
   spdlog::debug("niri language update with short name {}", layout.short_name);
@@ -97,7 +97,7 @@ void Language::update() {
   ALabel::update();
 }
 
-void Language::onEvent(const Json::Value &ev) {
+void Language::onEvent(const Json::Value& ev) {
   if (ev["KeyboardLayoutsChanged"]) {
     updateFromIPC();
   } else if (ev["KeyboardLayoutSwitched"]) {
@@ -109,11 +109,11 @@ void Language::onEvent(const Json::Value &ev) {
   dp.emit();
 }
 
-Language::Layout Language::getLayout(const std::string &fullName) {
-  auto *const context = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
+Language::Layout Language::getLayout(const std::string& fullName) {
+  auto* const context = rxkb_context_new(RXKB_CONTEXT_LOAD_EXOTIC_RULES);
   rxkb_context_parse_default_ruleset(context);
 
-  rxkb_layout *layout = rxkb_layout_first(context);
+  rxkb_layout* layout = rxkb_layout_first(context);
   while (layout != nullptr) {
     std::string nameOfLayout = rxkb_layout_get_description(layout);
 
@@ -123,10 +123,10 @@ Language::Layout Language::getLayout(const std::string &fullName) {
     }
 
     auto name = std::string(rxkb_layout_get_name(layout));
-    const auto *variantPtr = rxkb_layout_get_variant(layout);
+    const auto* variantPtr = rxkb_layout_get_variant(layout);
     std::string variant = variantPtr == nullptr ? "" : std::string(variantPtr);
 
-    const auto *descriptionPtr = rxkb_layout_get_brief(layout);
+    const auto* descriptionPtr = rxkb_layout_get_brief(layout);
     std::string description = descriptionPtr == nullptr ? "" : std::string(descriptionPtr);
 
     Layout info = Layout{nameOfLayout, name, variant, description};
