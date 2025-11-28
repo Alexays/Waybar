@@ -11,9 +11,9 @@
 namespace waybar {
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
-               const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
-               bool enable_scroll)
-    : AModule(config, name, id,
+               const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
+               uint16_t interval, bool ellipsize, bool enable_click, bool enable_scroll)
+    : AModule(config, name, id, reap_mtx, reap,
               config["format-alt"].isString() || config["menu"].isString() || enable_click,
               enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
