@@ -111,9 +111,6 @@
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
-#ifdef HAVE_LIBGPS
-#include "modules/gps.hpp"
-#endif
 #include "modules/cava/cava_frontend.hpp"
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
@@ -123,6 +120,23 @@
 
 extern std::mutex reap_mtx;
 extern std::list<pid_t> reap;
+
+void* get_symbol(const char* path, const char* symbol) {
+  void* handle = dlopen(path, RTLD_NOW);
+  if (!handle) {
+    auto err = fmt::format("Cannot load shared-object: {}", dlerror());
+    throw std::runtime_error(err);
+  }
+  dlerror();
+  void* resolved = dlsym(handle, symbol);
+  char* error = dlerror();
+  if (error != NULL) {
+    auto err = fmt::format("Cannot load shared-object functions: {}", error);
+    dlclose(handle);
+    throw std::runtime_error(err);
+  }
+  return resolved;
+}
 
 waybar::Factory::Factory(const Bar& bar, const Json::Value& config) : bar_(bar), config_(config) {}
 
@@ -353,7 +367,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LIBGPS
     if (ref == "gps") {
-      return new waybar::modules::Gps(id, config_[name], reap_mtx, reap);
+      AModule* (*constructor)(const std::string&, const Json::Value&, std::mutex&,
+                              std::list<pid_t>&);
+      void* symbol = get_symbol("waybar-module-gps.so", "new_gps");
+      constructor = reinterpret_cast<decltype(constructor)>(symbol);
+      return constructor(id, config_[name], reap_mtx, reap);
     }
 #endif
     if (ref == "temperature") {

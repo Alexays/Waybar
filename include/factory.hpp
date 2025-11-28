@@ -1,5 +1,6 @@
 #pragma once
 
+#include <dlfcn.h>
 #include <json/json.h>
 
 #include <AModule.hpp>
