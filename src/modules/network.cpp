@@ -658,12 +658,16 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
               }
               spdlog::debug("network: {}, new addr {}/{}", net->ifname_, net->ipaddr_, net->cidr_);
             } else {
-              net->ipaddr_.clear();
-              net->ipaddr6_.clear();
-              net->cidr_ = 0;
-              net->cidr6_ = 0;
-              net->netmask_.clear();
-              net->netmask6_.clear();
+              const char *p = inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
+              if (p && net->ipaddr_ == p) {
+                net->ipaddr_.clear();
+                net->cidr_ = 0;
+                net->netmask_.clear();
+              } else if (p && net->ipaddr6_ == p) {
+                net->ipaddr6_.clear();
+                net->cidr6_ = 0;
+                net->netmask6_.clear();
+              }
               spdlog::debug("network: {} addr deleted {}/{}", net->ifname_,
                             inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)),
                             ifa->ifa_prefixlen);
