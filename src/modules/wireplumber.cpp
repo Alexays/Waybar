@@ -200,6 +200,7 @@ void waybar::modules::Wireplumber::onMixerChanged(waybar::modules::Wireplumber* 
           return;
         }
       }
+      return;
     }
 
     spdlog::warn("[{}]: (onMixerChanged: {}) - Object with id {} not found", self->name_,
