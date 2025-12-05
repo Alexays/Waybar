@@ -14,9 +14,6 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) : con
   loadConfig();
   // Read audio source trough cava API. Cava orginizes this process via infinity loop
   read_thread_ = [this] {
-    // Thread safe reading incoming source and do callbacks
-    doOutReadConnect();
-
     try {
       input_source_(&audio_data_);
     } catch (const std::runtime_error& e) {
@@ -25,9 +22,19 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) : con
     read_thread_.sleep_for(fetch_input_delay_);
     loadConfig();
   };
+  // Write outcoming data. Emit signals
+  out_thread_ = [this] {
+    Update();
+    out_thread_.sleep_for(frame_time_milsec_);
+  };
 }
 
-waybar::modules::cava::CavaBackend::~CavaBackend() { freeBackend(); }
+waybar::modules::cava::CavaBackend::~CavaBackend() {
+  out_thread_.stop();
+  read_thread_.stop();
+
+  freeBackend();
+}
 
 static bool upThreadDelay(std::chrono::milliseconds& delay, std::chrono::seconds& delta) {
   if (delta == std::chrono::seconds{0}) {
@@ -94,7 +101,7 @@ void waybar::modules::cava::CavaBackend::doPauseResume() {
     upThreadDelay(frame_time_milsec_, suspend_silence_delay_);
   }
   pthread_mutex_unlock(&audio_data_.lock);
-  doOutReadConnect();
+  Update();
 }
 
 waybar::modules::cava::CavaBackend::type_signal_update
@@ -124,19 +131,17 @@ void waybar::modules::cava::CavaBackend::doUpdate(bool force) {
   }
 
   if (!silence_ || prm_.sleep_timer == 0) {
-    if (downThreadDelay(frame_time_milsec_, suspend_silence_delay_)) doOutReadConnect();
+    if (downThreadDelay(frame_time_milsec_, suspend_silence_delay_)) Update();
     execute();
     if (re_paint_ == 1 || force) m_signal_update_.emit(output_);
   } else {
-    if (upThreadDelay(frame_time_milsec_, suspend_silence_delay_)) doOutReadConnect();
+    if (upThreadDelay(frame_time_milsec_, suspend_silence_delay_)) Update();
     if (silence_ != silence_prev_ || force) m_signal_silence_.emit();
   }
   silence_prev_ = silence_;
 }
 
 void waybar::modules::cava::CavaBackend::freeBackend() {
-  out_thread_.disconnect();
-
   if (plan_ != NULL) {
     cava_destroy(plan_);
     plan_ = NULL;
@@ -237,15 +242,4 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   audio_raw_init(&audio_data_, &audio_raw_, &prm_, &plan_);
   if (!plan_) spdlog::error("cava backend plan is not provided");
   audio_raw_.previous_frame[0] = -1;  // For first Update() call need to rePaint text message
-}
-
-void waybar::modules::cava::CavaBackend::doOutReadConnect() {
-  out_thread_.disconnect();
-  // Thread safe reading incoming source and do callbacks
-  out_thread_ = Glib::signal_timeout().connect(
-      [&]() {
-        Update();
-        return true;
-      },
-      frame_time_milsec_.count());
 }

@@ -41,7 +41,8 @@ class CavaBackend final {
  private:
   CavaBackend(const Json::Value& config);
   util::SleeperThread read_thread_;
-  sigc::connection out_thread_;
+  util::SleeperThread out_thread_;
+
   // Cava API to read audio source
   ::cava::ptr input_source_{NULL};
 
@@ -69,7 +70,6 @@ class CavaBackend final {
   void doUpdate(bool force = false);
   void loadConfig();
   void freeBackend();
-  void doOutReadConnect();
 
   // Signal
   type_signal_update m_signal_update_;

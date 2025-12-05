@@ -24,30 +24,35 @@ auto waybar::modules::cava::Cava::doAction(const std::string& name) -> void {
 // Cava actions
 void waybar::modules::cava::Cava::pause_resume() { backend_->doPauseResume(); }
 auto waybar::modules::cava::Cava::onUpdate(const std::string& input) -> void {
-  if (silence_) {
-    label_.get_style_context()->remove_class("silent");
-    if (!label_.get_style_context()->has_class("updated"))
-      label_.get_style_context()->add_class("updated");
-  }
-  label_text_.clear();
-  for (auto& ch : input)
-    label_text_.append(getIcon((ch > ascii_range_) ? ascii_range_ : ch, "", ascii_range_ + 1));
+  Glib::signal_idle().connect_once([this, input]() {
+    if (silence_) {
+      label_.get_style_context()->remove_class("silent");
+      if (!label_.get_style_context()->has_class("updated"))
+        label_.get_style_context()->add_class("updated");
+    }
+    label_text_.clear();
+    for (auto& ch : input)
+      label_text_.append(getIcon((ch > ascii_range_) ? ascii_range_ : ch, "", ascii_range_ + 1));
 
-  label_.set_markup(label_text_);
-  label_.show();
-  ALabel::update();
+    label_.set_markup(label_text_);
+    label_.show();
+    ALabel::update();
+  });
   silence_ = false;
 }
-auto waybar::modules::cava::Cava::onSilence() -> void {
-  if (!silence_) {
-    if (label_.get_style_context()->has_class("updated"))
-      label_.get_style_context()->remove_class("updated");
 
-    if (hide_on_silence_)
-      label_.hide();
-    else if (config_["format_silent"].isString())
-      label_.set_markup(format_silent_);
-    silence_ = true;
-    label_.get_style_context()->add_class("silent");
-  }
+auto waybar::modules::cava::Cava::onSilence() -> void {
+  Glib::signal_idle().connect_once([this]() {
+    if (!silence_) {
+      if (label_.get_style_context()->has_class("updated"))
+        label_.get_style_context()->remove_class("updated");
+
+      if (hide_on_silence_)
+        label_.hide();
+      else if (config_["format_silent"].isString())
+        label_.set_markup(format_silent_);
+      silence_ = true;
+      label_.get_style_context()->add_class("silent");
+    }
+  });
 }
