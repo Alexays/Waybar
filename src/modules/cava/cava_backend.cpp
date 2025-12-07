@@ -24,7 +24,7 @@ waybar::modules::cava::CavaBackend::CavaBackend(const Json::Value& config) : con
   };
   // Write outcoming data. Emit signals
   out_thread_ = [this] {
-    Update();
+    doUpdate(false);
     out_thread_.sleep_for(frame_time_milsec_);
   };
 }
@@ -109,6 +109,11 @@ waybar::modules::cava::CavaBackend::signal_update() {
   return m_signal_update_;
 }
 
+waybar::modules::cava::CavaBackend::type_signal_audio_raw_update
+waybar::modules::cava::CavaBackend::signal_audio_raw_update() {
+  return m_signal_audio_raw_;
+}
+
 waybar::modules::cava::CavaBackend::type_signal_silence
 waybar::modules::cava::CavaBackend::signal_silence() {
   return m_signal_silence_;
@@ -133,7 +138,10 @@ void waybar::modules::cava::CavaBackend::doUpdate(bool force) {
   if (!silence_ || prm_.sleep_timer == 0) {
     if (downThreadDelay(frame_time_milsec_, suspend_silence_delay_)) Update();
     execute();
-    if (re_paint_ == 1 || force) m_signal_update_.emit(output_);
+    if (re_paint_ == 1 || force || prm_.continuous_rendering) {
+      m_signal_update_.emit(output_);
+      m_signal_audio_raw_.emit(audio_raw_);
+    }
   } else {
     if (upThreadDelay(frame_time_milsec_, suspend_silence_delay_)) Update();
     if (silence_ != silence_prev_ || force) m_signal_silence_.emit();
@@ -180,16 +188,15 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   prm_.raw_target = strdup("/dev/stdout");
   prm_.ascii_range = config_["format-icons"].size() - 1;
 
-  prm_.bar_width = 2;
-  prm_.bar_spacing = 0;
-  prm_.bar_height = 32;
-  prm_.bar_width = 1;
+  if (config_["bar_spacing"].isInt()) prm_.bar_spacing = config_["bar_spacing"].asInt();
+  if (config_["bar_width"].isInt()) prm_.bar_width = config_["bar_width"].asInt();
+  if (config_["bar_height"].isInt()) prm_.bar_height = config_["bar_height"].asInt();
   prm_.orientation = ::cava::ORIENT_TOP;
   prm_.xaxis = ::cava::xaxis_scale::NONE;
   prm_.mono_opt = ::cava::AVERAGE;
   prm_.autobars = 0;
-  prm_.gravity = 0;
-  prm_.integral = 1;
+  if (config_["gravity"].isInt()) prm_.gravity = config_["gravity"].asInt();
+  if (config_["integral"].isInt()) prm_.integral = config_["integral"].asInt();
 
   if (config_["framerate"].isInt()) prm_.framerate = config_["framerate"].asInt();
   // Calculate delay for Update() thread
@@ -219,6 +226,13 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
     prm_.noise_reduction = config_["noise_reduction"].asDouble();
   if (config_["input_delay"].isInt())
     fetch_input_delay_ = std::chrono::seconds(config_["input_delay"].asInt());
+  if (config_["gradient"].isInt()) prm_.gradient = config_["gradient"].asInt();
+  if (prm_.gradient == 0)
+    prm_.gradient_count = 0;
+  else if (config_["gradient_count"].isInt())
+    prm_.gradient_count = config_["gradient_count"].asInt();
+  if (config_["sdl_width"].isInt()) prm_.sdl_width = config_["sdl_width"].asInt();
+  if (config_["sdl_height"].isInt()) prm_.sdl_height = config_["sdl_height"].asInt();
 
   audio_raw_.height = prm_.ascii_range;
   audio_data_.format = -1;
@@ -243,3 +257,8 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   if (!plan_) spdlog::error("cava backend plan is not provided");
   audio_raw_.previous_frame[0] = -1;  // For first Update() call need to rePaint text message
 }
+
+const struct ::cava::config_params* waybar::modules::cava::CavaBackend::getPrm() { return &prm_; }
+std::chrono::milliseconds waybar::modules::cava::CavaBackend::getFrameTimeMilsec() {
+  return frame_time_milsec_;
+};

@@ -110,6 +110,9 @@
 #endif
 #ifdef HAVE_LIBCAVA
 #include "modules/cava/cava.hpp"
+#ifdef HAVE_LIBCAVAGLSL
+#include "modules/cava/cavaGLSL.hpp"
+#endif
 #endif
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
@@ -344,6 +347,10 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #ifdef HAVE_LIBCAVA
     if (ref == "cava") {
       return new waybar::modules::cava::Cava(id, config_[name]);
+#ifdef HAVE_LIBCAVAGLSL
+    } else if (ref == "cavaGLSL") {
+      return new waybar::modules::cava::CavaGLSL(id, config_[name]);
+#endif
     }
 #endif
 #ifdef HAVE_SYSTEMD_MONITOR

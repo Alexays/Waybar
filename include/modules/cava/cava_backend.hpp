@@ -32,9 +32,14 @@ class CavaBackend final {
   int getAsciiRange();
   void doPauseResume();
   void Update();
+  const struct ::cava::config_params* getPrm();
+  std::chrono::milliseconds getFrameTimeMilsec();
+
   // Signal accessor
   using type_signal_update = sigc::signal<void(const std::string&)>;
   type_signal_update signal_update();
+  using type_signal_audio_raw_update = sigc::signal<void(const ::cava::audio_raw&)>;
+  type_signal_audio_raw_update signal_audio_raw_update();
   using type_signal_silence = sigc::signal<void()>;
   type_signal_silence signal_silence();
 
@@ -73,6 +78,7 @@ class CavaBackend final {
 
   // Signal
   type_signal_update m_signal_update_;
+  type_signal_audio_raw_update m_signal_audio_raw_;
   type_signal_silence m_signal_silence_;
 };
 }  // namespace waybar::modules::cava

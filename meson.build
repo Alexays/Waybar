@@ -503,10 +503,18 @@ cava = dependency('libcava',
                   fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
 
+eproxy = dependency('epoxy', required: false)
+
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
+   src_files += files('src/modules/cava/cava.cpp',
+                      'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
+
+   if eproxy.found()
+      add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
+      src_files += files('src/modules/cava/cavaGLSL.cpp')
+   endif
 endif
 
 if libgps.found()
@@ -554,6 +562,7 @@ executable(
         tz_dep,
 		xkbregistry,
         cava,
+        eproxy,
         libgps
     ],
     include_directories: inc_dirs,
