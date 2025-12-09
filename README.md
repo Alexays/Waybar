@@ -9,7 +9,7 @@
 - River (Mapping mode, Tags, Focused window name)
 - Hyprland (Window Icons, Workspaces, Focused window name)
 - Niri (Workspaces, Focused window name, Language)
-- DWL (Tags, Focused window name) [requires dwl ipc patch](https://github.com/djpohly/dwl/wiki/ipc)
+- DWL (Tags, Focused window name) [requires dwl ipc patch](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/ipc)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
 - Battery
@@ -114,6 +114,36 @@ sudo apt install \
   scdoc \
   upower \
   libxkbregistry-dev
+```
+
+On Arch, you can use this command:
+
+```
+pacman -S \
+  gtkmm3 \
+  jsoncpp \
+  libsigc++ \
+  fmt \
+  wayland \
+  chrono-date \
+  spdlog \
+  gtk3 \
+  gobject-introspection \
+  libgirepository \
+  libpulse \
+  libnl \
+  libappindicator-gtk3 \
+  libdbusmenu-gtk3 \
+  libmpdclient \
+  sndio \
+  libevdev \
+  libxkbcommon \
+  upower \
+  meson \
+  cmake \
+  scdoc \
+  wayland-protocols \
+  glib2-devel
 ```
 
 

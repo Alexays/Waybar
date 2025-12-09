@@ -86,7 +86,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *no-center* ++
 	typeof: bool ++
 	default: false ++
-	Option to disable the center modules fully usefull together with expand-\*.
+	Option to disable the center modules fully useful together with expand-\*.
 
 *spacing* ++
 	typeof: integer ++
@@ -151,6 +151,20 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 	default: *false* ++
 	Option to enable reloading the css style if a modification is detected on the style sheet file or any imported css files.
 
+*on-sigusr1* ++
+	typeof: string ++
+	default: *toggle* ++
+	Action that is performed when receiving SIGUSR1 kill signal. ++
+	Possible values: *show*, *hide*, *toggle*, *reload*, *noop*. ++
+	Default value: *toggle*.
+
+*on-sigusr2* ++
+	typeof: string ++
+	default: *reload* ++
+	Action that is performed when receiving SIGUSR2 kill signal. ++
+	Possible values: *show*, *hide*, *toggle*, *reload*, *noop*. ++
+	Default value: *reload*.
+
 # MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
@@ -206,13 +220,35 @@ A minimal *config* file could look like this:
 Waybar accepts the following signals:
 
 *SIGUSR1*
-	Toggles the bar visibility (hides if shown, shows if hidden)
+	By default toggles the bar visibility (hides if shown, shows if hidden)
 *SIGUSR2*
-	Reloads (resets) the bar
+	By default reloads (resets) the bar
 *SIGINT*
 	Quits the bar
 
 For example, to toggle the bar programmatically, you can invoke `killall -SIGUSR1 waybar`.
+
+## User signal configuration
+
+Config parameters *on-sigusr1* and *on-sigusr2* change what happens when bars receive
+*SIGUSR1* and *SIGUSR2* signals.
+
+This means that commands `killall -SIGUSR1 waybar` and `killall -SIGUSR2 waybar`
+can perform user-configured action.
+
+It also means that if an external script has the PID of the bar then it can
+perform more complex `show`/`hide`/`reload` logic for each instance of Waybar.
+One can find the PID e.g. by doing `pgrep -a waybar` which could then match
+by config name or other parameters.
+
+## Kill parameter meanings
+
+*show*    Switches state to visible (per bar).
+*hide*    Switches state to hidden (per bar).
+*toggle*  Switches state between visible and hidden (per bar).
+*reload*  Reloads all waybars of current waybar process (basically equivalent to
+restarting with updated config which sets initial visibility values).
+*noop*    Does nothing when the kill signal is received.
 
 # MULTI OUTPUT CONFIGURATION
 
@@ -271,6 +307,17 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 ```
 
 Valid options for the "rotate" property are: 0, 90, 180, and 270.
+
+## Swapping icon and label
+
+If a module displays both a label and an icon, it might be desirable to swap them (for instance, for panels on the left or right of the screen, or for user adopting a right-to-left script). This can be achieved with the "swap-icon-label" property, taking a boolean. Example:
+```
+{
+	"sway/window": {
+		"swap-icon-label": true
+	}
+}
+```
 
 ## Grouping modules
 
@@ -390,4 +437,4 @@ A group may hide all but one element, showing them only on mouse hover. In order
 # SEE ALSO
 
 *sway-output(5)*
-*waybar-styles(5)"
+*waybar-styles(5)*

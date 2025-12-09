@@ -150,6 +150,7 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
     throw std::runtime_error("No backlight found");
   }
 
+#ifdef HAVE_LOGIN_PROXY
   // Connect to the login interface
   login_proxy_ = Gio::DBus::Proxy::create_for_bus_sync(
       Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
@@ -160,6 +161,7 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
         Gio::DBus::BusType::BUS_TYPE_SYSTEM, "org.freedesktop.login1",
         "/org/freedesktop/login1/session/self", "org.freedesktop.login1.Session");
   }
+#endif
 
   udev_thread_ = [this] {
     std::unique_ptr<udev, UdevDeleter> udev{udev_new()};
@@ -199,7 +201,9 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
         const auto &event = events[i];
         check_eq(event.data.fd, udev_fd, "unexpected udev fd");
         std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_monitor_receive_device(mon.get())};
-        check_nn(dev.get(), "epoll dev was null");
+        if (!dev) {
+          continue;
+        }
         upsert_device(devices, dev.get());
       }
 

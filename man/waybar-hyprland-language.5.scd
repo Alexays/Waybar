@@ -59,9 +59,9 @@ Addressed by *hyprland/language*
 
 ```
 "hyprland/language": {
-	"format": "Lang: {long}"
-	"format-en": "AMERICA, HELL YEAH!"
-	"format-tr": "As bayrakları"
+	"format": "Lang: {long}",
+	"format-en": "AMERICA, HELL YEAH!",
+	"format-tr": "As bayrakları",
 	"keyboard-name": "at-translated-set-2-keyboard"
 }
 ```

@@ -2,9 +2,9 @@
 
 #include <filesystem>
 #include <list>
-#include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "util/json.hpp"
@@ -17,9 +17,15 @@ class EventHandler {
   virtual ~EventHandler() = default;
 };
 
+/// If you want to use the Hyprland IPC, simply use IPC::inst() to get the singleton instance.
+/// Do not create multiple instances.
 class IPC {
+ protected:
+  IPC();  // use IPC::inst() instead.
+
  public:
-  IPC() { startIPC(); }
+  ~IPC();
+  static IPC& inst();
 
   void registerForIPC(const std::string& ev, EventHandler* ev_handler);
   void unregisterForIPC(EventHandler* handler);
@@ -32,14 +38,15 @@ class IPC {
   static std::filesystem::path socketFolder_;
 
  private:
-  void startIPC();
+  void socketListener();
   void parseIPC(const std::string&);
 
+  std::thread ipcThread_;
   std::mutex callbackMutex_;
   util::JsonParser parser_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;
+  int socketfd_;  // the hyprland socket file descriptor
+  pid_t socketOwnerPid_;
+  bool running_ = true;  // the ipcThread will stop running when this is false
 };
-
-inline std::unique_ptr<IPC> gIPC;
-inline bool modulesReady = false;
 };  // namespace waybar::modules::hyprland

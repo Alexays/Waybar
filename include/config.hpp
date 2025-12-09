@@ -20,8 +20,8 @@ class Config {
   static std::optional<std::string> findConfigPath(
       const std::vector<std::string> &names, const std::vector<std::string> &dirs = CONFIG_DIRS);
 
-  static std::optional<std::string> tryExpandPath(const std::string &base,
-                                                  const std::string &filename);
+  static std::vector<std::string> tryExpandPath(const std::string &base,
+                                                const std::string &filename);
 
   Config() = default;
 
@@ -35,6 +35,8 @@ class Config {
   void setupConfig(Json::Value &dst, const std::string &config_file, int depth);
   void resolveConfigIncludes(Json::Value &config, int depth);
   void mergeConfig(Json::Value &a_config_, Json::Value &b_config_);
+  static std::vector<std::string> findIncludePath(
+      const std::string &name, const std::vector<std::string> &dirs = CONFIG_DIRS);
 
   std::string config_file_;
 

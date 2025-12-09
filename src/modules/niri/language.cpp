@@ -9,7 +9,7 @@
 namespace waybar::modules::niri {
 
 Language::Language(const std::string &id, const Bar &bar, const Json::Value &config)
-    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
+    : ALabel(config, "language", id, "{}", 0, false), bar_(bar) {
   label_.hide();
 
   if (!gIPC) gIPC = std::make_unique<IPC>();
@@ -57,6 +57,16 @@ void Language::doUpdate() {
   spdlog::debug("niri language update with short name {}", layout.short_name);
   spdlog::debug("niri language update with short description {}", layout.short_description);
   spdlog::debug("niri language update with variant {}", layout.variant);
+
+  if (!last_short_name_.empty()) {
+    label_.get_style_context()->remove_class(last_short_name_);
+  }
+  if (!layout.short_name.empty()) {
+    label_.get_style_context()->add_class(layout.short_name);
+    last_short_name_ = layout.short_name;
+  } else {
+    last_short_name_.clear();
+  }
 
   std::string layoutName = std::string{};
   if (config_.isMember("format-" + layout.short_description + "-" + layout.variant)) {

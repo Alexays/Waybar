@@ -26,7 +26,7 @@ struct ToolTip {
 class Item : public sigc::trackable {
  public:
   Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
-  ~Item() = default;
+  ~Item();
 
   std::string bus_name;
   std::string object_path;
@@ -62,6 +62,7 @@ class Item : public sigc::trackable {
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
+  void setCustomIcon(const std::string& id);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
   void onSignal(const Glib::ustring& sender_name, const Glib::ustring& signal_name,

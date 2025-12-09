@@ -132,7 +132,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_text(fmt::format(
+      label_.set_tooltip_markup(fmt::format(
           fmt::runtime(tooltip_format), fmt::arg("desc", sink_desc),
           fmt::arg("volume", sink_volume), fmt::arg("format_source", format_source),
           fmt::arg("source_volume", source_volume), fmt::arg("source_desc", source_desc),

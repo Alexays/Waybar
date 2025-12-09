@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.11.0',
+    version: '0.14.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -69,7 +69,7 @@ is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled', 'std_format=disabled', 'tests=disabled'])
+spdlog = dependency('spdlog', version : ['>=1.15.2'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['std_format=disabled', 'tests=disabled'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -93,6 +93,7 @@ libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
+libgps = dependency('libgps', required: get_option('gps'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -182,6 +183,7 @@ src_files = files(
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
     'src/util/gtk_icon.cpp',
+    'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
     'src/util/css_reload_helper.cpp'
 )
@@ -275,6 +277,17 @@ if true
     man_files += files('man/waybar-wlr-taskbar.5.scd')
 endif
 
+if wayland_protos.version().version_compare('>=1.39')
+    add_project_arguments('-DHAVE_EXT_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/ext/workspace_manager.cpp',
+        'src/modules/ext/workspace_manager_binding.cpp',
+    )
+    man_files += files(
+        'man/waybar-ext-workspaces.5.scd',
+    )
+endif
+
 if true
     add_project_arguments('-DHAVE_RIVER', language: 'cpp')
     src_files += files(
@@ -306,6 +319,7 @@ if true
         'src/modules/hyprland/language.cpp',
         'src/modules/hyprland/submap.cpp',
         'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
@@ -331,6 +345,19 @@ if get_option('niri')
         'man/waybar-niri-window.5.scd',
         'man/waybar-niri-workspaces.5.scd',
     )
+endif
+
+if true
+    add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/wayfire/backend.cpp',
+        'src/modules/wayfire/window.cpp',
+        'src/modules/wayfire/workspaces.cpp',
+    )
+endif
+
+if get_option('login-proxy')
+    add_project_arguments('-DHAVE_LOGIN_PROXY', language: 'cpp')
 endif
 
 if libnl.found() and libnlgen.found()
@@ -470,27 +497,22 @@ else
     man_files += files('man/waybar-clock.5.scd')
 endif
 
-if get_option('experimental')
-    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
-    src_files += files(
-        'src/modules/wlr/workspace_manager.cpp',
-        'src/modules/wlr/workspace_manager_binding.cpp',
-    )
-    man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
-    )
-endif
-
 cava = dependency('cava',
-                  version : '>=0.10.3',
+                  version : '>=0.10.6',
                   required: get_option('cava'),
                   fallback : ['cava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava.cpp')
+   src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
+endif
+
+if libgps.found()
+   add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
+   src_files += files('src/modules/gps.cpp')
+   man_files += files('man/waybar-gps.5.scd')
 endif
 
 subdir('protocol')
@@ -531,7 +553,8 @@ executable(
         libsndio,
         tz_dep,
 		xkbregistry,
-        cava
+        cava,
+        libgps
     ],
     include_directories: inc_dirs,
     install: true,

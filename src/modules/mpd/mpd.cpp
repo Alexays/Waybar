@@ -118,7 +118,7 @@ void waybar::modules::MPD::setLabel() {
 
   auto format = format_;
   Glib::ustring artist, album_artist, album, title;
-  std::string date, filename;
+  std::string date, filename, uri;
   int song_pos = 0, queue_length = 0, volume = 0;
   std::chrono::seconds elapsedTime, totalTime;
 
@@ -151,6 +151,7 @@ void waybar::modules::MPD::setLabel() {
     title = sanitize_string(getTag(MPD_TAG_TITLE));
     date = sanitize_string(getTag(MPD_TAG_DATE));
     filename = sanitize_string(getFilename());
+    uri = mpd_song_get_uri(song_.get());
     song_pos = mpd_status_get_song_pos(status_.get()) + 1;
     volume = mpd_status_get_volume(status_.get());
     if (volume < 0) {
@@ -184,7 +185,7 @@ void waybar::modules::MPD::setLabel() {
         fmt::arg("songPosition", song_pos), fmt::arg("queueLength", queue_length),
         fmt::arg("stateIcon", stateIcon), fmt::arg("consumeIcon", consumeIcon),
         fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
-        fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename));
+        fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename), fmt::arg("uri", uri));
     if (text.empty()) {
       label_.hide();
     } else {
@@ -200,15 +201,15 @@ void waybar::modules::MPD::setLabel() {
     tooltip_format = config_["tooltip-format"].isString() ? config_["tooltip-format"].asString()
                                                           : "MPD (connected)";
     try {
-      auto tooltip_text =
-          fmt::format(fmt::runtime(tooltip_format), fmt::arg("artist", artist.raw()),
-                      fmt::arg("albumArtist", album_artist.raw()), fmt::arg("album", album.raw()),
-                      fmt::arg("title", title.raw()), fmt::arg("date", date),
-                      fmt::arg("volume", volume), fmt::arg("elapsedTime", elapsedTime),
-                      fmt::arg("totalTime", totalTime), fmt::arg("songPosition", song_pos),
-                      fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
-                      fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
-                      fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon));
+      auto tooltip_text = fmt::format(
+          fmt::runtime(tooltip_format), fmt::arg("artist", artist.raw()),
+          fmt::arg("albumArtist", album_artist.raw()), fmt::arg("album", album.raw()),
+          fmt::arg("title", title.raw()), fmt::arg("date", date), fmt::arg("volume", volume),
+          fmt::arg("elapsedTime", elapsedTime), fmt::arg("totalTime", totalTime),
+          fmt::arg("songPosition", song_pos), fmt::arg("queueLength", queue_length),
+          fmt::arg("stateIcon", stateIcon), fmt::arg("consumeIcon", consumeIcon),
+          fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
+          fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename), fmt::arg("uri", uri));
       label_.set_tooltip_text(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpd: format error (tooltip): {}", e.what());

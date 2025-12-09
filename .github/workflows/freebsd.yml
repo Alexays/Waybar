@@ -7,21 +7,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clang:
+  build:
     # Run actions in a FreeBSD VM on the ubuntu runner
     # https://github.com/actions/runner/issues/385 - for FreeBSD runner support
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Test in FreeBSD VM
-        uses: cross-platform-actions/action@v0.25.0
+        uses: cross-platform-actions/action@v0.28.0
         timeout-minutes: 180
         env:
           CPPFLAGS: '-isystem/usr/local/include'
           LDFLAGS:  '-L/usr/local/lib'
         with:
           operating_system: freebsd
-          version: "14.1"
+          version: "14.2"
           environment_variables: CPPFLAGS LDFLAGS
           sync_files: runner-to-vm
           run: |

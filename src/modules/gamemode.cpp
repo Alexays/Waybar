@@ -53,7 +53,6 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   if (config_["icon-spacing"].isUInt()) {
     iconSpacing = config_["icon-spacing"].asUInt();
   }
-  box_.set_spacing(iconSpacing);
 
   // Whether to use icon or not
   if (config_["use-icon"].isBool()) {
@@ -64,7 +63,6 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   if (config_["icon-size"].isUInt()) {
     iconSize = config_["icon-size"].asUInt();
   }
-  icon_.set_pixel_size(iconSize);
 
   // Format
   if (config_["format"].isString()) {
@@ -228,6 +226,11 @@ auto Gamemode::update() -> void {
       iconName = DEFAULT_ICON_NAME;
     }
     icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
+    box_.set_spacing(iconSpacing);
+    icon_.set_pixel_size(iconSize);
+  } else {
+    box_.set_spacing(0);
+    icon_.set_pixel_size(0);
   }
 
   // Call parent update

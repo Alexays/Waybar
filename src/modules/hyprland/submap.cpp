@@ -2,37 +2,29 @@
 
 #include <spdlog/spdlog.h>
 
-#include "util/sanitize_str.hpp"
-
 namespace waybar::modules::hyprland {
 
 Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "submap", id, "{}", 0, true), bar_(bar) {
-  modulesReady = true;
-
+    : ALabel(config, "submap", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   parseConfig(config);
-
-  if (!gIPC) {
-    gIPC = std::make_unique<IPC>();
-  }
 
   label_.hide();
   ALabel::update();
 
   // Displays widget immediately if always_on_ assuming default submap
-  // Needs an actual way to retrive current submap on startup
+  // Needs an actual way to retrieve current submap on startup
   if (always_on_) {
     submap_ = default_submap_;
     label_.get_style_context()->add_class(submap_);
   }
 
   // register for hyprland ipc
-  gIPC->registerForIPC("submap", this);
+  m_ipc.registerForIPC("submap", this);
   dp.emit();
 }
 
 Submap::~Submap() {
-  gIPC->unregisterForIPC(this);
+  m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
 }
@@ -72,8 +64,7 @@ void Submap::onEvent(const std::string& ev) {
     return;
   }
 
-  auto submapName = ev.substr(ev.find_last_of('>') + 1);
-  submapName = waybar::util::sanitize_string(submapName);
+  auto submapName = ev.substr(ev.find_first_of('>') + 2);
 
   if (!submap_.empty()) {
     label_.get_style_context()->remove_class(submap_);
