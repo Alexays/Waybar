@@ -181,11 +181,16 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
 
   // Override cava parameters by the user config
   prm_.inAtty = 0;
-  prm_.output = ::cava::output_method::OUTPUT_RAW;
-  if (prm_.data_format) free(prm_.data_format);
-  prm_.data_format = strdup("ascii");
-  if (prm_.raw_target) free(prm_.raw_target);
-  prm_.raw_target = strdup("/dev/stdout");
+  auto const output{prm_.output};
+  // prm_.output = ::cava::output_method::OUTPUT_RAW;
+  if (config_["data_format"].isString()) {
+    if (prm_.data_format) free(prm_.data_format);
+    prm_.data_format = strdup(config_["data_format"].asString().c_str());
+  }
+  if (config_["raw_target"].isString()) {
+    if (prm_.raw_target) free(prm_.raw_target);
+    prm_.raw_target = strdup(config_["raw_target"].asString().c_str());
+  }
   prm_.ascii_range = config_["format-icons"].size() - 1;
 
   if (config_["bar_spacing"].isInt()) prm_.bar_spacing = config_["bar_spacing"].asInt();
@@ -251,11 +256,15 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
     exit(EXIT_FAILURE);
   }
 
+  prm_.output = ::cava::output_method::OUTPUT_RAW;
+
   // Make cava parameters configuration
   // Init cava plan, audio_raw structure
   audio_raw_init(&audio_data_, &audio_raw_, &prm_, &plan_);
   if (!plan_) spdlog::error("cava backend plan is not provided");
   audio_raw_.previous_frame[0] = -1;  // For first Update() call need to rePaint text message
+
+  prm_.output = output;
 }
 
 const struct ::cava::config_params* waybar::modules::cava::CavaBackend::getPrm() { return &prm_; }

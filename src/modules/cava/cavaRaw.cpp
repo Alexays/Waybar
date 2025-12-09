@@ -1,4 +1,4 @@
-#include "modules/cava/cava.hpp"
+#include "modules/cava/cavaRaw.hpp"
 
 #include <spdlog/spdlog.h>
 
