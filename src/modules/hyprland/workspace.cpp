@@ -241,6 +241,7 @@ void Workspace::update(const std::string &workspace_icon) {
   auto styleContext = m_button.get_style_context();
   addOrRemoveClass(styleContext, isActive(), "active");
   addOrRemoveClass(styleContext, isSpecial(), "special");
+  addOrRemoveClass(styleContext, isSpecial(), name());
   addOrRemoveClass(styleContext, isEmpty(), "empty");
   addOrRemoveClass(styleContext, isPersistent(), "persistent");
   addOrRemoveClass(styleContext, isUrgent(), "urgent");
