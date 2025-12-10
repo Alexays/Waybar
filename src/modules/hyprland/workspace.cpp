@@ -161,6 +161,13 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
     }
   }
 
+  if (isActive() && isSpecial()) {
+    auto activeIconIt = icons_map.find("active:" + name());
+    if (activeIconIt != icons_map.end()) {
+      return activeIconIt->second;
+    }
+  }
+
   if (isActive()) {
     auto activeIconIt = icons_map.find("active");
     if (activeIconIt != icons_map.end()) {
