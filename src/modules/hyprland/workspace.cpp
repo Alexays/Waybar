@@ -166,6 +166,10 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
     if (activeIconIt != icons_map.end()) {
       return activeIconIt->second;
     }
+    auto namedIconIt = icons_map.find(name());
+    if (namedIconIt != icons_map.end()) {
+      return namedIconIt->second;
+    }
   }
 
   if (isActive()) {
