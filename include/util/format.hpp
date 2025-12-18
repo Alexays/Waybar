@@ -92,7 +92,7 @@ struct formatter<pow_format> {
 template <>
 struct formatter<Glib::ustring> : formatter<std::string> {
   template <typename FormatContext>
-  auto format(const Glib::ustring& value, FormatContext& ctx) {
+  auto format(const Glib::ustring& value, FormatContext& ctx) const {
     return formatter<std::string>::format(static_cast<std::string>(value), ctx);
   }
 };
