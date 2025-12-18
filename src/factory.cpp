@@ -108,15 +108,13 @@
 #ifdef HAVE_LIBWIREPLUMBER
 #include "modules/wireplumber.hpp"
 #endif
-#ifdef HAVE_LIBCAVA
-#include "modules/cava/cava.hpp"
-#endif
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
 #ifdef HAVE_LIBGPS
 #include "modules/gps.hpp"
 #endif
+#include "modules/cava/cava_frontend.hpp"
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
@@ -341,11 +339,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Wireplumber(id, config_[name]);
     }
 #endif
-#ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      return new waybar::modules::cava::Cava(id, config_[name]);
+      return waybar::modules::cava::getModule(id, config_[name]);
     }
-#endif
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
