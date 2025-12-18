@@ -56,6 +56,8 @@ class Client {
   std::list<struct waybar_output> outputs_;
   std::unique_ptr<CssReloadHelper> m_cssReloadHelper;
   std::string m_cssFile;
+  sigc::connection monitor_added_connection_;
+  sigc::connection monitor_removed_connection_;
 };
 
 }  // namespace waybar
