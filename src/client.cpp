@@ -183,16 +183,24 @@ const std::string waybar::Client::getStyle(const std::string &style,
 };
 
 auto waybar::Client::setupCss(const std::string &css_file) -> void {
-  css_provider_ = Gtk::CssProvider::create();
-  style_context_ = Gtk::StyleContext::create();
+  auto screen = Gdk::Screen::get_default();
+  if (!screen) {
+    throw std::runtime_error("No default screen");
+  }
 
-  // Load our css file, wherever that may be hiding
+  if (css_provider_) {
+    Gtk::StyleContext::remove_provider_for_screen(screen, css_provider_);
+    css_provider_.reset();
+  }
+
+  css_provider_ = Gtk::CssProvider::create();
   if (!css_provider_->load_from_path(css_file)) {
+    css_provider_.reset();
     throw std::runtime_error("Can't open style file");
   }
-  // there's always only one screen
-  style_context_->add_provider_for_screen(Gdk::Screen::get_default(), css_provider_,
-                                          GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  Gtk::StyleContext::add_provider_for_screen(screen, css_provider_,
+                                             GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
 
 void waybar::Client::bindInterfaces() {
@@ -211,13 +219,22 @@ void waybar::Client::bindInterfaces() {
   if (xdg_output_manager == nullptr) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
+
+  // Disconnect previous signal handlers to prevent duplicate handlers on reload
+  monitor_added_connection_.disconnect();
+  monitor_removed_connection_.disconnect();
+
+  // Clear stale outputs from previous run
+  outputs_.clear();
+
   // add existing outputs and subscribe to updates
   for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
     auto monitor = gdk_display->get_monitor(i);
     handleMonitorAdded(monitor);
   }
-  gdk_display->signal_monitor_added().connect(sigc::mem_fun(*this, &Client::handleMonitorAdded));
-  gdk_display->signal_monitor_removed().connect(
+  monitor_added_connection_ = gdk_display->signal_monitor_added().connect(
+      sigc::mem_fun(*this, &Client::handleMonitorAdded));
+  monitor_removed_connection_ = gdk_display->signal_monitor_removed().connect(
       sigc::mem_fun(*this, &Client::handleMonitorRemoved));
 }
 

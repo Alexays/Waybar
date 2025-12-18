@@ -230,7 +230,7 @@ const unsigned cldRowsInMonth(const year_month& ym, const weekday& firstdow) {
 auto cldGetWeekForLine(const year_month& ym, const weekday& firstdow, const unsigned line)
     -> const year_month_weekday {
   const unsigned idx = line - 2;
-  const std::chrono::weekday_indexed indexed_first_day_of_week =
+  const auto indexed_first_day_of_week =
       weekday{ym / 1} == firstdow ? firstdow[idx + 1] : firstdow[idx];
 
   return ym / indexed_first_day_of_week;

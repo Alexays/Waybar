@@ -201,7 +201,9 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
         const auto &event = events[i];
         check_eq(event.data.fd, udev_fd, "unexpected udev fd");
         std::unique_ptr<udev_device, UdevDeviceDeleter> dev{udev_monitor_receive_device(mon.get())};
-        check_nn(dev.get(), "epoll dev was null");
+        if (!dev) {
+          continue;
+        }
         upsert_device(devices, dev.get());
       }
 
