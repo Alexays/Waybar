@@ -32,6 +32,8 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
     throw std::runtime_error("udev failed to add monitor filter");
   }
   udev_monitor_enable_receiving(mon_.get());
+
+  if (config_["weighted-average"].isBool()) weightedAverage_ = config_["weighted-average"].asBool();
 #endif
   spdlog::debug("battery: worker interval is {}", interval_.count());
   worker();
@@ -591,8 +593,7 @@ waybar::modules::Battery::getInfos() {
     }
 
     // Handle weighted-average
-    if ((config_["weighted-average"].isBool() ? config_["weighted-average"].asBool() : false) &&
-        total_energy_exists && total_energy_full_exists) {
+    if (weightedAverage_ && total_energy_exists && total_energy_full_exists) {
       if (total_energy_full > 0.0f)
         calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
     }

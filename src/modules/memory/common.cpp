@@ -36,7 +36,7 @@ auto waybar::modules::Memory::update() -> void {
     float total_swap_gigabytes = 0.01 * round(swaptotal / 10485.76);
     int used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
     int used_swap_percentage = 0;
-    if (swaptotal && swapfree) {
+    if (swaptotal) {
       used_swap_percentage = 100 * (swaptotal - swapfree) / swaptotal;
     }
     float used_ram_gigabytes = 0.01 * round((memtotal - memfree) / 10485.76);

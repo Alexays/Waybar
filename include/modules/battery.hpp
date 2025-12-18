@@ -49,6 +49,7 @@ class Battery : public ALabel {
   std::string old_status_;
   std::string last_event_;
   bool warnFirstTime_{true};
+  bool weightedAverage_{true};
   const Bar& bar_;
 
   util::SleeperThread thread_;
