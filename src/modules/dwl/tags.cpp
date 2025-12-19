@@ -94,7 +94,11 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
       seat_{nullptr},
       bar_(bar),
       box_{bar.orientation, 0},
+      hide_vacant_(false),
       output_status_{nullptr} {
+  if (config_["hide-vacant"].asBool()) {
+    hide_vacant_ = config_["hide-vacant"].asBool();
+  }
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
 
@@ -203,6 +207,12 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
     button.get_style_context()->add_class("urgent");
   } else {
     button.get_style_context()->remove_class("urgent");
+  }
+
+  if (hide_vacant_ && !clients && !(state & TAG_ACTIVE)) {
+    button.set_visible(false);
+  } else {
+    button.set_visible(true);
   }
 }
 
