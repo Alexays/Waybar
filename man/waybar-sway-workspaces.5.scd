@@ -78,6 +78,10 @@ Addressed by *sway/workspaces*
 	typeof: bool ++
 	Whether to disable *workspace_auto_back_and_forth* when clicking on workspaces. If this is set to *true*, clicking on a workspace you are already on won't do anything, even if *workspace_auto_back_and_forth* is enabled in the Sway configuration.
 
+*no-switch-output*: ++
+	typeof: bool ++
+	Whether to disable switching output when clicking on workspaces. If this is set to *true*, then clicking on a workspace on a different output will bring it to the current output instead of switching to that output.
+
 *alphabetical_sort*: ++
 	typeof: bool ++
 	Whether to sort workspaces alphabetically. Please note this can make "swaymsg workspace prev/next" move to workspaces inconsistent with the ordering shown in Waybar.
