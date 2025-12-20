@@ -8,11 +8,18 @@
 
 namespace waybar::modules::SNI {
 
+static void initIconsConfig(const Json::Value& config) {
+  if (config["icons"].isObject()) {
+    IconManager::instance().setIconsConfig(config["icons"]);
+  }
+}
+
 Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "tray", id),
       box_(bar.orientation, 0),
       watcher_(SNI::Watcher::getInstance()),
-      host_(nb_hosts_, config, bar, std::bind(&Tray::onAdd, this, std::placeholders::_1),
+      host_((initIconsConfig(config), nb_hosts_), config, bar,
+            std::bind(&Tray::onAdd, this, std::placeholders::_1),
             std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
   box_.set_name("tray");
   event_box_.add(box_);
@@ -27,9 +34,6 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     show_passive_ = config["show-passive-items"].asBool();
   }
   nb_hosts_ += 1;
-  if (config_["icons"].isObject()) {
-    IconManager::instance().setIconsConfig(config_["icons"]);
-  }
   dp.emit();
 }
 
