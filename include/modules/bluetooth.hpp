@@ -41,6 +41,7 @@ class Bluetooth : public ALabel {
     bool services_resolved;
     // NOTE: experimental feature in bluez
     std::optional<unsigned char> battery_percentage;
+    std::optional<unsigned char> battery_percentage_peripheral;
   };
 
  public:
@@ -59,6 +60,11 @@ class Bluetooth : public ALabel {
                                                 gpointer) -> void;
 
   auto getDeviceBatteryPercentage(GDBusObject*) -> std::optional<unsigned char>;
+  auto getDeviceGattBatteryLevels(GDBusObject*, std::optional<unsigned char>&,
+                                  std::optional<unsigned char>&) -> void;
+  static auto processBatteryServiceCharacteristics(GList*, const std::string&, const std::string&,
+                                                   const std::string&, std::optional<unsigned char>&,
+                                                   std::optional<unsigned char>&) -> void;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
   auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;
 
