@@ -36,6 +36,10 @@ class Wireplumber : public ALabel {
 
   static std::list<waybar::modules::Wireplumber*> modules;
 
+  uint32_t resolvePhysicalSink(uint32_t start_id);
+  uint32_t findPlaybackNodeId(const gchar* description);
+  static uint32_t get_linked_sink_id(WpObjectManager* om, uint32_t from_node_id, const gchar* media_class);
+
   WpCore* wp_core_;
   GPtrArray* apis_;
   WpObjectManager* om_;
@@ -54,6 +58,8 @@ class Wireplumber : public ALabel {
   bool source_muted_;
   double source_volume_;
   gchar* default_source_name_;
+  bool only_physical_;
+  bool resolved_physical_;
 };
 
 }  // namespace waybar::modules
