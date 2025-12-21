@@ -123,6 +123,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to true, only the active workspace will be shown.
 
+*hide-active*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, the active workspace will be hidden. Unless a workspace is persistent or special.
+
 *move-to-monitor*: ++
 	typeof: bool ++
 	default: false ++
