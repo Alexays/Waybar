@@ -1,4 +1,5 @@
 #include "modules/wireplumber.hpp"
+#include <unordered_set>
 
 #include <spdlog/spdlog.h>
 
@@ -25,7 +26,8 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       source_node_id_(0),
       source_muted_(false),
       source_volume_(0.0),
-      default_source_name_(nullptr) {
+      default_source_name_(nullptr),
+      only_physical_(false) {
   waybar::modules::Wireplumber::modules.push_back(this);
 
   wp_init(WP_INIT_PIPEWIRE);
@@ -35,6 +37,7 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 
   type_ = g_strdup(config_["node-type"].isString() ? config_["node-type"].asString().c_str()
                                                    : "Audio/Sink");
+  only_physical_ = config_["only-physical"].isBool() ? config_["only-physical"].asBool() : false;
 
   prepare(this);
 
@@ -226,28 +229,34 @@ void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wir
   spdlog::debug("[{}]: (onDefaultNodesApiChanged: {})", self->name_, self->type_);
 
   // Handle sink
-  uint32_t defaultNodeId;
+  uint32_t defaultNodeId = 0;
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &defaultNodeId);
 
   if (isValidNodeId(defaultNodeId)) {
+    uint32_t effective_id = self->only_physical_ ? self->resolvePhysicalSink(defaultNodeId) : defaultNodeId;
+
+    if (self->only_physical_ && effective_id != defaultNodeId) {
+      spdlog::info("[{}]: only-physical enabled: using sink {} instead of default {}", self->name_, effective_id, defaultNodeId);
+    }
+
     g_autoptr(WpNode) node = static_cast<WpNode*>(
         wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-                                 "=u", defaultNodeId, nullptr));
+                                 "=u", effective_id, nullptr));
 
     if (node != nullptr) {
-      const gchar* defaultNodeName =
+      const gchar* effectiveNodeName =
           wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
 
-      if (g_strcmp0(self->default_node_name_, defaultNodeName) != 0 ||
-          self->node_id_ != defaultNodeId) {
-        spdlog::debug("[{}]: Default sink changed to -> Node(name: {}, id: {})", self->name_,
-                      defaultNodeName, defaultNodeId);
+      if (g_strcmp0(self->default_node_name_, effectiveNodeName) != 0 ||
+          self->node_id_ != effective_id) {
+        spdlog::debug("[{}]: Default sink resolved to -> Node(name: {}, id: {})", self->name_,
+                      effectiveNodeName, effective_id);
 
         g_free(self->default_node_name_);
-        self->default_node_name_ = g_strdup(defaultNodeName);
-        self->node_id_ = defaultNodeId;
-        updateVolume(self, defaultNodeId);
-        updateNodeName(self, defaultNodeId);
+        self->default_node_name_ = g_strdup(effectiveNodeName);
+        self->node_id_ = effective_id;
+        updateVolume(self, effective_id);
+        updateNodeName(self, effective_id);
       }
     }
   }
@@ -300,7 +309,16 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
   // Get default sink
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", self->type_,
                         &self->default_node_name_);
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &self->node_id_);
+  uint32_t initial_sink_id = 0;
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &initial_sink_id);
+
+  if (self->only_physical_ && isValidNodeId(initial_sink_id)) {
+    self->node_id_ = self->resolvePhysicalSink(initial_sink_id);
+    spdlog::info("[{}]: only-physical enabled: initial physical sink {} (default was {})",
+                 self->name_, self->node_id_, initial_sink_id);
+  } else {
+    self->node_id_ = initial_sink_id;
+  }
 
   // Get default source
   g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Source",
@@ -360,6 +378,10 @@ void waybar::modules::Wireplumber::prepare(waybar::modules::Wireplumber* self) {
                                  "=s", self->type_, nullptr);
   wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
                                  "=s", "Audio/Source", nullptr);
+  wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
+                                 "=s", "Stream/Output/Audio", nullptr);
+  wp_object_manager_add_interest(om_, WP_TYPE_LINK, nullptr);
+  wp_object_manager_request_object_features(om_, WP_TYPE_GLOBAL_PROXY, WP_OBJECT_FEATURES_ALL);
 }
 
 void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
@@ -529,4 +551,132 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     g_signal_emit_by_name(mixer_api_, "set-volume", node_id_, variant, &ret);
   }
   return true;
+}
+
+uint32_t waybar::modules::Wireplumber::findPlaybackNodeId(const gchar* description) {
+  if (!description || *description == '\0') {
+    return 0;
+  }
+
+  spdlog::debug("[{}]: Searching playback node with node.description = {}", name_, description);
+
+  g_autoptr(WpIterator) it = wp_object_manager_new_filtered_iterator(
+      om_, WP_TYPE_NODE,
+      WP_CONSTRAINT_TYPE_PW_PROPERTY, "node.description", "=s", description,
+      WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class", "=s", "Stream/Output/Audio",
+      nullptr);
+
+  uint32_t playback_id = 0;
+
+  g_auto(GValue) item = G_VALUE_INIT;
+  if(wp_iterator_next(it, &item)) {
+    WpNode* output_node = WP_NODE(g_value_get_object(&item));
+    playback_id = wp_proxy_get_bound_id(WP_PROXY(output_node));
+
+    spdlog::debug("[{}]: Found matching playback node id {}", name_, playback_id);
+  }
+  g_value_unset(&item);
+
+  if (playback_id == 0) {
+    spdlog::debug("[{}]: No playback node found with description '{}'", name_, description);
+  }
+
+  return playback_id;
+}
+
+uint32_t waybar::modules::Wireplumber::get_linked_sink_id(WpObjectManager* om, uint32_t from_node_id, const gchar* media_class) {
+  spdlog::debug("DEBUG: Searching links connected to node {}", from_node_id);
+
+  g_autoptr(WpIterator) out_it = wp_object_manager_new_filtered_iterator(
+      om, WP_TYPE_LINK,
+      WP_CONSTRAINT_TYPE_PW_PROPERTY, "link.output.node", "=u", from_node_id,
+      nullptr);
+
+  g_auto(GValue) item = G_VALUE_INIT;
+  if(wp_iterator_next(out_it, &item)) {
+    WpLink* link = WP_LINK(g_value_get_object(&item));
+    guint32 out_node, out_port, in_node, in_port;
+    wp_link_get_linked_object_ids(link, &out_node, &out_port, &in_node, &in_port);
+
+    spdlog::debug("Found outgoing link {} -> {}", out_node, in_node);
+
+    g_value_unset(&item);
+    return in_node;
+  }
+  g_value_unset(&item);
+
+  spdlog::debug("No link found from node {}", from_node_id);
+  return 0;
+}
+
+uint32_t waybar::modules::Wireplumber::resolvePhysicalSink(uint32_t start_id) {
+  if (!isValidNodeId(start_id) || !only_physical_) {
+    return start_id;
+  }
+
+  std::unordered_set<uint32_t> visited;
+  uint32_t current_id = start_id;
+  int depth = 0;
+  const int max_depth = 10;
+
+  spdlog::debug("[{}]: Starting physical sink resolution from id {}", name_, start_id);
+
+  while (visited.insert(current_id).second && depth++ < max_depth) {
+    g_autoptr(WpProxy) proxy = static_cast<WpProxy*>(wp_object_manager_lookup(
+        om_, WP_TYPE_GLOBAL_PROXY,
+        WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=u", current_id,
+        WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class", "=s", type_,
+        nullptr));
+
+    if (!proxy || !WP_IS_PIPEWIRE_OBJECT(proxy)) {
+      spdlog::warn("[{}]: Node {} not found during resolution", name_, current_id);
+      break;
+    }
+
+    g_autoptr(WpProperties) props = wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(proxy));
+    if (!props) props = wp_properties_new_empty();
+
+    const gchar* device_id = wp_properties_get(props, "device.id");
+    if (device_id != nullptr) {
+      spdlog::debug("[{}]: Found physical sink {} (device.id = {})", name_, current_id, device_id);
+      return current_id;
+    }
+
+    const gchar* description = wp_properties_get(props, "node.description");
+    if (!description || *description == '\0') {
+      description = wp_properties_get(props, "node.nick");
+    }
+    if (!description || *description == '\0') {
+      spdlog::debug("[{}]: Virtual node {} has no description/nick, stopping", name_, current_id);
+      break;
+    }
+
+    spdlog::debug("[{}]: Node {} is virtual (description: {}), searching playback node", name_, current_id, description);
+
+    uint32_t playback_id = findPlaybackNodeId(description);
+    if (playback_id == 0) {
+      spdlog::debug("[{}]: No playback node found, cannot resolve further", name_, current_id);
+      break;
+    }
+
+    // Follow outgoing link from playback node
+    uint32_t next_id;
+    next_id = get_linked_sink_id(om_, playback_id, type_);
+    if (next_id != 0) {
+      spdlog::debug("[{}]: Found linked node {} via link traversal", name_, next_id);
+    } else {
+      spdlog::debug("[{}]: No links found from/to playback node {}", name_, playback_id);
+      break;
+    }
+
+    current_id = next_id;
+    spdlog::debug("[{}]: Resolved next sink id {}", name_, current_id);
+  }
+
+  if (depth >= max_depth || !visited.insert(current_id).second) {
+    spdlog::warn("[{}]: Max depth or cycle reached, stopping at {}", name_, current_id);
+  }
+
+  spdlog::info("[{}]: Final resolved sink id {}", name_, current_id);
+  return current_id;
 }
