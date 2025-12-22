@@ -514,16 +514,25 @@ else
     man_files += files('man/waybar-clock.5.scd')
 endif
 
-cava = dependency('cava',
-                  version : '>=0.10.6',
+cava = dependency('libcava',
+                  version : '>=0.10.7',
                   required: get_option('cava'),
-                  fallback : ['cava', 'cava_dep'],
+                  fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
+
+epoxy = dependency('epoxy', required: false)
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   cava_src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
+   cava_src_files += files('src/modules/cava/cavaRaw.cpp',
+                           'src/modules/cava/cava_backend.cpp',
+                           'src/modules/cava/cava_frontend.cpp')
    man_files += files('man/waybar-cava.5.scd')
+
+   if epoxy.found()
+      add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
+      cava_src_files += files('src/modules/cava/cavaGLSL.cpp')
+   endif
 endif
 
 if libgps.found()
@@ -542,6 +551,7 @@ if cava.found()
             gtkmm,
             jsoncpp,
             spdlog,
+            epoxy,
             cava
         ],
         include_directories: inc_dirs,
@@ -603,7 +613,7 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-		xkbregistry,
+        xkbregistry,
     ],
     include_directories: inc_dirs,
     install: true,

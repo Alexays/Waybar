@@ -29,7 +29,7 @@ Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
              bool vertical)
-    : AModule(config, name, id, reap_mtx, reap, true, true),
+    : AModule(config, name, id, reap_mtx, reap, true, false),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   box.set_name(name_);

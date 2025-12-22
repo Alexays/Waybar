@@ -15,16 +15,18 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       mixer_api_(nullptr),
       def_nodes_api_(nullptr),
       default_node_name_(nullptr),
-      default_source_name_(nullptr),
       pending_plugins_(0),
       muted_(false),
-      source_muted_(false),
       volume_(0.0),
-      source_volume_(0.0),
       min_step_(0.0),
       node_id_(0),
+      node_name_(""),
+      source_name_(""),
+      type_(nullptr),
       source_node_id_(0),
-      type_(nullptr) {
+      source_muted_(false),
+      source_volume_(0.0),
+      default_source_name_(nullptr) {
   waybar::modules::Wireplumber::modules.push_back(this);
 
   wp_init(WP_INIT_PIPEWIRE);
