@@ -4,8 +4,9 @@
 
 namespace waybar::modules {
 
-BacklightSlider::BacklightSlider(const std::string& id, const Json::Value& config)
-    : ASlider(config, "backlight-slider", id),
+BacklightSlider::BacklightSlider(const std::string& id, const Json::Value& config,
+                                 std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ASlider(config, "backlight-slider", id, reap_mtx, reap),
       interval_(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1000),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { this->dp.emit(); }) {}

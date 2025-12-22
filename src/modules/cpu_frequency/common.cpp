@@ -9,8 +9,9 @@
 #include <fmt/core.h>
 #endif
 
-waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::Value& config)
-    : ALabel(config, "cpu_frequency", id, "{avg_frequency}", 10) {
+waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::Value& config,
+                                            std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "cpu_frequency", id, "{avg_frequency}", reap_mtx, reap, 10) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);

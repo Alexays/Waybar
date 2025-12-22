@@ -9,7 +9,7 @@ namespace waybar::modules::cava {
 
 class CavaGLSL final : public AModule, public Gtk::GLArea {
  public:
-  CavaGLSL(const std::string&, const Json::Value&);
+  CavaGLSL(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~CavaGLSL() = default;
 
  private:
