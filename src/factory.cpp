@@ -41,6 +41,7 @@
 #include "modules/niri/language.hpp"
 #include "modules/niri/window.hpp"
 #include "modules/niri/workspaces.hpp"
+#include "modules/niri/taskbar.hpp"
 #endif
 #ifdef HAVE_WAYFIRE
 #include "modules/wayfire/window.hpp"
@@ -229,6 +230,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "niri/workspaces") {
       return new waybar::modules::niri::Workspaces(id, bar_, config_[name]);
+    }
+    if (ref == "niri/taskbar") {
+      return new waybar::modules::niri::Taskbar(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_WAYFIRE
