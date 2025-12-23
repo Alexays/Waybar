@@ -61,7 +61,7 @@ auto AIconLabel::update() -> void {
 }
 
 bool AIconLabel::iconEnabled() const {
-  return config_["icon"].isBool() ? config_["icon"].asBool() : false;
+  return labelContainsIcon || (config_["icon"].isBool() ? config_["icon"].asBool() : false);
 }
 
 }  // namespace waybar
