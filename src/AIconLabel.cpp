@@ -57,39 +57,45 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
   event_box_.add(box_);
 }
 
-auto AIconLabel::update() -> void {
-  std::string iconName = "";
-  labelContainsIcon = false;
+std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& input) {
+  std::string iconResult = "";
+  std::string labelResult = input;
   try {
-    std::string inputLabel = label_.get_label().c_str();
-
     const std::regex iconSearch(R"((?=\\0icon\\1f).+?(?=\\n))");
     std::smatch iconMatch;
-    if (std::regex_search(inputLabel, iconMatch, iconSearch)) {
-      iconName = iconMatch[0].str().substr(9);
+    if (std::regex_search(input, iconMatch, iconSearch)) {
+      iconResult = iconMatch[0].str().substr(9);
     
       const std::regex cleanLabelPattern(R"(\\0icon\\1f.+?\\n)");
-      std::string labelResult = std::regex_replace(inputLabel, cleanLabelPattern, "");
-
-      label_.set_markup(labelResult);
-      labelContainsIcon = true;
+      labelResult = std::regex_replace(input, cleanLabelPattern, "");
     }
   } catch (const std::exception& e) {
       spdlog::warn("Error while parsing icon from label. {}", e.what());
   }
 
+  return std::make_tuple(iconResult, labelResult);
+}
+
+auto AIconLabel::update() -> void {
+  labelContainsIcon = false;
+
+  auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().c_str());
+  labelContainsIcon = iconLabel.length() > 0;
+
   if (labelContainsIcon) {
-     if (iconName.front() == '/') {
-      auto pixbuf = Gdk::Pixbuf::create_from_file(iconName);
-      int scaled_icon_size = 24 * image_.get_scale_factor();
-      pixbuf = Gdk::Pixbuf::create_from_file(iconName, scaled_icon_size, scaled_icon_size);
+    label_.set_markup(cleanLabel);
+
+    if (iconLabel.front() == '/') {
+      auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel);
+      int scaled_icon_size = 6 * image_.get_scale_factor();
+      pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
 
       auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
                                                             image_.get_window());
       image_.set(surface);
       image_.set_visible(true);
     } else {
-      image_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
+      image_.set_from_icon_name(iconLabel, Gtk::ICON_SIZE_INVALID);
       image_.set_visible(true);
     }
   }
