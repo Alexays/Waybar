@@ -19,6 +19,7 @@ class AIconLabel : public ALabel {
  protected:
   Gtk::Image image_;
   Gtk::Box box_;
+  unsigned app_icon_size_{24};
 
   bool labelContainsIcon;
 

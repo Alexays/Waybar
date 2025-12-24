@@ -11,6 +11,10 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
                        const std::string &format, uint16_t interval, bool ellipsize,
                        bool enable_click, bool enable_scroll)
     : ALabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
+  if (config["icon-size"].isUInt()) {
+    app_icon_size_ = config["icon-size"].asUInt();
+  }
+  image_.set_pixel_size(app_icon_size_);
   event_box_.remove();
   label_.unset_name();
   label_.get_style_context()->remove_class(MODULE_CLASS);
@@ -86,9 +90,8 @@ auto AIconLabel::update() -> void {
     label_.set_markup(cleanLabel);
 
     if (iconLabel.front() == '/') {
-      auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel);
-      int scaled_icon_size = 6 * image_.get_scale_factor();
-      pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
+      int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
+      auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
 
       auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
                                                             image_.get_window());
