@@ -62,31 +62,31 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
 }
 
 std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& input) {
-  std::string iconResult = "";
-  std::string labelResult = input;
+  std::string icon_result = "";
+  std::string label_result = input;
   try {
-    const std::regex iconSearch(R"((?=\\0icon\\1f).+?(?=\\n))");
-    std::smatch iconMatch;
-    if (std::regex_search(input, iconMatch, iconSearch)) {
-      iconResult = iconMatch[0].str().substr(9);
+    const std::regex icon_search(R"((?=\\0icon\\1f).+?(?=\\n))");
+    std::smatch icon_match;
+    if (std::regex_search(input, icon_match, icon_search)) {
+      icon_result = icon_match[0].str().substr(9);
     
-      const std::regex cleanLabelPattern(R"(\\0icon\\1f.+?\\n)");
-      labelResult = std::regex_replace(input, cleanLabelPattern, "");
+      const std::regex clean_label_pattern(R"(\\0icon\\1f.+?\\n)");
+      label_result = std::regex_replace(input, clean_label_pattern, "");
     }
   } catch (const std::exception& e) {
       spdlog::warn("Error while parsing icon from label. {}", e.what());
   }
 
-  return std::make_tuple(iconResult, labelResult);
+  return std::make_tuple(icon_result, label_result);
 }
 
 auto AIconLabel::update() -> void {
-  labelContainsIcon = false;
+  label_contains_icon = false;
 
   auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().c_str());
-  labelContainsIcon = iconLabel.length() > 0;
+  label_contains_icon = iconLabel.length() > 0;
 
-  if (labelContainsIcon) {
+  if (label_contains_icon) {
     label_.set_markup(cleanLabel);
 
     if (iconLabel.front() == '/') {
@@ -108,7 +108,7 @@ auto AIconLabel::update() -> void {
 }
 
 bool AIconLabel::iconEnabled() const {
-  return labelContainsIcon || (config_["icon"].isBool() ? config_["icon"].asBool() : false);
+  return label_contains_icon || (config_["icon"].isBool() ? config_["icon"].asBool() : false);
 }
 
 }  // namespace waybar
