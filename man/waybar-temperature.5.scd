@@ -27,6 +27,12 @@ Addressed by *temperature*
 	The path of the hwmon-directory of the device, e.g. */sys/devices/pci0000:00/0000:00:18.3/hwmon*. (Note that the subdirectory *hwmon/hwmon#*, where *#* is a number is not part of the path!) Has to be used together with *input-filename*.
 	This can also be an array of strings, for which, it just works like *hwmon-path*.
 
+*hwmon-name*: ++
+	typeof: string ++
+	Select a hwmon device by its name (from /sys/class/hwmon/*/name), e.g. *amdgpu*
+	Requires *input-filename* to be set.
+	Cannot be used together with *hwmon-path* or *hwmon-path-abs*.
+
 *input-filename*: ++
 	typeof: string ++
 	The temperature filename of your *hwmon-path-abs*, e.g. *temp1_input*
