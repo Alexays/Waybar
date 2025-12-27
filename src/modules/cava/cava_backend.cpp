@@ -262,6 +262,8 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   // Init cava plan, audio_raw structure
   audio_raw_init(&audio_data_, &audio_raw_, &prm_, &plan_);
   if (!plan_) spdlog::error("cava backend plan is not provided");
+  // Set height AFTER audio_raw_init (it gets overwritten otherwise)
+  audio_raw_.height = prm_.ascii_range;
   audio_raw_.previous_frame[0] = -1;  // For first Update() call need to rePaint text message
 
   prm_.output = output;
