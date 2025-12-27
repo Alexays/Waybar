@@ -9,9 +9,9 @@ let
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
-      # NOTE: Needs to match the cava.wrap
-      rev = "23efcced43b5a395747b18a2e5f2171fc0925d18";
-      hash = "sha256-CNspaoK5KuME0GfaNijpC24BfALngzNi04/VNwPqMvo=";
+      # NOTE: Needs to match the libcava.wrap
+      rev = "v0.10.7-beta";
+      hash = "sha256-IX1B375gTwVDRjpRfwKGuzTAZOV2pgDWzUd4bW2cTDU=";
     };
   };
 in
@@ -39,7 +39,7 @@ waybar.overrideAttrs (oldAttrs: {
 
   postUnpack = ''
     pushd "$sourceRoot"
-    cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava
+    cp -R --no-preserve=mode,ownership ${libcava.src} subprojects/cava-0.10.7-beta
     patchShebangs .
     popd
   '';
