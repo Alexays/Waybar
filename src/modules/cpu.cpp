@@ -26,14 +26,16 @@ auto waybar::modules::Cpu::update() -> void {
   auto [load1, load5, load15] = Load::getLoad();
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(tooltip);
-  }
+
   auto format = format_;
+  std::string tooltip_format;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
   auto state = getState(total_usage);
   if (!state.empty() && config_["format-" + state].isString()) {
     format = config_["format-" + state].asString();
+  }
+  if (config_["tooltip-format-" + state].isString()) {
+    tooltip_format = config_["tooltip-format-" + state].asString();
   }
 
   if (format.empty()) {
@@ -56,6 +58,38 @@ auto waybar::modules::Cpu::update() -> void {
       store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
     }
     label_.set_markup(fmt::vformat(format, store));
+  }
+
+  if (tooltipEnabled()) {
+    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
+      tooltip_format = config_["tooltip-format"].asString();
+    }
+    if (!tooltip_format.empty()) {
+      tooltip_format = config_["tooltip-format"].asString();
+
+      auto icons = std::vector<std::string>{state};
+      fmt::dynamic_format_arg_store<fmt::format_context> store;
+      store.push_back(fmt::arg("load", load1));
+      store.push_back(fmt::arg("usage", total_usage));
+      store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
+      store.push_back(fmt::arg("max_frequency", max_frequency));
+      store.push_back(fmt::arg("min_frequency", min_frequency));
+      store.push_back(fmt::arg("avg_frequency", avg_frequency));
+      for (size_t i = 1; i < cpu_usage.size(); ++i) {
+        auto core_i = i - 1;
+        auto core_format = fmt::format("usage{}", core_i);
+        store.push_back(fmt::arg(core_format.c_str(), cpu_usage[i]));
+        auto icon_format = fmt::format("icon{}", core_i);
+        store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
+      }
+      auto tooltip_text = fmt::vformat(tooltip_format, store);
+
+      if (label_.get_tooltip_text() != tooltip_text) {
+        label_.set_tooltip_markup(tooltip_text);
+      }
+    } else {
+      label_.set_tooltip_text(tooltip);
+    }
   }
 
   // Call parent update
