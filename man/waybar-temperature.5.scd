@@ -29,7 +29,7 @@ Addressed by *temperature*
 
 *hwmon-name*: ++
 	typeof: string ++
-	Select a hwmon device by its name (from /sys/class/hwmon/*/name), e.g. *amdgpu*
+	Select a hwmon device by its name (from /sys/class/hwmon/\*/name), e.g. *amdgpu*.
 	Requires *input-filename* to be set.
 	Cannot be used together with *hwmon-path* or *hwmon-path-abs*.
 
