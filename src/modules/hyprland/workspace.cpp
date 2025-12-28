@@ -2,6 +2,7 @@
 #include <spdlog/spdlog.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -286,11 +287,41 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     }
   }
 
-  bool isFirst = true;
-  auto processWindow = [&](const WindowRepr &window_repr) {
+  // Build a list of windows to display, removing duplicates by window_class
+  // and respecting max-icons limit
+  std::vector<const WindowRepr *> windowsToShow;
+  std::set<std::string> seenClasses;
+
+  auto addWindowIfUnique = [&](const WindowRepr &window_repr) {
     if (shouldSkipWindow(window_repr)) {
-      return;  // skip
+      return;
     }
+    // Deduplicate by window_class
+    if (seenClasses.find(window_repr.window_class) != seenClasses.end()) {
+      return;
+    }
+    seenClasses.insert(window_repr.window_class);
+    windowsToShow.push_back(&window_repr);
+  };
+
+  if (m_workspaceManager.taskbarReverseDirection()) {
+    for (auto it = m_windowMap.rbegin(); it != m_windowMap.rend(); ++it) {
+      addWindowIfUnique(*it);
+    }
+  } else {
+    for (const auto &window_repr : m_windowMap) {
+      addWindowIfUnique(window_repr);
+    }
+  }
+
+  // Apply max-icons limit if configured
+  int maxIcons = m_workspaceManager.taskbarMaxIcons();
+  if (maxIcons > 0 && static_cast<int>(windowsToShow.size()) > maxIcons) {
+    windowsToShow.resize(maxIcons);
+  }
+
+  bool isFirst = true;
+  for (const auto *window_repr : windowsToShow) {
     if (isFirst) {
       isFirst = false;
     } else if (m_workspaceManager.getWindowSeparator() != "") {
@@ -300,27 +331,27 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     }
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    window_box->set_tooltip_text(window_repr.window_title);
+    window_box->set_tooltip_text(window_repr->window_title);
     window_box->get_style_context()->add_class("taskbar-window");
-    if (window_repr.isActive) {
+    if (window_repr->isActive) {
       window_box->get_style_context()->add_class("active");
     }
     auto event_box = Gtk::manage(new Gtk::EventBox());
     event_box->add(*window_box);
     if (m_workspaceManager.onClickWindow() != "") {
       event_box->signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address));
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr->address));
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
-                                   fmt::arg("title", window_repr.window_title));
+                                   fmt::arg("title", window_repr->window_title));
     if (!text_before.empty()) {
       auto window_label_before = Gtk::make_managed<Gtk::Label>(text_before);
       window_box->pack_start(*window_label_before, true, true);
     }
 
     if (m_workspaceManager.taskbarWithIcon()) {
-      auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr.window_class);
+      auto app_info_ = IconLoader::get_app_info_from_app_id_list(window_repr->window_class);
       int icon_size = m_workspaceManager.taskbarIconSize();
       auto window_icon = Gtk::make_managed<Gtk::Image>();
       m_workspaceManager.iconLoader().image_load_icon(*window_icon, app_info_, icon_size);
@@ -328,7 +359,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
     }
 
     auto text_after = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatAfter()),
-                                  fmt::arg("title", window_repr.window_title));
+                                  fmt::arg("title", window_repr->window_title));
     if (!text_after.empty()) {
       auto window_label_after = Gtk::make_managed<Gtk::Label>(text_after);
       window_box->pack_start(*window_label_after, true, true);
@@ -336,16 +367,6 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
 
     m_content.pack_start(*event_box, true, false);
     event_box->show_all();
-  };
-
-  if (m_workspaceManager.taskbarReverseDirection()) {
-    for (auto it = m_windowMap.rbegin(); it != m_windowMap.rend(); ++it) {
-      processWindow(*it);
-    }
-  } else {
-    for (const auto &window_repr : m_windowMap) {
-      processWindow(window_repr);
-    }
   }
 
   auto formatAfter = m_workspaceManager.formatAfter();
