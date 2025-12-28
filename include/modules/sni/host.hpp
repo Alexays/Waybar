@@ -19,6 +19,8 @@ class Host {
        const std::function<void(std::unique_ptr<Item>&)>&);
   ~Host();
 
+  void reorderItems();
+
  private:
   void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
   void nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring,
@@ -43,6 +45,8 @@ class Host {
   const Bar& bar_;
   const std::function<void(std::unique_ptr<Item>&)> on_add_;
   const std::function<void(std::unique_ptr<Item>&)> on_remove_;
+
+  ItemOrderMap orders_;
 };
 
 }  // namespace waybar::modules::SNI

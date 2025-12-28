@@ -2,6 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
+#include "modules/sni/item.hpp"
 #include "util/scope_guard.hpp"
 
 namespace waybar::modules::SNI {
@@ -17,7 +20,18 @@ Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
       config_(config),
       bar_(bar),
       on_add_(on_add),
-      on_remove_(on_remove) {}
+      on_remove_(on_remove) {
+  auto orders = config["orders"];
+  if (!orders.isNull()) {
+    for (auto itr = orders.begin(); itr != orders.end(); ++itr) {
+      auto key = itr.name();
+      auto& value = *itr;
+      assert(value.isInt());
+
+      orders_[key] = value.asInt();
+    }
+  }
+}
 
 Host::~Host() {
   if (bus_name_id_ > 0) {
@@ -139,9 +153,17 @@ void Host::addRegisteredItem(std::string service) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
   if (it == items_.end()) {
-    items_.emplace_back(new Item(bus_name, object_path, config_, bar_));
+    items_.emplace_back(new Item(bus_name, object_path, config_, bar_, *this, orders_));
     on_add_(items_.back());
   }
+}
+
+void Host::reorderItems() {
+  std::ranges::for_each(items_, on_remove_);
+  std::ranges::sort(items_, [](std::unique_ptr<Item>& item1, std::unique_ptr<Item>& item2) {
+    return item1->order_ < item2->order_;
+  });
+  std::ranges::for_each(items_, on_add_);
 }
 
 }  // namespace waybar::modules::SNI
