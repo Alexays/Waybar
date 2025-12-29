@@ -88,8 +88,9 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::AModule(config, "tags", id, false, false),
+Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config,
+           std::mutex &reap_mtx, std::list<pid_t> &reap)
+    : waybar::AModule(config, "tags", id, reap_mtx, reap, false, false),
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),

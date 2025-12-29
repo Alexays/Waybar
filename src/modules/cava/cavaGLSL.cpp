@@ -4,8 +4,9 @@
 
 #include <fstream>
 
-waybar::modules::cava::CavaGLSL::CavaGLSL(const std::string& id, const Json::Value& config)
-    : AModule(config, "cavaGLSL", id, false, false),
+waybar::modules::cava::CavaGLSL::CavaGLSL(const std::string& id, const Json::Value& config,
+                                          std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, "cavaGLSL", id, reap_mtx, reap, false, false),
       backend_{waybar::modules::cava::CavaBackend::inst(config)} {
   set_name(name_);
   if (config_["hide_on_silence"].isBool()) hide_on_silence_ = config_["hide_on_silence"].asBool();

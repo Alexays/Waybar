@@ -2,8 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
-waybar::modules::cava::Cava::Cava(const std::string& id, const Json::Value& config)
-    : ALabel(config, "cava", id, "{}", 60, false, false, false),
+waybar::modules::cava::Cava::Cava(const std::string& id, const Json::Value& config,
+                                  std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "cava", id, "{}", reap_mtx, reap, 60, false, false, false),
       backend_{waybar::modules::cava::CavaBackend::inst(config)} {
   if (config_["hide_on_silence"].isBool()) hide_on_silence_ = config_["hide_on_silence"].asBool();
   if (config_["format_silent"].isString()) format_silent_ = config_["format_silent"].asString();

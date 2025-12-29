@@ -41,8 +41,9 @@ int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
   return 0;
 }
 
-Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AModule(config, "workspaces", id, false, !config["disable-scroll"].asBool()),
+Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config,
+                       std::mutex &reap_mtx, std::list<pid_t> &reap)
+    : AModule(config, "workspaces", id, reap_mtx, reap, false, !config["disable-scroll"].asBool()),
       bar_(bar),
       box_(bar.orientation, 0) {
   if (config["format-icons"]["high-priority-named"].isArray()) {

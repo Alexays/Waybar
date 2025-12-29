@@ -2,8 +2,9 @@
 
 namespace waybar::modules {
 
-PulseaudioSlider::PulseaudioSlider(const std::string& id, const Json::Value& config)
-    : ASlider(config, "pulseaudio-slider", id) {
+PulseaudioSlider::PulseaudioSlider(const std::string& id, const Json::Value& config,
+                                   std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ASlider(config, "pulseaudio-slider", id, reap_mtx, reap) {
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
 

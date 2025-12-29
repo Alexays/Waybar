@@ -58,8 +58,9 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Window::Window(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::ALabel(config, "window", id, "{}", 30),
+Window::Window(const std::string &id, const waybar::Bar &bar, const Json::Value &config,
+               std::mutex &reap_mtx, std::list<pid_t> &reap)
+    : waybar::ALabel(config, "window", id, "{}", reap_mtx, reap, 30),
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),

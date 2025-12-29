@@ -13,7 +13,7 @@ namespace waybar::modules {
 
 class Disk : public ALabel {
  public:
-  Disk(const std::string&, const Json::Value&);
+  Disk(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Disk() = default;
   auto update() -> void override;
 

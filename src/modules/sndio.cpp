@@ -40,8 +40,9 @@ auto Sndio::connect_to_sndio() -> void {
   pfds_.reserve(sioctl_nfds(hdl_));
 }
 
-Sndio::Sndio(const std::string &id, const Json::Value &config)
-    : ALabel(config, "sndio", id, "{volume}%", 1, false, true),
+Sndio::Sndio(const std::string &id, const Json::Value &config, std::mutex &reap_mtx,
+             std::list<pid_t> &reap)
+    : ALabel(config, "sndio", id, "{volume}%", reap_mtx, reap, 1, false, true),
       hdl_(nullptr),
       pfds_(0),
       addr_(0),
