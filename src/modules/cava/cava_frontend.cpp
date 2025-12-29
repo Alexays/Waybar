@@ -1,17 +1,13 @@
-#pragma once
+#include "modules/cava/cavaRaw.hpp"
+#include "modules/cava/cava_backend.hpp"
 
-#ifdef HAVE_LIBCAVA
-#include "cavaRaw.hpp"
-#include "cava_backend.hpp"
 #ifdef HAVE_LIBCAVAGLSL
-#include "cavaGLSL.hpp"
-#endif
+#include "modules/cava/cavaGLSL.hpp"
 #endif
 
 namespace waybar::modules::cava {
 AModule* getModule(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
                    std::list<pid_t>& reap) {
-#ifdef HAVE_LIBCAVA
   const std::shared_ptr<CavaBackend> backend_{waybar::modules::cava::CavaBackend::inst(config)};
   switch (backend_->getPrm()->output) {
 #ifdef HAVE_LIBCAVAGLSL
@@ -21,8 +17,13 @@ AModule* getModule(const std::string& id, const Json::Value& config, std::mutex&
     default:
       return new waybar::modules::cava::Cava(id, config, reap_mtx, reap);
   }
-#else
   throw std::runtime_error("Unknown module");
-#endif
 };
 }  // namespace waybar::modules::cava
+
+extern "C" {
+waybar::AModule* new_cava(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+                          std::list<pid_t>& reap) {
+  return waybar::modules::cava::getModule(id, config, reap_mtx, reap);
+}
+}

@@ -195,6 +195,13 @@ gps_src_files = files(
     'src/util/prepare_for_sleep.cpp',
 )
 
+cava_src_files = files(
+    'src/AModule.cpp',
+    'src/ALabel.cpp',
+    'src/config.cpp',
+    'src/util/prepare_for_sleep.cpp',
+)
+
 man_files = files(
     'man/waybar-custom.5.scd',
     'man/waybar-disk.5.scd',
@@ -513,17 +520,17 @@ cava = dependency('libcava',
                   fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
 
-eproxy = dependency('epoxy', required: false)
+epoxy = dependency('epoxy', required: false)
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava/cavaRaw.cpp',
-                      'src/modules/cava/cava_backend.cpp')
+   cava_src_files += files('src/modules/cava/cavaRaw.cpp', 'src/modules/cava/cava_backend.cpp',
+                           'src/modules/cava/cava_frontend.cpp')
    man_files += files('man/waybar-cava.5.scd')
 
-   if eproxy.found()
+   if epoxy.found()
       add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
-      src_files += files('src/modules/cava/cavaGLSL.cpp')
+      cava_src_files += files('src/modules/cava/cavaGLSL.cpp')
    endif
 endif
 
@@ -531,6 +538,24 @@ if libgps.found()
     add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
     gps_src_files += files('src/modules/gps.cpp')
     man_files += files('man/waybar-gps.5.scd')
+endif
+
+if cava.found()
+    shared_library(
+        'waybar-module-cava',
+        [cava_src_files],
+        name_prefix: '',
+        dependencies: [
+            fmt,
+            gtkmm,
+            jsoncpp,
+            spdlog,
+            cava,
+            epoxy
+        ],
+        include_directories: inc_dirs,
+        install: true,
+    )
 endif
 
 if libgps.found()
@@ -587,9 +612,7 @@ executable(
         gtk_layer_shell,
         libsndio,
         tz_dep,
-		xkbregistry,
-        cava,
-        eproxy,
+        xkbregistry,
     ],
     include_directories: inc_dirs,
     install: true,

@@ -111,7 +111,6 @@
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
-#include "modules/cava/cava_frontend.hpp"
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
@@ -358,7 +357,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
 #endif
     if (ref == "cava") {
-      return waybar::modules::cava::getModule(id, config_[name], reap_mtx, reap);
+      AModule* (*constructor)(const std::string&, const Json::Value&, std::mutex&,
+                              std::list<pid_t>&);
+      void* symbol = get_symbol("waybar-module-cava.so", "new_cava");
+      constructor = reinterpret_cast<decltype(constructor)>(symbol);
+      return constructor(id, config_[name], reap_mtx, reap);
     }
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
