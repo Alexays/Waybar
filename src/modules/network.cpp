@@ -349,7 +349,10 @@ auto waybar::modules::Network::update() -> void {
                pow_format(bandwidth_down / (interval_.count() / 1000.0), "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / (interval_.count() / 1000.0), "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")),
+      fmt::arg("downBytes", pow_format(bandwidth_down_total_, "B", true)),
+      fmt::arg("upBytes", pow_format(bandwidth_up_total_, "B", true)),
+      fmt::arg("totalBytes", pow_format(bandwidth_up_total_ + bandwidth_down_total_, "B", true)));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -383,7 +386,12 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
           fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")),
+          fmt::arg("downBytes", pow_format(bandwidth_down_total_, "B", true)),
+          fmt::arg("upBytes", pow_format(bandwidth_up_total_, "B", true)),
+          fmt::arg("totalBytes",
+                   pow_format(bandwidth_up_total_ + bandwidth_down_total_, "B", true)));
+
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -813,12 +821,10 @@ void waybar::modules::Network::askForStateDump(void) {
     nl_send_simple(ev_sock_, RTM_GETROUTE, NLM_F_DUMP, &rt_hdr, sizeof(rt_hdr));
     want_route_dump_ = false;
     dump_in_progress_ = true;
-
   } else if (want_link_dump_) {
     nl_send_simple(ev_sock_, RTM_GETLINK, NLM_F_DUMP, &rt_hdr, sizeof(rt_hdr));
     want_link_dump_ = false;
     dump_in_progress_ = true;
-
   } else if (want_addr_dump_) {
     nl_send_simple(ev_sock_, RTM_GETADDR, NLM_F_DUMP, &rt_hdr, sizeof(rt_hdr));
     want_addr_dump_ = false;
