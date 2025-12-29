@@ -1,7 +1,8 @@
 #include "modules/image.hpp"
 
-waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
-    : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+waybar::modules::Image::Image(const std::string& id, const Json::Value& config,
+                              std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, "image", id, reap_mtx, reap), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.pack_start(image_);
   box_.set_name("image");
   if (!id.empty()) {
