@@ -97,7 +97,11 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 
 *reverse-scrolling*: ++
 	typeof: bool ++
-	Option to reverse the scroll direction.
+	Option to reverse the scroll direction for touchpads.
+
+*reverse-mouse-scrolling*: ++
+	typeof: bool ++
+	Option to reverse the scroll direction for mice.
 
 *tooltip*: ++
 	typeof: bool ++
