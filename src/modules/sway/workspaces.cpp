@@ -329,24 +329,43 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("current_output");
     }
-    std::string output = (*it)["name"].asString();
+
     std::string windows = "";
     if (config_["window-rewrite"].isObject()) {
       updateWindows((*it), windows);
     }
+
+    auto index = (*it)["num"].asInt();
+    auto full_name = (*it)["name"].asString();
+
     if (config_["format"].isString()) {
-      auto format = config_["format"].asString();
-      output = fmt::format(
-          fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)), fmt::arg("value", output),
-          fmt::arg("name", trimWorkspaceName(output)), fmt::arg("index", (*it)["num"].asString()),
-          fmt::arg("windows",
-                   windows.substr(0, windows.length() - m_formatWindowSeparator.length())),
-          fmt::arg("output", (*it)["output"].asString()));
+      std::string format;
+      if(config_["format-for-negative-index"].isString() && index < 0) {
+        format = config_["format-for-negative-index"].asString();
+      } else {
+        format = config_["format"].asString();
+      }
+
+      auto name = trimWorkspaceName(full_name);
+      auto output = (*it)["output"].asString();
+      auto icon = getIcon(full_name, *it);
+      auto separated_windows = windows.substr(0, windows.length() - m_formatWindowSeparator.length());
+
+      full_name = fmt::format(
+        fmt::runtime(format),
+        fmt::arg("index", index),
+        fmt::arg("name", name),
+        fmt::arg("value", full_name),
+        fmt::arg("output", output),
+        fmt::arg("icon", icon),
+        fmt::arg("windows", separated_windows)
+      );
     }
+
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(output);
+      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(full_name);
     } else {
-      button.set_label(output);
+      button.set_label(full_name);
     }
     onButtonReady(*it, button);
   }
