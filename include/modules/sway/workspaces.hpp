@@ -23,7 +23,8 @@ class Workspaces : public AModule, public sigc::trackable {
   auto update() -> void override;
 
  private:
-  static constexpr std::string_view workspace_switch_cmd_ = "workspace {} {}";
+  static constexpr std::string_view workspace_switch_cmd_ = "workspace {} \"{}\"";
+  static constexpr std::string_view workspace_switch_number_cmd_ = "workspace {} number {}";
   static constexpr std::string_view persistent_workspace_switch_cmd_ =
       R"(workspace {} "{}"; move workspace to output "{}"; workspace {} "{}")";
 

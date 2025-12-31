@@ -369,11 +369,14 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
                                    node["name"].asString(), node["target_output"].asString(),
                                    "--no-auto-back-and-forth", node["name"].asString()));
         } else {
-          ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_,
-                                                config_["disable-auto-back-and-forth"].asBool()
-                                                    ? "--no-auto-back-and-forth"
-                                                    : "",
-                                                node["name"].asString()));
+          std::string flag = config_["disable-auto-back-and-forth"].asBool()
+                                ? "--no-auto-back-and-forth"
+                                : "";
+          if (node["num"].asInt() >= 0) {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
+          } else {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
+          }
         }
       } catch (const std::exception &e) {
         spdlog::error("Workspaces: {}", e.what());
