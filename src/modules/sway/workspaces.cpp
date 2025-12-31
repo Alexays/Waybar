@@ -369,7 +369,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
                                    node["name"].asString(), node["target_output"].asString(),
                                    "--no-auto-back-and-forth", node["name"].asString()));
         } else {
-          ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
+          ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_,
                                                 config_["disable-auto-back-and-forth"].asBool()
                                                     ? "--no-auto-back-and-forth"
                                                     : "",
