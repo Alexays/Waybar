@@ -38,7 +38,8 @@ class Wireplumber : public ALabel {
 
   uint32_t resolvePhysicalSink(uint32_t start_id);
   uint32_t findPlaybackNodeId(const gchar* description);
-  static uint32_t get_linked_sink_id(WpObjectManager* om, uint32_t from_node_id, const gchar* media_class);
+  uint32_t get_linked_sink_id(WpObjectManager* om, uint32_t from_node_id);
+  uint32_t get_linked_node_from_output_ports(WpObjectManager* om, uint32_t from_node_id);
 
   WpCore* wp_core_;
   GPtrArray* apis_;
