@@ -72,8 +72,12 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
-    if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
-      setCursor(Gdk::HAND2);
+    if (config_["cursor"].isBool()) {
+      if (config_["cursor"].asBool()) {
+        setCursor(Gdk::HAND2);
+      } else {
+        setCursor(Gdk::ARROW);
+      }
     } else if (config_["cursor"].isInt()) {
       setCursor(Gdk::CursorType(config_["cursor"].asInt()));
     } else {
