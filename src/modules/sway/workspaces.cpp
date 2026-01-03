@@ -1,10 +1,13 @@
 #include "modules/sway/workspaces.hpp"
+#include <util/command.hpp>
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cctype>
 #include <string>
+#include <format>
+#include <iostream>
 
 namespace waybar::modules::sway {
 
@@ -363,18 +366,8 @@ Gtk::Button &Workspaces::addButton(const Json::Value &node) {
   if (!config_["disable-click"].asBool()) {
     button.signal_pressed().connect([this, node] {
       try {
-        if (node["target_output"].isString()) {
-          ipc_.sendCmd(IPC_COMMAND,
-                       fmt::format(persistent_workspace_switch_cmd_, "--no-auto-back-and-forth",
-                                   node["name"].asString(), node["target_output"].asString(),
-                                   "--no-auto-back-and-forth", node["name"].asString()));
-        } else {
-          ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
-                                                config_["disable-auto-back-and-forth"].asBool()
-                                                    ? "--no-auto-back-and-forth"
-                                                    : "",
-                                                node["name"].asString()));
-        }
+        // TODO default value seem to not be working
+        util::command::forkExec(fmt::format(fmt::runtime(config_["on-click"].asString()), node["name"].asString()));
       } catch (const std::exception &e) {
         spdlog::error("Workspaces: {}", e.what());
       }
