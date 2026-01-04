@@ -5,22 +5,18 @@
 #include <string>
 
 #include "glibmm/main.h"
-#include "gtkmm/label.h"
 #include "gtkmm/revealer.h"
 #include "gtkmm/tooltip.h"
-#include "util/pipewire/privacy_node_info.hpp"
 
 namespace waybar::modules::privacy {
 
-PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privacy_type_,
-                         std::list<PrivacyNodeInfo *> *nodes_, Gtk::Orientation orientation,
-                         const std::string &pos, const uint icon_size,
+PrivacyItem::PrivacyItem(const Json::Value& config_, enum PrivacyNodeType privacy_type_,
+                         Gtk::Orientation orientation, const std::string& pos, const uint icon_size,
                          const uint transition_duration)
     : Gtk::Revealer(),
       privacy_type(privacy_type_),
-      nodes(nodes_),
-      signal_conn(),
       tooltip_window(Gtk::ORIENTATION_VERTICAL, 0),
+      signal_conn(),
       box_(Gtk::ORIENTATION_HORIZONTAL, 0),
       icon_() {
   switch (privacy_type) {
@@ -36,7 +32,10 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
       box_.get_style_context()->add_class("screenshare");
       iconName = "waybar-privacy-screen-share-symbolic";
       break;
-    default:
+    case util::PipewireBackend::PRIVACY_NODE_TYPE_LOCATION:
+      box_.get_style_context()->add_class("location");
+      iconName = "waybar-privacy-location-symbolic";
+      break;
     case util::PipewireBackend::PRIVACY_NODE_TYPE_NONE:
       return;
   }
@@ -81,9 +80,8 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
   set_has_tooltip(tooltip);
   if (tooltip) {
     // Sets the window to use when showing the tooltip
-    update_tooltip();
     this->signal_query_tooltip().connect(sigc::track_obj(
-        [this](int x, int y, bool keyboard_tooltip, const Glib::RefPtr<Gtk::Tooltip> &tooltip) {
+        [this](int x, int y, bool keyboard_tooltip, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
           tooltip->set_custom(tooltip_window);
           return true;
         },
@@ -97,27 +95,14 @@ PrivacyItem::PrivacyItem(const Json::Value &config_, enum PrivacyNodeType privac
 
 void PrivacyItem::update_tooltip() {
   // Removes all old nodes
-  for (auto *child : tooltip_window.get_children()) {
+  for (auto* child : tooltip_window.get_children()) {
     tooltip_window.remove(*child);
     // despite the remove, still needs a delete to prevent memory leak. Speculating that this might
     // work differently in GTK4.
     delete child;
   }
-  for (auto *node : *nodes) {
-    auto *box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 4);
 
-    // Set device icon
-    auto *node_icon = Gtk::make_managed<Gtk::Image>();
-    node_icon->set_pixel_size(tooltipIconSize);
-    node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
-    box->add(*node_icon);
-
-    // Set model
-    auto *nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
-    box->add(*nodeName);
-
-    tooltip_window.add(*box);
-  }
+  set_tooltip();
 
   tooltip_window.show_all();
 }
@@ -159,6 +144,29 @@ void PrivacyItem::set_in_use(bool in_use) {
     set_reveal_child(false);
   }
   this->init = true;
+}
+
+void GeoCluePrivacyItem::set_tooltip() {
+  auto* nodeName = Gtk::make_managed<Gtk::Label>("Location in use");
+  tooltip_window.add(*nodeName);
+}
+
+void PWPrivacyItem::set_tooltip() {
+  for (auto* node : *nodes) {
+    auto* box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL, 4);
+
+    // Set device icon
+    auto* node_icon = Gtk::make_managed<Gtk::Image>();
+    node_icon->set_pixel_size(tooltipIconSize);
+    node_icon->set_from_icon_name(node->getIconName(), Gtk::ICON_SIZE_INVALID);
+    box->add(*node_icon);
+
+    // Set model
+    auto* nodeName = Gtk::make_managed<Gtk::Label>(node->getName());
+    box->add(*nodeName);
+
+    tooltip_window.add(*box);
+  }
 }
 
 }  // namespace waybar::modules::privacy
