@@ -41,6 +41,16 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to true, only the active or focused workspace will be shown.
 
+*display-condition*: ++
+	typeof: string ++
+	oneof: "show-all", "keep-named", "only-populated" ++
+	default: "show-all" ++
+	Specifies the conditions for showing workspace widgets. ++
+	++
+	*show-all*: displays widgets for all workspaces. ++
+	*keep-named*: always displays named workspaces, irrespective of whether they contain windows or not. ++
+	*only-populated*: only displays widgets for workspaces that have windows.
+
 *on-update*: ++
 	typeof: string ++
 	Command to execute when the module is updated.
