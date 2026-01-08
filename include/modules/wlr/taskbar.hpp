@@ -122,6 +122,12 @@ class Task {
   void handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext> &context, int x, int y,
                                  Gtk::SelectionData selection_data, guint info, guint time);
 
+  sigc::connection activate_timer;
+  bool handle_activate_timer();
+
+  bool handle_drag_motion(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y, guint time);
+  void handle_drag_leave(const Glib::RefPtr<Gdk::DragContext>& context, guint time);
+
  public:
   bool operator==(const Task &) const;
   bool operator!=(const Task &) const;
