@@ -180,6 +180,8 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ Switch to the next calendar month/year
 |[ *shift_down*
 :[ Switch to the previous calendar month/year
+|[ *exec <cmd>*
+:[ Execute the specified command
 
 # FORMAT REPLACEMENTS
 
