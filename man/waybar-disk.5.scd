@@ -6,16 +6,11 @@ waybar - disk module
 
 # DESCRIPTION
 
-The *disk* module displays the current disk space used.
+The *disk* module displays information of multiple disks.
 
 # CONFIGURATION
 
 Addressed by *disk*
-
-*path*: ++
-	typeof: string ++
-	default: "/" ++
-	Any path residing in the filesystem or mountpoint for which the information should be displayed.
 
 *interval*: ++
 	typeof: integer++
@@ -25,7 +20,7 @@ Addressed by *disk*
 *format*: ++
 	typeof: string ++
 	default: "{percentage_used}%" ++
-	The format, how information should be displayed.
+	The format, how information for each disk should be displayed.
 
 *rotate*: ++
 	typeof: integer ++
@@ -75,6 +70,26 @@ Addressed by *disk*
 	typeof: string ++
 	Command to execute when scrolling down on the module.
 
+*path*: ++
+	typeof: string ++
+	default: "/" ++
+	Deprecated path of filesystem or mountpoint to monitor.
+
+*paths*: ++
+	typeof: array ++
+	default: ["/"] ++
+	Array of paths residing in the filesystem or mountpoint for which the information should be displayed.
+
+*header*: ++
+	typeof: string ++
+	default: "" ++
+	Text to appear before the disk information defined in the format.
+
+*separator*: ++
+	typeof: string ++
+	default: " " ++
+	Separator string between multiple disk information.
+
 *smooth-scrolling-threshold*: ++
 	typeof: double ++
 	Threshold to be used when scrolling.
@@ -123,7 +138,7 @@ Addressed by *disk*
 
 *{free}*: Amount of available disk space for normal users. Automatically selects unit based on size remaining.
 
-*{path}*: The path specified in the configuration.
+*{path}*: The path for each disk specified in the configuration.
 
 *{specific_total}*: Total amount of space on the disk, partition, or mountpoint in a specific unit. Defaults to bytes.
 
@@ -143,10 +158,22 @@ Addressed by *disk*
 ```
 "disk": {
 	"interval": 30,
+	"format": "{percentage_free}% free on {path}",
+	"header": "Disks: ",
+	"paths": ["/", "/home"],
+	"separator": " ",
+}
+```
+
+```
+"disk": {
+	"interval": 30,
+	"paths": ["/"],
 	"format": "{specific_free:0.2f} GB out of {specific_total:0.2f} GB available. Alternatively {free} out of {total} available",
 	"unit": "GB"
-	// 1434.25 GB out of 2000.00 GB available. Alternatively 1.4TiB out of 1.9TiB available.
 }
+
+	// 1434.25 GB out of 2000.00 GB available. Alternatively 1.4TiB out of 1.9TiB available.
 ```
 
 # STYLE
