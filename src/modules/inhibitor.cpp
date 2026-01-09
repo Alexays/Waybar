@@ -97,8 +97,9 @@ auto getInhibitors(const Json::Value& config) -> std::string {
 
 namespace waybar::modules {
 
-Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "inhibitor", id, "{status}", true),
+Inhibitor::Inhibitor(const std::string& id, const Bar& bar, const Json::Value& config,
+                     std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "inhibitor", id, "{status}", reap_mtx, reap, true),
       dbus_(::dbus()),
       inhibitors_(::getInhibitors(config)) {
   event_box_.add_events(Gdk::BUTTON_PRESS_MASK);

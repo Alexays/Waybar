@@ -7,7 +7,7 @@ namespace waybar::modules::cava {
 
 class Cava final : public ALabel, public sigc::trackable {
  public:
-  Cava(const std::string&, const Json::Value&);
+  Cava(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~Cava() = default;
   auto doAction(const std::string& name) -> void override;
 

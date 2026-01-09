@@ -82,8 +82,9 @@ waybar::modules::Network::readBandwidthUsage() {
   return {{receivedBytes, transmittedBytes}};
 }
 
-waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
+waybar::modules::Network::Network(const std::string &id, const Json::Value &config,
+                                  std::mutex &reap_mtx, std::list<pid_t> &reap)
+    : ALabel(config, "network", id, DEFAULT_FORMAT, reap_mtx, reap, 60) {
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where

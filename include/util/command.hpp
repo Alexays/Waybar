@@ -13,10 +13,11 @@
 #include <sys/procctl.h>
 #endif
 
-#include <array>
+#include <sys/types.h>
 
-extern std::mutex reap_mtx;
-extern std::list<pid_t> reap;
+#include <array>
+#include <list>
+#include <mutex>
 
 namespace waybar::util::command {
 
@@ -138,7 +139,7 @@ inline struct res execNoRead(const std::string& cmd) {
   return {WEXITSTATUS(stat), ""};
 }
 
-inline int32_t forkExec(const std::string& cmd) {
+inline int32_t forkExec(const std::string& cmd, std::mutex& reap_mtx, std::list<pid_t>& reap) {
   if (cmd == "") return -1;
 
   pid_t pid = fork();

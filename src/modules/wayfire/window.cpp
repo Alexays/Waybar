@@ -9,8 +9,9 @@
 
 namespace waybar::modules::wayfire {
 
-Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AAppIconLabel(config, "window", id, "{title}", 0, true),
+Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
+               std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AAppIconLabel(config, "window", id, "{title}", reap_mtx, reap, 0, true),
       ipc{IPC::get_instance()},
       handler{[this](const auto&) { dp.emit(); }},
       bar_{bar} {

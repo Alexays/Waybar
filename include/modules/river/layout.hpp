@@ -10,7 +10,8 @@ namespace waybar::modules::river {
 
 class Layout : public waybar::ALabel {
  public:
-  Layout(const std::string &, const waybar::Bar &, const Json::Value &);
+  Layout(const std::string &, const waybar::Bar &, const Json::Value &, std::mutex &,
+         std::list<pid_t> &);
   virtual ~Layout();
 
   // Handlers for wayland events
