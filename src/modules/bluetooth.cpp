@@ -83,6 +83,66 @@ auto getUcharProperty(GDBusProxy* proxy, const char* property_name) -> unsigned 
   return 0;
 }
 
+auto isChildPath(const std::string& child, const std::string& parent) -> bool {
+  return child.starts_with(parent);
+}
+
+auto readBatteryCharacteristicValue(GDBusProxy* proxy_char) -> std::optional<unsigned char> {
+  GVariantBuilder builder;
+  g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
+
+  GError* error = nullptr;
+  GVariant* gvar = g_dbus_proxy_call_sync(proxy_char, "ReadValue", g_variant_new("(a{sv})", &builder),
+                                          G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &error);
+  if (error != nullptr) {
+    g_error_free(error);
+    return std::nullopt;
+  }
+  if (gvar == nullptr) {
+    return std::nullopt;
+  }
+
+  GVariant* value_array = g_variant_get_child_value(gvar, 0);
+  gsize n_elements;
+  const auto* data =
+      static_cast<const guchar*>(g_variant_get_fixed_array(value_array, &n_elements, sizeof(guchar)));
+
+  std::optional<unsigned char> result;
+  if (data != nullptr && n_elements > 0) {
+    result = data[0];
+  }
+
+  g_variant_unref(value_array);
+  g_variant_unref(gvar);
+  return result;
+}
+
+auto hasUserDescriptionDescriptor(GList* objects, const std::string& char_path,
+                                  const std::string& user_description_uuid) -> bool {
+  for (GList* n = objects; n != nullptr; n = n->next) {
+    GDBusObject* desc_object = G_DBUS_OBJECT(n->data);
+    std::string desc_path = g_dbus_object_get_object_path(desc_object);
+
+    if (!isChildPath(desc_path, char_path)) {
+      continue;
+    }
+
+    GDBusProxy* proxy_desc =
+        G_DBUS_PROXY(g_dbus_object_get_interface(desc_object, "org.bluez.GattDescriptor1"));
+    if (proxy_desc == nullptr) {
+      continue;
+    }
+
+    auto desc_uuid = getOptionalStringProperty(proxy_desc, "UUID");
+    g_object_unref(proxy_desc);
+
+    if (desc_uuid.has_value() && desc_uuid.value().find(user_description_uuid) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& config)
@@ -229,8 +289,9 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("device_address", cur_focussed_device_.address),
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
         fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_label),
-        fmt::arg("device_battery_percentage",
-                 cur_focussed_device_.battery_percentage.value_or(0))));
+        fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
+        fmt::arg("device_battery_percentage_peripheral",
+                 cur_focussed_device_.battery_percentage_peripheral.value_or(0))));
   }
 
   if (tooltipEnabled()) {
@@ -255,7 +316,9 @@ auto waybar::modules::Bluetooth::update() -> void {
               fmt::runtime(enumerate_format), fmt::arg("device_address", dev.address),
               fmt::arg("device_address_type", dev.address_type),
               fmt::arg("device_alias", dev.alias), fmt::arg("icon", enumerate_icon),
-              fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)));
+              fmt::arg("device_battery_percentage", dev.battery_percentage.value_or(0)),
+              fmt::arg("device_battery_percentage_peripheral",
+                       dev.battery_percentage_peripheral.value_or(0)));
         }
       }
       device_enumerate_ = ss.str();
@@ -275,6 +338,8 @@ auto waybar::modules::Bluetooth::update() -> void {
         fmt::arg("device_address_type", cur_focussed_device_.address_type),
         fmt::arg("device_alias", cur_focussed_device_.alias), fmt::arg("icon", icon_tooltip),
         fmt::arg("device_battery_percentage", cur_focussed_device_.battery_percentage.value_or(0)),
+        fmt::arg("device_battery_percentage_peripheral",
+                 cur_focussed_device_.battery_percentage_peripheral.value_or(0)),
         fmt::arg("device_enumerate", device_enumerate_)));
   }
 
@@ -395,6 +460,84 @@ auto waybar::modules::Bluetooth::getDeviceBatteryPercentage(GDBusObject* object)
   return std::nullopt;
 }
 
+auto waybar::modules::Bluetooth::getDeviceGattBatteryLevels(
+    GDBusObject* device_object, std::optional<unsigned char>& central_battery,
+    std::optional<unsigned char>& peripheral_battery) -> void {
+  const std::string BATTERY_SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";
+  const std::string BATTERY_LEVEL_UUID = "00002a19-0000-1000-8000-00805f9b34fb";
+  const std::string USER_DESCRIPTION_UUID = "00002901-0000-1000-8000-00805f9b34fb";
+
+  GList* objects = g_dbus_object_manager_get_objects(manager_.get());
+  std::string device_path = g_dbus_object_get_object_path(device_object);
+
+  for (GList* l = objects; l != nullptr; l = l->next) {
+    GDBusObject* service_object = G_DBUS_OBJECT(l->data);
+    std::string service_path = g_dbus_object_get_object_path(service_object);
+
+    if (!isChildPath(service_path, device_path)) {
+      continue;
+    }
+
+    GDBusProxy* proxy_service =
+        G_DBUS_PROXY(g_dbus_object_get_interface(service_object, "org.bluez.GattService1"));
+    if (proxy_service == nullptr) {
+      continue;
+    }
+
+    auto service_uuid = getOptionalStringProperty(proxy_service, "UUID");
+    g_object_unref(proxy_service);
+
+    if (!service_uuid.has_value() ||
+        service_uuid.value().find(BATTERY_SERVICE_UUID) == std::string::npos) {
+      continue;
+    }
+
+    processBatteryServiceCharacteristics(objects, service_path, BATTERY_LEVEL_UUID,
+                                         USER_DESCRIPTION_UUID, central_battery, peripheral_battery);
+  }
+
+  g_list_free_full(objects, g_object_unref);
+}
+
+auto waybar::modules::Bluetooth::processBatteryServiceCharacteristics(
+    GList* objects, const std::string& service_path, const std::string& battery_level_uuid,
+    const std::string& user_description_uuid, std::optional<unsigned char>& central_battery,
+    std::optional<unsigned char>& peripheral_battery) -> void {
+  for (GList* m = objects; m != nullptr; m = m->next) {
+    GDBusObject* char_object = G_DBUS_OBJECT(m->data);
+    std::string char_path = g_dbus_object_get_object_path(char_object);
+
+    if (!isChildPath(char_path, service_path)) {
+      continue;
+    }
+
+    GDBusProxy* proxy_char =
+        G_DBUS_PROXY(g_dbus_object_get_interface(char_object, "org.bluez.GattCharacteristic1"));
+    if (proxy_char == nullptr) {
+      continue;
+    }
+
+    auto char_uuid = getOptionalStringProperty(proxy_char, "UUID");
+    if (!char_uuid.has_value() || char_uuid.value().find(battery_level_uuid) == std::string::npos) {
+      g_object_unref(proxy_char);
+      continue;
+    }
+
+    auto battery_value = readBatteryCharacteristicValue(proxy_char);
+    g_object_unref(proxy_char);
+
+    if (!battery_value.has_value()) {
+      continue;
+    }
+
+    if (hasUserDescriptionDescriptor(objects, char_path, user_description_uuid)) {
+      peripheral_battery = battery_value.value();
+    } else {
+      central_battery = battery_value.value();
+    }
+  }
+}
+
 auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, DeviceInfo& device_info)
     -> bool {
   GDBusProxy* proxy_device = G_DBUS_PROXY(g_dbus_object_get_interface(object, "org.bluez.Device1"));
@@ -415,6 +558,8 @@ auto waybar::modules::Bluetooth::getDeviceProperties(GDBusObject* object, Device
     g_object_unref(proxy_device);
 
     device_info.battery_percentage = getDeviceBatteryPercentage(object);
+    getDeviceGattBatteryLevels(object, device_info.battery_percentage,
+                               device_info.battery_percentage_peripheral);
 
     return true;
   }
