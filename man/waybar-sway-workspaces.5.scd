@@ -78,6 +78,11 @@ Addressed by *sway/workspaces*
 	typeof: bool ++
 	Whether to disable *workspace_auto_back_and_forth* when clicking on workspaces. If this is set to *true*, clicking on a workspace you are already on won't do anything, even if *workspace_auto_back_and_forth* is enabled in the Sway configuration.
 
+*on-click*: ++
+	typeof: string ++
+	default: swaymsg workspace {} ++
+	What command to run when clicking a workspace button, should have one placeholder for the workspace name.
+
 *alphabetical_sort*: ++
 	typeof: bool ++
 	Whether to sort workspaces alphabetically. Please note this can make "swaymsg workspace prev/next" move to workspaces inconsistent with the ordering shown in Waybar.
