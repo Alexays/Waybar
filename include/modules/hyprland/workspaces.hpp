@@ -41,6 +41,7 @@ class Workspaces : public AModule, public EventHandler {
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto persistentOnly() const -> bool { return m_persistentOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
+  auto deduplicateWindows() const -> bool { return m_deduplicateWindows; }
   auto enableTaskbar() const -> bool { return m_enableTaskbar; }
   auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
 
@@ -145,6 +146,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_specialVisibleOnly = false;
   bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
+  bool m_deduplicateWindows = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
