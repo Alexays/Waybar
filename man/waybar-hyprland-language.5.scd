@@ -43,6 +43,20 @@ Addressed by *hyprland/language*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to enable/disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	default: {long} ++
+	The format of the tooltip. Uses the same format replacements as the main format.
+
+*tooltip-format-<lang>*: ++
+	typeof: string ++
+	Provide an alternative tooltip format per language where <lang> is the short description of your language (e.g. "en", "es"). Can be passed multiple times with multiple languages.
+
 
 # FORMAT REPLACEMENTS
 
@@ -63,6 +77,27 @@ Addressed by *hyprland/language*
 	"format-en": "AMERICA, HELL YEAH!",
 	"format-tr": "As bayrakları",
 	"keyboard-name": "at-translated-set-2-keyboard"
+}
+```
+
+```
+"hyprland/language": {
+	"format": "  {}",
+	"format-en": "US",
+	"format-es": "ES",
+	"tooltip": true,
+	"tooltip-format": "{long}"
+}
+```
+
+```
+"hyprland/language": {
+	"format": "  {}",
+	"format-en": "US",
+	"format-es": "ES",
+	"tooltip": true,
+	"tooltip-format-en": "English (United States)",
+	"tooltip-format-es": "Español (España)"
 }
 ```
 
