@@ -67,7 +67,17 @@ Addressed by *niri/workspaces*
 		*separator*: ++
 	typeof: string ++
 	default: " " ++
-	The separator to be used between windows in a workspace. ++
+	The separator to be used between windows in a workspace.
+
+		*format*: ++
+	typeof: string ++
+	default: "{icon}" ++
+	Format to use for each window in the workspace taskbar. Available placeholders are {icon}, {title} and {app_id}.
+
+		*tooltip-format*: ++
+	typeof: string ++
+	default: "{title}" ++
+	The format, how information in the tooltip should be displayed. Available placeholders are {title} and {app_id}. ++
 	This setting is ignored if *workspace-taskbar.enable* is set to true.
 
 # FORMAT REPLACEMENTS
@@ -127,3 +137,5 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces .taskbar-window* (each window in the taskbar, only if 'workspace-taskbar.enable' is true)
 - *#workspaces .taskbar-window.focused* (applied to the focused window)
 - *#workspaces .taskbar-window.urgent* (applied to urgent windows)
+- *#workspaces .taskbar-window.floating* (applied to floating windows)
+- *#workspaces .taskbar-window.active* (applied to the active window within every workspace)

@@ -71,23 +71,53 @@ std::string Workspace::getIcon(const std::string& value, const Json::Value& ws) 
   return value;
 }
 
-void Workspace::updateTaskbar(const std::vector<Json::Value>& windows_data) {
+void Workspace::updateTaskbar(const std::vector<Json::Value>& windows_data,
+                              const uint64_t active_window_id) {
   if (!taskBarConfig_.get("enable", false).asBool()) return;
 
   for (auto child : content_.get_children()) {
     if (child != &label_) {
       content_.remove(*child);
+      // despite the remove, still needs a delete to prevent memory leak. Speculating that this
+      // might work differently in GTK4.
       delete child;
     }
   }
 
   auto separator = taskBarConfig_.get("separator", " ").asString();
 
+  auto format = taskBarConfig_.get("format", "{icon}").asString();
+  bool taskbarWithIcon = false;
+  std::string taskbarFormatBefore, taskbarFormatAfter;
+
+  if (format != "") {
+    auto parts = split(format, "{icon}", 1);
+    taskbarFormatBefore = parts[0];
+    if (parts.size() > 1) {
+      taskbarWithIcon = true;
+      taskbarFormatAfter = parts[1];
+    }
+  } else {
+    taskbarWithIcon = true;  // default to icon-only
+  }
+
+  auto format_tooltip = taskBarConfig_.get("tooltip-format", "{title}").asString();
+
   auto sorted_windows_data = windows_data;
   std::sort(sorted_windows_data.begin(), sorted_windows_data.end(),
             [](const Json::Value& a, const Json::Value& b) {
               auto layoutA = a["layout"];
               auto layoutB = b["layout"];
+
+              // Handle null positions (floating windows)
+              if (layoutA["pos_in_scrolling_layout"].isNull()) {
+                return false;  // Floating windows go to the end
+              }
+              if (layoutB["pos_in_scrolling_layout"].isNull()) {
+                return true;  // Tiled windows before floating
+              }
+
+              // Both are tiled windows - sort by position
               return layoutA["pos_in_scrolling_layout"][0].asInt() <
                      layoutB["pos_in_scrolling_layout"][0].asInt();
             });
@@ -100,10 +130,18 @@ void Workspace::updateTaskbar(const std::vector<Json::Value>& windows_data) {
     }
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    window_box->set_tooltip_text(window["title"].asString());
+    if (!format_tooltip.empty()) {
+      auto txt =
+          fmt::format(fmt::runtime(format_tooltip), fmt::arg("title", window["title"].asString()),
+                      fmt::arg("app_id", window["app_id"].asString()));
+      window_box->set_tooltip_text(txt);
+    }
     window_box->get_style_context()->add_class("taskbar-window");
     if (window["is_focused"].asBool()) window_box->get_style_context()->add_class("focused");
+    if (window["is_floating"].asBool()) window_box->get_style_context()->add_class("floating");
     if (window["is_urgent"].asBool()) window_box->get_style_context()->add_class("urgent");
+    if (window["id"].asUInt64() == active_window_id)
+      window_box->get_style_context()->add_class("active");
     auto event_box = Gtk::make_managed<Gtk::EventBox>();
     event_box->add(*window_box);
     if (!config_["disable-click"].asBool()) {
@@ -128,11 +166,31 @@ void Workspace::updateTaskbar(const std::vector<Json::Value>& windows_data) {
       event_box->signal_button_press_event().connect(
           sigc::bind(sigc::ptr_fun(func_ptr), window["id"].asUInt64()));
     }
-    auto window_icon = Gtk::make_managed<Gtk::Image>();
-    iconLoader_.image_load_icon(
-        *window_icon, IconLoader::get_app_info_from_app_id_list(window["app_id"].asString()),
-        taskBarConfig_.get("icon-size", 16).asInt());
-    window_box->pack_start(*window_icon, false, false);
+
+    auto text_before = fmt::format(fmt::runtime(taskbarFormatBefore),
+                                   fmt::arg("title", window["title"].asString()),
+                                   fmt::arg("app_id", window["app_id"].asString()));
+    if (!text_before.empty()) {
+      auto window_label_before = Gtk::make_managed<Gtk::Label>(text_before);
+      window_box->pack_start(*window_label_before, true, true);
+    }
+
+    if (taskbarWithIcon) {
+      auto window_icon = Gtk::make_managed<Gtk::Image>();
+      iconLoader_.image_load_icon(
+          *window_icon, IconLoader::get_app_info_from_app_id_list(window["app_id"].asString()),
+          taskBarConfig_.get("icon-size", 16).asInt());
+      window_box->pack_start(*window_icon, false, false);
+    }
+
+    auto text_after =
+        fmt::format(fmt::runtime(taskbarFormatAfter), fmt::arg("title", window["title"].asString()),
+                    fmt::arg("app_id", window["app_id"].asString()));
+    if (!text_after.empty()) {
+      auto window_label_after = Gtk::make_managed<Gtk::Label>(text_after);
+      window_box->pack_start(*window_label_after, true, true);
+    }
+
     content_.pack_start(*event_box, false, false);
   }
 }
@@ -183,7 +241,7 @@ void Workspace::update(const Json::Value& workspace_data,
   else
     label_.set_text(name);
 
-  updateTaskbar(windows_data);
+  updateTaskbar(windows_data, workspace_data["active_window_id"].asUInt64());
 
   if (config_["current-only"].asBool()) {
     const auto* property = config_["all-outputs"].asBool() ? "is_focused" : "is_active";
@@ -212,6 +270,8 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   gIPC->registerForIPC("WorkspaceUrgencyChanged", this);
   gIPC->registerForIPC("WindowFocusChanged", this);
   gIPC->registerForIPC("WindowOpenedOrChanged", this);
+  gIPC->registerForIPC("WindowClosed", this);
+  gIPC->registerForIPC("WindowLayoutsChanged", this);
 
   dp.emit();
 }
