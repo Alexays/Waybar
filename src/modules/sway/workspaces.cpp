@@ -77,7 +77,7 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
   if (config["enable-bar-scroll"].asBool()) {
     auto &window = const_cast<Bar &>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScrollEvent));
   }
   // Launch worker
   ipc_.setWorker([this] {
@@ -417,7 +417,7 @@ std::string Workspaces::getIcon(const std::string &name, const Json::Value &node
   return name;
 }
 
-bool Workspaces::handleScroll(GdkEventScroll *e) {
+bool Workspaces::handleScrollEvent(GdkEventScroll *e) {
   if (gdk_event_get_pointer_emulated((GdkEvent *)e) != 0) {
     /**
      * Ignore emulated scroll events on window
