@@ -19,7 +19,9 @@ class Disk : public ALabel {
 
  private:
   util::SleeperThread thread_;
-  std::string path_;
+  std::string header_;
+  std::vector<std::string> paths_;
+  std::string separator_;
   std::string unit_;
 
   float calc_specific_divisor(const std::string divisor);
