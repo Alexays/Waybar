@@ -76,6 +76,17 @@ screensaver, also known as "presentation mode".
 	typeof: double ++
 	The number of minutes the inhibition should last.
 
+*wait-for-activity*: ++
+	typeof: bool ++
+	default: *false* ++
+	When enabled, the idle inhibitor remains active as long as there is keyboard or mouse activity on the bar. If there is no activity for the duration specified in *timeout*, the inhibitor will automatically toggle off. This option requires *timeout* to be set.
+
+*signal*: ++
+	typeof: integer ++
+	The signal number used to toggle the idle inhibitor externally. ++
+	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
+	Use `pkill -SIGRTMIN+N waybar` to toggle the idle inhibitor from scripts or keybindings.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: true ++
@@ -115,14 +126,43 @@ screensaver, also known as "presentation mode".
 
 # EXAMPLES
 
+Basic usage with timeout:
+
 ```
 "idle_inhibitor": {
 	"format": "{icon}",
 	"format-icons": {
-		"activated": "",
-		"deactivated": ""
+		"activated": "",
+		"deactivated": ""
 	},
 	"timeout": 30.5
+}
+```
+
+With external control via signals (can be toggled with `pkill -SIGRTMIN+8 waybar`):
+
+```
+"idle_inhibitor": {
+	"format": "{icon}",
+	"format-icons": {
+		"activated": "",
+		"deactivated": ""
+	},
+	"signal": 8
+}
+```
+
+With wait-for-activity feature:
+
+```
+"idle_inhibitor": {
+	"format": "{icon}",
+	"format-icons": {
+		"activated": "",
+		"deactivated": ""
+	},
+	"timeout": 5.0,
+	"wait-for-activity": true
 }
 ```
 
