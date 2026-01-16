@@ -12,7 +12,7 @@ namespace waybar::modules {
 
 class UPower final : public AIconLabel {
  public:
-  UPower(const std::string &, const Json::Value &);
+  UPower(const std::string &, const Json::Value &, std::mutex &, std::list<pid_t> &);
   virtual ~UPower();
   auto update() -> void override;
 

@@ -2,8 +2,9 @@
 
 namespace waybar::modules {
 
-JACK::JACK(const std::string &id, const Json::Value &config)
-    : ALabel(config, "jack", id, "{load}%", 1) {
+JACK::JACK(const std::string &id, const Json::Value &config, std::mutex &reap_mtx,
+           std::list<pid_t> &reap)
+    : ALabel(config, "jack", id, "{load}%", reap_mtx, reap, 1) {
   running_ = false;
   client_ = NULL;
 

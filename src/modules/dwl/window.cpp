@@ -73,8 +73,9 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Window::Window(const std::string &id, const Bar &bar, const Json::Value &config)
-    : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar) {
+Window::Window(const std::string &id, const Bar &bar, const Json::Value &config,
+               std::mutex &reap_mtx, std::list<pid_t> &reap)
+    : AAppIconLabel(config, "window", id, "{}", reap_mtx, reap, 0, true), bar_(bar) {
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
 
