@@ -350,8 +350,11 @@ void Task::handle_done() {
     button.get_style_context()->remove_class("fullscreen");
   }
 
-  if (config_["active-first"].isBool() && config_["active-first"].asBool() && active())
+  if (config_["active-first"].isBool() && config_["active-first"].asBool() && active()) {
     tbar_->move_button(button, 0);
+  } else if (config_["active-last"].isBool() && config_["active-last"].asBool() && active()) {
+    tbar_->move_button(button, -1);
+  }
 
   tbar_->dp.emit();
 }
