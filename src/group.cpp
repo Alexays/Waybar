@@ -79,6 +79,20 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     } else {
       box.pack_start(revealer);
     }
+
+    if(!click_to_reveal) {
+      interval_ = (config_["interval"] == "once" || !config_["interval"].isUInt())
+                  ? std::chrono::seconds::max()
+                  : std::chrono::seconds(config_["interval"].asUInt());
+      thread_ = [this] {
+          if(free_ && reset_) {
+              show_group();
+              reset_=false;
+          }
+          thread_.sleep_for(interval_);
+          if(free_ && !reset_) hide_group();
+      };
+    }
   }
 
   event_box_.add(box);
@@ -96,6 +110,7 @@ void Group::hide_group() {
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
   if (!click_to_reveal) {
+    free_ = false;
     show_group();
   }
   return false;
@@ -103,6 +118,7 @@ bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
   if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+    free_ = true;
     hide_group();
   }
   return false;
@@ -118,6 +134,18 @@ bool Group::handleToggle(GdkEventButton* const& e) {
     show_group();
   }
   return true;
+}
+
+void Group::refresh(int sig) {
+  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+    GdkEventButton ev = { .button = 1 }; //Generate fake button click
+    if (!handleToggle(&ev)) { //It's not click to reveal
+      if (free_) { //And the group is not governed by mouse
+        reset_=true;
+        thread_.wake_up();
+      }
+    }
+  }
 }
 
 auto Group::update() -> void {
