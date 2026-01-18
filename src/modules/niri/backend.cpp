@@ -202,6 +202,18 @@ void IPC::parseIPC(const std::string &line) {
       for (auto &win : windows_) {
         win["is_focused"] = focused && win["id"].asUInt64() == id;
       }
+    } else if (const auto &payload = ev["WindowLayoutsChanged"]) {
+      const auto &values = payload["changes"];
+      for (const auto &changed : values) {
+        const auto id = changed[0].asUInt64();
+        const auto &change = changed[1];
+        for (auto &win : windows_) {
+          if (win["id"].asUInt64() == id) {
+            win["layout"] = change;
+            break;
+          }
+        }
+      }
     }
   }
 
