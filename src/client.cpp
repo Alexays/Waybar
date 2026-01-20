@@ -219,13 +219,22 @@ void waybar::Client::bindInterfaces() {
   if (xdg_output_manager == nullptr) {
     throw std::runtime_error("Failed to acquire required resources.");
   }
+
+  // Disconnect previous signal handlers to prevent duplicate handlers on reload
+  monitor_added_connection_.disconnect();
+  monitor_removed_connection_.disconnect();
+
+  // Clear stale outputs from previous run
+  outputs_.clear();
+
   // add existing outputs and subscribe to updates
   for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
     auto monitor = gdk_display->get_monitor(i);
     handleMonitorAdded(monitor);
   }
-  gdk_display->signal_monitor_added().connect(sigc::mem_fun(*this, &Client::handleMonitorAdded));
-  gdk_display->signal_monitor_removed().connect(
+  monitor_added_connection_ = gdk_display->signal_monitor_added().connect(
+      sigc::mem_fun(*this, &Client::handleMonitorAdded));
+  monitor_removed_connection_ = gdk_display->signal_monitor_removed().connect(
       sigc::mem_fun(*this, &Client::handleMonitorRemoved));
 }
 

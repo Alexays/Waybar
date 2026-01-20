@@ -187,6 +187,12 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
     button.get_style_context()->remove_class("occupied");
   }
 
+  if (clients & TAG_INACTIVE) {
+    button.get_style_context()->remove_class("empty");
+  } else {
+    button.get_style_context()->add_class("empty");
+  }
+
   if (state & TAG_ACTIVE) {
     button.get_style_context()->add_class("focused");
   } else {
