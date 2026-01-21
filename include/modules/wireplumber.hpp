@@ -32,7 +32,7 @@ class Wireplumber : public ALabel {
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
 
-  bool handleScroll(GdkEventScroll* e) override;
+  bool handleScrollEvent(GdkEventScroll* e) override;
 
   static std::list<waybar::modules::Wireplumber*> modules;
 
