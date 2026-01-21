@@ -15,6 +15,7 @@ class AModule : public IModule {
   static constexpr const char *MODULE_CLASS = "module";
 
   ~AModule() override;
+  sigc::signal<void, AModule*> signal_updated;
   auto update() -> void override;
   virtual auto refresh(int shouldRefresh) -> void {};
   operator Gtk::Widget &() override;
