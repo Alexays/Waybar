@@ -109,6 +109,10 @@ If no expression matches, the format output is left unchanged.
 
 Invalid expressions (e.g., mismatched parentheses) are skipped.
 
+# STYLE
+
+- *#window.active*
+
 # EXAMPLES
 
 ```
