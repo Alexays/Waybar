@@ -331,7 +331,7 @@ auto Workspaces::update() -> void {
     }
     std::string output = (*it)["name"].asString();
     std::string windows = "";
-    if (config_["window-format"].isString()) {
+    if (config_["window-rewrite"].isObject()) {
       updateWindows((*it), windows);
     }
     if (config_["format"].isString()) {
