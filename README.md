@@ -119,7 +119,7 @@ sudo apt install \
 On Arch, you can use this command:
 
 ```
-pacman -S \
+pacman -S --asdeps \
   gtkmm3 \
   jsoncpp \
   libsigc++ \
