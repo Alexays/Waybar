@@ -21,6 +21,18 @@ Submap::Submap(const std::string& id, const Bar& bar, const Json::Value& config)
   // register for hyprland ipc
   m_ipc.registerForIPC("submap", this);
   dp.emit();
+
+  if (config["icons"].isObject()) {
+    const Json::Value& icons = config["icons"];
+
+    for (const std::string& key : icons.getMemberNames()) {
+      const Json::Value& value = icons[key];
+
+      if (value.isString()) {
+        icons_[key] = value.asString();
+      }
+    }
+  }
 }
 
 Submap::~Submap() {
@@ -47,7 +59,8 @@ auto Submap::update() -> void {
   if (submap_.empty()) {
     event_box_.hide();
   } else {
-    label_.set_markup(fmt::format(fmt::runtime(format_), submap_));
+    label_.set_markup(
+        fmt::format(fmt::runtime(format_), fmt::arg("submap", submap_), fmt::arg("icon", icon_)));
     if (tooltipEnabled()) {
       label_.set_tooltip_text(submap_);
     }
@@ -71,6 +84,12 @@ void Submap::onEvent(const std::string& ev) {
   }
 
   submap_ = submapName;
+
+  if (!icons_[submap_].empty()) {
+    icon_ = icons_[submap_];
+  } else {
+    icon_ = "";
+  }
 
   if (submap_.empty() && always_on_) {
     submap_ = default_submap_;
