@@ -21,6 +21,11 @@ Addressed by *dwl/tags*
 	typeof: array ++
 	The label to display for each tag.
 
+*hide-vacant*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, tags without clients and that are not active will be hidden.
+
 *disable-click*: ++
 	typeof: bool ++
 	default: false ++
