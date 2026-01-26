@@ -561,8 +561,9 @@ static void handle_global_remove(void *data, struct wl_registry *registry, uint3
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
-    : waybar::AModule(config, "taskbar", id, false, false),
+Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Value &config,
+                 std::mutex &reap_mtx, std::list<pid_t> &reap)
+    : waybar::AModule(config, "taskbar", id, reap_mtx, reap, false, false),
       bar_(bar),
       box_{bar.orientation, 0},
       manager_{nullptr},

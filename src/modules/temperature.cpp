@@ -7,8 +7,9 @@
 #include <sys/sysctl.h>
 #endif
 
-waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config)
-    : ALabel(config, "temperature", id, "{temperatureC}°C", 10) {
+waybar::modules::Temperature::Temperature(const std::string& id, const Json::Value& config,
+                                          std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "temperature", id, "{temperatureC}°C", reap_mtx, reap, 10) {
 #if defined(__FreeBSD__)
 // FreeBSD uses sysctlbyname instead of read from a file
 #else

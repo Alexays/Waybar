@@ -1,7 +1,8 @@
 #include "modules/memory.hpp"
 
-waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
-    : ALabel(config, "memory", id, "{}%", 30) {
+waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config,
+                                std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "memory", id, "{}%", reap_mtx, reap, 30) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
