@@ -4,10 +4,34 @@
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <cctype>
+
 namespace waybar::modules::niri {
 
 Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
     : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
+  const auto config_sort_by_number = config_["sort-by-number"];
+  if (config_sort_by_number.isBool()) {
+    spdlog::warn("[niri/workspaces]: Prefer sort-by-id instead of sort-by-number");
+    sort_by_id_ = config_sort_by_number.asBool();
+  }
+
+  const auto config_sort_by_id = config_["sort-by-id"];
+  if (config_sort_by_id.isBool()) {
+    sort_by_id_ = config_sort_by_id.asBool();
+  }
+
+  const auto config_sort_by_name = config_["sort-by-name"];
+  if (config_sort_by_name.isBool()) {
+    sort_by_name_ = config_sort_by_name.asBool();
+  }
+
+  const auto config_sort_by_coordinates = config_["sort-by-coordinates"];
+  if (config_sort_by_coordinates.isBool()) {
+    sort_by_coordinates_ = config_sort_by_coordinates.asBool();
+  }
+
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
@@ -40,6 +64,8 @@ void Workspaces::doUpdate() {
                  if (alloutputs) return true;
                  return ws["output"].asString() == bar_.output->name;
                });
+
+  sortWorkspaces(my_workspaces);
 
   // Remove buttons for removed workspaces.
   for (auto it = buttons_.begin(); it != buttons_.end();) {
@@ -123,8 +149,7 @@ void Workspaces::doUpdate() {
   for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
     const auto &ws = *it;
 
-    auto pos = ws["idx"].asUInt() - 1;
-    if (alloutputs) pos = it - my_workspaces.cbegin();
+    const auto pos = static_cast<int>(std::distance(my_workspaces.cbegin(), it));
 
     auto &button = buttons_[ws["id"].asUInt64()];
     box_.reorder_child(button, pos);
@@ -191,6 +216,61 @@ std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws)
   if (icons["default"]) return icons["default"].asString();
 
   return value;
+}
+
+void Workspaces::sortWorkspaces(std::vector<Json::Value> &workspaces) const {
+  auto get_name = [](const Json::Value &ws) -> std::string {
+    if (ws["name"]) return ws["name"].asString();
+    return std::to_string(ws["idx"].asUInt());
+  };
+
+  auto is_numeric = [](const std::string &value) {
+    return !value.empty() &&
+           std::all_of(value.begin(), value.end(), [](unsigned char c) { return std::isdigit(c); });
+  };
+
+  const bool names_are_numeric =
+      std::all_of(workspaces.begin(), workspaces.end(),
+                  [&](const auto &ws) { return is_numeric(get_name(ws)); });
+
+  auto compare_numeric_strings = [](const std::string &a, const std::string &b) {
+    if (a.size() != b.size()) return a.size() < b.size();
+    return a < b;
+  };
+
+  std::sort(workspaces.begin(), workspaces.end(), [&](const auto &a, const auto &b) {
+    if (sort_by_id_) {
+      return a["id"].asUInt64() < b["id"].asUInt64();
+    }
+
+    if (sort_by_name_) {
+      const auto a_name = get_name(a);
+      const auto b_name = get_name(b);
+      if (a_name == b_name) return a["id"].asUInt64() < b["id"].asUInt64();
+      if (names_are_numeric) return compare_numeric_strings(a_name, b_name);
+      return a_name < b_name;
+    }
+
+    if (sort_by_coordinates_) {
+      const auto &a_output = a["output"].asString();
+      const auto &b_output = b["output"].asString();
+      if (a_output == b_output) {
+        const auto a_idx = a["idx"].asUInt();
+        const auto b_idx = b["idx"].asUInt();
+        if (a_idx == b_idx) return a["id"].asUInt64() < b["id"].asUInt64();
+        return a_idx < b_idx;
+      }
+      return a_output < b_output;
+    }
+
+    // Default to sorting by workspace index on each output.
+    const auto &a_output = a["output"].asString();
+    const auto &b_output = b["output"].asString();
+    const auto a_idx = a["idx"].asUInt();
+    const auto b_idx = b["idx"].asUInt();
+    if (a_output == b_output) return a_idx < b_idx;
+    return a_output < b_output;
+  });
 }
 
 }  // namespace waybar::modules::niri
