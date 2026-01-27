@@ -13,18 +13,15 @@ AModule* getModule(const std::string& id, const Json::Value& config) {
 #ifdef HAVE_LIBCAVA
   const std::shared_ptr<CavaBackend> backend_{waybar::modules::cava::CavaBackend::inst(config)};
   switch (backend_->getPrm()->output) {
-    case ::cava::output_method::OUTPUT_RAW:
-      return new waybar::modules::cava::Cava(id, config);
-      break;
 #ifdef HAVE_LIBCAVAGLSL
     case ::cava::output_method::OUTPUT_SDL_GLSL:
       return new waybar::modules::cava::CavaGLSL(id, config);
-      break;
 #endif
     default:
-      break;
+      return new waybar::modules::cava::Cava(id, config);
   }
-#endif
+#else
   throw std::runtime_error("Unknown module");
+#endif
 };
 }  // namespace waybar::modules::cava
