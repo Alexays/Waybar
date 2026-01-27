@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <cstdio>
+#include <string>
 
 #include "util/command.hpp"
 #if defined(__FreeBSD__)
@@ -33,6 +36,11 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
   }
   udev_monitor_enable_receiving(mon_.get());
 
+  if (config_["smooth-power"].isBool()) {
+    smoothPowerEnable_ = config_["smooth-power"].asBool();
+    if (smoothPowerEnable_ && config_["smooth-power-time-constant"].isNumeric())
+      time_constant_s_ = std::max(1.0, config_["smooth-power-time-constant"].asDouble());
+  }
   if (config_["weighted-average"].isBool()) weightedAverage_ = config_["weighted-average"].asBool();
 #endif
   spdlog::debug("battery: worker interval is {}", interval_.count());
@@ -562,11 +570,31 @@ waybar::modules::Battery::getInfos() {
       if (online && current_status != "Discharging") status = "Plugged";
     }
 
+    if (total_energy_exists && total_power_exists && total_power != 0) {
+      if (!smoothPowerEnable_) {
+        smooth_power_ = total_power;
+      } else {
+        if (status != old_status_raw_) {
+          smooth_power_ = total_power;
+          last_t_ = std::chrono::steady_clock::now();
+        } else {
+          std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+          double dt_s =
+              std::chrono::duration_cast<std::chrono::duration<double> >(now - last_t_).count();
+          smooth_power_ = smooth_power_ + ((1 - std::exp(-dt_s / time_constant_s_)) *
+                                           (total_power - smooth_power_));
+          last_t_ = now;
+        }
+
+        old_status_raw_ = status;
+      }
+    }
+
     float time_remaining{0.0f};
     if (status == "Discharging" && time_to_empty_now_exists) {
       if (time_to_empty_now != 0) time_remaining = (float)time_to_empty_now / 3600.0f;
     } else if (status == "Discharging" && total_power_exists && total_energy_exists) {
-      if (total_power != 0) time_remaining = (float)total_energy / total_power;
+      if (smooth_power_ != 0) time_remaining = (float)total_energy / smooth_power_;
     } else if (status == "Charging" && time_to_full_now_exists) {
       if (time_to_full_now_exists && (time_to_full_now != 0))
         time_remaining = -(float)time_to_full_now / 3600.0f;
