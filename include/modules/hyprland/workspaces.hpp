@@ -50,6 +50,7 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarFormatBefore() const -> std::string { return m_taskbarFormatBefore; }
   auto taskbarFormatAfter() const -> std::string { return m_taskbarFormatAfter; }
   auto taskbarIconSize() const -> int { return m_taskbarIconSize; }
+  auto taskbarMaxIcons() const -> int { return m_taskbarMaxIcons; }
   auto taskbarOrientation() const -> Gtk::Orientation { return m_taskbarOrientation; }
   auto taskbarReverseDirection() const -> bool { return m_taskbarReverseDirection; }
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
@@ -186,6 +187,7 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_taskbarFormatBefore;
   std::string m_taskbarFormatAfter;
   int m_taskbarIconSize = 16;
+  int m_taskbarMaxIcons = 0;  // 0 means unlimited
   Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
   bool m_taskbarReverseDirection = false;
   util::EnumParser<ActiveWindowPosition> m_activeWindowEnumParser;

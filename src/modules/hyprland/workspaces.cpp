@@ -761,6 +761,9 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
   if (workspaceTaskbar["icon-size"].isInt()) {
     m_taskbarIconSize = workspaceTaskbar["icon-size"].asInt();
   }
+  if (workspaceTaskbar["max-icons"].isInt()) {
+    m_taskbarMaxIcons = workspaceTaskbar["max-icons"].asInt();
+  }
   if (workspaceTaskbar["orientation"].isString() &&
       toLower(workspaceTaskbar["orientation"].asString()) == "vertical") {
     m_taskbarOrientation = Gtk::ORIENTATION_VERTICAL;

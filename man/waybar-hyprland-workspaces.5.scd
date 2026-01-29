@@ -75,6 +75,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: 16 ++
 	Size of the icons in the workspace taskbar.
 
+		*max-icons*: ++
+	typeof: int ++
+	default: 0 (unlimited) ++
+	Maximum number of icons to show per workspace. When set, duplicate icons (windows with the same class) are removed first, then the list is trimmed to this limit. Set to 0 for unlimited icons.
+
 		*icon-theme*: ++
 	typeof: string | array ++
 	default: [] ++
