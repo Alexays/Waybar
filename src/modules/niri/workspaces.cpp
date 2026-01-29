@@ -3,6 +3,9 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
+#include <fmt/ranges.h> // Needed for joining window representations
+
+#include "util/rewrite_string.hpp" // Needed for rewrite logic
 
 namespace waybar::modules::niri {
 
@@ -17,6 +20,12 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 
   if (!gIPC) gIPC = std::make_unique<IPC>();
 
+  // Parse new config options first
+  populateWindowRewriteConfig();
+  populateFormatWindowSeparatorConfig();
+
+  // Niri's WorkspacesChanged event already includes window info,
+  // so no need to register for separate window events like in Hyprland.
   gIPC->registerForIPC("WorkspacesChanged", this);
   gIPC->registerForIPC("WorkspaceActivated", this);
   gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
@@ -31,6 +40,10 @@ void Workspaces::onEvent(const Json::Value &ev) { dp.emit(); }
 
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
+
+  // Debug: log global IPC lists
+  spdlog::debug("[niri/workspaces] gIPC workspaces count: {}", gIPC->workspaces().size());
+  spdlog::debug("[niri/workspaces] gIPC windows count: {}", gIPC->windows().size());
 
   const auto alloutputs = config_["all-outputs"].asBool();
   std::vector<Json::Value> my_workspaces;
@@ -54,6 +67,9 @@ void Workspaces::doUpdate() {
 
   // Add buttons for new workspaces, update existing ones.
   for (const auto &ws : my_workspaces) {
+    // Debug: print workspace JSON
+    spdlog::debug("[niri/workspaces] workspace id={} json={} ", ws["id"].asUInt64(), ws.toStyledString());
+
     auto bit = buttons_.find(ws["id"].asUInt64());
     auto &button = bit == buttons_.end() ? addButton(ws) : bit->second;
     auto style_context = button.get_style_context();
@@ -87,6 +103,42 @@ void Workspaces::doUpdate() {
     else
       style_context->remove_class("empty");
 
+    // --- Start Window Rewrite Logic ---
+    std::vector<std::string> window_reps;
+    if (ws.isMember("windows") && ws["windows"].isArray()) {
+      spdlog::debug("[niri/workspaces] workspace id={} has {} windows", ws["id"].asUInt64(), ws["windows"].size());
+      for (const auto &win : ws["windows"]) {
+        spdlog::debug("[niri/workspaces] window json: {}", win.toStyledString());
+        std::string app_id = win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
+        std::string title = win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
+        if (!app_id.empty() || !title.empty()) { // Only add if we have some identifier
+           auto rep = getRewrite(app_id, title);
+           spdlog::debug("[niri/workspaces] rewrite: app_id='{}' title='{}' => '{}'", app_id, title, rep);
+           window_reps.push_back(rep);
+        }
+      }
+    } else {
+      spdlog::debug("[niri/workspaces] workspace id={} has no 'windows' array, collecting from global windows", ws["id"].asUInt64());
+      // Fallback: collect from global windows list by matching workspace_id
+      for (const auto &win : gIPC->windows()) {
+        if (!win.isMember("workspace_id")) continue;
+        if (win["workspace_id"].asUInt64() != ws["id"].asUInt64()) continue;
+        spdlog::debug("[niri/workspaces] global window json: {}", win.toStyledString());
+        std::string app_id = win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
+        std::string title = win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
+        if (!app_id.empty() || !title.empty()) {
+           auto rep = getRewrite(app_id, title);
+           spdlog::debug("[niri/workspaces] rewrite (global): app_id='{}' title='{}' => '{}'", app_id, title, rep);
+           window_reps.push_back(rep);
+        }
+      }
+    }
+    // Join representations with the separator
+    auto windows_str = fmt::format("{}", fmt::join(window_reps, m_formatWindowSeparator));
+    spdlog::debug("[niri/workspaces] workspace id={} windows_str='{}'", ws["id"].asUInt64(), windows_str);
+    // --- End Window Rewrite Logic ---
+
+
     std::string name;
     if (ws["name"]) {
       name = ws["name"].asString();
@@ -97,10 +149,12 @@ void Workspaces::doUpdate() {
 
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
+      // Add "windows" argument to format call
       name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
                          fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
                          fmt::arg("index", ws["idx"].asUInt()),
-                         fmt::arg("output", ws["output"].asString()));
+                         fmt::arg("output", ws["output"].asString()),
+                         fmt::arg("windows", windows_str)); // Added windows arg
     }
     if (!config_["disable-markup"].asBool()) {
       static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(name);
@@ -167,6 +221,84 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
   }
   return button;
 }
+
+// --- Start New Helper Functions ---
+void Workspaces::populateWindowRewriteConfig() {
+  // Reconstruct RegexCollection instead of clearing/adding
+  const Json::Value &rewrite_rules_config = config_["window-rewrite"];
+  if (rewrite_rules_config.isObject()) {
+      // Assuming a constructor that takes the Json::Value object exists.
+      // If Niri needs rule prioritization like Hyprland, a priority function
+      // would be needed as a second argument here.
+      try {
+          m_windowRewriteRules = util::RegexCollection(rewrite_rules_config);
+      } catch (const std::exception &e) {
+           spdlog::error("Error initializing RegexCollection: {}", e.what());
+           // Initialize with an empty collection if error occurs
+           m_windowRewriteRules = util::RegexCollection(Json::Value(Json::objectValue));
+      }
+
+  } else {
+       // Initialize with an empty collection if config is not an object
+       m_windowRewriteRules = util::RegexCollection(Json::Value(Json::objectValue));
+  }
+
+  if (config_.isMember("window-rewrite-default") && config_["window-rewrite-default"].isString()) {
+      m_windowRewriteDefault = config_["window-rewrite-default"].asString();
+  } else {
+      m_windowRewriteDefault = "?"; // Default fallback
+  }
+}
+
+void Workspaces::populateFormatWindowSeparatorConfig() {
+  if (config_.isMember("format-window-separator") && config_["format-window-separator"].isString()) {
+      m_formatWindowSeparator = config_["format-window-separator"].asString();
+  } else {
+     m_formatWindowSeparator = " "; // Default fallback
+  }
+}
+
+std::string Workspaces::getRewrite(const std::string &app_id, const std::string &title) {
+  // Niri uses app_id, Hyprland uses class. Adapt the key format.
+  std::string lookup_key = "app_id<" + app_id + "> title<" + title + ">";
+  std::string res = m_windowRewriteRules.get(lookup_key);
+  if (!res.empty()) {
+    // Create Json::Value for substitutions
+    Json::Value substitutions(Json::objectValue);
+    substitutions["app_id"] = app_id;
+    substitutions["title"] = title;
+    return util::rewriteString(res, substitutions);
+  }
+  // Fallback to app_id only
+  lookup_key = "app_id<" + app_id + ">";
+  res = m_windowRewriteRules.get(lookup_key);
+   if (!res.empty()) {
+    // Create Json::Value for substitutions
+    Json::Value substitutions(Json::objectValue);
+    substitutions["app_id"] = app_id;
+    substitutions["title"] = title;
+    return util::rewriteString(res, substitutions);
+  }
+  // Fallback to title only
+  lookup_key = "title<" + title + ">";
+  res = m_windowRewriteRules.get(lookup_key);
+   if (!res.empty()) {
+    // Create Json::Value for substitutions
+    Json::Value substitutions(Json::objectValue);
+    substitutions["app_id"] = app_id;
+    substitutions["title"] = title;
+    return util::rewriteString(res, substitutions);
+  }
+
+  // No rule matched, return default
+  // Apply substitutions to default as well, in case it uses placeholders
+  Json::Value substitutions(Json::objectValue);
+  substitutions["app_id"] = app_id;
+  substitutions["title"] = title;
+  return util::rewriteString(m_windowRewriteDefault, substitutions);
+}
+// --- End New Helper Functions ---
+
 
 std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws) {
   const auto &icons = config_["format-icons"];
