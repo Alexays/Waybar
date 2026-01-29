@@ -456,12 +456,30 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
     return;
   }
 
+  bool workspaceExists = false;
   for (auto &workspace : m_workspaces) {
     if (workspace->id() == *workspaceId) {
+      workspaceExists = true;
       workspace->setName(newName);
+      if (isWorkspaceIgnored(newName)) {
+        spdlog::debug("Workspace renamed to ignored name: {}", newName);
+        m_workspacesToRemove.push_back(workspaceIdStr);
+      }
       break;
     }
   }
+
+  if (!workspaceExists && !isWorkspaceIgnored(newName)) {
+    spdlog::debug("Previously ignored workspace renamed to non-ignored: {}", newName);
+    auto workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
+    for (Json::Value workspaceJson : workspacesJson) {
+      if (workspaceJson["id"].asInt() == *workspaceId) {
+        m_workspacesToCreate.emplace_back(workspaceJson, Json::Value());
+        break;
+      }
+    }
+  }
+
   sortWorkspaces();
 }
 
