@@ -2,6 +2,7 @@
 #include <spdlog/spdlog.h>
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -247,8 +248,18 @@ void Workspace::update(const std::string &workspace_icon) {
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
 
     bool isNotFirst = false;
+    std::set<std::string> seenWindows;
 
     for (const auto &window_repr : m_windowMap) {
+      if (shouldSkipWindow(window_repr)) {
+        continue;
+      }
+      if (m_workspaceManager.deduplicateWindows()) {
+        if (seenWindows.contains(window_repr.repr_rewrite)) {
+          continue;  // skip duplicate
+        }
+        seenWindows.insert(window_repr.repr_rewrite);
+      }
       if (isNotFirst) {
         windows.append(windowSeparator);
       }
@@ -287,9 +298,16 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
   }
 
   bool isFirst = true;
+  std::set<std::string> seenWindows;
   auto processWindow = [&](const WindowRepr &window_repr) {
     if (shouldSkipWindow(window_repr)) {
       return;  // skip
+    }
+    if (m_workspaceManager.deduplicateWindows()) {
+      if (seenWindows.contains(window_repr.repr_rewrite)) {
+        return;  // skip duplicate
+      }
+      seenWindows.insert(window_repr.repr_rewrite);
     }
     if (isFirst) {
       isFirst = false;
