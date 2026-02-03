@@ -2,10 +2,10 @@
 
 namespace waybar::util::PipewireBackend {
 
-std::string PrivacyNodeInfo::getName() {
-  const std::vector<std::string *> names{&application_name, &node_name};
+std::string PWPrivacyNodeInfo::getName() {
+  const std::vector<std::string*> names{&application_name, &node_name};
   std::string name = "Unknown Application";
-  for (const auto &item : names) {
+  for (const auto& item : names) {
     if (item != nullptr && !item->empty()) {
       name = *item;
       name[0] = toupper(name[0]);
@@ -15,11 +15,11 @@ std::string PrivacyNodeInfo::getName() {
   return name;
 }
 
-std::string PrivacyNodeInfo::getIconName() {
-  const std::vector<std::string *> names{&application_icon_name, &pipewire_access_portal_app_id,
-                                         &application_name, &node_name};
+std::string PWPrivacyNodeInfo::getIconName() {
+  const std::vector<std::string*> names{&application_icon_name, &pipewire_access_portal_app_id,
+                                        &application_name, &node_name};
   std::string name = "application-x-executable-symbolic";
-  for (const auto &item : names) {
+  for (const auto& item : names) {
     if (item != nullptr && !item->empty() && DefaultGtkIconThemeWrapper::has_icon(*item)) {
       return *item;
     }
@@ -27,15 +27,15 @@ std::string PrivacyNodeInfo::getIconName() {
   return name;
 }
 
-void PrivacyNodeInfo::handleProxyEventDestroy() {
+void PWPrivacyNodeInfo::handleProxyEventDestroy() {
   spa_hook_remove(&proxy_listener);
   spa_hook_remove(&object_listener);
 }
 
-void PrivacyNodeInfo::handleNodeEventInfo(const struct pw_node_info *info) {
+void PWPrivacyNodeInfo::handleNodeEventInfo(const struct pw_node_info* info) {
   state = info->state;
 
-  const struct spa_dict_item *item;
+  const struct spa_dict_item* item;
   spa_dict_for_each(item, info->props) {
     if (strcmp(item->key, PW_KEY_CLIENT_ID) == 0) {
       client_id = strtoul(item->value, nullptr, 10);

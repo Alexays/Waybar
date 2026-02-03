@@ -28,7 +28,7 @@ the screen or playing audio.
 
 *modules* ++
 	typeof: array of objects ++
-	default: [{"type": "screenshare"}, {"type": "audio-in"}] ++
+	default: [{"type": "screenshare"}, {"type": "audio-in"}, {"type": "location"}] ++
 	Which privacy modules to monitor. See *MODULES CONFIGURATION* for++
 	more information.
 
@@ -52,8 +52,12 @@ the screen or playing audio.
 
 *type*: ++
 	typeof: string ++
-	values: "screenshare", "audio-in", "audio-out" ++
+	values: "screenshare", "audio-in", "audio-out", "location" ++
 	Specifies which module to use and configure.
+
+*icon-name*: ++
+	typeof: string ++
+	If set, changes the modules icon.
 
 *tooltip*: ++
 	typeof: bool ++
@@ -95,6 +99,10 @@ the screen or playing audio.
 			"type": "audio-in",
 			"tooltip": true,
 			"tooltip-icon-size": 24
+		},
+		{
+			"type": "location",
+			"icon-name": "location-services-active-symbolic"
 		}
 	],
 	"ignore-monitor": true,
@@ -118,3 +126,4 @@ the screen or playing audio.
 - *#privacy-item.screenshare*
 - *#privacy-item.audio-in*
 - *#privacy-item.audio-out*
+- *#privacy-item.location*
