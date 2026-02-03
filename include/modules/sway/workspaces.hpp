@@ -4,6 +4,7 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 
+#include <optional>
 #include <string_view>
 #include <unordered_map>
 
@@ -41,6 +42,7 @@ class Workspaces : public AModule, public sigc::trackable {
   std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t getWorkspaceIndex(const std::string& name) const;
   static std::string trimWorkspaceName(std::string);
+  std::optional<uint16_t> getCustomSortIndex(const std::string& name) const;
   bool handleScroll(GdkEventScroll* /*unused*/) override;
 
   const Bar& bar_;
@@ -52,6 +54,7 @@ class Workspaces : public AModule, public sigc::trackable {
   util::RegexCollection m_windowRewriteRules;
   util::JsonParser parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;
+  std::unordered_map<std::string, uint16_t> custom_sort_priorities_;
   std::mutex mutex_;
   Ipc ipc_;
 };
