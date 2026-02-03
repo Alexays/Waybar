@@ -50,6 +50,36 @@ Addressed by *niri/workspaces*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*workspace-taskbar*: ++
+	typeof: object ++
+	Contains settings for the workspace taskbar, an alternative mode for the workspaces module which displays the window icons as images instead of text.
+	
+		*enable*: ++
+	typeof: bool ++
+	default: false ++
+	Enables the workspace taskbar mode.
+
+		*icon-size*: ++
+	typeof: int ++
+	default: 16 ++
+	Size of the icons in the workspace taskbar.
+
+		*separator*: ++
+	typeof: string ++
+	default: " " ++
+	The separator to be used between windows in a workspace.
+
+		*format*: ++
+	typeof: string ++
+	default: "{icon}" ++
+	Format to use for each window in the workspace taskbar. Available placeholders are {icon}, {title} and {app_id}.
+
+		*tooltip-format*: ++
+	typeof: string ++
+	default: "{title}" ++
+	The format, how information in the tooltip should be displayed. Available placeholders are {title} and {app_id}. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, or index for unnamed workspaces,
@@ -103,3 +133,9 @@ Additional to workspace name matching, the following *format-icons* can be set.
   the bar that it is displayed on.
 - *#workspaces button#niri-workspace-<name>*: Workspaces named this, or index
   for unnamed workspaces.
+- *#workspaces .workspace-label*
+- *#workspaces .taskbar-window* (each window in the taskbar, only if 'workspace-taskbar.enable' is true)
+- *#workspaces .taskbar-window.focused* (applied to the focused window)
+- *#workspaces .taskbar-window.urgent* (applied to urgent windows)
+- *#workspaces .taskbar-window.floating* (applied to floating windows)
+- *#workspaces .taskbar-window.active* (applied to the active window within every workspace)
