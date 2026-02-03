@@ -151,6 +151,10 @@ Contributions welcome!<br>
 Have fun :)<br>
 The style guidelines are [Google's](https://google.github.io/styleguide/cppguide.html)
 
+> [!CAUTION]
+> Distributions of Waybar are only released on the [official GitHub page](https://github.com/Alexays/Waybar).<br/>
+> Waybar does **not** have an official website. Do not trust any sites that claim to be official.
+
 ## License
 
 Waybar is licensed under the MIT license. [See LICENSE for more information](https://github.com/Alexays/Waybar/blob/master/LICENSE).
