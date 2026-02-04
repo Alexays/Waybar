@@ -369,6 +369,22 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
 	When the bar is vertical, it reads as top-to-bottom.
 
+## Drawer CSS state classes
+
+When a group drawer is rendered, the following additional CSS classes
+are applied dynamically to the drawer element based on its state:
+
+* .drawer-open ++
+    Applied when the drawer is in the open state.
+
+* .drawer-closed ++
+    Applied when the drawer is in the closed state.
+
+These classes can be used in the `style.css` file to customize the
+appearance of group drawers depending on whether they are expanded
+or collapsed.
+
+
 ```
 "group/power": {
     "orientation": "inherit",
