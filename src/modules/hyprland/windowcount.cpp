@@ -37,14 +37,14 @@ WindowCount::~WindowCount() {
 }
 
 auto WindowCount::update() -> void {
+  std::lock_guard<std::mutex> lg(mutex_);
+  
   queryActiveWorkspace();
 
   std::string format = config_["format"].asString();
   std::string formatEmpty = config_["format-empty"].asString();
   std::string formatWindowed = config_["format-windowed"].asString();
   std::string formatFullscreen = config_["format-fullscreen"].asString();
-
-  std::lock_guard<std::mutex> lg(mutex_);
 
   setClass("empty", workspace_.windows == 0);
   setClass("fullscreen", workspace_.hasfullscreen);
@@ -118,8 +118,6 @@ auto WindowCount::Workspace::parse(const Json::Value& value) -> WindowCount::Wor
 }
 
 void WindowCount::queryActiveWorkspace() {
-  std::lock_guard<std::mutex> lg(mutex_);
-
   if (separateOutputs_) {
     workspace_ = getActiveWorkspace(this->bar_.output->name);
   } else {
