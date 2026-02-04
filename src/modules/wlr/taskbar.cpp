@@ -575,6 +575,12 @@ Taskbar::Taskbar(const std::string &id, const waybar::Bar &bar, const Json::Valu
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
+  // Make task buttons distribute evenly across the available width.
+  if (config_["homogeneous"].isBool() && config_["homogeneous"].asBool()) {
+    box_.set_homogeneous(true);
+    box_.set_hexpand(true);
+  }
+
   struct wl_display *display = Client::inst()->wl_display;
   struct wl_registry *registry = wl_display_get_registry(display);
 
@@ -716,7 +722,14 @@ void Taskbar::handle_finished() {
 }
 
 void Taskbar::add_button(Gtk::Button &bt) {
-  box_.pack_start(bt, false, false);
+
+  // When homogeneous is enabled, allow children to expand and fill so they divide space equally.
+  const bool homogeneous = (config_["homogeneous"].isBool() && config_["homogeneous"].asBool());
+  box_.pack_start(bt, homogeneous, homogeneous);
+  if (homogeneous) {
+    bt.set_hexpand(true);
+    bt.set_halign(Gtk::ALIGN_FILL);
+  }
   box_.get_style_context()->remove_class("empty");
 }
 
