@@ -17,6 +17,8 @@ namespace {
 void gdkLogHandler(const gchar* log_domain, GLogLevelFlags log_level, const gchar* message,
                    gpointer user_data) {
   // Check for display connection errors
+  // These error messages come from GDK's X11/Wayland backend when the display connection breaks
+  // Note: Error message format is consistent across GTK3 versions but may change in GTK4
   if (message && (strstr(message, "Error reading events from display") != nullptr ||
                   strstr(message, "Broken pipe") != nullptr)) {
     spdlog::error("Display connection lost: {}. Exiting gracefully.", message);
@@ -324,7 +326,7 @@ int waybar::Client::main(int argc, char* argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
-  
+
   gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
                                      Gio::APPLICATION_HANDLES_COMMAND_LINE);
 
@@ -332,7 +334,10 @@ int waybar::Client::main(int argc, char* argv[]) {
   // This must be done after gtk_app is created so the handler can call gtk_app->quit()
   gdk_log_handler_id_ = g_log_set_handler("Gdk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
   gtk_log_handler_id_ = g_log_set_handler("Gtk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
-  default_log_handler_id_ = g_log_set_handler(nullptr, G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
+  // Only handle critical errors from other domains to avoid interfering with library error handling
+  default_log_handler_id_ = g_log_set_handler(nullptr, 
+      static_cast<GLogLevelFlags>(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL), 
+      gdkLogHandler, nullptr);
 
   // Initialize Waybars GTK resources with our custom icons
   auto theme = Gtk::IconTheme::get_default();
