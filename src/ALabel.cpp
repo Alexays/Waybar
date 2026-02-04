@@ -190,7 +190,7 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
 }
 
 void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::res res = waybar::util::command::exec((char*)data, "GtkMenu");
+  waybar::util::command::forkExec((char*)data);
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {
