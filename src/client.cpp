@@ -3,6 +3,7 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <cstdlib>
 #include <iostream>
 #include <utility>
 
@@ -23,6 +24,9 @@ void gdkLogHandler(const gchar* log_domain, GLogLevelFlags log_level, const gcha
     auto* client = waybar::Client::inst();
     if (client && client->gtk_app) {
       client->gtk_app->quit();
+    } else {
+      // Fallback if GTK app is not initialized yet
+      std::exit(1);
     }
     return;
   }
@@ -321,13 +325,14 @@ int waybar::Client::main(int argc, char* argv[]) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
   
+  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
+                                     Gio::APPLICATION_HANDLES_COMMAND_LINE);
+
   // Install log handler to catch display connection errors
+  // This must be done after gtk_app is created so the handler can call gtk_app->quit()
   gdk_log_handler_id_ = g_log_set_handler("Gdk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
   gtk_log_handler_id_ = g_log_set_handler("Gtk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
   default_log_handler_id_ = g_log_set_handler(nullptr, G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
-  
-  gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
-                                     Gio::APPLICATION_HANDLES_COMMAND_LINE);
 
   // Initialize Waybars GTK resources with our custom icons
   auto theme = Gtk::IconTheme::get_default();
