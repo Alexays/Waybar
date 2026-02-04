@@ -5,8 +5,8 @@
 
 namespace waybar {
 
-AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const std::string &id,
-                       const std::string &format, std::mutex &reap_mtx, std::list<pid_t> &reap,
+AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const std::string& id,
+                       const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
                        uint16_t interval, bool ellipsize, bool enable_click, bool enable_scroll)
     : ALabel(config, name, id, format, reap_mtx, reap, interval, ellipsize, enable_click,
              enable_scroll) {

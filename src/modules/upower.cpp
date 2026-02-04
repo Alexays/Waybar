@@ -6,8 +6,8 @@
 
 namespace waybar::modules {
 
-UPower::UPower(const std::string &id, const Json::Value &config, std::mutex &reap_mtx,
-               std::list<pid_t> &reap)
+UPower::UPower(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+               std::list<pid_t>& reap)
     : AIconLabel(config, "upower", id, "{percentage}", reap_mtx, reap, 0, true, true, true),
       sleeping_{false} {
   box_.set_name(name_);
@@ -61,7 +61,7 @@ UPower::UPower(const std::string &id, const Json::Value &config, std::mutex &rea
                              sigc::mem_fun(*this, &UPower::getConn_cb));
 
   // Make UPower client
-  GError **gErr = NULL;
+  GError** gErr = NULL;
   upClient_ = up_client_new_full(NULL, gErr);
   if (upClient_ == NULL)
     spdlog::error("Upower. UPower client connection error. {}", (*gErr)->message);
@@ -94,7 +94,7 @@ UPower::~UPower() {
   removeDevices();
 }
 
-static const std::string getDeviceStatus(UpDeviceState &state) {
+static const std::string getDeviceStatus(UpDeviceState& state) {
   switch (state) {
     case UP_DEVICE_STATE_CHARGING:
     case UP_DEVICE_STATE_PENDING_CHARGE:
@@ -111,7 +111,7 @@ static const std::string getDeviceStatus(UpDeviceState &state) {
   }
 }
 
-static const std::string getDeviceIcon(UpDeviceKind &kind) {
+static const std::string getDeviceIcon(UpDeviceKind& kind) {
   switch (kind) {
     case UP_DEVICE_KIND_LINE_POWER:
       return "ac-adapter-symbolic";
@@ -224,7 +224,7 @@ auto UPower::update() -> void {
   label_.set_markup(getText(upDevice_, format_));
   // Set icon
   if (upDevice_.icon_name == NULL || !gtkTheme_->has_icon(upDevice_.icon_name))
-    upDevice_.icon_name = (char *)NO_BATTERY.c_str();
+    upDevice_.icon_name = (char*)NO_BATTERY.c_str();
   image_.set_from_icon_name(upDevice_.icon_name, Gtk::ICON_SIZE_INVALID);
 
   box_.show();
@@ -233,7 +233,7 @@ auto UPower::update() -> void {
   ALabel::update();
 }
 
-void UPower::getConn_cb(Glib::RefPtr<Gio::AsyncResult> &result) {
+void UPower::getConn_cb(Glib::RefPtr<Gio::AsyncResult>& result) {
   try {
     conn_ = Gio::DBus::Connection::get_finish(result);
     // Subscribe DBUs events
@@ -241,26 +241,26 @@ void UPower::getConn_cb(Glib::RefPtr<Gio::AsyncResult> &result) {
                                         "org.freedesktop.login1", "org.freedesktop.login1.Manager",
                                         "PrepareForSleep", "/org/freedesktop/login1");
 
-  } catch (const Glib::Error &e) {
+  } catch (const Glib::Error& e) {
     spdlog::error("Upower. DBus connection error. {}", e.what().c_str());
   }
 }
 
-void UPower::onAppear(const Glib::RefPtr<Gio::DBus::Connection> &conn, const Glib::ustring &name,
-                      const Glib::ustring &name_owner) {
+void UPower::onAppear(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring& name,
+                      const Glib::ustring& name_owner) {
   upRunning_ = true;
 }
 
-void UPower::onVanished(const Glib::RefPtr<Gio::DBus::Connection> &conn,
-                        const Glib::ustring &name) {
+void UPower::onVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn,
+                        const Glib::ustring& name) {
   upRunning_ = false;
 }
 
-void UPower::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection> &connection,
-                                const Glib::ustring &sender_name, const Glib::ustring &object_path,
-                                const Glib::ustring &interface_name,
-                                const Glib::ustring &signal_name,
-                                const Glib::VariantContainerBase &parameters) {
+void UPower::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& connection,
+                                const Glib::ustring& sender_name, const Glib::ustring& object_path,
+                                const Glib::ustring& interface_name,
+                                const Glib::ustring& signal_name,
+                                const Glib::VariantContainerBase& parameters) {
   if (parameters.is_of_type(Glib::VariantType("(b)"))) {
     Glib::Variant<bool> sleeping;
     parameters.get_child(sleeping, 0);
@@ -275,33 +275,33 @@ void UPower::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection> &conne
   }
 }
 
-void UPower::deviceAdded_cb(UpClient *client, UpDevice *device, gpointer data) {
-  UPower *up{static_cast<UPower *>(data)};
+void UPower::deviceAdded_cb(UpClient* client, UpDevice* device, gpointer data) {
+  UPower* up{static_cast<UPower*>(data)};
   up->addDevice(device);
   up->setDisplayDevice();
   // Update the widget
   up->dp.emit();
 }
 
-void UPower::deviceRemoved_cb(UpClient *client, const gchar *objectPath, gpointer data) {
-  UPower *up{static_cast<UPower *>(data)};
+void UPower::deviceRemoved_cb(UpClient* client, const gchar* objectPath, gpointer data) {
+  UPower* up{static_cast<UPower*>(data)};
   up->removeDevice(objectPath);
   up->setDisplayDevice();
   // Update the widget
   up->dp.emit();
 }
 
-void UPower::deviceNotify_cb(UpDevice *device, GParamSpec *pspec, gpointer data) {
-  UPower *up{static_cast<UPower *>(data)};
+void UPower::deviceNotify_cb(UpDevice* device, GParamSpec* pspec, gpointer data) {
+  UPower* up{static_cast<UPower*>(data)};
   // Update the widget
   up->dp.emit();
 }
 
-void UPower::addDevice(UpDevice *device) {
+void UPower::addDevice(UpDevice* device) {
   std::lock_guard<std::mutex> guard{mutex_};
 
   if (G_IS_OBJECT(device)) {
-    const gchar *objectPath{up_device_get_object_path(device)};
+    const gchar* objectPath{up_device_get_object_path(device)};
 
     // Due to the device getting cleared after this event is fired, we
     // create a new object pointing to its objectPath
@@ -324,7 +324,7 @@ void UPower::addDevice(UpDevice *device) {
   }
 }
 
-void UPower::removeDevice(const gchar *objectPath) {
+void UPower::removeDevice(const gchar* objectPath) {
   std::lock_guard<std::mutex> guard{mutex_};
   if (devices_.find(objectPath) != devices_.cend()) {
     auto upDevice{devices_[objectPath]};
@@ -350,10 +350,10 @@ void UPower::resetDevices() {
   removeDevices();
 
   // Adds all devices
-  GPtrArray *newDevices = up_client_get_devices2(upClient_);
+  GPtrArray* newDevices = up_client_get_devices2(upClient_);
   if (newDevices != NULL)
     for (guint i{0}; i < newDevices->len; ++i) {
-      UpDevice *device{(UpDevice *)g_ptr_array_index(newDevices, i)};
+      UpDevice* device{(UpDevice*)g_ptr_array_index(newDevices, i)};
       if (device && G_IS_OBJECT(device)) addDevice(device);
     }
 }
@@ -374,8 +374,8 @@ void UPower::setDisplayDevice() {
         up_client_get_devices2(upClient_),
         [](gpointer data, gpointer user_data) {
           upDevice_output upDevice;
-          auto thisPtr{static_cast<UPower *>(user_data)};
-          upDevice.upDevice = static_cast<UpDevice *>(data);
+          auto thisPtr{static_cast<UPower*>(user_data)};
+          upDevice.upDevice = static_cast<UpDevice*>(data);
           thisPtr->getUpDeviceInfo(upDevice);
           upDevice_output displayDevice{NULL};
           if (!thisPtr->nativePath_.empty()) {
@@ -401,7 +401,7 @@ void UPower::setDisplayDevice() {
     g_signal_connect(upDevice_.upDevice, "notify", G_CALLBACK(deviceNotify_cb), this);
 }
 
-void UPower::getUpDeviceInfo(upDevice_output &upDevice_) {
+void UPower::getUpDeviceInfo(upDevice_output& upDevice_) {
   if (upDevice_.upDevice != NULL && G_IS_OBJECT(upDevice_.upDevice)) {
     g_object_get(upDevice_.upDevice, "kind", &upDevice_.kind, "state", &upDevice_.state,
                  "percentage", &upDevice_.percentage, "icon-name", &upDevice_.icon_name,
@@ -418,7 +418,7 @@ native_path: \"{7}\". model: \"{8}\"",
   }
 }
 
-const Glib::ustring UPower::getText(const upDevice_output &upDevice_, const std::string &format) {
+const Glib::ustring UPower::getText(const upDevice_output& upDevice_, const std::string& format) {
   Glib::ustring ret{""};
   if (upDevice_.upDevice != NULL) {
     std::string timeStr{""};
@@ -447,11 +447,11 @@ const Glib::ustring UPower::getText(const upDevice_output &upDevice_, const std:
 }
 
 bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
-                            const Glib::RefPtr<Gtk::Tooltip> &tooltip) {
+                            const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
   std::lock_guard<std::mutex> guard{mutex_};
 
   // Clear content box
-  contentBox_.forall([this](Gtk::Widget &wg) { contentBox_.remove(wg); });
+  contentBox_.forall([this](Gtk::Widget& wg) { contentBox_.remove(wg); });
 
   // Fill content box with the content
   for (auto pairDev : devices_) {
@@ -461,33 +461,33 @@ bool UPower::queryTooltipCb(int x, int y, bool keyboard_tooltip,
     if (pairDev.second.kind != UpDeviceKind::UP_DEVICE_KIND_UNKNOWN &&
         pairDev.second.kind != UpDeviceKind::UP_DEVICE_KIND_LINE_POWER) {
       // Make box record
-      Gtk::Box *boxRec{new Gtk::Box{box_.get_orientation(), tooltip_spacing_}};
+      Gtk::Box* boxRec{new Gtk::Box{box_.get_orientation(), tooltip_spacing_}};
       contentBox_.add(*boxRec);
-      Gtk::Box *boxDev{new Gtk::Box{box_.get_orientation()}};
-      Gtk::Box *boxUsr{new Gtk::Box{box_.get_orientation()}};
+      Gtk::Box* boxDev{new Gtk::Box{box_.get_orientation()}};
+      Gtk::Box* boxUsr{new Gtk::Box{box_.get_orientation()}};
       boxRec->add(*boxDev);
       boxRec->add(*boxUsr);
       // Construct device box
       // Set icon from kind
       std::string iconNameDev{getDeviceIcon(pairDev.second.kind)};
-      if (!gtkTheme_->has_icon(iconNameDev)) iconNameDev = (char *)NO_BATTERY.c_str();
-      Gtk::Image *iconDev{new Gtk::Image{}};
+      if (!gtkTheme_->has_icon(iconNameDev)) iconNameDev = (char*)NO_BATTERY.c_str();
+      Gtk::Image* iconDev{new Gtk::Image{}};
       iconDev->set_from_icon_name(iconNameDev, Gtk::ICON_SIZE_INVALID);
       iconDev->set_pixel_size(iconSize_);
       boxDev->add(*iconDev);
       // Set label from model
-      Gtk::Label *labelDev{new Gtk::Label{pairDev.second.model}};
+      Gtk::Label* labelDev{new Gtk::Label{pairDev.second.model}};
       boxDev->add(*labelDev);
       // Construct user box
       // Set icon from icon state
       if (pairDev.second.icon_name == NULL || !gtkTheme_->has_icon(pairDev.second.icon_name))
-        pairDev.second.icon_name = (char *)NO_BATTERY.c_str();
-      Gtk::Image *iconTooltip{new Gtk::Image{}};
+        pairDev.second.icon_name = (char*)NO_BATTERY.c_str();
+      Gtk::Image* iconTooltip{new Gtk::Image{}};
       iconTooltip->set_from_icon_name(pairDev.second.icon_name, Gtk::ICON_SIZE_INVALID);
       iconTooltip->set_pixel_size(iconSize_);
       boxUsr->add(*iconTooltip);
       // Set markup text
-      Gtk::Label *labelTooltip{new Gtk::Label{}};
+      Gtk::Label* labelTooltip{new Gtk::Label{}};
       labelTooltip->set_markup(getText(pairDev.second, tooltipFormat_));
       boxUsr->add(*labelTooltip);
     }

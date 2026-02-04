@@ -16,15 +16,15 @@ struct Profile {
 
 class PowerProfilesDaemon : public ALabel {
  public:
-  PowerProfilesDaemon(const std::string &, const Json::Value &, std::mutex &, std::list<pid_t> &);
+  PowerProfilesDaemon(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   auto update() -> void override;
-  void profileChangedCb(const Gio::DBus::Proxy::MapChangedProperties &,
-                        const std::vector<Glib::ustring> &);
-  void busConnectedCb(Glib::RefPtr<Gio::AsyncResult> &r);
-  void getAllPropsCb(Glib::RefPtr<Gio::AsyncResult> &r);
-  void setPropCb(Glib::RefPtr<Gio::AsyncResult> &r);
+  void profileChangedCb(const Gio::DBus::Proxy::MapChangedProperties&,
+                        const std::vector<Glib::ustring>&);
+  void busConnectedCb(Glib::RefPtr<Gio::AsyncResult>& r);
+  void getAllPropsCb(Glib::RefPtr<Gio::AsyncResult>& r);
+  void setPropCb(Glib::RefPtr<Gio::AsyncResult>& r);
   void populateInitState();
-  bool handleToggle(GdkEventButton *const &e) override;
+  bool handleToggle(GdkEventButton* const& e) override;
 
  private:
   // True if we're connected to the dbug interface. False if we're
@@ -32,7 +32,7 @@ class PowerProfilesDaemon : public ALabel {
   bool connected_;
   // Look for a profile name in the list of available profiles and
   // switch activeProfile_ to it.
-  void switchToProfile(std::string const &);
+  void switchToProfile(std::string const&);
   // Used to toggle/display the profiles
   std::vector<Profile> availableProfiles_;
   // Points to the active profile in the profiles list

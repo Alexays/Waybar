@@ -13,16 +13,16 @@ namespace waybar::modules::privacy {
 
 class Privacy : public AModule {
  public:
-  Privacy(const std::string &, const Json::Value &, Gtk::Orientation, const std::string &pos,
-          std::mutex &, std::list<pid_t> &);
+  Privacy(const std::string&, const Json::Value&, Gtk::Orientation, const std::string& pos,
+          std::mutex&, std::list<pid_t>&);
   auto update() -> void override;
 
   void onPrivacyNodesChanged();
 
  private:
-  std::list<PrivacyNodeInfo *> nodes_screenshare;  // Screen is being shared
-  std::list<PrivacyNodeInfo *> nodes_audio_in;     // Application is using the microphone
-  std::list<PrivacyNodeInfo *> nodes_audio_out;    // Application is outputting audio
+  std::list<PrivacyNodeInfo*> nodes_screenshare;  // Screen is being shared
+  std::list<PrivacyNodeInfo*> nodes_audio_in;     // Application is using the microphone
+  std::list<PrivacyNodeInfo*> nodes_audio_out;    // Application is outputting audio
 
   std::mutex mutex_;
   sigc::connection visibility_conn;

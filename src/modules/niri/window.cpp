@@ -9,8 +9,8 @@
 
 namespace waybar::modules::niri {
 
-Window::Window(const std::string &id, const Bar &bar, const Json::Value &config,
-               std::mutex &reap_mtx, std::list<pid_t> &reap)
+Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
+               std::mutex& reap_mtx, std::list<pid_t>& reap)
     : AAppIconLabel(config, "window", id, "{title}", reap_mtx, reap, 0, true), bar_(bar) {
   if (!gIPC) gIPC = std::make_unique<IPC>();
 
@@ -24,16 +24,16 @@ Window::Window(const std::string &id, const Bar &bar, const Json::Value &config,
 
 Window::~Window() { gIPC->unregisterForIPC(this); }
 
-void Window::onEvent(const Json::Value &ev) { dp.emit(); }
+void Window::onEvent(const Json::Value& ev) { dp.emit(); }
 
 void Window::doUpdate() {
   auto ipcLock = gIPC->lockData();
 
-  const auto &windows = gIPC->windows();
-  const auto &workspaces = gIPC->workspaces();
+  const auto& windows = gIPC->windows();
+  const auto& workspaces = gIPC->workspaces();
 
   const auto separateOutputs = config_["separate-outputs"].asBool();
-  const auto ws_it = std::find_if(workspaces.cbegin(), workspaces.cend(), [&](const auto &ws) {
+  const auto ws_it = std::find_if(workspaces.cbegin(), workspaces.cend(), [&](const auto& ws) {
     if (separateOutputs) {
       return ws["is_active"].asBool() && ws["output"].asString() == bar_.output->name;
     }
@@ -47,13 +47,13 @@ void Window::doUpdate() {
   } else {
     const auto id = (*ws_it)["active_window_id"].asUInt64();
     it = std::find_if(windows.cbegin(), windows.cend(),
-                      [id](const auto &win) { return win["id"].asUInt64() == id; });
+                      [id](const auto& win) { return win["id"].asUInt64() == id; });
   }
 
   setClass("empty", ws_it == workspaces.cend() || (*ws_it)["active_window_id"].isNull());
 
   if (it != windows.cend()) {
-    const auto &window = *it;
+    const auto& window = *it;
 
     const auto title = window["title"].asString();
     const auto appId = window["app_id"].asString();
@@ -72,7 +72,7 @@ void Window::doUpdate() {
 
     const auto id = window["id"].asUInt64();
     const auto workspaceId = window["workspace_id"].asUInt64();
-    const auto isSolo = std::none_of(windows.cbegin(), windows.cend(), [&](const auto &win) {
+    const auto isSolo = std::none_of(windows.cbegin(), windows.cend(), [&](const auto& win) {
       return win["id"].asUInt64() != id && win["workspace_id"].asUInt64() == workspaceId;
     });
     setClass("solo", isSolo);
@@ -96,7 +96,7 @@ void Window::update() {
   AAppIconLabel::update();
 }
 
-void Window::setClass(const std::string &className, bool enable) {
+void Window::setClass(const std::string& className, bool enable) {
   auto styleContext = bar_.window.get_style_context();
   if (enable) {
     if (!styleContext->has_class(className)) {

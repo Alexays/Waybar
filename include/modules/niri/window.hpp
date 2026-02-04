@@ -11,16 +11,16 @@ namespace waybar::modules::niri {
 
 class Window : public AAppIconLabel, public EventHandler {
  public:
-  Window(const std::string &, const Bar &, const Json::Value &, std::mutex &, std::list<pid_t> &);
+  Window(const std::string&, const Bar&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   ~Window() override;
   void update() override;
 
  private:
-  void onEvent(const Json::Value &ev) override;
+  void onEvent(const Json::Value& ev) override;
   void doUpdate();
-  void setClass(const std::string &className, bool enable);
+  void setClass(const std::string& className, bool enable);
 
-  const Bar &bar_;
+  const Bar& bar_;
 
   std::string oldAppId_;
 };

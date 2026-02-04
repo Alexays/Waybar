@@ -11,8 +11,8 @@
 
 namespace waybar::modules::hyprland {
 
-Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_manager,
-                     const Json::Value &clients_data)
+Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
+                     const Json::Value& clients_data)
     : m_workspaceManager(workspace_manager),
       m_id(workspace_data["id"].asInt()),
       m_name(workspace_data["name"].asString()),
@@ -45,8 +45,8 @@ Workspace::Workspace(const Json::Value &workspace_data, Workspaces &workspace_ma
   initializeWindowMap(clients_data);
 }
 
-void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condition,
-                      const std::string &class_name) {
+void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext>& context, bool condition,
+                      const std::string& class_name) {
   if (condition) {
     context->add_class(class_name);
   } else {
@@ -54,9 +54,9 @@ void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext> &context, bool condi
   }
 }
 
-std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const &addr) {
+std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const& addr) {
   auto it = std::ranges::find_if(m_windowMap,
-                                 [&addr](const auto &window) { return window.address == addr; });
+                                 [&addr](const auto& window) { return window.address == addr; });
   // If the vector contains the address, remove it and return the window representation
   if (it != m_windowMap.end()) {
     WindowRepr windowRepr = *it;
@@ -66,7 +66,7 @@ std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const &addr) {
   return std::nullopt;
 }
 
-bool Workspace::handleClicked(GdkEventButton *bt) const {
+bool Workspace::handleClicked(GdkEventButton* bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
     try {
       if (id() > 0) {  // normal
@@ -87,14 +87,14 @@ bool Workspace::handleClicked(GdkEventButton *bt) const {
         m_ipc.getSocket1Reply("dispatch togglespecialworkspace");
       }
       return true;
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       spdlog::error("Failed to dispatch workspace: {}", e.what());
     }
   }
   return false;
 }
 
-void Workspace::initializeWindowMap(const Json::Value &clients_data) {
+void Workspace::initializeWindowMap(const Json::Value& clients_data) {
   m_windowMap.clear();
   for (auto client : clients_data) {
     if (client["workspace"]["id"].asInt() == id()) {
@@ -103,10 +103,10 @@ void Workspace::initializeWindowMap(const Json::Value &clients_data) {
   }
 }
 
-void Workspace::setActiveWindow(WindowAddress const &addr) {
+void Workspace::setActiveWindow(WindowAddress const& addr) {
   std::optional<long> activeIdx;
   for (size_t i = 0; i < m_windowMap.size(); ++i) {
-    auto &window = m_windowMap[i];
+    auto& window = m_windowMap[i];
     bool isActive = (window.address == addr);
     window.setActive(isActive);
     if (isActive) {
@@ -133,7 +133,7 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
     if (!repr.empty() || m_workspaceManager.enableTaskbar()) {
       auto addr = create_window_payload.getAddress();
       auto it = std::ranges::find_if(
-          m_windowMap, [&addr](const auto &window) { return window.address == addr; });
+          m_windowMap, [&addr](const auto& window) { return window.address == addr; });
       // If the vector contains the address, update the window representation, otherwise insert it
       if (it != m_windowMap.end()) {
         *it = repr;
@@ -144,7 +144,7 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
   }
 };
 
-bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_payload) {
+bool Workspace::onWindowOpened(WindowCreationPayload const& create_window_payload) {
   if (create_window_payload.getWorkspaceName() == name()) {
     insertWindow(create_window_payload);
     return true;
@@ -152,7 +152,7 @@ bool Workspace::onWindowOpened(WindowCreationPayload const &create_window_payloa
   return false;
 }
 
-std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map) {
+std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map) {
   spdlog::trace("Selecting icon for workspace {}", name());
   if (isUrgent()) {
     auto urgentIconIt = icons_map.find("urgent");
@@ -209,7 +209,7 @@ std::string &Workspace::selectIcon(std::map<std::string, std::string> &icons_map
   return m_name;
 }
 
-void Workspace::update(const std::string &workspace_icon) {
+void Workspace::update(const std::string& workspace_icon) {
   if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
     m_button.hide();
     return;
@@ -248,7 +248,7 @@ void Workspace::update(const std::string &workspace_icon) {
 
     bool isNotFirst = false;
 
-    for (const auto &window_repr : m_windowMap) {
+    for (const auto& window_repr : m_windowMap) {
       if (isNotFirst) {
         windows.append(windowSeparator);
       }
@@ -276,10 +276,10 @@ bool Workspace::isEmpty() const {
   // If there are windows but they are all ignored, consider the workspace empty
   return std::all_of(
       m_windowMap.begin(), m_windowMap.end(),
-      [this, &ignore_list](const auto &window_repr) { return shouldSkipWindow(window_repr); });
+      [this, &ignore_list](const auto& window_repr) { return shouldSkipWindow(window_repr); });
 }
 
-void Workspace::updateTaskbar(const std::string &workspace_icon) {
+void Workspace::updateTaskbar(const std::string& workspace_icon) {
   for (auto child : m_content.get_children()) {
     if (child != &m_labelBefore) {
       m_content.remove(*child);
@@ -287,7 +287,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
   }
 
   bool isFirst = true;
-  auto processWindow = [&](const WindowRepr &window_repr) {
+  auto processWindow = [&](const WindowRepr& window_repr) {
     if (shouldSkipWindow(window_repr)) {
       return;  // skip
     }
@@ -343,7 +343,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
       processWindow(*it);
     }
   } else {
-    for (const auto &window_repr : m_windowMap) {
+    for (const auto& window_repr : m_windowMap) {
       processWindow(window_repr);
     }
   }
@@ -358,7 +358,7 @@ void Workspace::updateTaskbar(const std::string &workspace_icon) {
   }
 }
 
-bool Workspace::handleClick(const GdkEventButton *event_button, WindowAddress const &addr) const {
+bool Workspace::handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const {
   if (event_button->type == GDK_BUTTON_PRESS) {
     std::string command = std::regex_replace(m_workspaceManager.onClickWindow(),
                                              std::regex("\\{address\\}"), "0x" + addr);
@@ -372,9 +372,9 @@ bool Workspace::handleClick(const GdkEventButton *event_button, WindowAddress co
   return true;
 }
 
-bool Workspace::shouldSkipWindow(const WindowRepr &window_repr) const {
+bool Workspace::shouldSkipWindow(const WindowRepr& window_repr) const {
   auto ignore_list = m_workspaceManager.getIgnoredWindows();
-  auto it = std::ranges::find_if(ignore_list, [&window_repr](const auto &ignoreItem) {
+  auto it = std::ranges::find_if(ignore_list, [&window_repr](const auto& ignoreItem) {
     return std::regex_match(window_repr.window_class, ignoreItem) ||
            std::regex_match(window_repr.window_title, ignoreItem);
   });

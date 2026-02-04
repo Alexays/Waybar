@@ -9,8 +9,8 @@ namespace waybar {
 
 class AIconLabel : public ALabel {
  public:
-  AIconLabel(const Json::Value &config, const std::string &name, const std::string &id,
-             const std::string &format, std::mutex &reap_mtx, std::list<pid_t> &reap,
+  AIconLabel(const Json::Value& config, const std::string& name, const std::string& id,
+             const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
              uint16_t interval = 0, bool ellipsize = false, bool enable_click = false,
              bool enable_scroll = false);
   virtual ~AIconLabel() = default;
