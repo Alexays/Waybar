@@ -11,6 +11,45 @@
 #include "util/clara.hpp"
 #include "util/format.hpp"
 
+namespace {
+// Handler for GDK/GTK log messages to catch display connection errors
+void gdkLogHandler(const gchar* log_domain, GLogLevelFlags log_level, const gchar* message,
+                   gpointer user_data) {
+  // Check for display connection errors
+  if (message && (strstr(message, "Error reading events from display") != nullptr ||
+                  strstr(message, "Broken pipe") != nullptr)) {
+    spdlog::error("Display connection lost: {}. Exiting gracefully.", message);
+    // Request application shutdown
+    auto* client = waybar::Client::inst();
+    if (client && client->gtk_app) {
+      client->gtk_app->quit();
+    }
+    return;
+  }
+
+  // Forward other messages to spdlog with appropriate level
+  switch (log_level & G_LOG_LEVEL_MASK) {
+    case G_LOG_LEVEL_ERROR:
+    case G_LOG_LEVEL_CRITICAL:
+      if (message) spdlog::error("[{}] {}", log_domain ? log_domain : "GLib", message);
+      break;
+    case G_LOG_LEVEL_WARNING:
+      if (message) spdlog::warn("[{}] {}", log_domain ? log_domain : "GLib", message);
+      break;
+    case G_LOG_LEVEL_MESSAGE:
+    case G_LOG_LEVEL_INFO:
+      if (message) spdlog::info("[{}] {}", log_domain ? log_domain : "GLib", message);
+      break;
+    case G_LOG_LEVEL_DEBUG:
+      if (message) spdlog::debug("[{}] {}", log_domain ? log_domain : "GLib", message);
+      break;
+    default:
+      if (message) spdlog::trace("[{}] {}", log_domain ? log_domain : "GLib", message);
+      break;
+  }
+}
+}  // namespace
+
 waybar::Client* waybar::Client::inst() {
   static auto* c = new Client();
   return c;
@@ -268,6 +307,12 @@ int waybar::Client::main(int argc, char* argv[]) {
   if (!log_level.empty()) {
     spdlog::set_level(spdlog::level::from_str(log_level));
   }
+  
+  // Install log handler to catch display connection errors
+  g_log_set_handler("Gdk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
+  g_log_set_handler("Gtk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
+  g_log_set_handler(nullptr, G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
+  
   gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
                                      Gio::APPLICATION_HANDLES_COMMAND_LINE);
 
