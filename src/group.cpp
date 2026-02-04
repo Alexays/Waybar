@@ -9,6 +9,17 @@
 
 namespace waybar {
 
+static void set_drawer_css_state(Gtk::Widget& w, bool open) {
+  auto ctx = w.get_style_context();
+  if (open) {
+    ctx->add_class("drawer-open");
+    ctx->remove_class("drawer-closed");
+  } else {
+    ctx->add_class("drawer-closed");
+    ctx->remove_class("drawer-open");
+  }
+}
+
 Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
   /* The transition direction of a drawer is not actually determined by the transition type,
    * but rather by the order of 'box' and 'revealer_box':
@@ -72,7 +83,11 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 
     revealer.get_style_context()->add_class("drawer");
 
+    set_drawer_css_state(revealer, /*open=*/false);
+
     revealer.add(revealer_box);
+
+
 
     if (left_to_right) {
       box.pack_end(revealer);
@@ -87,11 +102,25 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 void Group::show_group() {
   box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);
+
+  if (is_drawer) {
+    set_drawer_css_state(revealer, /*open=*/true);
+    set_drawer_css_state(box, true);
+}
+
+
 }
 
 void Group::hide_group() {
   box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
+
+
+  if (is_drawer) {
+    set_drawer_css_state(revealer, /*open=*/false);
+    set_drawer_css_state(box, false);
+  }
+
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
