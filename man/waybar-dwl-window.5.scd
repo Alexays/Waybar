@@ -17,6 +17,16 @@ Addressed by *dwl/window*
 	default: {title} ++
 	The format, how information should be displayed.
 
+*hide-empty*: ++
+	typeof: bool ++
+	default: false ++
+	Option to hide the module when the content would be empty.
+
+*hide-inactive*: ++
+	typeof: bool ++
+	default: false ++
+	Option to hide the module when the window is unfocused.
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label (in 90 degree increments).
@@ -108,6 +118,10 @@ Regular expression and replacement follow ECMA-script rules.
 If no expression matches, the format output is left unchanged.
 
 Invalid expressions (e.g., mismatched parentheses) are skipped.
+
+# STYLE
+
+- *#window.active*
 
 # EXAMPLES
 
