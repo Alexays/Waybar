@@ -44,6 +44,8 @@ auto WindowCount::update() -> void {
   std::string formatWindowed = config_["format-windowed"].asString();
   std::string formatFullscreen = config_["format-fullscreen"].asString();
 
+  std::lock_guard<std::mutex> lg(mutex_);
+
   setClass("empty", workspace_.windows == 0);
   setClass("fullscreen", workspace_.hasfullscreen);
 
