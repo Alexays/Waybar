@@ -2,7 +2,7 @@
 
 namespace waybar::modules {
 
-JACK::JACK(const std::string &id, const Json::Value &config)
+JACK::JACK(const std::string& id, const Json::Value& config)
     : ALabel(config, "jack", id, "{load}%", 1) {
   running_ = false;
   client_ = NULL;
@@ -113,14 +113,14 @@ void JACK::shutdown() {
 
 }  // namespace waybar::modules
 
-int bufSizeCallback(jack_nframes_t size, void *obj) {
-  return static_cast<waybar::modules::JACK *>(obj)->bufSize(size);
+int bufSizeCallback(jack_nframes_t size, void* obj) {
+  return static_cast<waybar::modules::JACK*>(obj)->bufSize(size);
 }
 
-int sampleRateCallback(jack_nframes_t rate, void *obj) {
-  return static_cast<waybar::modules::JACK *>(obj)->sampleRate(rate);
+int sampleRateCallback(jack_nframes_t rate, void* obj) {
+  return static_cast<waybar::modules::JACK*>(obj)->sampleRate(rate);
 }
 
-int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->xrun(); }
+int xrunCallback(void* obj) { return static_cast<waybar::modules::JACK*>(obj)->xrun(); }
 
-void shutdownCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->shutdown(); }
+void shutdownCallback(void* obj) { return static_cast<waybar::modules::JACK*>(obj)->shutdown(); }

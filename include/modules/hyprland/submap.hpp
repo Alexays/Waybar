@@ -27,6 +27,7 @@ class Submap : public waybar::ALabel, public EventHandler {
   util::JsonParser parser_;
   std::string submap_;
   std::string icon_;
+  std::string prev_submap_;
   bool always_on_ = false;
   std::string default_submap_ = "Default";
   std::unordered_map<std::string, std::string> icons_;
