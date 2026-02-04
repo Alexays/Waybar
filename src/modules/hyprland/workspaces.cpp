@@ -939,7 +939,7 @@ void Workspaces::sortWorkspaces() {
           case SortMethod::NUMBER:
             try {
               return std::stoi(a->name()) < std::stoi(b->name());
-            } catch (const std::invalid_argument&) {
+            } catch (const std::exception& e) {
               // Handle the exception if necessary.
               break;
             }
