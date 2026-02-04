@@ -42,6 +42,7 @@ class Custom : public ALabel {
   int pid_;
   util::command::res output_;
   util::JsonParser parser_;
+  int signal_;  // Cached signal value to avoid JSON access in signal handler
 
   util::SleeperThread thread_;
 };

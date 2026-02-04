@@ -13,7 +13,8 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       tooltip_format_enabled_{config_["tooltip-format"].isString()},
       percentage_(0),
       fp_(nullptr),
-      pid_(-1) {
+      pid_(-1),
+      signal_(config_["signal"].isInt() ? config_["signal"].asInt() : -1) {
   if (config.isNull()) {
     spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
   }
@@ -136,7 +137,7 @@ void waybar::modules::Custom::waitingWorker() {
 }
 
 void waybar::modules::Custom::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+  if (signal_ != -1 && sig == SIGRTMIN + signal_) {
     thread_.wake_up();
   }
 }

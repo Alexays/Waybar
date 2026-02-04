@@ -1,7 +1,9 @@
 #include "modules/image.hpp"
 
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
-    : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+    : AModule(config, "image", id),
+      box_(Gtk::ORIENTATION_HORIZONTAL, 0),
+      signal_(config_["signal"].isInt() ? config_["signal"].asInt() : -1) {
   box_.pack_start(image_);
   box_.set_name("image");
   if (!id.empty()) {
@@ -41,7 +43,7 @@ void waybar::modules::Image::delayWorker() {
 }
 
 void waybar::modules::Image::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+  if (signal_ != -1 && sig == SIGRTMIN + signal_) {
     thread_.wake_up();
   }
 }

@@ -33,6 +33,7 @@ class Image : public AModule {
   int size_;
   std::chrono::milliseconds interval_;
   util::command::res output_;
+  int signal_;  // Cached signal value to avoid JSON access in signal handler
 
   util::SleeperThread thread_;
 };
