@@ -55,6 +55,19 @@ waybar::Client* waybar::Client::inst() {
   return c;
 }
 
+waybar::Client::~Client() {
+  // Clean up log handlers
+  if (gdk_log_handler_id_ != 0) {
+    g_log_remove_handler("Gdk", gdk_log_handler_id_);
+  }
+  if (gtk_log_handler_id_ != 0) {
+    g_log_remove_handler("Gtk", gtk_log_handler_id_);
+  }
+  if (default_log_handler_id_ != 0) {
+    g_log_remove_handler(nullptr, default_log_handler_id_);
+  }
+}
+
 void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint32_t name,
                                   const char* interface, uint32_t version) {
   auto* client = static_cast<Client*>(data);
@@ -309,9 +322,9 @@ int waybar::Client::main(int argc, char* argv[]) {
   }
   
   // Install log handler to catch display connection errors
-  g_log_set_handler("Gdk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
-  g_log_set_handler("Gtk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
-  g_log_set_handler(nullptr, G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
+  gdk_log_handler_id_ = g_log_set_handler("Gdk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
+  gtk_log_handler_id_ = g_log_set_handler("Gtk", G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
+  default_log_handler_id_ = g_log_set_handler(nullptr, G_LOG_LEVEL_MASK, gdkLogHandler, nullptr);
   
   gtk_app = Gtk::Application::create(argc, argv, "fr.arouillard.waybar",
                                      Gio::APPLICATION_HANDLES_COMMAND_LINE);
