@@ -1,0 +1,639 @@
+#include "modules/niri/taskbar.hpp"
+#include "util/gtk_icon.hpp"
+#include <gio/gio.h>
+#include <gio/gdesktopappinfo.h>
+#include <gtkmm/button.h>
+#include <gtkmm/label.h>
+#include <spdlog/spdlog.h>
+#include <cctype>
+
+namespace waybar::modules::niri {
+
+Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg)
+  : Button(win, cfg, Gtk::IconTheme::get_default())
+{ }
+
+void send_niri_ipc_focus_window(uint id) {
+  Json::Value request(Json::objectValue);
+  auto &action = (request["Action"] = Json::Value(Json::objectValue));
+  auto &focus_window = (action["FocusWindow"] = Json::Value(Json::objectValue));
+  focus_window["id"] = id;
+  IPC::send(request);
+}
+
+void send_niri_ipc_focus_workspace(uint id) {
+  Json::Value request(Json::objectValue);
+  auto &action = (request["Action"] = Json::Value(Json::objectValue));
+  auto &focus_window = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
+  auto &reference = (focus_window["reference"] = Json::Value(Json::objectValue));
+  reference["Id"] = id;
+  IPC::send(request);
+}
+
+Taskbar::Button::Button(const Json::Value &win, const Json::Value &cfg, const Glib::RefPtr<Gtk::IconTheme> &icon_theme)
+  : gtk_button_contents_(Gtk::ORIENTATION_HORIZONTAL, 4),
+    label_(""),
+    icon_()
+{
+  uint id = win["id"].asUInt();
+  this->niri_id_ = id;
+  this->app_id_ = "Unset";
+  this->title_ = "Unset";
+  spdlog::debug("Niri Taskbar: Creating new button for app {} with id {}",
+      win["app_id"].asString(), this->niri_id_);
+  this->gtk_button_contents_.add(this->icon_);
+  this->gtk_button_contents_.add(this->label_);
+  this->gtk_button.add(this->gtk_button_contents_);
+  this->gtk_button.set_relief(Gtk::RELIEF_NONE);
+  this->gtk_button.set_name("app-button");
+  this->gtk_button.signal_pressed().connect([id] {
+      try { send_niri_ipc_focus_window(id); }
+      catch (const std::exception &e) {
+        spdlog::error("Niri Taskbar: Error switching focus: {}", e.what());
+      }
+    });
+  this->icon_theme_ = icon_theme;
+  this->set_style(cfg);
+  this->update(win);
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Taskbar::Button::get_icon_from_app_id(std::string &app_id){
+  spdlog::debug("Niri Taskbar: Attempting to load icon with app_id '{}'", app_id);
+  auto icon_info = this->icon_theme_->lookup_icon(app_id, this->icon_size_);
+  if (icon_info) {
+    return icon_info.load_icon();
+  }
+
+  // Assume that app_id might be startup_wm from a desktop file, attempt a lookup.
+  std::string real_app_id = "";
+  gchar ***desktop_list = g_desktop_app_info_search(app_id.c_str());
+  if (desktop_list != nullptr && desktop_list[0] != nullptr) {
+    for (size_t i = 0; desktop_list[0][i] != nullptr; i++) {
+      auto tmp_info = Gio::DesktopAppInfo::create(desktop_list[0][i]);
+      // see https://github.com/Alexays/Waybar/issues/1446
+      if (!tmp_info) { continue; }
+
+      auto startup_class = tmp_info->get_startup_wm_class();
+      auto cmp_ichar = [](auto a, auto b) {
+        return std::tolower(static_cast<unsigned char>(a)) ==
+           std::tolower(static_cast<unsigned char>(b));
+      };
+      if (std::ranges::equal(startup_class, app_id, cmp_ichar)) {
+        real_app_id = tmp_info->get_string("Icon");
+        break;
+      }
+    }
+    g_strfreev(desktop_list[0]);
+  }
+  g_free(desktop_list);
+  // Retry lookup with real_app_id
+  spdlog::debug("Niri Taskbar: Attempting to load icon with found app_id '{}'",
+      real_app_id);
+  icon_info = this->icon_theme_->lookup_icon(real_app_id, this->icon_size_);
+  if (icon_info) {
+    return icon_info.load_icon();
+  }
+
+  // Fallback icon
+  return DefaultGtkIconThemeWrapper::load_icon(
+    "image-missing",
+    this->icon_size_,
+    Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE
+  );
+}
+
+void Taskbar::Button::update_icon() {
+  auto pixbuf = this->get_icon_from_app_id(this->app_id_);
+  auto scaled_icon_size = this->icon_size_;
+
+  if (pixbuf) {
+    if ((unsigned)pixbuf->get_width() != scaled_icon_size) {
+      int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
+      pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
+    }
+    auto surface = Gdk::Cairo::create_surface_from_pixbuf(
+        pixbuf,
+        this->icon_.get_scale_factor(),
+        this->icon_.get_window()
+    );
+    this->icon_.set(surface);
+  }
+}
+
+void Taskbar::Button::show() {
+  auto button_format = this->is_focused() ? this->active_button_format_ : inactive_button_format_;
+
+  switch(button_format) {
+    case ButtonFormat::Title:
+    case ButtonFormat::AppId:
+      this->label_.show();
+      this->icon_.hide();
+      break;
+    case ButtonFormat::Icon:
+      this->label_.hide();
+      this->icon_.show();
+      break;
+    case ButtonFormat::IconAndAppId:
+    case ButtonFormat::IconAndTitle:
+      this->label_.show();
+      this->icon_.show();
+      break;
+  }
+
+  this->gtk_button_contents_.show();
+  this->gtk_button.show();
+}
+
+void Taskbar::Button::hide() {
+  this->label_.hide();
+  this->icon_.hide();
+  this->gtk_button_contents_.hide();
+  this->gtk_button.hide();
+}
+
+void Taskbar::Button::update_text_label() {
+  auto button_format = this->is_focused() ? this->active_button_format_ : inactive_button_format_;
+  auto trunc_str = [this](const auto &s) {
+    if (s.length() < this->label_max_length_) {
+      return s;
+    }
+
+    return s.substr(0, this->label_max_length_) + "...";
+  };
+
+  switch(button_format) {
+    case ButtonFormat::AppId:
+    case ButtonFormat::IconAndAppId:
+    case ButtonFormat::Icon:
+      this->label_.set_label(trunc_str(this->app_id_));
+      break;
+    case ButtonFormat::Title:
+    case ButtonFormat::IconAndTitle:
+      this->label_.set_label(trunc_str(this->title_));
+      break;
+  }
+}
+
+void Taskbar::Button::update_title(std::string &title) {
+  if (this->title_ == title) {
+    return;
+  }
+  this->title_ = title;
+}
+
+void Taskbar::Button::update_app_id(std::string &app_id) {
+  if (this->app_id_ == app_id) {
+    return;
+  }
+  auto style = this->gtk_button.get_style_context();
+  style->remove_class(this->app_id_);
+  this->app_id_ = app_id;
+  style->add_class(this->app_id_);
+  this->update_icon();
+}
+
+void Taskbar::Button::set_style(const Json::Value &cfg) {
+  const auto *format_default = "icon";
+  auto format_to_enum = [](const std::string &format_str) {
+    if (format_str == "app-id") {
+      return ButtonFormat::AppId;
+    }
+    if (format_str == "title") {
+      return ButtonFormat::Title;
+    }
+    if (format_str == "icon") {
+      return ButtonFormat::Icon;
+    }
+    if (format_str == "icon-and-title") {
+      return ButtonFormat::IconAndTitle;
+    }
+    if (format_str == "icon-and-app-id") {
+      return ButtonFormat::IconAndAppId;
+    }
+    return ButtonFormat::Icon; // Default Fallback
+  };
+
+  this->active_button_format_ = format_to_enum(
+      cfg.get("active-button-format", format_default).asString()
+  );
+
+  this->inactive_button_format_ = format_to_enum(
+      cfg.get("inactive-button-format", format_default).asString()
+  );
+
+  this->icon_size_ = cfg.get("icon-size", 24).asUInt();
+
+  this->label_max_length_ = cfg.get("label-max-length", 40).asUInt();
+}
+
+bool Taskbar::Button::update(const Json::Value &win) {
+  // Update object from json
+  if (win["id"].asUInt() != this->niri_id_) {
+    return false;
+  }
+  this->pid_ = win["pid"].asUInt();
+  this->is_focused_ = win["is_focused"].asBool();
+  auto app_id = win["app_id"].asString();
+  this->update_app_id(app_id);
+  auto title = win["title"].asString();
+  this->update_title(title);
+  this->update_text_label();
+  auto tile_pos = win["layout"]["pos_in_scrolling_layout"];
+  this->is_tiled_ = !tile_pos.isNull();
+  if (this->is_tiled_) {
+    this->tile_pos_col = tile_pos[0].asUInt();
+    this->tile_pos_row = tile_pos[1].asUInt();
+  }
+
+  // Update Style Ctx from Object Fields
+  auto style_ctx = this->gtk_button.get_style_context();
+  this->is_focused_ ? style_ctx->add_class("focused") : style_ctx->remove_class("focused");
+
+  this->show();
+  return true;
+}
+
+bool Taskbar::Button::cmp(const Button &that) const {
+  if (!this->is_tiled_) {
+    return false;
+  }
+  if (!that.is_tiled_) {
+    return true;
+  }
+  return this->tile_pos_col == that.tile_pos_col ?
+      (this->tile_pos_row < that.tile_pos_row) :
+      (this->tile_pos_col < that.tile_pos_col);
+}
+
+
+Taskbar::Workspace::Workspace(const Json::Value &ws, const Json::Value &config, const Glib::RefPtr<Gtk::IconTheme> &icon_theme)
+  : buttons_(),
+    empty_workspace_btn_(),
+    label_(""),
+    gtk_box(Gtk::ORIENTATION_HORIZONTAL, 0),
+    gtk_box_buttons(Gtk::ORIENTATION_HORIZONTAL, 0)
+{
+  if (ws["id"].isNull()) {
+    spdlog::error("Niri Taskbar: Workspace contructor fed invalid workspace Json!");
+    throw false;
+  }
+  auto id = ws["id"].asUInt();
+  auto style = this->gtk_box.get_style_context();
+  style->add_class("workspace");
+  this->icon_theme_ = icon_theme;
+  this->id_ = id;
+  this->config_ = config;
+  this->gtk_box.set_name("workspace");
+  this->gtk_box.add(this->label_);
+  this->gtk_box.add(this->gtk_box_buttons);
+  this->gtk_box_buttons.set_name("workspace-buttons");
+  this->label_.set_name("workspace-label");
+  this->empty_workspace_btn_.set_name("new-workspace-button");
+  this->empty_workspace_btn_.hide();
+  this->empty_workspace_btn_.set_relief(Gtk::RELIEF_NONE);
+  this->empty_workspace_btn_.signal_pressed().connect([id] {
+      try { send_niri_ipc_focus_workspace(id); }
+      catch (const std::exception &e) {
+        spdlog::error("Niri Taskbar: Error switching focus: {}", e.what());
+      }
+    });
+  this->gtk_box_buttons.add(this->empty_workspace_btn_);
+  this->set_style(config);
+  this->update(ws);
+}
+
+void Taskbar::Workspace::set_style(const Json::Value &cfg) {
+  const auto *format_default = "no-label";
+  auto format_to_enum = [](const std::string &format_str) {
+    if (format_str == "no-label") {
+      return WorkspaceFormat::Default;
+    }
+    if (format_str == "label-idx") {
+      return WorkspaceFormat::LabelIdx;
+    }
+    if (format_str == "label-ws-name") {
+      return WorkspaceFormat::LabelWsName;
+    }
+    return WorkspaceFormat::Default;
+  };
+
+  this->active_workspace_format_ = format_to_enum(
+      cfg.get("active-workspace-format", format_default).asString()
+  );
+
+  this->inactive_workspace_format_ = format_to_enum(
+      cfg.get("inactive-workspace-format", format_default).asString()
+  );
+
+  this->empty_workspace_btn_.set_label(cfg.get("empty-ws-button-label", "+").asString());
+}
+
+bool Taskbar::Workspace::update(const Json::Value &ws) {
+  if (this->id_ != ws["id"].asUInt()) {
+    return false;
+  }
+  this->idx_ = ws["idx"].asUInt();
+  this->name_ = ws["name"].asString();
+  this->is_active_ = ws["is_active"].asBool();
+  this->is_focused_ = ws["is_focused"].asBool();
+
+  auto workspace_format = this->is_active() ? this->active_workspace_format_ : inactive_workspace_format_;
+  switch(workspace_format) {
+    case WorkspaceFormat::LabelIdx:
+      this->label_.set_label(ws.get("idx", "error").asString());
+      break;
+    case WorkspaceFormat::LabelWsName:
+      this->label_.set_label(ws.get("name", ws.get("idx", "error")).asString());
+      break;
+    default:
+      break;
+  }
+
+  return true;
+}
+
+Taskbar::Button* Taskbar::Workspace::update_button(const Json::Value &win) {
+  bool btn_in_workspace = (this->id_ == win["workspace_id"].asUInt());
+  Taskbar::Button *updated_button = nullptr;
+  // Try to find button that matches given win.
+  for (auto btn_it = this->buttons_.begin(); btn_it != this->buttons_.end(); btn_it++) {
+    auto &btn = *btn_it;
+    if (btn.update(win)) {
+      updated_button = &btn;
+      if (!btn_in_workspace) {
+        // We matched the button, but its not in our workspace.. Destroy it.
+        this->gtk_box_buttons.remove(btn.gtk_button);
+        this->buttons_.erase(btn_it);
+      }
+      break;
+    }
+  }
+
+  // Create button if needed
+  if (btn_in_workspace && (updated_button == nullptr)) {
+    auto &button = this->buttons_.emplace_back(win, this->config_, this->icon_theme_);
+    updated_button = &button;
+    this->gtk_box_buttons.pack_start(button.gtk_button, false, false, 0);
+  }
+
+  return updated_button;
+}
+
+bool Taskbar::Workspace::update_buttons(const std::vector<Json::Value> &windows) {
+  std::vector<uint> updated_win_ids;
+
+  // Update buttons
+  for (const auto &win : windows) {
+    auto *updated_button = this->update_button(win);
+    if (updated_button != nullptr) {
+      updated_win_ids.emplace_back(updated_button->get_niri_id());
+    }
+  }
+
+  // Erase buttons for window ids that did NOT just update.
+  auto new_end = std::ranges::remove_if(this->buttons_, [this, updated_win_ids](auto &btn){
+    auto window_stale = !std::ranges::any_of(
+        updated_win_ids,
+        [&btn](uint win_id) { return win_id == btn.get_niri_id(); }
+    );
+    if (window_stale) {
+      this->gtk_box_buttons.remove(btn.gtk_button);
+    }
+    return window_stale;
+  }).begin();
+
+  this->buttons_.erase(new_end, this->buttons_.end());
+
+  this->update_button_order();
+
+  return true;
+}
+
+void Taskbar::Workspace::update_button_order() {
+  std::ranges::sort(this->buttons_, [](auto& a, auto& b){ return a.cmp(b); });
+  uint pos = 0;
+  for (auto& btn : this->buttons_) {
+    this->gtk_box_buttons.reorder_child(btn.gtk_button, pos++);
+  }
+}
+
+void Taskbar::Workspace::show() {
+  auto workspace_format = this->is_active() ? this->active_workspace_format_ : inactive_workspace_format_;
+  switch(workspace_format) {
+    case WorkspaceFormat::Default:
+      this->label_.hide();
+      break;
+    case WorkspaceFormat::LabelIdx:
+    case WorkspaceFormat::LabelWsName:
+      this->label_.show();
+      break;
+  }
+
+  auto style_ctx = this->empty_workspace_btn_.get_style_context();
+  this->is_active_ ? style_ctx->add_class("active") : style_ctx->remove_class("active");
+  this->is_focused_ ? style_ctx->add_class("focused") : style_ctx->remove_class("focused");
+
+  style_ctx = this->gtk_box_buttons.get_style_context();
+  this->is_active_ ? style_ctx->add_class("active") : style_ctx->remove_class("active");
+  this->is_focused_ ? style_ctx->add_class("focused") : style_ctx->remove_class("focused");
+
+  style_ctx = this->gtk_box.get_style_context();
+  this->is_active_ ? style_ctx->add_class("active") : style_ctx->remove_class("active");
+  this->is_focused_ ? style_ctx->add_class("focused") : style_ctx->remove_class("focused");
+
+  this->gtk_box.show();
+  this->gtk_box_buttons.show();
+  if (this->is_empty()) {
+    this->empty_workspace_btn_.show();
+  } else {
+    this->empty_workspace_btn_.hide();
+  }
+}
+
+Taskbar::Taskbar(const std::string &id, const Bar &bar, const Json::Value &config)
+    : AModule(config, "taskbar", id, false, false), bar_(bar), box_(bar.orientation, 0)
+{
+  this->box_.set_name("taskbar");
+  if (!id.empty()) {
+    this->box_.get_style_context()->add_class(id);
+  }
+  this->box_.get_style_context()->add_class(MODULE_CLASS);
+  this->event_box_.add(this->box_);
+  this->icon_theme_ = Gtk::IconTheme::get_default();
+
+  if (!gIPC) {
+    gIPC = std::make_unique<IPC>();
+  }
+  gIPC->registerForIPC("WorkspacesChanged", this);
+  gIPC->registerForIPC("WorkspaceActivated", this);
+  gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
+
+  gIPC->registerForIPC("WindowsChanged", this);
+  gIPC->registerForIPC("WindowOpenedOrChanged", this);
+  gIPC->registerForIPC("WindowLayoutsChanged", this);
+  gIPC->registerForIPC("WindowFocusChanged", this);
+  gIPC->registerForIPC("WindowClosed", this);
+
+  this->dp.emit();
+}
+
+Taskbar::~Taskbar() { gIPC->unregisterForIPC(this); }
+
+void Taskbar::onEvent(const Json::Value &ev) { this->dp.emit(); }
+
+uint Taskbar::get_my_workspace_id() {
+  const auto &workspaces = gIPC->workspaces();
+  auto my_workspace_iter = std::ranges::find_if(
+      workspaces,
+      [this](const auto &ws) { // Get ws idx for active ws on same display as bar.
+        bool ws_on_my_output = ws["output"].asString() == this->bar_.output->name;
+        bool ws_is_active = ws["is_active"].asBool();
+        return (ws_on_my_output && ws_is_active);
+      });
+  if (my_workspace_iter == std::ranges::end(workspaces)) {
+    throw std::runtime_error("Niri Taskbar: Output has no active Niri Workspace!");
+  }
+  return (*my_workspace_iter)["id"].asUInt();
+}
+
+std::vector<Json::Value> Taskbar::get_workspaces_on_output() {
+  std::vector<Json::Value> my_workspaces;
+  const auto &workspaces = gIPC->workspaces();
+  std::ranges::copy_if(
+      workspaces,
+      std::back_inserter(my_workspaces),
+      [this] (const auto &ws) {
+        return ws.get("output", "").asString() == this->bar_.output->name;
+      }
+  );
+  return my_workspaces;
+}
+
+void Taskbar::update_workspaces() {
+  auto ws_vec = this->get_workspaces_on_output();
+  if (ws_vec.empty()) {
+    spdlog::error(
+        "Niri Taskbar: Failed to update workspaces on output {}",
+        this->bar_.output->name);
+  }
+
+  // Update Workspaces
+  for (auto workspace_it = this->workspaces_.begin(); workspace_it != this->workspaces_.end(); ) {
+    auto &workspace = *workspace_it;
+    auto ws_it = ws_vec.begin();
+    for (ws_it = ws_vec.begin(); ws_it != ws_vec.end() && !workspace.update(*ws_it); ws_it++) ;
+    if (ws_it == ws_vec.end()) {
+      // stale workspace
+      this->box_.remove(workspace.gtk_box);
+      this->workspaces_.erase(workspace_it);
+    } else {
+      ws_vec.erase(ws_it);
+      workspace_it++;
+    }
+  };
+
+  // ws_vec only contains ws json that did not match existing workspaces.. Make them!
+  for (auto &ws : ws_vec) {
+    auto &workspace = this->workspaces_.emplace_back(ws, this->config_, this->icon_theme_);
+    this->box_.pack_start(workspace.gtk_box, false, false, 0);
+  }
+
+  // Reorder As Needed
+  // Kinda awkward since seperator rules aren't enforced by objects, but by math here.
+  // Effectively.. Evens indexes are workspaces, odds are separators.
+  uint ws_last_idx = this->workspaces_.size();
+  for (auto &workspace : this->workspaces_) {
+    // niri workspaces indexes start at 1
+    auto i = workspace.get_idx() - 1;
+    if (workspace.get_idx() != 1 ) {
+      auto &sep = this->get_separator(i);
+      this->box_.reorder_child(sep, (i * 2));
+      sep.show();
+    }
+    this->box_.reorder_child(workspace.gtk_box, (i * 2) + 1);
+  }
+  this->clean_separators(ws_last_idx);
+}
+
+
+void Taskbar::do_update() {
+  auto ipcLock = gIPC->lockData();
+  uint my_workspace_id = 0;
+  try {
+    my_workspace_id = this->get_my_workspace_id();
+  } catch (const std::exception &e) {
+    spdlog::info("Niri Taskbar: No active workspace for {}.. Skipping.", bar_.output->name);
+    return;
+  }
+  const auto &windows = gIPC->windows();
+  const auto &workspaces = gIPC->workspaces();
+  bool did_update = false;
+
+  if (this->prev_workspaces_ != workspaces) {
+    spdlog::trace(
+        "Niri Taskbar Updating taskbar workspaces on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
+    this->prev_workspaces_.resize(workspaces.size());
+    std::ranges::copy(workspaces, this->prev_workspaces_.begin());
+    this->update_workspaces();
+    did_update = true;
+  }
+
+  if (this->prev_windows_ != windows) {
+    // XXX Assumes the IPC backend ignores window size values to skip updates
+    //     on window resize events.
+    spdlog::trace(
+        "Niri Taskbar: Updating taskbar windows on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
+    this->prev_windows_.resize(windows.size());
+    std::ranges::copy(windows, this->prev_windows_.begin());
+    for (auto &workspace : this->workspaces_) {
+      workspace.update_buttons(windows);
+    }
+    did_update = true;
+  };
+
+  if (did_update) {
+    spdlog::trace(
+        "Niri Taskbar: Refreshing taskbar gui on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
+    for (auto &workspace : this->workspaces_) {
+      workspace.show();
+    }
+    spdlog::trace(
+        "Niri Taskbar: Completed update on output {} (workspace id {})",
+        bar_.output->name,
+        my_workspace_id
+    );
+  }
+}
+
+void Taskbar::update() {
+  this->do_update();
+  AModule::update();
+}
+
+Gtk::Separator &Taskbar::get_separator(uint idx) {
+  while (idx >= this->separators_.size()) {
+    this->separators_.emplace_back();
+  }
+  auto &sep = this->separators_.at(idx);
+  if (sep.get_parent() == nullptr){
+    this->box_.pack_start(sep, false, false, 0);
+  };
+  return sep;
+}
+
+void Taskbar::clean_separators(uint idx) {
+  if (idx > this->separators_.size()) {
+    return;
+  }
+  this->separators_.erase(this->separators_.begin() + idx, this->separators_.end());
+}
+}  // namespace waybar::modules::niri
