@@ -21,39 +21,39 @@ wl_array tags, layouts;
 
 static uint num_tags = 0;
 
-static void toggle_visibility(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
+static void toggle_visibility(void* data, zdwl_ipc_output_v2* zdwl_output_v2) {
   // Intentionally empty
 }
 
-static void active(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t active) {
+static void active(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t active) {
   // Intentionally empty
 }
 
-static void set_tag(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t tag, uint32_t state,
+static void set_tag(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t tag, uint32_t state,
                     uint32_t clients, uint32_t focused) {
-  static_cast<Tags *>(data)->handle_view_tags(tag, state, clients, focused);
+  static_cast<Tags*>(data)->handle_view_tags(tag, state, clients, focused);
 
   num_tags = (state & ZDWL_IPC_OUTPUT_V2_TAG_STATE_ACTIVE) ? num_tags | (1 << tag)
                                                            : num_tags & ~(1 << tag);
 }
 
-static void set_layout_symbol(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *layout) {
+static void set_layout_symbol(void* data, zdwl_ipc_output_v2* zdwl_output_v2, const char* layout) {
   // Intentionally empty
 }
 
-static void title(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *title) {
+static void title(void* data, zdwl_ipc_output_v2* zdwl_output_v2, const char* title) {
   // Intentionally empty
 }
 
-static void dwl_frame(void *data, zdwl_ipc_output_v2 *zdwl_output_v2) {
+static void dwl_frame(void* data, zdwl_ipc_output_v2* zdwl_output_v2) {
   // Intentionally empty
 }
 
-static void set_layout(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, uint32_t layout) {
+static void set_layout(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t layout) {
   // Intentionally empty
 }
 
-static void appid(void *data, zdwl_ipc_output_v2 *zdwl_output_v2, const char *appid) {
+static void appid(void* data, zdwl_ipc_output_v2* zdwl_output_v2, const char* appid) {
   // Intentionally empty
 };
 
@@ -68,35 +68,35 @@ static const zdwl_ipc_output_v2_listener output_status_listener_impl{
     .frame = dwl_frame,
 };
 
-static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
-                          const char *interface, uint32_t version) {
+static void handle_global(void* data, struct wl_registry* registry, uint32_t name,
+                          const char* interface, uint32_t version) {
   if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
-    static_cast<Tags *>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2 *>(
-        (zdwl_ipc_manager_v2 *)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
+    static_cast<Tags*>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2*>(
+        (zdwl_ipc_manager_v2*)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
   }
   if (std::strcmp(interface, wl_seat_interface.name) == 0) {
     version = std::min<uint32_t>(version, 1);
-    static_cast<Tags *>(data)->seat_ = static_cast<struct wl_seat *>(
-        wl_registry_bind(registry, name, &wl_seat_interface, version));
+    static_cast<Tags*>(data)->seat_ =
+        static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
   }
 }
 
-static void handle_global_remove(void *data, struct wl_registry *registry, uint32_t name) {
+static void handle_global_remove(void* data, struct wl_registry* registry, uint32_t name) {
   /* Ignore event */
 }
 
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
+Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& config)
     : waybar::AModule(config, "tags", id, false, false),
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),
       box_{bar.orientation, 0},
       output_status_{nullptr} {
-  struct wl_display *display = Client::inst()->wl_display;
-  struct wl_registry *registry = wl_display_get_registry(display);
+  struct wl_display* display = Client::inst()->wl_display;
+  struct wl_registry* registry = wl_display_get_registry(display);
 
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
@@ -133,8 +133,8 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
   }
 
   uint32_t i = 1;
-  for (const auto &tag_label : tag_labels) {
-    Gtk::Button &button = buttons_.emplace_back(tag_label);
+  for (const auto& tag_label : tag_labels) {
+    Gtk::Button& button = buttons_.emplace_back(tag_label);
     button.set_relief(Gtk::RELIEF_NONE);
     box_.pack_start(button, false, false, 0);
     if (!config_["disable-click"].asBool()) {
@@ -147,7 +147,7 @@ Tags::Tags(const std::string &id, const waybar::Bar &bar, const Json::Value &con
     i <<= 1;
   }
 
-  struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  struct wl_output* output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
 
@@ -170,7 +170,7 @@ void Tags::handle_primary_clicked(uint32_t tag) {
   zdwl_ipc_output_v2_set_tags(output_status_, tag, 1);
 }
 
-bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
+bool Tags::handle_button_press(GdkEventButton* event_button, uint32_t tag) {
   if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
     if (!output_status_) return true;
     zdwl_ipc_output_v2_set_tags(output_status_, num_tags ^ tag, 0);
@@ -180,7 +180,7 @@ bool Tags::handle_button_press(GdkEventButton *event_button, uint32_t tag) {
 
 void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
   // First clear all occupied state
-  auto &button = buttons_[tag];
+  auto& button = buttons_[tag];
   if (clients) {
     button.get_style_context()->add_class("occupied");
   } else {

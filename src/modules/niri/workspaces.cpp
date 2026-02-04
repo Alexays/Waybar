@@ -6,7 +6,7 @@
 
 namespace waybar::modules::niri {
 
-Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
+Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   box_.set_name("workspaces");
   if (!id.empty()) {
@@ -27,16 +27,16 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 
 Workspaces::~Workspaces() { gIPC->unregisterForIPC(this); }
 
-void Workspaces::onEvent(const Json::Value &ev) { dp.emit(); }
+void Workspaces::onEvent(const Json::Value& ev) { dp.emit(); }
 
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
 
   const auto alloutputs = config_["all-outputs"].asBool();
   std::vector<Json::Value> my_workspaces;
-  const auto &workspaces = gIPC->workspaces();
+  const auto& workspaces = gIPC->workspaces();
   std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
-               [&](const auto &ws) {
+               [&](const auto& ws) {
                  if (alloutputs) return true;
                  return ws["output"].asString() == bar_.output->name;
                });
@@ -44,7 +44,7 @@ void Workspaces::doUpdate() {
   // Remove buttons for removed workspaces.
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(my_workspaces.begin(), my_workspaces.end(),
-                           [it](const auto &ws) { return ws["id"].asUInt64() == it->first; });
+                           [it](const auto& ws) { return ws["id"].asUInt64() == it->first; });
     if (ws == my_workspaces.end()) {
       it = buttons_.erase(it);
     } else {
@@ -53,9 +53,9 @@ void Workspaces::doUpdate() {
   }
 
   // Add buttons for new workspaces, update existing ones.
-  for (const auto &ws : my_workspaces) {
+  for (const auto& ws : my_workspaces) {
     auto bit = buttons_.find(ws["id"].asUInt64());
-    auto &button = bit == buttons_.end() ? addButton(ws) : bit->second;
+    auto& button = bit == buttons_.end() ? addButton(ws) : bit->second;
     auto style_context = button.get_style_context();
 
     if (ws["is_focused"].asBool())
@@ -103,13 +103,13 @@ void Workspaces::doUpdate() {
                          fmt::arg("output", ws["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(name);
+      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(name);
     } else {
       button.set_label(name);
     }
 
     if (config_["current-only"].asBool()) {
-      const auto *property = alloutputs ? "is_focused" : "is_active";
+      const auto* property = alloutputs ? "is_focused" : "is_active";
       if (ws[property].asBool())
         button.show();
       else
@@ -121,12 +121,12 @@ void Workspaces::doUpdate() {
 
   // Refresh the button order.
   for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
-    const auto &ws = *it;
+    const auto& ws = *it;
 
     auto pos = ws["idx"].asUInt() - 1;
     if (alloutputs) pos = it - my_workspaces.cbegin();
 
-    auto &button = buttons_[ws["id"].asUInt64()];
+    auto& button = buttons_[ws["id"].asUInt64()];
     box_.reorder_child(button, pos);
   }
 }
@@ -136,7 +136,7 @@ void Workspaces::update() {
   AModule::update();
 }
 
-Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
+Gtk::Button& Workspaces::addButton(const Json::Value& ws) {
   std::string name;
   if (ws["name"]) {
     name = ws["name"].asString();
@@ -145,7 +145,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
   }
 
   auto pair = buttons_.emplace(ws["id"].asUInt64(), name);
-  auto &&button = pair.first->second;
+  auto&& button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   if (!config_["disable-click"].asBool()) {
@@ -154,13 +154,13 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
       try {
         // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
         Json::Value request(Json::objectValue);
-        auto &action = (request["Action"] = Json::Value(Json::objectValue));
-        auto &focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
-        auto &reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
+        auto& action = (request["Action"] = Json::Value(Json::objectValue));
+        auto& focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
+        auto& reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
         reference["Id"] = id;
 
         IPC::send(request);
-      } catch (const std::exception &e) {
+      } catch (const std::exception& e) {
         spdlog::error("Error switching workspace: {}", e.what());
       }
     });
@@ -168,8 +168,8 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
   return button;
 }
 
-std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws) {
-  const auto &icons = config_["format-icons"];
+std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws) {
+  const auto& icons = config_["format-icons"];
   if (!icons) return value;
 
   if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
@@ -181,7 +181,7 @@ std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws)
   if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
 
   if (ws["name"]) {
-    const auto &name = ws["name"].asString();
+    const auto& name = ws["name"].asString();
     if (icons[name]) return icons[name].asString();
   }
 

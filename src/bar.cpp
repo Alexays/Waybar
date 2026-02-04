@@ -229,7 +229,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   gtk_layer_init_for_window(gtk_window);
   gtk_layer_set_keyboard_mode(gtk_window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
   gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
-  gtk_layer_set_namespace(gtk_window, config["name"].isString() ? config["name"].asCString() : "waybar");
+  gtk_layer_set_namespace(gtk_window,
+                          config["name"].isString() ? config["name"].asCString() : "waybar");
 
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
