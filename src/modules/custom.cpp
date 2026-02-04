@@ -136,7 +136,7 @@ void waybar::modules::Custom::waitingWorker() {
 }
 
 void waybar::modules::Custom::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }
