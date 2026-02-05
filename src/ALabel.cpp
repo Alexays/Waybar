@@ -9,6 +9,11 @@
 #include "config.hpp"
 
 namespace waybar {
+struct GtkMenuEventData {
+  std::mutex& reap_mtx;
+  std::list<pid_t> reap;
+  const char* menuActionItem;
+};
 
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
@@ -107,8 +112,9 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         std::string key = it.key().asString();
         submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
         menuActionsMap_[key] = it->asString();
+        GtkMenuEventData* data = new GtkMenuEventData{reap_mtx, reap, menuActionsMap_[key].c_str()};
         g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)menuActionsMap_[key].c_str());
+                         (gpointer)data);
       }
     } catch (std::runtime_error& e) {
       spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
@@ -190,7 +196,9 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
 }
 
 void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::forkExec((char*)data, "GtkMenu");
+  GtkMenuEventData* unpacked = (GtkMenuEventData*)data;
+  waybar::util::command::forkExec(unpacked->menuActionItem, "GtkMenu", unpacked->reap_mtx,
+                                  unpacked->reap);
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {
