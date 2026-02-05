@@ -311,6 +311,10 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& c
     // 2. the rule's monitor is the current monitor
     // 3. no monitor is specified in the rule => assume it needs to be persistent on every monitor
     if (allOutputs() || m_bar.output->name == monitor || monitor.empty()) {
+      // => skip ignore-workspaces even if its a persistent
+      if(isWorkspaceIgnored(workspace)) {
+        continue;
+      }
       // => persistent workspace should be shown on this monitor
       auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
       workspaceData["persistent-rule"] = true;
