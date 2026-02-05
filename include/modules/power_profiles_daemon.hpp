@@ -9,9 +9,10 @@ namespace waybar::modules {
 
 struct Profile {
   std::string name;
-  std::string driver;
+  std::string cpuDriver;
+  std::string platformDriver;
 
-  Profile(std::string n, std::string d) : name(std::move(n)), driver(std::move(d)) {}
+  Profile(std::string n, std::string cd, std::string pd) : name(std::move(n)), cpuDriver(std::move(cd)), platformDriver(std::move(pd)) {}
 };
 
 class PowerProfilesDaemon : public ALabel {
