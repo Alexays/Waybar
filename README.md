@@ -119,7 +119,7 @@ sudo apt install \
 On Arch, you can use this command:
 
 ```
-pacman -S \
+pacman -S --asdeps \
   gtkmm3 \
   jsoncpp \
   libsigc++ \
@@ -150,6 +150,10 @@ pacman -S \
 Contributions welcome!<br>
 Have fun :)<br>
 The style guidelines are [Google's](https://google.github.io/styleguide/cppguide.html)
+
+> [!CAUTION]
+> Distributions of Waybar are only released on the [official GitHub page](https://github.com/Alexays/Waybar).<br/>
+> Waybar does **not** have an official website. Do not trust any sites that claim to be official.
 
 ## License
 

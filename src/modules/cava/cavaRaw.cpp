@@ -48,9 +48,11 @@ auto waybar::modules::cava::Cava::onSilence() -> void {
       if (label_.get_style_context()->has_class("updated"))
         label_.get_style_context()->remove_class("updated");
 
-      if (hide_on_silence_)
+      if (hide_on_silence_) {
+        // Clear the label markup before hiding to prevent GTK from rendering a NULL Pango layout
+        label_.set_markup("");
         label_.hide();
-      else if (config_["format_silent"].isString())
+      } else if (config_["format_silent"].isString())
         label_.set_markup(format_silent_);
       silence_ = true;
       label_.get_style_context()->add_class("silent");

@@ -297,6 +297,11 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& c
     auto workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
                                                   : rule["workspaceString"].asString();
 
+    // There could be persistent special workspaces, only show those when show-special is enabled.
+    if (workspace.starts_with("special:") && !showSpecial()) {
+      continue;
+    }
+
     // The prefix "name:" cause mismatches with workspace names taken anywhere else.
     if (workspace.starts_with("name:")) {
       workspace = workspace.substr(5);
@@ -935,7 +940,7 @@ void Workspaces::sortWorkspaces() {
           case SortMethod::NUMBER:
             try {
               return std::stoi(a->name()) < std::stoi(b->name());
-            } catch (const std::invalid_argument&) {
+            } catch (const std::exception& e) {
               // Handle the exception if necessary.
               break;
             }
