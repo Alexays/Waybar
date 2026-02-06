@@ -2,6 +2,9 @@ name: "Nix-Tests"
 on:
   pull_request:
   push:
+concurrency:
+  group: ${{ github.workflow }}-nix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   nix-flake-check:
     runs-on: ubuntu-latest
