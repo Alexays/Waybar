@@ -124,6 +124,11 @@ auto Group::update() -> void {
   // noop
 }
 
+bool Group::handleScroll(GdkEventScroll* e) {
+  // no scroll.
+  return true;
+}
+
 Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
 
 void Group::addWidget(Gtk::Widget& widget) {
