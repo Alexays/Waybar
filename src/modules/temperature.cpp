@@ -20,6 +20,24 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
         if (check_set_path(item.asString())) break;
   };
 
+  auto find_hwmon_by_name = [](const std::string& name) -> std::optional<std::filesystem::path> {
+    for (const auto& entry : std::filesystem::directory_iterator("/sys/class/hwmon")) {
+      std::ifstream f(entry.path() / "name");
+      std::string hwname;
+      if (f >> hwname && hwname == name) {
+        return entry.path();
+      }
+    }
+    return std::nullopt;
+  };
+
+  // ensure either hwmon-name OR old paths are used, not both
+  if (config_["hwmon-name"].isString() &&
+      (!config_["hwmon-path"].isNull() || !config_["hwmon-path-abs"].isNull())) {
+    throw std::runtime_error(
+        "hwmon-name cannot be used together with hwmon-path or hwmon-path-abs");
+  }
+
   // if hwmon_path is an array, loop to find first valid item
   traverseAsArray(config_["hwmon-path"], [this](const std::string& path) {
     if (!std::filesystem::exists(path)) return false;
@@ -38,6 +56,20 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
             return true;
           });
     });
+  }
+
+  if (file_path_.empty() && config_["hwmon-name"].isString()) {
+    if (!config_["input-filename"].isString()) {
+      throw std::runtime_error("hwmon-name requires input-filename to be set");
+    }
+
+    auto hwmon = find_hwmon_by_name(config_["hwmon-name"].asString());
+
+    if (!hwmon) {
+      throw std::runtime_error("hwmon-name '" + config_["hwmon-name"].asString() + "' not found");
+    }
+
+    file_path_ = hwmon->string() + "/" + config_["input-filename"].asString();
   }
 
   if (file_path_.empty()) {
