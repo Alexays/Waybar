@@ -155,7 +155,6 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
       sort_key = id;  // default
-      const auto old_key = sort_key;
 
       /*
        * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as ID
@@ -179,8 +178,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       // Single log line that users can copy into later ordering config:
       spdlog::info("tray: item key='{}' (id='{}') title='{}' icon='{}' bus='{}' path='{}'",
                    sort_key, id, title, icon_name, bus_name, object_path);
-      if (!sort_key.empty() && sort_key != old_key) {
-        spdlog::info("tray: sort_key has changed to '{}', requesting reordering", sort_key);
+      if (!sort_key.empty()) {
         host_.requestReorder();
       }
     } else if (name == "Title") {

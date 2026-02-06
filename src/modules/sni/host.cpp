@@ -178,6 +178,7 @@ void Host::addRegisteredItem(std::string service) {
     items_.emplace_back(new Item(*this, bus_name, object_path, config_, bar_));
     seq_[items_.back().get()] = next_seq_++;
     on_add_(items_.back());
+    requestReorder();
   }
 }
 
