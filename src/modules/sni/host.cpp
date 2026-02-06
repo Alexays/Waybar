@@ -4,6 +4,10 @@
 
 #include "util/scope_guard.hpp"
 
+#include <algorithm>
+#include <cctype>
+#include <glibmm/main.h>
+
 namespace waybar::modules::SNI {
 
 Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
@@ -139,8 +143,95 @@ void Host::addRegisteredItem(std::string service) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
   if (it == items_.end()) {
-    items_.emplace_back(new Item(bus_name, object_path, config_, bar_));
+    items_.emplace_back(new Item(*this, bus_name, object_path, config_, bar_));
+    seq_[items_.back().get()] = next_seq_++;
     on_add_(items_.back());
+  }
+}
+
+std::string Host::toLowerAscii(std::string s) {
+  for (auto& ch : s) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return s;
+}
+
+void Host::requestReorder() {
+  if (reorder_pending_) {
+    return;
+  }
+  reorder_pending_ = true;
+
+  Glib::signal_idle().connect_once([this]() {
+    this->reorderItems();
+    this->reorder_pending_ = false;
+  });
+}
+
+void Host::reorderItems() {
+  // 1) Remove all items from UI
+  for (auto& it : items_) {
+    on_remove_(it);
+  }
+
+  // 2) Sort canonical item storage by sort_key (stable)
+  std::stable_sort(items_.begin(), items_.end(),
+                   [this](const std::unique_ptr<Item>& a, const std::unique_ptr<Item>& b) {
+                     const auto& ka = a->sort_key;
+                     const auto& kb = b->sort_key;
+
+                     const bool a_known = !ka.empty();
+                     const bool b_known = !kb.empty();
+
+                     if (a_known != b_known) {
+                       return a_known;  // known keys first
+                     }
+
+                     if (a_known && b_known) {
+                       const auto la = toLowerAscii(ka);
+                       const auto lb = toLowerAscii(kb);
+                       if (la != lb) {
+                         return la < lb;
+                       }
+                     }
+
+                     // tie-break: insertion order, deterministic
+                     return seq_[a.get()] < seq_[b.get()];
+                   });
+
+  // 3) Add all items back to UI in a way that matches Tray's packing direction.
+  const bool reverse =
+      config_["reverse-direction"].isBool() && config_["reverse-direction"].asBool();
+
+  // IMPORTANT:
+  // Tray::onAdd() uses pack_start when reverse-direction is false. If we add items
+  // in sorted order with pack_start, the visual order is reversed. Therefore we
+  // iterate backwards in that case.
+  if (!reverse) {
+    for (auto& it : items_) {
+      on_add_(it);
+    }
+  } else {
+    for (auto it = items_.rbegin(); it != items_.rend(); ++it) {
+      on_add_(*it);
+    }
+  }
+  {
+    std::string line;
+    line.reserve(256);
+    line += "tray: host sorted order:";
+    for (const auto& it : items_) {
+      const auto& key = it->sort_key;
+      const auto seq_it = seq_.find(it.get());
+      const auto seq = (seq_it != seq_.end()) ? seq_it->second : 999999u;
+
+      line += " [";
+      line += key.empty() ? "<empty>" : key;
+      line += "#";
+      line += std::to_string(seq);
+      line += "]";
+    }
+    spdlog::info("{}", line);
   }
 }
 
