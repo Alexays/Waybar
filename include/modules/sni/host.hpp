@@ -6,6 +6,7 @@
 #include <json/json.h>
 
 #include <tuple>
+#include <vector>
 
 #include <unordered_map>
 
@@ -54,6 +55,9 @@ class Host {
   bool reorder_pending_{false};
   std::size_t next_seq_{0};
   std::unordered_map<Item*, std::size_t> seq_;
+  std::unordered_map<std::string, std::size_t> order_index_;
+  std::vector<std::string> order_list_;  // normalized keys in configured order
+  bool unknown_after_{true};  // configured icons first, unknown icons after (default)
 };
 
 }  // namespace waybar::modules::SNI
