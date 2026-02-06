@@ -4,19 +4,19 @@ on:
   schedule:
     - cron: '0 0 1 * *' # Run monthly
   push:
-      paths:
-        - 'flake.nix'
+    paths:
+      - 'flake.nix'
 jobs:
   lockfile:
     runs-on: ubuntu-latest
     if: github.event_name != 'schedule' || github.repository == 'Alexays/Waybar'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
-        uses: cachix/install-nix-action@v27
+        uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
       - name: Update flake.lock
-        uses: DeterminateSystems/update-flake-lock@v21
+        uses: DeterminateSystems/update-flake-lock@v28
