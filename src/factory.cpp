@@ -114,6 +114,9 @@
 #ifdef HAVE_LIBGPS
 #include "modules/gps.hpp"
 #endif
+#ifdef HAVE_LIBMM_GLIB
+#include "modules/wwan.hpp"
+#endif
 #include "modules/cava/cava_frontend.hpp"
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
@@ -351,6 +354,11 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "gps") {
       return new waybar::modules::Gps(id, config_[name]);
     }
+#endif
+#ifdef HAVE_LIBMM_GLIB
+  if (ref == "wwan") {
+    return new waybar::modules::Wwan(id, config_[name]);
+  }
 #endif
     if (ref == "temperature") {
       return new waybar::modules::Temperature(id, config_[name]);
