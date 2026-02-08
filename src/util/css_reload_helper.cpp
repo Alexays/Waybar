@@ -23,7 +23,8 @@ namespace {
 const std::regex IMPORT_REGEX(R"(@import\s+(?:url\()?(?:"|')([^"')]+)(?:"|')\)?;)");
 }
 
-waybar::CssReloadHelper::CssReloadHelper(std::string cssFile, std::function<void()> callback)
+waybar::CssReloadHelper::CssReloadHelper(std::string cssFile,
+                                         std::function<void(const std::string&)> callback)
     : m_cssFile(std::move(cssFile)), m_callback(std::move(callback)) {}
 
 std::string waybar::CssReloadHelper::getFileContents(const std::string& filename) {
@@ -88,6 +89,12 @@ void waybar::CssReloadHelper::monitorChanges() {
   }
 }
 
+void waybar::CssReloadHelper::changeCssFile(const std::string& newCssFile) {
+  m_fileMonitors.clear();
+  m_cssFile = newCssFile;
+  monitorChanges();
+}
+
 void waybar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& file,
                                                Glib::RefPtr<Gio::File> const& other_type,
                                                Gio::FileMonitorEvent event_type) {
@@ -95,7 +102,7 @@ void waybar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& fi
   // fire for one
   if (event_type == Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
     spdlog::debug("Reloading style, file changed: {}", file->get_path());
-    m_callback();
+    m_callback(m_cssFile);
   }
 }
 
