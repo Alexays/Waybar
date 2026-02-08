@@ -111,6 +111,10 @@ gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.9.0'],
         default_options: ['introspection=false', 'vapi=false'],
         fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
+libsystemd = dependency('libsystemd', required: get_option('systemd'))
+if libsystemd.found()
+    add_project_arguments('-DHAVE_LIBSYSTEMD', language: 'cpp')
+endif
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
 have_chrono_timezones = cpp_lib_chrono >= 201611
@@ -549,6 +553,7 @@ executable(
         upower_glib,
         pipewire,
         playerctl,
+        libsystemd,
         libpulse,
         libjack,
         libwireplumber,
