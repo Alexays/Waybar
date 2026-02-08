@@ -88,8 +88,8 @@ pipewire = dependency('libpipewire-0.3', required: get_option('pipewire'))
 playerctl = dependency('playerctl', version : ['>=2.0.0'], required: get_option('mpris'))
 libpulse = dependency('libpulse', required: get_option('pulseaudio'))
 libudev = dependency('libudev', required: get_option('libudev'))
-libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
+xkbcommon = dependency('xkbcommon')
 xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
 libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
@@ -167,6 +167,7 @@ src_files = files(
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
+    'src/modules/keyboard_state.cpp',
     'src/modules/load.cpp',
     'src/modules/temperature.cpp',
     'src/modules/user.cpp',
@@ -193,6 +194,7 @@ man_files = files(
     'man/waybar-disk.5.scd',
     'man/waybar-idle-inhibitor.5.scd',
     'man/waybar-image.5.scd',
+    'man/waybar-keyboard-state.5.scd',
     'man/waybar-states.5.scd',
     'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
@@ -453,13 +455,6 @@ if libudev.found() and (is_linux or libepoll.found())
     )
 endif
 
-if libevdev.found() and (is_linux or libepoll.found()) and libinput.found() and (is_linux or libinotify.found())
-    add_project_arguments('-DHAVE_LIBEVDEV', language: 'cpp')
-    add_project_arguments('-DHAVE_LIBINPUT', language: 'cpp')
-    src_files += files('src/modules/keyboard_state.cpp')
-    man_files += files('man/waybar-keyboard-state.5.scd')
-endif
-
 if libmpdclient.found()
     add_project_arguments('-DHAVE_LIBMPDCLIENT', language: 'cpp')
     src_files += files(
@@ -556,11 +551,11 @@ executable(
         libinotify,
         libepoll,
         libmpdclient,
-        libevdev,
         gtk_layer_shell,
         libsndio,
         tz_dep,
-		xkbregistry,
+        xkbcommon,
+        xkbregistry,
         cava,
         eproxy,
         libgps
