@@ -10,8 +10,9 @@ static const unsigned UPDATE_DEBOUNCE_TIME_MS = 1000;
 
 namespace waybar::modules {
 
-SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value& config)
-    : ALabel(config, "systemd-failed-units", id, "{nr_failed} failed", 1),
+SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value& config,
+                                       std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "systemd-failed-units", id, "{nr_failed} failed", reap_mtx, reap, 1),
       hide_on_ok(true),
       update_pending(false),
       nr_failed_system(0),

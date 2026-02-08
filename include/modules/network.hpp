@@ -23,7 +23,7 @@ namespace waybar::modules {
 
 class Network : public ALabel {
  public:
-  Network(const std::string&, const Json::Value&);
+  Network(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Network();
   auto update() -> void override;
 
