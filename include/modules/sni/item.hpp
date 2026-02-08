@@ -18,6 +18,8 @@
 
 namespace waybar::modules::SNI {
 
+class Host;
+
 struct ToolTip {
   Glib::ustring icon_name;
   Glib::ustring text;
@@ -25,7 +27,7 @@ struct ToolTip {
 
 class Item : public sigc::trackable {
  public:
-  Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
+  Item(Host& host, const std::string&, const std::string&, const Json::Value&, const Bar&);
   ~Item();
 
   std::string bus_name;
@@ -38,6 +40,7 @@ class Item : public sigc::trackable {
   std::string category;
   std::string id;
 
+  std::string sort_key;
   std::string title;
   std::string icon_name;
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
@@ -58,6 +61,7 @@ class Item : public sigc::trackable {
   bool item_is_menu = true;
 
  private:
+  Host& host_;
   void onConfigure(GdkEventConfigure* ev);
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);

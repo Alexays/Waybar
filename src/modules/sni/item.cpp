@@ -14,6 +14,8 @@
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 
+#include "modules/sni/host.hpp"
+
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
   bool is_printable(const Glib::VariantBase& value) const {
@@ -37,8 +39,9 @@ namespace waybar::modules::SNI {
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
-Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
-    : bus_name(bn),
+Item::Item(Host& host, const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
+    : host_(host),
+      bus_name(bn),
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
@@ -151,6 +154,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       category = get_variant<std::string>(value);
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
+      sort_key = id;  // default
 
       /*
        * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as ID
@@ -165,10 +169,17 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
         this->proxy_->get_cached_property(value, "ToolTip");
         tooltip = get_variant<ToolTip>(value);
         if (!tooltip.text.empty()) {
-          setCustomIcon(tooltip.text.lowercase());
+          sort_key = tooltip.text.lowercase();
+          setCustomIcon(sort_key);
         }
       } else {
         setCustomIcon(id);
+      }
+      // Single log line that users can copy into later ordering config:
+      spdlog::info("tray: item key='{}' (id='{}') title='{}' icon='{}' bus='{}' path='{}'",
+                   sort_key, id, title, icon_name, bus_name, object_path);
+      if (!sort_key.empty()) {
+        host_.requestReorder();
       }
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
