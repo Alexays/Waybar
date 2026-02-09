@@ -26,7 +26,8 @@ The *image* module displays an image from a path.
 *interval*: ++
 	typeof: integer or float ++
 	The interval (in seconds) to re-render the image. ++
-	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
+	If set to a positive value, the minimum is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
+	Zero or negative values are treated as "once". ++
 	This is useful if the contents of *path* changes. ++
 	If no *interval* is defined, the image will only be rendered once.
 
