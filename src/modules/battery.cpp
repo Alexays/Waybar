@@ -685,13 +685,20 @@ auto waybar::modules::Battery::update() -> void {
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
+  auto state = getState(capacity, true);
+  bool adapter_online = false;
+  if (!adapter_.empty()) {
+    std::ifstream(adapter_ / "online") >> adapter_online;
+  }
+  if (status == "Full" && adapter_online) {
+    status = "Plugged";
+  }
   auto status_pretty = status;
   puts(status.c_str());
   // Transform to lowercase  and replace space with dash
   std::ranges::transform(status.begin(), status.end(), status.begin(),
                          [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
   auto format = format_;
-  auto state = getState(capacity, true);
   processEvents(state, status, capacity);
   setBarClass(state);
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
