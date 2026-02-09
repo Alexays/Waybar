@@ -6,6 +6,7 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <cstddef>
 #include <thread>
 #include <tuple>
 #include <type_traits>
@@ -27,6 +28,12 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
  public:
   SafeSignal() { dp_.connect(sigc::mem_fun(*this, &SafeSignal::handle_event)); }
 
+  void set_max_queued_events(std::size_t max_queued_events) {
+    std::unique_lock lock(mutex_);
+    max_queued_events_ = max_queued_events;
+    trim_queue_locked();
+  }
+
   template <typename... EmitArgs>
   void emit(EmitArgs&&... args) {
     if (main_tid_ == std::this_thread::get_id()) {
@@ -41,6 +48,9 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
     } else {
       {
         std::unique_lock lock(mutex_);
+        if (max_queued_events_ != 0 && queue_.size() >= max_queued_events_) {
+          queue_.pop();
+        }
         queue_.emplace(std::forward<EmitArgs>(args)...);
       }
       dp_.emit();
@@ -60,6 +70,15 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
   using signal_t::emit_reverse;
   using signal_t::make_slot;
 
+  void trim_queue_locked() {
+    if (max_queued_events_ == 0) {
+      return;
+    }
+    while (queue_.size() > max_queued_events_) {
+      queue_.pop();
+    }
+  }
+
   void handle_event() {
     for (std::unique_lock lock(mutex_); !queue_.empty(); lock.lock()) {
       auto args = queue_.front();
@@ -72,6 +91,7 @@ struct SafeSignal : sigc::signal<void(std::decay_t<Args>...)> {
   Glib::Dispatcher dp_;
   std::mutex mutex_;
   std::queue<arg_tuple_t> queue_;
+  std::size_t max_queued_events_ = 4096;
   const std::thread::id main_tid_ = std::this_thread::get_id();
   // cache functor for signal emission to avoid recreating it on each event
   const slot_t cached_fn_ = make_slot();
