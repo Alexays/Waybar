@@ -42,6 +42,15 @@ class SleeperThread {
   }
 
   SleeperThread& operator=(std::function<void()> func) {
+    if (thread_.joinable()) {
+      stop();
+      thread_.join();
+    }
+    {
+      std::lock_guard<std::mutex> lck(mutex_);
+      do_run_ = true;
+      signal_ = false;
+    }
     thread_ = std::thread([this, func] {
       while (do_run_) {
         signal_ = false;
@@ -92,7 +101,7 @@ class SleeperThread {
     condvar_.notify_all();
   }
 
-  auto stop() {
+  void stop() {
     {
       std::lock_guard<std::mutex> lck(mutex_);
       signal_ = true;
