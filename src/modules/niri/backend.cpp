@@ -20,6 +20,8 @@
 
 namespace waybar::modules::niri {
 
+IPC::IPC() { startIPC(); }
+
 int IPC::connectToSocket() {
   const char* socket_path = getenv("NIRI_SOCKET");
 
