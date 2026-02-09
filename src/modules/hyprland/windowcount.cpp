@@ -38,7 +38,7 @@ WindowCount::~WindowCount() {
 
 auto WindowCount::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
-  
+
   queryActiveWorkspace();
 
   std::string format = config_["format"].asString();
@@ -125,9 +125,7 @@ void WindowCount::queryActiveWorkspace() {
   }
 }
 
-void WindowCount::onEvent(const std::string& ev) {
-  dp.emit();
-}
+void WindowCount::onEvent(const std::string& ev) { dp.emit(); }
 
 void WindowCount::setClass(const std::string& classname, bool enable) {
   if (enable) {

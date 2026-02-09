@@ -172,8 +172,6 @@ inline int32_t forkExec(const std::string& cmd, const std::string& output_name) 
   return pid;
 }
 
-inline int32_t forkExec(const std::string& cmd) {
-  return forkExec(cmd, "");
-}
+inline int32_t forkExec(const std::string& cmd) { return forkExec(cmd, ""); }
 
 }  // namespace waybar::util::command
