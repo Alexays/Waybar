@@ -7,23 +7,23 @@
 
 namespace waybar::modules::river {
 
-static void listen_focused_output(void *data, struct zriver_seat_status_v1 *seat_status,
-                                  struct wl_output *output) {
+static void listen_focused_output(void* data, struct zriver_seat_status_v1* seat_status,
+                                  struct wl_output* output) {
   // Intentionally empty
 }
 
-static void listen_unfocused_output(void *data, struct zriver_seat_status_v1 *seat_status,
-                                    struct wl_output *output) {
+static void listen_unfocused_output(void* data, struct zriver_seat_status_v1* seat_status,
+                                    struct wl_output* output) {
   // Intentionally empty
 }
 
-static void listen_focused_view(void *data, struct zriver_seat_status_v1 *seat_status,
-                                const char *title) {
+static void listen_focused_view(void* data, struct zriver_seat_status_v1* seat_status,
+                                const char* title) {
   // Intentionally empty
 }
 
-static void listen_mode(void *data, struct zriver_seat_status_v1 *seat_status, const char *mode) {
-  static_cast<Mode *>(data)->handle_mode(mode);
+static void listen_mode(void* data, struct zriver_seat_status_v1* seat_status, const char* mode) {
+  static_cast<Mode*>(data)->handle_mode(mode);
 }
 
 static const zriver_seat_status_v1_listener seat_status_listener_impl = {
@@ -33,8 +33,8 @@ static const zriver_seat_status_v1_listener seat_status_listener_impl = {
     .mode = listen_mode,
 };
 
-static void handle_global(void *data, struct wl_registry *registry, uint32_t name,
-                          const char *interface, uint32_t version) {
+static void handle_global(void* data, struct wl_registry* registry, uint32_t name,
+                          const char* interface, uint32_t version) {
   if (std::strcmp(interface, zriver_status_manager_v1_interface.name) == 0) {
     version = std::min<uint32_t>(version, 3);
     if (version < ZRIVER_SEAT_STATUS_V1_MODE_SINCE_VERSION) {
@@ -42,31 +42,31 @@ static void handle_global(void *data, struct wl_registry *registry, uint32_t nam
           "river server does not support the \"mode\" event; the module will be disabled");
       return;
     }
-    static_cast<Mode *>(data)->status_manager_ = static_cast<struct zriver_status_manager_v1 *>(
+    static_cast<Mode*>(data)->status_manager_ = static_cast<struct zriver_status_manager_v1*>(
         wl_registry_bind(registry, name, &zriver_status_manager_v1_interface, version));
   } else if (std::strcmp(interface, wl_seat_interface.name) == 0) {
     version = std::min<uint32_t>(version, 1);
-    static_cast<Mode *>(data)->seat_ = static_cast<struct wl_seat *>(
-        wl_registry_bind(registry, name, &wl_seat_interface, version));
+    static_cast<Mode*>(data)->seat_ =
+        static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
   }
 }
 
-static void handle_global_remove(void *data, struct wl_registry *registry, uint32_t name) {
+static void handle_global_remove(void* data, struct wl_registry* registry, uint32_t name) {
   // Nobody cares
 }
 
 static const wl_registry_listener registry_listener_impl = {.global = handle_global,
                                                             .global_remove = handle_global_remove};
 
-Mode::Mode(const std::string &id, const waybar::Bar &bar, const Json::Value &config)
+Mode::Mode(const std::string& id, const waybar::Bar& bar, const Json::Value& config)
     : waybar::ALabel(config, "mode", id, "{}"),
       status_manager_{nullptr},
       seat_{nullptr},
       bar_(bar),
       mode_{""},
       seat_status_{nullptr} {
-  struct wl_display *display = Client::inst()->wl_display;
-  struct wl_registry *registry = wl_display_get_registry(display);
+  struct wl_display* display = Client::inst()->wl_display;
+  struct wl_registry* registry = wl_display_get_registry(display);
   wl_registry_add_listener(registry, &registry_listener_impl, this);
   wl_display_roundtrip(display);
 
@@ -94,7 +94,7 @@ Mode::~Mode() {
   }
 }
 
-void Mode::handle_mode(const char *mode) {
+void Mode::handle_mode(const char* mode) {
   if (format_.empty()) {
     label_.hide();
   } else {

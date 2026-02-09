@@ -7,6 +7,7 @@ vgcore.*
 *.swp
 packagecache
 /subprojects/**/
+/subprojects/.wraplock
 /build*
 /dist
 /meson.egg-info
@@ -50,3 +51,4 @@ result
 result-*
 
 .ccls-cache
+_codeql_detected_source_root

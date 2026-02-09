@@ -38,6 +38,8 @@ WindowCount::~WindowCount() {
 
 auto WindowCount::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
+  
+  queryActiveWorkspace();
 
   std::string format = config_["format"].asString();
   std::string formatEmpty = config_["format-empty"].asString();
@@ -116,8 +118,6 @@ auto WindowCount::Workspace::parse(const Json::Value& value) -> WindowCount::Wor
 }
 
 void WindowCount::queryActiveWorkspace() {
-  std::lock_guard<std::mutex> lg(mutex_);
-
   if (separateOutputs_) {
     workspace_ = getActiveWorkspace(this->bar_.output->name);
   } else {
@@ -126,7 +126,6 @@ void WindowCount::queryActiveWorkspace() {
 }
 
 void WindowCount::onEvent(const std::string& ev) {
-  queryActiveWorkspace();
   dp.emit();
 }
 

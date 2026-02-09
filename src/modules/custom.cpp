@@ -136,7 +136,7 @@ void waybar::modules::Custom::waitingWorker() {
 }
 
 void waybar::modules::Custom::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }
@@ -187,13 +187,9 @@ auto waybar::modules::Custom::update() -> void {
                 fmt::arg("icon", getIcon(percentage_, alt_)), fmt::arg("percentage", percentage_));
             label_.set_tooltip_markup(tooltip);
           } else if (text_ == tooltip_) {
-            if (label_.get_tooltip_markup() != str) {
-              label_.set_tooltip_markup(str);
-            }
+            label_.set_tooltip_markup(str);
           } else {
-            if (label_.get_tooltip_markup() != tooltip_) {
-              label_.set_tooltip_markup(tooltip_);
-            }
+            label_.set_tooltip_markup(tooltip_);
           }
         }
         auto style = label_.get_style_context();

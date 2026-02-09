@@ -5,8 +5,8 @@
 
 namespace waybar {
 
-AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const std::string &id,
-                       const std::string &format, uint16_t interval, bool ellipsize,
+AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const std::string& id,
+                       const std::string& format, uint16_t interval, bool ellipsize,
                        bool enable_click, bool enable_scroll)
     : ALabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
   event_box_.remove();

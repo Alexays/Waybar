@@ -6,16 +6,17 @@
 }:
 let
   libcava = rec {
-    version = "0.10.4";
+    version = "0.10.7-beta";
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
-      tag = version;
-      hash = "sha256-9eTDqM+O1tA/3bEfd1apm8LbEcR9CVgELTIspSVPMKM=";
+      # NOTE: Needs to match the cava.wrap
+      tag = "v${version}";
+      hash = "sha256-IX1B375gTwVDRjpRfwKGuzTAZOV2pgDWzUd4bW2cTDU=";
     };
   };
 in
-(waybar.overrideAttrs (oldAttrs: {
+waybar.overrideAttrs (oldAttrs: {
   inherit version;
 
   src = lib.cleanSourceWith {
@@ -43,4 +44,4 @@ in
     patchShebangs .
     popd
   '';
-}))
+})

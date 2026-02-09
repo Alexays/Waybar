@@ -10,13 +10,9 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      # TODO: bump to clang 19 release
-      # - uses: DoozyX/clang-format-lint-action@v0.18.2
-      - uses: DoozyX/clang-format-lint-action@558090054b3f39e3d6af24f0cd73b319535da809
+      - uses: actions/checkout@v6
+      - uses: RafikFarhad/clang-format-github-action@v6
         name: clang-format
         with:
-          source: "."
-          extensions: "hpp,h,cpp,c"
-          style: "file:.clang-format"
-          clangFormatVersion: 19
+          sources: "src/**/*.hpp,src/**/*.cpp"
+          style: "file"

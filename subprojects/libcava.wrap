@@ -1,0 +1,12 @@
+#[wrap-git]
+#url = https://github.com/LukashonakV/cava.git
+#revision = 866cfec40b7b9d38e97148d004d3134c1385b52f
+#depth = 1
+
+[wrap-file]
+directory = cava-0.10.7-beta
+source_url = https://github.com/LukashonakV/cava/archive/v0.10.7-beta.tar.gz
+source_filename = cava-0.10.7.tar.gz
+source_hash = 8915d7214f2046554c158fe6f2ae518881dfb573e421ea848727be11a5dfa8c4
+[provide]
+libcava = cava_dep

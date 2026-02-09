@@ -45,6 +45,8 @@ Window::~Window() {
 auto Window::update() -> void {
   std::shared_lock<std::shared_mutex> windowIpcShareLock(windowIpcSmtx);
 
+  queryActiveWorkspace();
+
   std::string windowName = waybar::util::sanitize_string(workspace_.last_window_title);
   std::string windowAddress = workspace_.last_window;
 
@@ -236,8 +238,6 @@ void Window::queryActiveWorkspace() {
 }
 
 void Window::onEvent(const std::string& ev) {
-  queryActiveWorkspace();
-
   dp.emit();
 }
 
