@@ -109,7 +109,7 @@ inline FILE* open(const std::string& cmd, int& pid, const std::string& output_na
     ::close(fd[0]);
     dup2(fd[1], 1);
     setpgid(child_pid, child_pid);
-    if (output_name != "") {
+    if (!output_name.empty()) {
       setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
     }
     execlp("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
@@ -138,7 +138,7 @@ inline struct res execNoRead(const std::string& cmd) {
   return {WEXITSTATUS(stat), ""};
 }
 
-inline int32_t forkExec(const std::string& cmd) {
+inline int32_t forkExec(const std::string& cmd, const std::string& output_name) {
   if (cmd == "") return -1;
 
   pid_t pid = fork();
@@ -157,6 +157,9 @@ inline int32_t forkExec(const std::string& cmd) {
     err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
     if (err != 0) spdlog::error("pthread_sigmask in forkExec failed: {}", strerror(err));
     setpgid(pid, pid);
+    if (!output_name.empty()) {
+      setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
+    }
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
     exit(0);
   } else {
@@ -168,5 +171,7 @@ inline int32_t forkExec(const std::string& cmd) {
 
   return pid;
 }
+
+inline int32_t forkExec(const std::string& cmd) { return forkExec(cmd, ""); }
 
 }  // namespace waybar::util::command

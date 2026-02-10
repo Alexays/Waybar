@@ -183,10 +183,10 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   prm_.inAtty = 0;
   auto const output{prm_.output};
   // prm_.output = ::cava::output_method::OUTPUT_RAW;
-  if (config_["data_format"].isString()) {
-    if (prm_.data_format) free(prm_.data_format);
-    prm_.data_format = strdup(config_["data_format"].asString().c_str());
-  }
+  if (prm_.data_format) free(prm_.data_format);
+  // Default to ascii for format-icons output; allow user override
+  prm_.data_format = strdup(
+      config_["data_format"].isString() ? config_["data_format"].asString().c_str() : "ascii");
   if (config_["raw_target"].isString()) {
     if (prm_.raw_target) free(prm_.raw_target);
     prm_.raw_target = strdup(config_["raw_target"].asString().c_str());
