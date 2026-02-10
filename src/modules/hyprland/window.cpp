@@ -237,9 +237,7 @@ void Window::queryActiveWorkspace() {
   }
 }
 
-void Window::onEvent(const std::string& ev) {
-  dp.emit();
-}
+void Window::onEvent(const std::string& ev) { dp.emit(); }
 
 void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {
