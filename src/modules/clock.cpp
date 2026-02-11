@@ -509,6 +509,18 @@ using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
 
 // Computations done similarly to Linux cal utility.
 auto waybar::modules::Clock::first_day_of_week() -> weekday {
+  const auto firstdow = config_[kCldPlaceholder]["first-day-of-week"];
+  if (firstdow.isInt()) {
+    const int firstDay = firstdow.asInt();
+    if (!(firstDay >= 0 && firstDay <= 6)) {
+      spdlog::warn(
+          "Clock calender configuration first-day-of-week = {0} must be in range [0, 6]. Default "
+          "value is used instead",
+          firstDay);
+    } else {
+      return weekday{static_cast<unsigned>(firstDay)};
+    }
+  }
   if (iso8601Calendar_) {
     return Monday;
   }
