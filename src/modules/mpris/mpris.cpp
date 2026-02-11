@@ -458,10 +458,7 @@ auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
   if (!mpris) return;
 
   spdlog::debug("mpris: player-stop callback");
-
-  // hide widget
-  mpris->event_box_.set_visible(false);
-  // update widget
+  // update widget (update() handles visibility)
   mpris->dp.emit();
 }
 
@@ -504,23 +501,36 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
-    bool found = false;
+    PlayerctlPlayerName* best = nullptr;
+    PlayerctlPlayerName* first_valid = nullptr;
     for (auto* p = g_list_first(players); p != nullptr; p = p->next) {
       auto* pn = static_cast<PlayerctlPlayerName*>(p->data);
       std::string name = pn->name;
-      if (std::none_of(ignored_players_.begin(), ignored_players_.end(),
-                       [&](const std::string& ignored) { return name == ignored; })) {
-        player_name = name;
-        if (p != g_list_first(players)) {
-          fallback_player = playerctl_player_new_from_name(pn, &error);
-          if (error || !fallback_player) return std::nullopt;
-        }
-        found = true;
+      if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
+                      [&](const std::string& ignored) { return name == ignored; })) {
+        spdlog::warn("mpris[{}]: ignoring player update", name);
+        continue;
+      }
+      if (!first_valid) first_valid = pn;
+      // Check if this player is currently playing
+      auto* tmp = playerctl_player_new_from_name(pn, &error);
+      if (error || !tmp) continue;
+      PlayerctlPlaybackStatus status;
+      g_object_get(tmp, "playback-status", &status, NULL);
+      if (status == PLAYERCTL_PLAYBACK_STATUS_PLAYING) {
+        best = pn;
+        g_object_unref(tmp);
         break;
       }
-      spdlog::warn("mpris[{}]: ignoring player update", name);
+      g_object_unref(tmp);
     }
-    if (!found) return std::nullopt;
+    if (!best) best = first_valid;
+    if (!best) return std::nullopt;
+    player_name = best->name;
+    if (best != static_cast<PlayerctlPlayerName*>(g_list_first(players)->data)) {
+      fallback_player = playerctl_player_new_from_name(best, &error);
+      if (error || !fallback_player) return std::nullopt;
+    }
   } else if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
                          [&](const std::string& pn) { return player_name == pn; })) {
     spdlog::warn("mpris[{}]: ignoring player update", player_name);
