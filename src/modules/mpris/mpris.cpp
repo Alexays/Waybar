@@ -488,7 +488,13 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
 
   char* player_status = nullptr;
   auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
-  g_object_get(player, "status", &player_status, "playback-status", &player_playback_status, NULL);
+
+  // When using playerctld and the most active player is ignored, we create a
+  // direct connection to the first non-ignored player for correct metadata.
+  PlayerctlPlayer* fallback_player = nullptr;
+  waybar::util::ScopeGuard fallback_deleter([&fallback_player]() {
+    if (fallback_player) g_object_unref(fallback_player);
+  });
 
   std::string player_name = player_;
   if (player_name == "playerctld") {
@@ -498,18 +504,32 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
-    players = g_list_first(players);
-    if (players)
-      player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
-    else
-      return std::nullopt;  // no players found, hide the widget
-  }
-
-  if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
-                  [&](const std::string& pn) { return player_name == pn; })) {
+    bool found = false;
+    for (auto* p = g_list_first(players); p != nullptr; p = p->next) {
+      auto* pn = static_cast<PlayerctlPlayerName*>(p->data);
+      std::string name = pn->name;
+      if (std::none_of(ignored_players_.begin(), ignored_players_.end(),
+                       [&](const std::string& ignored) { return name == ignored; })) {
+        player_name = name;
+        if (p != g_list_first(players)) {
+          fallback_player = playerctl_player_new_from_name(pn, &error);
+          if (error || !fallback_player) return std::nullopt;
+        }
+        found = true;
+        break;
+      }
+      spdlog::warn("mpris[{}]: ignoring player update", name);
+    }
+    if (!found) return std::nullopt;
+  } else if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
+                         [&](const std::string& pn) { return player_name == pn; })) {
     spdlog::warn("mpris[{}]: ignoring player update", player_name);
     return std::nullopt;
   }
+
+  auto* source_player = fallback_player ? fallback_player : player;
+  g_object_get(source_player, "status", &player_status, "playback-status", &player_playback_status,
+               NULL);
 
   // make status lowercase
   player_status[0] = std::tolower(player_status[0]);
@@ -524,28 +544,28 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .length = std::nullopt,
   };
 
-  if (auto* artist_ = playerctl_player_get_artist(player, &error)) {
+  if (auto* artist_ = playerctl_player_get_artist(source_player, &error)) {
     spdlog::debug("mpris[{}]: artist = {}", info.name, artist_);
     info.artist = artist_;
     g_free(artist_);
   }
   if (error) goto errorexit;
 
-  if (auto* album_ = playerctl_player_get_album(player, &error)) {
+  if (auto* album_ = playerctl_player_get_album(source_player, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
     info.album = album_;
     g_free(album_);
   }
   if (error) goto errorexit;
 
-  if (auto* title_ = playerctl_player_get_title(player, &error)) {
+  if (auto* title_ = playerctl_player_get_title(source_player, &error)) {
     spdlog::debug("mpris[{}]: title = {}", info.name, title_);
     info.title = title_;
     g_free(title_);
   }
   if (error) goto errorexit;
 
-  if (auto* length_ = playerctl_player_print_metadata_prop(player, "mpris:length", &error)) {
+  if (auto* length_ = playerctl_player_print_metadata_prop(source_player, "mpris:length", &error)) {
     spdlog::debug("mpris[{}]: mpris:length = {}", info.name, length_);
     auto len = std::chrono::microseconds(std::strtol(length_, nullptr, 10));
     auto len_h = std::chrono::duration_cast<std::chrono::hours>(len);
@@ -557,7 +577,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (error) goto errorexit;
 
   {
-    auto position_ = playerctl_player_get_position(player, &error);
+    auto position_ = playerctl_player_get_position(source_player, &error);
     if (error) {
       // it's fine to have an error here because not all players report a position
       g_error_free(error);
