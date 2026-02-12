@@ -20,9 +20,7 @@ waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& co
 auto waybar::modules::CpuUsage::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(tooltip);
-  }
+
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
   auto state = getState(total_usage);
@@ -46,6 +44,15 @@ auto waybar::modules::CpuUsage::update() -> void {
       store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
     }
     label_.set_markup(fmt::vformat(format, store));
+
+    if (tooltipEnabled()) {
+      if (config_["tooltip-format"].isString()) {
+        tooltip = config_["tooltip-format"].asString();
+        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
+      } else {
+        label_.set_tooltip_markup(tooltip);
+      }
+    }
   }
 
   // Call parent update
