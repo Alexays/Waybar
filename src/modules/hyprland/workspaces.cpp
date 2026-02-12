@@ -371,6 +371,7 @@ void Workspaces::onWorkspaceActivated(std::string const& payload) {
 void Workspaces::onSpecialWorkspaceActivated(std::string const& payload) {
   std::string name(begin(payload), begin(payload) + payload.find_first_of(','));
   m_activeSpecialWorkspaceName = (!name.starts_with("special:") ? name : name.substr(8));
+  m_ipc.getSocket1JsonReply("reload");
 }
 
 void Workspaces::onWorkspaceDestroyed(std::string const& payload) {

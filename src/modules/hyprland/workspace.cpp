@@ -161,6 +161,17 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
     }
   }
 
+  if (isActive() && isSpecial()) {
+    auto activeIconIt = icons_map.find("active:" + name());
+    if (activeIconIt != icons_map.end()) {
+      return activeIconIt->second;
+    }
+    auto namedIconIt = icons_map.find(name());
+    if (namedIconIt != icons_map.end()) {
+      return namedIconIt->second;
+    }
+  }
+
   if (isActive()) {
     auto activeIconIt = icons_map.find("active");
     if (activeIconIt != icons_map.end()) {
@@ -234,6 +245,7 @@ void Workspace::update(const std::string& workspace_icon) {
   auto styleContext = m_button.get_style_context();
   addOrRemoveClass(styleContext, isActive(), "active");
   addOrRemoveClass(styleContext, isSpecial(), "special");
+  addOrRemoveClass(styleContext, isSpecial(), name());
   addOrRemoveClass(styleContext, isEmpty(), "empty");
   addOrRemoveClass(styleContext, isPersistent(), "persistent");
   addOrRemoveClass(styleContext, isUrgent(), "urgent");
