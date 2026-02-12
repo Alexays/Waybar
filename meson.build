@@ -159,11 +159,13 @@ endif
 
 src_files = files(
     'src/factory.cpp',
+    'src/AGraph.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/AAppIconLabel.cpp',
     'src/modules/custom.cpp',
+    'src/modules/custom_graph.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
@@ -209,6 +211,7 @@ if is_linux
         'src/modules/bluetooth.cpp',
         'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_frequency/linux.cpp',
         'src/modules/cpu_usage/common.cpp',
@@ -233,6 +236,7 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     src_files += files(
         'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
         'src/modules/cpu_frequency/bsd.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_usage/bsd.cpp',
