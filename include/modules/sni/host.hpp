@@ -14,7 +14,7 @@ namespace waybar::modules::SNI {
 
 class Host {
  public:
-  Host(const std::size_t id, const Json::Value&, const Bar&,
+  Host(std::size_t id, const Json::Value&, const Bar&,
        const std::function<void(std::unique_ptr<Item>&)>&,
        const std::function<void(std::unique_ptr<Item>&)>&);
   ~Host();
@@ -22,17 +22,17 @@ class Host {
   void reorderItems();
 
  private:
-  void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
-  void nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring,
+  void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, const Glib::ustring&);
+  void nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>&, const Glib::ustring&,
                     const Glib::ustring&);
-  void nameVanished(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
+  void nameVanished(const Glib::RefPtr<Gio::DBus::Connection>&, const Glib::ustring&);
   static void proxyReady(GObject*, GAsyncResult*, gpointer);
   static void registerHost(GObject*, GAsyncResult*, gpointer);
   static void itemRegistered(SnWatcher*, const gchar*, gpointer);
   static void itemUnregistered(SnWatcher*, const gchar*, gpointer);
 
-  std::tuple<std::string, std::string> getBusNameAndObjectPath(const std::string);
-  void addRegisteredItem(std::string service);
+  static std::tuple<std::string, std::string> getBusNameAndObjectPath(const std::string&);
+  void addRegisteredItem(const std::string& service);
 
   std::vector<std::unique_ptr<Item>> items_;
   const std::string bus_name_;

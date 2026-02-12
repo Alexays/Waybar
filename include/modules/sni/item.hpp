@@ -29,8 +29,7 @@ using ItemOrderMap = std::unordered_map<std::string, int>;
 
 class Item : public sigc::trackable {
  public:
-  Item(const std::string&, const std::string&, const Json::Value&, const Bar&, Host&,
-       const ItemOrderMap&);
+  Item(std::string&&, std::string&&, const Json::Value&, const Bar&, Host&, const ItemOrderMap&);
   ~Item();
 
   std::string bus_name;
@@ -75,7 +74,6 @@ class Item : public sigc::trackable {
                 const Glib::VariantContainerBase& arguments);
 
   void updateImage();
-  Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
