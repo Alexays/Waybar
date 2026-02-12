@@ -5,30 +5,33 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include <cassert>
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <unordered_map>
 
 #include "gdk/gdk.h"
+#include "modules/sni/host.hpp"
 #include "modules/sni/icon_manager.hpp"
-#include "util/format.hpp"
+#include "util/format.hpp"  // IWYU pragma: keep
 #include "util/gtk_icon.hpp"
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
-  bool is_printable(const Glib::VariantBase& value) const {
+  static bool is_printable(const Glib::VariantBase& value) {
     auto type = value.get_type_string();
     /* Print only primitive (single character excluding 'v') and short complex types */
-    return (type.length() == 1 && islower(type[0]) && type[0] != 'v') || value.get_size() <= 32;
+    return (type.length() == 1 && (islower(type[0]) != 0) && type[0] != 'v') ||
+           value.get_size() <= 32;
   }
 
   template <typename FormatContext>
   auto format(const Glib::VariantBase& value, FormatContext& ctx) const {
     if (is_printable(value)) {
       return formatter<std::string>::format(static_cast<std::string>(value.print()), ctx);
-    } else {
-      return formatter<std::string>::format(value.get_type_string(), ctx);
     }
+    return formatter<std::string>::format(value.get_type_string(), ctx);
   }
 };
 
@@ -37,13 +40,76 @@ namespace waybar::modules::SNI {
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
-Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
+static void pixbuf_data_deleter(const guint8* data) { g_free((void*)data); }
+static Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant) {
+  GVariantIter* it;
+  g_variant_get(variant, "a(iiay)", &it);
+  if (it == nullptr) {
+    return Glib::RefPtr<Gdk::Pixbuf>{};
+  }
+  GVariant* val;
+  gint lwidth = 0;
+  gint lheight = 0;
+  gint width;
+  gint height;
+  guchar* array = nullptr;
+  while (g_variant_iter_loop(it, "(ii@ay)", &width, &height, &val) != 0) {
+    if (width > 0 && height > 0 && val != nullptr && width * height > lwidth * lheight) {
+      auto size = g_variant_get_size(val);
+      /* Sanity check */
+      if (size == 4U * width * height) {
+        /* Find the largest image */
+        gconstpointer data = g_variant_get_data(val);
+        if (data != nullptr) {
+          if (array != nullptr) {
+            g_free(array);
+          }
+#if GLIB_MAJOR_VERSION >= 2 && GLIB_MINOR_VERSION >= 68
+          array = static_cast<guchar*>(g_memdup2(data, size));
+#else
+          array = static_cast<guchar*>(g_memdup(data, size));
+#endif
+          lwidth = width;
+          lheight = height;
+        }
+      }
+    }
+  }
+  g_variant_iter_free(it);
+  if (array != nullptr) {
+    /* argb to rgba */
+    for (uint32_t i = 0; i < 4U * lwidth * lheight; i += 4) {
+      guchar alpha = array[i];
+      array[i] = array[i + 1];
+      array[i + 1] = array[i + 2];
+      array[i + 2] = array[i + 3];
+      array[i + 3] = alpha;
+    }
+    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
+                                         lheight, 4 * lwidth, &pixbuf_data_deleter);
+  }
+  return Glib::RefPtr<Gdk::Pixbuf>{};
+}
+
+static constexpr std::size_t my_hash(std::string_view sv) {
+  std::size_t hash = 0xcbf29ce484222325ULL;
+  for (char c : sv) {
+    hash ^= static_cast<std::size_t>(c);
+    hash *= 0x100000001b3ULL;
+  }
+  return hash;
+}
+
+Item::Item(std::string&& bn, std::string&& op, const Json::Value& config, const Bar& bar,
+           Host& host, const ItemOrderMap& orders)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
       icon_theme(Gtk::IconTheme::create()),
-      bar_(bar) {
+      bar_(bar),
+      host_(host),
+      orders_(orders) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -72,6 +138,39 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
                                    cancellable_, interface);
+
+  static bool key_collision_checked = false;
+  if (!key_collision_checked) {
+    std::unordered_map<std::size_t, std::string> hash_map;
+    for (const auto& key : {
+             "AttentionIconName",
+             "AttentionIconPixmap",
+             "AttentionMovieName",
+             "Category",
+             "IconName",
+             "IconPixmap",
+             "IconThemePath",
+             "Id",
+             "ItemIsMenu",
+             "Menu",
+             "OverlayIconName",
+             "OverlayIconPixmap",
+             "Status",
+             "Title",
+             "ToolTip",
+
+         }) {
+      auto hash = my_hash(key);
+      auto iter = hash_map.find(hash);
+      if (iter == hash_map.end()) {
+        hash_map.emplace(hash, key);
+      } else {
+        spdlog::error("Hash conflict, keys: {}, {}", key, iter->second);
+      }
+    }
+
+    key_collision_checked = true;
+  }
 }
 
 Item::~Item() {
@@ -132,7 +231,7 @@ template <>
 ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   ToolTip result;
   // Unwrap (sa(iiay)ss)
-  auto container = value.cast_dynamic<Glib::VariantContainerBase>(value);
+  auto container = Glib::VariantBase::cast_dynamic<Glib::VariantContainerBase>(value);
   result.icon_name = get_variant<Glib::ustring>(container.get_child(0));
   result.text = get_variant<Glib::ustring>(container.get_child(2));
   auto description = get_variant<Glib::ustring>(container.get_child(3));
@@ -147,69 +246,101 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
   try {
     spdlog::trace("Set tray item property: {}.{} = {}", id.empty() ? bus_name : id, name, value);
 
-    if (name == "Category") {
-      category = get_variant<std::string>(value);
-    } else if (name == "Id") {
-      id = get_variant<std::string>(value);
+    switch (my_hash(std::string(name))) {
+      case my_hash("Category"): {
+        category = get_variant<std::string>(value);
+        break;
+      }
+      case my_hash("Id"): {
+        id = get_variant<std::string>(value);
 
-      /*
-       * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as ID
-       * to pass as the custom icon option. I'm avoiding being disruptive and setting that to the ID
-       * itself as I've no idea what this would affect.
-       * The tooltip text is converted to lowercase since that's what (most?) themes expect?
-       * I still haven't found a way for it to pick from theme automatically, although
-       * it might be my theme.
-       */
-      if (id == "chrome_status_icon_1") {
-        Glib::VariantBase value;
-        this->proxy_->get_cached_property(value, "ToolTip");
+        /*
+         * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as
+         * ID to pass as the custom icon option. I'm avoiding being disruptive and setting that to
+         * the ID itself as I've no idea what this would affect. The tooltip text is converted to
+         * lowercase since that's what (most?) themes expect? I still haven't found a way for it to
+         * pick from theme automatically, although it might be my theme.
+         */
+        if (id == "chrome_status_icon_1") {
+          Glib::VariantBase value;
+          this->proxy_->get_cached_property(value, "ToolTip");
+          tooltip = get_variant<ToolTip>(value);
+          if (!tooltip.text.empty()) {
+            setCustomIcon(tooltip.text.lowercase());
+          }
+        } else {
+          setCustomIcon(id);
+        }
+        break;
+      }
+      case my_hash("Title"): {
+        title = get_variant<std::string>(value);
+        if (tooltip.text.empty()) {
+          event_box.set_tooltip_markup(title);
+        }
+        break;
+      }
+      case my_hash("Status"): {
+        setStatus(get_variant<Glib::ustring>(value));
+        break;
+      }
+      case my_hash("IconName"): {
+        icon_name = get_variant<std::string>(value);
+        break;
+      }
+      case my_hash("IconPixmap"): {
+        icon_pixmap = extractPixBuf(value.gobj());
+        break;
+      }
+      case my_hash("OverlayIconName"): {
+        overlay_icon_name = get_variant<std::string>(value);
+        break;
+      }
+      case my_hash("OverlayIconPixmap"): {
+        // TODO: overlay_icon_pixmap
+        break;
+      }
+      case my_hash("AttentionIconName"): {
+        attention_icon_name = get_variant<std::string>(value);
+        break;
+      }
+      case my_hash("AttentionIconPixmap"): {
+        // TODO: attention_icon_pixmap
+        break;
+      }
+      case my_hash("AttentionMovieName"): {
+        attention_movie_name = get_variant<std::string>(value);
+        break;
+      }
+      case my_hash("ToolTip"): {
         tooltip = get_variant<ToolTip>(value);
         if (!tooltip.text.empty()) {
-          setCustomIcon(tooltip.text.lowercase());
+          event_box.set_tooltip_markup(tooltip.text);
         }
-      } else {
-        setCustomIcon(id);
+        break;
       }
-    } else if (name == "Title") {
-      title = get_variant<std::string>(value);
-      if (tooltip.text.empty()) {
-        event_box.set_tooltip_markup(title);
+      case my_hash("IconThemePath"): {
+        icon_theme_path = get_variant<std::string>(value);
+        if (!icon_theme_path.empty()) {
+          icon_theme->set_search_path({icon_theme_path});
+        }
+        break;
       }
-    } else if (name == "Status") {
-      setStatus(get_variant<Glib::ustring>(value));
-    } else if (name == "IconName") {
-      icon_name = get_variant<std::string>(value);
-    } else if (name == "IconPixmap") {
-      icon_pixmap = this->extractPixBuf(value.gobj());
-    } else if (name == "OverlayIconName") {
-      overlay_icon_name = get_variant<std::string>(value);
-    } else if (name == "OverlayIconPixmap") {
-      // TODO: overlay_icon_pixmap
-    } else if (name == "AttentionIconName") {
-      attention_icon_name = get_variant<std::string>(value);
-    } else if (name == "AttentionIconPixmap") {
-      // TODO: attention_icon_pixmap
-    } else if (name == "AttentionMovieName") {
-      attention_movie_name = get_variant<std::string>(value);
-    } else if (name == "ToolTip") {
-      tooltip = get_variant<ToolTip>(value);
-      if (!tooltip.text.empty()) {
-        event_box.set_tooltip_markup(tooltip.text);
+      case my_hash("Menu"): {
+        menu = get_variant<std::string>(value);
+        makeMenu();
+        break;
       }
-    } else if (name == "IconThemePath") {
-      icon_theme_path = get_variant<std::string>(value);
-      if (!icon_theme_path.empty()) {
-        icon_theme->set_search_path({icon_theme_path});
+      case my_hash("ItemIsMenu"): {
+        item_is_menu = get_variant<bool>(value);
       }
-    } else if (name == "Menu") {
-      menu = get_variant<std::string>(value);
-      makeMenu();
-    } else if (name == "ItemIsMenu") {
-      item_is_menu = get_variant<bool>(value);
+      default: {
+        spdlog::warn("Ignore tray item property: {}.{}, value = {}", id.empty() ? bus_name : id,
+                     name, value);
+        break;
+      }
     }
   } catch (const Glib::Error& err) {
-    spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
-                 id.empty() ? bus_name : id, name, value, err.what());
   } catch (const std::exception& err) {
     spdlog::warn("Failed to set tray item property: {}.{}, value = {}, err = {}",
                  id.empty() ? bus_name : id, name, value, err.what());
@@ -233,6 +364,17 @@ void Item::setStatus(const Glib::ustring& value) {
 
 void Item::setCustomIcon(const std::string& id) {
   spdlog::debug("SNI tray id: {}", id);
+
+  if (order_ == -1) {
+    auto iter = orders_.find(id);
+    if (iter != orders_.end()) {
+      order_ = iter->second;
+      spdlog::debug("reordering tray item {}, order: {}", id, order_);
+    } else {
+      order_ = 0;
+    }
+    host_.reorderItems();
+  }
 
   std::string custom_icon = IconManager::instance().getIconForApp(id);
   if (!custom_icon.empty()) {
@@ -266,7 +408,7 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
     auto properties = properties_variant.get();
 
     for (const auto& [name, value] : properties) {
-      if (update_pending_.count(name.raw())) {
+      if (update_pending_.contains(name.raw())) {
         setProperty(name, const_cast<Glib::VariantBase&>(value));
       }
     }
@@ -309,58 +451,6 @@ void Item::onSignal(const Glib::ustring& sender_name, const Glib::ustring& signa
     }
     update_pending_.insert(changed->second.begin(), changed->second.end());
   }
-}
-
-static void pixbuf_data_deleter(const guint8* data) { g_free((void*)data); }
-
-Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
-  GVariantIter* it;
-  g_variant_get(variant, "a(iiay)", &it);
-  if (it == nullptr) {
-    return Glib::RefPtr<Gdk::Pixbuf>{};
-  }
-  GVariant* val;
-  gint lwidth = 0;
-  gint lheight = 0;
-  gint width;
-  gint height;
-  guchar* array = nullptr;
-  while (g_variant_iter_loop(it, "(ii@ay)", &width, &height, &val)) {
-    if (width > 0 && height > 0 && val != nullptr && width * height > lwidth * lheight) {
-      auto size = g_variant_get_size(val);
-      /* Sanity check */
-      if (size == 4U * width * height) {
-        /* Find the largest image */
-        gconstpointer data = g_variant_get_data(val);
-        if (data != nullptr) {
-          if (array != nullptr) {
-            g_free(array);
-          }
-#if GLIB_MAJOR_VERSION >= 2 && GLIB_MINOR_VERSION >= 68
-          array = static_cast<guchar*>(g_memdup2(data, size));
-#else
-          array = static_cast<guchar*>(g_memdup(data, size));
-#endif
-          lwidth = width;
-          lheight = height;
-        }
-      }
-    }
-  }
-  g_variant_iter_free(it);
-  if (array != nullptr) {
-    /* argb to rgba */
-    for (uint32_t i = 0; i < 4U * lwidth * lheight; i += 4) {
-      guchar alpha = array[i];
-      array[i] = array[i + 1];
-      array[i + 1] = array[i + 2];
-      array[i + 2] = array[i + 3];
-      array[i + 3] = alpha;
-    }
-    return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
-                                         lheight, 4 * lwidth, &pixbuf_data_deleter);
-  }
-  return Glib::RefPtr<Gdk::Pixbuf>{};
 }
 
 void Item::updateImage() {
@@ -476,14 +566,18 @@ bool Item::handleClick(GdkEventButton* const& ev) {
       gtk_menu->popup(ev->button, ev->time);
 #endif
       return true;
-    } else {
-      proxy_->call("ContextMenu", parameters);
-      return true;
     }
-  } else if (ev->button == 1) {
+
+    proxy_->call("ContextMenu", parameters);
+    return true;
+  }
+
+  if (ev->button == 1) {
     proxy_->call("Activate", parameters);
     return true;
-  } else if (ev->button == 2) {
+  }
+
+  if (ev->button == 2) {
     proxy_->call("SecondaryActivate", parameters);
     return true;
   }
@@ -491,7 +585,9 @@ bool Item::handleClick(GdkEventButton* const& ev) {
 }
 
 bool Item::handleScroll(GdkEventScroll* const& ev) {
-  int dx = 0, dy = 0;
+  int dx = 0;
+  int dy = 0;
+
   switch (ev->direction) {
     case GDK_SCROLL_UP:
       dy = -1;

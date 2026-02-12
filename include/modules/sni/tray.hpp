@@ -13,7 +13,7 @@ namespace waybar::modules::SNI {
 class Tray : public AModule {
  public:
   Tray(const std::string&, const Bar&, const Json::Value&);
-  virtual ~Tray() = default;
+  ~Tray() override = default ;
   auto update() -> void override;
 
  private:

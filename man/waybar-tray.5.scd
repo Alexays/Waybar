@@ -42,6 +42,13 @@ Addressed by *tray*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*orders*: ++
+	typeof: object ++
+	Ordres for items to be placed in tray. When not set, orders are controlled by DBus.
+	Key: name of item.
+	Value: integer, higher value means to place this item to the right.
+
+
 # EXAMPLES
 
 ```
@@ -51,6 +58,9 @@ Addressed by *tray*
   "icons": {
     "blueman": "bluetooth",
     "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
+  },
+    "orders" : {
+    "wechat" : 99
   }
 }
 
