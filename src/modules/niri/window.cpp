@@ -67,7 +67,7 @@ void Window::doUpdate() {
 
     updateAppIconName(appId, "");
 
-    if (tooltipEnabled()) label_.set_tooltip_text(title);
+    if (tooltipEnabled()) label_.set_tooltip_markup(title);
 
     const auto id = window["id"].asUInt64();
     const auto workspaceId = window["workspace_id"].asUInt64();

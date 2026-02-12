@@ -72,13 +72,13 @@ auto Window::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_text(
+      label_.set_tooltip_markup(
           fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
                       fmt::arg("initialTitle", windowData_.initial_title),
                       fmt::arg("class", windowData_.class_name),
                       fmt::arg("initialClass", windowData_.initial_class_name)));
     } else if (!label_text.empty()) {
-      label_.set_tooltip_text(label_text);
+      label_.set_tooltip_markup(label_text);
     }
   }
 

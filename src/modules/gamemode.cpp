@@ -212,7 +212,7 @@ auto Gamemode::update() -> void {
   // Tooltip
   if (tooltip) {
     std::string text = fmt::format(fmt::runtime(tooltip_format), fmt::arg("count", gameCount));
-    box_.set_tooltip_text(text);
+    box_.set_tooltip_markup(text);
   }
 
   // Label format

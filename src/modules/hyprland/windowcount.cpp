@@ -58,7 +58,7 @@ auto WindowCount::update() -> void {
   } else if (!format.empty()) {
     label_.set_markup(fmt::format(fmt::runtime(format), workspace_.windows));
   } else {
-    label_.set_text(fmt::format("{}", workspace_.windows));
+    label_.set_markup(fmt::format("{}", workspace_.windows));
   }
 
   label_.show();
