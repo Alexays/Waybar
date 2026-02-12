@@ -329,7 +329,12 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("current_output");
     }
-    std::string output = (*it)["name"].asString();
+    std::string output;
+    if (!config_["disable-markup"].asBool()) {
+      output = g_markup_escape_text((*it)["name"].asString().c_str(), -1);
+    } else {
+      output = (*it)["name"].asString();
+    }
     std::string windows = "";
     if (config_["window-rewrite"].isObject()) {
       updateWindows((*it), windows);
