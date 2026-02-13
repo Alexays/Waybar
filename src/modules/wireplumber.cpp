@@ -479,12 +479,12 @@ auto waybar::modules::Wireplumber::update() -> void {
     }
 
     if (!tooltipFormat.empty()) {
-      label_.set_tooltip_text(fmt::format(
+      label_.set_tooltip_markup(fmt::format(
           fmt::runtime(tooltipFormat), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
           fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
           fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_)));
     } else {
-      label_.set_tooltip_text(node_name_);
+      label_.set_tooltip_markup(node_name_);
     }
   }
 
