@@ -13,6 +13,7 @@
 
 #include "ipc.hpp"
 #include "util/sleeper_thread.hpp"
+#include "util/SafeSignal.hpp"
 
 namespace waybar::modules::sway {
 
@@ -27,8 +28,8 @@ class Ipc {
     std::string payload;
   };
 
-  sigc::signal<void, const struct ipc_response&> signal_event;
-  sigc::signal<void, const struct ipc_response&> signal_cmd;
+  ::waybar::SafeSignal<const struct ipc_response&> signal_event;
+  ::waybar::SafeSignal<const struct ipc_response&> signal_cmd;
 
   void sendCmd(uint32_t type, const std::string& payload = "");
   void subscribe(const std::string& payload);
