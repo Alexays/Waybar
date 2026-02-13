@@ -27,7 +27,7 @@ auto waybar::modules::Cpu::update() -> void {
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(tooltip);
+    label_.set_tooltip_markup(tooltip);
   }
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];

@@ -58,11 +58,11 @@ auto waybar::modules::Backlight::update() -> void {
           tooltip_format = config_["tooltip-format"].asString();
         }
         if (!tooltip_format.empty()) {
-          label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
-                                              fmt::arg("percent", percent),
-                                              fmt::arg("icon", getIcon(percent))));
+          label_.set_tooltip_markup(fmt::format(fmt::runtime(tooltip_format),
+                                                fmt::arg("percent", percent),
+                                                fmt::arg("icon", getIcon(percent))));
         } else {
-          label_.set_tooltip_text(desc);
+          label_.set_tooltip_markup(desc);
         }
       }
     } else {

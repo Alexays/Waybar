@@ -99,7 +99,7 @@ auto Window::update() -> void {
                   fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(window_);
+    label_.set_tooltip_markup(window_);
   }
 
   updateAppIcon();

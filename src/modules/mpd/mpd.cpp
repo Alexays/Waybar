@@ -110,7 +110,7 @@ void waybar::modules::MPD::setLabel() {
                            ? config_["tooltip-format-disconnected"].asString()
                            : "MPD (disconnected)";
       // Nothing to format
-      label_.set_tooltip_text(tooltip_format);
+      label_.set_tooltip_markup(tooltip_format);
     }
     return;
   }
@@ -210,7 +210,7 @@ void waybar::modules::MPD::setLabel() {
           fmt::arg("stateIcon", stateIcon), fmt::arg("consumeIcon", consumeIcon),
           fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
           fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename), fmt::arg("uri", uri));
-      label_.set_tooltip_text(tooltip_text);
+      label_.set_tooltip_markup(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpd: format error (tooltip): {}", e.what());
     }
