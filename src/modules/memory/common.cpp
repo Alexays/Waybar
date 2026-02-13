@@ -69,7 +69,7 @@ auto waybar::modules::Memory::update() -> void {
     if (tooltipEnabled()) {
       if (config_["tooltip-format"].isString()) {
         auto tooltip_format = config_["tooltip-format"].asString();
-        label_.set_tooltip_text(fmt::format(
+        label_.set_tooltip_markup(fmt::format(
             fmt::runtime(tooltip_format), used_ram_percentage,
             fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
             fmt::arg("percentage", used_ram_percentage),
