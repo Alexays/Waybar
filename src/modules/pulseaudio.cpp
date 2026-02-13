@@ -115,7 +115,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
   auto sink_desc = backend->getSinkDesc();
   auto source_desc = backend->getSourceDesc();
 
-  format_source = fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_volume));
+  format_source = fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_volume), fmt::arg("source_desc", source_desc));
   auto text = fmt::format(
       fmt::runtime(format), fmt::arg("desc", sink_desc), fmt::arg("volume", sink_volume),
       fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume),
