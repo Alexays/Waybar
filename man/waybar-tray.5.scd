@@ -42,16 +42,24 @@ Addressed by *tray*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*icons*: ++
+	typeof: object ++
+	Per-application icon customization. Keys are application IDs (e.g., "spotify", "blueman"). ++
+	Values can be: ++
+		- *string*: Custom icon name or path to icon file ++
+		- *false*: Hide this application's tray icon completely
+
 # EXAMPLES
 
 ```
 "tray": {
 	"icon-size": 21,
 	"spacing": 10,
-  "icons": {
-    "blueman": "bluetooth",
-    "TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png"
-  }
+	"icons": {
+		"blueman": "bluetooth",
+		"TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png",
+		"spotify": false
+	}
 }
 
 ```
