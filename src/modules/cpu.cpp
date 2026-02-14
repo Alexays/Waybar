@@ -26,9 +26,7 @@ auto waybar::modules::Cpu::update() -> void {
   auto [load1, load5, load15] = Load::getLoad();
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
-  if (tooltipEnabled()) {
-    label_.set_tooltip_markup(tooltip);
-  }
+
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
   auto state = getState(total_usage);
@@ -56,6 +54,15 @@ auto waybar::modules::Cpu::update() -> void {
       store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
     }
     label_.set_markup(fmt::vformat(format, store));
+
+    if (tooltipEnabled()) {
+      if (config_["tooltip-format"].isString()) {
+        tooltip = config_["tooltip-format"].asString();
+        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
+      } else {
+        label_.set_tooltip_markup(tooltip);
+      }
+    }
   }
 
   // Call parent update
