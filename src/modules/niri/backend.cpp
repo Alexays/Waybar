@@ -20,12 +20,13 @@
 
 namespace waybar::modules::niri {
 
+IPC::IPC() { startIPC(); }
+
 int IPC::connectToSocket() {
   const char* socket_path = getenv("NIRI_SOCKET");
 
   if (socket_path == nullptr) {
-    spdlog::warn("Niri is not running, niri IPC will not be available.");
-    return -1;
+    throw std::runtime_error("Niri IPC: NIRI_SOCKET was not set! (Is Niri running?)");
   }
 
   struct sockaddr_un addr;
@@ -54,15 +55,9 @@ int IPC::connectToSocket() {
 void IPC::startIPC() {
   // will start IPC and relay events to parseIPC
 
-  std::thread([&]() {
-    int socketfd;
-    try {
-      socketfd = connectToSocket();
-    } catch (std::exception& e) {
-      spdlog::error("Niri IPC: failed to start, reason: {}", e.what());
-      return;
-    }
-    if (socketfd == -1) return;
+  int socketfd = connectToSocket();
+
+  std::thread([this, socketfd]() {
 
     spdlog::info("Niri IPC starting");
 
@@ -242,7 +237,6 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 
 Json::Value IPC::send(const Json::Value& request) {
   int socketfd = connectToSocket();
-  if (socketfd == -1) throw std::runtime_error("Niri is not running");
 
   auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
   auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
