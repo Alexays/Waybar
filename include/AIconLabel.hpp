@@ -14,10 +14,14 @@ class AIconLabel : public ALabel {
              bool enable_click = false, bool enable_scroll = false);
   virtual ~AIconLabel() = default;
   auto update() -> void override;
+  static std::tuple<std::string, std::string> extractIcon(const std::string& input);
 
  protected:
   Gtk::Image image_;
   Gtk::Box box_;
+  unsigned app_icon_size_{24};
+
+  bool label_contains_icon;
 
   bool iconEnabled() const;
 };
