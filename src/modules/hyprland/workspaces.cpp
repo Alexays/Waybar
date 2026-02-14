@@ -649,6 +649,16 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateSortByConfig(config);
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
+
+  const auto& groupThreshold = config["window-rewrite-group-threshold"];
+  if (groupThreshold.isInt()) {
+    m_windowRewriteGroupThreshold = groupThreshold.asInt();
+  }
+  const auto& groupFormat = config["window-rewrite-group-format"];
+  if (groupFormat.isString()) {
+    m_windowRewriteGroupFormat = groupFormat.asString();
+  }
+
   populateWindowRewriteConfig(config);
 
   if (withWindows) {
