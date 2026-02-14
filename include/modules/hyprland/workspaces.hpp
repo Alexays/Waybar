@@ -61,6 +61,8 @@ class Workspaces : public AModule, public EventHandler {
 
   std::string getRewrite(std::string window_class, std::string window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
+  auto windowRewriteGroupThreshold() const -> int { return m_windowRewriteGroupThreshold; }
+  auto const& getWindowRewriteGroupFormat() const { return m_windowRewriteGroupFormat; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
@@ -172,6 +174,8 @@ class Workspaces : public AModule, public EventHandler {
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
+  int m_windowRewriteGroupThreshold = 0;
+  std::string m_windowRewriteGroupFormat = "{icon}×{count}";
 
   bool m_withIcon;
   uint64_t m_monitorId;

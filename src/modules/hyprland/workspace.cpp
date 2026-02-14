@@ -1,6 +1,7 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -245,15 +246,53 @@ void Workspace::update(const std::string& workspace_icon) {
   // need to compute this if enableTaskbar() is true
   if (!m_workspaceManager.enableTaskbar()) {
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
+    auto groupThreshold = m_workspaceManager.windowRewriteGroupThreshold();
 
-    bool isNotFirst = false;
-
-    for (const auto& window_repr : m_windowMap) {
-      if (isNotFirst) {
-        windows.append(windowSeparator);
+    if (groupThreshold > 0) {
+      // Build ordered counts of each unique icon (including singular ones when threshold set to 1)
+      std::vector<std::pair<std::string, int>> iconCounts;
+      for (const auto& window_repr : m_windowMap) {
+        auto it = std::ranges::find_if(iconCounts, [&](const auto& p) {
+          return p.first == window_repr.repr_rewrite;
+        });
+        if (it != iconCounts.end()) {
+          it->second++;
+        } else {
+          iconCounts.emplace_back(window_repr.repr_rewrite, 1);
+        }
       }
-      isNotFirst = true;
-      windows.append(window_repr.repr_rewrite);
+
+      // Format the group string
+      auto groupFormat = m_workspaceManager.getWindowRewriteGroupFormat();
+      bool isNotFirst = false;
+      for (const auto& [icon, count] : iconCounts) {
+        if (count >= groupThreshold) {
+          if (isNotFirst) windows.append(windowSeparator);
+          isNotFirst = true;
+          try {
+            windows.append(fmt::format(fmt::runtime(groupFormat),
+                                       fmt::arg("icon", icon),
+                                       fmt::arg("count", count)));
+          } catch (const fmt::format_error& e) {
+            spdlog::warn("Formatting window-rewrite-group-format error: {}", e.what());
+            windows.append(icon);
+          }
+        } else {
+          for (int i = 0; i < count; ++i) {
+            if (isNotFirst) windows.append(windowSeparator);
+            isNotFirst = true;
+            windows.append(icon);
+          }
+        }
+      }
+    } else {
+      // Not grouping icons
+      bool isNotFirst = false;
+      for (const auto& window_repr : m_windowMap) {
+        if (isNotFirst) windows.append(windowSeparator);
+        isNotFirst = true;
+        windows.append(window_repr.repr_rewrite);
+      }
     }
   }
 
