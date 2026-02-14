@@ -30,6 +30,8 @@ class Language : public waybar::ALabel, public EventHandler {
     std::string short_description;
   };
 
+  auto removeXkbLayoutCssClass() -> void;
+  auto addXkbLayoutCssClass() -> void;
   static auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
