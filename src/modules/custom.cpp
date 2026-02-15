@@ -182,9 +182,10 @@ auto waybar::modules::Custom::update() -> void {
         if (tooltipEnabled()) {
           if (tooltip_format_enabled_) {
             auto tooltip = config_["tooltip-format"].asString();
-            tooltip = fmt::format(
-                fmt::runtime(tooltip), fmt::arg("text", text_), fmt::arg("alt", alt_),
-                fmt::arg("icon", getIcon(percentage_, alt_)), fmt::arg("percentage", percentage_));
+            tooltip = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
+                                  fmt::arg("tooltip", tooltip_), fmt::arg("alt", alt_),
+                                  fmt::arg("icon", getIcon(percentage_, alt_)),
+                                  fmt::arg("percentage", percentage_));
             label_.set_tooltip_markup(tooltip);
           } else if (text_ == tooltip_) {
             label_.set_tooltip_markup(str);
