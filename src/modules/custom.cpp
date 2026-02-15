@@ -91,10 +91,18 @@ void waybar::modules::Custom::continuousWorker() {
       }
       if (config_["restart-interval"].isNumeric()) {
         pid_ = -1;
-        thread_.sleep_for(std::chrono::milliseconds(
-            std::max(1L,  // Minimum 1ms due to millisecond precision
-                     static_cast<long>(config_["restart-interval"].asDouble() * 1000))));
+
+        long interval_ms = static_cast<long>(config_["restart-interval"].asDouble() * 1000);
+
+        // Minimum interval (1 second) to prevent UI starvation from tight loops
+        if (interval_ms < 1000) {
+            spdlog::warn("Custom module: restart-interval ({}ms) is too low. Enforcing 1000ms to prevent UI starvation.", interval_ms);
+            interval_ms = 1000;
+        }
+        thread_.sleep_for(std::chrono::milliseconds(interval_ms));
+
         fp_ = util::command::open(cmd, pid_, output_name_);
+
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
         }
