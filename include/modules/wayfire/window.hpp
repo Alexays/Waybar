@@ -14,7 +14,8 @@ class Window : public AAppIconLabel {
   std::string old_app_id_;
 
  public:
-  Window(const std::string& id, const Bar& bar, const Json::Value& config);
+  Window(const std::string& id, const Bar& bar, const Json::Value& config, std::mutex&,
+         std::list<pid_t>&);
   ~Window() override;
 
   auto update() -> void override;

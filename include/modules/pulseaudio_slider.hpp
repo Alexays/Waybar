@@ -13,7 +13,7 @@ enum class PulseaudioSliderTarget {
 
 class PulseaudioSlider : public ASlider {
  public:
-  PulseaudioSlider(const std::string&, const Json::Value&);
+  PulseaudioSlider(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~PulseaudioSlider() = default;
 
   void update() override;

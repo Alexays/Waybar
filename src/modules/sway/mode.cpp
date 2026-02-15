@@ -4,8 +4,9 @@
 
 namespace waybar::modules::sway {
 
-Mode::Mode(const std::string& id, const Json::Value& config)
-    : ALabel(config, "mode", id, "{}", 0, true) {
+Mode::Mode(const std::string& id, const Json::Value& config, std::mutex& reap_mtx,
+           std::list<pid_t>& reap)
+    : ALabel(config, "mode", id, "{}", reap_mtx, reap, 0, true) {
   ipc_.subscribe(R"(["mode"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Mode::onEvent));
   // Launch worker
