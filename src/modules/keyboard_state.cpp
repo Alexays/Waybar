@@ -234,9 +234,12 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
           }
           tryAddDevice(dev_path);
         } else if (event->mask & IN_DELETE) {
+          std::lock_guard<std::mutex> lock(devices_mutex_);
           auto it = libinput_devices_.find(dev_path);
           if (it != libinput_devices_.end()) {
             spdlog::info("Keyboard {} has been removed.", dev_path);
+            libinput_path_remove_device(it->second);
+            libinput_device_unref(it->second);
             libinput_devices_.erase(it);
           }
         }
@@ -247,6 +250,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
 }
 
 waybar::modules::KeyboardState::~KeyboardState() {
+  std::lock_guard<std::mutex> lock(devices_mutex_);
   for (const auto& [_, dev_ptr] : libinput_devices_) {
     libinput_path_remove_device(dev_ptr);
   }
@@ -258,11 +262,17 @@ auto waybar::modules::KeyboardState::update() -> void {
 
   try {
     std::string dev_path;
-    if (config_["device-path"].isString() &&
-        libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
-      dev_path = config_["device-path"].asString();
-    } else {
-      dev_path = libinput_devices_.begin()->first;
+    {
+      std::lock_guard<std::mutex> lock(devices_mutex_);
+      if (libinput_devices_.empty()) {
+        return;
+      }
+      if (config_["device-path"].isString() &&
+          libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
+        dev_path = config_["device-path"].asString();
+      } else {
+        dev_path = libinput_devices_.begin()->first;
+      }
     }
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
     auto dev = openDevice(fd);
@@ -310,10 +320,15 @@ auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) 
     auto dev = openDevice(fd);
     if (supportsLockStates(dev)) {
       spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
+      std::lock_guard<std::mutex> lock(devices_mutex_);
       if (libinput_devices_.find(dev_path) == libinput_devices_.end()) {
         auto device = libinput_path_add_device(libinput_, dev_path.c_str());
-        libinput_device_ref(device);
-        libinput_devices_[dev_path] = device;
+        if (device) {
+          libinput_device_ref(device);
+          libinput_devices_[dev_path] = device;
+        } else {
+          spdlog::warn("keyboard-state: Failed to add device to libinput: {}", dev_path);
+        }
       }
     }
     libevdev_free(dev);

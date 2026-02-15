@@ -735,7 +735,7 @@ auto Mpris::update() -> void {
           fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
           fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 
-      label_.set_tooltip_text(tooltip_text);
+      label_.set_tooltip_markup(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpris: format error (tooltip): {}", e.what());
     }

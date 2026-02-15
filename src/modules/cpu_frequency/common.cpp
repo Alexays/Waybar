@@ -25,7 +25,7 @@ auto waybar::modules::CpuFrequency::update() -> void {
     auto tooltip =
         fmt::format("Minimum frequency: {}\nAverage frequency: {}\nMaximum frequency: {}\n",
                     min_frequency, avg_frequency, max_frequency);
-    label_.set_tooltip_text(tooltip);
+    label_.set_tooltip_markup(tooltip);
   }
   auto format = format_;
   auto state = getState(avg_frequency);

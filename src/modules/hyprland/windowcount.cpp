@@ -41,7 +41,7 @@ WindowCount::~WindowCount() {
 
 auto WindowCount::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
-  
+
   queryActiveWorkspace();
 
   std::string format = config_["format"].asString();
@@ -61,7 +61,7 @@ auto WindowCount::update() -> void {
   } else if (!format.empty()) {
     label_.set_markup(fmt::format(fmt::runtime(format), workspace_.windows));
   } else {
-    label_.set_text(fmt::format("{}", workspace_.windows));
+    label_.set_markup(fmt::format("{}", workspace_.windows));
   }
 
   label_.show();
@@ -128,9 +128,7 @@ void WindowCount::queryActiveWorkspace() {
   }
 }
 
-void WindowCount::onEvent(const std::string& ev) {
-  dp.emit();
-}
+void WindowCount::onEvent(const std::string& ev) { dp.emit(); }
 
 void WindowCount::setClass(const std::string& classname, bool enable) {
   if (enable) {

@@ -273,7 +273,7 @@ int BacklightBackend::get_scaled_brightness(const std::string& preferred_device)
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
-    return best->get_actual() * 100 / best->get_max();
+    return static_cast<int>(std::round(best->get_actual() * 100.0F / best->get_max()));
   }
 
   return 0;

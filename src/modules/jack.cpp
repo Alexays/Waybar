@@ -81,7 +81,7 @@ auto JACK::update() -> void {
   if (tooltipEnabled()) {
     std::string tooltip_format = "{bufsize}/{samplerate} {latency}ms";
     if (config_["tooltip-format"].isString()) tooltip_format = config_["tooltip-format"].asString();
-    label_.set_tooltip_text(fmt::format(
+    label_.set_tooltip_markup(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("load", std::round(load_)),
         fmt::arg("bufsize", bufsize_), fmt::arg("samplerate", samplerate_),
         fmt::arg("latency", fmt::format("{:.2f}", latency)), fmt::arg("xruns", xruns_)));

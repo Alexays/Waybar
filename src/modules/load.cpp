@@ -23,7 +23,7 @@ auto waybar::modules::Load::update() -> void {
   auto [load1, load5, load15] = Load::getLoad();
   if (tooltipEnabled()) {
     auto tooltip = fmt::format("Load 1: {}\nLoad 5: {}\nLoad 15: {}", load1, load5, load15);
-    label_.set_tooltip_text(tooltip);
+    label_.set_tooltip_markup(tooltip);
   }
   auto format = format_;
   auto state = getState(load1);

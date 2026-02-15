@@ -159,7 +159,7 @@ auto PowerProfilesDaemon::update() -> void {
     store.push_back(fmt::arg("icon", getIcon(0, profile.name)));
     label_.set_markup(fmt::vformat(format_, store));
     if (tooltipEnabled()) {
-      label_.set_tooltip_text(fmt::vformat(tooltipFormat_, store));
+      label_.set_tooltip_markup(fmt::vformat(tooltipFormat_, store));
     }
 
     // Set CSS class

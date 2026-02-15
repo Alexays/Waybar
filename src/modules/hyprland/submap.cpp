@@ -61,7 +61,7 @@ auto Submap::update() -> void {
   } else {
     label_.set_markup(fmt::format(fmt::runtime(format_), submap_));
     if (tooltipEnabled()) {
-      label_.set_tooltip_text(submap_);
+      label_.set_tooltip_markup(submap_);
     }
     event_box_.show();
   }

@@ -117,7 +117,7 @@ void Window::handle_frame() {
   updateAppIconName(appid_, "");
   updateAppIcon();
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(title_);
+    label_.set_tooltip_markup(title_);
   }
 }
 

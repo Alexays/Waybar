@@ -6,7 +6,7 @@
 #if defined(__linux__)
 #include <sys/inotify.h>
 #endif
-#include <sys/poll.h>
+#include <poll.h>
 
 #include <algorithm>
 #include <fstream>

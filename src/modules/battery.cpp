@@ -687,7 +687,7 @@ auto waybar::modules::Battery::update() -> void {
     status = getAdapterStatus(capacity);
   }
   auto status_pretty = status;
-  puts(status.c_str());
+
   // Transform to lowercase  and replace space with dash
   std::ranges::transform(status.begin(), status.end(), status.begin(),
                          [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
