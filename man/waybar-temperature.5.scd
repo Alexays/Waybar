@@ -29,7 +29,12 @@ Addressed by *temperature*
 
 *input-filename*: ++
 	typeof: string ++
-	The temperature filename of your *hwmon-path-abs*, e.g. *temp1_input*
+	The temperature filename of your *hwmon-path-abs* (also used by *hwmon-by-name*), e.g. *temp1_input*
+
+*hwmon-by-name*: ++
+	typeof: string ++
+	The substring to search for in */sys/class/hwmon/hwmonX/name* (where hwmonX is any folder in */sys/class/hwmon/*).
+	Waybar will search for every directory in */sys/class/hwmon/* and uses the directory in which the *name* matches *hwmon-by-name*.
 
 *warning-threshold*: ++
 	typeof: integer ++
