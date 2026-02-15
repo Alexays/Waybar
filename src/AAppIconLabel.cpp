@@ -151,7 +151,7 @@ void AAppIconLabel::updateAppIconName(const std::string& app_identifier,
 }
 
 void AAppIconLabel::updateAppIcon() {
-  if (update_app_icon_) {
+  if (update_app_icon_ || (!iconEnabled() && image_.get_visible())) {
     update_app_icon_ = false;
     if (app_icon_name_.empty()) {
       image_.set_visible(false);
