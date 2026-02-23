@@ -36,7 +36,7 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
   event_box_.add(graph_);
 
   if (config_["datapoints"].isUInt()) {
-    datapoints_ = config_["datapoints_"].asUInt();
+    datapoints_ = config_["datapoints"].asUInt();
   }
 
   if (config_["graph_type"].isString()) {
@@ -110,7 +110,7 @@ void AGraph::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
 }
 
 void AGraph::addValue(const int n) {
-  if (values_.size() >= datapoints_) {
+  if (datapoints_ > 0 && values_.size() >= datapoints_) {
     values_.pop_front();
   }
   values_.push_back(n);
