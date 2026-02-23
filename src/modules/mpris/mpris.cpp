@@ -486,10 +486,6 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     }
   });
 
-  char* player_status = nullptr;
-  auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
-  g_object_get(player, "status", &player_status, "playback-status", &player_playback_status, NULL);
-
   std::string player_name = player_;
   if (player_name == "playerctld") {
     GList* players = playerctl_list_players(&error);
@@ -498,9 +494,21 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
-    players = g_list_first(players);
-    if (players)
-      player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
+    auto is_player_ignored = [](gconstpointer data, gconstpointer user_data) -> gint {
+      const auto* player_name = static_cast<const PlayerctlPlayerName*>(data);
+      const auto* ignored_players = static_cast<const std::vector<std::string>*>(user_data);
+      return std::any_of(ignored_players->begin(), ignored_players->end(),
+                         [&](const std::string& pn) { return pn == player_name->name; })
+                 ? 1
+                 : 0;
+    };
+
+    GList* valid_player = g_list_find_custom(players, &ignored_players_, is_player_ignored);
+
+    // set player to the first non-ignored player
+    if (valid_player)
+      player = playerctl_player_new_from_name(static_cast<PlayerctlPlayerName*>(valid_player->data),
+                                              &error);
     else
       return std::nullopt;  // no players found, hide the widget
   }
@@ -510,6 +518,10 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     spdlog::warn("mpris[{}]: ignoring player update", player_name);
     return std::nullopt;
   }
+
+  char* player_status = nullptr;
+  auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
+  g_object_get(player, "status", &player_status, "playback-status", &player_playback_status, NULL);
 
   // make status lowercase
   player_status[0] = std::tolower(player_status[0]);
