@@ -30,6 +30,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
       dynamic_separator_(" - "),
       truncate_hours_(true),
       tooltip_len_limits_(false),
+      prefer_album_artist_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
       player_("playerctld"),
@@ -66,6 +67,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     }
     if (config_["enable-tooltip-len-limits"].isBool()) {
       tooltip_len_limits_ = config["enable-tooltip-len-limits"].asBool();
+    }
+    if (config_["prefer-album-artist"].isBool()) {
+      prefer_album_artist_ = config["prefer-album-artist"].asBool();
     }
   }
 
@@ -243,6 +247,12 @@ void truncate(std::string& s, const std::string& ellipsis, size_t max_len) {
 
 auto Mpris::getArtistStr(const PlayerInfo& info, bool truncated) -> std::string {
   auto artist = info.artist.value_or(std::string());
+  if (prefer_album_artist_) {
+    auto album_artist = info.album_artist.value_or(std::string());
+    if (!album_artist.empty()) {
+      artist = album_artist;
+    }
+  }
   if (truncated && artist_len_ >= 0) truncate(artist, ellipsis_, artist_len_);
   return artist;
 }
@@ -520,6 +530,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .status_string = player_status,
       .artist = std::nullopt,
       .album = std::nullopt,
+      .album_artist = std::nullopt,
       .title = std::nullopt,
       .length = std::nullopt,
   };
@@ -530,6 +541,12 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     g_free(artist_);
   }
   if (error) goto errorexit;
+
+  if (auto* album_artist_ = playerctl_player_print_metadata_prop(player, "xesam:albumArtist", &error)) {
+    spdlog::debug("mpris[{}]: albumArtist = {}", info.name, album_artist_);
+    info.album_artist = album_artist_;
+    g_free(album_artist_);
+  }
 
   if (auto* album_ = playerctl_player_get_album(player, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
