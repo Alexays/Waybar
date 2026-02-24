@@ -79,17 +79,22 @@ auto supportsLockStates(const libevdev* dev) -> bool {
 }
 
 auto isCommonFormatIcons(const Json::Value& config) -> bool {
-  return config["format-icons"].isObject() && (config["format-icons"]["locked"].isString() || config["format-icons"]["unlocked"].isString());
+  return config["format-icons"].isObject() && (config["format-icons"]["locked"].isString() ||
+                                               config["format-icons"]["unlocked"].isString());
 }
 
-auto keyStateToIcons(const Json::Value& config) -> std::unordered_map<std::string, std::vector<std::string>> {
+auto keyStateToIcons(const Json::Value& config)
+    -> std::unordered_map<std::string, std::vector<std::string>> {
   std::unordered_map<std::string, std::vector<std::string>> key_icon_states;
   std::vector<std::string> default_icons = {"unlocked", "locked"};
 
   if (isCommonFormatIcons(config)) {
     std::vector<std::string> icons = {
-      config["format-icons"]["unlocked"].isString() ? config["format-icons"]["unlocked"].asString() : "unlocked",
-      config["format-icons"]["locked"].isString() ? config["format-icons"]["locked"].asString() : "locked",
+        config["format-icons"]["unlocked"].isString()
+            ? config["format-icons"]["unlocked"].asString()
+            : "unlocked",
+        config["format-icons"]["locked"].isString() ? config["format-icons"]["locked"].asString()
+                                                    : "locked",
     };
     key_icon_states["Lock"] = icons;
     return key_icon_states;
@@ -100,8 +105,12 @@ auto keyStateToIcons(const Json::Value& config) -> std::unordered_map<std::strin
     std::string map_key = key.substr(0, key.length() - 4);
     map_key[0] = std::toupper(map_key[0]);
     if (config["format-icons"].isObject() && config["format-icons"][key].isObject()) {
-      std::string unlocked = config["format-icons"][key]["unlocked"].isString() ? config["format-icons"][key]["unlocked"].asString() : "unlocked";
-      std::string locked = config["format-icons"][key]["locked"].isString() ? config["format-icons"][key]["locked"].asString() : "locked";
+      std::string unlocked = config["format-icons"][key]["unlocked"].isString()
+                                 ? config["format-icons"][key]["unlocked"].asString()
+                                 : "unlocked";
+      std::string locked = config["format-icons"][key]["locked"].isString()
+                               ? config["format-icons"][key]["locked"].asString()
+                               : "locked";
       key_icon_states[map_key] = {unlocked, locked};
       found_any = true;
     }
