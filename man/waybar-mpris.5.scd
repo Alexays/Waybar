@@ -140,6 +140,26 @@ The *mpris* module displays currently playing media via libplayerctl.
 	default: next track ++
 	Overwrite default action toggles.
 
+*on-scroll-up*: ++
+	typeof: string ++
+	default: previous track ++
+	Overwrite default action toggles.
+
+*on-scroll-down*: ++
+	typeof: string ++
+	default: next track ++
+	Overwrite default action toggles.
+
+*on-scroll-left*: ++
+	typeof: string ++
+	default: previous track ++
+	Overwrite default action toggles.
+
+*on-scroll-right*: ++
+	typeof: string ++
+	default: next track ++
+	Overwrite default action toggles.
+
 *player-icons*: ++
 	typeof: map[string]string ++
 	Allows setting _{player_icon}_ based on player-name property.
