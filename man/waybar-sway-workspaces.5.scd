@@ -110,6 +110,12 @@ warp-on-scroll: ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*output-classes*: ++
+	typeof: array ++
+	Specify additional CSS classes to be added to workspace indicators based on the output on which the associated workspace is located.
+	Keys are output names and values are class names like *${output}: {output-class}*.
+	Assignment in config is used to keep the stylesheet independent of the available outputs.
+
 
 # FORMAT REPLACEMENTS
 
@@ -197,3 +203,4 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.empty*
 - *#workspaces button.current_output*
 - *#workspaces button#sway-workspace-${name}*
+- *#workspaces button.${output-class}*
