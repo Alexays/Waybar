@@ -57,6 +57,11 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
 
+*truncate*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, the task button text will be ellipsized (truncated with …) when the available button width is smaller than the label text.
+
 *on-click*: ++
 	typeof: string ++
 	The action which should be triggered when clicking on the application button with the left mouse button.
