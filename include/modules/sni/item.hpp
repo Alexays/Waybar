@@ -23,9 +23,13 @@ struct ToolTip {
   Glib::ustring text;
 };
 
+class Host;
+
+using ItemOrderMap = std::unordered_map<std::string, int>;
+
 class Item : public sigc::trackable {
  public:
-  Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
+  Item(std::string&&, std::string&&, const Json::Value&, const Bar&, Host&, const ItemOrderMap&);
   ~Item();
 
   std::string bus_name;
@@ -56,6 +60,7 @@ class Item : public sigc::trackable {
    * while compliant SNI implementation would always reset the flag to desired value.
    */
   bool item_is_menu = true;
+  int order_ = -1;  // -1 means not set
 
  private:
   void onConfigure(GdkEventConfigure* ev);
@@ -69,7 +74,6 @@ class Item : public sigc::trackable {
                 const Glib::VariantContainerBase& arguments);
 
   void updateImage();
-  Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
@@ -92,6 +96,9 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
   std::set<std::string_view> update_pending_;
+
+  Host& host_;
+  const ItemOrderMap& orders_;
 };
 
 }  // namespace waybar::modules::SNI

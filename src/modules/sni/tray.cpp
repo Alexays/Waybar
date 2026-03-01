@@ -12,8 +12,9 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "tray", id),
       box_(bar.orientation, 0),
       watcher_(SNI::Watcher::getInstance()),
-      host_(nb_hosts_, config, bar, std::bind(&Tray::onAdd, this, std::placeholders::_1),
-            std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
+      host_(
+          nb_hosts_, config, bar, [this](auto&& PH1) { onAdd(std::forward<decltype(PH1)>(PH1)); },
+          [this](auto&& PH1) { onRemove(std::forward<decltype(PH1)>(PH1)); }) {
   box_.set_name("tray");
   event_box_.add(box_);
   if (!id.empty()) {
@@ -53,7 +54,7 @@ auto Tray::update() -> void {
   if (show_passive_) {
     event_box_.set_visible(!children.empty());
   } else {
-    event_box_.set_visible(!std::all_of(children.begin(), children.end(), [](Gtk::Widget* child) {
+    event_box_.set_visible(!std::ranges::all_of(children, [](Gtk::Widget* child) {
       return child->get_style_context()->has_class("passive");
     }));
   }
