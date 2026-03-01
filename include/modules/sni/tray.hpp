@@ -19,11 +19,14 @@ class Tray : public AModule {
  private:
   void onAdd(std::unique_ptr<Item>& item);
   void onRemove(std::unique_ptr<Item>& item);
+  void checkIgnoreList(std::unique_ptr<Item>* item);
+  std::vector<std::string> parseIgnoreList(const Json::Value& config);
 
   static inline std::size_t nb_hosts_ = 0;
   bool show_passive_ = false;
   Gtk::Box box_;
   SNI::Watcher::singleton watcher_;
+  std::vector<std::string> ignore_list_;
   SNI::Host host_;
 };
 
