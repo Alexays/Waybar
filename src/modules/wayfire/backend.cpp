@@ -27,14 +27,14 @@ inline auto byteswap(uint32_t x) -> uint32_t {
 auto pack_and_write(Sock& sock, std::string&& buf) -> void {
   uint32_t len = buf.size();
   if constexpr (std::endian::native != std::endian::little) len = byteswap(len);
-  (void)write(sock.fd, &len, 4);
-  (void)write(sock.fd, buf.data(), buf.size());
+  (void)write(sock, &len, 4);
+  (void)write(sock, buf.data(), buf.size());
 }
 
 auto read_exact(Sock& sock, size_t n) -> std::string {
   auto buf = std::string(n, 0);
   for (size_t i = 0; i < n;) {
-    auto r = read(sock.fd, &buf[i], n - i);
+    auto r = read(sock, &buf[i], n - i);
     if (r <= 0) {
       throw std::runtime_error("Wayfire IPC: read failed");
     }
@@ -111,7 +111,7 @@ auto IPC::connect() -> Sock {
     throw std::runtime_error{"Wayfire IPC: ipc not available"};
   }
 
-  auto sock = socket(AF_UNIX, SOCK_STREAM, 0);
+  util::ScopedFd sock(socket(AF_UNIX, SOCK_STREAM, 0));
   if (sock == -1) {
     throw std::runtime_error{"Wayfire IPC: socket() failed"};
   }
@@ -121,11 +121,10 @@ auto IPC::connect() -> Sock {
   addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
 
   if (::connect(sock, (const sockaddr*)&addr, sizeof(addr)) == -1) {
-    close(sock);
     throw std::runtime_error{"Wayfire IPC: connect() failed"};
   }
 
-  return {sock};
+  return sock;
 }
 
 auto IPC::receive(Sock& sock) -> Json::Value {
