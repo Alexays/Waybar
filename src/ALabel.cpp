@@ -26,7 +26,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
                     : std::chrono::milliseconds(
                           (config_["interval"].isNumeric()
                                ? std::max(1L,  // Minimum 1ms due to millisecond precision
-                                          static_cast<long>(config_["interval"].asDouble()) * 1000)
+                                          static_cast<long>(config_["interval"].asDouble() * 1000))
                                : 1000 * (long)interval))),
       default_format_(format_) {
   label_.set_name(name);
