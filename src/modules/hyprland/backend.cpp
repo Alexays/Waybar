@@ -15,28 +15,9 @@
 #include <filesystem>
 #include <string>
 
+#include "util/scoped_fd.hpp"
+
 namespace waybar::modules::hyprland {
-
-namespace {
-class ScopedFd {
- public:
-  explicit ScopedFd(int fd) : fd_(fd) {}
-  ~ScopedFd() {
-    if (fd_ != -1) {
-      close(fd_);
-    }
-  }
-
-  // ScopedFd is non-copyable
-  ScopedFd(const ScopedFd&) = delete;
-  ScopedFd& operator=(const ScopedFd&) = delete;
-
-  int get() const { return fd_; }
-
- private:
-  int fd_;
-};
-}  // namespace
 
 std::filesystem::path IPC::socketFolder_;
 
@@ -232,9 +213,9 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
-  ScopedFd serverSocket(socket(AF_UNIX, SOCK_STREAM, 0));
+  util::ScopedFd serverSocket(socket(AF_UNIX, SOCK_STREAM, 0));
 
-  if (serverSocket.get() < 0) {
+  if (serverSocket < 0) {
     throw std::runtime_error("Hyprland IPC: Couldn't open a socket (1)");
   }
 
@@ -257,13 +238,12 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     throw std::runtime_error("Hyprland IPC: Couldn't copy socket path (6)");
   }
 
-  if (connect(serverSocket.get(), reinterpret_cast<sockaddr*>(&serverAddress),
-              sizeof(serverAddress)) <
+  if (connect(serverSocket, reinterpret_cast<sockaddr*>(&serverAddress), sizeof(serverAddress)) <
       0) {
     throw std::runtime_error("Hyprland IPC: Couldn't connect to " + socketPath + ". (3)");
   }
 
-  auto sizeWritten = write(serverSocket.get(), rq.c_str(), rq.length());
+  auto sizeWritten = write(serverSocket, rq.c_str(), rq.length());
 
   if (sizeWritten < 0) {
     spdlog::error("Hyprland IPC: Couldn't write (4)");
@@ -274,7 +254,7 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   std::string response;
 
   do {
-    sizeWritten = read(serverSocket.get(), buffer.data(), 8192);
+    sizeWritten = read(serverSocket, buffer.data(), 8192);
 
     if (sizeWritten < 0) {
       spdlog::error("Hyprland IPC: Couldn't read (5)");
