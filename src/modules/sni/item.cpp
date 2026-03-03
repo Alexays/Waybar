@@ -423,8 +423,6 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
-  icon_theme->rescan_if_needed();
-
   if (!icon_theme_path.empty()) {
     auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
                                              Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
