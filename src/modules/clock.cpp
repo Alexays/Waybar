@@ -187,6 +187,52 @@ auto waybar::modules::Clock::update() -> void {
     }
 
     m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
+
+    // Pango doesn't support CSS classes but to continue using it while staying
+    // backwards compatible this approach uses post-posting to replace fake
+    // classes with attributes Pango does understand.
+    //
+    // The benefit of this approach is anyone using the original styling choices
+    // can continue doing that and folks can optionally opt into using classes.
+    //
+    // It's also forwards compatible to where if this implemention ever changes
+    // to support proper classes anyone using them will continue to work.
+    auto context = label_.get_style_context();
+
+    const std::vector<std::pair<std::string, std::string>> calendar_class_map = {
+        {"calendar-today",    "today"},
+        {"calendar-days",     "days"},
+        {"calendar-weeks",    "weeks"},
+        {"calendar-weekdays", "weekdays"},
+        {"calendar-months",   "months"}
+    };
+
+    for (const auto& [css_class, json_key] : calendar_class_map) {
+      try {
+        context->add_class(css_class);
+        Gdk::RGBA color = context->get_color();
+        context->remove_class(css_class);
+
+        std::string hex = fmt::format("#{:02x}{:02x}{:02x}",
+            static_cast<int>(color.get_red() * 255),
+            static_cast<int>(color.get_green() * 255),
+            static_cast<int>(color.get_blue() * 255));
+
+        std::string search = "class='" + json_key + "'";
+        std::string replace = "color='" + hex + "'";
+
+        for (size_t pos = 0; (pos = m_tlpText_.find(search, pos)) != std::string::npos; pos += replace.length()) {
+            m_tlpText_.replace(pos, search.length(), replace);
+        }
+      } catch (const Glib::Error& e) {
+          spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what().raw());
+          continue;
+      } catch (...) {
+          // Catch-all for any other weirdness.
+          continue;
+      }
+    }
+
     m_tooltip_->set_markup(m_tlpText_);
     label_.trigger_tooltip_query();
   }
