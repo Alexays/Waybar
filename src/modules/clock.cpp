@@ -199,31 +199,26 @@ auto waybar::modules::Clock::update() -> void {
     // to support proper classes anyone using them will continue to work.
     auto context = label_.get_style_context();
 
-    const std::vector<std::pair<std::string, std::string>> calendar_class_map = {
-        {"calendar-today",    "today"},
-        {"calendar-days",     "days"},
-        {"calendar-weeks",    "weeks"},
-        {"calendar-weekdays", "weekdays"},
-        {"calendar-months",   "months"}
+    static const std::vector<std::pair<std::string, std::string>> calendar_class_map = {
+        {"calendar-today",    "class='today'"},
+        {"calendar-days",     "class='days'"},
+        {"calendar-weeks",    "class='weeks'"},
+        {"calendar-weekdays", "class='weekdays'"},
+        {"calendar-months",   "class='months'"}
     };
 
-    for (const auto& [css_class, json_key] : calendar_class_map) {
+    for (const auto& [css_class, search_str] : calendar_class_map) {
       try {
         context->add_class(css_class);
-        Gdk::RGBA color = context->get_color();
+        const Gdk::RGBA color = context->get_color();
         context->remove_class(css_class);
 
-        std::string hex = fmt::format("#{:02x}{:02x}{:02x}",
-            static_cast<int>(color.get_red() * 255),
+        const std::string replace_str = fmt::format("color='#{:02x}{:02x}{:02x}'",
+            static_cast<int>(color.get_red() * 255,
             static_cast<int>(color.get_green() * 255),
             static_cast<int>(color.get_blue() * 255));
 
-        std::string search = "class='" + json_key + "'";
-        std::string replace = "color='" + hex + "'";
-
-        for (size_t pos = 0; (pos = m_tlpText_.find(search, pos)) != std::string::npos; pos += replace.length()) {
-            m_tlpText_.replace(pos, search.length(), replace);
-        }
+        m_tlpText_ = std::regex_replace(m_tlpText_, std::regex(search_str), replace_str);
       } catch (const Glib::Error& e) {
           spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what().raw());
           continue;
