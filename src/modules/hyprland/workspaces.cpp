@@ -197,7 +197,7 @@ void Workspaces::initializeWorkspaces() {
   auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
   auto const clientsJson = m_ipc.getSocket1JsonReply("clients");
 
-  for (Json::Value workspaceJson : workspacesJson) {
+  for (const auto& workspaceJson : workspacesJson) {
     std::string workspaceName = workspaceJson["name"].asString();
     if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
         (!workspaceName.starts_with("special") || showSpecial()) &&
@@ -401,7 +401,7 @@ void Workspaces::onWorkspaceCreated(std::string const& payload, Json::Value cons
   auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
   auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
 
-  for (Json::Value workspaceJson : workspacesJson) {
+  for (auto workspaceJson : workspacesJson) {
     const auto currentId = workspaceJson["id"].asInt();
     if (currentId == *workspaceId) {
       std::string workspaceName = workspaceJson["name"].asString();
@@ -1004,7 +1004,7 @@ void Workspaces::setUrgentWorkspace(std::string const& windowaddress) {
   const Json::Value clientsJson = m_ipc.getSocket1JsonReply("clients");
   int workspaceId = -1;
 
-  for (Json::Value clientJson : clientsJson) {
+  for (const auto& clientJson : clientsJson) {
     if (clientJson["address"].asString().ends_with(windowaddress)) {
       workspaceId = clientJson["workspace"]["id"].asInt();
       break;

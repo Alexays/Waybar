@@ -79,7 +79,7 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
   const auto monitors = m_ipc.getSocket1JsonReply("monitors");
   if (monitors.isArray()) {
     auto monitor = std::ranges::find_if(
-        monitors, [&](Json::Value monitor) { return monitor["name"] == monitorName; });
+        monitors, [&](const Json::Value& monitor) { return monitor["name"] == monitorName; });
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
       return Workspace{
@@ -93,7 +93,7 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
     const auto workspaces = m_ipc.getSocket1JsonReply("workspaces");
     if (workspaces.isArray()) {
       auto workspace = std::ranges::find_if(
-          workspaces, [&](Json::Value workspace) { return workspace["id"] == id; });
+          workspaces, [&](const Json::Value& workspace) { return workspace["id"] == id; });
       if (workspace == std::end(workspaces)) {
         spdlog::warn("No workspace with id {}", id);
         return Workspace{
