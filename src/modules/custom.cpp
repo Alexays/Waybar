@@ -188,9 +188,13 @@ auto waybar::modules::Custom::update() -> void {
                                   fmt::arg("percentage", percentage_));
             label_.set_tooltip_markup(tooltip);
           } else if (text_ == tooltip_) {
-            label_.set_tooltip_markup(str);
+            if (label_.get_tooltip_markup() != str) {
+              label_.set_tooltip_markup(str);
+            }
           } else {
-            label_.set_tooltip_markup(tooltip_);
+            if (label_.get_tooltip_markup() != tooltip_) {
+              label_.set_tooltip_markup(tooltip_);
+            }
           }
         }
         auto style = label_.get_style_context();
