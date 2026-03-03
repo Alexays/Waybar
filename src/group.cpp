@@ -62,13 +62,22 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
+    const bool reveal_by_default =
+        (drawer_config["reveal-by-default"].isBool() ? drawer_config["reveal-by-default"].asBool()
+                                                     : false);
+
     click_to_reveal = drawer_config["click-to-reveal"].asBool();
 
     auto transition_type = getPreferredTransitionType(vertical);
 
     revealer.set_transition_type(transition_type);
     revealer.set_transition_duration(transition_duration);
-    revealer.set_reveal_child(false);
+    if (click_to_reveal && reveal_by_default) {
+      box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+      revealer.set_reveal_child(true);
+    } else {
+      revealer.set_reveal_child(false);
+    }
 
     revealer.get_style_context()->add_class("drawer");
 
