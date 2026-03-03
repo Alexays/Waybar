@@ -22,7 +22,7 @@ class Disk : public ALabel {
   std::string path_;
   std::string unit_;
 
-  float calc_specific_divisor(const std::string divisor);
+  float calc_specific_divisor(const std::string& divisor);
 };
 
 }  // namespace waybar::modules

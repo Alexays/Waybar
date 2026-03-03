@@ -239,7 +239,8 @@ std::string waybar::modules::MPD::getStateIcon() const {
   }
 }
 
-std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool activated) const {
+std::string waybar::modules::MPD::getOptionIcon(const std::string& optionName,
+                                                bool activated) const {
   if (!config_[optionName + "-icons"].isObject()) {
     return "";
   }

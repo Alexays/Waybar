@@ -132,7 +132,7 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::st
   return {service, "/StatusNotifierItem"};
 }
 
-void Host::addRegisteredItem(std::string service) {
+void Host::addRegisteredItem(const std::string& service) {
   std::string bus_name, object_path;
   std::tie(bus_name, object_path) = getBusNameAndObjectPath(service);
   auto it = std::find_if(items_.begin(), items_.end(), [&bus_name, &object_path](const auto& item) {

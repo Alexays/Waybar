@@ -30,7 +30,7 @@ class Host {
   static void itemUnregistered(SnWatcher*, const gchar*, gpointer);
 
   std::tuple<std::string, std::string> getBusNameAndObjectPath(const std::string);
-  void addRegisteredItem(std::string service);
+  void addRegisteredItem(const std::string& service);
 
   std::vector<std::unique_ptr<Item>> items_;
   const std::string bus_name_;

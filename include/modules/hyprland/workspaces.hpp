@@ -59,7 +59,7 @@ class Workspaces : public AModule, public EventHandler {
   enum class ActiveWindowPosition { NONE, FIRST, LAST };
   auto activeWindowPosition() const -> ActiveWindowPosition { return m_activeWindowPosition; }
 
-  std::string getRewrite(std::string window_class, std::string window_title);
+  std::string getRewrite(const std::string& window_class, const std::string& window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 

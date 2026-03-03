@@ -95,7 +95,7 @@ UPower::~UPower() {
   removeDevices();
 }
 
-static const std::string getDeviceStatus(UpDeviceState& state) {
+static std::string_view getDeviceStatus(UpDeviceState& state) {
   switch (state) {
     case UP_DEVICE_STATE_CHARGING:
     case UP_DEVICE_STATE_PENDING_CHARGE:
@@ -112,7 +112,7 @@ static const std::string getDeviceStatus(UpDeviceState& state) {
   }
 }
 
-static const std::string getDeviceIcon(UpDeviceKind& kind) {
+static std::string_view getDeviceIcon(UpDeviceKind& kind) {
   switch (kind) {
     case UP_DEVICE_KIND_LINE_POWER:
       return "ac-adapter-symbolic";
@@ -212,7 +212,8 @@ auto UPower::update() -> void {
   // Remove last status if it exists
   if (!lastStatus_.empty() && box_.get_style_context()->has_class(lastStatus_))
     box_.get_style_context()->remove_class(lastStatus_);
-  if (!box_.get_style_context()->has_class(status)) box_.get_style_context()->add_class(status);
+  if (!box_.get_style_context()->has_class(std::string(status)))
+    box_.get_style_context()->add_class(std::string(status));
   lastStatus_ = status;
 
   if (devices_.size() == 0 && !upDeviceValid && hideIfEmpty_) {

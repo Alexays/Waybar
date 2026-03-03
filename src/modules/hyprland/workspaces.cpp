@@ -155,7 +155,8 @@ void Workspaces::extendOrphans(int workspaceId, Json::Value const& clientsJson) 
   }
 }
 
-std::string Workspaces::getRewrite(std::string window_class, std::string window_title) {
+std::string Workspaces::getRewrite(const std::string& window_class,
+                                   const std::string& window_title) {
   std::string windowReprKey;
   if (windowRewriteConfigUsesTitle()) {
     windowReprKey = fmt::format("class<{}> title<{}>", window_class, window_title);
