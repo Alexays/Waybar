@@ -634,18 +634,31 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
           case IFA_LOCAL:
             char ipaddr[INET6_ADDRSTRLEN];
             if (!is_del_event) {
+              bool addr_changed = false;
+              std::string changed_ipaddr;
+              int changed_cidr = 0;
               if ((net->addr_pref_ == ip_addr_pref::IPV4 ||
                    net->addr_pref_ == ip_addr_pref::IPV4_6) &&
                   net->cidr_ == 0 && ifa->ifa_family == AF_INET) {
-                net->ipaddr_ =
-                    inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
-                net->cidr_ = ifa->ifa_prefixlen;
+                if (inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)) !=
+                    nullptr) {
+                  net->ipaddr_ = ipaddr;
+                  net->cidr_ = ifa->ifa_prefixlen;
+                  addr_changed = true;
+                  changed_ipaddr = net->ipaddr_;
+                  changed_cidr = net->cidr_;
+                }
               } else if ((net->addr_pref_ == ip_addr_pref::IPV6 ||
                           net->addr_pref_ == ip_addr_pref::IPV4_6) &&
                          net->cidr6_ == 0 && ifa->ifa_family == AF_INET6) {
-                net->ipaddr6_ =
-                    inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
-                net->cidr6_ = ifa->ifa_prefixlen;
+                if (inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)) !=
+                    nullptr) {
+                  net->ipaddr6_ = ipaddr;
+                  net->cidr6_ = ifa->ifa_prefixlen;
+                  addr_changed = true;
+                  changed_ipaddr = net->ipaddr6_;
+                  changed_cidr = net->cidr6_;
+                }
               }
 
               switch (ifa->ifa_family) {
@@ -665,7 +678,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                   net->netmask6_ = inet_ntop(ifa->ifa_family, &netmask6, ipaddr, sizeof(ipaddr));
                 }
               }
-              spdlog::debug("network: {}, new addr {}/{}", net->ifname_, net->ipaddr_, net->cidr_);
+              if (addr_changed) {
+                spdlog::debug("network: {}, new addr {}/{}", net->ifname_, changed_ipaddr,
+                              changed_cidr);
+              }
             } else {
               net->ipaddr_.clear();
               net->ipaddr6_.clear();
