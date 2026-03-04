@@ -9,8 +9,13 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <array>
+#include <cerrno>
+#include <cstring>
 #include <filesystem>
 #include <string>
+
+#include "util/scoped_fd.hpp"
 
 namespace waybar::modules::hyprland {
 
@@ -45,8 +50,8 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
 
 IPC::IPC() {
   // will start IPC and relay events to parseIPC
-  ipcThread_ = std::thread([this]() { socketListener(); });
   socketOwnerPid_ = getpid();
+  ipcThread_ = std::thread([this]() { socketListener(); });
 }
 
 IPC::~IPC() {
@@ -54,19 +59,20 @@ IPC::~IPC() {
   // failed exec()) exits.
   if (getpid() != socketOwnerPid_) return;
 
-  running_ = false;
+  running_.store(false, std::memory_order_relaxed);
   spdlog::info("Hyprland IPC stopping...");
-  if (socketfd_ != -1) {
-    spdlog::trace("Shutting down socket");
-    if (shutdown(socketfd_, SHUT_RDWR) == -1) {
-      spdlog::error("Hyprland IPC: Couldn't shutdown socket");
-    }
-    spdlog::trace("Closing socket");
-    if (close(socketfd_) == -1) {
-      spdlog::error("Hyprland IPC: Couldn't close socket");
+  {
+    std::lock_guard<std::mutex> lock(socketMutex_);
+    if (socketfd_ != -1) {
+      spdlog::trace("Shutting down socket");
+      if (shutdown(socketfd_, SHUT_RDWR) == -1 && errno != ENOTCONN) {
+        spdlog::error("Hyprland IPC: Couldn't shutdown socket");
+      }
     }
   }
-  ipcThread_.join();
+  if (ipcThread_.joinable()) {
+    ipcThread_.join();
+  }
 }
 
 IPC& IPC::inst() {
@@ -86,9 +92,9 @@ void IPC::socketListener() {
   spdlog::info("Hyprland IPC starting");
 
   struct sockaddr_un addr;
-  socketfd_ = socket(AF_UNIX, SOCK_STREAM, 0);
+  const int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-  if (socketfd_ == -1) {
+  if (socketfd == -1) {
     spdlog::error("Hyprland IPC: socketfd failed");
     return;
   }
@@ -102,38 +108,67 @@ void IPC::socketListener() {
 
   int l = sizeof(struct sockaddr_un);
 
-  if (connect(socketfd_, (struct sockaddr*)&addr, l) == -1) {
-    spdlog::error("Hyprland IPC: Unable to connect?");
+  if (connect(socketfd, (struct sockaddr*)&addr, l) == -1) {
+    spdlog::error("Hyprland IPC: Unable to connect? {}", std::strerror(errno));
+    close(socketfd);
     return;
   }
-  auto* file = fdopen(socketfd_, "r");
-  if (file == nullptr) {
-    spdlog::error("Hyprland IPC: Couldn't open file descriptor");
-    return;
+
+  {
+    std::lock_guard<std::mutex> lock(socketMutex_);
+    socketfd_ = socketfd;
   }
-  while (running_) {
+
+  std::string pending;
+  while (running_.load(std::memory_order_relaxed)) {
     std::array<char, 1024> buffer;  // Hyprland socket2 events are max 1024 bytes
+    const ssize_t bytes_read = read(socketfd, buffer.data(), buffer.size());
 
-    auto* receivedCharPtr = fgets(buffer.data(), buffer.size(), file);
-
-    if (receivedCharPtr == nullptr) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      continue;
+    if (bytes_read == 0) {
+      if (running_.load(std::memory_order_relaxed)) {
+        spdlog::warn("Hyprland IPC: Socket closed by peer");
+      }
+      break;
     }
 
-    std::string messageReceived(buffer.data());
-    messageReceived = messageReceived.substr(0, messageReceived.find_first_of('\n'));
-    spdlog::debug("hyprland IPC received {}", messageReceived);
-
-    try {
-      parseIPC(messageReceived);
-    } catch (std::exception& e) {
-      spdlog::warn("Failed to parse IPC message: {}, reason: {}", messageReceived, e.what());
-    } catch (...) {
-      throw;
+    if (bytes_read < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      if (!running_.load(std::memory_order_relaxed)) {
+        break;
+      }
+      spdlog::error("Hyprland IPC: read failed: {}", std::strerror(errno));
+      break;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    pending.append(buffer.data(), static_cast<std::size_t>(bytes_read));
+    for (auto newline_pos = pending.find('\n'); newline_pos != std::string::npos;
+         newline_pos = pending.find('\n')) {
+      std::string messageReceived = pending.substr(0, newline_pos);
+      pending.erase(0, newline_pos + 1);
+      if (messageReceived.empty()) {
+        continue;
+      }
+      spdlog::debug("hyprland IPC received {}", messageReceived);
+
+      try {
+        parseIPC(messageReceived);
+      } catch (std::exception& e) {
+        spdlog::warn("Failed to parse IPC message: {}, reason: {}", messageReceived, e.what());
+      } catch (...) {
+        throw;
+      }
+    }
+  }
+  {
+    std::lock_guard<std::mutex> lock(socketMutex_);
+    if (socketfd_ != -1) {
+      if (close(socketfd_) == -1) {
+        spdlog::error("Hyprland IPC: Couldn't close socket");
+      }
+      socketfd_ = -1;
+    }
   }
   spdlog::debug("Hyprland IPC stopped");
 }
@@ -178,7 +213,7 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 std::string IPC::getSocket1Reply(const std::string& rq) {
   // basically hyprctl
 
-  const auto serverSocket = socket(AF_UNIX, SOCK_STREAM, 0);
+  util::ScopedFd serverSocket(socket(AF_UNIX, SOCK_STREAM, 0));
 
   if (serverSocket < 0) {
     throw std::runtime_error("Hyprland IPC: Couldn't open a socket (1)");
@@ -223,13 +258,11 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
 
     if (sizeWritten < 0) {
       spdlog::error("Hyprland IPC: Couldn't read (5)");
-      close(serverSocket);
       return "";
     }
     response.append(buffer.data(), sizeWritten);
   } while (sizeWritten > 0);
 
-  close(serverSocket);
   return response;
 }
 

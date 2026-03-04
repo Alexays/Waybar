@@ -12,6 +12,8 @@
 #include <unordered_map>
 #include <utility>
 
+#include "util/scoped_fd.hpp"
+
 namespace waybar::modules::wayfire {
 
 using EventHandler = std::function<void(const std::string& event)>;
@@ -71,23 +73,7 @@ struct State {
   auto update_view(const Json::Value& view) -> void;
 };
 
-struct Sock {
-  int fd;
-
-  Sock(int fd) : fd{fd} {}
-  ~Sock() { close(fd); }
-  Sock(const Sock&) = delete;
-  auto operator=(const Sock&) = delete;
-  Sock(Sock&& rhs) noexcept {
-    fd = rhs.fd;
-    rhs.fd = -1;
-  }
-  auto& operator=(Sock&& rhs) noexcept {
-    fd = rhs.fd;
-    rhs.fd = -1;
-    return *this;
-  }
-};
+using Sock = util::ScopedFd;
 
 class IPC : public std::enable_shared_from_this<IPC> {
   static std::weak_ptr<IPC> instance;
