@@ -162,8 +162,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   if (player) {
     g_object_connect(player, "signal::play", G_CALLBACK(onPlayerPlay), this, "signal::pause",
                      G_CALLBACK(onPlayerPause), this, "signal::stop", G_CALLBACK(onPlayerStop),
-                     this, "signal::stop", G_CALLBACK(onPlayerStop), this, "signal::metadata",
-                     G_CALLBACK(onPlayerMetadata), this, NULL);
+                     this, "signal::metadata", G_CALLBACK(onPlayerMetadata), this, NULL);
   }
 
   // allow setting an interval count that triggers periodic refreshes
@@ -179,9 +178,17 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 }
 
 Mpris::~Mpris() {
-  if (last_active_player_ && last_active_player_ != player) g_object_unref(last_active_player_);
-  if (manager != nullptr) g_object_unref(manager);
-  if (player != nullptr) g_object_unref(player);
+  if (manager != nullptr) {
+    g_signal_handlers_disconnect_by_data(manager, this);
+  }
+  if (player != nullptr) {
+    g_signal_handlers_disconnect_by_data(player, this);
+  }
+  if (last_active_player_ != nullptr && last_active_player_ != player) {
+    g_object_unref(last_active_player_);
+  }
+  g_clear_object(&manager);
+  g_clear_object(&player);
 }
 
 auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) -> std::string {
@@ -412,11 +419,14 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
     return;
   }
 
+  if (mpris->player != nullptr) {
+    g_signal_handlers_disconnect_by_data(mpris->player, mpris);
+    g_clear_object(&mpris->player);
+  }
   mpris->player = playerctl_player_new_from_name(player_name, nullptr);
   g_object_connect(mpris->player, "signal::play", G_CALLBACK(onPlayerPlay), mpris, "signal::pause",
                    G_CALLBACK(onPlayerPause), mpris, "signal::stop", G_CALLBACK(onPlayerStop),
-                   mpris, "signal::stop", G_CALLBACK(onPlayerStop), mpris, "signal::metadata",
-                   G_CALLBACK(onPlayerMetadata), mpris, NULL);
+                   mpris, "signal::metadata", G_CALLBACK(onPlayerMetadata), mpris, NULL);
 
   mpris->dp.emit();
 }
