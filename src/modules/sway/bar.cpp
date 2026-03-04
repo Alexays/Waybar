@@ -60,7 +60,7 @@ BarIpcClient::BarIpcClient(waybar::Bar& bar) : bar_{bar} {
   });
 }
 
-bool BarIpcClient::isModuleEnabled(std::string name) {
+bool BarIpcClient::isModuleEnabled(const std::string& name) {
   for (const auto& section : {"modules-left", "modules-center", "modules-right"}) {
     if (const auto& modules = bar_.config.get(section, {}); modules.isArray()) {
       for (const auto& module : modules) {

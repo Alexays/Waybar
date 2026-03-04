@@ -321,6 +321,7 @@ auto waybar::modules::Network::update() -> void {
   } else if (addr_pref_ == ip_addr_pref::IPV6) {
     final_ipaddr_ = ipaddr6_;
   } else if (addr_pref_ == ip_addr_pref::IPV4_6) {
+    final_ipaddr_.reserve(ipaddr_.length() + ipaddr6_.length() + 1);
     final_ipaddr_ = ipaddr_;
     final_ipaddr_ += '\n';
     final_ipaddr_ += ipaddr6_;

@@ -336,11 +336,20 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
           if (array != nullptr) {
             g_free(array);
           }
-#if GLIB_MAJOR_VERSION >= 2 && GLIB_MINOR_VERSION >= 68
-          array = static_cast<guchar*>(g_memdup2(data, size));
-#else
-          array = static_cast<guchar*>(g_memdup(data, size));
-#endif
+          // We must allocate our own array because the data from GVariant is read-only
+          // and we need to modify it to convert ARGB to RGBA.
+          array = static_cast<guchar*>(g_malloc(size));
+
+          // Copy and convert ARGB to RGBA in one pass to avoid g_memdup2 overhead
+          const guchar* src = static_cast<const guchar*>(data);
+          for (gsize i = 0; i < size; i += 4) {
+            guchar alpha = src[i];
+            array[i] = src[i + 1];
+            array[i + 1] = src[i + 2];
+            array[i + 2] = src[i + 3];
+            array[i + 3] = alpha;
+          }
+
           lwidth = width;
           lheight = height;
         }
@@ -349,14 +358,6 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
   }
   g_variant_iter_free(it);
   if (array != nullptr) {
-    /* argb to rgba */
-    for (uint32_t i = 0; i < 4U * lwidth * lheight; i += 4) {
-      guchar alpha = array[i];
-      array[i] = array[i + 1];
-      array[i + 1] = array[i + 2];
-      array[i + 2] = array[i + 3];
-      array[i + 3] = alpha;
-    }
     return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
                                          lheight, 4 * lwidth, &pixbuf_data_deleter);
   }
@@ -422,8 +423,6 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
-  icon_theme->rescan_if_needed();
-
   if (!icon_theme_path.empty()) {
     auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
                                              Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);

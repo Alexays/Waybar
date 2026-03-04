@@ -3,10 +3,10 @@
 #include <glibmm/dispatcher.h>
 #include <sigc++/signal.h>
 
+#include <cstddef>
 #include <functional>
 #include <mutex>
 #include <queue>
-#include <cstddef>
 #include <thread>
 #include <tuple>
 #include <type_traits>

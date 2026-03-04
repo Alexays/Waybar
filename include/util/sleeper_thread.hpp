@@ -72,8 +72,7 @@ class SleeperThread {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
     return condvar_.wait(lk, [this] {
-      return signal_.load(std::memory_order_relaxed) ||
-             !do_run_.load(std::memory_order_relaxed);
+      return signal_.load(std::memory_order_relaxed) || !do_run_.load(std::memory_order_relaxed);
     });
   }
 
@@ -87,8 +86,7 @@ class SleeperThread {
       wait_end = now + dur;
     }
     return condvar_.wait_until(lk, wait_end, [this] {
-      return signal_.load(std::memory_order_relaxed) ||
-             !do_run_.load(std::memory_order_relaxed);
+      return signal_.load(std::memory_order_relaxed) || !do_run_.load(std::memory_order_relaxed);
     });
   }
 
@@ -98,8 +96,7 @@ class SleeperThread {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
     return condvar_.wait_until(lk, time_point, [this] {
-      return signal_.load(std::memory_order_relaxed) ||
-             !do_run_.load(std::memory_order_relaxed);
+      return signal_.load(std::memory_order_relaxed) || !do_run_.load(std::memory_order_relaxed);
     });
   }
 

@@ -109,6 +109,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     player_ = config_["player"].asString();
   }
   if (config_["ignored-players"].isArray()) {
+    ignored_players_.reserve(config_["ignored-players"].size());
     for (const auto& item : config_["ignored-players"]) {
       if (item.isString()) {
         ignored_players_.push_back(item.asString());
