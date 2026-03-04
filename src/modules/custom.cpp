@@ -1,6 +1,7 @@
 #include "modules/custom.hpp"
 
 #include <spdlog/spdlog.h>
+#include <utility>
 
 #include "util/scope_guard.hpp"
 
@@ -180,17 +181,22 @@ auto waybar::modules::Custom::update() -> void {
       } else {
         label_.set_markup(str);
         if (tooltipEnabled()) {
+          std::string tooltip_markup;
           if (tooltip_format_enabled_) {
             auto tooltip = config_["tooltip-format"].asString();
-            tooltip = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
-                                  fmt::arg("tooltip", tooltip_), fmt::arg("alt", alt_),
-                                  fmt::arg("icon", getIcon(percentage_, alt_)),
-                                  fmt::arg("percentage", percentage_));
-            label_.set_tooltip_markup(tooltip);
+            tooltip_markup = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
+                                         fmt::arg("tooltip", tooltip_), fmt::arg("alt", alt_),
+                                         fmt::arg("icon", getIcon(percentage_, alt_)),
+                                         fmt::arg("percentage", percentage_));
           } else if (text_ == tooltip_) {
-            label_.set_tooltip_markup(str);
+            tooltip_markup = str;
           } else {
-            label_.set_tooltip_markup(tooltip_);
+            tooltip_markup = tooltip_;
+          }
+
+          if (last_tooltip_markup_ != tooltip_markup) {
+            label_.set_tooltip_markup(tooltip_markup);
+            last_tooltip_markup_ = std::move(tooltip_markup);
           }
         }
         auto style = label_.get_style_context();
