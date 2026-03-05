@@ -9,6 +9,7 @@
 #include "factory.hpp"
 #include "group.hpp"
 #include "util/enum.hpp"
+#include "util/hosts_check.hpp"
 #include "util/kill_signal.hpp"
 #include "util/hosts_check.hpp"
 
@@ -532,6 +533,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
+
         const Json::Value* module_config = nullptr;
         if (config.isMember(ref)) {
           module_config = &config[ref];
@@ -544,7 +546,8 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
             }
           }
         }
-        if (module_config && !waybar::util::valid_host(*module_config)) continue;
+        if ((module_config != nullptr) && !waybar::util::valid_host(*module_config)) continue;
+
         AModule* module;
 
         if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
