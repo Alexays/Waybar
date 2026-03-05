@@ -14,6 +14,11 @@
 
 namespace waybar::util {
 
+enum class AudioTarget {
+  Sink,
+  Source,
+};
+
 class AudioBackend {
  private:
   static void subscribeCb(pa_context*, pa_subscription_event_type_t, uint32_t, void*);
@@ -22,12 +27,14 @@ class AudioBackend {
   static void sourceInfoCb(pa_context*, const pa_source_info* i, int, void* data);
   static void serverInfoCb(pa_context*, const pa_server_info*, void*);
   static void volumeModifyCb(pa_context*, int, void*);
+  static void sourceVolumeModifyCb(pa_context*, int, void*);
   void connectContext();
 
   pa_threaded_mainloop* mainloop_;
   pa_mainloop_api* mainloop_api_;
   pa_context* context_;
   pa_cvolume pa_volume_;
+  pa_cvolume pa_source_volume_;
 
   // SINK
   uint32_t sink_idx_{0};
@@ -67,8 +74,10 @@ class AudioBackend {
   AudioBackend(std::function<void()> on_updated_cb, private_constructor_tag tag);
   ~AudioBackend();
 
-  void changeVolume(uint16_t volume, uint16_t min_volume = 0, uint16_t max_volume = 100);
-  void changeVolume(ChangeType change_type, double step = 1, uint16_t max_volume = 100);
+  void changeVolume(uint16_t volume, uint16_t min_volume = 0, uint16_t max_volume = 100,
+                    AudioTarget target = AudioTarget::Sink);
+  void changeVolume(ChangeType change_type, double step = 1, uint16_t max_volume = 100,
+                    AudioTarget target = AudioTarget::Sink);
 
   void setIgnoredSinks(const Json::Value& config);
 

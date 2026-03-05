@@ -10,16 +10,16 @@ PulseaudioSlider::PulseaudioSlider(const std::string& id, const Json::Value& con
   if (config_["target"].isString()) {
     std::string target = config_["target"].asString();
     if (target == "sink") {
-      this->target = PulseaudioSliderTarget::Sink;
+      this->target = util::AudioTarget::Sink;
     } else if (target == "source") {
-      this->target = PulseaudioSliderTarget::Source;
+      this->target = util::AudioTarget::Source;
     }
   }
 }
 
 void PulseaudioSlider::update() {
   switch (target) {
-    case PulseaudioSliderTarget::Sink:
+    case util::AudioTarget::Sink:
       if (backend->getSinkMuted()) {
         scale_.set_value(min_);
       } else {
@@ -27,7 +27,7 @@ void PulseaudioSlider::update() {
       }
       break;
 
-    case PulseaudioSliderTarget::Source:
+    case util::AudioTarget::Source:
       if (backend->getSourceMuted()) {
         scale_.set_value(min_);
       } else {
@@ -41,13 +41,13 @@ void PulseaudioSlider::onValueChanged() {
   bool is_mute = false;
 
   switch (target) {
-    case PulseaudioSliderTarget::Sink:
+    case util::AudioTarget::Sink:
       if (backend->getSinkMuted()) {
         is_mute = true;
       }
       break;
 
-    case PulseaudioSliderTarget::Source:
+    case util::AudioTarget::Source:
       if (backend->getSourceMuted()) {
         is_mute = true;
       }
@@ -65,18 +65,18 @@ void PulseaudioSlider::onValueChanged() {
     // If the sink/source is mute, but the user clicked the slider, unmute it!
     else {
       switch (target) {
-        case PulseaudioSliderTarget::Sink:
+        case util::AudioTarget::Sink:
           backend->toggleSinkMute(false);
           break;
 
-        case PulseaudioSliderTarget::Source:
+        case util::AudioTarget::Source:
           backend->toggleSourceMute(false);
           break;
       }
     }
   }
 
-  backend->changeVolume(volume, min_, max_);
+  backend->changeVolume(volume, min_, max_, target);
 }
 
 }  // namespace waybar::modules
