@@ -3,6 +3,7 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <ostream>
 #include <type_traits>
 
 #include "client.hpp"
@@ -11,7 +12,6 @@
 #include "util/enum.hpp"
 #include "util/hosts_check.hpp"
 #include "util/kill_signal.hpp"
-#include "util/hosts_check.hpp"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -534,19 +534,9 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
       try {
         auto ref = name.asString();
 
-        const Json::Value* module_config = nullptr;
-        if (config.isMember(ref)) {
-          module_config = &config[ref];
-        } else {
-          auto hash_pos = ref.find('#');
-          if (hash_pos != std::string::npos) {
-            std::string ref_base = ref.substr(0, hash_pos);
-            if (config.isMember(ref_base)) {
-              module_config = &config[ref_base];
-            }
-          }
+        if (config[ref].isMember("hosts") && !waybar::util::valid_host(config[ref])) {
+          continue;
         }
-        if ((module_config != nullptr) && !waybar::util::valid_host(*module_config)) continue;
 
         AModule* module;
 
