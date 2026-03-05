@@ -10,6 +10,7 @@
 #include "group.hpp"
 #include "util/enum.hpp"
 #include "util/kill_signal.hpp"
+#include "util/hosts_check.hpp"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -531,6 +532,19 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
+        const Json::Value* module_config = nullptr;
+        if (config.isMember(ref)) {
+          module_config = &config[ref];
+        } else {
+          auto hash_pos = ref.find('#');
+          if (hash_pos != std::string::npos) {
+            std::string ref_base = ref.substr(0, hash_pos);
+            if (config.isMember(ref_base)) {
+              module_config = &config[ref_base];
+            }
+          }
+        }
+        if (module_config && !waybar::util::valid_host(*module_config)) continue;
         AModule* module;
 
         if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
