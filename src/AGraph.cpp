@@ -209,40 +209,33 @@ void AGraph::drawPath(const Cairo::RefPtr<Cairo::Context>& cr,
   }
 }
 
-void AGraph::drawBars(const Cairo::RefPtr<Cairo::Context>& cr,
-                      double width, double height, int current_value,
-                      const Gdk::RGBA& fg_color) {
-
+void AGraph::drawBars(const Cairo::RefPtr<Cairo::Context>& cr, double width, double height,
+                      int current_value, const Gdk::RGBA& fg_color) {
   current_value = std::min(100, std::max(0, current_value));
 
   double green_height = height * (std::min(current_value, 40) / 100.0);
-  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(),
-                      0.5);
+  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(), 0.5);
   cr->rectangle(0, height - green_height, width, green_height);
   cr->fill();
 
   if (current_value > 40) {
     double yellow_height = height * (std::min(current_value, 75) - 40) / 100.0;
-    cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(),
-                      0.7);
+    cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(), 0.7);
     cr->rectangle(0, height - green_height - yellow_height, width, yellow_height);
     cr->fill();
   }
 
   if (current_value > 75) {
     double orange_height = height * (std::min(current_value, 85) - 75) / 100.0;
-    cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(),
-                      0.85);
+    cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(), 0.85);
     double yellow_height = height * (std::min(current_value, 75) - 40) / 100.0;
-    cr->rectangle(0, height - green_height - yellow_height - orange_height, width,
-                  orange_height);
+    cr->rectangle(0, height - green_height - yellow_height - orange_height, width, orange_height);
     cr->fill();
   }
 
   if (current_value > 85) {
     double red_height = height * (current_value - 85) / 100.0;
-    cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(),
-                      1.0);
+    cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(), 1.0);
     double yellow_height = height * (std::min(current_value, 75) - 40) / 100.0;
     double orange_height = height * (std::min(current_value, 85) - 75) / 100.0;
     cr->rectangle(0, height - green_height - yellow_height - orange_height - red_height, width,
@@ -268,25 +261,21 @@ void AGraph::drawGauge(const Cairo::RefPtr<Cairo::Context>& cr, double width, do
   double angle2 = angle1 + 0.3 * angle1;
 
   // Green section (0-33%)
-  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(),
-                      0.5);
+  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(), 0.5);
   cr->arc(center_x, center_y, radius, angle1, angle2);
   cr->stroke();
 
   // Yellow section (33-66%)
   angle1 = angle2;
   angle2 = angle1 + 0.3 * angle1;
-  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(),
-                      0.75);
+  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(), 0.75);
   cr->arc(center_x, center_y, radius, angle1, angle2);
   cr->stroke();
 
   // Red section (66-100%)
   angle1 = angle2;
   angle2 = 0.0;
-  cr->set_source_rgba(1.0, 0.0, 0.0, 0.8);
-  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(),
-                      1.0);
+  cr->set_source_rgba(fg_color.get_red(), fg_color.get_green(), fg_color.get_blue(), 1.0);
   cr->arc(center_x, center_y, radius, angle1, angle2);
   cr->stroke();
 
