@@ -35,7 +35,7 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
 
   event_box_.add(graph_);
 
-  if (config_["datapoints"].isUInt()) {
+  if (config_["datapoints"].isUInt() && config_["datapoints"].asUInt() > 0) {
     datapoints_ = config_["datapoints"].asUInt();
   }
 
