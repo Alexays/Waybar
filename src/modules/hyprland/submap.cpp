@@ -75,7 +75,12 @@ void Submap::onEvent(const std::string& ev) {
     return;
   }
 
-  auto submapName = ev.substr(ev.find_first_of('>') + 2);
+  const auto separator = ev.find(">>");
+  if (separator == std::string::npos) {
+    spdlog::warn("hyprland submap received malformed event: {}", ev);
+    return;
+  }
+  auto submapName = ev.substr(separator + 2);
 
   submap_ = submapName;
 
