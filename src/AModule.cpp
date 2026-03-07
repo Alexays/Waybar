@@ -88,6 +88,10 @@ AModule::~AModule() {
       killpg(pid, SIGTERM);
     }
   }
+  if (menu_ != nullptr) {
+    g_object_unref(menu_);
+    menu_ = nullptr;
+  }
 }
 
 auto AModule::update() -> void {

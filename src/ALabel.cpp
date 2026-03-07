@@ -100,6 +100,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         g_object_unref(builder);
         throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
       }
+      // Keep the menu alive after dropping the transient GtkBuilder.
+      g_object_ref(menu_);
       submenus_ = std::map<std::string, GtkMenuItem*>();
       menuActionsMap_ = std::map<std::string, std::string>();
 
