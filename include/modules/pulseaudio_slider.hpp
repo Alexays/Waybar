@@ -6,11 +6,6 @@
 #include "util/audio_backend.hpp"
 namespace waybar::modules {
 
-enum class PulseaudioSliderTarget {
-  Sink,
-  Source,
-};
-
 class PulseaudioSlider : public ASlider {
  public:
   PulseaudioSlider(const std::string&, const Json::Value&);
@@ -21,7 +16,7 @@ class PulseaudioSlider : public ASlider {
 
  private:
   std::shared_ptr<util::AudioBackend> backend = nullptr;
-  PulseaudioSliderTarget target = PulseaudioSliderTarget::Sink;
+  util::AudioTarget target = util::AudioTarget::Sink;
 };
 
 }  // namespace waybar::modules
