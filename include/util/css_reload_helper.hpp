@@ -14,11 +14,13 @@ struct pollfd;
 namespace waybar {
 class CssReloadHelper {
  public:
-  CssReloadHelper(std::string cssFile, std::function<void()> callback);
+  CssReloadHelper(std::string cssFile, std::function<void(const std::string&)> callback);
 
   virtual ~CssReloadHelper() = default;
 
   virtual void monitorChanges();
+
+  virtual void changeCssFile(const std::string& newCssFile);
 
  protected:
   std::vector<std::string> parseImports(const std::string& cssFile);
@@ -42,7 +44,7 @@ class CssReloadHelper {
  private:
   std::string m_cssFile;
 
-  std::function<void()> m_callback;
+  std::function<void(const std::string&)> m_callback;
 
   std::vector<std::tuple<Glib::RefPtr<Gio::FileMonitor>>> m_fileMonitors;
 };
