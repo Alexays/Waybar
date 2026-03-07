@@ -86,6 +86,24 @@ TEST_CASE("XDGRuntimeDirExistsNoHyprDir", "[getSocketFolder]") {
   fs::remove_all(tempDir, ec);
 }
 
+TEST_CASE("Socket folder is resolved per instance signature", "[getSocketFolder]") {
+  const fs::path tempDir = fs::temp_directory_path() / "hypr_test/run/user/1000";
+  std::error_code ec;
+  fs::remove_all(tempDir, ec);
+  fs::create_directories(tempDir / "hypr");
+  setenv("XDG_RUNTIME_DIR", tempDir.c_str(), 1);
+  IPCTestHelper::resetSocketFolder();
+
+  const auto firstPath = hyprland::IPC::getSocketFolder("instance_a");
+  const auto secondPath = hyprland::IPC::getSocketFolder("instance_b");
+
+  REQUIRE(firstPath == tempDir / "hypr" / "instance_a");
+  REQUIRE(secondPath == tempDir / "hypr" / "instance_b");
+  REQUIRE(firstPath != secondPath);
+
+  fs::remove_all(tempDir, ec);
+}
+
 TEST_CASE("getSocket1Reply throws on no socket", "[getSocket1Reply]") {
   unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
   IPCTestHelper::resetSocketFolder();
