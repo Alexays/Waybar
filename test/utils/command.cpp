@@ -4,11 +4,12 @@
 #include <catch2/catch.hpp>
 #endif
 
+#include <sys/wait.h>
+#include <unistd.h>
+
 #include <cerrno>
 #include <list>
 #include <mutex>
-#include <sys/wait.h>
-#include <unistd.h>
 
 std::mutex reap_mtx;
 std::list<pid_t> reap;

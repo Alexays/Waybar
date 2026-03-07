@@ -1,6 +1,7 @@
 #include "modules/custom.hpp"
 
 #include <spdlog/spdlog.h>
+
 #include <utility>
 
 #include "util/scope_guard.hpp"
