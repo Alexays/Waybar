@@ -13,11 +13,11 @@
 #include <string>
 #include <thread>
 
-#include "util/scoped_fd.hpp"
 #include "giomm/datainputstream.h"
 #include "giomm/dataoutputstream.h"
 #include "giomm/unixinputstream.h"
 #include "giomm/unixoutputstream.h"
+#include "util/scoped_fd.hpp"
 
 namespace waybar::modules::niri {
 

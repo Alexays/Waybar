@@ -189,8 +189,9 @@ void Window::queryActiveWorkspace() {
   if (workspace_.windows > 0) {
     const auto clients = m_ipc.getSocket1JsonReply("clients");
     if (clients.isArray()) {
-      auto activeWindow = std::ranges::find_if(
-          clients, [&](const Json::Value& window) { return window["address"] == workspace_.last_window; });
+      auto activeWindow = std::ranges::find_if(clients, [&](const Json::Value& window) {
+        return window["address"] == workspace_.last_window;
+      });
 
       if (activeWindow == std::end(clients)) {
         focused_ = false;
@@ -200,17 +201,19 @@ void Window::queryActiveWorkspace() {
       windowData_ = WindowData::parse(*activeWindow);
       updateAppIconName(windowData_.class_name, windowData_.initial_class_name);
       std::vector<Json::Value> workspaceWindows;
-      std::ranges::copy_if(clients, std::back_inserter(workspaceWindows), [&](const Json::Value& window) {
-        return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
-      });
+      std::ranges::copy_if(
+          clients, std::back_inserter(workspaceWindows), [&](const Json::Value& window) {
+            return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
+          });
       swallowing_ = std::ranges::any_of(workspaceWindows, [&](const Json::Value& window) {
         return !window["swallowing"].isNull() && window["swallowing"].asString() != "0x0";
       });
       std::vector<Json::Value> visibleWindows;
       std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
                            [&](const Json::Value& window) { return !window["hidden"].asBool(); });
-      solo_ = 1 == std::count_if(visibleWindows.begin(), visibleWindows.end(),
-                                 [&](const Json::Value& window) { return !window["floating"].asBool(); });
+      solo_ = 1 == std::count_if(
+                       visibleWindows.begin(), visibleWindows.end(),
+                       [&](const Json::Value& window) { return !window["floating"].asBool(); });
       allFloating_ = std::ranges::all_of(
           visibleWindows, [&](const Json::Value& window) { return window["floating"].asBool(); });
       fullscreen_ = windowData_.fullscreen;
