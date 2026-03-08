@@ -48,7 +48,9 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
   Glib::RefPtr<Gtk::IconTheme> icon_theme;
   std::string overlay_icon_name;
+  Glib::RefPtr<Gdk::Pixbuf> overlay_icon_pixmap;
   std::string attention_icon_name;
+  Glib::RefPtr<Gdk::Pixbuf> attention_icon_pixmap;
   std::string attention_movie_name;
   std::string icon_theme_path;
   std::string menu;
@@ -76,8 +78,13 @@ class Item : public sigc::trackable {
                 const Glib::VariantContainerBase& arguments);
 
   void updateImage();
-  Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
+  static Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> getAttentionIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> getOverlayIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> loadIconFromNameOrFile(const std::string& name, bool log_failure);
+  static Glib::RefPtr<Gdk::Pixbuf> overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>&,
+                                                  const Glib::RefPtr<Gdk::Pixbuf>&);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
   static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);

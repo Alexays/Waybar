@@ -5,6 +5,7 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -195,11 +196,11 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "OverlayIconName") {
       overlay_icon_name = get_variant<std::string>(value);
     } else if (name == "OverlayIconPixmap") {
-      // TODO: overlay_icon_pixmap
+      overlay_icon_pixmap = extractPixBuf(value.gobj());
     } else if (name == "AttentionIconName") {
       attention_icon_name = get_variant<std::string>(value);
     } else if (name == "AttentionIconPixmap") {
-      // TODO: attention_icon_pixmap
+      attention_icon_pixmap = extractPixBuf(value.gobj());
     } else if (name == "AttentionMovieName") {
       attention_movie_name = get_variant<std::string>(value);
     } else if (name == "ToolTip") {
@@ -315,8 +316,8 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
 static const std::map<std::string_view, std::set<std::string_view>> signal2props = {
     {"NewTitle", {"Title"}},
     {"NewIcon", {"IconName", "IconPixmap"}},
-    // {"NewAttentionIcon", {"AttentionIconName", "AttentionIconPixmap", "AttentionMovieName"}},
-    // {"NewOverlayIcon", {"OverlayIconName", "OverlayIconPixmap"}},
+    {"NewAttentionIcon", {"AttentionIconName", "AttentionIconPixmap", "AttentionMovieName"}},
+    {"NewOverlayIcon", {"OverlayIconName", "OverlayIconPixmap"}},
     {"NewIconThemePath", {"IconThemePath"}},
     {"NewToolTip", {"ToolTip"}},
     {"NewStatus", {"Status"}},
@@ -406,36 +407,24 @@ void Item::updateImage() {
     pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
   }
 
+  pixbuf = overlayPixbufs(pixbuf, getOverlayIconPixbuf());
+
   auto surface =
       Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
   image.set(surface);
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
-  if (!icon_name.empty()) {
-    try {
-      std::ifstream temp(icon_name);
-      if (temp.is_open()) {
-        return Gdk::Pixbuf::create_from_file(icon_name);
-      }
-    } catch (Glib::Error& e) {
-      // Ignore because we want to also try different methods of getting an icon.
-      //
-      // But a warning is logged, as the file apparently exists, but there was
-      // a failure in creating a pixbuf out of it.
-
-      spdlog::warn("Item '{}': {}", id, static_cast<std::string>(e.what()));
-    }
-
-    try {
-      // Will throw if it can not find an icon.
-      return getIconByName(icon_name, getScaledIconSize());
-    } catch (Glib::Error& e) {
-      spdlog::trace("Item '{}': {}", id, static_cast<std::string>(e.what()));
+  if (status_ == "needsattention") {
+    if (auto attention_pixbuf = getAttentionIconPixbuf()) {
+      return attention_pixbuf;
     }
   }
 
-  // Return the pixmap only if an icon for the given name could not be found.
+  if (auto pixbuf = loadIconFromNameOrFile(icon_name, true)) {
+    return pixbuf;
+  }
+
   if (icon_pixmap) {
     return icon_pixmap;
   }
@@ -448,6 +437,77 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
   }
 
   return getIconByName("image-missing", getScaledIconSize());
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::getAttentionIconPixbuf() {
+  if (auto pixbuf = loadIconFromNameOrFile(attention_icon_name, false)) {
+    return pixbuf;
+  }
+  if (auto pixbuf = loadIconFromNameOrFile(attention_movie_name, false)) {
+    return pixbuf;
+  }
+  return attention_icon_pixmap;
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::getOverlayIconPixbuf() {
+  if (auto pixbuf = loadIconFromNameOrFile(overlay_icon_name, false)) {
+    return pixbuf;
+  }
+  return overlay_icon_pixmap;
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::loadIconFromNameOrFile(const std::string& name, bool log_failure) {
+  if (name.empty()) {
+    return {};
+  }
+
+  try {
+    std::ifstream temp(name);
+    if (temp.is_open()) {
+      return Gdk::Pixbuf::create_from_file(name);
+    }
+  } catch (const Glib::Error& e) {
+    if (log_failure) {
+      spdlog::warn("Item '{}': {}", id, static_cast<std::string>(e.what()));
+    }
+  }
+
+  try {
+    return getIconByName(name, getScaledIconSize());
+  } catch (const Glib::Error& e) {
+    if (log_failure) {
+      spdlog::trace("Item '{}': {}", id, static_cast<std::string>(e.what()));
+    }
+  }
+
+  return {};
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>& base,
+                                               const Glib::RefPtr<Gdk::Pixbuf>& overlay) {
+  if (!base || !overlay) {
+    return base;
+  }
+
+  auto composed = base->copy();
+  if (!composed) {
+    return base;
+  }
+
+  int overlay_target_size =
+      std::max(1, std::min(composed->get_width(), composed->get_height()) / 2);
+  auto scaled_overlay = overlay->scale_simple(overlay_target_size, overlay_target_size,
+                                              Gdk::InterpType::INTERP_BILINEAR);
+  if (!scaled_overlay) {
+    return composed;
+  }
+
+  int dest_x = std::max(0, composed->get_width() - scaled_overlay->get_width());
+  int dest_y = std::max(0, composed->get_height() - scaled_overlay->get_height());
+  scaled_overlay->composite(composed, dest_x, dest_y, scaled_overlay->get_width(),
+                            scaled_overlay->get_height(), dest_x, dest_y, 1.0, 1.0,
+                            Gdk::InterpType::INTERP_BILINEAR, 255);
+  return composed;
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
