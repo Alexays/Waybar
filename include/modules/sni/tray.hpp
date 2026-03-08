@@ -19,6 +19,7 @@ class Tray : public AModule {
  private:
   void onAdd(std::unique_ptr<Item>& item);
   void onRemove(std::unique_ptr<Item>& item);
+  void queueUpdate();
 
   static inline std::size_t nb_hosts_ = 0;
   bool show_passive_ = false;
