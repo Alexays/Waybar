@@ -2,6 +2,8 @@
 
 #include <gdkmm/pixbuf.h>
 #include <spdlog/spdlog.h>
+#include <regex>
+#include <string>
 
 namespace waybar {
 
@@ -9,6 +11,10 @@ AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const
                        const std::string& format, uint16_t interval, bool ellipsize,
                        bool enable_click, bool enable_scroll)
     : ALabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
+  if (config["icon-size"].isUInt()) {
+    app_icon_size_ = config["icon-size"].asUInt();
+  }
+  image_.set_pixel_size(app_icon_size_);
   event_box_.remove();
   label_.unset_name();
   label_.get_style_context()->remove_class(MODULE_CLASS);
@@ -55,13 +61,54 @@ AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const
   event_box_.add(box_);
 }
 
+std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& input) {
+  std::string icon_result = "";
+  std::string label_result = input;
+  try {
+    const std::regex icon_search(R"((?=\\0icon\\1f).+?(?=\\n))");
+    std::smatch icon_match;
+    if (std::regex_search(input, icon_match, icon_search)) {
+      icon_result = icon_match[0].str().substr(9);
+    
+      const std::regex clean_label_pattern(R"(\\0icon\\1f.+?\\n)");
+      label_result = std::regex_replace(input, clean_label_pattern, "");
+    }
+  } catch (const std::exception& e) {
+      spdlog::warn("Error while parsing icon from label. {}", e.what());
+  }
+
+  return std::make_tuple(icon_result, label_result);
+}
+
 auto AIconLabel::update() -> void {
+  label_contains_icon = false;
+
+  auto [iconLabel, cleanLabel] = extractIcon(label_.get_label().c_str());
+  label_contains_icon = iconLabel.length() > 0;
+
+  if (label_contains_icon) {
+    label_.set_markup(cleanLabel);
+
+    if (iconLabel.front() == '/') {
+      int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
+      auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
+
+      auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
+                                                            image_.get_window());
+      image_.set(surface);
+      image_.set_visible(true);
+    } else {
+      image_.set_from_icon_name(iconLabel, Gtk::ICON_SIZE_INVALID);
+      image_.set_visible(true);
+    }
+  }
+
   image_.set_visible(image_.get_visible() && iconEnabled());
   ALabel::update();
 }
 
 bool AIconLabel::iconEnabled() const {
-  return config_["icon"].isBool() ? config_["icon"].asBool() : false;
+  return label_contains_icon || (config_["icon"].isBool() ? config_["icon"].asBool() : false);
 }
 
 }  // namespace waybar
