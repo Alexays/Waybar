@@ -32,7 +32,6 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 
   windowIpcUniqueLock.unlock();
 
-  queryActiveWorkspace();
   update();
   dp.emit();
 }
@@ -177,66 +176,65 @@ auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
 }
 
 void Window::queryActiveWorkspace() {
-  std::shared_lock<std::shared_mutex> windowIpcShareLock(windowIpcSmtx);
-
   if (separateOutputs_) {
     workspace_ = getActiveWorkspace(this->bar_.output->name);
   } else {
     workspace_ = getActiveWorkspace();
   }
 
+  focused_ = false;
+  windowData_ = WindowData{};
+  allFloating_ = false;
+  swallowing_ = false;
+  fullscreen_ = false;
+  solo_ = false;
+  soloClass_.clear();
+
+  if (workspace_.windows <= 0) {
+    return;
+  }
+
+  const auto clients = m_ipc.getSocket1JsonReply("clients");
+  if (!clients.isArray()) {
+    return;
+  }
+
+  auto activeWindow = std::ranges::find_if(clients, [&](const Json::Value& window) {
+    return window["address"] == workspace_.last_window;
+  });
+
+  if (activeWindow == std::end(clients)) {
+    return;
+  }
+
   focused_ = true;
-  if (workspace_.windows > 0) {
-    const auto clients = m_ipc.getSocket1JsonReply("clients");
-    if (clients.isArray()) {
-      auto activeWindow = std::ranges::find_if(clients, [&](const Json::Value& window) {
-        return window["address"] == workspace_.last_window;
+  windowData_ = WindowData::parse(*activeWindow);
+  updateAppIconName(windowData_.class_name, windowData_.initial_class_name);
+  std::vector<Json::Value> workspaceWindows;
+  std::ranges::copy_if(
+      clients, std::back_inserter(workspaceWindows), [&](const Json::Value& window) {
+        return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
       });
+  swallowing_ = std::ranges::any_of(workspaceWindows, [&](const Json::Value& window) {
+    return !window["swallowing"].isNull() && window["swallowing"].asString() != "0x0";
+  });
+  std::vector<Json::Value> visibleWindows;
+  std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
+                       [&](const Json::Value& window) { return !window["hidden"].asBool(); });
+  solo_ = 1 == std::count_if(
+                   visibleWindows.begin(), visibleWindows.end(),
+                   [&](const Json::Value& window) { return !window["floating"].asBool(); });
+  allFloating_ = std::ranges::all_of(
+      visibleWindows, [&](const Json::Value& window) { return window["floating"].asBool(); });
+  fullscreen_ = windowData_.fullscreen;
 
-      if (activeWindow == std::end(clients)) {
-        focused_ = false;
-        return;
-      }
+  // Fullscreen windows look like they are solo
+  if (fullscreen_) {
+    solo_ = true;
+  }
 
-      windowData_ = WindowData::parse(*activeWindow);
-      updateAppIconName(windowData_.class_name, windowData_.initial_class_name);
-      std::vector<Json::Value> workspaceWindows;
-      std::ranges::copy_if(
-          clients, std::back_inserter(workspaceWindows), [&](const Json::Value& window) {
-            return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
-          });
-      swallowing_ = std::ranges::any_of(workspaceWindows, [&](const Json::Value& window) {
-        return !window["swallowing"].isNull() && window["swallowing"].asString() != "0x0";
-      });
-      std::vector<Json::Value> visibleWindows;
-      std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
-                           [&](const Json::Value& window) { return !window["hidden"].asBool(); });
-      solo_ = 1 == std::count_if(
-                       visibleWindows.begin(), visibleWindows.end(),
-                       [&](const Json::Value& window) { return !window["floating"].asBool(); });
-      allFloating_ = std::ranges::all_of(
-          visibleWindows, [&](const Json::Value& window) { return window["floating"].asBool(); });
-      fullscreen_ = windowData_.fullscreen;
-
-      // Fullscreen windows look like they are solo
-      if (fullscreen_) {
-        solo_ = true;
-      }
-
-      if (solo_) {
-        soloClass_ = windowData_.class_name;
-      } else {
-        soloClass_ = "";
-      }
-    }
-  } else {
-    focused_ = false;
-    windowData_ = WindowData{};
-    allFloating_ = false;
-    swallowing_ = false;
-    fullscreen_ = false;
-    solo_ = false;
-    soloClass_ = "";
+  if (solo_) {
+    soloClass_ = windowData_.class_name;
   }
 }
 

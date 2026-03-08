@@ -25,27 +25,23 @@ std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   static std::mutex folderMutex;
   std::unique_lock lock(folderMutex);
 
-  // socket path, specified by EventManager of Hyprland
-  if (!socketFolder_.empty()) {
-    return socketFolder_;
+  if (socketFolder_.empty()) {
+    const char* xdgRuntimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
+    std::filesystem::path xdgRuntimeDir;
+    // Only set path if env variable is set
+    if (xdgRuntimeDirEnv != nullptr) {
+      xdgRuntimeDir = std::filesystem::path(xdgRuntimeDirEnv);
+    }
+
+    if (!xdgRuntimeDir.empty() && std::filesystem::exists(xdgRuntimeDir / "hypr")) {
+      socketFolder_ = xdgRuntimeDir / "hypr";
+    } else {
+      spdlog::warn("$XDG_RUNTIME_DIR/hypr does not exist, falling back to /tmp/hypr");
+      socketFolder_ = std::filesystem::path("/tmp") / "hypr";
+    }
   }
 
-  const char* xdgRuntimeDirEnv = std::getenv("XDG_RUNTIME_DIR");
-  std::filesystem::path xdgRuntimeDir;
-  // Only set path if env variable is set
-  if (xdgRuntimeDirEnv != nullptr) {
-    xdgRuntimeDir = std::filesystem::path(xdgRuntimeDirEnv);
-  }
-
-  if (!xdgRuntimeDir.empty() && std::filesystem::exists(xdgRuntimeDir / "hypr")) {
-    socketFolder_ = xdgRuntimeDir / "hypr";
-  } else {
-    spdlog::warn("$XDG_RUNTIME_DIR/hypr does not exist, falling back to /tmp/hypr");
-    socketFolder_ = std::filesystem::path("/tmp") / "hypr";
-  }
-
-  socketFolder_ = socketFolder_ / instanceSig;
-  return socketFolder_;
+  return socketFolder_ / instanceSig;
 }
 
 IPC::IPC() {
@@ -91,7 +87,7 @@ void IPC::socketListener() {
 
   spdlog::info("Hyprland IPC starting");
 
-  struct sockaddr_un addr;
+  struct sockaddr_un addr = {};
   const int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
 
   if (socketfd == -1) {
@@ -102,9 +98,12 @@ void IPC::socketListener() {
   addr.sun_family = AF_UNIX;
 
   auto socketPath = IPC::getSocketFolder(his) / ".socket2.sock";
+  if (socketPath.native().size() >= sizeof(addr.sun_path)) {
+    spdlog::error("Hyprland IPC: Socket path is too long: {}", socketPath.string());
+    close(socketfd);
+    return;
+  }
   strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
-
-  addr.sun_path[sizeof(addr.sun_path) - 1] = 0;
 
   int l = sizeof(struct sockaddr_un);
 
@@ -233,8 +232,10 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
   std::string socketPath = IPC::getSocketFolder(instanceSig) / ".socket.sock";
 
   // Use snprintf to copy the socketPath string into serverAddress.sun_path
-  if (snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str()) <
-      0) {
+  const auto socketPathLength =
+      snprintf(serverAddress.sun_path, sizeof(serverAddress.sun_path), "%s", socketPath.c_str());
+  if (socketPathLength < 0 ||
+      socketPathLength >= static_cast<int>(sizeof(serverAddress.sun_path))) {
     throw std::runtime_error("Hyprland IPC: Couldn't copy socket path (6)");
   }
 
@@ -243,15 +244,28 @@ std::string IPC::getSocket1Reply(const std::string& rq) {
     throw std::runtime_error("Hyprland IPC: Couldn't connect to " + socketPath + ". (3)");
   }
 
-  auto sizeWritten = write(serverSocket, rq.c_str(), rq.length());
+  std::size_t totalWritten = 0;
+  while (totalWritten < rq.length()) {
+    const auto sizeWritten =
+        write(serverSocket, rq.c_str() + totalWritten, rq.length() - totalWritten);
 
-  if (sizeWritten < 0) {
-    spdlog::error("Hyprland IPC: Couldn't write (4)");
-    return "";
+    if (sizeWritten < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      spdlog::error("Hyprland IPC: Couldn't write (4)");
+      return "";
+    }
+    if (sizeWritten == 0) {
+      spdlog::error("Hyprland IPC: Socket write made no progress");
+      return "";
+    }
+    totalWritten += static_cast<std::size_t>(sizeWritten);
   }
 
   std::array<char, 8192> buffer = {0};
   std::string response;
+  ssize_t sizeWritten = 0;
 
   do {
     sizeWritten = read(serverSocket, buffer.data(), 8192);

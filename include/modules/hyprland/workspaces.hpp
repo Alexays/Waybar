@@ -4,6 +4,7 @@
 #include <gtkmm/enums.h>
 #include <gtkmm/label.h>
 #include <json/value.h>
+#include <sigc++/connection.h>
 
 #include <cstdint>
 #include <map>
@@ -208,6 +209,7 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
+  sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
 };
 
