@@ -98,8 +98,8 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
   }
   auto watch = gfWatchFind(obj->items_, bus_name, object_path);
   if (watch != nullptr) {
-    g_warning("Status Notifier Item with bus name '%s' and object path '%s' is already registered",
-              bus_name, object_path);
+    spdlog::debug("Ignoring duplicate Status Notifier Item registration for '{}' at '{}'", bus_name,
+                  object_path);
     sn_watcher_complete_register_item(obj->watcher_, invocation);
     return TRUE;
   }
