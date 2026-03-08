@@ -24,8 +24,9 @@ AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_construc
       source_volume_(0),
       source_muted_(false),
       on_updated_cb_(std::move(on_updated_cb)) {
-  // Initialize pa_volume_ with safe defaults
+  // Initialize pa_volume_ and pa_source_volume_ with safe defaults
   pa_cvolume_init(&pa_volume_);
+  pa_cvolume_init(&pa_source_volume_);
   mainloop_ = pa_threaded_mainloop_new();
   if (mainloop_ == nullptr) {
     throw std::runtime_error("pa_mainloop_new() failed.");
@@ -155,6 +156,19 @@ void AudioBackend::volumeModifyCb(pa_context* c, int success, void* data) {
   }
 }
 
+void AudioBackend::sourceVolumeModifyCb(pa_context* c, int success, void* data) {
+  auto* backend = static_cast<AudioBackend*>(data);
+  if (success != 0) {
+    if ((backend->context_ != nullptr) &&
+        pa_context_get_state(backend->context_) == PA_CONTEXT_READY) {
+      pa_context_get_source_info_by_index(backend->context_, backend->source_idx_, sourceInfoCb,
+                                          data);
+    }
+  } else {
+    spdlog::debug("Source volume modification failed");
+  }
+}
+
 /*
  * Called when the requested sink information is ready.
  */
@@ -234,6 +248,11 @@ void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i
                                 void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   if (i != nullptr && backend->default_source_name_ == i->name) {
+    if (pa_cvolume_valid(&i->volume) != 0) {
+      backend->pa_source_volume_ = i->volume;
+    } else {
+      pa_cvolume_init(&backend->pa_source_volume_);
+    }
     auto source_volume = static_cast<float>(pa_cvolume_avg(&(i->volume))) / float{PA_VOLUME_NORM};
     backend->source_volume_ = std::round(source_volume * 100.0F);
     backend->source_idx_ = i->index;
@@ -259,12 +278,18 @@ void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, vo
   pa_context_get_source_info_list(context, sourceInfoCb, data);
 }
 
-void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t max_volume) {
+void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t max_volume,
+                                AudioTarget target) {
   // Early return if context is not ready
   if ((context_ == nullptr) || pa_context_get_state(context_) != PA_CONTEXT_READY) {
     spdlog::error("PulseAudio context not ready");
     return;
   }
+
+  bool is_source = target == AudioTarget::Source;
+
+  // Select the appropriate stored volume structure
+  auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
 
   // Prepare volume structure
   pa_cvolume pa_volume;
@@ -272,12 +297,12 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
   pa_cvolume_init(&pa_volume);
 
   // Use existing volume structure if valid, otherwise create a safe default
-  if ((pa_cvolume_valid(&pa_volume_) != 0) && (pa_channels_valid(pa_volume_.channels) != 0)) {
-    pa_volume = pa_volume_;
+  if ((pa_cvolume_valid(&ref_volume) != 0) && (pa_channels_valid(ref_volume.channels) != 0)) {
+    pa_volume = ref_volume;
   } else {
-    // Set stereo as a safe default
-    pa_volume.channels = 2;
-    spdlog::debug("Using default stereo volume structure");
+    // Mono for sources (microphones), stereo for sinks
+    pa_volume.channels = is_source ? 1 : 2;
+    spdlog::debug("Using default volume structure ({} channels)", pa_volume.channels);
   }
 
   // Set the volume safely
@@ -291,39 +316,56 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
 
   // Apply the volume change
   pa_threaded_mainloop_lock(mainloop_);
-  pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  if (is_source) {
+    pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume, sourceVolumeModifyCb,
+                                          this);
+  } else {
+    pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  }
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
-void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t max_volume) {
+void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t max_volume,
+                                AudioTarget target) {
   // Early return if context is not ready
   if ((context_ == nullptr) || pa_context_get_state(context_) != PA_CONTEXT_READY) {
     spdlog::error("PulseAudio context not ready");
     return;
   }
 
+  bool is_source = target == AudioTarget::Source;
+
+  // Select the appropriate stored volume structure and current volume
+  auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
+  auto current_volume = is_source ? source_volume_ : volume_;
+
   // Prepare volume structure
   pa_cvolume pa_volume;
   pa_cvolume_init(&pa_volume);
 
   // Use existing volume structure if valid, otherwise create a safe default
-  if ((pa_cvolume_valid(&pa_volume_) != 0) && (pa_channels_valid(pa_volume_.channels) != 0)) {
-    pa_volume = pa_volume_;
+  if ((pa_cvolume_valid(&ref_volume) != 0) && (pa_channels_valid(ref_volume.channels) != 0)) {
+    pa_volume = ref_volume;
   } else {
-    // Set stereo as a safe default
-    pa_volume.channels = 2;
-    spdlog::debug("Using default stereo volume structure");
+    // Mono for sources (microphones), stereo for sinks
+    pa_volume.channels = is_source ? 1 : 2;
+    spdlog::debug("Using default volume structure ({} channels)", pa_volume.channels);
 
     // Initialize all channels to current volume level
     double volume_tick = static_cast<double>(PA_VOLUME_NORM) / 100;
-    pa_volume_t vol = volume_ * volume_tick;
+    pa_volume_t vol = current_volume * volume_tick;
     for (uint8_t i = 0; i < pa_volume.channels; i++) {
       pa_volume.values[i] = vol;
     }
 
     // No need to continue with volume change if we had to create a new structure
     pa_threaded_mainloop_lock(mainloop_);
-    pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+    if (is_source) {
+      pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume,
+                                            sourceVolumeModifyCb, this);
+    } else {
+      pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+    }
     pa_threaded_mainloop_unlock(mainloop_);
     return;
   }
@@ -333,10 +375,10 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
   pa_volume_t change;
   max_volume = std::min(max_volume, static_cast<uint16_t>(PA_VOLUME_UI_MAX));
 
-  if (change_type == ChangeType::Increase && volume_ < max_volume) {
+  if (change_type == ChangeType::Increase && current_volume < max_volume) {
     // Calculate how much to increase
-    if (volume_ + step > max_volume) {
-      change = round((max_volume - volume_) * volume_tick);
+    if (current_volume + step > max_volume) {
+      change = round((max_volume - current_volume) * volume_tick);
     } else {
       change = round(step * volume_tick);
     }
@@ -345,10 +387,10 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
     for (uint8_t i = 0; i < pa_volume.channels; i++) {
       pa_volume.values[i] = std::min(pa_volume.values[i] + change, PA_VOLUME_MAX);
     }
-  } else if (change_type == ChangeType::Decrease && volume_ > 0) {
+  } else if (change_type == ChangeType::Decrease && current_volume > 0) {
     // Calculate how much to decrease
-    if (volume_ - step < 0) {
-      change = round(volume_ * volume_tick);
+    if (current_volume - step < 0) {
+      change = round(current_volume * volume_tick);
     } else {
       change = round(step * volume_tick);
     }
@@ -364,7 +406,12 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
 
   // Apply the volume change
   pa_threaded_mainloop_lock(mainloop_);
-  pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  if (is_source) {
+    pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume, sourceVolumeModifyCb,
+                                          this);
+  } else {
+    pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+  }
   pa_threaded_mainloop_unlock(mainloop_);
 }
 

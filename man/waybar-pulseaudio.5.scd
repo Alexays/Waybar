@@ -135,6 +135,11 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*target*: ++
+	typeof: string ++
+	default: sink ++
+	The audio target to control when scrolling. Can be either `sink` (output/speakers) or `source` (input/microphone).
+
 # FORMAT REPLACEMENTS
 
 *{desc}*: Pulseaudio port's description, for bluetooth it'll be the device name.
