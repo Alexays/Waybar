@@ -34,6 +34,9 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 }
 
 Workspaces::~Workspaces() {
+  if (m_scrollEventConnection_.connected()) {
+    m_scrollEventConnection_.disconnect();
+  }
   m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(m_mutex);
@@ -44,10 +47,14 @@ void Workspaces::init() {
 
   initializeWorkspaces();
 
+  if (m_scrollEventConnection_.connected()) {
+    m_scrollEventConnection_.disconnect();
+  }
   if (barScroll()) {
     auto& window = const_cast<Bar&>(m_bar).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+    m_scrollEventConnection_ =
+        window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
   }
 
   dp.emit();
@@ -271,7 +278,7 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const& clientsJs
         // key is the workspace and value is array of monitors to create on
         for (const Json::Value& monitor : value) {
           if (monitor.isString() && monitor.asString() == currentMonitor) {
-            persistentWorkspacesToCreate.emplace_back(currentMonitor);
+            persistentWorkspacesToCreate.emplace_back(key);
             break;
           }
         }
@@ -332,8 +339,13 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& c
 
 void Workspaces::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lock(m_mutex);
-  std::string eventName(begin(ev), begin(ev) + ev.find_first_of('>'));
-  std::string payload = ev.substr(eventName.size() + 2);
+  const auto separator = ev.find(">>");
+  if (separator == std::string::npos) {
+    spdlog::warn("Malformed Hyprland workspace event: {}", ev);
+    return;
+  }
+  std::string eventName = ev.substr(0, separator);
+  std::string payload = ev.substr(separator + 2);
 
   if (eventName == "workspacev2") {
     onWorkspaceActivated(payload);
@@ -496,19 +508,21 @@ void Workspaces::onMonitorFocused(std::string const& payload) {
 void Workspaces::onWindowOpened(std::string const& payload) {
   spdlog::trace("Window opened: {}", payload);
   updateWindowCount();
-  size_t lastCommaIdx = 0;
-  size_t nextCommaIdx = payload.find(',');
-  std::string windowAddress = payload.substr(lastCommaIdx, nextCommaIdx - lastCommaIdx);
+  const auto firstComma = payload.find(',');
+  const auto secondComma =
+      firstComma == std::string::npos ? std::string::npos : payload.find(',', firstComma + 1);
+  const auto thirdComma =
+      secondComma == std::string::npos ? std::string::npos : payload.find(',', secondComma + 1);
+  if (firstComma == std::string::npos || secondComma == std::string::npos ||
+      thirdComma == std::string::npos) {
+    spdlog::warn("Malformed Hyprland openwindow payload: {}", payload);
+    return;
+  }
 
-  lastCommaIdx = nextCommaIdx;
-  nextCommaIdx = payload.find(',', nextCommaIdx + 1);
-  std::string workspaceName = payload.substr(lastCommaIdx + 1, nextCommaIdx - lastCommaIdx - 1);
-
-  lastCommaIdx = nextCommaIdx;
-  nextCommaIdx = payload.find(',', nextCommaIdx + 1);
-  std::string windowClass = payload.substr(lastCommaIdx + 1, nextCommaIdx - lastCommaIdx - 1);
-
-  std::string windowTitle = payload.substr(nextCommaIdx + 1, payload.length() - nextCommaIdx);
+  std::string windowAddress = payload.substr(0, firstComma);
+  std::string workspaceName = payload.substr(firstComma + 1, secondComma - firstComma - 1);
+  std::string windowClass = payload.substr(secondComma + 1, thirdComma - secondComma - 1);
+  std::string windowTitle = payload.substr(thirdComma + 1);
 
   bool isActive = m_currentActiveWindowAddress == windowAddress;
   m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowClass, windowTitle, isActive);
@@ -1002,10 +1016,12 @@ void Workspaces::sortWorkspaces() {
 
 void Workspaces::setUrgentWorkspace(std::string const& windowaddress) {
   const Json::Value clientsJson = m_ipc.getSocket1JsonReply("clients");
+  const std::string normalizedAddress =
+      windowaddress.starts_with("0x") ? windowaddress : fmt::format("0x{}", windowaddress);
   int workspaceId = -1;
 
   for (const auto& clientJson : clientsJson) {
-    if (clientJson["address"].asString().ends_with(windowaddress)) {
+    if (clientJson["address"].asString() == normalizedAddress) {
       workspaceId = clientJson["workspace"]["id"].asInt();
       break;
     }
@@ -1134,7 +1150,11 @@ std::string Workspaces::makePayload(Args const&... args) {
 }
 
 std::pair<std::string, std::string> Workspaces::splitDoublePayload(std::string const& payload) {
-  const std::string part1 = payload.substr(0, payload.find(','));
+  const auto separator = payload.find(',');
+  if (separator == std::string::npos) {
+    throw std::invalid_argument("Expected a two-part Hyprland payload");
+  }
+  const std::string part1 = payload.substr(0, separator);
   const std::string part2 = payload.substr(part1.size() + 1);
   return {part1, part2};
 }
@@ -1143,6 +1163,9 @@ std::tuple<std::string, std::string, std::string> Workspaces::splitTriplePayload
     std::string const& payload) {
   const size_t firstComma = payload.find(',');
   const size_t secondComma = payload.find(',', firstComma + 1);
+  if (firstComma == std::string::npos || secondComma == std::string::npos) {
+    throw std::invalid_argument("Expected a three-part Hyprland payload");
+  }
 
   const std::string part1 = payload.substr(0, firstComma);
   const std::string part2 = payload.substr(firstComma + 1, secondComma - (firstComma + 1));
