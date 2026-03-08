@@ -37,13 +37,18 @@ namespace waybar::modules::SNI {
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
-Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
+Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
+           const std::function<void(Item&)>& on_ready,
+           const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
       icon_theme(Gtk::IconTheme::create()),
-      bar_(bar) {
+      bar_(bar),
+      on_ready_(on_ready),
+      on_invalidate_(on_invalidate),
+      on_updated_(on_updated) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -85,6 +90,8 @@ Item::~Item() {
   }
 }
 
+bool Item::isReady() const { return ready_; }
+
 bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
   event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   return false;
@@ -112,14 +119,18 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
 
     if (this->id.empty() || this->category.empty()) {
       spdlog::error("Invalid Status Notifier Item: {}, {}", bus_name, object_path);
+      invalidate();
       return;
     }
     this->updateImage();
+    setReady();
 
   } catch (const Glib::Error& err) {
     spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
+    invalidate();
   } catch (const std::exception& err) {
     spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
+    invalidate();
   }
 }
 
@@ -217,18 +228,35 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 }
 
 void Item::setStatus(const Glib::ustring& value) {
-  Glib::ustring lower = value.lowercase();
-  event_box.set_visible(show_passive_ || lower.compare("passive") != 0);
+  status_ = value.lowercase();
+  event_box.set_visible(show_passive_ || status_.compare("passive") != 0);
 
   auto style = event_box.get_style_context();
   for (const auto& class_name : style->list_classes()) {
     style->remove_class(class_name);
   }
-  if (lower.compare("needsattention") == 0) {
+  auto css_class = status_;
+  if (css_class.compare("needsattention") == 0) {
     // convert status to dash-case for CSS
-    lower = "needs-attention";
+    css_class = "needs-attention";
   }
-  style->add_class(lower);
+  style->add_class(css_class);
+  on_updated_();
+}
+
+void Item::setReady() {
+  if (ready_) {
+    return;
+  }
+  ready_ = true;
+  on_ready_(*this);
+}
+
+void Item::invalidate() {
+  if (ready_) {
+    ready_ = false;
+  }
+  on_invalidate_(*this);
 }
 
 void Item::setCustomIcon(const std::string& id) {
@@ -464,6 +492,9 @@ void Item::makeMenu() {
 }
 
 bool Item::handleClick(GdkEventButton* const& ev) {
+  if (!proxy_) {
+    return false;
+  }
   auto parameters = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
        Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
@@ -491,6 +522,9 @@ bool Item::handleClick(GdkEventButton* const& ev) {
 }
 
 bool Item::handleScroll(GdkEventScroll* const& ev) {
+  if (!proxy_) {
+    return false;
+  }
   int dx = 0, dy = 0;
   switch (ev->direction) {
     case GDK_SCROLL_UP:

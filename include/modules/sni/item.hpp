@@ -11,6 +11,7 @@
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #include <sigc++/trackable.h>
 
+#include <functional>
 #include <set>
 #include <string_view>
 
@@ -25,8 +26,12 @@ struct ToolTip {
 
 class Item : public sigc::trackable {
  public:
-  Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
+  Item(const std::string&, const std::string&, const Json::Value&, const Bar&,
+       const std::function<void(Item&)>&, const std::function<void(Item&)>&,
+       const std::function<void()>&);
   ~Item();
+
+  bool isReady() const;
 
   std::string bus_name;
   std::string object_path;
@@ -62,6 +67,8 @@ class Item : public sigc::trackable {
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
+  void setReady();
+  void invalidate();
   void setCustomIcon(const std::string& id);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
@@ -86,8 +93,13 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+  bool ready_ = false;
+  Glib::ustring status_ = "active";
 
   const Bar& bar_;
+  const std::function<void(Item&)> on_ready_;
+  const std::function<void(Item&)> on_invalidate_;
+  const std::function<void()> on_updated_;
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;
