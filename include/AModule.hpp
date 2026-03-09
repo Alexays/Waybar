@@ -5,6 +5,7 @@
 #include <gtkmm.h>
 #include <gtkmm/eventbox.h>
 #include <json/json.h>
+#include <optional>
 
 #include "IModule.hpp"
 
@@ -51,6 +52,8 @@ class AModule : public IModule {
   virtual void handleGtkMenuEvent(std::string command);
   Glib::RefPtr<Gtk::Builder> builder_;
   Gtk::Menu* menu_ = nullptr;
+  std::optional<Gdk::Gravity> widget_anchor_;
+  std::optional<Gdk::Gravity> menu_anchor_;
 
  private:
   bool handleUserEvent(GdkEventButton* const& ev);

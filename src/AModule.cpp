@@ -133,6 +133,33 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
         std::string command = it->asString();
         item->signal_activate().connect(std::function<void()>([this, command] { handleGtkMenuEvent(command); }));
       }
+
+      // Check anchors.
+      auto convert_to_gravity = [] (std::string const& anchor) -> std::optional<Gdk::Gravity>
+        {
+          if (anchor == "north-west")
+            return Gdk::Gravity::GRAVITY_NORTH_WEST;
+          if (anchor == "north")
+            return Gdk::Gravity::GRAVITY_NORTH;
+          if (anchor == "north-east")
+            return Gdk::Gravity::GRAVITY_NORTH_EAST;
+          if (anchor == "west")
+            return Gdk::Gravity::GRAVITY_WEST;
+          if (anchor == "center")
+            return Gdk::Gravity::GRAVITY_CENTER;
+          if (anchor == "east")
+            return Gdk::Gravity::GRAVITY_EAST;
+          if (anchor == "south-west")
+            return Gdk::Gravity::GRAVITY_SOUTH_WEST;
+          if (anchor == "south")
+            return Gdk::Gravity::GRAVITY_SOUTH;
+          if (anchor == "south-east")
+            return Gdk::Gravity::GRAVITY_SOUTH_EAST;
+          return {};
+        };
+
+      widget_anchor_ = convert_to_gravity(config_.get("widget-anchor", "none").asString());
+      menu_anchor_ = convert_to_gravity(config_.get("menu-anchor", "none").asString());
     } catch (std::runtime_error& e) {
       spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
@@ -228,7 +255,12 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
     if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
       // Popup the menu
       menu_->show_all();
-      menu_->popup_at_pointer(reinterpret_cast<GdkEvent*>(e));
+      if (widget_anchor_ && menu_anchor_) {
+        menu_->popup_at_widget(&event_box_, *widget_anchor_, *menu_anchor_, reinterpret_cast<GdkEvent*>(e));
+      }
+      else {
+        menu_->popup_at_pointer(reinterpret_cast<GdkEvent*>(e));
+      }
       // Manually reset prelight to make sure the module doesn't stay in a hover state
       if (auto* module = event_box_.get_child(); module != nullptr) {
         module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
