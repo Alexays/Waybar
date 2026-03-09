@@ -116,6 +116,8 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       if (!menu_) {
         throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
       }
+      auto css_class = id.empty() ? name : id;
+      menu_->get_style_context()->add_class(css_class);
 
       // Linking actions to the GTKMenu based on
       for (Json::Value::const_iterator it = config_["menu-actions"].begin();
@@ -127,6 +129,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
           spdlog::warn("Menu item '{}' not found in builder file", key);
           continue;
         }
+        item->get_style_context()->add_class(css_class);
         std::string command = it->asString();
         item->signal_activate().connect(std::function<void()>([this, command] { handleGtkMenuEvent(command); }));
       }
