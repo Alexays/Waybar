@@ -105,39 +105,31 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       }
       std::stringstream fileContent;
       fileContent << file.rdbuf();
-      GtkBuilder* builder = gtk_builder_new();
 
       // Make the GtkBuilder and check for errors in his parsing
-      if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
-        g_object_unref(builder);
+      builder_ = Gtk::Builder::create_from_string(fileContent.str());
+      if (!builder_) {
         throw std::runtime_error("Error found in the file " + menuFile);
       }
 
-      menu_ = gtk_builder_get_object(builder, "menu");
-      if (menu_ == nullptr) {
-        g_object_unref(builder);
+      builder_->get_widget("menu", menu_);
+      if (!menu_) {
         throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
       }
-      // Keep the menu alive after dropping the transient GtkBuilder.
-      g_object_ref(menu_);
-      submenus_ = std::map<std::string, GtkMenuItem*>();
-      menuActionsMap_ = std::map<std::string, std::string>();
 
       // Linking actions to the GTKMenu based on
       for (Json::Value::const_iterator it = config_["menu-actions"].begin();
            it != config_["menu-actions"].end(); ++it) {
         std::string key = it.key().asString();
-        auto* item = gtk_builder_get_object(builder, key.c_str());
+        Gtk::MenuItem *item = nullptr;
+        builder_->get_widget(key.c_str(), item);
         if (item == nullptr) {
           spdlog::warn("Menu item '{}' not found in builder file", key);
           continue;
         }
-        submenus_[key] = GTK_MENU_ITEM(item);
-        menuActionsMap_[key] = it->asString();
-        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)menuActionsMap_[key].c_str());
+        std::string command = it->asString();
+        item->signal_activate().connect(std::function<void()>([this, command] { handleGtkMenuEvent(command); }));
       }
-      g_object_unref(builder);
     } catch (std::runtime_error& e) {
       spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
@@ -149,10 +141,6 @@ AModule::~AModule() {
     if (pid != -1) {
       killpg(pid, SIGTERM);
     }
-  }
-  if (menu_ != nullptr) {
-    g_object_unref(menu_);
-    menu_ = nullptr;
   }
 }
 
@@ -236,8 +224,8 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
     // Check if the event is the one specified for the "menu" option
     if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
       // Popup the menu
-      gtk_widget_show_all(GTK_WIDGET(menu_));
-      gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+      menu_->show_all();
+      menu_->popup_at_pointer(reinterpret_cast<GdkEvent*>(e));
       // Manually reset prelight to make sure the module doesn't stay in a hover state
       if (auto* module = event_box_.get_child(); module != nullptr) {
         module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
@@ -343,8 +331,8 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-void AModule::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::forkExec((char*)data, "GtkMenu");
+void AModule::handleGtkMenuEvent(std::string command) {
+  waybar::util::command::forkExec(command, "GtkMenu");
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }

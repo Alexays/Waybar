@@ -48,10 +48,9 @@ class AModule : public IModule {
   virtual bool handleMouseLeave(GdkEventCrossing* const& ev);
   virtual bool handleScroll(GdkEventScroll*);
   virtual bool handleRelease(GdkEventButton* const& ev);
-  static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
-  GObject* menu_ = nullptr;
-  std::map<std::string, GtkMenuItem*> submenus_;
-  std::map<std::string, std::string> menuActionsMap_;
+  virtual void handleGtkMenuEvent(std::string command);
+  Glib::RefPtr<Gtk::Builder> builder_;
+  Gtk::Menu* menu_ = nullptr;
 
  private:
   bool handleUserEvent(GdkEventButton* const& ev);
