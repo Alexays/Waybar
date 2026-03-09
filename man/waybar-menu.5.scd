@@ -139,15 +139,20 @@ Module config :
 - *menuitem*
   Style for items in the menu
 
+Use the CSS class selector .custom-<name> to target a specific menu/menuitem.
+
 # EXAMPLE:
 
 ```
-menu {
+menu.custom-power {
 	border-radius: 15px;
 	background: #161320;
 	color: #B5E8E0;
 }
-menuitem {
+menuitem.custom-power {
 	border-radius: 15px;
+}
+menuitem.custom-power:hover {
+	background: #005d96
 }
 ```
