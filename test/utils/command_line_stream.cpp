@@ -33,8 +33,7 @@ auto run_stream_command(const std::string& cmd) -> StreamResult {
       3000);
 
   waybar::util::command::LineStream stream(
-      "",
-      [&](const std::string& line) { result.lines.push_back(line); },
+      "", [&](const std::string& line) { result.lines.push_back(line); },
       [&](int exit_code) {
         result.exit_code = exit_code;
         loop->quit();
