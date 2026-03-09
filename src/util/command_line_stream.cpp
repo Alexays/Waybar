@@ -23,33 +23,42 @@
 
 namespace {
 
-void prepareChild(const std::string& output_name) {
+auto buildChildEnvironment(const std::string& output_name) -> std::vector<std::string> {
+  auto names = Glib::listenv();
+  std::vector<std::string> envp;
+  envp.reserve(names.size() + 1);
+
+  for (const auto& name : names) {
+    bool found = false;
+    auto value = Glib::getenv(name, found);
+    if (!found || name == "WAYBAR_OUTPUT_NAME") {
+      continue;
+    }
+    envp.push_back(name + "=" + value);
+  }
+
+  if (!output_name.empty()) {
+    envp.push_back("WAYBAR_OUTPUT_NAME=" + output_name);
+  }
+
+  return envp;
+}
+
+void prepareChild() {
   sigset_t mask;
   sigfillset(&mask);
 
-  const auto err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
-  if (err != 0) {
-    spdlog::error("pthread_sigmask in LineStream failed: {}", std::strerror(err));
-  }
+  (void)pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
 
   int deathsig = SIGTERM;
 #ifdef __linux__
-  if (prctl(PR_SET_PDEATHSIG, deathsig) != 0) {
-    spdlog::error("prctl(PR_SET_PDEATHSIG) in LineStream failed: {}", std::strerror(errno));
-  }
+  (void)prctl(PR_SET_PDEATHSIG, deathsig);
 #endif
 #ifdef __FreeBSD__
-  if (procctl(P_PID, 0, PROC_PDEATHSIG_CTL, reinterpret_cast<void*>(&deathsig)) == -1) {
-    spdlog::error("procctl(PROC_PDEATHSIG_CTL) in LineStream failed: {}", std::strerror(errno));
-  }
+  (void)procctl(P_PID, 0, PROC_PDEATHSIG_CTL, reinterpret_cast<void*>(&deathsig));
 #endif
 
-  if (setpgid(0, 0) != 0) {
-    spdlog::error("setpgid in LineStream failed: {}", std::strerror(errno));
-  }
-  if (!output_name.empty()) {
-    setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
-  }
+  (void)setpgid(0, 0);
 }
 
 void emitBufferedLines(std::string& buffer,
@@ -91,9 +100,10 @@ void waybar::util::command::LineStream::start(const std::string& cmd) {
   stop();
 
   std::vector<std::string> argv{"/bin/sh", "-c", cmd};
-  Glib::spawn_async_with_pipes("", argv, Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_CLOEXEC_PIPES,
-                               sigc::bind(sigc::ptr_fun(&prepareChild), output_name_), &pid_,
-                               nullptr, &stdout_fd_, nullptr);
+  auto envp = buildChildEnvironment(output_name_);
+  Glib::spawn_async_with_pipes("", argv, envp,
+                               Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_CLOEXEC_PIPES,
+                               sigc::ptr_fun(&prepareChild), &pid_, nullptr, &stdout_fd_, nullptr);
 
   const auto flags = fcntl(stdout_fd_, F_GETFL, 0);
   if (flags == -1 || fcntl(stdout_fd_, F_SETFL, flags | O_NONBLOCK) == -1) {
