@@ -72,6 +72,62 @@ A module that implements a 'menu' needs 3 properties defined in its config :
 	each actions needs to exists as an id in the 'menu-file' for it to be linked
 	properly.
 
+*widget-anchor*: ++
+  typeof: string ++
+  The point on widget to align with menu's anchor point.
+  Both widget-anchor and menu-anchor must be set and not "none" for this to work.
+
+[- *Option*
+:- *Description*
+|[ *north-west*
+:< The top left corner.
+|[ *north*
+:< The reference point is in the middle of the top edge.
+|[ *north-east*
+:< The top right corner.
+|[ *west*
+:< The middle of the left edge.
+|[ *center*
+:< The center of the window.
+|[ *east*
+:< The middle of the right edge.
+|[ *south-west*
+:< The lower left corner.
+|[ *south*
+:< The middle of the lower edge.
+|[ *south-east*
+:< The lower right corner.
+|[ *none*
+:< Disables the anchor and shows the menu at the cursor position.
+
+*menu-anchor*: ++
+  typeof: string ++
+  The point on menu to align with widget's anchor point.
+  Both menu-anchor and widget-anchor must be set and not "none" for this to work.
+
+[- *Option*
+:- *Description*
+|[ *north-west*
+:< The top left corner.
+|[ *north*
+:< The reference point is in the middle of the top edge.
+|[ *north-east*
+:< The top right corner.
+|[ *west*
+:< The middle of the left edge.
+|[ *center*
+:< The center of the window.
+|[ *east*
+:< The middle of the right edge.
+|[ *south-west*
+:< The lower left corner.
+|[ *south*
+:< The middle of the lower edge.
+|[ *south-east*
+:< The lower right corner.
+|[ *none*
+:< Disables the anchor and shows the menu at the cursor position.
+
 # MENU-FILE
 
 The menu-file is an `.xml` file representing a GtkBuilder. Documentation for it
