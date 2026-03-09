@@ -2,9 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <stdexcept>
 #include <utility>
-
-#include "util/scope_guard.hpp"
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config, const std::string& output_name)
@@ -13,9 +12,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       output_name_(output_name),
       id_(id),
       tooltip_format_enabled_{config_["tooltip-format"].isString()},
-      percentage_(0),
-      fp_(nullptr),
-      pid_(-1) {
+      percentage_(0) {
   if (config.isNull()) {
     spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
   }
@@ -31,10 +28,9 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
 }
 
 waybar::modules::Custom::~Custom() {
-  if (pid_ != -1) {
-    killpg(pid_, SIGTERM);
-    waitpid(pid_, NULL, 0);
-    pid_ = -1;
+  restart_connection_.disconnect();
+  if (continuous_stream_) {
+    continuous_stream_->stop();
   }
 }
 
@@ -66,55 +62,60 @@ void waybar::modules::Custom::delayWorker() {
 }
 
 void waybar::modules::Custom::continuousWorker() {
-  auto cmd = config_["exec"].asString();
-  pid_ = -1;
-  fp_ = util::command::open(cmd, pid_, output_name_);
-  if (!fp_) {
-    throw std::runtime_error("Unable to open " + cmd);
-  }
-  thread_ = [this, cmd] {
-    char* buff = nullptr;
-    waybar::util::ScopeGuard buff_deleter([&buff]() {
-      if (buff) {
-        free(buff);
-      }
-    });
-    size_t len = 0;
-    if (getline(&buff, &len, fp_) == -1) {
-      int exit_code = 1;
-      if (fp_) {
-        exit_code = WEXITSTATUS(util::command::close(fp_, pid_));
-        fp_ = nullptr;
-      }
-      if (exit_code != 0) {
-        output_ = {exit_code, ""};
+  continuous_stream_ = std::make_unique<util::command::LineStream>(
+      output_name_,
+      [this](const std::string& output) {
+        output_ = {0, output};
         dp.emit();
-        spdlog::error("{} stopped unexpectedly, is it endless?", name_);
-      }
-      if (config_["restart-interval"].isNumeric()) {
-        pid_ = -1;
-        thread_.sleep_for(std::chrono::milliseconds(
-            std::max(1L,  // Minimum 1ms due to millisecond precision
-                     static_cast<long>(config_["restart-interval"].asDouble() * 1000))));
-        fp_ = util::command::open(cmd, pid_, output_name_);
-        if (!fp_) {
-          throw std::runtime_error("Unable to open " + cmd);
-        }
-      } else {
-        thread_.stop();
-        return;
-      }
-    } else {
-      std::string output = buff;
+      },
+      [this](int exit_code) { handleContinuousProcessExit(exit_code); });
+  startContinuousProcess(true);
+}
 
-      // Remove last newline
-      if (!output.empty() && output[output.length() - 1] == '\n') {
-        output.erase(output.length() - 1);
-      }
-      output_ = {0, output};
-      dp.emit();
+void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
+  const auto cmd = config_["exec"].asString();
+
+  try {
+    continuous_stream_->start(cmd);
+  } catch (const Glib::SpawnError& e) {
+    if (throw_on_failure) {
+      throw std::runtime_error("Unable to open " + cmd + ": " + e.what().raw());
     }
-  };
+    output_ = {1, ""};
+    dp.emit();
+    spdlog::error("Unable to restart {}: {}", name_, e.what().raw());
+    scheduleContinuousRestart();
+  } catch (const std::exception& e) {
+    if (throw_on_failure) {
+      throw;
+    }
+    output_ = {1, ""};
+    dp.emit();
+    spdlog::error("Unable to restart {}: {}", name_, e.what());
+    scheduleContinuousRestart();
+  }
+}
+
+void waybar::modules::Custom::handleContinuousProcessExit(int exit_code) {
+  if (exit_code != 0) {
+    output_ = {exit_code, ""};
+    dp.emit();
+    spdlog::error("{} stopped unexpectedly, is it endless?", name_);
+  }
+
+  if (config_["restart-interval"].isNumeric()) {
+    scheduleContinuousRestart();
+  }
+}
+
+void waybar::modules::Custom::scheduleContinuousRestart() {
+  restart_connection_.disconnect();
+  restart_connection_ = Glib::signal_timeout().connect(
+      [this] {
+        startContinuousProcess(false);
+        return false;
+      },
+      std::max(1U, static_cast<unsigned>(config_["restart-interval"].asDouble() * 1000)));
 }
 
 void waybar::modules::Custom::waitingWorker() {

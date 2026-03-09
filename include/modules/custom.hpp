@@ -3,10 +3,12 @@
 #include <fmt/format.h>
 
 #include <csignal>
+#include <memory>
 #include <string>
 
 #include "ALabel.hpp"
 #include "util/command.hpp"
+#include "util/command_line_stream.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
@@ -22,6 +24,9 @@ class Custom : public ALabel {
  private:
   void delayWorker();
   void continuousWorker();
+  void startContinuousProcess(bool throw_on_failure);
+  void handleContinuousProcessExit(int exit_code);
+  void scheduleContinuousRestart();
   void waitingWorker();
   void parseOutputRaw();
   void parseOutputJson();
@@ -39,10 +44,10 @@ class Custom : public ALabel {
   const bool tooltip_format_enabled_;
   std::vector<std::string> class_;
   int percentage_;
-  FILE* fp_;
-  int pid_;
   util::command::res output_;
   util::JsonParser parser_;
+  std::unique_ptr<util::command::LineStream> continuous_stream_;
+  sigc::connection restart_connection_;
 
   util::SleeperThread thread_;
 };
