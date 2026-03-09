@@ -3,10 +3,13 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
+#include <fstream>
 #include <util/command.hpp>
 
 #include "gdk/gdk.h"
 #include "gdkmm/cursor.h"
+
+#include "config.hpp"
 
 namespace waybar {
 
@@ -45,7 +48,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
-  if (enable_click || hasUserEvents) {
+  if (enable_click || hasUserEvents || config["menu"].isString()) {
     hasUserEvents_ = true;
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
@@ -78,6 +81,65 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       setCursor(Gdk::CursorType(config_["cursor"].asInt()));
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
+    }
+  }
+
+  // If a GTKMenu is requested in the config
+  if (config_["menu"].isString()) {
+    // Create the GTKMenu widget
+    try {
+      // Check that the file exists
+      std::string menuFile = config_["menu-file"].asString();
+
+      // there might be "~" or "$HOME" in original path, try to expand it.
+      auto result = Config::tryExpandPath(menuFile, "");
+      if (result.empty()) {
+        throw std::runtime_error("Failed to expand file: " + menuFile);
+      }
+
+      menuFile = result.front();
+      // Read the menu descriptor file
+      std::ifstream file(menuFile);
+      if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + menuFile);
+      }
+      std::stringstream fileContent;
+      fileContent << file.rdbuf();
+      GtkBuilder* builder = gtk_builder_new();
+
+      // Make the GtkBuilder and check for errors in his parsing
+      if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
+        g_object_unref(builder);
+        throw std::runtime_error("Error found in the file " + menuFile);
+      }
+
+      menu_ = gtk_builder_get_object(builder, "menu");
+      if (menu_ == nullptr) {
+        g_object_unref(builder);
+        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
+      }
+      // Keep the menu alive after dropping the transient GtkBuilder.
+      g_object_ref(menu_);
+      submenus_ = std::map<std::string, GtkMenuItem*>();
+      menuActionsMap_ = std::map<std::string, std::string>();
+
+      // Linking actions to the GTKMenu based on
+      for (Json::Value::const_iterator it = config_["menu-actions"].begin();
+           it != config_["menu-actions"].end(); ++it) {
+        std::string key = it.key().asString();
+        auto* item = gtk_builder_get_object(builder, key.c_str());
+        if (item == nullptr) {
+          spdlog::warn("Menu item '{}' not found in builder file", key);
+          continue;
+        }
+        submenus_[key] = GTK_MENU_ITEM(item);
+        menuActionsMap_[key] = it->asString();
+        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                         (gpointer)menuActionsMap_[key].c_str());
+      }
+      g_object_unref(builder);
+    } catch (std::runtime_error& e) {
+      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
   }
 }
@@ -279,6 +341,10 @@ bool AModule::handleScroll(GdkEventScroll* e) {
 
   dp.emit();
   return true;
+}
+
+void AModule::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
+  waybar::util::command::forkExec((char*)data, "GtkMenu");
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }

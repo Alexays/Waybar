@@ -7,7 +7,7 @@ waybar - menu property
 # OVERVIEW
 
 
-Some modules support a 'menu', which allows to have a popup menu when a defined
+All modules support a 'menu', which allows to have a popup menu when a defined
 click is done over the module.
 
 # PROPERTIES
