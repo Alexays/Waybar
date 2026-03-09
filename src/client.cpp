@@ -289,9 +289,10 @@ int waybar::Client::main(int argc, char* argv[]) {
   }
   m_cssFile = getStyle(style_opt);
   setupCss(m_cssFile);
-  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&]() { setupCss(m_cssFile); });
+  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&](const std::string& css_file) { setupCss(css_file); });
   portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
     auto css_file = getStyle(style_opt, appearance);
+    m_cssReloadHelper->changeCssFile(css_file);
     setupCss(css_file);
   });
 
