@@ -91,9 +91,9 @@ void waybar::util::command::LineStream::start(const std::string& cmd) {
   stop();
 
   std::vector<std::string> argv{"/bin/sh", "-c", cmd};
-  Glib::spawn_async_with_pipes(
-      "", argv, Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_CLOEXEC_PIPES,
-      sigc::bind(sigc::ptr_fun(&prepareChild), output_name_), &pid_, nullptr, &stdout_fd_, nullptr);
+  Glib::spawn_async_with_pipes("", argv, Glib::SPAWN_DO_NOT_REAP_CHILD | Glib::SPAWN_CLOEXEC_PIPES,
+                               sigc::bind(sigc::ptr_fun(&prepareChild), output_name_), &pid_,
+                               nullptr, &stdout_fd_, nullptr);
 
   const auto flags = fcntl(stdout_fd_, F_GETFL, 0);
   if (flags == -1 || fcntl(stdout_fd_, F_SETFL, flags | O_NONBLOCK) == -1) {

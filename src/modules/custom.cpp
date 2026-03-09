@@ -74,7 +74,7 @@ void waybar::modules::Custom::continuousWorker() {
   continuous_stream_ = std::make_unique<util::command::LineStream>(
       output_name_,
       [this](const std::string& output) {
-        output_ = {0, output};
+        output_ = {.exit_code = 0, .out = output};
         dp.emit();
       },
       [this](int exit_code) { handleContinuousProcessExit(exit_code); });
@@ -90,7 +90,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
     if (throw_on_failure) {
       throw std::runtime_error("Unable to open " + cmd + ": " + e.what().raw());
     }
-    output_ = {1, ""};
+    output_ = {.exit_code = 1, .out = ""};
     dp.emit();
     spdlog::error("Unable to restart {}: {}", name_, e.what().raw());
     scheduleContinuousRestart();
@@ -98,7 +98,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
     if (throw_on_failure) {
       throw;
     }
-    output_ = {1, ""};
+    output_ = {.exit_code = 1, .out = ""};
     dp.emit();
     spdlog::error("Unable to restart {}: {}", name_, e.what());
     scheduleContinuousRestart();
@@ -107,7 +107,7 @@ void waybar::modules::Custom::startContinuousProcess(bool throw_on_failure) {
 
 void waybar::modules::Custom::handleContinuousProcessExit(int exit_code) {
   if (exit_code != 0) {
-    output_ = {exit_code, ""};
+    output_ = {.exit_code = exit_code, .out = ""};
     dp.emit();
     spdlog::error("{} stopped unexpectedly, is it endless?", name_);
   }
