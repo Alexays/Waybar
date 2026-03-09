@@ -15,8 +15,10 @@ test_src = files(
     'SafeSignal.cpp',
     'sleeper_thread.cpp',
     'command.cpp',
+    'command_line_stream.cpp',
     'css_reload_helper.cpp',
     '../../src/util/css_reload_helper.cpp',
+    '../../src/util/command_line_stream.cpp',
 )
 
 if tz_dep.found()
