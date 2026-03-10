@@ -437,7 +437,9 @@ void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
 void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y,
                                      Gtk::SelectionData selection_data, guint info, guint time) {
   spdlog::debug("drag_data_received");
-  gpointer handle = *(gpointer*)selection_data.get_data();
+  auto* raw = selection_data.get_data();
+  if (!raw || selection_data.get_length() < static_cast<int>(sizeof(gpointer))) return;
+  gpointer handle = *(gpointer*)raw;
   auto dragged_button = (Gtk::Button*)handle;
 
   if (dragged_button == &this->button) return;

@@ -179,6 +179,7 @@ bool Tags::handle_button_press(GdkEventButton* event_button, uint32_t tag) {
 }
 
 void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
+  if (tag >= buttons_.size()) return;
   // First clear all occupied state
   auto& button = buttons_[tag];
   if (clients) {

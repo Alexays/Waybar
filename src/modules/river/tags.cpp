@@ -101,10 +101,12 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
 
   if (!control_) {
     spdlog::error("river_control_v1 not advertised");
+    return;
   }
 
   if (!seat_) {
     spdlog::error("wl_seat not advertised");
+    return;
   }
 
   box_.set_name("tags");
@@ -168,6 +170,7 @@ Tags::~Tags() {
 }
 
 void Tags::handle_show() {
+  if (!status_manager_) return;
   struct wl_output* output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
   output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output);
   zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);

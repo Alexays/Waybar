@@ -176,6 +176,10 @@ auto PowerProfilesDaemon::update() -> void {
 
 bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
   if (e->type == GdkEventType::GDK_BUTTON_PRESS && connected_) {
+    if (availableProfiles_.empty()) return true;
+    if (activeProfile_ == availableProfiles_.end()) {
+      activeProfile_ = availableProfiles_.begin();
+    }
     if (e->button == 1) /* left click */ {
       activeProfile_++;
       if (activeProfile_ == availableProfiles_.end()) {

@@ -109,6 +109,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     player_ = config_["player"].asString();
   }
   if (config_["ignored-players"].isArray()) {
+    ignored_players_.reserve(config_["ignored-players"].size());
     for (const auto& item : config_["ignored-players"]) {
       if (item.isString()) {
         ignored_players_.push_back(item.asString());
@@ -117,7 +118,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error) {
       g_error_free(error);
     }
@@ -161,8 +162,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   if (player) {
     g_object_connect(player, "signal::play", G_CALLBACK(onPlayerPlay), this, "signal::pause",
                      G_CALLBACK(onPlayerPause), this, "signal::stop", G_CALLBACK(onPlayerStop),
-                     this, "signal::stop", G_CALLBACK(onPlayerStop), this, "signal::metadata",
-                     G_CALLBACK(onPlayerMetadata), this, NULL);
+                     this, "signal::metadata", G_CALLBACK(onPlayerMetadata), this, NULL);
   }
 
   // allow setting an interval count that triggers periodic refreshes
@@ -178,8 +178,17 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 }
 
 Mpris::~Mpris() {
-  if (manager != nullptr) g_object_unref(manager);
-  if (player != nullptr) g_object_unref(player);
+  if (manager != nullptr) {
+    g_signal_handlers_disconnect_by_data(manager, this);
+  }
+  if (player != nullptr) {
+    g_signal_handlers_disconnect_by_data(player, this);
+  }
+  if (last_active_player_ != nullptr && last_active_player_ != player) {
+    g_object_unref(last_active_player_);
+  }
+  g_clear_object(&manager);
+  g_clear_object(&player);
 }
 
 auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) -> std::string {
@@ -410,11 +419,14 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
     return;
   }
 
+  if (mpris->player != nullptr) {
+    g_signal_handlers_disconnect_by_data(mpris->player, mpris);
+    g_clear_object(&mpris->player);
+  }
   mpris->player = playerctl_player_new_from_name(player_name, nullptr);
   g_object_connect(mpris->player, "signal::play", G_CALLBACK(onPlayerPlay), mpris, "signal::pause",
                    G_CALLBACK(onPlayerPause), mpris, "signal::stop", G_CALLBACK(onPlayerStop),
-                   mpris, "signal::stop", G_CALLBACK(onPlayerStop), mpris, "signal::metadata",
-                   G_CALLBACK(onPlayerMetadata), mpris, NULL);
+                   mpris, "signal::metadata", G_CALLBACK(onPlayerMetadata), mpris, NULL);
 
   mpris->dp.emit();
 }
@@ -458,10 +470,7 @@ auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
   if (!mpris) return;
 
   spdlog::debug("mpris: player-stop callback");
-
-  // hide widget
-  mpris->event_box_.set_visible(false);
-  // update widget
+  // update widget (update() handles visibility)
   mpris->dp.emit();
 }
 
@@ -480,7 +489,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   }
 
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error) {
       g_error_free(error);
     }
@@ -488,7 +497,12 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
 
   char* player_status = nullptr;
   auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
-  g_object_get(player, "status", &player_status, "playback-status", &player_playback_status, NULL);
+
+  // Clean up previous fallback player
+  if (last_active_player_ && last_active_player_ != player) {
+    g_object_unref(last_active_player_);
+    last_active_player_ = nullptr;
+  }
 
   std::string player_name = player_;
   if (player_name == "playerctld") {
@@ -498,19 +512,52 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
-    players = g_list_first(players);
-    if (players)
-      player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
-    else
-      return std::nullopt;  // no players found, hide the widget
-  }
-
-  if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
-                  [&](const std::string& pn) { return player_name == pn; })) {
+    PlayerctlPlayer* first_valid_player = nullptr;
+    std::string first_valid_name;
+    for (auto* p = g_list_first(players); p != nullptr; p = p->next) {
+      auto* pn = static_cast<PlayerctlPlayerName*>(p->data);
+      std::string name = pn->name;
+      if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
+                      [&](const std::string& ignored) { return name == ignored; })) {
+        spdlog::warn("mpris[{}]: ignoring player update", name);
+        continue;
+      }
+      auto* tmp = playerctl_player_new_from_name(pn, &error);
+      if (error || !tmp) continue;
+      if (!first_valid_player) {
+        first_valid_player = tmp;
+        first_valid_name = name;
+      }
+      PlayerctlPlaybackStatus status;
+      g_object_get(tmp, "playback-status", &status, NULL);
+      if (status == PLAYERCTL_PLAYBACK_STATUS_PLAYING) {
+        if (tmp != first_valid_player) g_object_unref(first_valid_player);
+        last_active_player_ = tmp;
+        player_name = name;
+        break;
+      }
+      if (tmp != first_valid_player) g_object_unref(tmp);
+    }
+    if (!last_active_player_) {
+      if (!first_valid_player) return std::nullopt;
+      last_active_player_ = first_valid_player;
+      player_name = first_valid_name;
+    }
+  } else if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
+                         [&](const std::string& pn) { return player_name == pn; })) {
     spdlog::warn("mpris[{}]: ignoring player update", player_name);
     return std::nullopt;
+  } else {
+    last_active_player_ = player;
   }
 
+  g_object_get(last_active_player_, "status", &player_status, "playback-status",
+               &player_playback_status, NULL);
+
+  if (!player_status) {
+    spdlog::error("mpris: failed to get player status");
+    return std::nullopt;
+  }
   // make status lowercase
   player_status[0] = std::tolower(player_status[0]);
 
@@ -524,28 +571,29 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .length = std::nullopt,
   };
 
-  if (auto* artist_ = playerctl_player_get_artist(player, &error)) {
+  if (auto* artist_ = playerctl_player_get_artist(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: artist = {}", info.name, artist_);
     info.artist = artist_;
     g_free(artist_);
   }
   if (error) goto errorexit;
 
-  if (auto* album_ = playerctl_player_get_album(player, &error)) {
+  if (auto* album_ = playerctl_player_get_album(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
     info.album = album_;
     g_free(album_);
   }
   if (error) goto errorexit;
 
-  if (auto* title_ = playerctl_player_get_title(player, &error)) {
+  if (auto* title_ = playerctl_player_get_title(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: title = {}", info.name, title_);
     info.title = title_;
     g_free(title_);
   }
   if (error) goto errorexit;
 
-  if (auto* length_ = playerctl_player_print_metadata_prop(player, "mpris:length", &error)) {
+  if (auto* length_ =
+          playerctl_player_print_metadata_prop(last_active_player_, "mpris:length", &error)) {
     spdlog::debug("mpris[{}]: mpris:length = {}", info.name, length_);
     auto len = std::chrono::microseconds(std::strtol(length_, nullptr, 10));
     auto len_h = std::chrono::duration_cast<std::chrono::hours>(len);
@@ -557,7 +605,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (error) goto errorexit;
 
   {
-    auto position_ = playerctl_player_get_position(player, &error);
+    auto position_ = playerctl_player_get_position(last_active_player_, &error);
     if (error) {
       // it's fine to have an error here because not all players report a position
       g_error_free(error);
@@ -609,12 +657,13 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
   });
 
   // Command pattern: encapsulate each button's action
+  auto* target = last_active_player_ ? last_active_player_ : player;
   const ButtonAction actions[] = {
-      {1, "on-click", [&]() { playerctl_player_play_pause(player, &error); }},
-      {2, "on-click-middle", [&]() { playerctl_player_previous(player, &error); }},
-      {3, "on-click-right", [&]() { playerctl_player_next(player, &error); }},
-      {8, "on-click-backward", [&]() { playerctl_player_previous(player, &error); }},
-      {9, "on-click-forward", [&]() { playerctl_player_next(player, &error); }},
+      {1, "on-click", [&]() { playerctl_player_play_pause(target, &error); }},
+      {2, "on-click-middle", [&]() { playerctl_player_previous(target, &error); }},
+      {3, "on-click-right", [&]() { playerctl_player_next(target, &error); }},
+      {8, "on-click-backward", [&]() { playerctl_player_previous(target, &error); }},
+      {9, "on-click-forward", [&]() { playerctl_player_next(target, &error); }},
   };
 
   for (const auto& action : actions) {

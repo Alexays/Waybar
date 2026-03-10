@@ -17,19 +17,21 @@
 #include "giomm/dataoutputstream.h"
 #include "giomm/unixinputstream.h"
 #include "giomm/unixoutputstream.h"
+#include "util/scoped_fd.hpp"
 
 namespace waybar::modules::niri {
+
+IPC::IPC() { startIPC(); }
 
 int IPC::connectToSocket() {
   const char* socket_path = getenv("NIRI_SOCKET");
 
   if (socket_path == nullptr) {
-    spdlog::warn("Niri is not running, niri IPC will not be available.");
-    return -1;
+    throw std::runtime_error("Niri IPC: NIRI_SOCKET was not set! (Is Niri running?)");
   }
 
   struct sockaddr_un addr;
-  int socketfd = socket(AF_UNIX, SOCK_STREAM, 0);
+  util::ScopedFd socketfd(socket(AF_UNIX, SOCK_STREAM, 0));
 
   if (socketfd == -1) {
     throw std::runtime_error("socketfd failed");
@@ -44,26 +46,18 @@ int IPC::connectToSocket() {
   int l = sizeof(struct sockaddr_un);
 
   if (connect(socketfd, (struct sockaddr*)&addr, l) == -1) {
-    close(socketfd);
     throw std::runtime_error("unable to connect");
   }
 
-  return socketfd;
+  return socketfd.release();
 }
 
 void IPC::startIPC() {
   // will start IPC and relay events to parseIPC
 
-  std::thread([&]() {
-    int socketfd;
-    try {
-      socketfd = connectToSocket();
-    } catch (std::exception& e) {
-      spdlog::error("Niri IPC: failed to start, reason: {}", e.what());
-      return;
-    }
-    if (socketfd == -1) return;
+  int socketfd = connectToSocket();
 
+  std::thread([this, socketfd]() {
     spdlog::info("Niri IPC starting");
 
     auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
@@ -241,8 +235,7 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 }
 
 Json::Value IPC::send(const Json::Value& request) {
-  int socketfd = connectToSocket();
-  if (socketfd == -1) throw std::runtime_error("Niri is not running");
+  util::ScopedFd socketfd(connectToSocket());
 
   auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
   auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);

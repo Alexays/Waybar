@@ -20,9 +20,7 @@ waybar::modules::CpuUsage::CpuUsage(const std::string& id, const Json::Value& co
 auto waybar::modules::CpuUsage::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
-  if (tooltipEnabled()) {
-    label_.set_tooltip_markup(tooltip);
-  }
+
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
   auto state = getState(total_usage);
@@ -38,14 +36,25 @@ auto waybar::modules::CpuUsage::update() -> void {
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("usage", total_usage));
     store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
+    std::vector<std::string> arg_names;
+    arg_names.reserve(cpu_usage.size() * 2);
     for (size_t i = 1; i < cpu_usage.size(); ++i) {
       auto core_i = i - 1;
-      auto core_format = fmt::format("usage{}", core_i);
-      store.push_back(fmt::arg(core_format.c_str(), cpu_usage[i]));
-      auto icon_format = fmt::format("icon{}", core_i);
-      store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
+      arg_names.push_back(fmt::format("usage{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), cpu_usage[i]));
+      arg_names.push_back(fmt::format("icon{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), getIcon(cpu_usage[i], icons)));
     }
     label_.set_markup(fmt::vformat(format, store));
+
+    if (tooltipEnabled()) {
+      if (config_["tooltip-format"].isString()) {
+        tooltip = config_["tooltip-format"].asString();
+        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
+      } else {
+        label_.set_tooltip_markup(tooltip);
+      }
+    }
   }
 
   // Call parent update
@@ -71,7 +80,8 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpu
       auto [prev_idle, prev_total] = prev_times[0];
       const float delta_idle = curr_idle - prev_idle;
       const float delta_total = curr_total - prev_total;
-      uint16_t tmp = 100 * (1 - delta_idle / delta_total);
+      uint16_t tmp =
+          (delta_total > 0) ? static_cast<uint16_t>(100 * (1 - delta_idle / delta_total)) : 0;
       tooltip = fmt::format("Total: {}%\nCores: (pending)", tmp);
       usage.push_back(tmp);
     } else {
@@ -93,7 +103,8 @@ std::tuple<std::vector<uint16_t>, std::string> waybar::modules::CpuUsage::getCpu
     }
     const float delta_idle = curr_idle - prev_idle;
     const float delta_total = curr_total - prev_total;
-    uint16_t tmp = 100 * (1 - delta_idle / delta_total);
+    uint16_t tmp =
+        (delta_total > 0) ? static_cast<uint16_t>(100 * (1 - delta_idle / delta_total)) : 0;
     if (i == 0) {
       tooltip = fmt::format("Total: {}%", tmp);
     } else {

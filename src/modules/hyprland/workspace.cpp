@@ -97,7 +97,7 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
 
 void Workspace::initializeWindowMap(const Json::Value& clients_data) {
   m_windowMap.clear();
-  for (auto client : clients_data) {
+  for (const auto& client : clients_data) {
     if (client["workspace"]["id"].asInt() == id()) {
       insertWindow({client});
     }

@@ -79,18 +79,38 @@ static void upsert_device(std::vector<BacklightDevice>& devices, udev_device* de
   });
   if (found != devices.end()) {
     if (actual != nullptr) {
-      found->set_actual(std::stoi(actual));
+      try {
+        found->set_actual(std::stoi(actual));
+      } catch (const std::exception&) {
+      }
     }
     if (max != nullptr) {
-      found->set_max(std::stoi(max));
+      try {
+        found->set_max(std::stoi(max));
+      } catch (const std::exception&) {
+      }
     }
     if (power != nullptr) {
-      found->set_powered(std::stoi(power) == 0);
+      try {
+        found->set_powered(std::stoi(power) == 0);
+      } catch (const std::exception&) {
+      }
     }
   } else {
-    const int actual_int = actual == nullptr ? 0 : std::stoi(actual);
-    const int max_int = max == nullptr ? 0 : std::stoi(max);
-    const bool power_bool = power == nullptr ? true : std::stoi(power) == 0;
+    int actual_int = 0, max_int = 0;
+    bool power_bool = true;
+    try {
+      if (actual != nullptr) actual_int = std::stoi(actual);
+    } catch (const std::exception&) {
+    }
+    try {
+      if (max != nullptr) max_int = std::stoi(max);
+    } catch (const std::exception&) {
+    }
+    try {
+      if (power != nullptr) power_bool = std::stoi(power) == 0;
+    } catch (const std::exception&) {
+    }
     devices.emplace_back(name, actual_int, max_int, power_bool);
   }
 }
@@ -261,6 +281,11 @@ void BacklightBackend::set_brightness(const std::string& preferred_device, Chang
 
 void BacklightBackend::set_brightness_internal(const std::string& device_name, int brightness,
                                                int max_brightness) {
+  if (!login_proxy_) {
+    spdlog::error("Login proxy not available, cannot set brightness");
+    return;
+  }
+
   brightness = std::clamp(brightness, 0, max_brightness);
 
   auto call_args = Glib::VariantContainerBase(
@@ -273,6 +298,7 @@ int BacklightBackend::get_scaled_brightness(const std::string& preferred_device)
   GET_BEST_DEVICE(best, (*this), preferred_device);
 
   if (best != nullptr) {
+    if (best->get_max() == 0) return 0;
     return static_cast<int>(std::round(best->get_actual() * 100.0F / best->get_max()));
   }
 
