@@ -2,11 +2,7 @@
 
 #include <fmt/format.h>
 
-#include <fstream>
-#include <iostream>
 #include <util/command.hpp>
-
-#include "config.hpp"
 
 namespace waybar {
 
@@ -14,7 +10,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
                const std::string& format, uint16_t interval, bool ellipsize, bool enable_click,
                bool enable_scroll)
     : AModule(config, name, id,
-              config["format-alt"].isString() || config["menu"].isString() || enable_click,
+              config["format-alt"].isString() || enable_click,
               enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
 
@@ -63,65 +59,6 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       label_.set_yalign(align);
     } else {
       label_.set_xalign(align);
-    }
-  }
-
-  // If a GTKMenu is requested in the config
-  if (config_["menu"].isString()) {
-    // Create the GTKMenu widget
-    try {
-      // Check that the file exists
-      std::string menuFile = config_["menu-file"].asString();
-
-      // there might be "~" or "$HOME" in original path, try to expand it.
-      auto result = Config::tryExpandPath(menuFile, "");
-      if (result.empty()) {
-        throw std::runtime_error("Failed to expand file: " + menuFile);
-      }
-
-      menuFile = result.front();
-      // Read the menu descriptor file
-      std::ifstream file(menuFile);
-      if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + menuFile);
-      }
-      std::stringstream fileContent;
-      fileContent << file.rdbuf();
-      GtkBuilder* builder = gtk_builder_new();
-
-      // Make the GtkBuilder and check for errors in his parsing
-      if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
-        g_object_unref(builder);
-        throw std::runtime_error("Error found in the file " + menuFile);
-      }
-
-      menu_ = gtk_builder_get_object(builder, "menu");
-      if (menu_ == nullptr) {
-        g_object_unref(builder);
-        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
-      }
-      // Keep the menu alive after dropping the transient GtkBuilder.
-      g_object_ref(menu_);
-      submenus_ = std::map<std::string, GtkMenuItem*>();
-      menuActionsMap_ = std::map<std::string, std::string>();
-
-      // Linking actions to the GTKMenu based on
-      for (Json::Value::const_iterator it = config_["menu-actions"].begin();
-           it != config_["menu-actions"].end(); ++it) {
-        std::string key = it.key().asString();
-        auto* item = gtk_builder_get_object(builder, key.c_str());
-        if (item == nullptr) {
-          spdlog::warn("Menu item '{}' not found in builder file", key);
-          continue;
-        }
-        submenus_[key] = GTK_MENU_ITEM(item);
-        menuActionsMap_[key] = it->asString();
-        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)menuActionsMap_[key].c_str());
-      }
-      g_object_unref(builder);
-    } catch (std::runtime_error& e) {
-      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
   }
 
@@ -199,10 +136,6 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     }
   }
   return AModule::handleToggle(e);
-}
-
-void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::forkExec((char*)data, "GtkMenu");
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {
