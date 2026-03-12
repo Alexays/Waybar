@@ -20,6 +20,7 @@ class Client {
   static Client* inst();
   int main(int argc, char* argv[]);
   void reset();
+  ~Client();
 
   Glib::RefPtr<Gtk::Application> gtk_app;
   Glib::RefPtr<Gdk::Display> gdk_display;
@@ -58,6 +59,9 @@ class Client {
   std::string m_cssFile;
   sigc::connection monitor_added_connection_;
   sigc::connection monitor_removed_connection_;
+  guint gdk_log_handler_id_ = 0;
+  guint gtk_log_handler_id_ = 0;
+  guint default_log_handler_id_ = 0;
 };
 
 }  // namespace waybar
