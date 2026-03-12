@@ -11,6 +11,7 @@
 #include <libdbusmenu-gtk/dbusmenu-gtk.h>
 #include <sigc++/trackable.h>
 
+#include <functional>
 #include <set>
 #include <string_view>
 
@@ -25,8 +26,12 @@ struct ToolTip {
 
 class Item : public sigc::trackable {
  public:
-  Item(const std::string&, const std::string&, const Json::Value&, const Bar&);
+  Item(const std::string&, const std::string&, const Json::Value&, const Bar&,
+       const std::function<void(Item&)>&, const std::function<void(Item&)>&,
+       const std::function<void()>&);
   ~Item();
+
+  bool isReady() const;
 
   std::string bus_name;
   std::string object_path;
@@ -43,7 +48,9 @@ class Item : public sigc::trackable {
   Glib::RefPtr<Gdk::Pixbuf> icon_pixmap;
   Glib::RefPtr<Gtk::IconTheme> icon_theme;
   std::string overlay_icon_name;
+  Glib::RefPtr<Gdk::Pixbuf> overlay_icon_pixmap;
   std::string attention_icon_name;
+  Glib::RefPtr<Gdk::Pixbuf> attention_icon_pixmap;
   std::string attention_movie_name;
   std::string icon_theme_path;
   std::string menu;
@@ -62,6 +69,8 @@ class Item : public sigc::trackable {
   void proxyReady(Glib::RefPtr<Gio::AsyncResult>& result);
   void setProperty(const Glib::ustring& name, Glib::VariantBase& value);
   void setStatus(const Glib::ustring& value);
+  void setReady();
+  void invalidate();
   void setCustomIcon(const std::string& id);
   void getUpdatedProperties();
   void processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& result);
@@ -69,8 +78,13 @@ class Item : public sigc::trackable {
                 const Glib::VariantContainerBase& arguments);
 
   void updateImage();
-  Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
+  static Glib::RefPtr<Gdk::Pixbuf> extractPixBuf(GVariant* variant);
   Glib::RefPtr<Gdk::Pixbuf> getIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> getAttentionIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> getOverlayIconPixbuf();
+  Glib::RefPtr<Gdk::Pixbuf> loadIconFromNameOrFile(const std::string& name, bool log_failure);
+  static Glib::RefPtr<Gdk::Pixbuf> overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>&,
+                                                  const Glib::RefPtr<Gdk::Pixbuf>&);
   Glib::RefPtr<Gdk::Pixbuf> getIconByName(const std::string& name, int size);
   double getScaledIconSize();
   static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
@@ -86,8 +100,13 @@ class Item : public sigc::trackable {
   gdouble distance_scrolled_y_ = 0;
   // visibility of items with Status == Passive
   bool show_passive_ = false;
+  bool ready_ = false;
+  Glib::ustring status_ = "active";
 
   const Bar& bar_;
+  const std::function<void(Item&)> on_ready_;
+  const std::function<void(Item&)> on_invalidate_;
+  const std::function<void()> on_updated_;
 
   Glib::RefPtr<Gio::DBus::Proxy> proxy_;
   Glib::RefPtr<Gio::Cancellable> cancellable_;

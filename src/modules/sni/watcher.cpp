@@ -31,7 +31,7 @@ Watcher::~Watcher() {
 
 void Watcher::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error) {
       g_error_free(error);
     }
@@ -69,7 +69,7 @@ gboolean Watcher::handleRegisterHost(Watcher* obj, GDBusMethodInvocation* invoca
   if (watch != nullptr) {
     g_warning("Status Notifier Host with bus name '%s' and object path '%s' is already registered",
               bus_name, object_path);
-    sn_watcher_complete_register_item(obj->watcher_, invocation);
+    sn_watcher_complete_register_host(obj->watcher_, invocation);
     return TRUE;
   }
   watch = gfWatchNew(GF_WATCH_TYPE_HOST, service, bus_name, object_path, obj);
@@ -98,8 +98,8 @@ gboolean Watcher::handleRegisterItem(Watcher* obj, GDBusMethodInvocation* invoca
   }
   auto watch = gfWatchFind(obj->items_, bus_name, object_path);
   if (watch != nullptr) {
-    g_warning("Status Notifier Item with bus name '%s' and object path '%s' is already registered",
-              bus_name, object_path);
+    spdlog::debug("Ignoring duplicate Status Notifier Item registration for '{}' at '{}'", bus_name,
+                  object_path);
     sn_watcher_complete_register_item(obj->watcher_, invocation);
     return TRUE;
   }
@@ -158,7 +158,7 @@ void Watcher::nameVanished(GDBusConnection* connection, const char* name, gpoint
     watch->watcher->hosts_ = g_slist_remove(watch->watcher->hosts_, watch);
     if (watch->watcher->hosts_ == nullptr) {
       sn_watcher_set_is_host_registered(watch->watcher->watcher_, FALSE);
-      sn_watcher_emit_host_registered(watch->watcher->watcher_);
+      sn_watcher_emit_host_unregistered(watch->watcher->watcher_);
     }
   } else if (watch->type == GF_WATCH_TYPE_ITEM) {
     watch->watcher->items_ = g_slist_remove(watch->watcher->items_, watch);
@@ -167,6 +167,7 @@ void Watcher::nameVanished(GDBusConnection* connection, const char* name, gpoint
     sn_watcher_emit_item_unregistered(watch->watcher->watcher_, tmp);
     g_free(tmp);
   }
+  gfWatchFree(watch);
 }
 
 void Watcher::updateRegisteredItems(SnWatcher* obj) {

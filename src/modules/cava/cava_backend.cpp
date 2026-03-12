@@ -183,10 +183,10 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
   prm_.inAtty = 0;
   auto const output{prm_.output};
   // prm_.output = ::cava::output_method::OUTPUT_RAW;
-  if (config_["data_format"].isString()) {
-    if (prm_.data_format) free(prm_.data_format);
-    prm_.data_format = strdup(config_["data_format"].asString().c_str());
-  }
+  if (prm_.data_format) free(prm_.data_format);
+  // Default to ascii for format-icons output; allow user override
+  prm_.data_format = strdup(
+      config_["data_format"].isString() ? config_["data_format"].asString().c_str() : "ascii");
   if (config_["raw_target"].isString()) {
     if (prm_.raw_target) free(prm_.raw_target);
     prm_.raw_target = strdup(config_["raw_target"].asString().c_str());
@@ -218,7 +218,7 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
     prm_.input = ::cava::input_method_by_name(config_["method"].asString().c_str());
   if (config_["source"].isString()) {
     if (prm_.audio_source) free(prm_.audio_source);
-    prm_.audio_source = config_["source"].asString().data();
+    prm_.audio_source = strdup(config_["source"].asString().c_str());
   }
   if (config_["sample_rate"].isNumeric()) prm_.samplerate = config_["sample_rate"].asLargestInt();
   if (config_["sample_bits"].isInt()) prm_.samplebits = config_["sample_bits"].asInt();

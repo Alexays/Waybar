@@ -2,16 +2,19 @@ name: "Nix-Tests"
 on:
   pull_request:
   push:
+concurrency:
+  group: ${{ github.workflow }}-nix-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   nix-flake-check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v27
-      with:
-        extra_nix_config: |
-          experimental-features = nix-command flakes
-          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-    - run: nix flake show
-    - run: nix flake check --print-build-logs
-    - run: nix build --print-build-logs
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - run: nix flake show
+      - run: nix flake check --print-build-logs
+      - run: nix build --print-build-logs

@@ -32,7 +32,6 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
 
   windowIpcUniqueLock.unlock();
 
-  queryActiveWorkspace();
   update();
   dp.emit();
 }
@@ -44,6 +43,8 @@ Window::~Window() {
 
 auto Window::update() -> void {
   std::shared_lock<std::shared_mutex> windowIpcShareLock(windowIpcSmtx);
+
+  queryActiveWorkspace();
 
   std::string windowName = waybar::util::sanitize_string(workspace_.last_window_title);
   std::string windowAddress = workspace_.last_window;
@@ -70,13 +71,13 @@ auto Window::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_text(
+      label_.set_tooltip_markup(
           fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
                       fmt::arg("initialTitle", windowData_.initial_title),
                       fmt::arg("class", windowData_.class_name),
                       fmt::arg("initialClass", windowData_.initial_class_name)));
     } else if (!label_text.empty()) {
-      label_.set_tooltip_text(label_text);
+      label_.set_tooltip_markup(label_text);
     }
   }
 
@@ -122,7 +123,7 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
   const auto monitors = IPC::inst().getSocket1JsonReply("monitors");
   if (monitors.isArray()) {
     auto monitor = std::ranges::find_if(
-        monitors, [&](Json::Value monitor) { return monitor["name"] == monitorName; });
+        monitors, [&](const Json::Value& monitor) { return monitor["name"] == monitorName; });
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
       return Workspace{
@@ -137,7 +138,7 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
     const auto workspaces = IPC::inst().getSocket1JsonReply("workspaces");
     if (workspaces.isArray()) {
       auto workspace = std::ranges::find_if(
-          workspaces, [&](Json::Value workspace) { return workspace["id"] == id; });
+          workspaces, [&](const Json::Value& workspace) { return workspace["id"] == id; });
       if (workspace == std::end(workspaces)) {
         spdlog::warn("No workspace with id {}", id);
         return Workspace{
@@ -175,71 +176,69 @@ auto Window::WindowData::parse(const Json::Value& value) -> Window::WindowData {
 }
 
 void Window::queryActiveWorkspace() {
-  std::shared_lock<std::shared_mutex> windowIpcShareLock(windowIpcSmtx);
-
   if (separateOutputs_) {
     workspace_ = getActiveWorkspace(this->bar_.output->name);
   } else {
     workspace_ = getActiveWorkspace();
   }
 
+  focused_ = false;
+  windowData_ = WindowData{};
+  allFloating_ = false;
+  swallowing_ = false;
+  fullscreen_ = false;
+  solo_ = false;
+  soloClass_.clear();
+
+  if (workspace_.windows <= 0) {
+    return;
+  }
+
+  const auto clients = m_ipc.getSocket1JsonReply("clients");
+  if (!clients.isArray()) {
+    return;
+  }
+
+  auto activeWindow = std::ranges::find_if(clients, [&](const Json::Value& window) {
+    return window["address"] == workspace_.last_window;
+  });
+
+  if (activeWindow == std::end(clients)) {
+    return;
+  }
+
   focused_ = true;
-  if (workspace_.windows > 0) {
-    const auto clients = m_ipc.getSocket1JsonReply("clients");
-    if (clients.isArray()) {
-      auto activeWindow = std::ranges::find_if(
-          clients, [&](Json::Value window) { return window["address"] == workspace_.last_window; });
-
-      if (activeWindow == std::end(clients)) {
-        focused_ = false;
-        return;
-      }
-
-      windowData_ = WindowData::parse(*activeWindow);
-      updateAppIconName(windowData_.class_name, windowData_.initial_class_name);
-      std::vector<Json::Value> workspaceWindows;
-      std::ranges::copy_if(clients, std::back_inserter(workspaceWindows), [&](Json::Value window) {
+  windowData_ = WindowData::parse(*activeWindow);
+  updateAppIconName(windowData_.class_name, windowData_.initial_class_name);
+  std::vector<Json::Value> workspaceWindows;
+  std::ranges::copy_if(
+      clients, std::back_inserter(workspaceWindows), [&](const Json::Value& window) {
         return window["workspace"]["id"] == workspace_.id && window["mapped"].asBool();
       });
-      swallowing_ = std::ranges::any_of(workspaceWindows, [&](Json::Value window) {
-        return !window["swallowing"].isNull() && window["swallowing"].asString() != "0x0";
-      });
-      std::vector<Json::Value> visibleWindows;
-      std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
-                           [&](Json::Value window) { return !window["hidden"].asBool(); });
-      solo_ = 1 == std::count_if(visibleWindows.begin(), visibleWindows.end(),
-                                 [&](Json::Value window) { return !window["floating"].asBool(); });
-      allFloating_ = std::ranges::all_of(
-          visibleWindows, [&](Json::Value window) { return window["floating"].asBool(); });
-      fullscreen_ = windowData_.fullscreen;
+  swallowing_ = std::ranges::any_of(workspaceWindows, [&](const Json::Value& window) {
+    return !window["swallowing"].isNull() && window["swallowing"].asString() != "0x0";
+  });
+  std::vector<Json::Value> visibleWindows;
+  std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
+                       [&](const Json::Value& window) { return !window["hidden"].asBool(); });
+  solo_ = 1 == std::count_if(
+                   visibleWindows.begin(), visibleWindows.end(),
+                   [&](const Json::Value& window) { return !window["floating"].asBool(); });
+  allFloating_ = std::ranges::all_of(
+      visibleWindows, [&](const Json::Value& window) { return window["floating"].asBool(); });
+  fullscreen_ = windowData_.fullscreen;
 
-      // Fullscreen windows look like they are solo
-      if (fullscreen_) {
-        solo_ = true;
-      }
+  // Fullscreen windows look like they are solo
+  if (fullscreen_) {
+    solo_ = true;
+  }
 
-      if (solo_) {
-        soloClass_ = windowData_.class_name;
-      } else {
-        soloClass_ = "";
-      }
-    }
-  } else {
-    focused_ = false;
-    windowData_ = WindowData{};
-    allFloating_ = false;
-    swallowing_ = false;
-    fullscreen_ = false;
-    solo_ = false;
-    soloClass_ = "";
+  if (solo_) {
+    soloClass_ = windowData_.class_name;
   }
 }
 
-void Window::onEvent(const std::string& ev) {
-  queryActiveWorkspace();
-
-  dp.emit();
-}
+void Window::onEvent(const std::string& ev) { dp.emit(); }
 
 void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {

@@ -101,7 +101,7 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(
+    label_.set_tooltip_markup(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("temperatureC", temperature_c),
         fmt::arg("temperatureF", temperature_f), fmt::arg("temperatureK", temperature_k)));
   }

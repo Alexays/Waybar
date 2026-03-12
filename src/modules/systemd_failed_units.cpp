@@ -77,9 +77,9 @@ void SystemdFailedUnits::RequestSystemState() {
       Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
       if (data && data.is_of_type(Glib::VariantType("(v)"))) {
         Glib::VariantBase variant;
-        g_variant_get(data.gobj_copy(), "(v)", &variant);
+        g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_STRING)) {
-          return g_variant_get_string(variant.gobj_copy(), NULL);
+          return g_variant_get_string(const_cast<GVariant*>(variant.gobj()), NULL);
         }
       }
     } catch (Glib::Error& e) {
@@ -105,9 +105,9 @@ void SystemdFailedUnits::RequestFailedUnits() {
       Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
       if (data && data.is_of_type(Glib::VariantType("(v)"))) {
         Glib::VariantBase variant;
-        g_variant_get(data.gobj_copy(), "(v)", &variant);
+        g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_UINT32)) {
-          return g_variant_get_uint32(variant.gobj_copy());
+          return g_variant_get_uint32(const_cast<GVariant*>(variant.gobj()));
         }
       }
     } catch (Glib::Error& e) {

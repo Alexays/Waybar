@@ -36,7 +36,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *expand-right* ++
 	typeof: bool ++
 	default: false ++
-	Enables the modules-left to consume all left over space dynamically.
+	Enables the modules-right to consume all left over space dynamically.
 
 *layer* ++
 	typeof: string ++

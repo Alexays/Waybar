@@ -30,15 +30,16 @@ class JsonParser {
 
     std::istringstream jsonStream(modifiedJsonStr);
     std::string errs;
-    if (!Json::parseFromStream(m_readerBuilder, jsonStream, &root, &errs)) {
+    // Use local CharReaderBuilder for thread safety - the IPC singleton's
+    // parser can be called concurrently from multiple module threads
+    Json::CharReaderBuilder readerBuilder;
+    if (!Json::parseFromStream(readerBuilder, jsonStream, &root, &errs)) {
       throw std::runtime_error("Error parsing JSON: " + errs);
     }
     return root;
   }
 
  private:
-  Json::CharReaderBuilder m_readerBuilder;
-
   static std::string replaceHexadecimalEscape(const std::string& str) {
     static std::regex re("\\\\x");
     return std::regex_replace(str, re, "\\u00");

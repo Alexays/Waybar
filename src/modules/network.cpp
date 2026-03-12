@@ -21,10 +21,10 @@
 
 namespace {
 using namespace waybar::util;
-constexpr const char *DEFAULT_FORMAT = "{ifname}";
+constexpr const char* DEFAULT_FORMAT = "{ifname}";
 }  // namespace
 
-constexpr const char *NETDEV_FILE =
+constexpr const char* NETDEV_FILE =
     "/proc/net/dev";  // std::ifstream does not take std::string_view as param
 std::optional<std::pair<unsigned long long, unsigned long long>>
 waybar::modules::Network::readBandwidthUsage() {
@@ -45,7 +45,8 @@ waybar::modules::Network::readBandwidthUsage() {
     std::istringstream iss(line);
 
     std::string ifacename;
-    iss >> ifacename;      // ifacename contains "eth0:"
+    iss >> ifacename;  // ifacename contains "eth0:"
+    if (ifacename.empty()) continue;
     ifacename.pop_back();  // remove trailing ':'
     if (ifacename != ifname_) {
       continue;
@@ -82,7 +83,7 @@ waybar::modules::Network::readBandwidthUsage() {
   return {{receivedBytes, transmittedBytes}};
 }
 
-waybar::modules::Network::Network(const std::string &id, const Json::Value &config)
+waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
     : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
@@ -216,7 +217,7 @@ void waybar::modules::Network::worker() {
     thread_timer_.sleep_for(interval_);
   };
 #ifdef WANT_RFKILL
-  rfkill_.on_update.connect([this](auto &) {
+  rfkill_.on_update.connect([this](auto&) {
     /* If we are here, it's likely that the network thread already holds the mutex and will be
      * holding it for a next few seconds.
      * Let's delegate the update to the timer thread instead of blocking the main thread.
@@ -320,6 +321,7 @@ auto waybar::modules::Network::update() -> void {
   } else if (addr_pref_ == ip_addr_pref::IPV6) {
     final_ipaddr_ = ipaddr6_;
   } else if (addr_pref_ == ip_addr_pref::IPV4_6) {
+    final_ipaddr_.reserve(ipaddr_.length() + ipaddr6_.length() + 1);
     final_ipaddr_ = ipaddr_;
     final_ipaddr_ += '\n';
     final_ipaddr_ += ipaddr6_;
@@ -372,18 +374,26 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
-                   pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
-          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+                   pow_format(bandwidth_down * 8ull / (interval_.count() / 1000.0), "b/s")),
+          fmt::arg("bandwidthUpBits",
+                   pow_format(bandwidth_up * 8ull / (interval_.count() / 1000.0), "b/s")),
           fmt::arg("bandwidthTotalBits",
-                   pow_format((bandwidth_up + bandwidth_down) * 8ull / interval_.count(), "b/s")),
-          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
-          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")),
-          fmt::arg("bandwidthTotalOctets",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "o/s")),
-          fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
-          fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
-          fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) * 8ull / (interval_.count() / 1000.0),
+                              "b/s")),
+          fmt::arg("bandwidthDownOctets",
+                   pow_format(bandwidth_down / (interval_.count() / 1000.0), "o/s")),
+          fmt::arg("bandwidthUpOctets",
+                   pow_format(bandwidth_up / (interval_.count() / 1000.0), "o/s")),
+          fmt::arg(
+              "bandwidthTotalOctets",
+              pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "o/s")),
+          fmt::arg("bandwidthDownBytes",
+                   pow_format(bandwidth_down / (interval_.count() / 1000.0), "B/s")),
+          fmt::arg("bandwidthUpBytes",
+                   pow_format(bandwidth_up / (interval_.count() / 1000.0), "B/s")),
+          fmt::arg(
+              "bandwidthTotalBytes",
+              pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -397,7 +407,7 @@ auto waybar::modules::Network::update() -> void {
 }
 
 // https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
-static bool wildcardMatch(const std::string &pattern, const std::string &text) {
+static bool wildcardMatch(const std::string& pattern, const std::string& text) {
   auto P = int(pattern.size());
   auto T = int(text.size());
 
@@ -435,9 +445,9 @@ static bool wildcardMatch(const std::string &pattern, const std::string &text) {
   return p == P;
 }
 
-bool waybar::modules::Network::matchInterface(const std::string &ifname,
-                                              const std::vector<std::string> &altnames,
-                                              std::string &matched) const {
+bool waybar::modules::Network::matchInterface(const std::string& ifname,
+                                              const std::vector<std::string>& altnames,
+                                              std::string& matched) const {
   if (!config_["interface"].isString()) {
     return false;
   }
@@ -448,7 +458,7 @@ bool waybar::modules::Network::matchInterface(const std::string &ifname,
     return true;
   }
 
-  for (const auto &altname : altnames) {
+  for (const auto& altname : altnames) {
     if (config_ifname == altname || wildcardMatch(config_ifname, altname)) {
       matched = altname;
       return true;
@@ -478,8 +488,8 @@ void waybar::modules::Network::clearIface() {
   frequency_ = 0.0;
 }
 
-int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
-  auto net = static_cast<waybar::modules::Network *>(data);
+int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
+  auto net = static_cast<waybar::modules::Network*>(data);
   std::lock_guard<std::mutex> lock(net->mutex_);
   auto nh = nlmsg_hdr(msg);
   bool is_del_event = false;
@@ -488,8 +498,8 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     case RTM_DELLINK:
       is_del_event = true;
     case RTM_NEWLINK: {
-      struct ifinfomsg *ifi = static_cast<struct ifinfomsg *>(NLMSG_DATA(nh));
-      struct nlattr *attrs[IFLA_MAX + 1];
+      struct ifinfomsg* ifi = static_cast<struct ifinfomsg*>(NLMSG_DATA(nh));
+      struct nlattr* attrs[IFLA_MAX + 1];
       std::string ifname;
       std::vector<std::string> altnames;
       std::optional<bool> carrier;
@@ -517,7 +527,7 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       }
 
       if (attrs[IFLA_IFNAME] != nullptr) {
-        const char *ifname_ptr = nla_get_string(attrs[IFLA_IFNAME]);
+        const char* ifname_ptr = nla_get_string(attrs[IFLA_IFNAME]);
         size_t ifname_len = nla_len(attrs[IFLA_IFNAME]) - 1;  // minus \0
         ifname = std::string(ifname_ptr, ifname_len);
       }
@@ -527,12 +537,12 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       }
 
       if (attrs[IFLA_PROP_LIST] != nullptr) {
-        struct nlattr *prop;
+        struct nlattr* prop;
         int rem;
 
         nla_for_each_nested(prop, attrs[IFLA_PROP_LIST], rem) {
           if (nla_type(prop) == IFLA_ALT_IFNAME) {
-            const char *altname_ptr = nla_get_string(prop);
+            const char* altname_ptr = nla_get_string(prop);
             size_t altname_len = nla_len(prop) - 1;  // minus \0
             altnames.emplace_back(altname_ptr, altname_len);
           }
@@ -605,9 +615,9 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
     case RTM_DELADDR:
       is_del_event = true;
     case RTM_NEWADDR: {
-      struct ifaddrmsg *ifa = static_cast<struct ifaddrmsg *>(NLMSG_DATA(nh));
+      struct ifaddrmsg* ifa = static_cast<struct ifaddrmsg*>(NLMSG_DATA(nh));
       ssize_t attrlen = IFA_PAYLOAD(nh);
-      struct rtattr *ifa_rta = IFA_RTA(ifa);
+      struct rtattr* ifa_rta = IFA_RTA(ifa);
 
       if ((int)ifa->ifa_index != net->ifid_) {
         return NL_OK;
@@ -625,18 +635,31 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
           case IFA_LOCAL:
             char ipaddr[INET6_ADDRSTRLEN];
             if (!is_del_event) {
+              bool addr_changed = false;
+              std::string changed_ipaddr;
+              int changed_cidr = 0;
               if ((net->addr_pref_ == ip_addr_pref::IPV4 ||
                    net->addr_pref_ == ip_addr_pref::IPV4_6) &&
                   net->cidr_ == 0 && ifa->ifa_family == AF_INET) {
-                net->ipaddr_ =
-                    inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
-                net->cidr_ = ifa->ifa_prefixlen;
+                if (inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)) !=
+                    nullptr) {
+                  net->ipaddr_ = ipaddr;
+                  net->cidr_ = ifa->ifa_prefixlen;
+                  addr_changed = true;
+                  changed_ipaddr = net->ipaddr_;
+                  changed_cidr = net->cidr_;
+                }
               } else if ((net->addr_pref_ == ip_addr_pref::IPV6 ||
                           net->addr_pref_ == ip_addr_pref::IPV4_6) &&
                          net->cidr6_ == 0 && ifa->ifa_family == AF_INET6) {
-                net->ipaddr6_ =
-                    inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
-                net->cidr6_ = ifa->ifa_prefixlen;
+                if (inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)) !=
+                    nullptr) {
+                  net->ipaddr6_ = ipaddr;
+                  net->cidr6_ = ifa->ifa_prefixlen;
+                  addr_changed = true;
+                  changed_ipaddr = net->ipaddr6_;
+                  changed_cidr = net->cidr6_;
+                }
               }
 
               switch (ifa->ifa_family) {
@@ -656,7 +679,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
                   net->netmask6_ = inet_ntop(ifa->ifa_family, &netmask6, ipaddr, sizeof(ipaddr));
                 }
               }
-              spdlog::debug("network: {}, new addr {}/{}", net->ifname_, net->ipaddr_, net->cidr_);
+              if (addr_changed) {
+                spdlog::debug("network: {}, new addr {}/{}", net->ifname_, changed_ipaddr,
+                              changed_cidr);
+              }
             } else {
               net->ipaddr_.clear();
               net->ipaddr6_.clear();
@@ -681,10 +707,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
       // Based on https://gist.github.com/Yawning/c70d804d4b8ae78cc698
       // to find the interface used to reach the outside world
 
-      struct rtmsg *rtm = static_cast<struct rtmsg *>(NLMSG_DATA(nh));
+      struct rtmsg* rtm = static_cast<struct rtmsg*>(NLMSG_DATA(nh));
       int family = rtm->rtm_family;
       ssize_t attrlen = RTM_PAYLOAD(nh);
-      struct rtattr *attr = RTM_RTA(rtm);
+      struct rtattr* attr = RTM_RTA(rtm);
       char gateway_addr[INET6_ADDRSTRLEN];
       bool has_gateway = false;
       bool has_destination = false;
@@ -725,17 +751,17 @@ int waybar::modules::Network::handleEvents(struct nl_msg *msg, void *data) {
               break;
             }
             for (uint32_t i = 0; i < dstlen; i += 1) {
-              c |= *((unsigned char *)RTA_DATA(attr) + i);
+              c |= *((unsigned char*)RTA_DATA(attr) + i);
             }
             has_destination = (c == 0);
             break;
           }
           case RTA_OIF:
             /* The output interface index. */
-            temp_idx = *static_cast<int *>(RTA_DATA(attr));
+            temp_idx = *static_cast<int*>(RTA_DATA(attr));
             break;
           case RTA_PRIORITY:
-            priority = *(uint32_t *)RTA_DATA(attr);
+            priority = *(uint32_t*)RTA_DATA(attr);
             break;
           default:
             break;
@@ -826,18 +852,18 @@ void waybar::modules::Network::askForStateDump(void) {
   }
 }
 
-int waybar::modules::Network::handleEventsDone(struct nl_msg *msg, void *data) {
-  auto net = static_cast<waybar::modules::Network *>(data);
+int waybar::modules::Network::handleEventsDone(struct nl_msg* msg, void* data) {
+  auto net = static_cast<waybar::modules::Network*>(data);
   net->dump_in_progress_ = false;
   net->askForStateDump();
   return NL_OK;
 }
 
-int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
-  auto net = static_cast<waybar::modules::Network *>(data);
-  auto gnlh = static_cast<genlmsghdr *>(nlmsg_data(nlmsg_hdr(msg)));
-  struct nlattr *tb[NL80211_ATTR_MAX + 1];
-  struct nlattr *bss[NL80211_BSS_MAX + 1];
+int waybar::modules::Network::handleScan(struct nl_msg* msg, void* data) {
+  auto net = static_cast<waybar::modules::Network*>(data);
+  auto gnlh = static_cast<genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
+  struct nlattr* tb[NL80211_ATTR_MAX + 1];
+  struct nlattr* bss[NL80211_BSS_MAX + 1];
   struct nla_policy bss_policy[NL80211_BSS_MAX + 1]{};
   bss_policy[NL80211_BSS_TSF].type = NLA_U64;
   bss_policy[NL80211_BSS_FREQUENCY].type = NLA_U32;
@@ -869,9 +895,9 @@ int waybar::modules::Network::handleScan(struct nl_msg *msg, void *data) {
   return NL_OK;
 }
 
-void waybar::modules::Network::parseEssid(struct nlattr **bss) {
+void waybar::modules::Network::parseEssid(struct nlattr** bss) {
   if (bss[NL80211_BSS_INFORMATION_ELEMENTS] != nullptr) {
-    auto ies = static_cast<char *>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
+    auto ies = static_cast<char*>(nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]));
     auto ies_len = nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS]);
     const auto hdr_len = 2;
     while (ies_len > hdr_len && ies[0] != 0) {
@@ -888,7 +914,7 @@ void waybar::modules::Network::parseEssid(struct nlattr **bss) {
   }
 }
 
-void waybar::modules::Network::parseSignal(struct nlattr **bss) {
+void waybar::modules::Network::parseSignal(struct nlattr** bss) {
   if (bss[NL80211_BSS_SIGNAL_MBM] != nullptr) {
     // signalstrength in dBm from mBm
     signal_strength_dbm_ = nla_get_s32(bss[NL80211_BSS_SIGNAL_MBM]) / 100;
@@ -924,16 +950,16 @@ void waybar::modules::Network::parseSignal(struct nlattr **bss) {
   }
 }
 
-void waybar::modules::Network::parseFreq(struct nlattr **bss) {
+void waybar::modules::Network::parseFreq(struct nlattr** bss) {
   if (bss[NL80211_BSS_FREQUENCY] != nullptr) {
     // in GHz
     frequency_ = (double)nla_get_u32(bss[NL80211_BSS_FREQUENCY]) / 1000;
   }
 }
 
-void waybar::modules::Network::parseBssid(struct nlattr **bss) {
+void waybar::modules::Network::parseBssid(struct nlattr** bss) {
   if (bss[NL80211_BSS_BSSID] != nullptr) {
-    auto bssid = static_cast<uint8_t *>(nla_data(bss[NL80211_BSS_BSSID]));
+    auto bssid = static_cast<uint8_t*>(nla_data(bss[NL80211_BSS_BSSID]));
     auto bssid_len = nla_len(bss[NL80211_BSS_BSSID]);
     if (bssid_len == 6) {
       bssid_ = fmt::format("{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", bssid[0], bssid[1], bssid[2], bssid[3],
@@ -942,7 +968,7 @@ void waybar::modules::Network::parseBssid(struct nlattr **bss) {
   }
 }
 
-bool waybar::modules::Network::associatedOrJoined(struct nlattr **bss) {
+bool waybar::modules::Network::associatedOrJoined(struct nlattr** bss) {
   if (bss[NL80211_BSS_STATUS] == nullptr) {
     return false;
   }
@@ -958,7 +984,7 @@ bool waybar::modules::Network::associatedOrJoined(struct nlattr **bss) {
 }
 
 auto waybar::modules::Network::getInfo() -> void {
-  struct nl_msg *nl_msg = nlmsg_alloc();
+  struct nl_msg* nl_msg = nlmsg_alloc();
   if (nl_msg == nullptr) {
     return;
   }
