@@ -118,7 +118,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         menuActionsMap_[key] = it->asString();
         g_signal_connect(submenus_[key], "activate",
                  G_CALLBACK(handleGtkMenuEvent),
-                 (gpointer)menuActionsMap_[key].c_str());              
+                 (gpointer)g_strdup(menuActionsMap_[key].c_str()));             
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
