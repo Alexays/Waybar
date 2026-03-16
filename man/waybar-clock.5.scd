@@ -259,7 +259,19 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 	"tooltip-format": "{tz_list}"
 }
 ```
+5. Simple calendar tooltip
 
+```
+"clock": {
+"format": "{:%H:%M}",
+"tooltip-format": "<tt>{calendar}</tt>",
+"calendar": {
+"format": {
+"today": "<span color='#ffcc66'><b>{}</b></span>"
+}
+}
+}
+```
 # STYLE
 
 - *#clock*
