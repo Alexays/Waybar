@@ -36,6 +36,21 @@ Addressed by *systemd-failed-units*
 	default: *true* ++
 	Option to hide this module when there are no failed units.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: *System: {system_state}\nUser: {user_state}\nFailed units ({nr_failed}):\n{failed_units_list}* ++
+	Tooltip format shown when there are failed units.
+
+*tooltip-format-ok*: ++
+	typeof: string ++
+	default: *System: {system_state}\nUser: {user_state}* ++
+	Tooltip format used when there are no failed units.
+
+*tooltip-unit-format*: ++
+	typeof: string ++
+	default: *{name}: {description}* ++
+	Format used to render each failed unit inside the tooltip. Each item is prefixed with a bullet.
+
 *menu*: ++
 	typeof: string ++
 	Action that pops up the menu.
@@ -68,6 +83,18 @@ Addressed by *systemd-failed-units*
 
 *{overall_state}:* Overall state of the systemd and user session. ("ok" or "degraded")
 
+*{failed_units_list}:* Bulleted list of failed units using *tooltip-unit-format*. Empty when
+there are no failed units.
+
+The *tooltip-unit-format* string supports the following replacements:
+
+*{name}*: Unit name ++
+*{description}*: Unit description ++
+*{load_state}*: Unit load state ++
+*{active_state}*: Unit active state ++
+*{sub_state}*: Unit sub state ++
+*{scope}*: Either *system* or *user* depending on where the unit originated
+
 # EXAMPLES
 
 ```
@@ -77,6 +104,8 @@ Addressed by *systemd-failed-units*
 	"format-ok": "✓",
 	"system": true,
 	"user": false,
+	"tooltip-format": "{nr_failed} failed units:\n{failed_units_list}",
+	"tooltip-unit-format": "{scope}: {name} ({active_state})",
 }
 ```
 
