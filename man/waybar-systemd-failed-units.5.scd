@@ -19,7 +19,7 @@ Addressed by *systemd-failed-units*
 
 *format-ok*: ++
 	typeof: string ++
-	This format is used when there is no failing units.
+	This format is used when there are no failing units.
 
 *user*: ++
 	typeof: bool ++
@@ -34,15 +34,15 @@ Addressed by *systemd-failed-units*
 *hide-on-ok*: ++
 	typeof: bool ++
 	default: *true* ++
-	Option to hide this module when there is no failing units.
+	Option to hide this module when there are no failed units.
 
 *menu*: ++
 	typeof: string ++
-	Action that popups the menu.
+	Action that pops up the menu.
 
 *menu-file*: ++
 	typeof: string ++
-	Location of the menu descriptor file. There need to be an element of type
+	Location of the menu descriptor file. There needs to be an element of type
 	GtkMenu with id *menu*
 
 *menu-actions*: ++
@@ -52,7 +52,7 @@ Addressed by *systemd-failed-units*
 *expand*: ++
 	typeof: bool ++
 	default: false ++
-	Enables this module to consume all left over space dynamically.
+	Enables this module to consume all leftover space dynamically.
 
 # FORMAT REPLACEMENTS
 
@@ -62,11 +62,11 @@ Addressed by *systemd-failed-units*
 
 *{nr_failed}*: Number of total failed units.
 
-*{systemd_state}:* State of the systemd system session
+*{system_state}:* State of the systemd system session.
 
-*{user_state}:* State of the systemd user session
+*{user_state}:* State of the systemd user session.
 
-*{overall_state}:* Overall state of the systemd and user session. ("Ok" or "Degraded")
+*{overall_state}:* Overall state of the systemd and user session. ("ok" or "degraded")
 
 # EXAMPLES
 
