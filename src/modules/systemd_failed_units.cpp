@@ -18,8 +18,9 @@ namespace waybar::modules {
 SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value& config)
     : ALabel(config, "systemd-failed-units", id, "{nr_failed} failed", 1),
       hide_on_ok_(true),
-      tooltip_format_("System: {system_state}\nUser: {user_state}\nFailed units ({nr_failed}):\n"
-                       "{failed_units_list}"),
+      tooltip_format_(
+          "System: {system_state}\nUser: {user_state}\nFailed units ({nr_failed}):\n"
+          "{failed_units_list}"),
       tooltip_format_ok_("System: {system_state}\nUser: {user_state}"),
       tooltip_unit_format_("{name}: {description}"),
       update_pending_(false),
@@ -170,8 +171,7 @@ void SystemdFailedUnits::RequestFailedUnitsList() {
 
 auto SystemdFailedUnits::LoadFailedUnitsList(const char* kind,
                                              Glib::RefPtr<Gio::DBus::Proxy>& proxy,
-                                             const std::string& scope)
-    -> std::vector<FailedUnit> {
+                                             const std::string& scope) -> std::vector<FailedUnit> {
   // org.freedesktop.systemd1.Manager.ListUnits returns
   // (name, description, load_state, active_state, sub_state, followed, unit_path, job_id,
   //  job_type, job_path).
@@ -225,10 +225,8 @@ std::string SystemdFailedUnits::BuildTooltipFailedList() const {
           fmt::runtime(tooltip_unit_format_),
           fmt::arg("name", Glib::Markup::escape_text(unit.name).raw()),
           fmt::arg("description", Glib::Markup::escape_text(unit.description).raw()),
-          fmt::arg("load_state", unit.load_state),
-          fmt::arg("active_state", unit.active_state),
-          fmt::arg("sub_state", unit.sub_state),
-          fmt::arg("scope", unit.scope));
+          fmt::arg("load_state", unit.load_state), fmt::arg("active_state", unit.active_state),
+          fmt::arg("sub_state", unit.sub_state), fmt::arg("scope", unit.scope));
       if (!first) {
         list += "\n";
       }
@@ -280,21 +278,19 @@ auto SystemdFailedUnits::update() -> void {
 
   label_.set_markup(fmt::format(
       fmt::runtime(nr_failed_ == 0 ? format_ok_ : format_), fmt::arg("nr_failed", nr_failed_),
-      fmt::arg("nr_failed_system", nr_failed_system_),
-      fmt::arg("nr_failed_user", nr_failed_user_), fmt::arg("system_state", system_state_),
-      fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_)));
+      fmt::arg("nr_failed_system", nr_failed_system_), fmt::arg("nr_failed_user", nr_failed_user_),
+      fmt::arg("system_state", system_state_), fmt::arg("user_state", user_state_),
+      fmt::arg("overall_state", overall_state_)));
   if (tooltipEnabled()) {
     std::string failed_list = BuildTooltipFailedList();
     auto tooltip_template = overall_state_ == "ok" ? tooltip_format_ok_ : tooltip_format_;
     if (!tooltip_template.empty()) {
-      label_.set_tooltip_markup(
-          fmt::format(fmt::runtime(tooltip_template), fmt::arg("nr_failed", nr_failed_),
-                      fmt::arg("nr_failed_system", nr_failed_system_),
-                      fmt::arg("nr_failed_user", nr_failed_user_),
-                      fmt::arg("system_state", system_state_),
-                      fmt::arg("user_state", user_state_),
-                      fmt::arg("overall_state", overall_state_),
-                      fmt::arg("failed_units_list", failed_list)));
+      label_.set_tooltip_markup(fmt::format(
+          fmt::runtime(tooltip_template), fmt::arg("nr_failed", nr_failed_),
+          fmt::arg("nr_failed_system", nr_failed_system_),
+          fmt::arg("nr_failed_user", nr_failed_user_), fmt::arg("system_state", system_state_),
+          fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_),
+          fmt::arg("failed_units_list", failed_list)));
     } else {
       label_.set_tooltip_text("");
     }
