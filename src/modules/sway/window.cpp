@@ -185,9 +185,9 @@ std::tuple<std::string, std::string, std::string, std::string> getWindowInfo(
         continue;
       }
       if (!marks.empty()) {
-        marks += ',';
+        marks.append(",");
       }
-      marks += m.asString();
+      marks.append(m.asString());
     }
   }
   return {app_id, app_class, shell, marks};

@@ -61,10 +61,13 @@ UPower::UPower(const std::string& id, const Json::Value& config, std::mutex& rea
                              sigc::mem_fun(*this, &UPower::getConn_cb));
 
   // Make UPower client
-  GError** gErr = NULL;
-  upClient_ = up_client_new_full(NULL, gErr);
-  if (upClient_ == NULL)
-    spdlog::error("Upower. UPower client connection error. {}", (*gErr)->message);
+  GError* gErr = NULL;
+  upClient_ = up_client_new_full(NULL, &gErr);
+  if (upClient_ == NULL) {
+    spdlog::error("Upower. UPower client connection error. {}",
+                  gErr ? gErr->message : "unknown error");
+    if (gErr) g_error_free(gErr);
+  }
 
   // Subscribe UPower events
   g_signal_connect(upClient_, "device-added", G_CALLBACK(deviceAdded_cb), this);
@@ -94,7 +97,7 @@ UPower::~UPower() {
   removeDevices();
 }
 
-static const std::string getDeviceStatus(UpDeviceState& state) {
+static std::string_view getDeviceStatus(UpDeviceState& state) {
   switch (state) {
     case UP_DEVICE_STATE_CHARGING:
     case UP_DEVICE_STATE_PENDING_CHARGE:
@@ -111,7 +114,7 @@ static const std::string getDeviceStatus(UpDeviceState& state) {
   }
 }
 
-static const std::string getDeviceIcon(UpDeviceKind& kind) {
+static std::string_view getDeviceIcon(UpDeviceKind& kind) {
   switch (kind) {
     case UP_DEVICE_KIND_LINE_POWER:
       return "ac-adapter-symbolic";
@@ -211,7 +214,8 @@ auto UPower::update() -> void {
   // Remove last status if it exists
   if (!lastStatus_.empty() && box_.get_style_context()->has_class(lastStatus_))
     box_.get_style_context()->remove_class(lastStatus_);
-  if (!box_.get_style_context()->has_class(status)) box_.get_style_context()->add_class(status);
+  if (!box_.get_style_context()->has_class(std::string(status)))
+    box_.get_style_context()->add_class(std::string(status));
   lastStatus_ = status;
 
   if (devices_.size() == 0 && !upDeviceValid && hideIfEmpty_) {

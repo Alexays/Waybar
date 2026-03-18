@@ -26,7 +26,7 @@ std::vector<float> waybar::modules::CpuFrequency::parseCpuFrequencies() {
     if (std::filesystem::exists(cpufreq_dir)) {
       std::vector<std::string> frequency_files = {"/cpuinfo_min_freq", "/cpuinfo_max_freq"};
       for (auto& p : std::filesystem::directory_iterator(cpufreq_dir)) {
-        for (auto freq_file : frequency_files) {
+        for (const auto& freq_file : frequency_files) {
           std::string freq_file_path = p.path().string() + freq_file;
           if (std::filesystem::exists(freq_file_path)) {
             std::string freq_value;

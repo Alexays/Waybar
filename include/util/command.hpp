@@ -21,6 +21,8 @@
 
 namespace waybar::util::command {
 
+constexpr int kExecFailureExitCode = 127;
+
 struct res {
   int exit_code;
   std::string out;
@@ -60,6 +62,7 @@ inline int close(FILE* fp, pid_t pid) {
       spdlog::debug("Cmd continued");
     } else if (ret == -1) {
       spdlog::debug("waitpid failed: {}", strerror(errno));
+      break;
     } else {
       break;
     }
@@ -114,7 +117,9 @@ inline FILE* open(const std::string& cmd, int& pid, const std::string& output_na
       setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
     }
     execlp("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
-    exit(0);
+    const int saved_errno = errno;
+    spdlog::error("execlp(/bin/sh) failed in open: {}", strerror(saved_errno));
+    _exit(kExecFailureExitCode);
   } else {
     ::close(fd[1]);
   }
@@ -163,7 +168,9 @@ inline int32_t forkExec(const std::string& cmd, const std::string& output_name,
       setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
     }
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
-    exit(0);
+    const int saved_errno = errno;
+    spdlog::error("execl(/bin/sh) failed in forkExec: {}", strerror(saved_errno));
+    _exit(kExecFailureExitCode);
   } else {
     reap_mtx.lock();
     reap.push_back(pid);

@@ -132,9 +132,9 @@ void Gamemode::getData() {
       Glib::VariantContainerBase data = gamemode_proxy->call_sync("Get", parameters);
       if (data && data.is_of_type(Glib::VariantType("(v)"))) {
         Glib::VariantBase variant;
-        g_variant_get(data.gobj_copy(), "(v)", &variant);
+        g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_INT32)) {
-          g_variant_get(variant.gobj_copy(), "i", &gameCount);
+          g_variant_get(const_cast<GVariant*>(variant.gobj()), "i", &gameCount);
           return;
         }
       }
@@ -162,7 +162,7 @@ void Gamemode::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& con
                                   const Glib::VariantContainerBase& parameters) {
   if (parameters.is_of_type(Glib::VariantType("(b)"))) {
     gboolean sleeping;
-    g_variant_get(parameters.gobj_copy(), "(b)", &sleeping);
+    g_variant_get(const_cast<GVariant*>(parameters.gobj()), "(b)", &sleeping);
     if (!sleeping) {
       getData();
       dp.emit();

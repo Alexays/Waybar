@@ -125,7 +125,7 @@ auto Language::update() -> void {
   ALabel::update();
 }
 
-auto Language::set_current_layout(std::string current_layout) -> void {
+auto Language::set_current_layout(const std::string& current_layout) -> void {
   label_.get_style_context()->remove_class(layout_.short_name);
   layout_ = layouts_map_[current_layout];
   label_.get_style_context()->add_class(layout_.short_name);

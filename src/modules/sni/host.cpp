@@ -8,7 +8,8 @@ namespace waybar::modules::SNI {
 
 Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
-           const std::function<void(std::unique_ptr<Item>&)>& on_remove)
+           const std::function<void(std::unique_ptr<Item>&)>& on_remove,
+           const std::function<void()>& on_update)
     : bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-" +
                 std::to_string(id)),
       object_path_("/StatusNotifierHost/" + std::to_string(id)),
@@ -17,7 +18,8 @@ Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
       config_(config),
       bar_(bar),
       on_add_(on_add),
-      on_remove_(on_remove) {}
+      on_remove_(on_remove),
+      on_update_(on_update) {}
 
 Host::~Host() {
   if (bus_name_id_ > 0) {
@@ -54,12 +56,12 @@ void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
   g_cancellable_cancel(cancellable_);
   g_clear_object(&cancellable_);
   g_clear_object(&watcher_);
-  items_.clear();
+  clearItems();
 }
 
 void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error != nullptr) {
       g_error_free(error);
     }
@@ -81,7 +83,7 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
 
 void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error != nullptr) {
       g_error_free(error);
     }
@@ -117,10 +119,47 @@ void Host::itemUnregistered(SnWatcher* watcher, const gchar* service, gpointer d
   auto [bus_name, object_path] = host->getBusNameAndObjectPath(service);
   for (auto it = host->items_.begin(); it != host->items_.end(); ++it) {
     if ((*it)->bus_name == bus_name && (*it)->object_path == object_path) {
-      host->on_remove_(*it);
-      host->items_.erase(it);
+      host->removeItem(it);
       break;
     }
+  }
+}
+
+void Host::itemReady(Item& item) {
+  auto it = std::find_if(items_.begin(), items_.end(),
+                         [&item](const auto& candidate) { return candidate.get() == &item; });
+  if (it != items_.end() && (*it)->isReady()) {
+    on_add_(*it);
+  }
+}
+
+void Host::itemInvalidated(Item& item) {
+  auto it = std::find_if(items_.begin(), items_.end(),
+                         [&item](const auto& candidate) { return candidate.get() == &item; });
+  if (it != items_.end()) {
+    removeItem(it);
+  }
+}
+
+void Host::removeItem(std::vector<std::unique_ptr<Item>>::iterator it) {
+  if ((*it)->isReady()) {
+    on_remove_(*it);
+  }
+  items_.erase(it);
+}
+
+void Host::clearItems() {
+  bool removed_ready_item = false;
+  for (auto& item : items_) {
+    if (item->isReady()) {
+      on_remove_(item);
+      removed_ready_item = true;
+    }
+  }
+  bool had_items = !items_.empty();
+  items_.clear();
+  if (had_items && !removed_ready_item) {
+    on_update_();
   }
 }
 
@@ -132,15 +171,16 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::st
   return {service, "/StatusNotifierItem"};
 }
 
-void Host::addRegisteredItem(std::string service) {
+void Host::addRegisteredItem(const std::string& service) {
   std::string bus_name, object_path;
   std::tie(bus_name, object_path) = getBusNameAndObjectPath(service);
   auto it = std::find_if(items_.begin(), items_.end(), [&bus_name, &object_path](const auto& item) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
   if (it == items_.end()) {
-    items_.emplace_back(new Item(bus_name, object_path, config_, bar_));
-    on_add_(items_.back());
+    items_.emplace_back(new Item(
+        bus_name, object_path, config_, bar_, [this](Item& item) { itemReady(item); },
+        [this](Item& item) { itemInvalidated(item); }, on_update_));
   }
 }
 

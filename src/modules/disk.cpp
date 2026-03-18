@@ -42,7 +42,7 @@ auto waybar::modules::Disk::update() -> void {
     fs_used - File system used space
   */
 
-  if (err != 0) {
+  if (err != 0 || stats.f_blocks == 0) {
     event_box_.hide();
     return;
   }
@@ -93,7 +93,7 @@ auto waybar::modules::Disk::update() -> void {
   ALabel::update();
 }
 
-float waybar::modules::Disk::calc_specific_divisor(std::string divisor) {
+float waybar::modules::Disk::calc_specific_divisor(const std::string& divisor) {
   if (divisor == "kB") {
     return 1000.0;
   } else if (divisor == "kiB") {

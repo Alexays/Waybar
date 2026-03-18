@@ -45,7 +45,8 @@ waybar::modules::Network::readBandwidthUsage() {
     std::istringstream iss(line);
 
     std::string ifacename;
-    iss >> ifacename;      // ifacename contains "eth0:"
+    iss >> ifacename;  // ifacename contains "eth0:"
+    if (ifacename.empty()) continue;
     ifacename.pop_back();  // remove trailing ':'
     if (ifacename != ifname_) {
       continue;
@@ -321,6 +322,7 @@ auto waybar::modules::Network::update() -> void {
   } else if (addr_pref_ == ip_addr_pref::IPV6) {
     final_ipaddr_ = ipaddr6_;
   } else if (addr_pref_ == ip_addr_pref::IPV4_6) {
+    final_ipaddr_.reserve(ipaddr_.length() + ipaddr6_.length() + 1);
     final_ipaddr_ = ipaddr_;
     final_ipaddr_ += '\n';
     final_ipaddr_ += ipaddr6_;
@@ -373,18 +375,26 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
           fmt::arg("bandwidthDownBits",
-                   pow_format(bandwidth_down * 8ull / interval_.count(), "b/s")),
-          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / interval_.count(), "b/s")),
+                   pow_format(bandwidth_down * 8ull / (interval_.count() / 1000.0), "b/s")),
+          fmt::arg("bandwidthUpBits",
+                   pow_format(bandwidth_up * 8ull / (interval_.count() / 1000.0), "b/s")),
           fmt::arg("bandwidthTotalBits",
-                   pow_format((bandwidth_up + bandwidth_down) * 8ull / interval_.count(), "b/s")),
-          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / interval_.count(), "o/s")),
-          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / interval_.count(), "o/s")),
-          fmt::arg("bandwidthTotalOctets",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "o/s")),
-          fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / interval_.count(), "B/s")),
-          fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / interval_.count(), "B/s")),
-          fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / interval_.count(), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) * 8ull / (interval_.count() / 1000.0),
+                              "b/s")),
+          fmt::arg("bandwidthDownOctets",
+                   pow_format(bandwidth_down / (interval_.count() / 1000.0), "o/s")),
+          fmt::arg("bandwidthUpOctets",
+                   pow_format(bandwidth_up / (interval_.count() / 1000.0), "o/s")),
+          fmt::arg(
+              "bandwidthTotalOctets",
+              pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "o/s")),
+          fmt::arg("bandwidthDownBytes",
+                   pow_format(bandwidth_down / (interval_.count() / 1000.0), "B/s")),
+          fmt::arg("bandwidthUpBytes",
+                   pow_format(bandwidth_up / (interval_.count() / 1000.0), "B/s")),
+          fmt::arg(
+              "bandwidthTotalBytes",
+              pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -626,18 +636,31 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
           case IFA_LOCAL:
             char ipaddr[INET6_ADDRSTRLEN];
             if (!is_del_event) {
+              bool addr_changed = false;
+              std::string changed_ipaddr;
+              int changed_cidr = 0;
               if ((net->addr_pref_ == ip_addr_pref::IPV4 ||
                    net->addr_pref_ == ip_addr_pref::IPV4_6) &&
                   net->cidr_ == 0 && ifa->ifa_family == AF_INET) {
-                net->ipaddr_ =
-                    inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
-                net->cidr_ = ifa->ifa_prefixlen;
+                if (inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)) !=
+                    nullptr) {
+                  net->ipaddr_ = ipaddr;
+                  net->cidr_ = ifa->ifa_prefixlen;
+                  addr_changed = true;
+                  changed_ipaddr = net->ipaddr_;
+                  changed_cidr = net->cidr_;
+                }
               } else if ((net->addr_pref_ == ip_addr_pref::IPV6 ||
                           net->addr_pref_ == ip_addr_pref::IPV4_6) &&
                          net->cidr6_ == 0 && ifa->ifa_family == AF_INET6) {
-                net->ipaddr6_ =
-                    inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr));
-                net->cidr6_ = ifa->ifa_prefixlen;
+                if (inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)) !=
+                    nullptr) {
+                  net->ipaddr6_ = ipaddr;
+                  net->cidr6_ = ifa->ifa_prefixlen;
+                  addr_changed = true;
+                  changed_ipaddr = net->ipaddr6_;
+                  changed_cidr = net->cidr6_;
+                }
               }
 
               switch (ifa->ifa_family) {
@@ -657,7 +680,10 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                   net->netmask6_ = inet_ntop(ifa->ifa_family, &netmask6, ipaddr, sizeof(ipaddr));
                 }
               }
-              spdlog::debug("network: {}, new addr {}/{}", net->ifname_, net->ipaddr_, net->cidr_);
+              if (addr_changed) {
+                spdlog::debug("network: {}, new addr {}/{}", net->ifname_, changed_ipaddr,
+                              changed_cidr);
+              }
             } else {
               net->ipaddr_.clear();
               net->ipaddr6_.clear();

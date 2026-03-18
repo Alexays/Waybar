@@ -10,7 +10,7 @@ namespace waybar::modules::sway {
 
 // Helper function to assign a number to a workspace, just like sway. In fact
 // this is taken quite verbatim from `sway/ipc-json.c`.
-int Workspaces::convertWorkspaceNameToNum(std::string name) {
+int Workspaces::convertWorkspaceNameToNum(const std::string& name) {
   if (isdigit(name[0]) != 0) {
     errno = 0;
     char* endptr = nullptr;
@@ -488,7 +488,7 @@ std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
   return (*it)["name"].asString();
 }
 
-std::string Workspaces::trimWorkspaceName(std::string name) {
+std::string Workspaces::trimWorkspaceName(const std::string& name) {
   std::size_t found = name.find(':');
   if (found != std::string::npos) {
     return name.substr(found + 1);

@@ -4,6 +4,7 @@
 #include <gtkmm/enums.h>
 #include <gtkmm/label.h>
 #include <json/value.h>
+#include <sigc++/connection.h>
 
 #include <cstdint>
 #include <map>
@@ -60,7 +61,7 @@ class Workspaces : public AModule, public EventHandler {
   enum class ActiveWindowPosition { NONE, FIRST, LAST };
   auto activeWindowPosition() const -> ActiveWindowPosition { return m_activeWindowPosition; }
 
-  std::string getRewrite(std::string window_class, std::string window_title);
+  std::string getRewrite(const std::string& window_class, const std::string& window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
@@ -209,6 +210,7 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
+  sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
 };
 

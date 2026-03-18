@@ -36,6 +36,7 @@ class Custom : public ALabel {
   std::string id_;
   std::string alt_;
   std::string tooltip_;
+  std::string last_tooltip_markup_;
   const bool tooltip_format_enabled_;
   std::vector<std::string> class_;
   int percentage_;
