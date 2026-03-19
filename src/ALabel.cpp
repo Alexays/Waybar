@@ -121,7 +121,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        GtkMenuEventData* data = new GtkMenuEventData{reap_mtx, reap, menuActionsMap_[key].c_str()};
+        GtkMenuEventData* data =
+            new GtkMenuEventData{reap_mtx, reap, g_strdup(menuActionsMap_[key].c_str())};
         g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
                          (gpointer)data);
       }
