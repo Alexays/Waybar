@@ -204,7 +204,7 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "<tt><small>{calendar}</small></tt>",
 	"calendar": {
 		"mode"          : "year",
@@ -299,7 +299,7 @@ Example of working config
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
 	"calendar": {
 		"mode"          : "year",
