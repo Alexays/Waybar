@@ -30,6 +30,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   box.set_name(name_);
+  box.get_style_context()->add_class("empty");
   if (!id.empty()) {
     box.get_style_context()->add_class(id);
   }
@@ -67,6 +68,9 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     const bool start_expanded =
         (drawer_config["start-expanded"].isBool() ? drawer_config["start-expanded"].asBool()
                                                   : false);
+    empty_if_drawer_empty = (drawer_config["empty-if-drawer-empty"].isBool()
+                                 ? drawer_config["empty-if-drawer-empty"].asBool()
+                                 : false);
 
     auto transition_type = getPreferredTransitionType(vertical);
 
@@ -129,7 +133,44 @@ bool Group::handleToggle(GdkEventButton* const& e) {
 }
 
 auto Group::update() -> void {
-  // noop
+  bool has_visible_child = false;
+  bool has_visible_drawer_child = false;
+
+  if (is_drawer) {
+    for (auto* rev_child : revealer_box.get_children()) {
+      if (rev_child->get_visible()) {
+        has_visible_drawer_child = true;
+        break;
+      }
+    }
+  }
+
+  if (is_drawer && empty_if_drawer_empty) {
+    has_visible_child = has_visible_drawer_child;
+  } else {
+    for (auto* child : box.get_children()) {
+      if (child == &revealer) {
+        if (has_visible_drawer_child) {
+          has_visible_child = true;
+          break;
+        }
+      } else if (child->get_visible()) {
+        has_visible_child = true;
+        break;
+      }
+    }
+  }
+
+  auto style = box.get_style_context();
+  if (has_visible_child) {
+    if (style->has_class("empty")) {
+      style->remove_class("empty");
+    }
+  } else {
+    if (!style->has_class("empty")) {
+      style->add_class("empty");
+    }
+  }
 }
 
 bool Group::handleScroll(GdkEventScroll* e) {
@@ -147,6 +188,8 @@ void Group::addWidget(Gtk::Widget& widget) {
   }
 
   is_first_widget = false;
+  widget.property_visible().signal_changed().connect(sigc::mem_fun(*this, &Group::update));
+  update();
 }
 
 Group::operator Gtk::Widget&() { return event_box_; }
