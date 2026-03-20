@@ -12,6 +12,7 @@ const std::string kOrdPlaceholder{"ordinal_date"};
 
 enum class CldMode { MONTH, YEAR };
 enum class WS { LEFT, RIGHT, HIDDEN };
+enum class WeekNumbering { LOCALE, ISO, MONDAY, SUNDAY };
 
 class Clock final : public ALabel {
  public:
@@ -50,7 +51,8 @@ class Clock final : public ALabel {
   std::string cldMonCached_;           // calendar Month mode. Cached calendar
   date::day cldBaseDay_{0};      // calendar Cached day. Is used when today is changing(midnight)
   std::string cldText_{""};      // calendar text to print
-  bool iso8601Calendar_{false};  // whether the calendar is in ISO8601
+  bool iso8601Calendar_{false};          // whether the calendar is in ISO8601
+  WeekNumbering weekNumbering_{WeekNumbering::LOCALE};  // week number calculation method
   CldMode cldMode_{CldMode::MONTH};
   auto get_calendar(const date::year_month_day& today, const date::year_month_day& ymd,
                     const date::time_zone* tz) -> const std::string;
