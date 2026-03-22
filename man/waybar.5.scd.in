@@ -363,6 +363,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
 
+*start-expanded*: ++
+	typeof: bool ++
+	default: false ++
+	Defines whether the drawer should initialize in an expanded state.
+
 *transition-left-to-right*: ++
 	typeof: bool ++
 	default: true ++

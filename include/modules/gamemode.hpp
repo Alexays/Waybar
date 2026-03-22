@@ -26,7 +26,7 @@ class Gamemode : public AModule {
   const std::string DEFAULT_FORMAT = "{glyph}";
   const std::string DEFAULT_FORMAT_ALT = "{glyph} {count}";
   const std::string DEFAULT_TOOLTIP_FORMAT = "Games running: {count}";
-  const std::string DEFAULT_GLYPH = "";
+  const std::string DEFAULT_GLYPH = "󰊴";
 
   void appear(const Glib::RefPtr<Gio::DBus::Connection>& connection, const Glib::ustring& name,
               const Glib::ustring& name_owner);

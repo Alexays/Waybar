@@ -128,7 +128,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 ```
 "wireplumber#sink": {
     "format": "{volume}% {icon}",
-    "format-muted": "",
+    "format-muted": "󰅶",
     "format-icons": ["", "", ""],
     "on-click": "helvum",
     "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",

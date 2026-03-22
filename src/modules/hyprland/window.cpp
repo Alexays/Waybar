@@ -22,20 +22,19 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
     : AAppIconLabel(config, "window", id, "{title}", reap_mtx, reap, 0, true),
       bar_(bar),
       m_ipc(IPC::inst()) {
-  std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
-
   separateOutputs_ = config["separate-outputs"].asBool();
 
+  update();
+
   // register for hyprland ipc
+  std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
   m_ipc.registerForIPC("activewindow", this);
   m_ipc.registerForIPC("closewindow", this);
   m_ipc.registerForIPC("movewindow", this);
   m_ipc.registerForIPC("changefloatingmode", this);
   m_ipc.registerForIPC("fullscreen", this);
-
   windowIpcUniqueLock.unlock();
 
-  update();
   dp.emit();
 }
 

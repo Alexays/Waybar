@@ -52,3 +52,4 @@ result-*
 
 .ccls-cache
 _codeql_detected_source_root
+heaptrack*
