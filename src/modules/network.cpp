@@ -744,16 +744,20 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
             /* The destination address.
              * Should be either missing, or maybe all 0s.  Accept both.
              */
-            const uint32_t nr_zeroes = (family == AF_INET) ? 4 : 16;
-            unsigned char c = 0;
-            size_t dstlen = RTA_PAYLOAD(attr);
-            if (dstlen != nr_zeroes) {
-              break;
+            auto* dest = (const unsigned char*)RTA_DATA(attr);
+            size_t dest_size = RTA_PAYLOAD(attr);
+            for (size_t i = 0; i < dest_size; ++i) {
+              if (dest[i] != 0) {
+                has_destination = true;
+                break;
+              }
             }
-            for (uint32_t i = 0; i < dstlen; i += 1) {
-              c |= *((unsigned char*)RTA_DATA(attr) + i);
+
+            if (rtm->rtm_dst_len != 0) {
+              // We have found a destination like 0.0.0.0/24, this is not a
+              // default gateway route.
+              has_destination = true;
             }
-            has_destination = (c == 0);
             break;
           }
           case RTA_OIF:
