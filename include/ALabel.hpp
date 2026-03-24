@@ -26,6 +26,7 @@ class ALabel : public AModule {
   std::string default_format_;
 
   bool handleToggle(GdkEventButton* const& e) override;
+  void copyToClipboard(const std::string&);
   virtual std::string getState(uint8_t value, bool lesser = false);
 
   std::map<std::string, GtkMenuItem*> submenus_;

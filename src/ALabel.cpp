@@ -116,9 +116,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        g_signal_connect(submenus_[key], "activate",
-                 G_CALLBACK(handleGtkMenuEvent),
-                 (gpointer)g_strdup(menuActionsMap_[key].c_str()));          
+        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                         (gpointer)g_strdup(menuActionsMap_[key].c_str()));
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
@@ -190,6 +189,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
+void ALabel::copyToClipboard(const std::string& literal) {
+  Gtk::Clipboard::get()->set_text(literal);
+}
+
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
@@ -198,6 +201,10 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     } else {
       format_ = default_format_;
     }
+  }
+
+  if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
+    copyToClipboard(label_.get_text());
   }
   return AModule::handleToggle(e);
 }
