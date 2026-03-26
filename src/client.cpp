@@ -19,11 +19,26 @@ waybar::Client* waybar::Client::inst() {
 void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint32_t name,
                                   const char* interface, uint32_t version) {
   auto* client = static_cast<Client*>(data);
+
   if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
       version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
-    client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1*>(wl_registry_bind(
-        registry, name, &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
+
+    if (client->xdg_output_manager != nullptr) {
+      zxdg_output_manager_v1_destroy(client->xdg_output_manager);
+      client->xdg_output_manager = nullptr;
+    }
+
+    client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1*>(
+        wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface,
+                         ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
+
   } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
+
+    if (client->idle_inhibit_manager != nullptr) {
+      zwp_idle_inhibit_manager_v1_destroy(client->idle_inhibit_manager);
+      client->idle_inhibit_manager = nullptr;   
+    }
+
     client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1*>(
         wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
   }
