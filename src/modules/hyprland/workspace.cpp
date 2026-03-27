@@ -1,6 +1,7 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
 
+#include <cctype>
 #include <memory>
 #include <string>
 #include <utility>
@@ -8,6 +9,33 @@
 #include "modules/hyprland/workspaces.hpp"
 #include "util/command.hpp"
 #include "util/icon_loader.hpp"
+
+namespace {
+constexpr std::string_view kCssClassPrefix = "ws-";
+
+// Convert a workspace name to a valid CSS class name.
+// Lowercases, replaces non-alphanumeric runs with single hyphens,
+// and prefixes digit-leading names (CSS classes can't start with a digit).
+std::string sanitizeCssClass(const std::string& name) {
+  std::string result;
+  result.reserve(name.size() + kCssClassPrefix.size());
+  for (auto c : name) {
+    auto uc = static_cast<unsigned char>(c);
+    if (std::isalnum(uc)) {
+      result += static_cast<char>(std::tolower(uc));
+    } else if (!result.empty() && result.back() != '-') {
+      result += '-';
+    }
+  }
+  if (!result.empty() && result.back() == '-') {
+    result.pop_back();
+  }
+  if (!result.empty() && std::isdigit(static_cast<unsigned char>(result.front()))) {
+    result.insert(0, kCssClassPrefix);
+  }
+  return result;
+}
+}  // namespace
 
 namespace waybar::modules::hyprland {
 
@@ -209,6 +237,7 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
   return m_name;
 }
 
+
 void Workspace::update(const std::string& workspace_icon) {
   if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
     m_button.hide();
@@ -239,6 +268,17 @@ void Workspace::update(const std::string& workspace_icon) {
   addOrRemoveClass(styleContext, isUrgent(), "urgent");
   addOrRemoveClass(styleContext, isVisible(), "visible");
   addOrRemoveClass(styleContext, m_workspaceManager.getBarOutput() == output(), "hosting-monitor");
+
+  // Add workspace name as CSS class for per-workspace styling
+  if (!m_prevNameClass.empty()) {
+    styleContext->remove_class(m_prevNameClass);
+    m_prevNameClass.clear();
+  }
+  auto nameClass = sanitizeCssClass(name());
+  if (!nameClass.empty()) {
+    styleContext->add_class(nameClass);
+    m_prevNameClass = nameClass;
+  }
 
   std::string windows;
   // Optimization: The {windows} substitution string is only possible if the taskbar is disabled, no
