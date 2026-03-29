@@ -7,4 +7,4 @@
  * and transforms them into GTK-compatible rgba() syntax.
  */
 
-std::string transform_8bit_to_hex(const std::string& file_path);
+std::pair<std::string, bool> transform_8bit_to_hex(const std::string& file_path);

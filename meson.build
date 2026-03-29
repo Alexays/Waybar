@@ -186,7 +186,6 @@ src_files = files(
     'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
     'src/util/css_reload_helper.cpp',
-    'src/util/has_8bit_hex.cpp',
     'src/util/transform_8bit_to_rgba.cpp'
 )
 

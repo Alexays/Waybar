@@ -25,7 +25,7 @@ TransformResult transform_8bit_to_hex(const std::string& file_path) {
   f.read(result.data(), size);
 
   static std::regex pattern(
-      R"((\#([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2})))");
+      R"(\#([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2}))");
   std::string final_output;
 
   auto it = std::sregex_iterator(result.begin(), result.end(), pattern);
