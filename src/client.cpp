@@ -207,8 +207,8 @@ auto waybar::Client::setupCss(const std::string& css_file) -> void {
   }
 
   css_provider_ = Gtk::CssProvider::create();
-  if (has_8bit_hex(css_file)) {
-    std::string modified_css = transform_8bit_to_hex(css_file);
+  auto [modified_css, was_transformed] = transform_8bit_to_hex(css_file);
+  if (was_transformed) {
     css_provider_->load_from_data(modified_css);
   } else {
     if (!css_provider_->load_from_path(css_file)) {
