@@ -10,6 +10,7 @@
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
+#include "util/hex_checker.hpp"
 
 waybar::Client* waybar::Client::inst() {
   static auto* c = new Client();
@@ -22,21 +23,18 @@ void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint
 
   if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0 &&
       version >= ZXDG_OUTPUT_V1_NAME_SINCE_VERSION) {
-
     if (client->xdg_output_manager != nullptr) {
       zxdg_output_manager_v1_destroy(client->xdg_output_manager);
       client->xdg_output_manager = nullptr;
     }
 
-    client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1*>(
-        wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface,
-                         ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
+    client->xdg_output_manager = static_cast<struct zxdg_output_manager_v1*>(wl_registry_bind(
+        registry, name, &zxdg_output_manager_v1_interface, ZXDG_OUTPUT_V1_NAME_SINCE_VERSION));
 
   } else if (strcmp(interface, zwp_idle_inhibit_manager_v1_interface.name) == 0) {
-
     if (client->idle_inhibit_manager != nullptr) {
       zwp_idle_inhibit_manager_v1_destroy(client->idle_inhibit_manager);
-      client->idle_inhibit_manager = nullptr;   
+      client->idle_inhibit_manager = nullptr;
     }
 
     client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1*>(
@@ -209,11 +207,15 @@ auto waybar::Client::setupCss(const std::string& css_file) -> void {
   }
 
   css_provider_ = Gtk::CssProvider::create();
-  if (!css_provider_->load_from_path(css_file)) {
-    css_provider_.reset();
-    throw std::runtime_error("Can't open style file");
+  if (has_8bit_hex(css_file)) {
+    std::string modified_css = transform_8bit_to_hex(css_file);
+    css_provider_->load_from_data(modified_css);
+  } else {
+    if (!css_provider_->load_from_path(css_file)) {
+      css_provider_.reset();
+      throw std::runtime_error("Can't open style file");
+    }
   }
-
   Gtk::StyleContext::add_provider_for_screen(screen, css_provider_,
                                              GTK_STYLE_PROVIDER_PRIORITY_USER);
 }
