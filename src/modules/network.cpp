@@ -280,23 +280,39 @@ auto waybar::modules::Network::update() -> void {
   std::string tooltip_format;
   auto now = std::chrono::steady_clock::now();
   auto elapsed_seconds = std::chrono::duration<double>(now - bandwidth_last_sample_time_).count();
-  if (elapsed_seconds <= 0.0) {
-    elapsed_seconds = std::chrono::duration<double>(interval_).count();
-  }
-  bandwidth_last_sample_time_ = now;
 
-  auto bandwidth = readBandwidthUsage();
   auto bandwidth_down = 0ull;
   auto bandwidth_up = 0ull;
-  if (bandwidth.has_value()) {
-    auto down_octets = (*bandwidth).first;
-    auto up_octets = (*bandwidth).second;
 
-    bandwidth_down = down_octets - bandwidth_down_total_;
-    bandwidth_down_total_ = down_octets;
+  // Only recalculate bandwidth when enough time has elapsed since the last
+  // sample.  Event-driven dp.emit() calls (link/addr/route changes) can
+  // trigger update() between timer intervals, which would consume the byte
+  // delta prematurely and show near-zero bandwidth.
+  auto min_elapsed = std::chrono::duration<double>(interval_).count() * 0.5;
+  if (elapsed_seconds >= min_elapsed) {
+    if (elapsed_seconds <= 0.0) {
+      elapsed_seconds = std::chrono::duration<double>(interval_).count();
+    }
+    bandwidth_last_sample_time_ = now;
 
-    bandwidth_up = up_octets - bandwidth_up_total_;
-    bandwidth_up_total_ = up_octets;
+    auto bandwidth = readBandwidthUsage();
+    if (bandwidth.has_value()) {
+      auto down_octets = (*bandwidth).first;
+      auto up_octets = (*bandwidth).second;
+
+      bandwidth_down = down_octets - bandwidth_down_total_;
+      bandwidth_down_total_ = down_octets;
+
+      bandwidth_up = up_octets - bandwidth_up_total_;
+      bandwidth_up_total_ = up_octets;
+
+      bandwidth_down_prev_ = bandwidth_down;
+      bandwidth_up_prev_ = bandwidth_up;
+    }
+  } else {
+    bandwidth_down = bandwidth_down_prev_;
+    bandwidth_up = bandwidth_up_prev_;
+    elapsed_seconds = std::chrono::duration<double>(interval_).count();
   }
 
   if (!alt_) {
