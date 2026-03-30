@@ -98,6 +98,17 @@ Window::~Window() {
   }
 }
 
+void Window::setClass(const std::string& classname, bool enable) {
+  if (enable) {
+    if (!bar_.window.get_style_context()->has_class(classname)) {
+      bar_.window.get_style_context()->add_class(classname);
+    }
+  } else {
+    bar_.window.get_style_context()->remove_class(classname);
+  }
+}
+
+
 void Window::handle_title(const char* title) { title_ = Glib::Markup::escape_text(title); }
 
 void Window::handle_appid(const char* appid) { appid_ = Glib::Markup::escape_text(appid); }
@@ -109,12 +120,19 @@ void Window::handle_layout_symbol(const char* layout_symbol) {
 void Window::handle_layout(const uint32_t layout) { layout_ = layout; }
 
 void Window::handle_frame() {
+
   label_.set_markup(waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", title_),
                   fmt::arg("layout", layout_symbol_), fmt::arg("app_id", appid_)),
       config_["rewrite"]));
   updateAppIconName(appid_, "");
   updateAppIcon();
+  setClass("empty",title_.empty());
+  if (oldAppid_ != appid_) {
+    if (!oldAppid_.empty()) setClass(oldAppid_, false);
+    setClass(appid_, true);
+    oldAppid_ = appid_;
+  }
   if (tooltipEnabled()) {
     label_.set_tooltip_markup(title_);
   }
