@@ -21,7 +21,6 @@ Glib::RefPtr<Gdk::Pixbuf> DefaultGtkIconThemeWrapper::load_icon(
   const std::lock_guard<std::mutex> lock(default_theme_mutex);
 
   auto default_theme = Gtk::IconTheme::get_default();
-  default_theme->rescan_if_needed();
 
   auto icon_info = default_theme->lookup_icon(name, tmp_size, flags);
 

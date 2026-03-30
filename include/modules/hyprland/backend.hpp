@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <filesystem>
 #include <list>
 #include <mutex>
@@ -43,10 +44,11 @@ class IPC {
 
   std::thread ipcThread_;
   std::mutex callbackMutex_;
+  std::mutex socketMutex_;
   util::JsonParser parser_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;
-  int socketfd_;  // the hyprland socket file descriptor
-  pid_t socketOwnerPid_;
-  bool running_ = true;  // the ipcThread will stop running when this is false
+  int socketfd_ = -1;  // the hyprland socket file descriptor
+  pid_t socketOwnerPid_ = -1;
+  std::atomic<bool> running_ = true;  // the ipcThread will stop running when this is false
 };
 };  // namespace waybar::modules::hyprland

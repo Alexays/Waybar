@@ -4,11 +4,11 @@
 
 namespace waybar::util::PipewireBackend {
 
-static void getNodeInfo(void *data_, const struct pw_node_info *info) {
-  auto *pNodeInfo = static_cast<PrivacyNodeInfo *>(data_);
+static void getNodeInfo(void* data_, const struct pw_node_info* info) {
+  auto* pNodeInfo = static_cast<PrivacyNodeInfo*>(data_);
   pNodeInfo->handleNodeEventInfo(info);
 
-  static_cast<PipewireBackend *>(pNodeInfo->data)->privacy_nodes_changed_signal_event.emit();
+  static_cast<PipewireBackend*>(pNodeInfo->data)->privacy_nodes_changed_signal_event.emit();
 }
 
 static const struct pw_node_events NODE_EVENTS = {
@@ -16,8 +16,8 @@ static const struct pw_node_events NODE_EVENTS = {
     .info = getNodeInfo,
 };
 
-static void proxyDestroy(void *data) {
-  static_cast<PrivacyNodeInfo *>(data)->handleProxyEventDestroy();
+static void proxyDestroy(void* data) {
+  static_cast<PrivacyNodeInfo*>(data)->handleProxyEventDestroy();
 }
 
 static const struct pw_proxy_events PROXY_EVENTS = {
@@ -25,14 +25,14 @@ static const struct pw_proxy_events PROXY_EVENTS = {
     .destroy = proxyDestroy,
 };
 
-static void registryEventGlobal(void *_data, uint32_t id, uint32_t permissions, const char *type,
-                                uint32_t version, const struct spa_dict *props) {
-  static_cast<PipewireBackend *>(_data)->handleRegistryEventGlobal(id, permissions, type, version,
-                                                                   props);
+static void registryEventGlobal(void* _data, uint32_t id, uint32_t permissions, const char* type,
+                                uint32_t version, const struct spa_dict* props) {
+  static_cast<PipewireBackend*>(_data)->handleRegistryEventGlobal(id, permissions, type, version,
+                                                                  props);
 }
 
-static void registryEventGlobalRemove(void *_data, uint32_t id) {
-  static_cast<PipewireBackend *>(_data)->handleRegistryEventGlobalRemove(id);
+static void registryEventGlobalRemove(void* _data, uint32_t id) {
+  static_cast<PipewireBackend*>(_data)->handleRegistryEventGlobalRemove(id);
 }
 
 static const struct pw_registry_events REGISTRY_EVENTS = {
@@ -54,11 +54,17 @@ PipewireBackend::PipewireBackend(PrivateConstructorTag tag)
   context_ = pw_context_new(pw_thread_loop_get_loop(mainloop_), nullptr, 0);
   if (context_ == nullptr) {
     pw_thread_loop_unlock(mainloop_);
+    pw_thread_loop_destroy(mainloop_);
+    mainloop_ = nullptr;
     throw std::runtime_error("pa_context_new() failed.");
   }
   core_ = pw_context_connect(context_, nullptr, 0);
   if (core_ == nullptr) {
     pw_thread_loop_unlock(mainloop_);
+    pw_context_destroy(context_);
+    context_ = nullptr;
+    pw_thread_loop_destroy(mainloop_);
+    mainloop_ = nullptr;
     throw std::runtime_error("pw_context_connect() failed");
   }
   registry_ = pw_core_get_registry(core_, PW_VERSION_REGISTRY, 0);
@@ -78,7 +84,7 @@ PipewireBackend::~PipewireBackend() {
   }
 
   if (registry_ != nullptr) {
-    pw_proxy_destroy((struct pw_proxy *)registry_);
+    pw_proxy_destroy((struct pw_proxy*)registry_);
   }
 
   spa_zero(registryListener_);
@@ -103,11 +109,11 @@ std::shared_ptr<PipewireBackend> PipewireBackend::getInstance() {
   return std::make_shared<PipewireBackend>(tag);
 }
 
-void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permissions, const char *type,
-                                                uint32_t version, const struct spa_dict *props) {
+void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permissions, const char* type,
+                                                uint32_t version, const struct spa_dict* props) {
   if (props == nullptr || strcmp(type, PW_TYPE_INTERFACE_Node) != 0) return;
 
-  const char *lookupStr = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
+  const char* lookupStr = spa_dict_lookup(props, PW_KEY_MEDIA_CLASS);
   if (lookupStr == nullptr) return;
   std::string mediaClass = lookupStr;
   enum PrivacyNodeType mediaType = PRIVACY_NODE_TYPE_NONE;
@@ -121,11 +127,11 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
     return;
   }
 
-  auto *proxy = (pw_proxy *)pw_registry_bind(registry_, id, type, version, sizeof(PrivacyNodeInfo));
+  auto* proxy = (pw_proxy*)pw_registry_bind(registry_, id, type, version, sizeof(PrivacyNodeInfo));
 
   if (proxy == nullptr) return;
 
-  auto *pNodeInfo = (PrivacyNodeInfo *)pw_proxy_get_user_data(proxy);
+  auto* pNodeInfo = (PrivacyNodeInfo*)pw_proxy_get_user_data(proxy);
   new (pNodeInfo) PrivacyNodeInfo{};
   pNodeInfo->id = id;
   pNodeInfo->data = this;
@@ -136,7 +142,10 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
 
   pw_proxy_add_object_listener(proxy, &pNodeInfo->object_listener, &NODE_EVENTS, pNodeInfo);
 
-  privacy_nodes.insert_or_assign(id, pNodeInfo);
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    privacy_nodes.insert_or_assign(id, pNodeInfo);
+  }
 }
 
 void PipewireBackend::handleRegistryEventGlobalRemove(uint32_t id) {

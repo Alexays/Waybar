@@ -43,7 +43,7 @@ Feral Gamemode optimizations.
 
 *glyph*: ++
 	typeof: string ++
-	default:  ++
+	default: 󰊴 ++
 	The string icon to display. Only visible if *use-icon* is set to false.
 
 *icon-name*: ++
@@ -82,7 +82,7 @@ Feral Gamemode optimizations.
 "gamemode": {
 	"format": "{glyph}",
 	"format-alt": "{glyph} {count}",
-	"glyph": "",
+	"glyph": "󰊴",
 	"hide-not-running": true,
 	"use-icon": true,
 	"icon-name": "input-gaming-symbolic",

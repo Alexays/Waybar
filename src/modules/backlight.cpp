@@ -13,7 +13,7 @@
 #include "util/backend_common.hpp"
 #include "util/backlight_backend.hpp"
 
-waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
+waybar::modules::Backlight::Backlight(const std::string& id, const Json::Value& config)
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
@@ -58,11 +58,11 @@ auto waybar::modules::Backlight::update() -> void {
           tooltip_format = config_["tooltip-format"].asString();
         }
         if (!tooltip_format.empty()) {
-          label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
-                                              fmt::arg("percent", percent),
-                                              fmt::arg("icon", getIcon(percent))));
+          label_.set_tooltip_markup(fmt::format(fmt::runtime(tooltip_format),
+                                                fmt::arg("percent", percent),
+                                                fmt::arg("icon", getIcon(percent))));
         } else {
-          label_.set_tooltip_text(desc);
+          label_.set_tooltip_markup(desc);
         }
       }
     } else {
@@ -79,7 +79,7 @@ auto waybar::modules::Backlight::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Backlight::handleScroll(GdkEventScroll* e) {
   // Check if the user has set a custom command for scrolling
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);

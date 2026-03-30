@@ -81,6 +81,7 @@ class Mpris : public ALabel {
 
   PlayerctlPlayerManager* manager;
   PlayerctlPlayer* player;
+  PlayerctlPlayer* last_active_player_ = nullptr;
   std::string lastStatus;
   std::string lastPlayer;
 

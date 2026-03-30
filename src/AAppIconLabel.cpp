@@ -151,19 +151,24 @@ void AAppIconLabel::updateAppIconName(const std::string& app_identifier,
 }
 
 void AAppIconLabel::updateAppIcon() {
-  if (update_app_icon_) {
+  if (update_app_icon_ || (!iconEnabled() && image_.get_visible())) {
     update_app_icon_ = false;
     if (app_icon_name_.empty()) {
       image_.set_visible(false);
     } else if (app_icon_name_.front() == '/') {
-      auto pixbuf = Gdk::Pixbuf::create_from_file(app_icon_name_);
-      int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
-      pixbuf = Gdk::Pixbuf::create_from_file(app_icon_name_, scaled_icon_size, scaled_icon_size);
+      try {
+        int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
+        auto pixbuf =
+            Gdk::Pixbuf::create_from_file(app_icon_name_, scaled_icon_size, scaled_icon_size);
 
-      auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
-                                                            image_.get_window());
-      image_.set(surface);
-      image_.set_visible(true);
+        auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
+                                                              image_.get_window());
+        image_.set(surface);
+        image_.set_visible(true);
+      } catch (const Glib::Exception& e) {
+        spdlog::warn("Failed to load app icon {}: {}", app_icon_name_, std::string(e.what()));
+        image_.set_visible(false);
+      }
     } else {
       image_.set_from_icon_name(app_icon_name_, Gtk::ICON_SIZE_INVALID);
       image_.set_visible(true);

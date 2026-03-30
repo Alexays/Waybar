@@ -36,7 +36,7 @@ auto waybar::modules::Memory::update() -> void {
     float total_swap_gigabytes = 0.01 * round(swaptotal / 10485.76);
     int used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
     int used_swap_percentage = 0;
-    if (swaptotal && swapfree) {
+    if (swaptotal) {
       used_swap_percentage = 100 * (swaptotal - swapfree) / swaptotal;
     }
     float used_ram_gigabytes = 0.01 * round((memtotal - memfree) / 10485.76);
@@ -69,7 +69,7 @@ auto waybar::modules::Memory::update() -> void {
     if (tooltipEnabled()) {
       if (config_["tooltip-format"].isString()) {
         auto tooltip_format = config_["tooltip-format"].asString();
-        label_.set_tooltip_text(fmt::format(
+        label_.set_tooltip_markup(fmt::format(
             fmt::runtime(tooltip_format), used_ram_percentage,
             fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
             fmt::arg("percentage", used_ram_percentage),
@@ -78,7 +78,7 @@ auto waybar::modules::Memory::update() -> void {
             fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
             fmt::arg("swapAvail", available_swap_gigabytes)));
       } else {
-        label_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
+        label_.set_tooltip_markup(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
       }
     }
   } else {
