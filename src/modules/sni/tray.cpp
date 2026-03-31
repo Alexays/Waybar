@@ -56,7 +56,7 @@ auto Tray::update() -> void {
   if (show_passive_) {
     event_box_.set_visible(!children.empty());
   } else {
-    event_box_.set_visible(!std::all_of(children.begin(), children.end(), [](Gtk::Widget* child) {
+    event_box_.set_visible(!std::ranges::all_of(children, [](Gtk::Widget* child) {
       return child->get_style_context()->has_class("passive");
     }));
   }
