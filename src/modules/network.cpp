@@ -677,12 +677,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                               changed_cidr);
               }
             } else {
-              net->ipaddr_.clear();
-              net->ipaddr6_.clear();
-              net->cidr_ = 0;
-              net->cidr6_ = 0;
-              net->netmask_.clear();
-              net->netmask6_.clear();
+              if (ifa->ifa_family == AF_INET) {
+                net->ipaddr_.clear();
+                net->cidr_ = 0;
+                net->netmask_.clear();
+              } else if (ifa->ifa_family == AF_INET6) {
+                net->ipaddr6_.clear();
+                net->cidr6_ = 0;
+                net->netmask6_.clear();
+              }
               spdlog::debug("network: {} addr deleted {}/{}", net->ifname_,
                             inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)),
                             ifa->ifa_prefixlen);
