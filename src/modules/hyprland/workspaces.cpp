@@ -657,6 +657,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateBoolConfig(config, "special-visible-only", m_specialVisibleOnly);
   populateBoolConfig(config, "persistent-only", m_persistentOnly);
   populateBoolConfig(config, "active-only", m_activeOnly);
+  populateBoolConfig(config, "hide-active", m_hideActive);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
   populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
 
