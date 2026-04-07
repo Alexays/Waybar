@@ -95,11 +95,13 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 void Group::show_group() {
   box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);
+  box.get_style_context()->add_class("expanded");
 }
 
 void Group::hide_group() {
   box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
+  box.get_style_context()->remove_class("expanded");
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
