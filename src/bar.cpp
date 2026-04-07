@@ -545,9 +545,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           if (group_config["modules"].isNull()) {
             spdlog::warn("Group definition '{}' has not been found, group will be hidden", ref);
           }
-          auto* group_module = new waybar::Group(id_name, class_name, group_config, vertical);
-          getModules(factory, ref, group_module);
-          module = group_module;
+          auto group_module = std::make_unique<waybar::Group>(
+          id_name, class_name, group_config, vertical);
+
+          getModules(factory, ref, group_module.get());
+          module = group_module.release();
         } else {
           module = factory.makeModule(ref, pos);
         }
