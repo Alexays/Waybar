@@ -114,6 +114,11 @@ void Workspaces::doUpdate() {
         button.show();
       else
         button.hide();
+    } else if (config_["hide-empty"].asBool()) {
+      if (ws["active_window_id"].isNull() && !ws["is_focused"].asBool())
+          button.hide();
+      else
+          button.show();
     } else {
       button.show();
     }

@@ -541,7 +541,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto vertical = (group != nullptr ? group->getBox().get_orientation()
                                             : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
 
-          auto group_config = config[ref];
+          const Json::Value& group_config = config[ref];
           if (group_config["modules"].isNull()) {
             spdlog::warn("Group definition '{}' has not been found, group will be hidden", ref);
           }
