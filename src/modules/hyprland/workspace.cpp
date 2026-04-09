@@ -115,7 +115,11 @@ void Workspace::setActiveWindow(WindowAddress const& addr) {
   }
 
   auto activeWindowPos = m_workspaceManager.activeWindowPosition();
-  if (activeIdx.has_value() && activeWindowPos != Workspaces::ActiveWindowPosition::NONE) {
+  const bool has_active_window =
+      activeIdx.has_value() &&
+      activeWindowPos != Workspaces::ActiveWindowPosition::NONE;
+
+  if (has_active_window) {
     auto window = std::move(m_windowMap[*activeIdx]);
     m_windowMap.erase(m_windowMap.begin() + *activeIdx);
     if (activeWindowPos == Workspaces::ActiveWindowPosition::FIRST) {
@@ -130,7 +134,10 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
   if (!create_window_payload.isEmpty(m_workspaceManager)) {
     auto repr = create_window_payload.repr(m_workspaceManager);
 
-    if (!repr.empty() || m_workspaceManager.enableTaskbar()) {
+    const bool should_display =
+        !repr.empty() || m_workspaceManager.enableTaskbar();
+
+    if (should_display) {
       auto addr = create_window_payload.getAddress();
       auto it = std::ranges::find_if(
           m_windowMap, [&addr](const auto& window) { return window.address == addr; });
@@ -142,7 +149,7 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
       }
     }
   }
-};
+}
 
 bool Workspace::onWindowOpened(WindowCreationPayload const& create_window_payload) {
   if (create_window_payload.getWorkspaceName() == name()) {
@@ -270,7 +277,9 @@ void Workspace::update(const std::string& workspace_icon) {
 
 bool Workspace::isEmpty() const {
   auto ignore_list = m_workspaceManager.getIgnoredWindows();
-  if (ignore_list.empty()) {
+  const bool no_ignore_rules = ignore_list.empty();
+
+  if (no_ignore_rules) {
     return m_windows == 0;
   }
   // If there are windows but they are all ignored, consider the workspace empty
@@ -349,7 +358,9 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
   }
 
   auto formatAfter = m_workspaceManager.formatAfter();
-  if (!formatAfter.empty()) {
+  const bool has_format_after = !formatAfter.empty();
+
+  if (has_format_after) {
     m_labelAfter.set_markup(fmt::format(fmt::runtime(formatAfter), fmt::arg("id", id()),
                                         fmt::arg("name", name()),
                                         fmt::arg("icon", workspace_icon)));
