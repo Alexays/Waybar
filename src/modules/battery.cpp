@@ -126,11 +126,11 @@ void waybar::modules::Battery::refreshBatteries() {
           // Ignore non-system power supplies unless explicitly requested
           if (!bat_defined && fs::exists(node.path() / "scope")) {
             std::string scope;
-            try{
-              //for hotplug-in device, access it is always unstable because you may remove the device anytime
-              //so just allow failure happen and do nothing
-              std::ifstream(node.path()/"scope")>>scope;
-            }catch(const std::ifstream::failure& e){
+            try {
+              // for hotplug-in device, access it is always unstable because you may remove the
+              // device anytime so just allow failure happen and do nothing
+              std::ifstream(node.path() / "scope") >> scope;
+            } catch (const std::ifstream::failure& e) {
               scope.clear();
               continue;
             }
