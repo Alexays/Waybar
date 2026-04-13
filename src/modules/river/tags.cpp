@@ -201,8 +201,6 @@ Tags::~Tags() {
 }
 
 void Tags::handle_show() {
-  spdlog::info("bruh1");
-  
   output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
   zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
 
@@ -211,8 +209,6 @@ void Tags::handle_show() {
 
   zriver_status_manager_v1_destroy(status_manager_);
   status_manager_ = nullptr;
-
-  spdlog::info("bruh2");
 }
 
 void Tags::handle_primary_clicked(uint32_t tag) {
