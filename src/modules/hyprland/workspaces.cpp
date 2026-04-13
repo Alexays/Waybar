@@ -14,7 +14,7 @@
 
 namespace waybar::modules::hyprland {
 
-Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
+Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "workspaces", id, false, false),
       m_bar(bar),
       m_box(bar.orientation, 0),
@@ -34,6 +34,9 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 }
 
 Workspaces::~Workspaces() {
+  if (m_scrollEventConnection_.connected()) {
+    m_scrollEventConnection_.disconnect();
+  }
   m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(m_mutex);
@@ -43,11 +46,22 @@ void Workspaces::init() {
   m_activeWorkspaceId = m_ipc.getSocket1JsonReply("activeworkspace")["id"].asInt();
 
   initializeWorkspaces();
+
+  if (m_scrollEventConnection_.connected()) {
+    m_scrollEventConnection_.disconnect();
+  }
+  if (barScroll()) {
+    auto& window = const_cast<Bar&>(m_bar).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    m_scrollEventConnection_ =
+        window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
+
   dp.emit();
 }
 
-Json::Value Workspaces::createMonitorWorkspaceData(std::string const &name,
-                                                   std::string const &monitor) {
+Json::Value Workspaces::createMonitorWorkspaceData(std::string const& name,
+                                                   std::string const& monitor) {
   spdlog::trace("Creating persistent workspace: {} on monitor {}", name, monitor);
   Json::Value workspaceData;
 
@@ -62,14 +76,14 @@ Json::Value Workspaces::createMonitorWorkspaceData(std::string const &name,
   return workspaceData;
 }
 
-void Workspaces::createWorkspace(Json::Value const &workspace_data,
-                                 Json::Value const &clients_data) {
+void Workspaces::createWorkspace(Json::Value const& workspace_data,
+                                 Json::Value const& clients_data) {
   auto workspaceName = workspace_data["name"].asString();
   auto workspaceId = workspace_data["id"].asInt();
   spdlog::debug("Creating workspace {}", workspaceName);
 
   // avoid recreating existing workspaces
-  auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const &w) {
+  auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> const& w) {
     if (workspaceId > 0) {
       return w->id() == workspaceId;
     }
@@ -81,7 +95,7 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
     // don't recreate workspace, but update persistency if necessary
     const auto keys = workspace_data.getMemberNames();
 
-    const auto *k = "persistent-rule";
+    const auto* k = "persistent-rule";
     if (std::ranges::find(keys, k) != keys.end()) {
       spdlog::debug("Set dynamic persistency of workspace {} to: {}", workspaceName,
                     workspace_data[k].asBool() ? "true" : "false");
@@ -100,14 +114,14 @@ void Workspaces::createWorkspace(Json::Value const &workspace_data,
 
   // create new workspace
   m_workspaces.emplace_back(std::make_unique<Workspace>(workspace_data, *this, clients_data));
-  Gtk::Button &newWorkspaceButton = m_workspaces.back()->button();
+  Gtk::Button& newWorkspaceButton = m_workspaces.back()->button();
   m_box.pack_start(newWorkspaceButton, false, false);
   sortWorkspaces();
   newWorkspaceButton.show_all();
 }
 
 void Workspaces::createWorkspacesToCreate() {
-  for (const auto &[workspaceData, clientsData] : m_workspacesToCreate) {
+  for (const auto& [workspaceData, clientsData] : m_workspacesToCreate) {
     createWorkspace(workspaceData, clientsData);
   }
   if (!m_workspacesToCreate.empty()) {
@@ -139,16 +153,17 @@ void Workspaces::doUpdate() {
   }
 }
 
-void Workspaces::extendOrphans(int workspaceId, Json::Value const &clientsJson) {
+void Workspaces::extendOrphans(int workspaceId, Json::Value const& clientsJson) {
   spdlog::trace("Extending orphans with workspace {}", workspaceId);
-  for (const auto &client : clientsJson) {
+  for (const auto& client : clientsJson) {
     if (client["workspace"]["id"].asInt() == workspaceId) {
       registerOrphanWindow({client});
     }
   }
 }
 
-std::string Workspaces::getRewrite(std::string window_class, std::string window_title) {
+std::string Workspaces::getRewrite(const std::string& window_class,
+                                   const std::string& window_title) {
   std::string windowReprKey;
   if (windowRewriteConfigUsesTitle()) {
     windowReprKey = fmt::format("class<{}> title<{}>", window_class, window_title);
@@ -163,7 +178,7 @@ std::string Workspaces::getRewrite(std::string window_class, std::string window_
 std::vector<int> Workspaces::getVisibleWorkspaces() {
   std::vector<int> visibleWorkspaces;
   auto monitors = IPC::inst().getSocket1JsonReply("monitors");
-  for (const auto &monitor : monitors) {
+  for (const auto& monitor : monitors) {
     auto ws = monitor["activeWorkspace"];
     if (ws.isObject() && ws["id"].isInt()) {
       visibleWorkspaces.push_back(ws["id"].asInt());
@@ -181,7 +196,7 @@ void Workspaces::initializeWorkspaces() {
   spdlog::debug("Initializing workspaces");
 
   // if the workspace rules changed since last initialization, make sure we reset everything:
-  for (auto &workspace : m_workspaces) {
+  for (auto& workspace : m_workspaces) {
     m_workspacesToRemove.push_back(std::to_string(workspace->id()));
   }
 
@@ -189,7 +204,7 @@ void Workspaces::initializeWorkspaces() {
   auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
   auto const clientsJson = m_ipc.getSocket1JsonReply("clients");
 
-  for (Json::Value workspaceJson : workspacesJson) {
+  for (const auto& workspaceJson : workspacesJson) {
     std::string workspaceName = workspaceJson["name"].asString();
     if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
         (!workspaceName.starts_with("special") || showSpecial()) &&
@@ -209,7 +224,7 @@ void Workspaces::initializeWorkspaces() {
   loadPersistentWorkspacesFromWorkspaceRules(clientsJson);
 }
 
-bool isDoubleSpecial(std::string const &workspace_name) {
+bool isDoubleSpecial(std::string const& workspace_name) {
   // Hyprland's IPC sometimes reports the creation of workspaces strangely named
   // `special:special:<some_name>`. This function checks for that and is used
   // to avoid creating (and then removing) such workspaces.
@@ -217,8 +232,8 @@ bool isDoubleSpecial(std::string const &workspace_name) {
   return workspace_name.find("special:special:") != std::string::npos;
 }
 
-bool Workspaces::isWorkspaceIgnored(std::string const &name) {
-  for (auto &rule : m_ignoreWorkspaces) {
+bool Workspaces::isWorkspaceIgnored(std::string const& name) {
+  for (auto& rule : m_ignoreWorkspaces) {
     if (std::regex_match(name, rule)) {
       return true;
       break;
@@ -228,19 +243,19 @@ bool Workspaces::isWorkspaceIgnored(std::string const &name) {
   return false;
 }
 
-void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJson) {
+void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const& clientsJson) {
   spdlog::info("Loading persistent workspaces from Waybar config");
   const std::vector<std::string> keys = m_persistentWorkspaceConfig.getMemberNames();
   std::vector<std::string> persistentWorkspacesToCreate;
 
   const std::string currentMonitor = m_bar.output->name;
   const bool monitorInConfig = std::ranges::find(keys, currentMonitor) != keys.end();
-  for (const std::string &key : keys) {
+  for (const std::string& key : keys) {
     // only add if either:
     // 1. key is the current monitor name
     // 2. key is "*" and this monitor is not already defined in the config
     bool canCreate = key == currentMonitor || (key == "*" && !monitorInConfig);
-    const Json::Value &value = m_persistentWorkspaceConfig[key];
+    const Json::Value& value = m_persistentWorkspaceConfig[key];
     spdlog::trace("Parsing persistent workspace config: {} => {}", key, value.toStyledString());
 
     if (value.isInt()) {
@@ -255,15 +270,15 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
     } else if (value.isArray() && !value.empty()) {
       // value is an array => create defined workspaces for this monitor
       if (canCreate) {
-        for (const Json::Value &workspace : value) {
+        for (const Json::Value& workspace : value) {
           spdlog::debug("Creating workspace {} on monitor {}", workspace, currentMonitor);
           persistentWorkspacesToCreate.emplace_back(workspace.asString());
         }
       } else {
         // key is the workspace and value is array of monitors to create on
-        for (const Json::Value &monitor : value) {
+        for (const Json::Value& monitor : value) {
           if (monitor.isString() && monitor.asString() == currentMonitor) {
-            persistentWorkspacesToCreate.emplace_back(currentMonitor);
+            persistentWorkspacesToCreate.emplace_back(key);
             break;
           }
         }
@@ -274,18 +289,18 @@ void Workspaces::loadPersistentWorkspacesFromConfig(Json::Value const &clientsJs
     }
   }
 
-  for (auto const &workspace : persistentWorkspacesToCreate) {
+  for (auto const& workspace : persistentWorkspacesToCreate) {
     auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
     workspaceData["persistent-config"] = true;
     m_workspacesToCreate.emplace_back(workspaceData, clientsJson);
   }
 }
 
-void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &clientsJson) {
+void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& clientsJson) {
   spdlog::info("Loading persistent workspaces from Hyprland workspace rules");
 
   auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
-  for (Json::Value const &rule : workspaceRules) {
+  for (Json::Value const& rule : workspaceRules) {
     if (!rule["workspaceString"].isString()) {
       spdlog::warn("Workspace rules: invalid workspaceString, skipping: {}", rule);
       continue;
@@ -296,11 +311,16 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &c
     auto workspace = rule.isMember("defaultName") ? rule["defaultName"].asString()
                                                   : rule["workspaceString"].asString();
 
+    // There could be persistent special workspaces, only show those when show-special is enabled.
+    if (workspace.starts_with("special:") && !showSpecial()) {
+      continue;
+    }
+
     // The prefix "name:" cause mismatches with workspace names taken anywhere else.
     if (workspace.starts_with("name:")) {
       workspace = workspace.substr(5);
     }
-    auto const &monitor = rule["monitor"].asString();
+    auto const& monitor = rule["monitor"].asString();
     // create this workspace persistently if:
     // 1. the allOutputs config option is enabled
     // 2. the rule's monitor is the current monitor
@@ -317,10 +337,15 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value &c
   }
 }
 
-void Workspaces::onEvent(const std::string &ev) {
+void Workspaces::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lock(m_mutex);
-  std::string eventName(begin(ev), begin(ev) + ev.find_first_of('>'));
-  std::string payload = ev.substr(eventName.size() + 2);
+  const auto separator = ev.find(">>");
+  if (separator == std::string::npos) {
+    spdlog::warn("Malformed Hyprland workspace event: {}", ev);
+    return;
+  }
+  std::string eventName = ev.substr(0, separator);
+  std::string payload = ev.substr(separator + 2);
 
   if (eventName == "workspacev2") {
     onWorkspaceActivated(payload);
@@ -355,7 +380,7 @@ void Workspaces::onEvent(const std::string &ev) {
   dp.emit();
 }
 
-void Workspaces::onWorkspaceActivated(std::string const &payload) {
+void Workspaces::onWorkspaceActivated(std::string const& payload) {
   const auto [workspaceIdStr, workspaceName] = splitDoublePayload(payload);
   const auto workspaceId = parseWorkspaceId(workspaceIdStr);
   if (workspaceId.has_value()) {
@@ -363,19 +388,19 @@ void Workspaces::onWorkspaceActivated(std::string const &payload) {
   }
 }
 
-void Workspaces::onSpecialWorkspaceActivated(std::string const &payload) {
+void Workspaces::onSpecialWorkspaceActivated(std::string const& payload) {
   std::string name(begin(payload), begin(payload) + payload.find_first_of(','));
   m_activeSpecialWorkspaceName = (!name.starts_with("special:") ? name : name.substr(8));
 }
 
-void Workspaces::onWorkspaceDestroyed(std::string const &payload) {
+void Workspaces::onWorkspaceDestroyed(std::string const& payload) {
   const auto [workspaceId, workspaceName] = splitDoublePayload(payload);
   if (!isDoubleSpecial(workspaceName)) {
     m_workspacesToRemove.push_back(workspaceId);
   }
 }
 
-void Workspaces::onWorkspaceCreated(std::string const &payload, Json::Value const &clientsData) {
+void Workspaces::onWorkspaceCreated(std::string const& payload, Json::Value const& clientsData) {
   spdlog::debug("Workspace created: {}", payload);
 
   const auto [workspaceIdStr, _] = splitDoublePayload(payload);
@@ -388,7 +413,7 @@ void Workspaces::onWorkspaceCreated(std::string const &payload, Json::Value cons
   auto const workspaceRules = m_ipc.getSocket1JsonReply("workspacerules");
   auto const workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
 
-  for (Json::Value workspaceJson : workspacesJson) {
+  for (auto workspaceJson : workspacesJson) {
     const auto currentId = workspaceJson["id"].asInt();
     if (currentId == *workspaceId) {
       std::string workspaceName = workspaceJson["name"].asString();
@@ -402,7 +427,7 @@ void Workspaces::onWorkspaceCreated(std::string const &payload, Json::Value cons
       if ((allOutputs() || m_bar.output->name == workspaceJson["monitor"].asString()) &&
           (showSpecial() || !workspaceName.starts_with("special")) &&
           !isDoubleSpecial(workspaceName)) {
-        for (Json::Value const &rule : workspaceRules) {
+        for (Json::Value const& rule : workspaceRules) {
           auto ruleWorkspaceName = rule.isMember("defaultName")
                                        ? rule["defaultName"].asString()
                                        : rule["workspaceString"].asString();
@@ -421,7 +446,7 @@ void Workspaces::onWorkspaceCreated(std::string const &payload, Json::Value cons
   }
 }
 
-void Workspaces::onWorkspaceMoved(std::string const &payload) {
+void Workspaces::onWorkspaceMoved(std::string const& payload) {
   spdlog::debug("Workspace moved: {}", payload);
 
   // Update active workspace
@@ -442,7 +467,7 @@ void Workspaces::onWorkspaceMoved(std::string const &payload) {
   }
 }
 
-void Workspaces::onWorkspaceRenamed(std::string const &payload) {
+void Workspaces::onWorkspaceRenamed(std::string const& payload) {
   spdlog::debug("Workspace renamed: {}", payload);
   const auto [workspaceIdStr, newName] = splitDoublePayload(payload);
 
@@ -451,7 +476,7 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
     return;
   }
 
-  for (auto &workspace : m_workspaces) {
+  for (auto& workspace : m_workspaces) {
     if (workspace->id() == *workspaceId) {
       workspace->setName(newName);
       break;
@@ -460,7 +485,7 @@ void Workspaces::onWorkspaceRenamed(std::string const &payload) {
   sortWorkspaces();
 }
 
-void Workspaces::onMonitorFocused(std::string const &payload) {
+void Workspaces::onMonitorFocused(std::string const& payload) {
   spdlog::trace("Monitor focused: {}", payload);
 
   const auto [monitorName, workspaceIdStr] = splitDoublePayload(payload);
@@ -472,7 +497,7 @@ void Workspaces::onMonitorFocused(std::string const &payload) {
 
   m_activeWorkspaceId = *workspaceId;
 
-  for (Json::Value &monitor : m_ipc.getSocket1JsonReply("monitors")) {
+  for (Json::Value& monitor : m_ipc.getSocket1JsonReply("monitors")) {
     if (monitor["name"].asString() == monitorName) {
       const auto name = monitor["specialWorkspace"]["name"].asString();
       m_activeSpecialWorkspaceName = !name.starts_with("special:") ? name : name.substr(8);
@@ -480,39 +505,41 @@ void Workspaces::onMonitorFocused(std::string const &payload) {
   }
 }
 
-void Workspaces::onWindowOpened(std::string const &payload) {
+void Workspaces::onWindowOpened(std::string const& payload) {
   spdlog::trace("Window opened: {}", payload);
   updateWindowCount();
-  size_t lastCommaIdx = 0;
-  size_t nextCommaIdx = payload.find(',');
-  std::string windowAddress = payload.substr(lastCommaIdx, nextCommaIdx - lastCommaIdx);
+  const auto firstComma = payload.find(',');
+  const auto secondComma =
+      firstComma == std::string::npos ? std::string::npos : payload.find(',', firstComma + 1);
+  const auto thirdComma =
+      secondComma == std::string::npos ? std::string::npos : payload.find(',', secondComma + 1);
+  if (firstComma == std::string::npos || secondComma == std::string::npos ||
+      thirdComma == std::string::npos) {
+    spdlog::warn("Malformed Hyprland openwindow payload: {}", payload);
+    return;
+  }
 
-  lastCommaIdx = nextCommaIdx;
-  nextCommaIdx = payload.find(',', nextCommaIdx + 1);
-  std::string workspaceName = payload.substr(lastCommaIdx + 1, nextCommaIdx - lastCommaIdx - 1);
-
-  lastCommaIdx = nextCommaIdx;
-  nextCommaIdx = payload.find(',', nextCommaIdx + 1);
-  std::string windowClass = payload.substr(lastCommaIdx + 1, nextCommaIdx - lastCommaIdx - 1);
-
-  std::string windowTitle = payload.substr(nextCommaIdx + 1, payload.length() - nextCommaIdx);
+  std::string windowAddress = payload.substr(0, firstComma);
+  std::string workspaceName = payload.substr(firstComma + 1, secondComma - firstComma - 1);
+  std::string windowClass = payload.substr(secondComma + 1, thirdComma - secondComma - 1);
+  std::string windowTitle = payload.substr(thirdComma + 1);
 
   bool isActive = m_currentActiveWindowAddress == windowAddress;
   m_windowsToCreate.emplace_back(workspaceName, windowAddress, windowClass, windowTitle, isActive);
 }
 
-void Workspaces::onWindowClosed(std::string const &addr) {
+void Workspaces::onWindowClosed(std::string const& addr) {
   spdlog::trace("Window closed: {}", addr);
   updateWindowCount();
   m_orphanWindowMap.erase(addr);
-  for (auto &workspace : m_workspaces) {
+  for (auto& workspace : m_workspaces) {
     if (workspace->closeWindow(addr)) {
       break;
     }
   }
 }
 
-void Workspaces::onWindowMoved(std::string const &payload) {
+void Workspaces::onWindowMoved(std::string const& payload) {
   spdlog::trace("Window moved: {}", payload);
   updateWindowCount();
   auto [windowAddress, _, workspaceName] = splitTriplePayload(payload);
@@ -521,7 +548,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
 
   // If the window was still queued to be created, just change its destination
   // and exit
-  for (auto &window : m_windowsToCreate) {
+  for (auto& window : m_windowsToCreate) {
     if (window.getAddress() == windowAddress) {
       window.moveToWorkspace(workspaceName);
       return;
@@ -529,7 +556,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
   }
 
   // Take the window's representation from the old workspace...
-  for (auto &workspace : m_workspaces) {
+  for (auto& workspace : m_workspaces) {
     if (auto windowAddr = workspace->closeWindow(windowAddress); windowAddr != std::nullopt) {
       windowRepr = windowAddr.value();
       break;
@@ -548,7 +575,7 @@ void Workspaces::onWindowMoved(std::string const &payload) {
   }
 }
 
-void Workspaces::onWindowTitleEvent(std::string const &payload) {
+void Workspaces::onWindowTitleEvent(std::string const& payload) {
   spdlog::trace("Window title changed: {}", payload);
   std::optional<std::function<void(WindowCreationPayload)>> inserter;
 
@@ -558,7 +585,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
   if (m_orphanWindowMap.contains(windowAddress)) {
     inserter = [this](WindowCreationPayload wcp) { this->registerOrphanWindow(std::move(wcp)); };
   } else {
-    auto windowWorkspace = std::ranges::find_if(m_workspaces, [windowAddress](auto &workspace) {
+    auto windowWorkspace = std::ranges::find_if(m_workspaces, [windowAddress](auto& workspace) {
       return workspace->containsWindow(windowAddress);
     });
 
@@ -570,7 +597,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
       };
     } else {
       auto queuedWindow =
-          std::ranges::find_if(m_windowsToCreate, [&windowAddress](auto &windowPayload) {
+          std::ranges::find_if(m_windowsToCreate, [&windowAddress](auto& windowPayload) {
             return windowPayload.getAddress() == windowAddress;
           });
 
@@ -585,7 +612,7 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
     Json::Value clientsData = m_ipc.getSocket1JsonReply("clients");
     std::string jsonWindowAddress = fmt::format("0x{}", windowAddress);
 
-    auto client = std::ranges::find_if(clientsData, [jsonWindowAddress](auto &client) {
+    auto client = std::ranges::find_if(clientsData, [jsonWindowAddress](auto& client) {
       return client["address"].asString() == jsonWindowAddress;
     });
 
@@ -595,17 +622,17 @@ void Workspaces::onWindowTitleEvent(std::string const &payload) {
   }
 }
 
-void Workspaces::onActiveWindowChanged(WindowAddress const &activeWindowAddress) {
+void Workspaces::onActiveWindowChanged(WindowAddress const& activeWindowAddress) {
   spdlog::trace("Active window changed: {}", activeWindowAddress);
   m_currentActiveWindowAddress = activeWindowAddress;
 
-  for (auto &[address, window] : m_orphanWindowMap) {
+  for (auto& [address, window] : m_orphanWindowMap) {
     window.setActive(address == activeWindowAddress);
   }
-  for (auto const &workspace : m_workspaces) {
+  for (auto const& workspace : m_workspaces) {
     workspace->setActiveWindow(activeWindowAddress);
   }
-  for (auto &window : m_windowsToCreate) {
+  for (auto& window : m_windowsToCreate) {
     window.setActive(window.getAddress() == activeWindowAddress);
   }
 }
@@ -615,8 +642,8 @@ void Workspaces::onConfigReloaded() {
   init();
 }
 
-auto Workspaces::parseConfig(const Json::Value &config) -> void {
-  const auto &configFormat = config["format"];
+auto Workspaces::parseConfig(const Json::Value& config) -> void {
+  const auto& configFormat = config["format"];
   m_formatBefore = configFormat.isString() ? configFormat.asString() : "{name}";
   m_withIcon = m_formatBefore.find("{icon}") != std::string::npos;
   auto withWindows = m_formatBefore.find("{windows}") != std::string::npos;
@@ -631,6 +658,7 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   populateBoolConfig(config, "persistent-only", m_persistentOnly);
   populateBoolConfig(config, "active-only", m_activeOnly);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
+  populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());
   populateSortByConfig(config);
@@ -648,28 +676,28 @@ auto Workspaces::parseConfig(const Json::Value &config) -> void {
   }
 }
 
-auto Workspaces::populateIconsMap(const Json::Value &formatIcons) -> void {
-  for (const auto &name : formatIcons.getMemberNames()) {
+auto Workspaces::populateIconsMap(const Json::Value& formatIcons) -> void {
+  for (const auto& name : formatIcons.getMemberNames()) {
     m_iconsMap.emplace(name, formatIcons[name].asString());
   }
   m_iconsMap.emplace("", "");
 }
 
-auto Workspaces::populateBoolConfig(const Json::Value &config, const std::string &key, bool &member)
+auto Workspaces::populateBoolConfig(const Json::Value& config, const std::string& key, bool& member)
     -> void {
-  const auto &configValue = config[key];
+  const auto& configValue = config[key];
   if (configValue.isBool()) {
     member = configValue.asBool();
   }
 }
 
-auto Workspaces::populateSortByConfig(const Json::Value &config) -> void {
-  const auto &configSortBy = config["sort-by"];
+auto Workspaces::populateSortByConfig(const Json::Value& config) -> void {
+  const auto& configSortBy = config["sort-by"];
   if (configSortBy.isString()) {
     auto sortByStr = configSortBy.asString();
     try {
       m_sortBy = m_enumParser.parseStringToEnum(sortByStr, m_sortMap);
-    } catch (const std::invalid_argument &e) {
+    } catch (const std::invalid_argument& e) {
       m_sortBy = SortMethod::DEFAULT;
       spdlog::warn(
           "Invalid string representation for sort-by. Falling back to default sort method.");
@@ -677,16 +705,16 @@ auto Workspaces::populateSortByConfig(const Json::Value &config) -> void {
   }
 }
 
-auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value &config) -> void {
+auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value& config) -> void {
   auto ignoreWorkspaces = config["ignore-workspaces"];
   if (ignoreWorkspaces.isArray()) {
-    for (const auto &workspaceRegex : ignoreWorkspaces) {
+    for (const auto& workspaceRegex : ignoreWorkspaces) {
       if (workspaceRegex.isString()) {
         std::string ruleString = workspaceRegex.asString();
         try {
           const std::regex rule{ruleString, std::regex_constants::icase};
           m_ignoreWorkspaces.emplace_back(rule);
-        } catch (const std::regex_error &e) {
+        } catch (const std::regex_error& e) {
           spdlog::error("Invalid rule {}: {}", ruleString, e.what());
         }
       } else {
@@ -696,30 +724,30 @@ auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value &config) -> vo
   }
 }
 
-auto Workspaces::populateFormatWindowSeparatorConfig(const Json::Value &config) -> void {
-  const auto &formatWindowSeparator = config["format-window-separator"];
+auto Workspaces::populateFormatWindowSeparatorConfig(const Json::Value& config) -> void {
+  const auto& formatWindowSeparator = config["format-window-separator"];
   m_formatWindowSeparator =
       formatWindowSeparator.isString() ? formatWindowSeparator.asString() : " ";
 }
 
-auto Workspaces::populateWindowRewriteConfig(const Json::Value &config) -> void {
-  const auto &windowRewrite = config["window-rewrite"];
+auto Workspaces::populateWindowRewriteConfig(const Json::Value& config) -> void {
+  const auto& windowRewrite = config["window-rewrite"];
   if (!windowRewrite.isObject()) {
     spdlog::debug("window-rewrite is not defined or is not an object, using default rules.");
     return;
   }
 
-  const auto &windowRewriteDefaultConfig = config["window-rewrite-default"];
+  const auto& windowRewriteDefaultConfig = config["window-rewrite-default"];
   std::string windowRewriteDefault =
       windowRewriteDefaultConfig.isString() ? windowRewriteDefaultConfig.asString() : "?";
 
   m_windowRewriteRules = util::RegexCollection(
       windowRewrite, windowRewriteDefault,
-      [this](std::string &window_rule) { return windowRewritePriorityFunction(window_rule); });
+      [this](std::string& window_rule) { return windowRewritePriorityFunction(window_rule); });
 }
 
-auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> void {
-  const auto &workspaceTaskbar = config["workspace-taskbar"];
+auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> void {
+  const auto& workspaceTaskbar = config["workspace-taskbar"];
   if (!workspaceTaskbar.isObject()) {
     spdlog::debug("workspace-taskbar is not defined or is not an object, using default rules.");
     return;
@@ -746,7 +774,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
 
   auto iconTheme = workspaceTaskbar["icon-theme"];
   if (iconTheme.isArray()) {
-    for (auto &c : iconTheme) {
+    for (auto& c : iconTheme) {
       m_iconLoader.add_custom_icon_theme(c.asString());
     }
   } else if (iconTheme.isString()) {
@@ -766,11 +794,11 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
   }
 
   if (workspaceTaskbar["ignore-list"].isArray()) {
-    for (auto &windowRegex : workspaceTaskbar["ignore-list"]) {
+    for (auto& windowRegex : workspaceTaskbar["ignore-list"]) {
       std::string ruleString = windowRegex.asString();
       try {
         m_ignoreWindows.emplace_back(ruleString, std::regex_constants::icase);
-      } catch (const std::regex_error &e) {
+      } catch (const std::regex_error& e) {
         spdlog::error("Invalid rule {}: {}", ruleString, e.what());
       }
     }
@@ -781,7 +809,7 @@ auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value &config) -> vo
     try {
       m_activeWindowPosition =
           m_activeWindowEnumParser.parseStringToEnum(posStr, m_activeWindowPositionMap);
-    } catch (const std::invalid_argument &e) {
+    } catch (const std::invalid_argument& e) {
       spdlog::warn(
           "Invalid string representation for active-window-position. Falling back to 'none'.");
       m_activeWindowPosition = ActiveWindowPosition::NONE;
@@ -824,13 +852,13 @@ auto Workspaces::registerIpc() -> void {
 }
 
 void Workspaces::removeWorkspacesToRemove() {
-  for (const auto &workspaceString : m_workspacesToRemove) {
+  for (const auto& workspaceString : m_workspacesToRemove) {
     removeWorkspace(workspaceString);
   }
   m_workspacesToRemove.clear();
 }
 
-void Workspaces::removeWorkspace(std::string const &workspaceString) {
+void Workspaces::removeWorkspace(std::string const& workspaceString) {
   spdlog::debug("Removing workspace {}", workspaceString);
 
   // If this succeeds, we have a workspace ID.
@@ -848,7 +876,7 @@ void Workspaces::removeWorkspace(std::string const &workspaceString) {
     name = workspaceString;
   }
 
-  const auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace> &x) {
+  const auto workspace = std::ranges::find_if(m_workspaces, [&](std::unique_ptr<Workspace>& x) {
     if (workspaceId.has_value()) {
       return *workspaceId == x->id();
     }
@@ -874,7 +902,7 @@ void Workspaces::setCurrentMonitorId() {
   // get monitor ID from name (used by persistent workspaces)
   m_monitorId = 0;
   auto monitors = m_ipc.getSocket1JsonReply("monitors");
-  auto currentMonitor = std::ranges::find_if(monitors, [this](const Json::Value &m) {
+  auto currentMonitor = std::ranges::find_if(monitors, [this](const Json::Value& m) {
     return m["name"].asString() == m_bar.output->name;
   });
   if (currentMonitor == monitors.end()) {
@@ -890,7 +918,7 @@ void Workspaces::sortSpecialCentered() {
   std::vector<std::unique_ptr<Workspace>> hiddenWorkspaces;
   std::vector<std::unique_ptr<Workspace>> normalWorkspaces;
 
-  for (auto &workspace : m_workspaces) {
+  for (auto& workspace : m_workspaces) {
     if (workspace->isSpecial()) {
       specialWorkspaces.push_back(std::move(workspace));
     } else {
@@ -921,7 +949,7 @@ void Workspaces::sortSpecialCentered() {
 
 void Workspaces::sortWorkspaces() {
   std::ranges::sort(  //
-      m_workspaces, [&](std::unique_ptr<Workspace> &a, std::unique_ptr<Workspace> &b) {
+      m_workspaces, [&](std::unique_ptr<Workspace>& a, std::unique_ptr<Workspace>& b) {
         // Helper comparisons
         auto isIdLess = a->id() < b->id();
         auto isNameLess = a->name() < b->name();
@@ -934,7 +962,7 @@ void Workspaces::sortWorkspaces() {
           case SortMethod::NUMBER:
             try {
               return std::stoi(a->name()) < std::stoi(b->name());
-            } catch (const std::invalid_argument &) {
+            } catch (const std::exception& e) {
               // Handle the exception if necessary.
               break;
             }
@@ -986,18 +1014,20 @@ void Workspaces::sortWorkspaces() {
   }
 }
 
-void Workspaces::setUrgentWorkspace(std::string const &windowaddress) {
+void Workspaces::setUrgentWorkspace(std::string const& windowaddress) {
   const Json::Value clientsJson = m_ipc.getSocket1JsonReply("clients");
+  const std::string normalizedAddress =
+      windowaddress.starts_with("0x") ? windowaddress : fmt::format("0x{}", windowaddress);
   int workspaceId = -1;
 
-  for (Json::Value clientJson : clientsJson) {
-    if (clientJson["address"].asString().ends_with(windowaddress)) {
+  for (const auto& clientJson : clientsJson) {
+    if (clientJson["address"].asString() == normalizedAddress) {
       workspaceId = clientJson["workspace"]["id"].asInt();
       break;
     }
   }
 
-  auto workspace = std::ranges::find_if(m_workspaces, [workspaceId](std::unique_ptr<Workspace> &x) {
+  auto workspace = std::ranges::find_if(m_workspaces, [workspaceId](std::unique_ptr<Workspace>& x) {
     return x->id() == workspaceId;
   });
   if (workspace != m_workspaces.end()) {
@@ -1012,8 +1042,8 @@ auto Workspaces::update() -> void {
 
 void Workspaces::updateWindowCount() {
   const Json::Value workspacesJson = m_ipc.getSocket1JsonReply("workspaces");
-  for (auto const &workspace : m_workspaces) {
-    auto workspaceJson = std::ranges::find_if(workspacesJson, [&](Json::Value const &x) {
+  for (auto const& workspace : m_workspaces) {
+    auto workspaceJson = std::ranges::find_if(workspacesJson, [&](Json::Value const& x) {
       return x["name"].asString() == workspace->name() ||
              (workspace->isSpecial() && x["name"].asString() == "special:" + workspace->name());
     });
@@ -1021,7 +1051,7 @@ void Workspaces::updateWindowCount() {
     if (workspaceJson != workspacesJson.end()) {
       try {
         count = (*workspaceJson)["windows"].asUInt();
-      } catch (const std::exception &e) {
+      } catch (const std::exception& e) {
         spdlog::error("Failed to update window count: {}", e.what());
       }
     }
@@ -1032,9 +1062,9 @@ void Workspaces::updateWindowCount() {
 bool Workspaces::updateWindowsToCreate() {
   bool anyWindowCreated = false;
   std::vector<WindowCreationPayload> notCreated;
-  for (auto &windowPayload : m_windowsToCreate) {
+  for (auto& windowPayload : m_windowsToCreate) {
     bool created = false;
-    for (auto &workspace : m_workspaces) {
+    for (auto& workspace : m_workspaces) {
       if (workspace->onWindowOpened(windowPayload)) {
         created = true;
         anyWindowCreated = true;
@@ -1063,7 +1093,7 @@ void Workspaces::updateWorkspaceStates() {
   std::string currentWorkspaceName =
       currentWorkspace.isMember("name") ? currentWorkspace["name"].asString() : "";
 
-  for (auto &workspace : m_workspaces) {
+  for (auto& workspace : m_workspaces) {
     bool isActiveByName =
         !currentWorkspaceName.empty() && workspace->name() == currentWorkspaceName;
 
@@ -1075,11 +1105,11 @@ void Workspaces::updateWorkspaceStates() {
     }
     workspace->setVisible(std::ranges::find(visibleWorkspaces, workspace->id()) !=
                           visibleWorkspaces.end());
-    std::string &workspaceIcon = m_iconsMap[""];
+    std::string& workspaceIcon = m_iconsMap[""];
     if (m_withIcon) {
       workspaceIcon = workspace->selectIcon(m_iconsMap);
     }
-    auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto &w) {
+    auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto& w) {
       auto wNameRaw = w["name"].asString();
       auto wName = wNameRaw.starts_with("special:") ? wNameRaw.substr(8) : wNameRaw;
       return wName == workspace->name();
@@ -1091,7 +1121,7 @@ void Workspaces::updateWorkspaceStates() {
   }
 }
 
-int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
+int Workspaces::windowRewritePriorityFunction(std::string const& window_rule) {
   // Rules that match against title are prioritized
   // Rules that don't specify if they're matching against either title or class are deprioritized
   bool const hasTitle = window_rule.find("title") != std::string::npos;
@@ -1112,23 +1142,30 @@ int Workspaces::windowRewritePriorityFunction(std::string const &window_rule) {
 }
 
 template <typename... Args>
-std::string Workspaces::makePayload(Args const &...args) {
+std::string Workspaces::makePayload(Args const&... args) {
   std::ostringstream result;
   bool first = true;
   ((result << (first ? "" : ",") << args, first = false), ...);
   return result.str();
 }
 
-std::pair<std::string, std::string> Workspaces::splitDoublePayload(std::string const &payload) {
-  const std::string part1 = payload.substr(0, payload.find(','));
+std::pair<std::string, std::string> Workspaces::splitDoublePayload(std::string const& payload) {
+  const auto separator = payload.find(',');
+  if (separator == std::string::npos) {
+    throw std::invalid_argument("Expected a two-part Hyprland payload");
+  }
+  const std::string part1 = payload.substr(0, separator);
   const std::string part2 = payload.substr(part1.size() + 1);
   return {part1, part2};
 }
 
 std::tuple<std::string, std::string, std::string> Workspaces::splitTriplePayload(
-    std::string const &payload) {
+    std::string const& payload) {
   const size_t firstComma = payload.find(',');
   const size_t secondComma = payload.find(',', firstComma + 1);
+  if (firstComma == std::string::npos || secondComma == std::string::npos) {
+    throw std::invalid_argument("Expected a three-part Hyprland payload");
+  }
 
   const std::string part1 = payload.substr(0, firstComma);
   const std::string part2 = payload.substr(firstComma + 1, secondComma - (firstComma + 1));
@@ -1137,13 +1174,40 @@ std::tuple<std::string, std::string, std::string> Workspaces::splitTriplePayload
   return {part1, part2, part3};
 }
 
-std::optional<int> Workspaces::parseWorkspaceId(std::string const &workspaceIdStr) {
+std::optional<int> Workspaces::parseWorkspaceId(std::string const& workspaceIdStr) {
   try {
     return workspaceIdStr == "special" ? -99 : std::stoi(workspaceIdStr);
-  } catch (std::exception const &e) {
+  } catch (std::exception const& e) {
     spdlog::debug("Workspace \"{}\" is not bound to an id: {}", workspaceIdStr, e.what());
     return std::nullopt;
   }
+}
+
+bool Workspaces::handleScroll(GdkEventScroll* e) {
+  // Ignore emulated scroll events on window
+  if (gdk_event_get_pointer_emulated((GdkEvent*)e)) {
+    return false;
+  }
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
+    if (allOutputs()) {
+      m_ipc.getSocket1Reply("dispatch workspace e+1");
+    } else {
+      m_ipc.getSocket1Reply("dispatch workspace m+1");
+    }
+  } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
+    if (allOutputs()) {
+      m_ipc.getSocket1Reply("dispatch workspace e-1");
+    } else {
+      m_ipc.getSocket1Reply("dispatch workspace m-1");
+    }
+  }
+
+  return true;
 }
 
 }  // namespace waybar::modules::hyprland

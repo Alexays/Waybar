@@ -229,7 +229,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   gtk_layer_init_for_window(gtk_window);
   gtk_layer_set_keyboard_mode(gtk_window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
   gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
-  gtk_layer_set_namespace(gtk_window, "waybar");
+  gtk_layer_set_namespace(gtk_window,
+                          config["name"].isString() ? config["name"].asCString() : "waybar");
 
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
@@ -540,13 +541,15 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto vertical = (group != nullptr ? group->getBox().get_orientation()
                                             : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
 
-          auto group_config = config[ref];
+          const Json::Value& group_config = config[ref];
           if (group_config["modules"].isNull()) {
             spdlog::warn("Group definition '{}' has not been found, group will be hidden", ref);
           }
-          auto* group_module = new waybar::Group(id_name, class_name, group_config, vertical);
-          getModules(factory, ref, group_module);
-          module = group_module;
+          auto group_module = std::make_unique<waybar::Group>(
+          id_name, class_name, group_config, vertical);
+
+          getModules(factory, ref, group_module.get());
+          module = group_module.release();
         } else {
           module = factory.makeModule(ref, pos);
         }

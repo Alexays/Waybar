@@ -14,16 +14,18 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       mixer_api_(nullptr),
       def_nodes_api_(nullptr),
       default_node_name_(nullptr),
-      default_source_name_(nullptr),
       pending_plugins_(0),
       muted_(false),
-      source_muted_(false),
       volume_(0.0),
-      source_volume_(0.0),
       min_step_(0.0),
       node_id_(0),
+      node_name_(""),
+      source_name_(""),
+      type_(nullptr),
       source_node_id_(0),
-      type_(nullptr) {
+      source_muted_(false),
+      source_volume_(0.0),
+      default_source_name_(nullptr) {
   waybar::modules::Wireplumber::modules.push_back(this);
 
   wp_init(WP_INIT_PIPEWIRE);
@@ -52,6 +54,15 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 
 waybar::modules::Wireplumber::~Wireplumber() {
   waybar::modules::Wireplumber::modules.remove(this);
+  if (mixer_api_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(mixer_api_, this);
+  }
+  if (def_nodes_api_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(def_nodes_api_, this);
+  }
+  if (om_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(om_, this);
+  }
   wp_core_disconnect(wp_core_);
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
@@ -79,7 +90,7 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
   if (proxy == nullptr) {
     auto err = fmt::format("Object '{}' not found\n", id);
     spdlog::error("[{}]: {}", self->name_, err);
-    throw std::runtime_error(err);
+    return;
   }
 
   g_autoptr(WpProperties) properties =
@@ -151,7 +162,7 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
   if (variant == nullptr) {
     auto err = fmt::format("Node {} does not support volume\n", id);
     spdlog::error("[{}]: {}", self->name_, err);
-    throw std::runtime_error(err);
+    return;
   }
 
   g_variant_lookup(variant, "volume", "d", &self->volume_);
@@ -285,14 +296,14 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
 
   if (self->def_nodes_api_ == nullptr) {
     spdlog::error("[{}]: default nodes api is not loaded.", self->name_);
-    throw std::runtime_error("Default nodes API is not loaded\n");
+    return;
   }
 
   self->mixer_api_ = wp_plugin_find(self->wp_core_, "mixer-api");
 
   if (self->mixer_api_ == nullptr) {
     spdlog::error("[{}]: mixer api is not loaded.", self->name_);
-    throw std::runtime_error("Mixer api is not loaded\n");
+    return;
   }
 
   // Get default sink
@@ -334,7 +345,7 @@ void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* 
 
   if (wp_object_activate_finish(p, res, &error) == 0) {
     spdlog::error("[{}]: error activating plugin: {}", self->name_, error->message);
-    throw std::runtime_error(error->message);
+    return;
   }
 
   if (--self->pending_plugins_ == 0) {
@@ -371,7 +382,7 @@ void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncRe
 
   if (success == FALSE) {
     spdlog::error("[{}]: default nodes API load failed", self->name_);
-    throw std::runtime_error(error->message);
+    return;
   }
   spdlog::debug("[{}]: loaded default nodes api", self->name_);
   g_ptr_array_add(self->apis_, wp_plugin_find(self->wp_core_, "default-nodes-api"));
@@ -390,7 +401,7 @@ void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* r
 
   if (success == FALSE) {
     spdlog::error("[{}]: mixer API load failed", self->name_);
-    throw std::runtime_error(error->message);
+    return;
   }
 
   spdlog::debug("[{}]: loaded mixer API", self->name_);
@@ -477,12 +488,12 @@ auto waybar::modules::Wireplumber::update() -> void {
     }
 
     if (!tooltipFormat.empty()) {
-      label_.set_tooltip_text(fmt::format(
+      label_.set_tooltip_markup(fmt::format(
           fmt::runtime(tooltipFormat), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
           fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
           fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_)));
     } else {
-      label_.set_tooltip_text(node_name_);
+      label_.set_tooltip_markup(node_name_);
     }
   }
 
@@ -522,9 +533,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     }
   }
   if (newVol != volume_) {
+    if (mixer_api_ == nullptr) return true;
     GVariant* variant = g_variant_new_double(newVol);
     gboolean ret;
     g_signal_emit_by_name(mixer_api_, "set-volume", node_id_, variant, &ret);
+    g_variant_unref(variant);
   }
   return true;
 }

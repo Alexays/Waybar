@@ -92,7 +92,7 @@ Addressed by *sway/mode*
 
 ```
 "sway/mode": {
-	"format": " {}",
+	"format": " {}",
 	"max-length": 50
 }
 ```

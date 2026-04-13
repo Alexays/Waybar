@@ -34,8 +34,12 @@ auto Window::update() -> void {
 auto Window::update_icon_label() -> void {
   auto _ = ipc->lock_state();
 
-  const auto& output = ipc->get_outputs().at(bar_.output->name);
-  const auto& wset = ipc->get_wsets().at(output.wset_idx);
+  auto out_it = ipc->get_outputs().find(bar_.output->name);
+  if (out_it == ipc->get_outputs().end()) return;
+  const auto& output = out_it->second;
+  auto wset_it = ipc->get_wsets().find(output.wset_idx);
+  if (wset_it == ipc->get_wsets().end()) return;
+  const auto& wset = wset_it->second;
   const auto& views = ipc->get_views();
   auto ctx = bar_.window.get_style_context();
 

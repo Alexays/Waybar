@@ -7,7 +7,10 @@
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
+#include <libudev.h>
+#include <poll.h>
 #include <spdlog/spdlog.h>
+#include <sys/signalfd.h>
 
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "battery", id, "{capacity}%", 60), last_event_(""), bar_(bar) {
@@ -16,17 +19,21 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
   if (battery_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
   }
-
-  global_watch_fd_ = inotify_init1(IN_CLOEXEC);
-  if (global_watch_fd_ == -1) {
-    throw std::runtime_error("Unable to listen batteries.");
+  udev_ = std::unique_ptr<udev, util::UdevDeleter>(udev_new());
+  if (udev_ == nullptr) {
+    throw std::runtime_error("udev_new failed");
   }
-
-  // Watch the directory for any added or removed batteries
-  global_watch = inotify_add_watch(global_watch_fd_, data_dir_.c_str(), IN_CREATE | IN_DELETE);
-  if (global_watch < 0) {
-    throw std::runtime_error("Could not watch for battery plug/unplug");
+  mon_ = std::unique_ptr<udev_monitor, util::UdevMonitorDeleter>(
+      udev_monitor_new_from_netlink(udev_.get(), "kernel"));
+  if (mon_ == nullptr) {
+    throw std::runtime_error("udev monitor new failed");
   }
+  if (udev_monitor_filter_add_match_subsystem_devtype(mon_.get(), "power_supply", nullptr) < 0) {
+    throw std::runtime_error("udev failed to add monitor filter");
+  }
+  udev_monitor_enable_receiving(mon_.get());
+
+  if (config_["weighted-average"].isBool()) weightedAverage_ = config_["weighted-average"].asBool();
 #endif
   spdlog::debug("battery: worker interval is {}", interval_.count());
   worker();
@@ -35,11 +42,6 @@ waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const J
 waybar::modules::Battery::~Battery() {
 #if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
-
-  if (global_watch >= 0) {
-    inotify_rm_watch(global_watch_fd_, global_watch);
-  }
-  close(global_watch_fd_);
 
   for (auto it = batteries_.cbegin(), next_it = it; it != batteries_.cend(); it = next_it) {
     ++next_it;
@@ -77,11 +79,17 @@ void waybar::modules::Battery::worker() {
     dp.emit();
   };
   thread_battery_update_ = [this] {
-    struct inotify_event event = {0};
-    int nbytes = read(global_watch_fd_, &event, sizeof(event));
-    if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
+    poll_fds_[0].revents = 0;
+    poll_fds_[0].events = POLLIN;
+    poll_fds_[0].fd = udev_monitor_get_fd(mon_.get());
+    int ret = poll(poll_fds_.data(), poll_fds_.size(), -1);
+    if (ret < 0) {
       thread_.stop();
       return;
+    }
+    if ((poll_fds_[0].revents & POLLIN) != 0) {
+      signalfd_siginfo signal_info;
+      read(poll_fds_[0].fd, &signal_info, sizeof(signal_info));
     }
     refreshBatteries();
     dp.emit();
@@ -118,7 +126,14 @@ void waybar::modules::Battery::refreshBatteries() {
           // Ignore non-system power supplies unless explicitly requested
           if (!bat_defined && fs::exists(node.path() / "scope")) {
             std::string scope;
-            std::ifstream(node.path() / "scope") >> scope;
+            try {
+              // for hotplug-in device, access it is always unstable because you may remove the
+              // device anytime so just allow failure happen and do nothing
+              std::ifstream(node.path() / "scope") >> scope;
+            } catch (const std::ifstream::failure& e) {
+              scope.clear();
+              continue;
+            }
             if (g_ascii_strcasecmp(scope.data(), "device") == 0) {
               continue;
             }
@@ -131,7 +146,9 @@ void waybar::modules::Battery::refreshBatteries() {
             auto event_path = (node.path() / "uevent");
             auto wd = inotify_add_watch(battery_watch_fd_, event_path.c_str(), IN_ACCESS);
             if (wd < 0) {
-              throw std::runtime_error("Could not watch events for " + node.path().string());
+              spdlog::warn("Could not watch events for {} (device may have been removed)",
+                           node.path().string());
+              continue;
             }
             batteries_[node.path()] = wd;
           }
@@ -585,8 +602,7 @@ waybar::modules::Battery::getInfos() {
     }
 
     // Handle weighted-average
-    if ((config_["weighted-average"].isBool() ? config_["weighted-average"].asBool() : false) &&
-        total_energy_exists && total_energy_full_exists) {
+    if (weightedAverage_ && total_energy_exists && total_energy_full_exists) {
       if (total_energy_full > 0.0f)
         calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
     }
@@ -679,6 +695,7 @@ auto waybar::modules::Battery::update() -> void {
     status = getAdapterStatus(capacity);
   }
   auto status_pretty = status;
+
   // Transform to lowercase  and replace space with dash
   std::ranges::transform(status.begin(), status.end(), status.begin(),
                          [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
@@ -782,16 +799,19 @@ void waybar::modules::Battery::processEvents(std::string& state, std::string& st
   if (!events.isObject() || events.empty()) {
     return;
   }
-  std::string event_name = fmt::format("on-{}-{}", status == "discharging" ? status : "charging",
-                                       state.empty() ? std::to_string(capacity) : state);
+  auto exec = [](Json::Value const& event) {
+    if (!event.isString()) return;
+    if (auto command = event.asString(); !command.empty()) {
+      util::command::exec(command, "");
+    }
+  };
+  std::string status_name = status == "discharging" ? "on-discharging" : "on-charging";
+  std::string event_name = status_name + '-' + (state.empty() ? std::to_string(capacity) : state);
   if (last_event_ != event_name) {
     spdlog::debug("battery: triggering event {}", event_name);
-    if (events[event_name].isString()) {
-      std::string exec = events[event_name].asString();
-      // Execute the command if it is not empty
-      if (!exec.empty()) {
-        util::command::exec(exec, "");
-      }
+    exec(events[event_name]);
+    if (!last_event_.empty() && last_event_[3] != event_name[3]) {
+      exec(events[status_name]);
     }
     last_event_ = event_name;
   }

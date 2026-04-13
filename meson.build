@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.14.0',
+    version: '0.15.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -185,7 +185,8 @@ src_files = files(
     'src/util/gtk_icon.cpp',
     'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
-    'src/util/css_reload_helper.cpp'
+    'src/util/css_reload_helper.cpp',
+    'src/util/transform_8bit_to_rgba.cpp'
 )
 
 man_files = files(
@@ -497,16 +498,24 @@ else
     man_files += files('man/waybar-clock.5.scd')
 endif
 
-cava = dependency('cava',
-                  version : '>=0.10.4',
+cava = dependency('libcava',
+                  version : '>=0.10.7',
                   required: get_option('cava'),
-                  fallback : ['cava', 'cava_dep'],
+                  fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
+
+eproxy = dependency('epoxy', required: false)
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava/cava.cpp', 'src/modules/cava/cava_backend.cpp')
+   src_files += files('src/modules/cava/cavaRaw.cpp',
+                      'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
+
+   if eproxy.found()
+      add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
+      src_files += files('src/modules/cava/cavaGLSL.cpp')
+   endif
 endif
 
 if libgps.found()
@@ -554,6 +563,7 @@ executable(
         tz_dep,
 		xkbregistry,
         cava,
+        eproxy,
         libgps
     ],
     include_directories: inc_dirs,

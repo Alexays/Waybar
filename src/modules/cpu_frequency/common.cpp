@@ -20,12 +20,7 @@ waybar::modules::CpuFrequency::CpuFrequency(const std::string& id, const Json::V
 auto waybar::modules::CpuFrequency::update() -> void {
   // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
-  if (tooltipEnabled()) {
-    auto tooltip =
-        fmt::format("Minimum frequency: {}\nAverage frequency: {}\nMaximum frequency: {}\n",
-                    min_frequency, avg_frequency, max_frequency);
-    label_.set_tooltip_text(tooltip);
-  }
+
   auto format = format_;
   auto state = getState(avg_frequency);
   if (!state.empty() && config_["format-" + state].isString()) {
@@ -43,6 +38,18 @@ auto waybar::modules::CpuFrequency::update() -> void {
     store.push_back(fmt::arg("min_frequency", min_frequency));
     store.push_back(fmt::arg("avg_frequency", avg_frequency));
     label_.set_markup(fmt::vformat(format, store));
+
+    if (tooltipEnabled()) {
+      std::string tooltip;
+      if (config_["tooltip-format"].isString()) {
+        tooltip = config_["tooltip-format"].asString();
+        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
+      } else {
+        tooltip = "Minimum frequency: {}\nAverage frequency: {}\nMaximum frequency: {}\n";
+        label_.set_tooltip_markup(
+            fmt::format(fmt::runtime(tooltip), min_frequency, avg_frequency, max_frequency));
+      }
+    }
   }
 
   // Call parent update

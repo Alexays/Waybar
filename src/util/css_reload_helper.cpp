@@ -115,10 +115,14 @@ std::vector<std::string> waybar::CssReloadHelper::parseImports(const std::string
   auto maxIterations = 100U;
   do {
     previousSize = imports.size();
+    std::vector<std::string> to_parse;
     for (const auto& [file, parsed] : imports) {
       if (!parsed) {
-        parseImports(file, imports);
+        to_parse.push_back(file);
       }
+    }
+    for (const auto& file : to_parse) {
+      parseImports(file, imports);
     }
 
   } while (imports.size() > previousSize && maxIterations-- > 0);

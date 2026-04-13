@@ -32,29 +32,36 @@ class CavaBackend final {
   int getAsciiRange();
   void doPauseResume();
   void Update();
+  const struct ::cava::config_params* getPrm();
+  std::chrono::milliseconds getFrameTimeMilsec();
+
   // Signal accessor
   using type_signal_update = sigc::signal<void(const std::string&)>;
   type_signal_update signal_update();
+  using type_signal_audio_raw_update = sigc::signal<void(const ::cava::audio_raw&)>;
+  type_signal_audio_raw_update signal_audio_raw_update();
   using type_signal_silence = sigc::signal<void()>;
   type_signal_silence signal_silence();
 
  private:
   CavaBackend(const Json::Value& config);
-  util::SleeperThread thread_;
   util::SleeperThread read_thread_;
+  util::SleeperThread out_thread_;
+
   // Cava API to read audio source
-  ::cava::ptr input_source_;
+  ::cava::ptr input_source_{NULL};
 
   struct ::cava::error_s error_{};          // cava errors
   struct ::cava::config_params prm_{};      // cava parameters
   struct ::cava::audio_raw audio_raw_{};    // cava handled raw audio data(is based on audio_data)
   struct ::cava::audio_data audio_data_{};  // cava audio data
-  struct ::cava::cava_plan* plan_;          //{new cava_plan{}};
+  struct ::cava::cava_plan* plan_{NULL};    //{new cava_plan{}};
 
   std::chrono::seconds fetch_input_delay_{4};
   // Delay to handle audio source
   std::chrono::milliseconds frame_time_milsec_{1s};
 
+  const Json::Value& config_;
   int re_paint_{0};
   bool silence_{false};
   bool silence_prev_{false};
@@ -66,9 +73,12 @@ class CavaBackend final {
   void execute();
   bool isSilence();
   void doUpdate(bool force = false);
+  void loadConfig();
+  void freeBackend();
 
   // Signal
   type_signal_update m_signal_update_;
+  type_signal_audio_raw_update m_signal_audio_raw_;
   type_signal_silence m_signal_silence_;
 };
 }  // namespace waybar::modules::cava
