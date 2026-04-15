@@ -59,7 +59,7 @@ class Client {
   std::string m_cssFile;
   sigc::connection monitor_added_connection_;
   sigc::connection monitor_removed_connection_;
-  std::vector<waybar_output*> pending_outputs_;
+  std::list<waybar_output*> pending_outputs_;
   bool bars_scheduled_ = false;
 };
 
