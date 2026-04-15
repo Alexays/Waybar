@@ -95,7 +95,7 @@ void waybar::Client::handleOutputDone(void* data, struct zxdg_output_v1* /*xdg_o
 
       if (!client->bars_scheduled_) {
         client->bars_scheduled_ = true;
-      
+
         Glib::signal_idle().connect_once([client]() {
           client->createBarsBatch();
         }, Glib::PRIORITY_HIGH_IDLE);
@@ -107,6 +107,8 @@ void waybar::Client::handleOutputDone(void* data, struct zxdg_output_v1* /*xdg_o
 }
 
 void waybar::Client::createBarsBatch() {
+  pending_outputs_.remove_if([this](auto* output) { return std::none_of(outputs_.begin(), outputs_.end(),
+    [output](const auto& o) { return &o == output; }); });
   for (auto* output : pending_outputs_) {
     try {
       auto configs = getOutputConfigs(*output);
