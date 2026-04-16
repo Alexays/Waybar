@@ -95,13 +95,20 @@ void Workspaces::doUpdate() {
     }
     button.set_name("niri-workspace-" + name);
 
-    if (config_["format"].isString()) {
+    if (ws["name"] && config_["format-named"].isString()) {
+      auto format = config_["format-named"].asString();
+      name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
+                         fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
+                         fmt::arg("index", ws["idx"].asUInt()),
+                         fmt::arg("output", ws["output"].asString()));
+    } else if (config_["format"].isString()) {
       auto format = config_["format"].asString();
       name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
                          fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
                          fmt::arg("index", ws["idx"].asUInt()),
                          fmt::arg("output", ws["output"].asString()));
     }
+
     if (!config_["disable-markup"].asBool()) {
       static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(name);
     } else {
