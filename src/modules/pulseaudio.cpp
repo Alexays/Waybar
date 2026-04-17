@@ -7,6 +7,10 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value
 
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
+
+  if (config_["target"].isString() && config_["target"].asString() == "source") {
+    target = util::AudioTarget::Source;
+  }
 }
 
 bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll* e) {
@@ -33,7 +37,7 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll* e) {
                          ? util::ChangeType::Increase
                          : util::ChangeType::Decrease;
 
-  backend->changeVolume(change_type, step, max_volume);
+  backend->changeVolume(change_type, step, max_volume, target);
   return true;
 }
 

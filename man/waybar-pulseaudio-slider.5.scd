@@ -32,16 +32,28 @@ The volume can be controlled by dragging the slider across the bar or clicking o
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*target*: ++
+	typeof: string ++
+	default: sink ++
+	The audio target to control. Can be either `sink` (output/speakers) or `source` (input/microphone).
+
 # EXAMPLES
 
 ```
 "modules-right": [
-    "pulseaudio/slider",
+    "pulseaudio/slider#out",
+    "pulseaudio/slider#in",
 ],
-"pulseaudio/slider": {
+"pulseaudio/slider#out": {
     "min": 0,
     "max": 100,
     "orientation": "horizontal"
+},
+"pulseaudio/slider#in": {
+    "min": 0,
+    "max": 100,
+    "orientation": "horizontal",
+    "target": "source"
 }
 ```
 
