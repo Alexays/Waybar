@@ -138,9 +138,11 @@ void waybar::modules::Custom::waitingWorker() {
 }
 
 void waybar::modules::Custom::refresh(int sig) {
+#ifdef SIGRTMIN
   if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+#endif
 }
 
 void waybar::modules::Custom::handleEvent() {
