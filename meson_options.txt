@@ -12,7 +12,7 @@ option('dbusmenu-gtk', type: 'feature', value: 'auto', description: 'Enable supp
 option('man-pages', type: 'feature', value: 'auto', description: 'Generate and install man pages')
 option('mpd', type: 'feature', value: 'auto', description: 'Enable support for the Music Player Daemon')
 option('rfkill', type: 'feature', value: 'auto', description: 'Enable support for RFKILL')
-option('sndio', type: 'feature', value: 'auto', description: 'Enable support for sndio')
+option('sndio', type: 'feature', value: 'auto', description: 'Enable support for volume control via sndio')
 option('logind', type: 'feature', value: 'auto', description: 'Enable support for logind')
 option('tests', type: 'feature', value: 'auto', description: 'Enable tests')
 option('experimental', type : 'boolean', value : false, description: 'Enable experimental features')
