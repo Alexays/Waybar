@@ -45,12 +45,10 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
-  if (enable_click || hasUserEvents) {
-    hasUserEvents_ = true;
+  hasUserEvents_ = enable_click || hasUserEvents;
+  if (hasUserEvents_) {
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
-  } else {
-    hasUserEvents_ = false;
   }
 
   bool hasReleaseEvent =
@@ -59,13 +57,14 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
         return eventEntry.first.second == GdkEventType::GDK_BUTTON_RELEASE &&
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
+  bool hasScrollEvents = config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
+                         config_["on-scroll-left"].isString() ||
+                         config_["on-scroll-right"].isString() || enable_scroll;
   if (hasReleaseEvent) {
     event_box_.add_events(Gdk::BUTTON_RELEASE_MASK);
     event_box_.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease));
   }
-  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
-      config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
-      enable_scroll) {
+  if (hasScrollEvents) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
@@ -125,6 +124,40 @@ void AModule::setCursor(Gdk::CursorType const& c) {
         },
         1);
   }
+}
+
+void AModule::setupAccessibleButton(Gtk::Button& button) {
+  if (!usesAccessibleButton()) {
+    return;
+  }
+
+  auto eventMask = event_box_.get_events();
+  button.set_relief(Gtk::RELIEF_NONE);
+  button.set_focus_on_click(false);
+  button.get_style_context()->add_class("flat");
+
+  if (hasUserEvents_) {
+    button.add_events(Gdk::BUTTON_PRESS_MASK);
+    button.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle), false);
+  }
+
+  if (eventMask & Gdk::BUTTON_RELEASE_MASK) {
+    button.add_events(Gdk::BUTTON_RELEASE_MASK);
+    button.signal_button_release_event().connect(sigc::mem_fun(*this, &AModule::handleRelease), false);
+  }
+
+  if (eventMask & (Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK)) {
+    button.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    button.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll), false);
+  }
+}
+
+bool AModule::usesAccessibleButton() const {
+  if (hasUserEvents_) {
+    return true;
+  }
+
+  return (event_box_.get_events() & Gdk::BUTTON_RELEASE_MASK) != 0;
 }
 
 bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {

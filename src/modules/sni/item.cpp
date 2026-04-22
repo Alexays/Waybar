@@ -1,7 +1,9 @@
 #include "modules/sni/item.hpp"
 
+#include <atk/atk.h>
 #include <gdkmm/general.h>
 #include <glibmm/main.h>
+#include <gtkmm/cssprovider.h>
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
@@ -38,6 +40,33 @@ namespace waybar::modules::SNI {
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
+namespace {
+Glib::RefPtr<Gtk::CssProvider> trayButtonCssProvider() {
+  static auto provider = [] {
+    auto css = Gtk::CssProvider::create();
+    css->load_from_data(R"CSS(
+.waybar-accessible-tray-button {
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  border-width: 0;
+  border-style: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.waybar-accessible-tray-button > image {
+  padding: 0;
+  margin: 0;
+}
+)CSS");
+    return css;
+  }();
+  return provider;
+}
+}  // namespace
+
 Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
            const std::function<void(Item&)>& on_ready,
            const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated)
@@ -62,12 +91,22 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
 
   auto& window = const_cast<Bar&>(bar).window;
   window.signal_configure_event().connect_notify(sigc::mem_fun(*this, &Item::onConfigure));
-  event_box.add(image);
-  event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
-  event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
-  event_box.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseEnter));
-  event_box.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseLeave));
+  button.set_relief(Gtk::RELIEF_NONE);
+  button.set_border_width(0);
+  button.set_focus_on_click(false);
+  button.set_can_focus(false);
+  button.get_style_context()->add_class("flat");
+  button.get_style_context()->add_class("waybar-accessible-tray-button");
+  button.get_style_context()->add_provider(trayButtonCssProvider(),
+                                           GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  button.add(image);
+  event_box.add(button);
+  button.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK |
+                    Gdk::ENTER_NOTIFY_MASK | Gdk::LEAVE_NOTIFY_MASK);
+  button.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
+  button.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
+  button.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseEnter));
+  button.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseLeave));
   // initial visibility
   event_box.show_all();
   event_box.set_visible(show_passive_);
@@ -182,11 +221,10 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       } else {
         setCustomIcon(id);
       }
+      updateAccessibleName();
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
-      if (tooltip.text.empty()) {
-        event_box.set_tooltip_markup(title);
-      }
+      updateAccessibleName();
     } else if (name == "Status") {
       setStatus(get_variant<Glib::ustring>(value));
     } else if (name == "IconName") {
@@ -205,9 +243,7 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       attention_movie_name = get_variant<std::string>(value);
     } else if (name == "ToolTip") {
       tooltip = get_variant<ToolTip>(value);
-      if (!tooltip.text.empty()) {
-        event_box.set_tooltip_markup(tooltip.text);
-      }
+      updateAccessibleName();
     } else if (name == "IconThemePath") {
       icon_theme_path = get_variant<std::string>(value);
       if (!icon_theme_path.empty()) {
@@ -258,6 +294,29 @@ void Item::invalidate() {
     ready_ = false;
   }
   on_invalidate_(*this);
+}
+
+void Item::updateAccessibleName() {
+  if (!tooltip.text.empty()) {
+    button.set_tooltip_markup(tooltip.text);
+  } else if (!title.empty()) {
+    button.set_tooltip_markup(title);
+  }
+
+  std::string accessible_name;
+  if (!title.empty()) {
+    accessible_name = title;
+  } else if (!id.empty()) {
+    accessible_name = id;
+  } else if (!tooltip.text.empty()) {
+    accessible_name = tooltip.text.raw();
+  } else {
+    accessible_name = bus_name;
+  }
+
+  if (auto* accessible = gtk_widget_get_accessible(GTK_WIDGET(button.gobj())); accessible != nullptr) {
+    atk_object_set_name(accessible, accessible_name.c_str());
+  }
 }
 
 void Item::setCustomIcon(const std::string& id) {

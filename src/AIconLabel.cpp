@@ -52,7 +52,10 @@ AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const
     box_.add(image_);
   }
 
-  event_box_.add(box_);
+  auto& container =
+      usesAccessibleButton() ? static_cast<Gtk::Bin&>(accessible_button_) : static_cast<Gtk::Bin&>(event_box_);
+  container.remove();
+  container.add(box_);
 }
 
 auto AIconLabel::update() -> void {
