@@ -196,6 +196,18 @@ void IPC::parseIPC(const std::string& line) {
       for (auto& win : windows_) {
         win["is_focused"] = focused && win["id"].asUInt64() == id;
       }
+    } else if (const auto& payload = ev["WindowLayoutsChanged"]) {
+      const auto& changes = payload["changes"];
+      for (const auto& change : changes) {
+        const auto id = change[0].asUInt64();
+        auto it = std::find_if(windows_.begin(), windows_.end(),
+                                [id](const auto& win) { return win["id"].asUInt64() == id; });
+        if (it != windows_.end()) {
+          (*it)["layout"] = change[1];
+        } else {
+          spdlog::warn("WindowLayoutsChanged: unknown window id {}", id);
+        }
+      }
     }
   }
 

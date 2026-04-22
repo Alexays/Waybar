@@ -1,8 +1,8 @@
 #include "modules/niri/workspaces.hpp"
 
-#include <gtkmm/button.h>
-#include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
+
+#include <algorithm>
 
 namespace waybar::modules::niri {
 
@@ -22,117 +22,85 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
   gIPC->registerForIPC("WorkspaceUrgencyChanged", this);
 
+  gIPC->registerForIPC("WindowsChanged", this);
+  gIPC->registerForIPC("WindowOpenedOrChanged", this);
+  gIPC->registerForIPC("WindowLayoutsChanged", this);
+  gIPC->registerForIPC("WindowFocusChanged", this);
+  gIPC->registerForIPC("WindowClosed", this);
+  gIPC->registerForIPC("WindowFocusChanged", this);
+
   dp.emit();
 }
 
-Workspaces::~Workspaces() { gIPC->unregisterForIPC(this); }
+Workspaces::~Workspaces() {
+  gIPC->unregisterForIPC(this);
+}
 
-void Workspaces::onEvent(const Json::Value& ev) { dp.emit(); }
+void Workspaces::onEvent(const Json::Value& /*ev*/) { dp.emit(); }
 
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
 
-  const auto alloutputs = config_["all-outputs"].asBool();
-  std::vector<Json::Value> my_workspaces;
-  const auto& workspaces = gIPC->workspaces();
-  std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
-               [&](const auto& ws) {
-                 if (alloutputs) return true;
-                 return ws["output"].asString() == bar_.output->name;
-               });
+  const bool alloutputs = config_["all-outputs"].asBool();
+  const auto& all_workspaces = gIPC->workspaces();
+  const auto& all_windows = gIPC->windows();
 
-  // Remove buttons for removed workspaces.
-  for (auto it = buttons_.begin(); it != buttons_.end();) {
-    auto ws = std::find_if(my_workspaces.begin(), my_workspaces.end(),
-                           [it](const auto& ws) { return ws["id"].asUInt64() == it->first; });
-    if (ws == my_workspaces.end()) {
-      it = buttons_.erase(it);
-    } else {
-      ++it;
+  std::vector<const Json::Value*> my_workspaces;
+  my_workspaces.reserve(all_workspaces.size());
+  for (const auto& ws : all_workspaces) {
+    if (alloutputs || ws["output"].asString() == bar_.output->name) {
+      my_workspaces.push_back(&ws);
     }
   }
 
-  // Add buttons for new workspaces, update existing ones.
-  for (const auto& ws : my_workspaces) {
-    auto bit = buttons_.find(ws["id"].asUInt64());
-    auto& button = bit == buttons_.end() ? addButton(ws) : bit->second;
-    auto style_context = button.get_style_context();
+  workspaces_.erase(
+      std::remove_if(workspaces_.begin(), workspaces_.end(),
+                     [&](const std::unique_ptr<Workspace>& w) {
+                       bool gone =
+                           std::none_of(my_workspaces.begin(), my_workspaces.end(),
+                                        [&](const Json::Value* ws) {
+                                          return ws->operator[]("id").asUInt64() == w->id();
+                                        });
+                       if (gone) box_.remove(w->button());
+                       return gone;
+                     }),
+      workspaces_.end());
 
-    if (ws["is_focused"].asBool())
-      style_context->add_class("focused");
-    else
-      style_context->remove_class("focused");
+  for (const auto* ws_ptr : my_workspaces) {
+    const auto& ws = *ws_ptr;
+    const auto ws_id = ws.isMember("id") ? ws["id"].asUInt64() : 0;
 
-    if (ws["is_active"].asBool())
-      style_context->add_class("active");
-    else
-      style_context->remove_class("active");
+    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
+                           [ws_id](const std::unique_ptr<Workspace>& w) {
+                             return w->id() == ws_id;
+                           });
 
-    if (ws["is_urgent"].asBool())
-      style_context->add_class("urgent");
-    else
-      style_context->remove_class("urgent");
-
-    if (ws["output"]) {
-      if (ws["output"].asString() == bar_.output->name)
-        style_context->add_class("current_output");
-      else
-        style_context->remove_class("current_output");
-    } else {
-      style_context->remove_class("current_output");
+    if (it == workspaces_.end()) {
+      createWorkspace(ws);
+      it = workspaces_.end() - 1;
     }
 
-    if (ws["active_window_id"].isNull())
-      style_context->add_class("empty");
-    else
-      style_context->remove_class("empty");
-
-    std::string name;
-    if (ws["name"]) {
-      name = ws["name"].asString();
-    } else {
-      name = std::to_string(ws["idx"].asUInt());
-    }
-    button.set_name("niri-workspace-" + name);
-
-    if (config_["format"].isString()) {
-      auto format = config_["format"].asString();
-      name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
-                         fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
-                         fmt::arg("index", ws["idx"].asUInt()),
-                         fmt::arg("output", ws["output"].asString()));
-    }
-    if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(name);
-    } else {
-      button.set_label(name);
-    }
-
-    if (config_["current-only"].asBool()) {
-      const auto* property = alloutputs ? "is_focused" : "is_active";
-      if (ws[property].asBool())
-        button.show();
-      else
-        button.hide();
-    } else if (config_["hide-empty"].asBool()) {
-      if (ws["active_window_id"].isNull() && !ws["is_focused"].asBool())
-          button.hide();
-      else
-          button.show();
-    } else {
-      button.show();
-    }
+    std::vector<Json::Value> windows_vec(all_windows.begin(), all_windows.end());
+    (*it)->update(ws, windows_vec);
   }
 
-  // Refresh the button order.
-  for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
-    const auto& ws = *it;
+  for (auto pos_it = my_workspaces.cbegin(); pos_it != my_workspaces.cend(); ++pos_it) {
+    const auto& ws = **pos_it;
+    const auto ws_id = ws.isMember("id") ? ws["id"].asUInt64() : 0;
 
-    auto pos = ws["idx"].asUInt() - 1;
-    if (alloutputs) pos = it - my_workspaces.cbegin();
+    int pos = static_cast<int>(pos_it - my_workspaces.cbegin());
+    if (alloutputs) {
+    } else {
+      pos = static_cast<int>(ws["idx"].asUInt()) - 1;
+    }
 
-    auto& button = buttons_[ws["id"].asUInt64()];
-    box_.reorder_child(button, pos);
+    auto it = std::find_if(workspaces_.begin(), workspaces_.end(),
+                           [ws_id](const std::unique_ptr<Workspace>& w) {
+                             return w->id() == ws_id;
+                           });
+    if (it != workspaces_.end()) {
+      box_.reorder_child((*it)->button(), pos);
+    }
   }
 }
 
@@ -141,48 +109,20 @@ void Workspaces::update() {
   AModule::update();
 }
 
-Gtk::Button& Workspaces::addButton(const Json::Value& ws) {
-  std::string name;
-  if (ws["name"]) {
-    name = ws["name"].asString();
-  } else {
-    name = std::to_string(ws["idx"].asUInt());
-  }
 
-  auto pair = buttons_.emplace(ws["id"].asUInt64(), name);
-  auto&& button = pair.first->second;
-  box_.pack_start(button, false, false, 0);
-  button.set_relief(Gtk::RELIEF_NONE);
-  if (!config_["disable-click"].asBool()) {
-    const auto id = ws["id"].asUInt64();
-    button.signal_pressed().connect([=] {
-      try {
-        // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
-        Json::Value request(Json::objectValue);
-        auto& action = (request["Action"] = Json::Value(Json::objectValue));
-        auto& focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
-        auto& reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
-        reference["Id"] = id;
-
-        IPC::send(request);
-      } catch (const std::exception& e) {
-        spdlog::error("Error switching workspace: {}", e.what());
-      }
-    });
-  }
-  return button;
+void Workspaces::createWorkspace(const Json::Value& workspace_data) {
+  auto ws = std::make_unique<Workspace>(workspace_data, *this);
+  box_.pack_start(ws->button(), false, false, 0);
+  workspaces_.push_back(std::move(ws));
 }
 
-std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws) {
+std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws) const {
   const auto& icons = config_["format-icons"];
   if (!icons) return value;
 
   if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
-
   if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
-
   if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
-
   if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
 
   if (ws["name"]) {
