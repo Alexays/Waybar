@@ -42,6 +42,8 @@ class AModule : public IModule {
   Gtk::EventBox event_box_;
 
   virtual void setCursor(Gdk::CursorType const& c);
+  void setupAccessibleButton(Gtk::Button& button);
+  bool usesAccessibleButton() const;
 
   virtual bool handleToggle(GdkEventButton* const& ev);
   virtual bool handleMouseEnter(GdkEventCrossing* const& ev);

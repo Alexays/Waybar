@@ -34,7 +34,6 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     label_.get_style_context()->add_class(id);
   }
   label_.get_style_context()->add_class(MODULE_CLASS);
-  event_box_.add(label_);
   if (config_["max-length"].isUInt()) {
     label_.set_max_width_chars(config_["max-length"].asInt());
     label_.set_ellipsize(Pango::EllipsizeMode::ELLIPSIZE_END);
@@ -134,6 +133,14 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
     } else if (justify_str == "center") {
       label_.set_justify(Gtk::Justification::JUSTIFY_CENTER);
     }
+  }
+
+  if (usesAccessibleButton()) {
+    setupAccessibleButton(accessible_button_);
+    accessible_button_.add(label_);
+    event_box_.add(accessible_button_);
+  } else {
+    event_box_.add(label_);
   }
 }
 

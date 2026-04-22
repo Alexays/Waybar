@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gtkmm/button.h>
 #include <glibmm/markup.h>
 #include <gtkmm/label.h>
 #include <json/json.h>
@@ -20,6 +21,7 @@ class ALabel : public AModule {
 
  protected:
   Gtk::Label label_;
+  Gtk::Button accessible_button_;
   std::string format_;
   const std::chrono::milliseconds interval_;
   bool alt_ = false;

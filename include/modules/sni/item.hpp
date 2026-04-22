@@ -3,6 +3,7 @@
 #include <dbus-status-notifier-item.h>
 #include <giomm/dbusproxy.h>
 #include <glibmm/refptr.h>
+#include <gtkmm/button.h>
 #include <gtkmm/eventbox.h>
 #include <gtkmm/icontheme.h>
 #include <gtkmm/image.h>
@@ -39,6 +40,7 @@ class Item : public sigc::trackable {
   int icon_size;
   int effective_icon_size;
   Gtk::Image image;
+  Gtk::Button button;
   Gtk::EventBox event_box;
   std::string category;
   std::string id;
@@ -89,6 +91,7 @@ class Item : public sigc::trackable {
   double getScaledIconSize();
   static void onMenuDestroyed(Item* self, GObject* old_menu_pointer);
   void makeMenu();
+  void updateAccessibleName();
   bool handleClick(GdkEventButton* const& /*ev*/);
   bool handleScroll(GdkEventScroll* const&);
   bool handleMouseEnter(GdkEventCrossing* const&);
