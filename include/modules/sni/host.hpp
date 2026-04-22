@@ -6,6 +6,8 @@
 #include <json/json.h>
 
 #include <tuple>
+#include <unordered_map>
+#include <vector>
 
 #include "bar.hpp"
 #include "modules/sni/item.hpp"
@@ -18,6 +20,8 @@ class Host {
        const std::function<void(std::unique_ptr<Item>&)>&,
        const std::function<void(std::unique_ptr<Item>&)>&, const std::function<void()>&);
   ~Host();
+
+  void requestReorder();
 
  private:
   void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
@@ -36,6 +40,9 @@ class Host {
   std::tuple<std::string, std::string> getBusNameAndObjectPath(const std::string);
   void addRegisteredItem(const std::string& service);
 
+  void reorderItems();
+  static std::string toLowerAscii(std::string s);
+
   std::vector<std::unique_ptr<Item>> items_;
   const std::string bus_name_;
   const std::string object_path_;
@@ -48,6 +55,11 @@ class Host {
   const std::function<void(std::unique_ptr<Item>&)> on_add_;
   const std::function<void(std::unique_ptr<Item>&)> on_remove_;
   const std::function<void()> on_update_;
+
+  std::unordered_map<std::string, std::size_t> order_left_;
+  std::unordered_map<std::string, std::size_t> order_right_;
+  bool reverse_direction_{false};
+  bool reorder_pending_{false};
 };
 
 }  // namespace waybar::modules::SNI
