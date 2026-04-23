@@ -98,7 +98,9 @@ void Language::onEvent(const std::string& ev) {
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
+  removeXkbLayoutCssClass();
   layout_ = getLayout(layoutName);
+  addXkbLayoutCssClass();
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -120,6 +122,7 @@ void Language::initLanguage() {
     searcher = waybar::util::sanitize_string(searcher);
 
     layout_ = getLayout(searcher);
+    addXkbLayoutCssClass();
 
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
@@ -127,6 +130,15 @@ void Language::initLanguage() {
   } catch (std::exception& e) {
     spdlog::error("hyprland language initLanguage failed with {}", e.what());
   }
+}
+
+auto Language::removeXkbLayoutCssClass() -> void {
+  label_.get_style_context()->remove_class(layout_.short_name);
+  spdlog::debug("hyprland language try to remove currently short_name css class {}", layout_.short_name);
+}
+auto Language::addXkbLayoutCssClass() -> void {
+  label_.get_style_context()->add_class(layout_.short_name);
+  spdlog::debug("hyprland language add new short_name css class {}", layout_.short_name);
 }
 
 auto Language::getLayout(const std::string& fullName) -> Layout {
