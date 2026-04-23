@@ -27,10 +27,6 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   }
   m_box.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(m_box);
-
-  setCurrentMonitorId();
-  init();
-  registerIpc();
 }
 
 Workspaces::~Workspaces() {
@@ -40,6 +36,12 @@ Workspaces::~Workspaces() {
   m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(m_mutex);
+}
+
+void Workspaces::do_init() {
+  setCurrentMonitorId();
+  init();
+  registerIpc();
 }
 
 void Workspaces::init() {
