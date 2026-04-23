@@ -17,8 +17,11 @@ namespace waybar::modules::hyprland {
 
 std::shared_mutex windowIpcSmtx;
 
-Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
+Window::Window(const std::string& id, const Bar& bar, const Json::Value& config,
+               std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AAppIconLabel(config, "window", id, "{title}", reap_mtx, reap, 0, true),
+      bar_(bar),
+      m_ipc(IPC::inst()) {
   separateOutputs_ = config["separate-outputs"].asBool();
 
   update();
@@ -220,9 +223,9 @@ void Window::queryActiveWorkspace() {
   std::vector<Json::Value> visibleWindows;
   std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
                        [&](const Json::Value& window) { return !window["hidden"].asBool(); });
-  solo_ = 1 == std::count_if(
-                   visibleWindows.begin(), visibleWindows.end(),
-                   [&](const Json::Value& window) { return !window["floating"].asBool(); });
+  solo_ =
+      1 == std::count_if(visibleWindows.begin(), visibleWindows.end(),
+                         [&](const Json::Value& window) { return !window["floating"].asBool(); });
   allFloating_ = std::ranges::all_of(
       visibleWindows, [&](const Json::Value& window) { return window["floating"].asBool(); });
   fullscreen_ = windowData_.fullscreen;
