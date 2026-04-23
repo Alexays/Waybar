@@ -9,6 +9,7 @@
 #include <regex>
 #include <sstream>
 
+#include "util/command.hpp"
 #include "util/ustring_clen.hpp"
 
 #ifdef HAVE_LANGINFO_1STDAY
@@ -472,6 +473,8 @@ auto waybar::modules::Clock::local_zone() -> const time_zone* {
 auto waybar::modules::Clock::doAction(const std::string& name) -> void {
   if (actionMap_[name]) {
     (this->*actionMap_[name])();
+  } else if (auto key = name.substr(0, name.find(" ")); actionWithArgsMap_[key]) {
+    (this->*actionWithArgsMap_[key])(name);
   } else
     spdlog::error("Clock. Unsupported action \"{0}\"", name);
 }
@@ -498,6 +501,11 @@ void waybar::modules::Clock::tz_down() {
   if (tzSize == 1) return;
   tzCurrIdx_ = (tzCurrIdx_ == 0) ? tzSize - 1 : tzCurrIdx_ - 1;
 }
+void waybar::modules::Clock::action_exec(const std::string& action) {
+  auto cmd = action.substr(strlen("exec "));
+  pid_children_.push_back(util::command::forkExec(cmd));
+}
+
 
 #ifdef HAVE_LANGINFO_1STDAY
 template <auto fn>
