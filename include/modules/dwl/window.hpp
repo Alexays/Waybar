@@ -30,7 +30,11 @@ class Window : public AAppIconLabel, public sigc::trackable {
   std::string title_;
   std::string appid_;
   std::string layout_symbol_;
+  std::string oldAppid_;
+
   uint32_t layout_;
+
+  void setClass(const std::string&, bool enable);
 
   struct zdwl_ipc_output_v2* output_status_;
 };
