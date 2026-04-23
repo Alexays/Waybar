@@ -29,6 +29,11 @@ Addressed by *mpd*
 	default: 5 ++
 	The interval in which the connection to the MPD server is retried
 
+*playing-interval*: ++
+	typeof: integer++
+	default: 1000 ++
+	The interval (in milliseconds) in which the playing state is updated.
+
 *timeout*: ++
 	typeof: integer++
 	default: 30 ++

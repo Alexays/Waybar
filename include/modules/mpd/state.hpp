@@ -194,6 +194,7 @@ class Context {
   bool is_paused() const;
   bool is_stopped() const;
   constexpr std::size_t interval() const;
+  unsigned playing_interval() const;
   void tryConnect() const;
   void checkErrors(mpd_connection*) const;
   void do_update();
