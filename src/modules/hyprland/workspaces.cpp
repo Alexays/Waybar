@@ -665,6 +665,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateIgnoreWorkspacesConfig(config);
   populateFormatWindowSeparatorConfig(config);
   populateWindowRewriteConfig(config);
+  populateMaxWindowsConfig(config);
 
   if (withWindows) {
     populateWorkspaceTaskbarConfig(config);
@@ -744,6 +745,15 @@ auto Workspaces::populateWindowRewriteConfig(const Json::Value& config) -> void 
   m_windowRewriteRules = util::RegexCollection(
       windowRewrite, windowRewriteDefault,
       [this](std::string& window_rule) { return windowRewritePriorityFunction(window_rule); });
+}
+
+auto Workspaces::populateMaxWindowsConfig(const Json::Value& config) -> void {
+  if (config["max-windows"].isInt()) {
+    m_maxWindows = config["max-windows"].asInt();
+    if (m_maxWindows < 0) {
+      m_maxWindows = 0;
+    }
+  }
 }
 
 auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> void {
