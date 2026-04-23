@@ -552,6 +552,7 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           module = group_module.release();
         } else {
           module = factory.makeModule(ref, pos);
+          module->init();
         }
 
         std::shared_ptr<AModule> module_sp(module);
