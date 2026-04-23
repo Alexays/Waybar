@@ -374,6 +374,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
 	When the bar is vertical, it reads as top-to-bottom.
 
+*empty-if-drawer-empty*: ++
+	typeof: bool ++
+	default: false ++
+	Defines whether the group should be assigned the "empty" CSS class when all modules inside the drawer are hidden or missing. If false, the group will not receive the "empty" class as long as the leader module remains visible. This allows users to dynamically style or hide the entire group using CSS when its drawer contents are unavailable.
+
 ```
 "group/power": {
     "orientation": "inherit",
@@ -389,6 +394,19 @@ A group may hide all but one element, showing them only on mouse hover. In order
         "custom/reboot",
     ]
 },
+```
+To hide the power group if it is empty, apply to #power and all its children:
+```
+#power.empty,
+#power.empty * {
+    min-width: 0px;
+    min-height: 0px;
+    padding: 0px;
+    margin: 0px;
+    border: none;
+    font-size: 0px;
+    opacity: 0;
+}
 ```
 
 # SUPPORTED MODULES

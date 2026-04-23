@@ -26,6 +26,7 @@ class Group : public AModule {
   bool is_first_widget = true;
   bool is_drawer = false;
   bool click_to_reveal = false;
+  bool empty_if_drawer_empty = false;
   std::string add_class_to_drawer_children;
   bool handleMouseEnter(GdkEventCrossing* const& ev) override;
   bool handleMouseLeave(GdkEventCrossing* const& ev) override;
