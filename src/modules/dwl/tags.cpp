@@ -26,7 +26,7 @@ static void toggle_visibility(void* data, zdwl_ipc_output_v2* zdwl_output_v2) {
 }
 
 static void active(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t active) {
-  // Intentionally empty
+  static_cast<Tags*>(data)->handle_active_output(zdwl_output_v2, active);
 }
 
 static void set_tag(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t tag, uint32_t state,
@@ -163,7 +163,7 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
     i <<= 1;
   }
 
-  struct wl_output* output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
 
@@ -220,6 +220,18 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
     button.get_style_context()->add_class("urgent");
   } else {
     button.get_style_context()->remove_class("urgent");
+  }
+}
+
+void Tags::handle_active_output(zdwl_ipc_output_v2* zdwl_output_v2, uint32_t active) {
+  if (output_status_ == zdwl_output_v2) {
+    for (size_t i = 0; i < buttons_.size(); ++i) {
+      if (active == 0) {
+        buttons_[i].get_style_context()->remove_class("output");
+      } else {
+        buttons_[i].get_style_context()->add_class("output");
+      }
+    }
   }
 }
 
