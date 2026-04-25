@@ -26,7 +26,7 @@ static void toggle_visibility(void* data, zdwl_ipc_output_v2* zdwl_output_v2) {
 }
 
 static void active(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t active) {
-  // Intentionally empty
+  static_cast<Tags*>(data)->handle_active_output(zdwl_output_v2, active);
 }
 
 static void set_tag(void* data, zdwl_ipc_output_v2* zdwl_output_v2, uint32_t tag, uint32_t state,
@@ -70,17 +70,33 @@ static const zdwl_ipc_output_v2_listener output_status_listener_impl{
 
 static void handle_global(void* data, struct wl_registry* registry, uint32_t name,
                           const char* interface, uint32_t version) {
-  if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
-    static_cast<Tags*>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2*>(
-        (zdwl_ipc_manager_v2*)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
-  }
-  if (std::strcmp(interface, wl_seat_interface.name) == 0) {
-    version = std::min<uint32_t>(version, 1);
-    static_cast<Tags*>(data)->seat_ =
-        static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
-  }
+  
+if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
+  auto* self = static_cast<Tags*>(data);
+
+  if (self->status_manager_) {
+  zdwl_ipc_manager_v2_destroy(self->status_manager_);
+  self->status_manager_ = nullptr;
 }
 
+  self->status_manager_ = static_cast<struct zdwl_ipc_manager_v2*>(
+      wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
+}
+
+if (std::strcmp(interface, wl_seat_interface.name) == 0) {
+  auto* self = static_cast<Tags*>(data);
+
+  if (self->seat_) {
+    wl_seat_destroy(self->seat_);
+    self->seat_ = nullptr;
+  }
+
+  version = std::min<uint32_t>(version, 1);
+
+  self->seat_ = static_cast<struct wl_seat*>(
+      wl_registry_bind(registry, name, &wl_seat_interface, version));
+}
+}
 static void handle_global_remove(void* data, struct wl_registry* registry, uint32_t name) {
   /* Ignore event */
 }
@@ -147,7 +163,7 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
     i <<= 1;
   }
 
-  struct wl_output* output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
+  struct wl_output *output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
   output_status_ = zdwl_ipc_manager_v2_get_output(status_manager_, output);
   zdwl_ipc_output_v2_add_listener(output_status_, &output_status_listener_impl, this);
 
@@ -179,6 +195,7 @@ bool Tags::handle_button_press(GdkEventButton* event_button, uint32_t tag) {
 }
 
 void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint32_t focused) {
+  if (tag >= buttons_.size()) return;
   // First clear all occupied state
   auto& button = buttons_[tag];
   if (clients) {
@@ -203,6 +220,18 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
     button.get_style_context()->add_class("urgent");
   } else {
     button.get_style_context()->remove_class("urgent");
+  }
+}
+
+void Tags::handle_active_output(zdwl_ipc_output_v2* zdwl_output_v2, uint32_t active) {
+  if (output_status_ == zdwl_output_v2) {
+    for (size_t i = 0; i < buttons_.size(); ++i) {
+      if (active == 0) {
+        buttons_[i].get_style_context()->remove_class("output");
+      } else {
+        buttons_[i].get_style_context()->add_class("output");
+      }
+    }
   }
 }
 

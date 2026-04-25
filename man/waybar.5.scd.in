@@ -36,7 +36,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *expand-right* ++
 	typeof: bool ++
 	default: false ++
-	Enables the modules-left to consume all left over space dynamically.
+	Enables the modules-right to consume all left over space dynamically.
 
 *layer* ++
 	typeof: string ++
@@ -362,6 +362,11 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	typeof: bool ++
 	default: false ++
 	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
+
+*start-expanded*: ++
+	typeof: bool ++
+	default: false ++
+	Defines whether the drawer should initialize in an expanded state.
 
 *transition-left-to-right*: ++
 	typeof: bool ++

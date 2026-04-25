@@ -96,7 +96,7 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
 
 void Workspace::initializeWindowMap(const Json::Value& clients_data) {
   m_windowMap.clear();
-  for (auto client : clients_data) {
+  for (const auto& client : clients_data) {
     if (client["workspace"]["id"].asInt() == id()) {
       insertWindow({client});
     }
@@ -300,7 +300,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    window_box->set_tooltip_text(window_repr.window_title);
+    window_box->set_tooltip_markup(window_repr.window_title);
     window_box->get_style_context()->add_class("taskbar-window");
     if (window_repr.isActive) {
       window_box->get_style_context()->add_class("active");

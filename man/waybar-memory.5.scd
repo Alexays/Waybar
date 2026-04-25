@@ -102,23 +102,29 @@ Addressed by *memory*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*unit*: ++
+	typeof: string ++
+	default: GiB ++
+	Used to specify unit for total, swapTotal, used, swapUsed, avail, swapAvail,
+	and swapState. Accepts B, kB, kiB, MB, MiB, GB, GiB, TB, and TiB.
+
 # FORMAT REPLACEMENTS
 
 *{percentage}*: Percentage of memory in use.
 
 *{swapPercentage}*: Percentage of swap in use.
 
-*{total}*: Amount of total memory available in GiB.
+*{total}*: Amount of total memory available. Defaults to GiB.
 
-*{swapTotal}*: Amount of total swap available in GiB.
+*{swapTotal}*: Amount of total swap available. Defaults to GiB.
 
-*{used}*: Amount of used memory in GiB.
+*{used}*: Amount of used memory. Defaults to GiB.
 
-*{swapUsed}*: Amount of used swap in GiB.
+*{swapUsed}*: Amount of used swap. Defaults to GiB.
 
-*{avail}*: Amount of available memory in GiB.
+*{avail}*: Amount of available memory. Defaults to GiB.
 
-*{swapAvail}*: Amount of available swap in GiB.
+*{swapAvail}*: Amount of available swap. Defaults to GiB.
 
 *{swapState}*: Signals if swap is activated or not
 

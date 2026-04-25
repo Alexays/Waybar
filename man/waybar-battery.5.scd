@@ -182,6 +182,7 @@ Every entry in the *events* object consists of a *<event-name>* (typeof: *string
 
 - *on-<status>-<state>*
 - *on-<status>-<capacity>*
+- *on-<status>*
 
 Where:
 
@@ -203,7 +204,9 @@ Where:
 	"events": {
 		"on-discharging-warning": "notify-send -u normal 'Low Battery'",
 		"on-discharging-critical": "notify-send -u critical 'Very Low Battery'",
-		"on-charging-100": "notify-send -u normal 'Battery Full!'"
+		"on-charging-100": "notify-send -u normal 'Battery Full!'",
+		"on-discharging": "notify-send -u normal 'Power Switch' Discharging",
+		"on-charging": "notify-send -u normal 'Power Switch' Charging'"
 	},
 	"format": "{capacity}% {icon}",
 	"format-icons": ["", "", "", "", ""],

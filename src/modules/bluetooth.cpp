@@ -111,13 +111,16 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
     findConnectedDevices(cur_controller_->path, connected_devices_);
   }
 
-  g_signal_connect(manager_.get(), "object-added", G_CALLBACK(onObjectAdded), this);
-  g_signal_connect(manager_.get(), "object-removed", G_CALLBACK(onObjectRemoved), this);
-  g_signal_connect(manager_.get(), "interface-proxy-properties-changed",
-                   G_CALLBACK(onInterfaceProxyPropertiesChanged), this);
-  g_signal_connect(manager_.get(), "interface-added", G_CALLBACK(onInterfaceAddedOrRemoved), this);
-  g_signal_connect(manager_.get(), "interface-removed", G_CALLBACK(onInterfaceAddedOrRemoved),
-                   this);
+  if (manager_) {
+    g_signal_connect(manager_.get(), "object-added", G_CALLBACK(onObjectAdded), this);
+    g_signal_connect(manager_.get(), "object-removed", G_CALLBACK(onObjectRemoved), this);
+    g_signal_connect(manager_.get(), "interface-proxy-properties-changed",
+                     G_CALLBACK(onInterfaceProxyPropertiesChanged), this);
+    g_signal_connect(manager_.get(), "interface-added", G_CALLBACK(onInterfaceAddedOrRemoved),
+                     this);
+    g_signal_connect(manager_.get(), "interface-removed", G_CALLBACK(onInterfaceAddedOrRemoved),
+                     this);
+  }
 
 #ifdef WANT_RFKILL
   rfkill_.on_update.connect(sigc::hide(sigc::mem_fun(*this, &Bluetooth::update)));
@@ -446,6 +449,10 @@ auto waybar::modules::Bluetooth::getControllerProperties(GDBusObject* object,
 auto waybar::modules::Bluetooth::findCurController() -> std::optional<ControllerInfo> {
   std::optional<ControllerInfo> controller_info;
 
+  if (!manager_) {
+    return controller_info;
+  }
+
   GList* objects = g_dbus_object_manager_get_objects(manager_.get());
   for (GList* l = objects; l != NULL; l = l->next) {
     GDBusObject* object = G_DBUS_OBJECT(l->data);
@@ -465,6 +472,9 @@ auto waybar::modules::Bluetooth::findCurController() -> std::optional<Controller
 auto waybar::modules::Bluetooth::findConnectedDevices(const std::string& cur_controller_path,
                                                       std::vector<DeviceInfo>& connected_devices)
     -> void {
+  if (!manager_) {
+    return;
+  }
   GList* objects = g_dbus_object_manager_get_objects(manager_.get());
   for (GList* l = objects; l != NULL; l = l->next) {
     GDBusObject* object = G_DBUS_OBJECT(l->data);

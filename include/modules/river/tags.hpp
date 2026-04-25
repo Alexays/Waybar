@@ -32,12 +32,12 @@ class Tags : public waybar::AModule {
   struct wl_seat* seat_;
 
  private:
-  const waybar::Bar &bar_;
+  const waybar::Bar& bar_;
   struct wl_output *output_;          // stores the output this module belongs to
   Gtk::Box box_;
   std::vector<Gtk::Button> buttons_;
-  struct zriver_output_status_v1 *output_status_;
-  struct zriver_seat_status_v1 *seat_status_;
+  struct zriver_output_status_v1* output_status_;
+  struct zriver_seat_status_v1* seat_status_;
 };
 
 } /* namespace waybar::modules::river */

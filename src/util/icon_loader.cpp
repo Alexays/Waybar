@@ -5,8 +5,11 @@
 std::vector<std::string> IconLoader::search_prefix() {
   std::vector<std::string> prefixes = {""};
 
-  std::string home_dir = std::getenv("HOME");
-  prefixes.push_back(home_dir + "/.local/share/");
+  const char* home_env = std::getenv("HOME");
+  std::string home_dir = home_env ? home_env : "";
+  if (!home_dir.empty()) {
+    prefixes.push_back(home_dir + "/.local/share/");
+  }
 
   auto xdg_data_dirs = std::getenv("XDG_DATA_DIRS");
   if (!xdg_data_dirs) {
@@ -139,7 +142,7 @@ bool IconLoader::image_load_icon(Gtk::Image& image, const Glib::RefPtr<Gtk::Icon
   }
 
   if (pixbuf) {
-    if (pixbuf->get_width() != scaled_icon_size) {
+    if (pixbuf->get_width() != scaled_icon_size && pixbuf->get_height() > 0) {
       int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
       pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
     }

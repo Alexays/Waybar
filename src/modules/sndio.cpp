@@ -102,7 +102,9 @@ Sndio::~Sndio() { sioctl_close(hdl_); }
 
 auto Sndio::update() -> void {
   auto format = format_;
-  unsigned int vol = 100. * static_cast<double>(volume_) / static_cast<double>(maxval_);
+  unsigned int vol = (maxval_ > 0) ? static_cast<unsigned int>(100. * static_cast<double>(volume_) /
+                                                               static_cast<double>(maxval_))
+                                   : 0;
 
   if (volume_ == 0) {
     label_.get_style_context()->add_class("muted");

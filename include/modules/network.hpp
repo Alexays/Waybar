@@ -70,6 +70,9 @@ class Network : public ALabel {
 
   unsigned long long bandwidth_down_total_{0};
   unsigned long long bandwidth_up_total_{0};
+  unsigned long long bandwidth_down_prev_{0};
+  unsigned long long bandwidth_up_prev_{0};
+  std::chrono::steady_clock::time_point bandwidth_last_sample_time_;
 
   std::string state_;
   std::string essid_;

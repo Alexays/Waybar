@@ -60,7 +60,7 @@ auto Submap::update() -> void {
   } else {
     label_.set_markup(fmt::format(fmt::runtime(format_), submap_));
     if (tooltipEnabled()) {
-      label_.set_tooltip_text(submap_);
+      label_.set_tooltip_markup(submap_);
     }
     event_box_.show();
   }
@@ -75,7 +75,12 @@ void Submap::onEvent(const std::string& ev) {
     return;
   }
 
-  auto submapName = ev.substr(ev.find_first_of('>') + 2);
+  const auto separator = ev.find(">>");
+  if (separator == std::string::npos) {
+    spdlog::warn("hyprland submap received malformed event: {}", ev);
+    return;
+  }
+  auto submapName = ev.substr(separator + 2);
 
   submap_ = submapName;
 

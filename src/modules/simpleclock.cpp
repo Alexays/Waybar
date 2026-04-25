@@ -25,9 +25,9 @@ auto waybar::modules::Clock::update() -> void {
     if (config_["tooltip-format"].isString()) {
       auto tooltip_format = config_["tooltip-format"].asString();
       auto tooltip_text = fmt::format(fmt::runtime(tooltip_format), localtime);
-      label_.set_tooltip_text(tooltip_text);
+      label_.set_tooltip_markup(tooltip_text);
     } else {
-      label_.set_tooltip_text(text);
+      label_.set_tooltip_markup(text);
     }
   }
   // Call parent update

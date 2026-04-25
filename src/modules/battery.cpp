@@ -126,7 +126,14 @@ void waybar::modules::Battery::refreshBatteries() {
           // Ignore non-system power supplies unless explicitly requested
           if (!bat_defined && fs::exists(node.path() / "scope")) {
             std::string scope;
-            std::ifstream(node.path() / "scope") >> scope;
+            try {
+              // for hotplug-in device, access it is always unstable because you may remove the
+              // device anytime so just allow failure happen and do nothing
+              std::ifstream(node.path() / "scope") >> scope;
+            } catch (const std::ifstream::failure& e) {
+              scope.clear();
+              continue;
+            }
             if (g_ascii_strcasecmp(scope.data(), "device") == 0) {
               continue;
             }
@@ -139,7 +146,9 @@ void waybar::modules::Battery::refreshBatteries() {
             auto event_path = (node.path() / "uevent");
             auto wd = inotify_add_watch(battery_watch_fd_, event_path.c_str(), IN_ACCESS);
             if (wd < 0) {
-              throw std::runtime_error("Could not watch events for " + node.path().string());
+              spdlog::warn("Could not watch events for {} (device may have been removed)",
+                           node.path().string());
+              continue;
             }
             batteries_[node.path()] = wd;
           }
@@ -686,7 +695,7 @@ auto waybar::modules::Battery::update() -> void {
     status = getAdapterStatus(capacity);
   }
   auto status_pretty = status;
-  puts(status.c_str());
+
   // Transform to lowercase  and replace space with dash
   std::ranges::transform(status.begin(), status.end(), status.begin(),
                          [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
@@ -790,16 +799,19 @@ void waybar::modules::Battery::processEvents(std::string& state, std::string& st
   if (!events.isObject() || events.empty()) {
     return;
   }
-  std::string event_name = fmt::format("on-{}-{}", status == "discharging" ? status : "charging",
-                                       state.empty() ? std::to_string(capacity) : state);
+  auto exec = [](Json::Value const& event) {
+    if (!event.isString()) return;
+    if (auto command = event.asString(); !command.empty()) {
+      util::command::exec(command, "");
+    }
+  };
+  std::string status_name = status == "discharging" ? "on-discharging" : "on-charging";
+  std::string event_name = status_name + '-' + (state.empty() ? std::to_string(capacity) : state);
   if (last_event_ != event_name) {
     spdlog::debug("battery: triggering event {}", event_name);
-    if (events[event_name].isString()) {
-      std::string exec = events[event_name].asString();
-      // Execute the command if it is not empty
-      if (!exec.empty()) {
-        util::command::exec(exec, "");
-      }
+    exec(events[event_name]);
+    if (!last_event_.empty() && last_event_[3] != event_name[3]) {
+      exec(events[status_name]);
     }
     last_event_ = event_name;
   }
