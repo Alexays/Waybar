@@ -296,63 +296,73 @@ waybar::modules::Battery::getInfos() {
       int32_t _current_now_int = 0;
       bool current_now_exists = false;
       if (fs::exists(bat / "current_now")) {
-        current_now_exists = true;
-        std::ifstream(bat / "current_now") >> _current_now_int;
+        if (std::ifstream(bat / "current_now") >> _current_now_int) {
+          current_now_exists = true;
+        }
       } else if (fs::exists(bat / "current_avg")) {
-        current_now_exists = true;
-        std::ifstream(bat / "current_avg") >> _current_now_int;
+        if (std::ifstream(bat / "current_avg") >> _current_now_int) {
+          current_now_exists = true;
+        }
       }
       // Documentation ABI allows a negative value when discharging, positive
       // value when charging.
       current_now = std::abs(_current_now_int);
 
       if (fs::exists(bat / "time_to_empty_now")) {
-        time_to_empty_now_exists = true;
-        std::ifstream(bat / "time_to_empty_now") >> time_to_empty_now;
+        if (std::ifstream(bat / "time_to_empty_now") >> time_to_empty_now) {
+          time_to_empty_now_exists = true;
+        }
       }
 
       if (fs::exists(bat / "time_to_full_now")) {
-        time_to_full_now_exists = true;
-        std::ifstream(bat / "time_to_full_now") >> time_to_full_now;
+        if (std::ifstream(bat / "time_to_full_now") >> time_to_full_now) {
+          time_to_full_now_exists = true;
+        }
       }
 
       uint32_t voltage_now = 0;
       bool voltage_now_exists = false;
       if (fs::exists(bat / "voltage_now")) {
-        voltage_now_exists = true;
-        std::ifstream(bat / "voltage_now") >> voltage_now;
+        if (std::ifstream(bat / "voltage_now") >> voltage_now) {
+          voltage_now_exists = true;
+        }
       } else if (fs::exists(bat / "voltage_avg")) {
-        voltage_now_exists = true;
-        std::ifstream(bat / "voltage_avg") >> voltage_now;
+        if (std::ifstream(bat / "voltage_avg") >> voltage_now) {
+          voltage_now_exists = true;
+        }
       }
 
       uint32_t charge_full = 0;
       bool charge_full_exists = false;
       if (fs::exists(bat / "charge_full")) {
-        charge_full_exists = true;
-        std::ifstream(bat / "charge_full") >> charge_full;
+        if (std::ifstream(bat / "charge_full") >> charge_full) {
+          charge_full_exists = true;
+        }
       }
 
       uint32_t charge_full_design = 0;
       bool charge_full_design_exists = false;
       if (fs::exists(bat / "charge_full_design")) {
-        charge_full_design_exists = true;
-        std::ifstream(bat / "charge_full_design") >> charge_full_design;
+        if (std::ifstream(bat / "charge_full_design") >> charge_full_design) {
+          charge_full_design_exists = true;
+        }
       }
 
       uint32_t charge_now = 0;
       bool charge_now_exists = false;
       if (fs::exists(bat / "charge_now")) {
-        charge_now_exists = true;
-        std::ifstream(bat / "charge_now") >> charge_now;
+        if (std::ifstream(bat / "charge_now") >> charge_now) {
+          charge_now_exists = true;
+        }
       }
 
       uint32_t power_now = 0;
       int32_t _power_now_int = 0;
       bool power_now_exists = false;
       if (fs::exists(bat / "power_now")) {
-        power_now_exists = true;
-        std::ifstream(bat / "power_now") >> _power_now_int;
+        if (std::ifstream(bat / "power_now") >> _power_now_int) {
+          power_now_exists = true;
+        }
       }
       // Some drivers (example: Qualcomm) exposes use a negative value when
       // discharging, positive value when charging.
@@ -361,22 +371,25 @@ waybar::modules::Battery::getInfos() {
       uint32_t energy_now = 0;
       bool energy_now_exists = false;
       if (fs::exists(bat / "energy_now")) {
-        energy_now_exists = true;
-        std::ifstream(bat / "energy_now") >> energy_now;
+        if (std::ifstream(bat / "energy_now") >> energy_now) {
+          energy_now_exists = true;
+        }
       }
 
       uint32_t energy_full = 0;
       bool energy_full_exists = false;
       if (fs::exists(bat / "energy_full")) {
-        energy_full_exists = true;
-        std::ifstream(bat / "energy_full") >> energy_full;
+        if (std::ifstream(bat / "energy_full") >> energy_full) {
+          energy_full_exists = true;
+        }
       }
 
       uint32_t energy_full_design = 0;
       bool energy_full_design_exists = false;
       if (fs::exists(bat / "energy_full_design")) {
-        energy_full_design_exists = true;
-        std::ifstream(bat / "energy_full_design") >> energy_full_design;
+        if (std::ifstream(bat / "energy_full_design") >> energy_full_design) {
+          energy_full_design_exists = true;
+        }
       }
 
       uint16_t cycleCount = 0;
@@ -412,8 +425,9 @@ waybar::modules::Battery::getInfos() {
         capacity_exists = true;
         capacity = 100 * (uint64_t)energy_now / (uint64_t)energy_full;
       } else if (fs::exists(bat / "capacity")) {
-        capacity_exists = true;
-        std::ifstream(bat / "capacity") >> capacity;
+        if (std::ifstream(bat / "capacity") >> capacity) {
+          capacity_exists = true;
+        }
       }
 
       if (!voltage_now_exists) {
@@ -593,11 +607,12 @@ waybar::modules::Battery::getInfos() {
 
     float calculated_capacity{0.0f};
     if (total_capacity_exists) {
-      if (total_capacity > 0.0f)
+      if (total_capacity > 0.0f) {
         calculated_capacity = (float)total_capacity / batteries_.size();
-      else if (total_energy_full_exists && total_energy_exists) {
-        if (total_energy_full > 0.0f)
+      } else if (total_energy_full_exists && total_energy_exists) {
+        if (total_energy_full > 0.0f) {
           calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
+        }
       }
     }
 
