@@ -42,7 +42,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
         // True if there is any non-release type event
         return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
-               config[eventEntry.second].isString();
+               (config[eventEntry.second].isString() || config[eventEntry.second].isBool());
       }) != eventMap_.cend();
 
   if (enable_click || hasUserEvents) {
