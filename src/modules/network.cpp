@@ -105,6 +105,7 @@ waybar::modules::Network::Network(const std::string& id, const Json::Value& conf
     bandwidth_down_total_ = 0;
     bandwidth_up_total_ = 0;
   }
+  bandwidth_last_sample_time_ = std::chrono::steady_clock::now();
 
   if (!config_["interface"].isString()) {
     // "interface" isn't configured, then try to guess the external
@@ -277,19 +278,41 @@ const std::string waybar::modules::Network::getNetworkState() const {
 auto waybar::modules::Network::update() -> void {
   std::lock_guard<std::mutex> lock(mutex_);
   std::string tooltip_format;
+  auto now = std::chrono::steady_clock::now();
+  auto elapsed_seconds = std::chrono::duration<double>(now - bandwidth_last_sample_time_).count();
 
-  auto bandwidth = readBandwidthUsage();
   auto bandwidth_down = 0ull;
   auto bandwidth_up = 0ull;
-  if (bandwidth.has_value()) {
-    auto down_octets = (*bandwidth).first;
-    auto up_octets = (*bandwidth).second;
 
-    bandwidth_down = down_octets - bandwidth_down_total_;
-    bandwidth_down_total_ = down_octets;
+  // Only recalculate bandwidth when enough time has elapsed since the last
+  // sample.  Event-driven dp.emit() calls (link/addr/route changes) can
+  // trigger update() between timer intervals, which would consume the byte
+  // delta prematurely and show near-zero bandwidth.
+  auto min_elapsed = std::chrono::duration<double>(interval_).count() * 0.5;
+  if (elapsed_seconds >= min_elapsed) {
+    if (elapsed_seconds <= 0.0) {
+      elapsed_seconds = std::chrono::duration<double>(interval_).count();
+    }
+    bandwidth_last_sample_time_ = now;
 
-    bandwidth_up = up_octets - bandwidth_up_total_;
-    bandwidth_up_total_ = up_octets;
+    auto bandwidth = readBandwidthUsage();
+    if (bandwidth.has_value()) {
+      auto down_octets = (*bandwidth).first;
+      auto up_octets = (*bandwidth).second;
+
+      bandwidth_down = down_octets - bandwidth_down_total_;
+      bandwidth_down_total_ = down_octets;
+
+      bandwidth_up = up_octets - bandwidth_up_total_;
+      bandwidth_up_total_ = up_octets;
+
+      bandwidth_down_prev_ = bandwidth_down;
+      bandwidth_up_prev_ = bandwidth_up;
+    }
+  } else {
+    bandwidth_down = bandwidth_down_prev_;
+    bandwidth_up = bandwidth_up_prev_;
+    elapsed_seconds = std::chrono::duration<double>(interval_).count();
   }
 
   if (!alt_) {
@@ -335,23 +358,18 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
       fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
       fmt::arg("icon", getIcon(signal_strength_, state_)),
-      fmt::arg("bandwidthDownBits",
-               pow_format(bandwidth_down * 8ull / (interval_.count() / 1000.0), "b/s")),
-      fmt::arg("bandwidthUpBits",
-               pow_format(bandwidth_up * 8ull / (interval_.count() / 1000.0), "b/s")),
-      fmt::arg(
-          "bandwidthTotalBits",
-          pow_format((bandwidth_up + bandwidth_down) * 8ull / (interval_.count() / 1000.0), "b/s")),
-      fmt::arg("bandwidthDownOctets",
-               pow_format(bandwidth_down / (interval_.count() / 1000.0), "o/s")),
-      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / (interval_.count() / 1000.0), "o/s")),
+      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")),
+      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")),
+      fmt::arg("bandwidthTotalBits",
+               pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")),
+      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")),
+      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")),
       fmt::arg("bandwidthTotalOctets",
-               pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "o/s")),
-      fmt::arg("bandwidthDownBytes",
-               pow_format(bandwidth_down / (interval_.count() / 1000.0), "B/s")),
-      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / (interval_.count() / 1000.0), "B/s")),
+               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
+      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
+      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
       fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")));
+               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
   if (text.compare(label_.get_label()) != 0) {
     label_.set_markup(text);
     if (text.empty()) {
@@ -373,27 +391,18 @@ auto waybar::modules::Network::update() -> void {
           fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
           fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
           fmt::arg("icon", getIcon(signal_strength_, state_)),
-          fmt::arg("bandwidthDownBits",
-                   pow_format(bandwidth_down * 8ull / (interval_.count() / 1000.0), "b/s")),
-          fmt::arg("bandwidthUpBits",
-                   pow_format(bandwidth_up * 8ull / (interval_.count() / 1000.0), "b/s")),
+          fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")),
+          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")),
           fmt::arg("bandwidthTotalBits",
-                   pow_format((bandwidth_up + bandwidth_down) * 8ull / (interval_.count() / 1000.0),
-                              "b/s")),
-          fmt::arg("bandwidthDownOctets",
-                   pow_format(bandwidth_down / (interval_.count() / 1000.0), "o/s")),
-          fmt::arg("bandwidthUpOctets",
-                   pow_format(bandwidth_up / (interval_.count() / 1000.0), "o/s")),
-          fmt::arg(
-              "bandwidthTotalOctets",
-              pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "o/s")),
-          fmt::arg("bandwidthDownBytes",
-                   pow_format(bandwidth_down / (interval_.count() / 1000.0), "B/s")),
-          fmt::arg("bandwidthUpBytes",
-                   pow_format(bandwidth_up / (interval_.count() / 1000.0), "B/s")),
-          fmt::arg(
-              "bandwidthTotalBytes",
-              pow_format((bandwidth_up + bandwidth_down) / (interval_.count() / 1000.0), "B/s")));
+                   pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")),
+          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")),
+          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")),
+          fmt::arg("bandwidthTotalOctets",
+                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
+          fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
+          fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
+          fmt::arg("bandwidthTotalBytes",
+                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
       if (label_.get_tooltip_text() != tooltip_text) {
         label_.set_tooltip_markup(tooltip_text);
       }
@@ -684,12 +693,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                               changed_cidr);
               }
             } else {
-              net->ipaddr_.clear();
-              net->ipaddr6_.clear();
-              net->cidr_ = 0;
-              net->cidr6_ = 0;
-              net->netmask_.clear();
-              net->netmask6_.clear();
+              if (ifa->ifa_family == AF_INET) {
+                net->ipaddr_.clear();
+                net->cidr_ = 0;
+                net->netmask_.clear();
+              } else if (ifa->ifa_family == AF_INET6) {
+                net->ipaddr6_.clear();
+                net->cidr6_ = 0;
+                net->netmask6_.clear();
+              }
               spdlog::debug("network: {} addr deleted {}/{}", net->ifname_,
                             inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)),
                             ifa->ifa_prefixlen);
@@ -744,16 +756,20 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
             /* The destination address.
              * Should be either missing, or maybe all 0s.  Accept both.
              */
-            const uint32_t nr_zeroes = (family == AF_INET) ? 4 : 16;
-            unsigned char c = 0;
-            size_t dstlen = RTA_PAYLOAD(attr);
-            if (dstlen != nr_zeroes) {
-              break;
+            auto* dest = (const unsigned char*)RTA_DATA(attr);
+            size_t dest_size = RTA_PAYLOAD(attr);
+            for (size_t i = 0; i < dest_size; ++i) {
+              if (dest[i] != 0) {
+                has_destination = true;
+                break;
+              }
             }
-            for (uint32_t i = 0; i < dstlen; i += 1) {
-              c |= *((unsigned char*)RTA_DATA(attr) + i);
+
+            if (rtm->rtm_dst_len != 0) {
+              // We have found a destination like 0.0.0.0/24, this is not a
+              // default gateway route.
+              has_destination = true;
             }
-            has_destination = (c == 0);
             break;
           }
           case RTA_OIF:
