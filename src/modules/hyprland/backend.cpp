@@ -13,6 +13,7 @@
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
+#include <optional>
 #include <string>
 
 #include "util/scoped_fd.hpp"
@@ -20,6 +21,7 @@
 namespace waybar::modules::hyprland {
 
 std::filesystem::path IPC::socketFolder_;
+std::optional<bool> IPC::s_luaProtocolDetected_;
 
 std::filesystem::path IPC::getSocketFolder(const char* instanceSig) {
   static std::mutex folderMutex;
@@ -288,6 +290,71 @@ Json::Value IPC::getSocket1JsonReply(const std::string& rq) {
   }
 
   return parser_.parse(reply);
+}
+
+bool IPC::isLuaProtocol() {
+  if (s_luaProtocolDetected_.has_value()) {
+    return *s_luaProtocolDetected_;
+  }
+
+  // Probe: send a harmless old-style dispatch and check the error.
+  // In Lua-based Hyprland (>= 0.54) the error contains "hl.dispatch".
+  // In older versions it returns "ok" or a different error.
+  auto reply = getSocket1Reply("dispatch workspace __waybar_probe__");
+  bool luaProto = reply.find("hl.dispatch") != std::string::npos;
+
+  if (luaProto) {
+    spdlog::info("Hyprland IPC: detected Lua-based dispatch protocol (Hyprland >= 0.54)");
+  } else {
+    spdlog::info("Hyprland IPC: detected legacy dispatch protocol");
+  }
+
+  s_luaProtocolDetected_ = luaProto;
+  return luaProto;
+}
+
+std::string IPC::buildLuaDispatch(const std::string& dispatcher, const std::string& arg) {
+  // Map old-style dispatchers to the new Lua hl.dsp API.
+  //
+  // Old format:  dispatch workspace 1
+  // New format:  /dispatch hl.dsp.focus({ workspace = "1" })
+  //
+  // Old format:  dispatch focusworkspaceoncurrentmonitor 2
+  // New format:  /dispatch hl.dsp.focus({ workspace = "2", monitor = "current" })
+  //
+  // Old format:  dispatch togglespecialworkspace name
+  // New format:  /dispatch hl.dsp.workspace.toggle_special("name")
+
+  if (dispatcher == "workspace") {
+    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\" })";
+  }
+  if (dispatcher == "focusworkspaceoncurrentmonitor") {
+    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\", monitor = \"current\" })";
+  }
+  if (dispatcher == "togglespecialworkspace") {
+    if (arg.empty()) {
+      return "/dispatch hl.dsp.workspace.toggle_special()";
+    }
+    return "/dispatch hl.dsp.workspace.toggle_special(\"" + arg + "\")";
+  }
+
+  // Fallback for any other dispatcher: try the old format wrapped in dispatch().
+  // This may not work for all dispatchers, but it's a reasonable default.
+  spdlog::warn("Hyprland IPC: unknown dispatcher '{}' in Lua mode, attempting generic format",
+               dispatcher);
+  return "/dispatch hl.dsp." + dispatcher + "(\"" + arg + "\")";
+}
+
+std::string IPC::dispatch(const std::string& dispatcher, const std::string& arg) {
+  if (isLuaProtocol()) {
+    return getSocket1Reply(buildLuaDispatch(dispatcher, arg));
+  }
+  // Legacy format: "dispatch <dispatcher> <arg>"
+  std::string cmd = "dispatch " + dispatcher;
+  if (!arg.empty()) {
+    cmd += " " + arg;
+  }
+  return getSocket1Reply(cmd);
 }
 
 }  // namespace waybar::modules::hyprland

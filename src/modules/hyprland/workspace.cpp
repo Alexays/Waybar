@@ -71,20 +71,20 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
     try {
       if (id() > 0) {  // normal
         if (m_workspaceManager.moveToMonitor()) {
-          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
+          IPC::dispatch("focusworkspaceoncurrentmonitor", std::to_string(id()));
         } else {
-          m_ipc.getSocket1Reply("dispatch workspace " + std::to_string(id()));
+          IPC::dispatch("workspace", std::to_string(id()));
         }
       } else if (!isSpecial()) {  // named (this includes persistent)
         if (m_workspaceManager.moveToMonitor()) {
-          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
+          IPC::dispatch("focusworkspaceoncurrentmonitor", "name:" + name());
         } else {
-          m_ipc.getSocket1Reply("dispatch workspace name:" + name());
+          IPC::dispatch("workspace", "name:" + name());
         }
       } else if (id() != -99) {  // named special
-        m_ipc.getSocket1Reply("dispatch togglespecialworkspace " + name());
+        IPC::dispatch("togglespecialworkspace", name());
       } else {  // special
-        m_ipc.getSocket1Reply("dispatch togglespecialworkspace");
+        IPC::dispatch("togglespecialworkspace", "");
       }
       return true;
     } catch (const std::exception& e) {
