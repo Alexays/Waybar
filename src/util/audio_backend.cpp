@@ -99,15 +99,17 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
                            nullptr, nullptr);
       break;
     case PA_CONTEXT_FAILED:
-      // When pulseaudio server restarts, the connection is "failed". Try to reconnect.
-      // pa_threaded_mainloop_lock is already acquired in callback threads.
-      // So there is no need to lock it again.
-      if (backend->context_ != nullptr) {
-        pa_context_disconnect(backend->context_);
-        pa_context_unref(backend->context_);
-        backend->context_ = nullptr;
+      if (pa_context_errno(c) != PA_ERR_CONNECTIONREFUSED) {
+        // When pulseaudio server restarts, the connection is "failed". Try to reconnect.
+        // pa_threaded_mainloop_lock is already acquired in callback threads.
+        // So there is no need to lock it again.
+        if (backend->context_ != nullptr) {
+          pa_context_disconnect(backend->context_);
+          pa_context_unref(backend->context_);
+          backend->context_ = nullptr;
+        }
+        backend->connectContext();
       }
-      backend->connectContext();
       break;
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
