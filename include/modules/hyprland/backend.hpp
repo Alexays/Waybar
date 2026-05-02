@@ -40,21 +40,21 @@ class IPC {
   /// (legacy text or Lua-based) depending on the running Hyprland version.
   static std::string dispatch(const std::string& dispatcher, const std::string& arg);
 
+  /// Build a Lua-format dispatch command string.
+  static std::string buildLuaDispatch(const std::string& dispatcher, const std::string& arg);
+
  protected:
   static std::filesystem::path socketFolder_;
-
- private:
-  void socketListener();
-  void parseIPC(const std::string&);
 
   /// Detect whether the running Hyprland uses the Lua-based IPC protocol.
   /// Returns true for Hyprland >= 0.54 (Lua config), false for older versions.
   static bool isLuaProtocol();
 
-  /// Build a Lua-format dispatch command string.
-  static std::string buildLuaDispatch(const std::string& dispatcher, const std::string& arg);
-
   static std::optional<bool> s_luaProtocolDetected_;  // cached detection result
+
+ private:
+  void socketListener();
+  void parseIPC(const std::string&);
 
   std::thread ipcThread_;
   std::mutex callbackMutex_;

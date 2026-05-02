@@ -15,6 +15,10 @@ namespace {
 class IPCTestHelper : public hyprland::IPC {
  public:
   static void resetSocketFolder() { socketFolder_.clear(); }
+  static void resetLuaProtocolDetection() { s_luaProtocolDetected_.reset(); }
+  static void setLuaProtocolDetected(bool value) { s_luaProtocolDetected_ = value; }
+  using hyprland::IPC::buildLuaDispatch;
+  using hyprland::IPC::isLuaProtocol;
 };
 
 std::size_t countOpenFds() {
@@ -133,3 +137,78 @@ TEST_CASE("getSocket1Reply failure paths do not leak fds", "[getSocket1Reply][fd
   REQUIRE(after_connect_failures == baseline);
 }
 #endif
+
+// --- Tests for new Lua IPC dispatch functions ---
+
+TEST_CASE("buildLuaDispatch workspace", "[buildLuaDispatch]") {
+  SECTION("numeric workspace") {
+    auto result = IPCTestHelper::buildLuaDispatch("workspace", "1");
+    REQUIRE(result == "/dispatch hl.dsp.focus({ workspace = \"1\" })");
+  }
+  SECTION("named workspace") {
+    auto result = IPCTestHelper::buildLuaDispatch("workspace", "name:term");
+    REQUIRE(result == "/dispatch hl.dsp.focus({ workspace = \"name:term\" })");
+  }
+  SECTION("relative workspace") {
+    auto result = IPCTestHelper::buildLuaDispatch("workspace", "e+1");
+    REQUIRE(result == "/dispatch hl.dsp.focus({ workspace = \"e+1\" })");
+  }
+}
+
+TEST_CASE("buildLuaDispatch focusworkspaceoncurrentmonitor", "[buildLuaDispatch]") {
+  auto result =
+      IPCTestHelper::buildLuaDispatch("focusworkspaceoncurrentmonitor", "3");
+  REQUIRE(
+      result ==
+      "/dispatch hl.dsp.focus({ workspace = \"3\", monitor = \"current\" })");
+}
+
+TEST_CASE("buildLuaDispatch togglespecialworkspace", "[buildLuaDispatch]") {
+  SECTION("with name") {
+    auto result =
+        IPCTestHelper::buildLuaDispatch("togglespecialworkspace", "scratchpad");
+    REQUIRE(result ==
+            "/dispatch hl.dsp.workspace.toggle_special(\"scratchpad\")");
+  }
+  SECTION("empty arg") {
+    auto result =
+        IPCTestHelper::buildLuaDispatch("togglespecialworkspace", "");
+    REQUIRE(result == "/dispatch hl.dsp.workspace.toggle_special()");
+  }
+}
+
+TEST_CASE("buildLuaDispatch unknown dispatcher fallback", "[buildLuaDispatch]") {
+  auto result =
+      IPCTestHelper::buildLuaDispatch("unknown_dispatcher", "some_arg");
+  REQUIRE(result ==
+          "/dispatch hl.dsp.unknown_dispatcher(\"some_arg\")");
+}
+
+TEST_CASE("dispatch throws when Hyprland is not running", "[dispatch]") {
+  unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
+  IPCTestHelper::resetSocketFolder();
+  IPCTestHelper::resetLuaProtocolDetection();
+
+  CHECK_THROWS(hyprland::IPC::dispatch("workspace", "1"));
+}
+
+TEST_CASE("isLuaProtocol uses cached value and avoids socket call",
+          "[isLuaProtocol]") {
+  unsetenv("HYPRLAND_INSTANCE_SIGNATURE");
+  IPCTestHelper::resetSocketFolder();
+
+  SECTION("cached false") {
+    IPCTestHelper::setLuaProtocolDetected(false);
+    // Should return false without throwing (no socket call needed)
+    REQUIRE(IPCTestHelper::isLuaProtocol() == false);
+  }
+
+  SECTION("cached true") {
+    IPCTestHelper::setLuaProtocolDetected(true);
+    // Should return true without throwing (no socket call needed)
+    REQUIRE(IPCTestHelper::isLuaProtocol() == true);
+  }
+
+  // Cleanup: reset detection so other tests aren't affected
+  IPCTestHelper::resetLuaProtocolDetection();
+}
