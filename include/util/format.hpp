@@ -5,12 +5,13 @@
 
 class pow_format {
  public:
-  pow_format(long long val, std::string&& unit, bool binary = false)
-      : val_(val), unit_(unit), binary_(binary) {};
+  pow_format(long long val, std::string&& unit, bool binary = false, int min_pow_for_decimal = 0)
+      : val_(val), unit_(unit), binary_(binary), min_pow_for_decimal_(min_pow_for_decimal) {};
 
   long long val_;
   std::string unit_;
   bool binary_;
+  int min_pow_for_decimal_;
 };
 
 namespace fmt {
@@ -74,7 +75,8 @@ struct formatter<pow_format> {
         break;
       case 0:
       default:
-        format = "{coefficient:.1f}{prefix}{unit}";
+        format = pow < s.min_pow_for_decimal_ ? "{coefficient:.0f}{prefix}{unit}"
+                                              : "{coefficient:.1f}{prefix}{unit}";
         break;
     }
     return fmt::format_to(
