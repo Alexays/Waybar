@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <list>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -35,8 +36,21 @@ class IPC {
   Json::Value getSocket1JsonReply(const std::string& rq);
   static std::filesystem::path getSocketFolder(const char* instanceSig);
 
+  /// Dispatch a Hyprland command. Automatically uses the correct protocol
+  /// (legacy text or Lua-based) depending on the running Hyprland version.
+  static std::string dispatch(const std::string& dispatcher, const std::string& arg);
+
+  /// Build a Lua-format dispatch command string.
+  static std::string buildLuaDispatch(const std::string& dispatcher, const std::string& arg);
+
  protected:
   static std::filesystem::path socketFolder_;
+
+  /// Detect whether the running Hyprland uses the Lua-based IPC protocol.
+  /// Returns true for Hyprland >= 0.54 (Lua config), false for older versions.
+  static bool isLuaProtocol();
+
+  static std::optional<bool> s_luaProtocolDetected_;  // cached detection result
 
  private:
   void socketListener();
