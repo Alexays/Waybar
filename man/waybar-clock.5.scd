@@ -138,6 +138,13 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ When enabled, the calendar follows the ISO 8601 standard: weeks begin on
    Monday, and the first week of the year is numbered 1. The default week format is
    '{:%V}'.
+|[ *weeks-numbering*
+:[ string
+:[
+:[ Override the week number calculation method, independent of *iso8601* and
+   locale settings. Possible values: *iso* (ISO 8601, {:%V}), *monday*
+   (Monday-based, {:%W}), *sunday* (Sunday-based, {:%U}). When not set, the
+   method is derived from *iso8601* or the locale.
 
 3. Addressed by *clock: calendar: format*
 [- *Option*
@@ -155,8 +162,9 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 |[ *weeks*
 :[ string
 :[ *{:%U}*
-:[ Format is applied to week numbers. When weekday format is not provided then
-   is used default format: '{:%W}' when week starts with Monday, '{:%U}' otherwise
+:[ Format is applied to week numbers. The *{}* placeholder is replaced with the
+   format determined by *weeks-numbering* (if set), otherwise by *iso8601* or the
+   locale: '{:%V}' for ISO 8601, '{:%W}' when week starts with Monday, '{:%U}' otherwise
 |[ *weekdays*
 :[ string
 :[

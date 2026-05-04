@@ -81,6 +81,20 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       iso8601Calendar_ = config_[kCldPlaceholder]["iso8601"].asBool();
     }
 
+    if (config_[kCldPlaceholder]["weeks-numbering"].isString()) {
+      const std::string wn{config_[kCldPlaceholder]["weeks-numbering"].asString()};
+      const std::map<std::string, WeekNumbering> wnModes{{"iso", WeekNumbering::ISO},
+                                                         {"monday", WeekNumbering::MONDAY},
+                                                         {"sunday", WeekNumbering::SUNDAY}};
+      if (wnModes.find(wn) != wnModes.end())
+        weekNumbering_ = wnModes.at(wn);
+      else
+        spdlog::warn(
+            "Clock calendar configuration weeks-numbering \"{}\" is not recognized. "
+            "Locale default is used instead",
+            wn);
+    }
+
     if (config_[kCldPlaceholder]["weeks-pos"].isString()) {
       if (config_[kCldPlaceholder]["weeks-pos"].asString() == "left") cldWPos_ = WS::LEFT;
       if (config_[kCldPlaceholder]["weeks-pos"].asString() == "right") cldWPos_ = WS::RIGHT;
@@ -104,18 +118,27 @@ waybar::modules::Clock::Clock(const std::string& id, const Json::Value& config)
       cldBaseDay_ = year_month_day{floor<days>(local_time)}.day();
     } else
       fmtMap_.insert({3, "{}"});
+    const auto weekFmt = [this]() -> std::string {
+      switch (weekNumbering_) {
+        case WeekNumbering::ISO:
+          return "{:%V}";
+        case WeekNumbering::MONDAY:
+          return "{:%W}";
+        case WeekNumbering::SUNDAY:
+          return "{:%U}";
+        default:
+          return iso8601Calendar_ ? "{:%V}"
+                                  : ((first_day_of_week() == Monday) ? "{:%W}" : "{:%U}");
+      }
+    }();
     if (config_[kCldPlaceholder]["format"]["weeks"].isString() && cldWPos_ != WS::HIDDEN) {
-      const auto defaultFmt =
-          iso8601Calendar_ ? "{:%V}" : ((first_day_of_week() == Monday) ? "{:%W}" : "{:%U}");
       fmtMap_.insert({4, std::regex_replace(config_[kCldPlaceholder]["format"]["weeks"].asString(),
-                                            std::regex("\\{\\}"), defaultFmt)});
+                                            std::regex("\\{\\}"), weekFmt)});
       Glib::ustring tmp{std::regex_replace(fmtMap_[4], std::regex("</?[^>]+>|\\{.*\\}"), "")};
       cldWnLen_ += tmp.size();
     } else {
       if (cldWPos_ != WS::HIDDEN) {
-        const auto defaultFmt =
-            iso8601Calendar_ ? "{:%V}" : ((first_day_of_week() == Monday) ? "{:%W}" : "{:%U}");
-        fmtMap_.insert({4, defaultFmt});
+        fmtMap_.insert({4, weekFmt});
       } else {
         cldWnLen_ = 0;
       }
