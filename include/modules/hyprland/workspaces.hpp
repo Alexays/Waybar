@@ -67,6 +67,9 @@ class Workspaces : public AModule, public EventHandler {
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
   const IconLoader& iconLoader() const { return m_iconLoader; }
 
+ protected:
+  void do_init() override;
+
  private:
   void onEvent(const std::string& e) override;
   void updateWindowCount();

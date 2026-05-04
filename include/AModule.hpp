@@ -19,7 +19,7 @@ class AModule : public IModule {
   virtual auto refresh(int shouldRefresh) -> void {};
   operator Gtk::Widget&() override;
   auto doAction(const std::string& name) -> void override;
-
+  void init();
   /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 
@@ -37,12 +37,14 @@ class AModule : public IModule {
   bool tooltipEnabled() const;
 
   std::vector<int> pid_children_;
+  bool enable_scroll_;
+  bool enable_click_;
   const std::string name_;
   const Json::Value& config_;
   Gtk::EventBox event_box_;
 
   virtual void setCursor(Gdk::CursorType const& c);
-
+  virtual void do_init() {};  // implemented by derived class if needed
   virtual bool handleToggle(GdkEventButton* const& ev);
   virtual bool handleMouseEnter(GdkEventCrossing* const& ev);
   virtual bool handleMouseLeave(GdkEventCrossing* const& ev);

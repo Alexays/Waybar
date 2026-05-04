@@ -12,21 +12,40 @@ namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
-    : name_(name),
+    : enable_scroll_(enable_scroll),
+      enable_click_(enable_click),
+      name_(name),
       config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      distance_scrolled_x_(0.0) {}
+
+AModule::~AModule() {
+  for (const auto& pid : pid_children_) {
+    if (pid != -1) {
+      killpg(pid, SIGTERM);
+    }
+  }
+  if (menu_ != nullptr) {
+    g_object_unref(menu_);
+    menu_ = nullptr;
+  }
+}
+
+void AModule::init() {
+  // here are the point where obj is fully constructed
+  // we can do sth like connect signal that requires well constructed object
+  do_init();
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
-
+  const auto& config = config_;
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
       if (!eventActionMap_.contains(it.key().asString())) {
         eventActionMap_.insert({it.key().asString(), it->asString()});
-        enable_click = true;
-        enable_scroll = true;
+        enable_click_ = true;
+        enable_scroll_ = true;
       } else
         spdlog::warn("Duplicate action is ignored: {0}", it.key().asString());
     else
@@ -45,7 +64,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
-  if (enable_click || hasUserEvents) {
+  if (enable_click_ || hasUserEvents) {
     hasUserEvents_ = true;
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
@@ -65,7 +84,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   }
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
       config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString() ||
-      enable_scroll) {
+      enable_scroll_) {
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
@@ -79,18 +98,6 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
-  }
-}
-
-AModule::~AModule() {
-  for (const auto& pid : pid_children_) {
-    if (pid != -1) {
-      killpg(pid, SIGTERM);
-    }
-  }
-  if (menu_ != nullptr) {
-    g_object_unref(menu_);
-    menu_ = nullptr;
   }
 }
 
