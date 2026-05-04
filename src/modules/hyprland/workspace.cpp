@@ -155,6 +155,11 @@ bool Workspace::onWindowOpened(WindowCreationPayload const& create_window_payloa
 std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map) {
   spdlog::trace("Selecting icon for workspace {}", name());
   if (isUrgent()) {
+    auto urgentNamedIconIt = icons_map.find("urgent:" + name());
+    if (urgentNamedIconIt != icons_map.end()) {
+      return urgentNamedIconIt->second;
+    }
+
     auto urgentIconIt = icons_map.find("urgent");
     if (urgentIconIt != icons_map.end()) {
       return urgentIconIt->second;
@@ -162,6 +167,11 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
   }
 
   if (isActive()) {
+    auto activeNamedIconIt = icons_map.find("active:" + name());
+    if (activeNamedIconIt != icons_map.end()) {
+      return activeNamedIconIt->second;
+    }
+
     auto activeIconIt = icons_map.find("active");
     if (activeIconIt != icons_map.end()) {
       return activeIconIt->second;
@@ -169,6 +179,11 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
   }
 
   if (isSpecial()) {
+    auto specialNamedIconIt = icons_map.find("special:" + name());
+    if (specialNamedIconIt != icons_map.end()) {
+      return specialNamedIconIt->second;
+    }
+    
     auto specialIconIt = icons_map.find("special");
     if (specialIconIt != icons_map.end()) {
       return specialIconIt->second;
