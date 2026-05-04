@@ -247,13 +247,14 @@ void Workspace::update(const std::string& workspace_icon) {
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
 
     bool isNotFirst = false;
+    auto end_it = m_workspaceManager.maxWindows() == 0 ? m_windowMap.end() : m_windowMap.begin() + m_workspaceManager.maxWindows();
 
-    for (const auto& window_repr : m_windowMap) {
+    for (auto it = m_windowMap.begin(); it != end_it; ++it) {
       if (isNotFirst) {
         windows.append(windowSeparator);
       }
       isNotFirst = true;
-      windows.append(window_repr.repr_rewrite);
+      windows.append(it->repr_rewrite);
     }
   }
 
@@ -339,12 +340,16 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
   };
 
   if (m_workspaceManager.taskbarReverseDirection()) {
-    for (auto it = m_windowMap.rbegin(); it != m_windowMap.rend(); ++it) {
+    auto rend_it = m_workspaceManager.maxWindows() == 0 ? m_windowMap.rend() : m_windowMap.rbegin() + m_workspaceManager.maxWindows();
+
+    for (auto it = m_windowMap.rbegin(); it != rend_it; ++it) {
       processWindow(*it);
     }
   } else {
-    for (const auto& window_repr : m_windowMap) {
-      processWindow(window_repr);
+    auto end_it = m_workspaceManager.maxWindows() == 0 ? m_windowMap.end() : m_windowMap.begin() + m_workspaceManager.maxWindows();
+
+    for (auto it = m_windowMap.begin(); it != end_it; ++it) {
+      processWindow(*it);
     }
   }
 
