@@ -49,6 +49,20 @@ Addressed by *niri/workspaces*
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+	
+*workspace-taskbar*: ++
+	typeof: object ++
+	Contains settings for the workspace taskbar, which displays app icons within each workspace.
+
+		*enable*: ++
+	typeof: bool ++
+	default: false ++
+	Enables the workspace taskbar mode.
+
+		*icon-size*: ++
+	typeof: int ++
+	default: 18 ++
+	Size of the icons in the workspace taskbar.
 
 # FORMAT REPLACEMENTS
 
@@ -92,6 +106,16 @@ Additional to workspace name matching, the following *format-icons* can be set.
 }
 ```
 
+```
+"niri/workspaces": {
+    "format": "{icon}",
+    "workspace-taskbar": {
+        "enable": true,
+        "icon-size": 18
+    }
+}
+```
+
 # Style
 
 - *#workspaces button*
@@ -103,3 +127,5 @@ Additional to workspace name matching, the following *format-icons* can be set.
   the bar that it is displayed on.
 - *#workspaces button#niri-workspace-<name>*: Workspaces named this, or index
   for unnamed workspaces.
+- *#workspaces button.niri-workspace*: The main container for the workspace.
+- *#workspaces button .niri-taskbar-btn*: The icon buttons within the taskbar.

@@ -74,6 +74,7 @@ wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
 gtkmm = dependency('gtkmm-3.0', version : ['>=3.22.0'])
+giomm = dependency('giomm-2.4', version : ['>=2.4.0'])
 dbusmenu_gtk = dependency('dbusmenu-gtk3-0.4', required: get_option('dbusmenu-gtk'))
 giounix = dependency('gio-unix-2.0')
 jsoncpp = dependency('jsoncpp', version : ['>=1.9.2'], fallback : ['jsoncpp', 'jsoncpp_dep'])
@@ -340,6 +341,7 @@ if get_option('niri')
         'src/modules/niri/language.cpp',
         'src/modules/niri/window.cpp',
         'src/modules/niri/workspaces.cpp',
+        'src/modules/niri/workspace.cpp',
     )
     man_files += files(
         'man/waybar-niri-language.5.scd',
@@ -542,6 +544,7 @@ executable(
         jsoncpp,
         wayland_cursor,
         gtkmm,
+        giomm,
         dbusmenu_gtk,
         giounix,
         libinput,
