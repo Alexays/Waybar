@@ -149,6 +149,7 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
         button.signal_button_press_event().connect(
             sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), (1 << tag)));
     }
+    button.get_style_context()->add_class("tag-" + std::to_string(tag + 1));
     button.show();
   }
 

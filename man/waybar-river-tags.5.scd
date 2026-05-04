@@ -50,6 +50,7 @@ Addressed by *river/tags*
 - *#tags button.occupied*
 - *#tags button.focused*
 - *#tags button.urgent*
+- *#tags button.tag-N*
 
 Note that occupied/focused/urgent status may overlap. That is, a tag may be
 both occupied and focused at the same time.
