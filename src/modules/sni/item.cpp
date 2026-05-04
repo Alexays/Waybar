@@ -163,6 +163,8 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       category = get_variant<std::string>(value);
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
+      const auto old_sort_key = sort_key;
+      sort_key = id;
 
       /*
        * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as ID
@@ -177,10 +179,24 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
         this->proxy_->get_cached_property(value, "ToolTip");
         tooltip = get_variant<ToolTip>(value);
         if (!tooltip.text.empty()) {
-          setCustomIcon(tooltip.text.lowercase());
+          // The tooltip often carries a changing status suffix, e.g.
+          // "Rocket.Chat: 3 unread messages". Strip everything from the first
+          // ':' onwards so the key stays stable across status changes.
+          std::string key = tooltip.text.lowercase();
+          const auto colon = key.find(':');
+          if (colon != std::string::npos) {
+            key.erase(colon);
+          }
+          while (!key.empty() && key.back() == ' ') key.pop_back();
+          sort_key = key;
+          setCustomIcon(sort_key);
         }
       } else {
         setCustomIcon(id);
+      }
+      if (sort_key != old_sort_key) {
+        spdlog::info("tray: item key='{}' (use this value in tray.order-left / tray.order-right)",
+                     sort_key);
       }
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
