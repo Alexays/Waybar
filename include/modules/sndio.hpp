@@ -11,7 +11,7 @@ namespace waybar::modules {
 
 class Sndio : public ALabel {
  public:
-  Sndio(const std::string&, const Json::Value&);
+  Sndio(const std::string&, const Json::Value&, std::mutex&, std::list<pid_t>&);
   virtual ~Sndio();
   auto update() -> void override;
   auto set_desc(struct sioctl_desc*, unsigned int) -> void;

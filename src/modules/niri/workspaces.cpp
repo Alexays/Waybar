@@ -6,8 +6,11 @@
 
 namespace waybar::modules::niri {
 
-Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
+Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config,
+                       std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, "workspaces", id, reap_mtx, reap, false, false),
+      bar_(bar),
+      box_(bar.orientation, 0) {
   box_.set_name("workspaces");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);

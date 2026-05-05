@@ -16,8 +16,8 @@ using util::PipewireBackend::PRIVACY_NODE_TYPE_NONE;
 using util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT;
 
 Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientation orientation,
-                 const std::string& pos)
-    : AModule(config, "privacy", id),
+                 const std::string& pos, std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : AModule(config, "privacy", id, reap_mtx, reap),
       nodes_screenshare(),
       nodes_audio_in(),
       nodes_audio_out(),
