@@ -63,6 +63,11 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	default: 1.0 ++
 	The speed at which to change the volume when scrolling.
 
+*scroll-scale*: ++
+	typeof: string ++
+	default: cubic_percent
+	The scale to use for the scrolling volume change. Options are 'linear', 'db', 'cubic', and 'cubic_percent'.
+
 *on-click*: ++
 	typeof: string ++
 	Command to execute when clicked on the module.
@@ -107,7 +112,13 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 # FORMAT REPLACEMENTS
 
-*{volume}*: Volume in percentage.
+*{volume}*: Volume in percentage, cubic scale as integer.
+
+*{volume_linear}*: Volume in linear scale as float.
+
+*{volume_cubic}*: Volume in cubic scale as float.
+
+*{volume_db}*: Volume in decibel scale as float.
 
 *{node_name}*: The node's nickname as reported by WirePlumber (*node.nick* property)
 
@@ -123,7 +134,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 }
 ```
 
-## Separate Sink and Source Widgets 
+## Separate Sink and Source Widgets
 
 ```
 "wireplumber#sink": {
@@ -140,6 +151,16 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
     "format-muted": "",
     "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
     "scroll-step": 5
+}
+```
+
+## Use a Different Scale
+
+```
+"wireplumber": {
+	"format": "{volume_db:.2f}dB",
+	"scroll-scale": "db",
+	"scroll-step": 2.5
 }
 ```
 
