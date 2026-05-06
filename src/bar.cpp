@@ -3,12 +3,14 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <ostream>
 #include <type_traits>
 
 #include "client.hpp"
 #include "factory.hpp"
 #include "group.hpp"
 #include "util/enum.hpp"
+#include "util/hosts_check.hpp"
 #include "util/kill_signal.hpp"
 
 #ifdef HAVE_SWAY
@@ -531,6 +533,11 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
+
+        if (config[ref].isMember("hosts") && !waybar::util::valid_host(config[ref])) {
+          continue;
+        }
+
         AModule* module;
 
         if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
