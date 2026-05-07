@@ -121,6 +121,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
+      menu_ = nullptr;
       spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
   }
