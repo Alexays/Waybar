@@ -3,10 +3,13 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
+#include <fstream>
 #include <util/command.hpp>
 
 #include "gdk/gdk.h"
 #include "gdkmm/cursor.h"
+
+#include "config.hpp"
 
 namespace waybar {
 
@@ -45,7 +48,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
                config[eventEntry.second].isString();
       }) != eventMap_.cend();
 
-  if (enable_click || hasUserEvents) {
+  if (enable_click || hasUserEvents || config["menu"].isString()) {
     hasUserEvents_ = true;
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
@@ -80,6 +83,87 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
   }
+
+  // If a GTKMenu is requested in the config
+  if (config_["menu"].isString()) {
+    // Create the GTKMenu widget
+    try {
+      // Check that the file exists
+      std::string menuFile = config_["menu-file"].asString();
+
+      // there might be "~" or "$HOME" in original path, try to expand it.
+      auto result = Config::tryExpandPath(menuFile, "");
+      if (result.empty()) {
+        throw std::runtime_error("Failed to expand file: " + menuFile);
+      }
+
+      menuFile = result.front();
+      // Read the menu descriptor file
+      std::ifstream file(menuFile);
+      if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + menuFile);
+      }
+      std::stringstream fileContent;
+      fileContent << file.rdbuf();
+
+      // Make the GtkBuilder and check for errors in his parsing
+      builder_ = Gtk::Builder::create_from_string(fileContent.str());
+      if (!builder_) {
+        throw std::runtime_error("Error found in the file " + menuFile);
+      }
+
+      builder_->get_widget("menu", menu_);
+      if (!menu_) {
+        throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
+      }
+      auto css_class = id.empty() ? name : id;
+      menu_->get_style_context()->add_class(css_class);
+
+      // Linking actions to the GTKMenu based on
+      for (Json::Value::const_iterator it = config_["menu-actions"].begin();
+           it != config_["menu-actions"].end(); ++it) {
+        std::string key = it.key().asString();
+        Gtk::MenuItem *item = nullptr;
+        builder_->get_widget(key.c_str(), item);
+        if (item == nullptr) {
+          spdlog::warn("Menu item '{}' not found in builder file", key);
+          continue;
+        }
+        item->get_style_context()->add_class(css_class);
+        std::string command = it->asString();
+        item->signal_activate().connect(std::function<void()>([this, command] { handleGtkMenuEvent(command); }));
+      }
+
+      // Check anchors.
+      auto convert_to_gravity = [] (std::string const& anchor) -> std::optional<Gdk::Gravity>
+        {
+          if (anchor == "north-west")
+            return Gdk::Gravity::GRAVITY_NORTH_WEST;
+          if (anchor == "north")
+            return Gdk::Gravity::GRAVITY_NORTH;
+          if (anchor == "north-east")
+            return Gdk::Gravity::GRAVITY_NORTH_EAST;
+          if (anchor == "west")
+            return Gdk::Gravity::GRAVITY_WEST;
+          if (anchor == "center")
+            return Gdk::Gravity::GRAVITY_CENTER;
+          if (anchor == "east")
+            return Gdk::Gravity::GRAVITY_EAST;
+          if (anchor == "south-west")
+            return Gdk::Gravity::GRAVITY_SOUTH_WEST;
+          if (anchor == "south")
+            return Gdk::Gravity::GRAVITY_SOUTH;
+          if (anchor == "south-east")
+            return Gdk::Gravity::GRAVITY_SOUTH_EAST;
+          return {};
+        };
+
+      widget_anchor_ = convert_to_gravity(config_.get("widget-anchor", "none").asString());
+      menu_anchor_ = convert_to_gravity(config_.get("menu-anchor", "none").asString());
+    } catch (std::runtime_error& e) {
+      spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
+    }
+  }
 }
 
 AModule::~AModule() {
@@ -87,10 +171,6 @@ AModule::~AModule() {
     if (pid != -1) {
       killpg(pid, SIGTERM);
     }
-  }
-  if (menu_ != nullptr) {
-    g_object_unref(menu_);
-    menu_ = nullptr;
   }
 }
 
@@ -174,8 +254,13 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
     // Check if the event is the one specified for the "menu" option
     if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
       // Popup the menu
-      gtk_widget_show_all(GTK_WIDGET(menu_));
-      gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+      menu_->show_all();
+      if (widget_anchor_ && menu_anchor_) {
+        menu_->popup_at_widget(&event_box_, *widget_anchor_, *menu_anchor_, reinterpret_cast<GdkEvent*>(e));
+      }
+      else {
+        menu_->popup_at_pointer(reinterpret_cast<GdkEvent*>(e));
+      }
       // Manually reset prelight to make sure the module doesn't stay in a hover state
       if (auto* module = event_box_.get_child(); module != nullptr) {
         module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
@@ -279,6 +364,10 @@ bool AModule::handleScroll(GdkEventScroll* e) {
 
   dp.emit();
   return true;
+}
+
+void AModule::handleGtkMenuEvent(std::string command) {
+  waybar::util::command::forkExec(command, "GtkMenu");
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }

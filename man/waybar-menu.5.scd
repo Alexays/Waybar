@@ -7,7 +7,7 @@ waybar - menu property
 # OVERVIEW
 
 
-Some modules support a 'menu', which allows to have a popup menu when a defined
+All modules support a 'menu', which allows to have a popup menu when a defined
 click is done over the module.
 
 # PROPERTIES
@@ -71,6 +71,62 @@ A module that implements a 'menu' needs 3 properties defined in its config :
 	The actions corresponding to the buttons of the menu. The identifiers of
 	each actions needs to exists as an id in the 'menu-file' for it to be linked
 	properly.
+
+*widget-anchor*: ++
+  typeof: string ++
+  The point on widget to align with menu's anchor point.
+  Both widget-anchor and menu-anchor must be set and not "none" for this to work.
+
+[- *Option*
+:- *Description*
+|[ *north-west*
+:< The top left corner.
+|[ *north*
+:< The reference point is in the middle of the top edge.
+|[ *north-east*
+:< The top right corner.
+|[ *west*
+:< The middle of the left edge.
+|[ *center*
+:< The center of the window.
+|[ *east*
+:< The middle of the right edge.
+|[ *south-west*
+:< The lower left corner.
+|[ *south*
+:< The middle of the lower edge.
+|[ *south-east*
+:< The lower right corner.
+|[ *none*
+:< Disables the anchor and shows the menu at the cursor position.
+
+*menu-anchor*: ++
+  typeof: string ++
+  The point on menu to align with widget's anchor point.
+  Both menu-anchor and widget-anchor must be set and not "none" for this to work.
+
+[- *Option*
+:- *Description*
+|[ *north-west*
+:< The top left corner.
+|[ *north*
+:< The reference point is in the middle of the top edge.
+|[ *north-east*
+:< The top right corner.
+|[ *west*
+:< The middle of the left edge.
+|[ *center*
+:< The center of the window.
+|[ *east*
+:< The middle of the right edge.
+|[ *south-west*
+:< The lower left corner.
+|[ *south*
+:< The middle of the lower edge.
+|[ *south-east*
+:< The lower right corner.
+|[ *none*
+:< Disables the anchor and shows the menu at the cursor position.
 
 # MENU-FILE
 
@@ -139,15 +195,20 @@ Module config :
 - *menuitem*
   Style for items in the menu
 
+Use the CSS class selector .custom-<name> to target a specific menu/menuitem.
+
 # EXAMPLE:
 
 ```
-menu {
+menu.custom-power {
 	border-radius: 15px;
 	background: #161320;
 	color: #B5E8E0;
 }
-menuitem {
+menuitem.custom-power {
 	border-radius: 15px;
+}
+menuitem.custom-power:hover {
+	background: #005d96
 }
 ```
