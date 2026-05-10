@@ -1195,15 +1195,15 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
 
   if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
     if (allOutputs()) {
-      m_ipc.getSocket1Reply("dispatch workspace e+1");
+      IPC::dispatch("workspace", "e+1");
     } else {
-      m_ipc.getSocket1Reply("dispatch workspace m+1");
+      IPC::dispatch("workspace", "m+1");
     }
   } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
     if (allOutputs()) {
-      m_ipc.getSocket1Reply("dispatch workspace e-1");
+      IPC::dispatch("workspace", "e-1");
     } else {
-      m_ipc.getSocket1Reply("dispatch workspace m-1");
+      IPC::dispatch("workspace", "m-1");
     }
   }
 
