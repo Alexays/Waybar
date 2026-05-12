@@ -128,7 +128,6 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to true, open the workspace on the current monitor when clicking on a workspace button.
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
-	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
 
 *enable-bar-scroll*: ++
 	typeof: bool ++
