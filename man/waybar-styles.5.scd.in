@@ -21,7 +21,7 @@ It uses the first file found in this search order:
 An example user-controlled stylesheet that just changes the color of the clock to be green on black, while keeping the rest of the system config the same would be:
 
 ```
-@import url("file:///etc/xdg/waybar/style.css")
+@import url("file:///etc/xdg/waybar/style.css");
 
 #clock {
   background: #000000;
