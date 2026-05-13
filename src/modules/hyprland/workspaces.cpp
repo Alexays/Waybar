@@ -338,46 +338,62 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& c
 }
 
 void Workspaces::onEvent(const std::string& ev) {
-  std::lock_guard<std::mutex> lock(m_mutex);
-  const auto separator = ev.find(">>");
-  if (separator == std::string::npos) {
-    spdlog::warn("Malformed Hyprland workspace event: {}", ev);
-    return;
-  }
-  std::string eventName = ev.substr(0, separator);
-  std::string payload = ev.substr(separator + 2);
+  {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    const auto separator = ev.find(">>");
+    if (separator == std::string::npos) {
+      spdlog::warn("Malformed Hyprland workspace event: {}", ev);
+      return;
+    }
+    std::string eventName = ev.substr(0, separator);
+    std::string payload = ev.substr(separator + 2);
 
-  if (eventName == "workspacev2") {
-    onWorkspaceActivated(payload);
-  } else if (eventName == "activespecial") {
-    onSpecialWorkspaceActivated(payload);
-  } else if (eventName == "destroyworkspacev2") {
-    onWorkspaceDestroyed(payload);
-  } else if (eventName == "createworkspacev2") {
-    onWorkspaceCreated(payload);
-  } else if (eventName == "focusedmonv2") {
-    onMonitorFocused(payload);
-  } else if (eventName == "moveworkspacev2") {
-    onWorkspaceMoved(payload);
-  } else if (eventName == "openwindow") {
-    onWindowOpened(payload);
-  } else if (eventName == "closewindow") {
-    onWindowClosed(payload);
-  } else if (eventName == "movewindowv2") {
-    onWindowMoved(payload);
-  } else if (eventName == "urgent") {
-    setUrgentWorkspace(payload);
-  } else if (eventName == "renameworkspace") {
-    onWorkspaceRenamed(payload);
-  } else if (eventName == "windowtitlev2") {
-    onWindowTitleEvent(payload);
-  } else if (eventName == "activewindowv2") {
-    onActiveWindowChanged(payload);
-  } else if (eventName == "configreloaded") {
-    onConfigReloaded();
+    if (eventName == "workspacev2") {
+      onWorkspaceActivated(payload);
+    } else if (eventName == "activespecial") {
+      onSpecialWorkspaceActivated(payload);
+    } else if (eventName == "destroyworkspacev2") {
+      onWorkspaceDestroyed(payload);
+    } else if (eventName == "createworkspacev2") {
+      onWorkspaceCreated(payload);
+    } else if (eventName == "focusedmonv2") {
+      onMonitorFocused(payload);
+    } else if (eventName == "moveworkspacev2") {
+      onWorkspaceMoved(payload);
+    } else if (eventName == "openwindow") {
+      onWindowOpened(payload);
+    } else if (eventName == "closewindow") {
+      onWindowClosed(payload);
+    } else if (eventName == "movewindowv2") {
+      onWindowMoved(payload);
+    } else if (eventName == "urgent") {
+      setUrgentWorkspace(payload);
+    } else if (eventName == "renameworkspace") {
+      onWorkspaceRenamed(payload);
+    } else if (eventName == "windowtitlev2") {
+      onWindowTitleEvent(payload);
+    } else if (eventName == "activewindowv2") {
+      onActiveWindowChanged(payload);
+    } else if (eventName == "configreloaded") {
+      onConfigReloaded();
+    }
   }
 
-  dp.emit();
+  if (m_debounceTimer.connected()) {
+    m_debounceTimer.disconnect();
+    m_updatePending = false;
+  }
+
+  m_updatePending = true;
+  m_debounceTimer = Glib::signal_timeout().connect([this]() {
+    if (!m_updatePending) return false;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (m_updatePending) {
+      dp.emit();
+      m_updatePending = false;
+    }
+    return false;
+  }, 7);
 }
 
 void Workspaces::onWorkspaceActivated(std::string const& payload) {

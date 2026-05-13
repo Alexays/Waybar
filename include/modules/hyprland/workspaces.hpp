@@ -211,6 +211,9 @@ class Workspaces : public AModule, public EventHandler {
   Gtk::Box m_box;
   sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
+
+  sigc::connection m_debounceTimer;
+  bool m_updatePending = false;
 };
 
 }  // namespace waybar::modules::hyprland
