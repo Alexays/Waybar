@@ -22,6 +22,12 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: 100 ++
     The maximum volume value the slider should display and set.
 
+*target*: ++
+    typeof: string ++
+    default: sink ++
+    Whether the slider will control the default audio source or default audio sink. ++
+    Valid values are either "sink" or "source".
+
 *orientation*: ++
     typeof: string ++
     default: horizontal ++
