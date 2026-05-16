@@ -96,19 +96,16 @@ bool Idle::on_io(Glib::IOCondition const&) {
   }
 
   ctx_->fetchState();
+  ctx_->emit();
   mpd_state state = ctx_->state();
 
   if (state == MPD_STATE_STOP) {
-    ctx_->emit();
     ctx_->setState(std::make_unique<Stopped>(ctx_));
   } else if (state == MPD_STATE_PLAY) {
-    ctx_->emit();
     ctx_->setState(std::make_unique<Playing>(ctx_));
   } else if (state == MPD_STATE_PAUSE) {
-    ctx_->emit();
     ctx_->setState(std::make_unique<Paused>(ctx_));
   } else {
-    ctx_->emit();
     // self transition
     ctx_->setState(std::make_unique<Idle>(ctx_));
   }
@@ -177,6 +174,7 @@ bool Playing::on_timer() {
     ctx_->fetchState();
 
     if (!ctx_->is_playing()) {
+      ctx_->emit();
       if (ctx_->is_paused()) {
         ctx_->setState(std::make_unique<Paused>(ctx_));
       } else {
@@ -212,6 +210,7 @@ bool Playing::on_io(Glib::IOCondition const&) {
     ctx_->fetchState();
 
     if (!ctx_->is_playing()) {
+      ctx_->emit();
       if (ctx_->is_paused()) {
         ctx_->setState(std::make_unique<Paused>(ctx_));
       } else {
@@ -293,7 +292,6 @@ bool Paused::on_timer() {
     }
 
     ctx_->fetchState();
-
     ctx_->emit();
 
     if (ctx_->is_paused()) {
@@ -364,7 +362,6 @@ bool Stopped::on_timer() {
     }
 
     ctx_->fetchState();
-
     ctx_->emit();
 
     if (ctx_->is_stopped()) {
