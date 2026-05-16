@@ -58,6 +58,25 @@ auto Language::update() -> void {
     label_.hide();
   }
 
+  // Tooltip support
+  if (tooltipEnabled()) {
+    std::string tooltipFormat;
+    if (config_["tooltip-format"].isString()) {
+      tooltipFormat = config_["tooltip-format"].asString();
+    } else {
+      tooltipFormat = "{long}";
+    }
+    auto tooltipText = trim(fmt::format(
+        fmt::runtime(tooltipFormat),
+        fmt::arg("long", layout_.full_name),
+        fmt::arg("short", layout_.short_name),
+        fmt::arg("shortDescription", layout_.short_description),
+        fmt::arg("variant", layout_.variant)));
+    label_.set_tooltip_text(tooltipText);
+  } else {
+    label_.set_tooltip_text("");
+  }
+
   ALabel::update();
 }
 
