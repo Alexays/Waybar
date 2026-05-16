@@ -31,6 +31,11 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, you can click to change workspace. If set to true this behaviour is disabled.
 
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
 *disable-markup*: ++
 	typeof: bool ++
 	default: false ++
