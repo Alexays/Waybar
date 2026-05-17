@@ -45,6 +45,15 @@ class Workspace {
   bool isUrgent() const { return m_isUrgent; };
 
   bool handleClicked(GdkEventButton* bt) const;
+
+  bool handleEnter(GdkEventCrossing* event);
+  bool handleLeave(GdkEventCrossing* event);
+
+  void startHoverCheck();
+  void stopHoverCheck();
+  bool syncHoverClass();
+  bool pointerInsideButton();
+
   void setActive(bool value = true) { m_isActive = value; };
   void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
   void setPersistentConfig(bool value = true) { m_isPersistentConfig = value; };
@@ -79,6 +88,8 @@ class Workspace {
   bool m_isPersistentConfig = false;  // represents the persistent state in the Waybar config
   bool m_isUrgent = false;
   bool m_isVisible = false;
+
+  sigc::connection m_hoverCheckConnection;
 
   std::vector<WindowRepr> m_windowMap;
 
