@@ -93,10 +93,20 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
   zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
   button.set_relief(Gtk::RELIEF_NONE);
+  button.set_hexpand(true);
+  content_.set_hexpand(true);
+  text_before_.set_ellipsize(Pango::ELLIPSIZE_END);
+  text_before_.set_single_line_mode(true);
+  text_before_.set_width_chars(1);
+  text_before_.set_xalign(0.0);
+  text_after_.set_ellipsize(Pango::ELLIPSIZE_END);
+  text_after_.set_single_line_mode(true);
+  text_after_.set_width_chars(1);
+  text_after_.set_xalign(0.0);
 
-  content_.add(text_before_);
-  content_.add(icon_);
-  content_.add(text_after_);
+  content_.pack_start(text_before_, true, true, 0);
+  content_.pack_start(icon_, false, false, 0);
+  content_.pack_start(text_after_, true, true, 0);
 
   content_.show();
   button.add(content_);
@@ -718,7 +728,7 @@ void Taskbar::handle_finished() {
 }
 
 void Taskbar::add_button(Gtk::Button& bt) {
-  box_.pack_start(bt, false, false);
+  box_.pack_start(bt, true, true);
   box_.get_style_context()->remove_class("empty");
 }
 
