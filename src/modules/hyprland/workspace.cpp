@@ -301,15 +301,18 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_markup(window_repr.window_title);
-    window_box->get_style_context()->add_class("taskbar-window");
+
+    auto button = Gtk::manage(new Gtk::Button());
+    button->set_relief(Gtk::RELIEF_NONE);
+    button->add(*window_box);
+    button->get_style_context()->add_class("taskbar-window");
     if (window_repr.isActive) {
-      window_box->get_style_context()->add_class("active");
+      button->get_style_context()->add_class("active");
     }
-    auto event_box = Gtk::manage(new Gtk::EventBox());
-    event_box->add(*window_box);
     if (m_workspaceManager.onClickWindow() != "") {
-      event_box->signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address));
+      button->signal_button_press_event().connect(
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address),
+          false);
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
@@ -334,8 +337,8 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
       window_box->pack_start(*window_label_after, true, true);
     }
 
-    m_content.pack_start(*event_box, true, false);
-    event_box->show_all();
+    m_content.pack_start(*button, true, false);
+    button->show_all();
   };
 
   if (m_workspaceManager.taskbarReverseDirection()) {
