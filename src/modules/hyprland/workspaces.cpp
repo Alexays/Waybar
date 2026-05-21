@@ -50,7 +50,8 @@ void Workspaces::init() {
   if (m_scrollEventConnection_.connected()) {
     m_scrollEventConnection_.disconnect();
   }
-  if (barScroll()) {
+  bool hasScrollConfig = config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString();
+  if (barScroll() || hasScrollConfig) {
     auto& window = const_cast<Bar&>(m_bar).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     m_scrollEventConnection_ =
@@ -1188,6 +1189,12 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
   if (gdk_event_get_pointer_emulated((GdkEvent*)e)) {
     return false;
   }
+
+  // Check for custom scroll commands first; delegate to base class
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
