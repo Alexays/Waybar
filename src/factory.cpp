@@ -42,6 +42,11 @@
 #include "modules/niri/window.hpp"
 #include "modules/niri/workspaces.hpp"
 #endif
+#ifdef HAVE_TRIAD
+#include "modules/triad/language.hpp"
+#include "modules/triad/window.hpp"
+#include "modules/triad/workspaces.hpp"
+#endif
 #ifdef HAVE_WAYFIRE
 #include "modules/wayfire/window.hpp"
 #include "modules/wayfire/workspaces.hpp"
@@ -229,6 +234,17 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "niri/workspaces") {
       return new waybar::modules::niri::Workspaces(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_TRIAD
+    if (ref == "triad/language") {
+      return new waybar::modules::triad::Language(id, bar_, config_[name]);
+    }
+    if (ref == "triad/window") {
+      return new waybar::modules::triad::Window(id, bar_, config_[name]);
+    }
+    if (ref == "triad/workspaces") {
+      return new waybar::modules::triad::Workspaces(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_WAYFIRE

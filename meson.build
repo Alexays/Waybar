@@ -348,6 +348,21 @@ if get_option('niri')
     )
 endif
 
+if get_option('triad')
+    add_project_arguments('-DHAVE_TRIAD', language: 'cpp')
+    src_files += files(
+        'src/modules/triad/backend.cpp',
+        'src/modules/triad/language.cpp',
+        'src/modules/triad/window.cpp',
+        'src/modules/triad/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-triad-language.5.scd',
+        'man/waybar-triad-window.5.scd',
+        'man/waybar-triad-workspaces.5.scd',
+    )
+endif
+
 if true
     add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
     src_files += files(
