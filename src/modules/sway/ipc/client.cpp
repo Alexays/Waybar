@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -135,14 +136,18 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
     throw std::runtime_error("Invalid IPC magic");
   }
 
-  const auto* data32 = reinterpret_cast<uint32_t*>(header.data() + ipc_magic_.size());
+  uint32_t payload_size = 0;
+  uint32_t payload_type = 0;
+  memcpy(&payload_size, header.data() + ipc_magic_.size(), sizeof payload_size);
+  memcpy(&payload_type, header.data() + ipc_magic_.size() + sizeof payload_size,
+         sizeof payload_type);
 
   std::string payload;
-  payload.resize(data32[0]);
+  payload.resize(payload_size);
 
   total = 0;
-  while (total < data32[0]) {
-    const ssize_t res = ::recv(fd, payload.data() + total, data32[0] - total, 0);
+  while (total < payload_size) {
+    const ssize_t res = ::recv(fd, payload.data() + total, payload_size - total, 0);
     if (res < 0) {
       if (errno == EINTR || errno == EAGAIN) {
         continue;
@@ -155,16 +160,19 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
     total += static_cast<size_t>(res);
   }
 
-  return {.size = data32[0], .type = data32[1], .payload = std::move(payload)};
+  return {.size = payload_size, .type = payload_type, .payload = std::move(payload)};
 }
 
 struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& payload) {
   std::string header;
   header.resize(ipc_header_size_);
   memcpy(header.data(), ipc_magic_.data(), ipc_magic_.size());
-  auto* data32 = reinterpret_cast<uint32_t*>(header.data() + ipc_magic_.size());
-  data32[0] = payload.size();
-  data32[1] = type;
+  if (payload.size() > std::numeric_limits<uint32_t>::max()) {
+    throw std::runtime_error("IPC payload is too large");
+  }
+  const auto payload_size = static_cast<uint32_t>(payload.size());
+  memcpy(header.data() + ipc_magic_.size(), &payload_size, sizeof payload_size);
+  memcpy(header.data() + ipc_magic_.size() + sizeof payload_size, &type, sizeof type);
 
   sendAll(fd, header.data(), ipc_header_size_, "Unable to send IPC header");
   sendAll(fd, payload.data(), payload.size(), "Unable to send IPC payload");
