@@ -1,11 +1,33 @@
 #include "modules/sway/ipc/client.hpp"
 
+#include <cerrno>
 #include <fcntl.h>
 #include <spdlog/spdlog.h>
 
 #include <stdexcept>
+#include <utility>
 
 namespace waybar::modules::sway {
+namespace {
+
+void sendAll(int fd, const char* data, size_t size, const char* what) {
+  size_t total = 0;
+  while (total < size) {
+    const auto res = ::send(fd, data + total, size - total, 0);
+    if (res < 0) {
+      if (errno == EINTR || errno == EAGAIN) {
+        continue;
+      }
+      throw std::runtime_error(what);
+    }
+    if (res == 0) {
+      throw std::runtime_error(what);
+    }
+    total += static_cast<size_t>(res);
+  }
+}
+
+}  // namespace
 
 Ipc::Ipc() {
   const std::string& socketPath = getSocketPath();
@@ -89,10 +111,16 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
       // IPC is closed so just return an empty response
       return {0, 0, ""};
     }
-    if (res <= 0) {
+    if (res < 0) {
+      if (errno == EINTR || errno == EAGAIN) {
+        continue;
+      }
       throw std::runtime_error("Unable to receive IPC header");
     }
-    total += res;
+    if (res == 0) {
+      throw std::runtime_error("Unable to receive IPC header");
+    }
+    total += static_cast<size_t>(res);
   }
   auto magic = std::string(header.data(), header.data() + ipc_magic_.size());
   if (magic != ipc_magic_) {
@@ -110,9 +138,12 @@ struct Ipc::ipc_response Ipc::recv(int fd) {
       }
       throw std::runtime_error("Unable to receive IPC payload");
     }
-    total += res;
+    if (res == 0) {
+      throw std::runtime_error("Unable to receive IPC payload");
+    }
+    total += static_cast<size_t>(res);
   }
-  return {data32[0], data32[1], &payload.front()};
+  return {data32[0], data32[1], std::move(payload)};
 }
 
 struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& payload) {
@@ -123,12 +154,8 @@ struct Ipc::ipc_response Ipc::send(int fd, uint32_t type, const std::string& pay
   data32[0] = payload.size();
   data32[1] = type;
 
-  if (::send(fd, header.data(), ipc_header_size_, 0) == -1) {
-    throw std::runtime_error("Unable to send IPC header");
-  }
-  if (::send(fd, payload.c_str(), payload.size(), 0) == -1) {
-    throw std::runtime_error("Unable to send IPC payload");
-  }
+  sendAll(fd, header.data(), ipc_header_size_, "Unable to send IPC header");
+  sendAll(fd, payload.data(), payload.size(), "Unable to send IPC payload");
   return Ipc::recv(fd);
 }
 
