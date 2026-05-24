@@ -45,7 +45,7 @@ const std::string Ipc::getSocketPath() const {
       throw std::runtime_error("Failed to get socket path");
     }
     while (fgets(buf, sizeof(buf), in) != nullptr) {
-      str_buf.append(buf, sizeof(buf));
+      str_buf.append(buf);
     }
     pclose(in);
     str = str_buf;
