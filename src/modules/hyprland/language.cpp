@@ -51,6 +51,14 @@ auto Language::update() -> void {
 
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
 
+  if (tooltipEnabled() && config_["tooltip-format"].isString()) {
+    const auto tooltip_format = config_["tooltip-format"].asString();
+    label_.set_tooltip_markup(trim(fmt::format(
+        fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
+        fmt::arg("short", layout_.short_name),
+        fmt::arg("shortDescription", layout_.short_description), fmt::arg("variant", layout_.variant))));
+  }
+
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(layoutName);
