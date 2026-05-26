@@ -229,7 +229,10 @@ bool Workspaces::filterButtons() {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
                            [it](const auto& node) { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end() ||
-        (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
+        ((*ws).isMember("target_output") ? (*ws)["target_output"].asString() != bar_.output->name &&
+                                               (*ws)["target_output"].asString() != ""
+                                         : !config_["all-outputs"].asBool() &&
+                                               (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
       needReorder = true;
     } else {
