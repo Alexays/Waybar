@@ -19,9 +19,13 @@ class Memory : public ALabel {
  private:
   void parseMeminfo();
 
+  static float calc_divisor(const std::string& divisor);
+
   std::unordered_map<std::string, unsigned long> meminfo_;
 
   util::SleeperThread thread_;
+
+  std::string unit_;
 };
 
 }  // namespace waybar::modules

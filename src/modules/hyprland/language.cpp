@@ -63,19 +63,35 @@ auto Language::update() -> void {
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
+  const auto payloadStart = ev.find(">>");
+  if (payloadStart == std::string::npos) {
+    spdlog::warn("hyprland language received malformed event: {}", ev);
+    return;
+  }
+  const auto payload = ev.substr(payloadStart + 2);
+  const auto kbSeparator = payload.find(',');
+  if (kbSeparator == std::string::npos) {
+    spdlog::warn("hyprland language received malformed event payload: {}", ev);
+    return;
+  }
+  std::string kbName = payload.substr(0, kbSeparator);
 
   // Last comma before variants parenthesis, eg:
   // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
   // with dead keys)
   std::string beforeParenthesis;
-  auto parenthesisPos = ev.find_last_of('(');
+  auto parenthesisPos = payload.find_last_of('(');
   if (parenthesisPos == std::string::npos) {
-    beforeParenthesis = ev;
+    beforeParenthesis = payload;
   } else {
-    beforeParenthesis = std::string(begin(ev), begin(ev) + parenthesisPos);
+    beforeParenthesis = payload.substr(0, parenthesisPos);
   }
-  auto layoutName = ev.substr(beforeParenthesis.find_last_of(',') + 1);
+  const auto layoutSeparator = beforeParenthesis.find_last_of(',');
+  if (layoutSeparator == std::string::npos) {
+    spdlog::warn("hyprland language received malformed layout payload: {}", ev);
+    return;
+  }
+  auto layoutName = payload.substr(layoutSeparator + 1);
 
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore

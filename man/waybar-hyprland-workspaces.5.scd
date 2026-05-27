@@ -130,6 +130,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
 	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
 
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
 *ignore-workspaces*: ++
 	typeof: array ++
 	default: [] ++

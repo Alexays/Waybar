@@ -40,12 +40,16 @@ AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_construc
 }
 
 AudioBackend::~AudioBackend() {
-  if (context_ != nullptr) {
-    pa_context_disconnect(context_);
-  }
-
   if (mainloop_ != nullptr) {
-    mainloop_api_->quit(mainloop_api_, 0);
+    // Lock the mainloop so we can safely disconnect the context.
+    // This must be done before stopping the thread.
+    pa_threaded_mainloop_lock(mainloop_);
+    if (context_ != nullptr) {
+      pa_context_disconnect(context_);
+      pa_context_unref(context_);
+      context_ = nullptr;
+    }
+    pa_threaded_mainloop_unlock(mainloop_);
     pa_threaded_mainloop_stop(mainloop_);
     pa_threaded_mainloop_free(mainloop_);
   }
@@ -73,7 +77,14 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   switch (pa_context_get_state(c)) {
     case PA_CONTEXT_TERMINATED:
-      backend->mainloop_api_->quit(backend->mainloop_api_, 0);
+      // Only quit the mainloop if this is still the active context.
+      // During reconnection, the old context fires TERMINATED after the new one
+      // has already been created; quitting in that case would kill the new context.
+      // Note: context_ is only written from PA callbacks (while the mainloop lock is
+      // held), so this comparison is safe within any PA callback.
+      if (backend->context_ == nullptr || backend->context_ == c) {
+        backend->mainloop_api_->quit(backend->mainloop_api_, 0);
+      }
       break;
     case PA_CONTEXT_READY:
       pa_context_get_server_info(c, serverInfoCb, data);
@@ -93,6 +104,8 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
       // So there is no need to lock it again.
       if (backend->context_ != nullptr) {
         pa_context_disconnect(backend->context_);
+        pa_context_unref(backend->context_);
+        backend->context_ = nullptr;
       }
       backend->connectContext();
       break;
@@ -237,9 +250,10 @@ void AudioBackend::sourceInfoCb(pa_context* /*context*/, const pa_source_info* i
  */
 void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
-  backend->current_sink_name_ = i->default_sink_name;
-  backend->default_sink_name = i->default_sink_name;
-  backend->default_source_name_ = i->default_source_name;
+  if (i == nullptr) return;
+  backend->current_sink_name_ = i->default_sink_name ? i->default_sink_name : "";
+  backend->default_sink_name = i->default_sink_name ? i->default_sink_name : "";
+  backend->default_source_name_ = i->default_source_name ? i->default_source_name : "";
 
   pa_context_get_sink_info_list(context, sinkInfoCb, data);
   pa_context_get_source_info_list(context, sourceInfoCb, data);
@@ -355,6 +369,7 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
 }
 
 void AudioBackend::toggleSinkMute() {
+  if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   muted_ = !muted_;
   pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
@@ -363,6 +378,7 @@ void AudioBackend::toggleSinkMute() {
 }
 
 void AudioBackend::toggleSinkMute(bool mute) {
+  if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   muted_ = mute;
   pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
@@ -371,7 +387,8 @@ void AudioBackend::toggleSinkMute(bool mute) {
 }
 
 void AudioBackend::toggleSourceMute() {
-  source_muted_ = !muted_;
+  if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
+  source_muted_ = !source_muted_;
   pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
@@ -379,6 +396,7 @@ void AudioBackend::toggleSourceMute() {
 }
 
 void AudioBackend::toggleSourceMute(bool mute) {
+  if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   source_muted_ = mute;
   pa_threaded_mainloop_lock(mainloop_);
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),

@@ -9,6 +9,7 @@
 #endif
 #include <thread>
 #include <type_traits>
+#include <vector>
 
 #include "fixtures/GlibTestsFixture.hpp"
 
@@ -140,4 +141,34 @@ TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal copy/move counter", "[signal][thr
   });
   producer.join();
   REQUIRE(count == NUM_EVENTS);
+}
+
+TEST_CASE_METHOD(GlibTestsFixture, "SafeSignal queue stays bounded under burst load",
+                 "[signal][thread][util][perf]") {
+  constexpr int NUM_EVENTS = 200;
+  constexpr std::size_t MAX_QUEUED_EVENTS = 8;
+  std::vector<int> received;
+
+  SafeSignal<int> test_signal;
+  test_signal.set_max_queued_events(MAX_QUEUED_EVENTS);
+
+  setTimeout(500);
+
+  test_signal.connect([&](auto value) { received.push_back(value); });
+
+  run([&]() {
+    std::thread producer([&]() {
+      for (int i = 1; i <= NUM_EVENTS; ++i) {
+        test_signal.emit(i);
+      }
+    });
+    producer.join();
+
+    Glib::signal_timeout().connect_once([this]() { this->quit(); }, 50);
+  });
+
+  REQUIRE(received.size() <= MAX_QUEUED_EVENTS);
+  REQUIRE_FALSE(received.empty());
+  REQUIRE(received.back() == NUM_EVENTS);
+  REQUIRE(received.front() == NUM_EVENTS - static_cast<int>(received.size()) + 1);
 }

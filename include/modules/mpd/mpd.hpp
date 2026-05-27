@@ -44,7 +44,7 @@ class MPD : public ALabel {
   std::string getFilename() const;
   void setLabel();
   std::string getStateIcon() const;
-  std::string getOptionIcon(std::string optionName, bool activated) const;
+  std::string getOptionIcon(const std::string& optionName, bool activated) const;
 
   // GUI-side methods
   bool handlePlayPause(GdkEventButton* const&);

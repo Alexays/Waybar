@@ -138,7 +138,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
           fmt::arg("source_volume", source_volume), fmt::arg("source_desc", source_desc),
           fmt::arg("icon", getIcon(sink_volume, getPulseIcon()))));
     } else {
-      label_.set_tooltip_text(sink_desc);
+      label_.set_tooltip_markup(sink_desc);
     }
   }
 

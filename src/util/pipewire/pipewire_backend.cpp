@@ -54,11 +54,17 @@ PipewireBackend::PipewireBackend(PrivateConstructorTag tag)
   context_ = pw_context_new(pw_thread_loop_get_loop(mainloop_), nullptr, 0);
   if (context_ == nullptr) {
     pw_thread_loop_unlock(mainloop_);
+    pw_thread_loop_destroy(mainloop_);
+    mainloop_ = nullptr;
     throw std::runtime_error("pa_context_new() failed.");
   }
   core_ = pw_context_connect(context_, nullptr, 0);
   if (core_ == nullptr) {
     pw_thread_loop_unlock(mainloop_);
+    pw_context_destroy(context_);
+    context_ = nullptr;
+    pw_thread_loop_destroy(mainloop_);
+    mainloop_ = nullptr;
     throw std::runtime_error("pw_context_connect() failed");
   }
   registry_ = pw_core_get_registry(core_, PW_VERSION_REGISTRY, 0);
@@ -136,7 +142,10 @@ void PipewireBackend::handleRegistryEventGlobal(uint32_t id, uint32_t permission
 
   pw_proxy_add_object_listener(proxy, &pNodeInfo->object_listener, &NODE_EVENTS, pNodeInfo);
 
-  privacy_nodes.insert_or_assign(id, pNodeInfo);
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    privacy_nodes.insert_or_assign(id, pNodeInfo);
+  }
 }
 
 void PipewireBackend::handleRegistryEventGlobalRemove(uint32_t id) {

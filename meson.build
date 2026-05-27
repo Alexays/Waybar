@@ -185,7 +185,8 @@ src_files = files(
     'src/util/gtk_icon.cpp',
     'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
-    'src/util/css_reload_helper.cpp'
+    'src/util/css_reload_helper.cpp',
+    'src/util/transform_8bit_to_rgba.cpp'
 )
 
 man_files = files(
