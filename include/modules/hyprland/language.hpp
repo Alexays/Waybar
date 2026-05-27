@@ -37,6 +37,7 @@ class Language : public waybar::ALabel, public EventHandler {
   util::JsonParser parser_;
 
   Layout layout_;
+  std::string tooltip_format_;
 
   IPC& m_ipc;
 };
