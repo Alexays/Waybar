@@ -9,6 +9,7 @@
 - River (Mapping mode, Tags, Focused window name)
 - Hyprland (Window Icons, Workspaces, Focused window name)
 - Niri (Workspaces, Focused window name, Language)
+- Mango (Workspaces, Focused window name, Language, Keymode)
 - DWL (Tags, Focused window name) [requires dwl ipc patch](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/ipc)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
