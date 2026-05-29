@@ -35,6 +35,7 @@ class Language : public waybar::ALabel, public EventHandler {
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
+  std::string tooltip_format_;
 
   Layout layout_;
 
