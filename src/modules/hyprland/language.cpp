@@ -27,6 +27,13 @@ Language::~Language() {
   std::lock_guard<std::mutex> lg(mutex_);
 }
 
+auto Language::formatLayout(const std::string& format) const -> std::string {
+  return trim(fmt::format(fmt::runtime(format), fmt::arg("long", layout_.full_name),
+                          fmt::arg("short", layout_.short_name),
+                          fmt::arg("shortDescription", layout_.short_description),
+                          fmt::arg("variant", layout_.variant)));
+}
+
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
@@ -43,10 +50,7 @@ auto Language::update() -> void {
     const auto propName = "format-" + layout_.short_description;
     layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
   } else {
-    layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
-                                  fmt::arg("short", layout_.short_name),
-                                  fmt::arg("shortDescription", layout_.short_description),
-                                  fmt::arg("variant", layout_.variant)));
+    layoutName = formatLayout(format_);
   }
 
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
@@ -56,6 +60,16 @@ auto Language::update() -> void {
     label_.set_markup(layoutName);
   } else {
     label_.hide();
+  }
+
+  if (tooltipEnabled()) {
+    const auto tooltipFormat =
+        config_["tooltip-format"].isString() ? config_["tooltip-format"].asString() : "";
+    if (!tooltipFormat.empty()) {
+      label_.set_tooltip_markup(formatLayout(tooltipFormat));
+    } else if (!layoutName.empty()) {
+      label_.set_tooltip_markup(layoutName);
+    }
   }
 
   ALabel::update();

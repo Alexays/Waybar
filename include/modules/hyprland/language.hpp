@@ -23,6 +23,8 @@ class Language : public waybar::ALabel, public EventHandler {
 
   void initLanguage();
 
+  auto formatLayout(const std::string& format) const -> std::string;
+
   struct Layout {
     std::string full_name;
     std::string short_name;
