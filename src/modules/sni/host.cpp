@@ -6,6 +6,8 @@
 
 namespace waybar::modules::SNI {
 
+static const unsigned RETRY_DELAY_MS = 200;
+
 Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
            const std::function<void(std::unique_ptr<Item>&)>& on_remove,
@@ -72,11 +74,21 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
     return;
   }
   auto host = static_cast<SNI::Host*>(data);
-  host->watcher_ = watcher;
   if (error != nullptr) {
     spdlog::error("Host: {}", error->message);
+    g_clear_object(&host->cancellable_);
+    Glib::signal_timeout().connect_once(
+        [host]() {
+          if (host->watcher_ != nullptr) {
+            return;
+          }
+          auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
+          host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+        },
+        RETRY_DELAY_MS);
     return;
   }
+  host->watcher_ = watcher;
   sn_watcher_call_register_host(host->watcher_, host->object_path_.c_str(), host->cancellable_,
                                 &Host::registerHost, data);
 }
