@@ -17,6 +17,10 @@ Addressed by *hyprland/language*
 	default: {} ++
 	The format, how information should be displayed.
 
+*tooltip-format*: ++
+	typeof: string ++
+	The format, how information should be displayed in the tooltip. This format supports the same replacements as *format*.
+
 *format-<lang>* ++
 	typeof: string++
 	Provide an alternative name to display per language where <lang> is the language of your choosing. Can be passed multiple times with multiple languages as shown by the example below.
@@ -60,6 +64,7 @@ Addressed by *hyprland/language*
 ```
 "hyprland/language": {
 	"format": "Lang: {long}",
+	"tooltip-format": "{long} ({short})",
 	"format-en": "AMERICA, HELL YEAH!",
 	"format-tr": "As bayrakları",
 	"keyboard-name": "at-translated-set-2-keyboard"

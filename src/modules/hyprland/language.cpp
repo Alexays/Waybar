@@ -11,6 +11,10 @@ namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
     : ALabel(config, "language", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
+  if (config["tooltip-format"].isString()) {
+    tooltip_format_ = config["tooltip-format"].asString();
+  }
+
   // get the active layout when open
   initLanguage();
 
@@ -35,6 +39,14 @@ auto Language::update() -> void {
   spdlog::debug("hyprland language update with short description {}", layout_.short_description);
   spdlog::debug("hyprland language update with variant {}", layout_.variant);
 
+  const auto formatLayout = [this](const std::string& format) {
+    return trim(fmt::format(fmt::runtime(format), layout_.short_name,
+                            fmt::arg("long", layout_.full_name),
+                            fmt::arg("short", layout_.short_name),
+                            fmt::arg("shortDescription", layout_.short_description),
+                            fmt::arg("variant", layout_.variant)));
+  };
+
   std::string layoutName = std::string{};
   if (config_.isMember("format-" + layout_.short_description + "-" + layout_.variant)) {
     const auto propName = "format-" + layout_.short_description + "-" + layout_.variant;
@@ -43,10 +55,7 @@ auto Language::update() -> void {
     const auto propName = "format-" + layout_.short_description;
     layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
   } else {
-    layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
-                                  fmt::arg("short", layout_.short_name),
-                                  fmt::arg("shortDescription", layout_.short_description),
-                                  fmt::arg("variant", layout_.variant)));
+    layoutName = formatLayout(format_);
   }
 
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
@@ -54,6 +63,10 @@ auto Language::update() -> void {
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(layoutName);
+    if (tooltipEnabled()) {
+      label_.set_tooltip_markup(
+          tooltip_format_.empty() ? layoutName : formatLayout(tooltip_format_));
+    }
   } else {
     label_.hide();
   }
