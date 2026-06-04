@@ -15,7 +15,6 @@ constexpr inline mpd_state Context::state() const { return mpd_module_->state_; 
 inline void Context::do_update() { mpd_module_->setLabel(); }
 
 inline void Context::checkErrors(mpd_connection* conn) const { mpd_module_->checkErrors(conn); }
-inline void Context::queryMPD() const { mpd_module_->queryMPD(); }
 inline void Context::fetchState() const { mpd_module_->fetchState(); }
 inline void Context::emit() const { mpd_module_->emit(); }
 
