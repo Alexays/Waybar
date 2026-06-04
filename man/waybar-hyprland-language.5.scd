@@ -21,6 +21,16 @@ Addressed by *hyprland/language*
 	typeof: string++
 	Provide an alternative name to display per language where <lang> is the language of your choosing. Can be passed multiple times with multiple languages as shown by the example below.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: {} ++
+	The format, how information should be displayed in the tooltip.
+
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
 *keyboard-name*: ++
 	typeof: string ++
 	Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
