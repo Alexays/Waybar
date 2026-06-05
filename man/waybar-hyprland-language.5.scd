@@ -25,6 +25,18 @@ Addressed by *hyprland/language*
 	typeof: string ++
 	Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: {} ++
+	The format, how layout should be displayed in tooltip. If omitted,
+	the tooltip displays the same layout text as the module. Supports the
+	same format replacements as *format*.
+
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.
@@ -60,6 +72,7 @@ Addressed by *hyprland/language*
 ```
 "hyprland/language": {
 	"format": "Lang: {long}",
+	"tooltip-format": "Layout: {long}",
 	"format-en": "AMERICA, HELL YEAH!",
 	"format-tr": "As bayrakları",
 	"keyboard-name": "at-translated-set-2-keyboard"
