@@ -58,6 +58,20 @@ auto Language::update() -> void {
     label_.hide();
   }
 
+  if (tooltipEnabled()) {
+    if (config_["tooltip-format"].isString()) {
+      const auto tooltipFormat = config_["tooltip-format"].asString();
+      const auto tooltipLayoutName = trim(fmt::format(
+          fmt::runtime(tooltipFormat), fmt::arg("long", layout_.full_name),
+          fmt::arg("short", layout_.short_name),
+          fmt::arg("shortDescription", layout_.short_description),
+          fmt::arg("variant", layout_.variant)));
+      label_.set_tooltip_markup(tooltipLayoutName);
+    } else {
+      label_.set_tooltip_markup(layoutName);
+    }
+  }
+
   ALabel::update();
 }
 
