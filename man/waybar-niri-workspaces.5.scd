@@ -63,6 +63,8 @@ as defined by niri.
 
 *{output}*: Output where the workspace is located.
 
+*{total}*: The total number of workspaces.
+
 # ICONS
 
 Additional to workspace name matching, the following *format-icons* can be set.

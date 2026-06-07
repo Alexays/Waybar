@@ -100,7 +100,8 @@ void Workspaces::doUpdate() {
       name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
                          fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
                          fmt::arg("index", ws["idx"].asUInt()),
-                         fmt::arg("output", ws["output"].asString()));
+                         fmt::arg("output", ws["output"].asString()),
+                         fmt::arg("total", my_workspaces.size()));
     }
     if (!config_["disable-markup"].asBool()) {
       static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(name);
