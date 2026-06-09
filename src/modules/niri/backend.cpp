@@ -55,45 +55,50 @@ void IPC::startIPC() {
   // will start IPC and relay events to parseIPC
 
   std::thread([&]() {
-    int socketfd;
-    try {
-      socketfd = connectToSocket();
-    } catch (std::exception& e) {
-      spdlog::error("Niri IPC: failed to start, reason: {}", e.what());
-      return;
-    }
-    if (socketfd == -1) return;
-
-    spdlog::info("Niri IPC starting");
-
-    auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
-    auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
-    auto istream = Gio::DataInputStream::create(unix_istream);
-    auto ostream = Gio::DataOutputStream::create(unix_ostream);
-
-    if (!ostream->put_string("\"EventStream\"\n") || !ostream->flush()) {
-      spdlog::error("Niri IPC: failed to start event stream");
-      return;
-    }
-
-    std::string line;
-    if (!istream->read_line(line) || line != R"({"Ok":"Handled"})") {
-      spdlog::error("Niri IPC: failed to start event stream");
-      return;
-    }
-
-    while (istream->read_line(line)) {
-      spdlog::debug("Niri IPC: received {}", line);
-
+    for (unsigned int errcount = 0; errcount < 5; ++errcount) {
+      int socketfd;
       try {
-        parseIPC(line);
+        socketfd = connectToSocket();
       } catch (std::exception& e) {
-        spdlog::warn("Failed to parse IPC message: {}, reason: {}", line, e.what());
-      } catch (...) {
-        throw;
+        spdlog::error("Niri IPC: failed to start, reason: {}", e.what());
+        return;
+      }
+      if (socketfd == -1) return;
+
+      spdlog::info(errcount == 0 ? "Niri IPC starting" : "Niri IPC restarting");
+
+      auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
+      auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
+      auto istream = Gio::DataInputStream::create(unix_istream);
+      auto ostream = Gio::DataOutputStream::create(unix_ostream);
+
+      if (!ostream->put_string("\"EventStream\"\n") || !ostream->flush()) {
+        spdlog::error("Niri IPC: failed to start event stream");
+        return;
       }
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::string line;
+      if (!istream->read_line(line) || line != R"({"Ok":"Handled"})") {
+        spdlog::error("Niri IPC: failed to start event stream");
+        return;
+      }
+
+      while (istream->read_line(line)) {
+        spdlog::debug("Niri IPC: received {}", line);
+
+        try {
+          parseIPC(line);
+          errcount = errcount > 1 ? errcount - 1 : 0;
+        } catch (std::exception& e) {
+          spdlog::warn("Failed to parse IPC message: {}, reason: {}", line, e.what());
+        } catch (...) {
+          throw;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+      spdlog::warn("Niri IPC stopped");
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
   }).detach();
 }
