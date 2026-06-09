@@ -68,6 +68,7 @@ void Tray::onAdd(std::unique_ptr<Item>& item) {
   } else {
     box_.pack_start(item->event_box);
   }
+  items_.push_back(item.get());
 
   spdlog::debug("Tray::onAdd deferred check - checking ignore list");
   host_.checkIgnoreList(ignore_list_, std::bind(&Tray::onRemove, this, std::placeholders::_1));
@@ -79,6 +80,7 @@ void Tray::onAdd(std::unique_ptr<Item>& item) {
 
 void Tray::onRemove(std::unique_ptr<Item>& item) {
   box_.remove(item->event_box);
+  items_.erase(std::remove(items_.begin(), items_.end(), item.get()), items_.end());
   dp.emit();
 }
 
@@ -89,9 +91,11 @@ auto Tray::update() -> void {
     host_.checkIgnoreList(ignore_list_, std::bind(&Tray::onRemove, this, std::placeholders::_1));
   }
 
-  std::vector<Gtk::Widget*> children = box_.get_children();
-  event_box_.set_visible(std::any_of(children.begin(), children.end(),
-                                     [](Gtk::Widget* child) { return child->get_visible(); }));
+  // Show tray only when items are visible. Iterate the managed items_ list
+  // instead of box_.get_children() to avoid a use-after-free on raw widget
+  // pointers that may dangle after items are destroyed asynchronously.
+  event_box_.set_visible(std::any_of(items_.begin(), items_.end(),
+                                     [](Item* item) { return item->event_box.get_visible(); }));
   AModule::update();
 }
 
