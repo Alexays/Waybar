@@ -54,6 +54,18 @@ auto Language::update() -> void {
   if (!format_.empty()) {
     label_.show();
     label_.set_markup(layoutName);
+    if (tooltipEnabled()) {
+      if (config_["tooltip-format"].isString()) {
+        const auto tooltipFormat = config_["tooltip-format"].asString();
+        label_.set_tooltip_markup(
+            trim(fmt::format(fmt::runtime(tooltipFormat), fmt::arg("long", layout_.full_name),
+                             fmt::arg("short", layout_.short_name),
+                             fmt::arg("shortDescription", layout_.short_description),
+                             fmt::arg("variant", layout_.variant))));
+      } else {
+        label_.set_tooltip_markup(layoutName);
+      }
+    }
   } else {
     label_.hide();
   }
