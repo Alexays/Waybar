@@ -28,6 +28,7 @@ class Tray : public AModule {
   SNI::Watcher::singleton watcher_;
   std::vector<std::string> ignore_list_;
   SNI::Host host_;
+  std::vector<Item*> items_;
 };
 
 }  // namespace waybar::modules::SNI
