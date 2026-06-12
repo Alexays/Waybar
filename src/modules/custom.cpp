@@ -61,6 +61,10 @@ void waybar::modules::Custom::delayWorker() {
       }
       dp.emit();
     }
+    if (!config_["exec"].isString() && !config_["exec-if"].isString()) {
+      thread_.stop();
+      return;
+    }
     thread_.sleep_for(interval_);
   };
 }
