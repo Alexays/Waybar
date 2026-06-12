@@ -49,6 +49,7 @@ void waybar::modules::Custom::delayWorker() {
       int status;
       waitpid(i, &status, 0);
     }
+
     this->pid_children_.clear();
 
     bool can_update = true;
