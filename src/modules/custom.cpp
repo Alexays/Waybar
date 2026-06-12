@@ -39,12 +39,16 @@ waybar::modules::Custom::~Custom() {
 }
 
 void waybar::modules::Custom::delayWorker() {
+  if (!config_["exec"].isString() && !config_["exec-if"].isString()) {
+    dp.emit();
+    return;
+  }
+
   thread_ = [this] {
     for (int i : this->pid_children_) {
       int status;
       waitpid(i, &status, 0);
     }
-
     this->pid_children_.clear();
 
     bool can_update = true;
@@ -60,10 +64,6 @@ void waybar::modules::Custom::delayWorker() {
         output_ = util::command::exec(config_["exec"].asString(), output_name_);
       }
       dp.emit();
-    }
-    if (!config_["exec"].isString() && !config_["exec-if"].isString()) {
-      thread_.stop();
-      return;
     }
     thread_.sleep_for(interval_);
   };
