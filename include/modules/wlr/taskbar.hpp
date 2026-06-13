@@ -102,6 +102,7 @@ class Task {
   bool minimized() const { return state_ & MINIMIZED; }
   bool active() const { return state_ & ACTIVE; }
   bool fullscreen() const { return state_ & FULLSCREEN; }
+  bool visible() const { return button_visible_; }
 
  public:
   /* Callbacks for the wlr protocol */

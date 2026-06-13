@@ -52,6 +52,11 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, always reorder the tasks in the taskbar so that the currently active one is first. Otherwise don't reorder.
 
+*active-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only the currently active application button is shown. Other applications remain tracked and reappear when activated.
+
 *sort-by-app-id*: ++
 	typeof: bool ++
 	default: false ++

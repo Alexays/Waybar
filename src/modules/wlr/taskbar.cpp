@@ -293,7 +293,9 @@ void Task::handle_output_enter(struct wl_output* output) {
     button.signal_size_allocate().connect_notify(
         sigc::mem_fun(this, &Task::on_button_size_allocated));
     tbar_->add_button(button);
-    button.show();
+    if (!config_["active-only"].asBool() || active()) {
+      button.show();
+    }
     button_visible_ = true;
     spdlog::debug("{} now visible on {}", repr(), bar_.output->name);
   }
@@ -348,6 +350,14 @@ void Task::handle_done() {
     button.get_style_context()->add_class("fullscreen");
   } else if (!(state_ & FULLSCREEN)) {
     button.get_style_context()->remove_class("fullscreen");
+  }
+
+  if (button_visible_ && config_["active-only"].asBool()) {
+    if (active()) {
+      button.show();
+    } else {
+      button.hide();
+    }
   }
 
   if (config_["active-first"].isBool() && config_["active-first"].asBool() && active())
