@@ -18,6 +18,7 @@
 #include "AModule.hpp"
 #include "bar.hpp"
 #include "client.hpp"
+#include "ext-workspace-v1-client-protocol.h"
 #include "giomm/desktopappinfo.h"
 #include "util/icon_loader.hpp"
 #include "util/json.hpp"
@@ -80,6 +81,7 @@ class Task {
   std::string title_;
   std::string app_id_;
   uint32_t state_ = 0;
+  struct ext_workspace_handle_v1* workspace_ = nullptr;
 
   int32_t drag_start_x;
   int32_t drag_start_y;
@@ -102,6 +104,9 @@ class Task {
   bool minimized() const { return state_ & MINIMIZED; }
   bool active() const { return state_ & ACTIVE; }
   bool fullscreen() const { return state_ & FULLSCREEN; }
+  bool visible() const { return button_visible_; }
+  struct ext_workspace_handle_v1* workspace() const { return workspace_; }
+  void set_workspace(struct ext_workspace_handle_v1* workspace) { workspace_ = workspace; }
 
  public:
   /* Callbacks for the wlr protocol */
@@ -142,6 +147,12 @@ using TaskPtr = std::unique_ptr<Task>;
 
 class Taskbar : public waybar::AModule {
  public:
+  struct WorkspaceState {
+    Taskbar* taskbar;
+    struct ext_workspace_handle_v1* handle;
+    uint32_t state = 0;
+  };
+
   Taskbar(const std::string&, const waybar::Bar&, const Json::Value&);
   ~Taskbar();
   void update();
@@ -156,22 +167,35 @@ class Taskbar : public waybar::AModule {
   std::map<std::string, std::string> app_ids_replace_map_;
 
   struct zwlr_foreign_toplevel_manager_v1* manager_;
+  struct ext_workspace_manager_v1* workspace_manager_;
   struct wl_seat* seat_;
+  std::vector<struct ext_workspace_group_handle_v1*> workspace_groups_;
+  std::vector<std::unique_ptr<WorkspaceState>> workspaces_;
+  struct ext_workspace_handle_v1* current_workspace_ = nullptr;
 
  public:
   /* Callbacks for global registration */
   void register_manager(struct wl_registry*, uint32_t name, uint32_t version);
+  void register_workspace_manager(struct wl_registry*, uint32_t name, uint32_t version);
   void register_seat(struct wl_registry*, uint32_t name, uint32_t version);
 
   /* Callbacks for the wlr protocol */
   void handle_toplevel_create(struct zwlr_foreign_toplevel_handle_v1*);
   void handle_finished();
+  void handle_workspace_group_create(struct ext_workspace_group_handle_v1*);
+  void handle_workspace_group_removed(struct ext_workspace_group_handle_v1*);
+  void handle_workspace_create(struct ext_workspace_handle_v1*);
+  void handle_workspace_done();
+  void handle_workspace_finished();
+  void handle_workspace_removed(struct ext_workspace_handle_v1*);
 
  public:
   void add_button(Gtk::Button&);
   void move_button(Gtk::Button&, int);
   void remove_button(Gtk::Button&);
   void remove_task(uint32_t);
+  void assign_current_workspace(Task&);
+  void update_bar_css_classes();
 
   bool show_output(struct wl_output*) const;
   bool all_outputs() const;
@@ -179,6 +203,9 @@ class Taskbar : public waybar::AModule {
   const IconLoader& icon_loader() const;
   const std::unordered_set<std::string>& ignore_list() const;
   const std::map<std::string, std::string>& app_ids_replace_map() const;
+
+ private:
+  void set_bar_css_class(const std::string&, bool);
 };
 
 } /* namespace waybar::modules::wlr */

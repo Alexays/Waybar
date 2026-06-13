@@ -18,6 +18,13 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to false applications on the waybar's current output will be shown. Otherwise, all applications are shown.
 
+*bar-css-states*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, application state is exposed as CSS classes on the Waybar
+	window. Maximized and fullscreen state is aggregated across applications
+	known to belong to the active workspace. See *Bar state style* below.
+
 *format*: ++
 	typeof: string ++
 	default: {icon} ++
@@ -51,6 +58,12 @@ Addressed by *wlr/taskbar*
 	typeof: bool ++
 	default: false ++
 	If set to true, always reorder the tasks in the taskbar so that the currently active one is first. Otherwise don't reorder.
+
+*active-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only the currently active application button is shown.
+	Other applications remain tracked and reappear when activated.
 
 *sort-by-app-id*: ++
 	typeof: bool ++
@@ -156,3 +169,35 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 - *#taskbar button.minimized*
 - *#taskbar button.active*
 - *#taskbar button.fullscreen*
+
+# Bar state style
+
+When *bar-css-states* is enabled, the following classes are added to
+*window#waybar*:
+
+- *window#waybar.toplevel-active*
+- *window#waybar.toplevel-maximized*
+- *window#waybar.toplevel-minimized*
+- *window#waybar.toplevel-fullscreen*
+
+The active, minimized classes describe the active application. The maximized
+and fullscreen classes are set if any non-minimized application known to belong
+to the active workspace has that state.
+
+Workspace membership is learned when an application is activated and requires
+the compositor to support *ext-workspace-v1*. Before an application has been
+activated during the current Waybar session, its workspace may be unknown. On
+compositors without *ext-workspace-v1*, these classes fall back to the active
+application's state.
+
+For example:
+
+```
+window#waybar {
+	background-color: rgba(0, 0, 0, 0.5);
+}
+
+window#waybar.toplevel-maximized {
+	background-color: rgba(0, 0, 0, 1);
+}
+```
