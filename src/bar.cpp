@@ -309,6 +309,19 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   setupWidgets();
   window.show_all();
 
+  /*
+   * If gtk-layer-shell's synchronous wait for the initial configure timed out, show_all() can
+   * return with a configured but not-yet-presented surface. Kick GTK/layer-shell once control has
+   * returned to the main loop, when any late initial configure has been dispatched and widgets have
+   * had a chance to allocate/draw.
+   */
+  Glib::signal_idle().connect(sigc::track_obj([this] {
+    window.queue_resize();
+    window.queue_draw();
+    forceLayerCommit();
+    return false;
+  }, *this));
+
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
     char* gtk_tree = gtk_style_context_to_string(
@@ -374,7 +387,14 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
    * gtk-layer-shell schedules a commit on the next frame event in GTK, but this could fail in
    * certain scenarios, such as fully occluded bar.
    */
-  gtk_layer_try_force_commit(gtk_window);
+  forceLayerCommit();
+}
+
+void waybar::Bar::forceLayerCommit() {
+  auto* gtk_window = window.gobj();
+  if (gtk_window != nullptr && gtk_widget_get_realized(GTK_WIDGET(gtk_window))) {
+    gtk_layer_try_force_commit(gtk_window);
+  }
   wl_display_flush(Client::inst()->wl_display);
 }
 
@@ -652,6 +672,17 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
 
   configureGlobalOffset(ev->width, ev->height);
   spdlog::info(BAR_SIZE_MSG, ev->width, ev->height, output->name);
+
+  /*
+   * gtk-layer-shell waits for the compositor's initial configure while realizing the window. On a
+   * busy compositor (common during session startup) that wait can time out even though the initial
+   * configure arrives shortly afterwards. In that case GTK may not schedule the frame commit that
+   * presents the first layer-surface buffer, leaving an otherwise configured bar invisible. Force a
+   * commit after every configure so late initial configures, and later compositor-driven resizes,
+   * always result in a submitted surface state.
+   */
+  window.queue_draw();
+  forceLayerCommit();
 }
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {
