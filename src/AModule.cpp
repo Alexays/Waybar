@@ -73,9 +73,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
     if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
-      setCursor(Gdk::HAND2);
-    } else if (config_["cursor"].isInt()) {
-      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+        setCursor("pointer");
+    } else if (config_["cursor"].isString()) {
+      setCursor(config_["cursor"].asString());
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
@@ -110,10 +110,10 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-void AModule::setCursor(Gdk::CursorType const& c) {
+void AModule::setCursor(std::string const& c) {
   auto gdk_window = event_box_.get_window();
   if (gdk_window) {
-    auto cursor = Gdk::Cursor::create(c);
+    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
     gdk_window->set_cursor(cursor);
   } else {
     // window may not be accessible yet, in this case,
@@ -134,7 +134,7 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::HAND2);
+    setCursor("pointer");
   }
 
   return false;
@@ -147,7 +147,7 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::ARROW);
+    setCursor("default");
   }
 
   return false;

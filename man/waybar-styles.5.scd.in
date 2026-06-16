@@ -43,18 +43,17 @@ You can apply special styling to any module for when the cursor hovers it.
 
 Most, if not all, module types support setting the `cursor` option. This is
 configured in your `config.jsonc`. If set to `false`, when hovering the module a
-"pointer"(as commonly known from web CSS styling `cursor: pointer`) style cursor
+"pointer" (as commonly known from web CSS styling `cursor: pointer`) style cursor
 will not be shown. Default behavior is to indicate an interaction event is
 available.
 
-There are more cursor types to choose from by setting the `cursor` option to
-a number, see Gdk3 official docs for all possible cursor types:
-https://docs.gtk.org/gdk3/enum.CursorType.html.
-However, note that not all cursor options listed may be available on
-your system. If you attempt to use a cursor which is not available, the
-application will crash.
+If set to a string value, it must be a valid cursor name
+(e.g. `"pointer"`, `"default"`, `"grab"`, `"text"`, `"crosshair"`, etc.),
+see the cursor-shape-v1 protocol for all possible cursor types:
+https://wayland.app/protocols/cursor-shape-v1#wp_cursor_shape_device_v1:enum:shape.
+Depending on the compositor and cursor theme used, cursors not listed in the protocol may also work.
 
-Example of disabling pointer(`Gdk::Hand2`) cursor type on a custom module:
+Example of disabling the cursor on a custom module:
 
 ```
 "custom/my-custom-module": {
@@ -63,13 +62,12 @@ Example of disabling pointer(`Gdk::Hand2`) cursor type on a custom module:
 }
 ```
 
-Example of setting cursor type to `Gdk::Boat`(according to
-https://docs.gtk.org/gdk3/enum.CursorType.html#boat):
+Example of setting the cursor type to `"grab"`:
 
 ```
 "custom/my-custom-module": {
     ...
-    "cursor": 8,
+    "cursor": "grab",
 }
 ```
 
