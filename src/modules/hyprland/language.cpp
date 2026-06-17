@@ -13,6 +13,8 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
     : ALabel(config, "language", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   if (config_["tooltip-format"].isString()) {
     tooltip_format_ = config_["tooltip-format"].asString();
+  } else {
+    tooltip_format_ = format_;
   }
 
   // get the active layout when open
@@ -39,18 +41,32 @@ auto Language::update() -> void {
   spdlog::debug("hyprland language update with short description {}", layout_.short_description);
   spdlog::debug("hyprland language update with variant {}", layout_.variant);
 
+  const auto escapedFullName = waybar::util::sanitize_string(layout_.full_name);
+  const auto escapedShortName = waybar::util::sanitize_string(layout_.short_name);
+  const auto escapedShortDescription = waybar::util::sanitize_string(layout_.short_description);
+  const auto escapedVariant = waybar::util::sanitize_string(layout_.variant);
+
   std::string layoutName = std::string{};
   if (config_.isMember("format-" + layout_.short_description + "-" + layout_.variant)) {
     const auto propName = "format-" + layout_.short_description + "-" + layout_.variant;
-    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
+    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString(),
+                             fmt::arg("long", escapedFullName),
+                             fmt::arg("short", escapedShortName),
+                             fmt::arg("shortDescription", escapedShortDescription),
+                             fmt::arg("variant", escapedVariant));
   } else if (config_.isMember("format-" + layout_.short_description)) {
     const auto propName = "format-" + layout_.short_description;
-    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString());
+    layoutName = fmt::format(fmt::runtime(format_), config_[propName].asString(),
+                             fmt::arg("long", escapedFullName),
+                             fmt::arg("short", escapedShortName),
+                             fmt::arg("shortDescription", escapedShortDescription),
+                             fmt::arg("variant", escapedVariant));
   } else {
-    layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
-                                  fmt::arg("short", layout_.short_name),
-                                  fmt::arg("shortDescription", layout_.short_description),
-                                  fmt::arg("variant", layout_.variant)));
+    layoutName = trim(fmt::format(fmt::runtime(format_), escapedShortName,
+                                  fmt::arg("long", escapedFullName),
+                                  fmt::arg("short", escapedShortName),
+                                  fmt::arg("shortDescription", escapedShortDescription),
+                                  fmt::arg("variant", escapedVariant)));
   }
 
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
@@ -64,14 +80,20 @@ auto Language::update() -> void {
 
   if (tooltipEnabled()) {
     if (!tooltip_format_.empty()) {
-      auto tooltip = trim(fmt::format(fmt::runtime(tooltip_format_),
-                                      fmt::arg("long", layout_.full_name),
-                                      fmt::arg("short", layout_.short_name),
-                                      fmt::arg("shortDescription", layout_.short_description),
-                                      fmt::arg("variant", layout_.variant)));
+      auto tooltip = std::string{};
+      try {
+        tooltip = trim(fmt::format(fmt::runtime(tooltip_format_), escapedShortName,
+                                   fmt::arg("long", escapedFullName),
+                                   fmt::arg("short", escapedShortName),
+                                   fmt::arg("shortDescription", escapedShortDescription),
+                                   fmt::arg("variant", escapedVariant)));
+      } catch (const fmt::format_error& e) {
+        spdlog::warn("hyprland language tooltip format failed: {}", e.what());
+        tooltip = waybar::util::sanitize_string(layoutName);
+      }
       label_.set_tooltip_markup(tooltip);
     } else {
-      label_.set_tooltip_markup(layoutName);
+      label_.set_tooltip_markup(waybar::util::sanitize_string(layoutName));
     }
   }
 
