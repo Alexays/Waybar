@@ -323,6 +323,8 @@ if true
         'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
+        'src/modules/hyprland/workbar.cpp',
+        'src/modules/hyprland/workbar_widget.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
     )
     man_files += files(
