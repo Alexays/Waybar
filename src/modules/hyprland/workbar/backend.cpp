@@ -13,6 +13,7 @@ Backend::Backend()
 
 WorkspaceList Backend::getWorkspaces() {
     auto json = ipc_.getSocket1JsonReply("workspaces");
+    auto clients = ipc_.getSocket1JsonReply("clients");
 
     WorkspaceList workspaces;
 
@@ -32,13 +33,30 @@ WorkspaceList Backend::getWorkspaces() {
     }
 
     for (const auto& ws : json) {
-        workspaces.push_back({
-            .id = ws["id"].asInt(),
-            .active = active_workspaces.contains(ws["id"].asInt()),
-            .visible = visible_workspaces.contains(ws["id"].asInt()),
-            .monitor = ws["monitor"].asString(),
-            .windows = ws["windows"].asInt(),
-        });
+        WorkspaceState state;
+
+        state.id = ws["id"].asInt();
+        state.active = active_workspaces.contains(state.id);
+        state.visible = visible_workspaces.contains(state.id);
+        state.monitor = ws["monitor"].asString();
+
+        for (const auto& client : clients) {
+            if (client["workspace"]["id"].asInt() != state.id) {
+                continue;
+            }
+
+            state.windows.push_back({
+                client["address"].asString(),
+                client["class"].asString(),
+                client["title"].asString(),
+            });
+        }
+
+        std::cout << "Workspace " << state.id
+                << " has " << state.windows.size()
+                << " windows\n";
+
+        workspaces.push_back(std::move(state));
     }
 
     return workspaces;
@@ -49,7 +67,6 @@ void Backend::setUpdateCallback(std::function<void()> callback) {
 }
 
 void Backend::onEvent(const std::string& ev) {
-    std::cout << "IPC Event: " << ev << std::endl;
 
     if (update_callback_) {
         update_callback_();

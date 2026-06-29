@@ -5,6 +5,12 @@
 
 namespace waybar::modules::hyprland::workbar {
 
+struct WindowState {
+    std::string address;
+    std::string class_name;
+    std::string title;
+};
+
 struct WorkspaceState {
     int id;
 
@@ -13,7 +19,7 @@ struct WorkspaceState {
 
     std::string monitor;
 
-    int windows = 0;
+    std::vector<WindowState> windows;
 };
 
 using WorkspaceList = std::vector<WorkspaceState>;
