@@ -3,12 +3,13 @@
 #include <gtkmm/button.h>
 #include <gtkmm/box.h>
 #include <gtkmm/label.h>
+#include "modules/hyprland/workbar/model.hpp"
 
 namespace waybar::modules::hyprland::workbar {
 
 class WorkspaceButton : public Gtk::Button {
  public:
-  explicit WorkspaceButton(int number);
+  WorkspaceButton(const WorkspaceState& workspace);
 
  private:
   Gtk::Box box_;

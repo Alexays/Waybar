@@ -7,13 +7,6 @@ namespace waybar::modules::hyprland::workbar {
     Widget::Widget()
         : Gtk::Box(Gtk::ORIENTATION_HORIZONTAL) {
 
-        setWorkspaces({
-            {1},
-            {2},
-            {3},
-            {4},
-        });
-
         show_all();
     }
 
@@ -29,7 +22,7 @@ namespace waybar::modules::hyprland::workbar {
         clearWorkspaces();
 
         for (const auto& ws : workspaces) {
-            auto button = std::make_unique<WorkspaceButton>(ws.id);
+            auto button = std::make_unique<WorkspaceButton>(ws);
 
             pack_start(*button, Gtk::PACK_SHRINK);
 

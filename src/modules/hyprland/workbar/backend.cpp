@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unordered_set>
 #include "modules/hyprland/workbar/backend.hpp"
 
 
@@ -14,9 +15,22 @@ WorkspaceList Backend::getWorkspaces() {
 
     WorkspaceList workspaces;
 
+    auto monitors = ipc_.getSocket1JsonReply("monitors");
+
+    std::unordered_set<int> active_workspaces;
+
+    for (const auto& monitor : monitors) {
+    active_workspaces.insert(
+        monitor["activeWorkspace"]["id"].asInt()
+    );
+}
+
     for (const auto& ws : json) {
         workspaces.push_back({
-            ws["id"].asInt()
+            .id = ws["id"].asInt(),
+            .active = active_workspaces.contains(ws["id"].asInt()),
+            .monitor = ws["monitor"].asString(),
+            .windows = ws["windows"].asInt(),
         });
     }
 

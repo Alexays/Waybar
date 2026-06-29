@@ -2,11 +2,21 @@
 
 namespace waybar::modules::hyprland::workbar {
 
-WorkspaceButton::WorkspaceButton(int number)
+WorkspaceButton::WorkspaceButton(const WorkspaceState& workspace)
     : box_(Gtk::ORIENTATION_HORIZONTAL),
       icons_(Gtk::ORIENTATION_HORIZONTAL) {
 
-  number_.set_text(std::to_string(number));
+  number_.set_text(std::to_string(workspace.id));
+
+  auto context = get_style_context();
+
+  context->add_class("workspace");
+
+  if (workspace.active) {
+      context->add_class("active");
+  } else {
+      context->remove_class("active");
+  }
 
   box_.pack_start(number_, Gtk::PACK_SHRINK);
   box_.pack_start(icons_, Gtk::PACK_SHRINK);
@@ -16,4 +26,4 @@ WorkspaceButton::WorkspaceButton(int number)
   show_all();
 }
 
-}  // namespace waybar::modules::hyprland
+}  // namespace waybar::modules::hyprland::workbar
