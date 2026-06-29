@@ -2,6 +2,7 @@
 
 #include "AModule.hpp"
 #include "modules/hyprland/workbar/widget.hpp"
+#include "modules/hyprland/workbar/backend.hpp"
 
 namespace waybar::modules::hyprland::workbar {
 
@@ -12,6 +13,7 @@ class Module : public AModule {
     void update() override;
 
   private:
+    Backend backend_;
     Widget widget_;
 };
 
