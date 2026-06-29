@@ -18,6 +18,12 @@ WorkspaceButton::WorkspaceButton(const WorkspaceState& workspace)
       context->remove_class("active");
   }
 
+  if (workspace.visible) {
+      context->add_class("visible");
+  } else {
+      context->remove_class("visible");
+  }
+
   box_.pack_start(number_, Gtk::PACK_SHRINK);
   box_.pack_start(icons_, Gtk::PACK_SHRINK);
 
