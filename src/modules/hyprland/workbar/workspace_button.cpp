@@ -1,6 +1,6 @@
-#include "modules/hyprland/workspace_button.hpp"
+#include "modules/hyprland/workbar/workspace_button.hpp"
 
-namespace waybar::modules::hyprland {
+namespace waybar::modules::hyprland::workbar {
 
 WorkspaceButton::WorkspaceButton(int number)
     : box_(Gtk::ORIENTATION_HORIZONTAL),

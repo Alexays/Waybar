@@ -4,7 +4,7 @@
 #include <gtkmm/box.h>
 #include <gtkmm/label.h>
 
-namespace waybar::modules::hyprland {
+namespace waybar::modules::hyprland::workbar {
 
 class WorkspaceButton : public Gtk::Button {
  public:

@@ -1,8 +1,8 @@
-#include "modules/hyprland/workbar.hpp"
+#include "modules/hyprland/workbar/module.hpp"
 
-namespace waybar::modules::hyprland {
+namespace waybar::modules::hyprland::workbar {
 
-Workbar::Workbar(const std::string& id, const Json::Value& config)
+Module::Module(const std::string& id, const Json::Value& config)
     : AModule(config, "workbar", id) {
   widget_.set_name("workbar");
 
@@ -17,8 +17,8 @@ Workbar::Workbar(const std::string& id, const Json::Value& config)
   dp.emit();
 }
 
-void Workbar::update() {
+void Module::update() {
   AModule::update();
 }
 
-}  // namespace waybar::modules::hyprland
+}  // namespace waybar::modules::hyprland::workbar

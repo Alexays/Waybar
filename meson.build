@@ -323,9 +323,10 @@ if true
         'src/modules/hyprland/windowcount.cpp',
         'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
-        'src/modules/hyprland/workbar.cpp',
-        'src/modules/hyprland/workbar_widget.cpp',
-        'src/modules/hyprland/workspace_button.cpp',
+        'src/modules/hyprland/workbar/module.cpp',
+        'src/modules/hyprland/workbar/widget.cpp',
+        'src/modules/hyprland/workbar/workspace_button.cpp',
+        'src/modules/hyprland/workbar/model.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
     )
     man_files += files(
