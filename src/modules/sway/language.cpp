@@ -124,9 +124,31 @@ auto Language::update() -> void {
   ALabel::update();
 }
 
+static std::string fallback_layout_short_name(std::string_view full_name) {
+  const size_t n = std::min<size_t>(2, full_name.size());
+  return std::string(full_name.substr(0, n));
+}
+
 auto Language::set_current_layout(const std::string& current_layout) -> void {
   label_.get_style_context()->remove_class(layout_.short_name);
-  layout_ = layouts_map_[current_layout];
+
+  auto it = layouts_map_.find(current_layout);
+
+  if (it != layouts_map_.end()) {
+    layout_ = it->second;
+  } else {
+    spdlog::debug("Language: using fallback for unknown layout '{}'", current_layout);
+
+    auto short_name = fallback_layout_short_name(current_layout);
+
+    layout_ = Layout{
+      current_layout,
+      short_name,
+      "",
+      short_name
+    };
+  }
+
   label_.get_style_context()->add_class(layout_.short_name);
 }
 
