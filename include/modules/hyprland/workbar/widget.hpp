@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtkmm/box.h>
+#include <unordered_map>
 
 #include "modules/hyprland/workbar/model.hpp"
 #include "modules/hyprland/workbar/workspace_button.hpp"
@@ -19,7 +20,7 @@ class Widget : public Gtk::Box {
     private:
         void clearWorkspaces();
 
-        std::vector<std::unique_ptr<WorkspaceButton>> workspaces_;
+        std::unordered_map<int, std::unique_ptr<WorkspaceButton>> workspaces_;
 };
 
 }  // namespace waybar::modules::hyprland

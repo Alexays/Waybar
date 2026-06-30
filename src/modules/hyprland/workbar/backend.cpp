@@ -9,6 +9,10 @@ Backend::Backend()
     : ipc_(IPC::inst()) {
     ipc_.registerForIPC("workspacev2", this);
     ipc_.registerForIPC("focusedmonv2", this);
+
+    ipc_.registerForIPC("openwindow", this);
+    ipc_.registerForIPC("closewindow", this);
+    ipc_.registerForIPC("movewindowv2", this);
 }
 
 WorkspaceList Backend::getWorkspaces() {
@@ -51,10 +55,6 @@ WorkspaceList Backend::getWorkspaces() {
                 client["title"].asString(),
             });
         }
-
-        std::cout << "Workspace " << state.id
-                << " has " << state.windows.size()
-                << " windows\n";
 
         workspaces.push_back(std::move(state));
     }
