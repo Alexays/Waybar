@@ -53,6 +53,7 @@ WorkspaceList Backend::getWorkspaces() {
                 client["address"].asString(),
                 client["class"].asString(),
                 client["title"].asString(),
+                state.id,
             });
         }
 

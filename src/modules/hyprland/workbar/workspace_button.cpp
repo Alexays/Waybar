@@ -1,15 +1,27 @@
 #include "modules/hyprland/workbar/workspace_button.hpp"
 
+#include <unordered_set>
+
 namespace waybar::modules::hyprland::workbar {
 
+int WorkspaceButton::id() const {
+    return number_.workspaceId();
+}
+
 WorkspaceButton::WorkspaceButton(const WorkspaceState& workspace)
-    : box_(Gtk::ORIENTATION_HORIZONTAL),
-      icons_(Gtk::ORIENTATION_HORIZONTAL) {
+    :   Gtk::Box(Gtk::ORIENTATION_HORIZONTAL),
+        number_(workspace.id),
+        box_(Gtk::ORIENTATION_HORIZONTAL),
+        icons_(Gtk::ORIENTATION_HORIZONTAL) {
+
+    get_style_context()->add_class("workspace");
+
+    box_.get_style_context()->add_class("workspace-content");
 
     box_.pack_start(number_, Gtk::PACK_SHRINK);
     box_.pack_start(icons_, Gtk::PACK_SHRINK);
 
-    add(box_);
+    pack_start(box_, Gtk::PACK_EXPAND_WIDGET);
 
     setWorkspace(workspace);
 
@@ -24,11 +36,9 @@ void WorkspaceButton::setWorkspace(const WorkspaceState& workspace) {
         icons_.remove(*child);
     }
 
-    number_.set_text(std::to_string(workspace.id));
-
     auto context = get_style_context();
 
-    context->add_class("workspace");
+    std::unordered_set<std::string> seen;
 
     if (workspace.active) {
         context->add_class("active");
@@ -43,11 +53,29 @@ void WorkspaceButton::setWorkspace(const WorkspaceState& workspace) {
     }
 
     for (const auto& window : workspace.windows) {
+        seen.insert(window.address);
+
+        auto it = window_icons_.find(window.address);
+
+        if (it != window_icons_.end()) {
+            it->second->setWindow(window);
+            continue;
+        }
+
         auto icon = std::make_unique<WindowIcon>(window);
 
         icons_.pack_start(*icon, Gtk::PACK_SHRINK);
 
-        window_icons_.push_back(std::move(icon));
+        window_icons_.emplace(window.address, std::move(icon));
+    }
+
+    for (auto it = window_icons_.begin(); it != window_icons_.end();) {
+        if (!seen.contains(it->first)) {
+            icons_.remove(*it->second);
+            it = window_icons_.erase(it);
+        } else {
+            ++it;
+        }
     }
 
     show_all();

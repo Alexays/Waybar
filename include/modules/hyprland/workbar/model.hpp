@@ -9,6 +9,8 @@ struct WindowState {
     std::string address;
     std::string class_name;
     std::string title;
+
+    int workspace_id;
 };
 
 struct WorkspaceState {

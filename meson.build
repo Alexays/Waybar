@@ -329,6 +329,8 @@ if true
         'src/modules/hyprland/workbar/model.cpp',
         'src/modules/hyprland/workbar/backend.cpp',
         'src/modules/hyprland/workbar/window_icon.cpp',
+        'src/modules/hyprland/workbar/workspace_number.cpp',
+        'src/modules/hyprland/workbar/drag_state.cpp',
         'src/modules/hyprland/windowcreationpayload.cpp',
     )
     man_files += files(

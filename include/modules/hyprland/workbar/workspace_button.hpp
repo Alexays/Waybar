@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <unordered_map>
 #include <gtkmm/button.h>
 #include <gtkmm/box.h>
 #include <gtkmm/label.h>
@@ -9,22 +10,25 @@
 
 #include "modules/hyprland/workbar/model.hpp"
 #include "modules/hyprland/workbar/window_icon.hpp"
+#include "modules/hyprland/workbar/workspace_number.hpp"
 
 namespace waybar::modules::hyprland::workbar {
 
-class WorkspaceButton : public Gtk::Button {
+class WorkspaceButton : public Gtk::Box {
  public:
   WorkspaceButton(const WorkspaceState& workspace);
+  int id() const;
 
   void setWorkspace(const WorkspaceState& workspace);
 
  private:
   
   Gtk::Box box_;
-  Gtk::Label number_;
   Gtk::Box icons_;
 
-  std::vector<std::unique_ptr<WindowIcon>> window_icons_;
+  WorkspaceNumber number_;
+
+  std::unordered_map<std::string, std::unique_ptr<WindowIcon>> window_icons_;
 };
 
 
