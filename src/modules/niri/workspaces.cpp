@@ -103,7 +103,9 @@ void Workspaces::doUpdate() {
                          fmt::arg("output", ws["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(name);
+      auto* child = gtk_bin_get_child(GTK_BIN(button.gobj()));
+      if (child != nullptr && GTK_IS_LABEL(child))
+        gtk_label_set_markup(GTK_LABEL(child), name.c_str());
     } else {
       button.set_label(name);
     }
