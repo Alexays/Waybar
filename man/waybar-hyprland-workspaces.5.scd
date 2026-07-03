@@ -195,6 +195,15 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	If set to special-centered, workspaces will sort by default with special workspaces in the center.
 	If none of those, workspaces will sort with default behavior.
 
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
+*tooltips*: ++
+	typeof: array ++
+	Based on the workspace ID and state, the corresponding tooltip gets selected. Selection works the same as *format-icons* do. Format replacements are supported. See *icons*.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++
@@ -281,6 +290,51 @@ Additional to workspace name matching, the following *format-icons* can be set.
 	"ignore-workspaces": [
 		"(special:)?chrome-sharing-indicator"
 	]
+}
+```
+
+```
+"hyprland/workspaces": {
+	"format": "{icon}",
+	"format-window-separator": ", ",
+	"tooltip": true,
+	"tooltips": {
+		"default": "{name}: {windows}",
+		"empty": "" // Will result in no tooltip
+	}
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"active": "",
+		"default": ""
+	},
+	// Window rewrites omitted for brevity
+}
+```
+
+```
+"hyprland/workspaces": {
+	"format": "{icon}",
+	"format-window-separator": ", ",
+	"tooltip": true,
+	"tooltips": {
+		"1": "This is the first workspace",
+		"2": "This is the second",
+		"2": "And this is the third"
+	}
+	"format-icons": {
+		"1": "",
+		"2": "",
+		"3": "",
+		"4": "",
+		"5": "",
+		"active": "",
+		"default": ""
+	},
+	// Window rewrites omitted for brevity
 }
 ```
 

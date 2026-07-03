@@ -296,8 +296,8 @@ bool Workspace::onWindowOpened(WindowCreationPayload const& create_window_payloa
   return false;
 }
 
-std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map) {
-  spdlog::trace("Selecting icon for workspace {}", name());
+std::string& Workspace::selectString(std::map<std::string, std::string>& icons_map) {
+  spdlog::trace("Selecting string for workspace {}", name());
   if (isUrgent()) {
     auto urgentNamedIconIt = icons_map.find("urgent:" + name());
     if (urgentNamedIconIt != icons_map.end()) {
@@ -379,7 +379,7 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
   return m_name;
 }
 
-void Workspace::update(const std::string& workspace_icon) {
+void Workspace::update(const std::string& workspace_icon, const std::string& workspace_tooltip) {
   if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
     m_button.hide();
     return;
@@ -487,6 +487,12 @@ void Workspace::update(const std::string& workspace_icon) {
         windows.append(it->repr_rewrite);
       }
     }
+  }
+
+  if (!workspace_tooltip.empty()) {
+    m_button.set_tooltip_text(
+        fmt::format(fmt::runtime(workspace_tooltip), fmt::arg("id", id()), fmt::arg("name", name()),
+                    fmt::arg("icon", workspace_icon), fmt::arg("windows", windows)));
   }
 
   auto formatBefore = m_workspaceManager.formatBefore();

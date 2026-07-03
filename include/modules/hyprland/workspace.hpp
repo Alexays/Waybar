@@ -31,7 +31,7 @@ class Workspace {
   explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
                      const Json::Value& clients_data = Json::Value::nullRef);
   ~Workspace();
-  std::string& selectIcon(std::map<std::string, std::string>& icons_map);
+  std::string& selectString(std::map<std::string, std::string>& string_map);
   Gtk::Button& button() { return m_button; };
 
   int id() const { return m_id; };
@@ -74,7 +74,7 @@ class Workspace {
   bool onWindowOpened(WindowCreationPayload const& create_window_payload);
   std::optional<WindowRepr> closeWindow(WindowAddress const& addr);
 
-  void update(const std::string& workspace_icon);
+  void update(const std::string& workspace_icon, const std::string& workspace_tooltip);
 
  private:
   Workspaces& m_workspaceManager;

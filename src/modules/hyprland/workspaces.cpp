@@ -675,6 +675,15 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
     populateIconsMap(config["format-icons"]);
   }
 
+  m_withTooltip = tooltipEnabled();
+  if (m_withTooltip && m_tooltipMap.empty()) {
+    const Json::Value& tooltipFormats = config["tooltips"];
+    for (const auto& name : tooltipFormats.getMemberNames()) {
+      m_tooltipMap.emplace(name, tooltipFormats[name].asString());
+    }
+    m_tooltipMap.emplace("", "");
+  }
+
   populateBoolConfig(config, "all-outputs", m_allOutputs);
   populateBoolConfig(config, "show-special", m_showSpecial);
   populateBoolConfig(config, "special-visible-only", m_specialVisibleOnly);
@@ -1155,7 +1164,11 @@ void Workspaces::updateWorkspaceStates() {
                           visibleWorkspaces.end());
     std::string& workspaceIcon = m_iconsMap[""];
     if (m_withIcon) {
-      workspaceIcon = workspace->selectIcon(m_iconsMap);
+      workspaceIcon = workspace->selectString(m_iconsMap);
+    }
+    std::string& workspaceTooltip = m_tooltipMap[""];
+    if (m_withTooltip) {
+      workspaceTooltip = workspace->selectString(m_tooltipMap);
     }
     auto updatedWorkspace = std::ranges::find_if(updatedWorkspaces, [&workspace](const auto& w) {
       auto wNameRaw = w["name"].asString();
@@ -1165,7 +1178,7 @@ void Workspaces::updateWorkspaceStates() {
     if (updatedWorkspace != updatedWorkspaces.end()) {
       workspace->setOutput((*updatedWorkspace)["monitor"].asString());
     }
-    workspace->update(workspaceIcon);
+    workspace->update(workspaceIcon, workspaceTooltip);
   }
 }
 

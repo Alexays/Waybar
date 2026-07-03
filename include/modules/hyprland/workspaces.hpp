@@ -179,6 +179,8 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_formatAfter;
 
   std::map<std::string, std::string> m_iconsMap;
+  std::map<std::string, std::string> m_tooltipMap;
+  bool m_withTooltip = false;
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
