@@ -178,9 +178,11 @@ void Host::addRegisteredItem(const std::string& service) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
   if (it == items_.end()) {
-    items_.emplace_back(new Item(
-        bus_name, object_path, config_, bar_, [this](Item& item) { itemReady(item); },
-        [this](Item& item) { itemInvalidated(item); }, on_update_));
+    items_.emplace_back(std::make_unique<Item>(
+      bus_name, object_path, config_, bar_,
+      [this](Item& item) { itemReady(item); },
+      [this](Item& item) { itemInvalidated(item); },
+      on_update_));
   }
 }
 
