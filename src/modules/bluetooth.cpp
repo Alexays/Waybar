@@ -222,7 +222,7 @@ auto waybar::modules::Bluetooth::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    label_.set_markup(fmt::format(
+    setLabelMarkup(fmt::format(
         fmt::runtime(format_), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
@@ -267,7 +267,7 @@ auto waybar::modules::Bluetooth::update() -> void {
         device_enumerate_.erase(0, 1);
       }
     }
-    label_.set_tooltip_markup(fmt::format(
+    setTooltipMarkup(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("status", state_),
         fmt::arg("num_connections", connected_devices_.size()),
         fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
