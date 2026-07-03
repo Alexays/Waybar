@@ -12,7 +12,8 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   if (config_["tooltip-format"].isString()) {
     tooltipFormat_ = config_["tooltip-format"].asString();
   } else {
-    tooltipFormat_ = "Power profile: {profile}\nDriver: {driver}";
+    tooltipFormat_ =
+        "Power profile: {profile}\nCPU driver: {cpu_driver}\nPlatform driver: {platform_driver}";
   }
   // Fasten your seatbelt, we're up for quite a ride. The rest of the
   // init is performed asynchronously. There's 2 callbacks involved.
@@ -95,15 +96,51 @@ void PowerProfilesDaemon::populateInitState() {
   powerProfilesProxy_->get_cached_property(profilesVariant, "Profiles");
   for (auto& variantDict : profilesVariant.get()) {
     Glib::ustring name;
+    // Legacy single `Driver` property, still exposed by older
+    // power-profiles-daemon versions.
     Glib::ustring driver;
+    Glib::ustring cpuDriver;
+    Glib::ustring platformDriver;
     if (auto p = variantDict.find("Profile"); p != variantDict.end()) {
       name = p->second.get();
     }
     if (auto d = variantDict.find("Driver"); d != variantDict.end()) {
       driver = d->second.get();
     }
+    if (auto cd = variantDict.find("CpuDriver"); cd != variantDict.end()) {
+      cpuDriver = cd->second.get();
+    }
+    if (auto pd = variantDict.find("PlatformDriver"); pd != variantDict.end()) {
+      platformDriver = pd->second.get();
+    }
+
+    // Recent power-profiles-daemon versions split the single `Driver`
+    // property into `CpuDriver` and `PlatformDriver`. When talking to an
+    // older daemon that only exposes `Driver`, fall back to it so the new
+    // {cpu_driver}/{platform_driver} placeholders still resolve.
+    if (cpuDriver.empty()) {
+      cpuDriver = driver;
+    }
+    if (platformDriver.empty()) {
+      platformDriver = driver;
+    }
+    // Conversely, keep the legacy {driver} placeholder working against a
+    // recent daemon that no longer exposes `Driver` by deriving it from
+    // the CPU driver.
+    if (driver.empty()) {
+      driver = cpuDriver;
+    }
+
+    if (driver.empty()) {
+      driver = "Unavailable";
+      cpuDriver = "Unavailable";
+      platformDriver = "Unavailable";
+      spdlog::warn("Cannot find power profiles daemon driver.");
+    }
+
     if (!name.empty()) {
-      availableProfiles_.emplace_back(std::move(name), std::move(driver));
+      availableProfiles_.emplace_back(std::move(name), std::move(driver), std::move(cpuDriver),
+                                      std::move(platformDriver));
     } else {
       spdlog::error(
           "Power profiles daemon: power-profiles-daemon sent us an empty power profile name. "
@@ -150,15 +187,14 @@ void PowerProfilesDaemon::switchToProfile(std::string const& str) {
 auto PowerProfilesDaemon::update() -> void {
   if (connected_ && activeProfile_ != availableProfiles_.end()) {
     auto profile = (*activeProfile_);
-    // Set label
-    fmt::dynamic_format_arg_store<fmt::format_context> store;
-    store.push_back(fmt::arg("profile", profile.name));
-    store.push_back(fmt::arg("driver", profile.driver));
-    store.push_back(fmt::arg("icon", getIcon(0, profile.name)));
-    label_.set_markup(fmt::vformat(format_, store));
-    if (tooltipEnabled()) {
-      label_.set_tooltip_markup(fmt::vformat(tooltipFormat_, store));
-    }
+    // Set label and tooltip
+    updateLabelAndTooltip(format_, tooltipFormat_, fmt::arg("profile", profile.name),
+                          // Legacy placeholder, kept for backward compatibility with existing
+                          // configs.
+                          fmt::arg("driver", profile.driver),
+                          fmt::arg("cpu_driver", profile.cpuDriver),
+                          fmt::arg("platform_driver", profile.platformDriver),
+                          fmt::arg("icon", getIcon(0, profile.name)));
 
     // Set CSS class
     if (!currentStyle_.empty()) {

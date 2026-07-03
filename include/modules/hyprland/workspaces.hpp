@@ -39,6 +39,7 @@ class Workspaces : public AModule, public EventHandler {
   auto allOutputs() const -> bool { return m_allOutputs; }
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
+  auto hideActive() const -> bool { return m_hideActive; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto persistentOnly() const -> bool { return m_persistentOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
@@ -56,12 +57,15 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarReverseDirection() const -> bool { return m_taskbarReverseDirection; }
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
   auto getIgnoredWindows() const -> std::vector<std::regex> { return m_ignoreWindows; }
+  auto maxWindows() const -> int { return m_maxWindows; }
 
   enum class ActiveWindowPosition { NONE, FIRST, LAST };
   auto activeWindowPosition() const -> ActiveWindowPosition { return m_activeWindowPosition; }
 
   std::string getRewrite(const std::string& window_class, const std::string& window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
+  auto windowRewriteGroupThreshold() const -> int { return m_windowRewriteGroupThreshold; }
+  auto const& getWindowRewriteGroupFormat() const { return m_windowRewriteGroupFormat; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
@@ -89,6 +93,7 @@ class Workspaces : public AModule, public EventHandler {
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
   auto populateWindowRewriteConfig(const Json::Value& config) -> void;
+  auto populateMaxWindowsConfig(const Json::Value& config) -> void;
   auto populateWorkspaceTaskbarConfig(const Json::Value& config) -> void;
 
   void registerIpc();
@@ -146,6 +151,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_allOutputs = false;
   bool m_showSpecial = false;
   bool m_activeOnly = false;
+  bool m_hideActive = false;
   bool m_specialVisibleOnly = false;
   bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
@@ -173,6 +179,8 @@ class Workspaces : public AModule, public EventHandler {
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
+  int m_windowRewriteGroupThreshold = 0;
+  std::string m_windowRewriteGroupFormat = "{icon}×{count}";
 
   bool m_withIcon;
   uint64_t m_monitorId;
@@ -202,6 +210,7 @@ class Workspaces : public AModule, public EventHandler {
   };
   std::string m_onClickWindow;
   std::string m_currentActiveWindowAddress;
+  int m_maxWindows = 0;
 
   std::vector<std::regex> m_ignoreWorkspaces;
   std::vector<std::regex> m_ignoreWindows;
@@ -211,6 +220,9 @@ class Workspaces : public AModule, public EventHandler {
   Gtk::Box m_box;
   sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
+
+  sigc::connection m_debounceTimer;
+  bool m_updatePending = false;
 };
 
 }  // namespace waybar::modules::hyprland

@@ -1,5 +1,6 @@
 #include "modules/hyprland/window.hpp"
 
+#include <fmt/format.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
@@ -53,13 +54,20 @@ auto Window::update() -> void {
   std::string label_text;
   if (!format_.empty()) {
     label_.show();
+
+    // If the focused window name is empty and fallback is configured, use fallback text
+    std::string displayTitle = windowName;
+    if (displayTitle.empty() && config_["fallback"].isString()) {
+      displayTitle = config_["fallback"].asString();
+    }
+
     label_text = waybar::util::rewriteString(
-        fmt::format(fmt::runtime(format_), fmt::arg("title", windowName),
+        fmt::format(fmt::runtime(format_), fmt::arg("title", displayTitle),
                     fmt::arg("initialTitle", windowData_.initial_title),
                     fmt::arg("class", windowData_.class_name),
                     fmt::arg("initialClass", windowData_.initial_class_name)),
         config_["rewrite"]);
-    label_.set_markup(label_text);
+    setLabelMarkup(label_text);
   } else {
     label_.hide();
   }
@@ -70,13 +78,12 @@ auto Window::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_markup(
-          fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
-                      fmt::arg("initialTitle", windowData_.initial_title),
-                      fmt::arg("class", windowData_.class_name),
-                      fmt::arg("initialClass", windowData_.initial_class_name)));
+      setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
+                                   fmt::arg("initialTitle", windowData_.initial_title),
+                                   fmt::arg("class", windowData_.class_name),
+                                   fmt::arg("initialClass", windowData_.initial_class_name)));
     } else if (!label_text.empty()) {
-      label_.set_tooltip_markup(label_text);
+      setTooltipMarkup(label_text);
     }
   }
 
@@ -108,21 +115,14 @@ auto Window::update() -> void {
   AAppIconLabel::update();
 }
 
-auto Window::getActiveWorkspace() -> Workspace {
-  const auto workspace = IPC::inst().getSocket1JsonReply("activeworkspace");
-
-  if (workspace.isObject()) {
-    return Workspace::parse(workspace);
-  }
-
-  return {};
-}
+auto Window::getActiveWorkspace() -> Workspace { return getActiveWorkspace(""); }
 
 auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
   const auto monitors = IPC::inst().getSocket1JsonReply("monitors");
   if (monitors.isArray()) {
-    auto monitor = std::ranges::find_if(
-        monitors, [&](const Json::Value& monitor) { return monitor["name"] == monitorName; });
+    auto monitor = std::ranges::find_if(monitors, [&](const Json::Value& monitor) {
+      return monitorName.empty() ? monitor["focused"].asBool() : monitor["name"] == monitorName;
+    });
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
       return Workspace{
@@ -132,7 +132,8 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
           .last_window_title = "",
       };
     }
-    const int id = (*monitor)["activeWorkspace"]["id"].asInt();
+    const int special_id = (*monitor)["specialWorkspace"]["id"].asInt();
+    const int id = special_id != 0 ? special_id : (*monitor)["activeWorkspace"]["id"].asInt();
 
     const auto workspaces = IPC::inst().getSocket1JsonReply("workspaces");
     if (workspaces.isArray()) {
@@ -220,9 +221,9 @@ void Window::queryActiveWorkspace() {
   std::vector<Json::Value> visibleWindows;
   std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
                        [&](const Json::Value& window) { return !window["hidden"].asBool(); });
-  solo_ = 1 == std::count_if(
-                   visibleWindows.begin(), visibleWindows.end(),
-                   [&](const Json::Value& window) { return !window["floating"].asBool(); });
+  solo_ =
+      1 == std::count_if(visibleWindows.begin(), visibleWindows.end(),
+                         [&](const Json::Value& window) { return !window["floating"].asBool(); });
   allFloating_ = std::ranges::all_of(
       visibleWindows, [&](const Json::Value& window) { return window["floating"].asBool(); });
   fullscreen_ = windowData_.fullscreen;

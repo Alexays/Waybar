@@ -117,7 +117,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
         g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)menuActionsMap_[key].c_str());
+                         (gpointer)g_strdup(menuActionsMap_[key].c_str()));
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
@@ -139,6 +139,26 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
 auto ALabel::update() -> void { AModule::update(); }
 
+bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
+  if (last_label_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_markup(markup);
+  last_label_markup_ = markup;
+  return true;
+}
+
+bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_tooltip_markup(markup);
+  last_tooltip_markup_ = markup;
+  return true;
+}
+
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
@@ -150,7 +170,26 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn("format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", \"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
@@ -177,7 +216,26 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn("format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", \"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
       auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
       auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
@@ -189,6 +247,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
+void ALabel::copyToClipboard(const std::string& literal) {
+  Gtk::Clipboard::get()->set_text(literal);
+}
+
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
@@ -197,6 +259,10 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     } else {
       format_ = default_format_;
     }
+  }
+
+  if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
+    copyToClipboard(label_.get_text());
   }
   return AModule::handleToggle(e);
 }
