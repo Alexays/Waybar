@@ -46,9 +46,11 @@ void waybar::modules::Image::delayWorker() {
 }
 
 void waybar::modules::Image::refresh(int sig) {
+#ifdef SIGRTMIN
   if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+#endif
 }
 
 auto waybar::modules::Image::update() -> void {
