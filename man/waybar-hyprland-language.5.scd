@@ -52,6 +52,12 @@ Addressed by *hyprland/language*
 	typeof: string ++
 	Allows specifying a different tooltip format for each language. The *<lang>* should be replaced with the language code. This can be used to provide a custom tooltip for each language.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
+
 # FORMAT REPLACEMENTS
 
 *{short}*: Short name of layout (e.g. "us"). Equals to {}.

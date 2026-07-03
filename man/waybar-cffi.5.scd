@@ -15,6 +15,11 @@ Addressed by *cffi/<name>*
 	typeof: string ++
 	The path to the dynamic library to load to control the widget.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 Some additional configuration may be required depending on the cffi dynamic library being used.
 
 

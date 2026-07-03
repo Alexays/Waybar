@@ -28,14 +28,14 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   }
 
   // Fetch functions
-  if (*wbcffi_version == 1) {
+  if (*wbcffi_version == 1 || *wbcffi_version == 2) {
     // Mandatory functions
     hooks_.init = reinterpret_cast<InitFn*>(dlsym(handle, "wbcffi_init"));
     if (!hooks_.init) {
       throw std::runtime_error{std::string{"Missing wbcffi_init function: "} + dlerror()};
     }
     hooks_.deinit = reinterpret_cast<DenitFn*>(dlsym(handle, "wbcffi_deinit"));
-    if (!hooks_.init) {
+    if (!hooks_.deinit) {
       throw std::runtime_error{std::string{"Missing wbcffi_deinit function: "} + dlerror()};
     }
     // Optional functions
@@ -58,15 +58,20 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
   const auto& keys = config.getMemberNames();
   for (size_t i = 0; i < keys.size(); i++) {
     const auto& value = config[keys[i]];
-    if (value.isConvertibleTo(Json::ValueType::stringValue)) {
-      config_entries_stringstor.push_back(config[keys[i]].asString());
+    if (*wbcffi_version == 1) {
+      if (value.isConvertibleTo(Json::ValueType::stringValue)) {
+        config_entries_stringstor.push_back(value.asString());
+      } else {
+        config_entries_stringstor.push_back(value.toStyledString());
+      }
     } else {
-      config_entries_stringstor.push_back(config[keys[i]].toStyledString());
+      config_entries_stringstor.push_back(value.toStyledString());
     }
   }
 
   // Prepare config_entries array
   std::vector<ffi::wbcffi_config_entry> config_entries;
+  config_entries.reserve(keys.size());
   for (size_t i = 0; i < keys.size(); i++) {
     config_entries.push_back({keys[i].c_str(), config_entries_stringstor[i].c_str()});
   }

@@ -175,6 +175,11 @@ Addressed by *mpd*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 ## WHEN PLAYING/PAUSED
@@ -198,6 +203,10 @@ Addressed by *mpd*
 *{songPosition}*: The position of the current song.
 
 *{queueLength}*: The length of the current queue.
+
+*{uri}*: The URI of the song relative to the MPD music directory.
+
+*{filename}* The last part of the URI.
 
 *{stateIcon}*: The icon corresponding to the playing or paused status of the player (see *state-icons* option)
 

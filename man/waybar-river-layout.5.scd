@@ -64,6 +64,11 @@ Addressed by *river/layout*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # EXAMPLE
 
 ```
@@ -78,6 +83,7 @@ Addressed by *river/layout*
 
 - *#layout*
 - *#layout.focused* Applied when the output this module's bar belongs to is focused.
+- *#layout.<layout>* Applied when the output this module's bar belongs uses this layout.
 
 # SEE ALSO
 

@@ -10,13 +10,7 @@
 namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
-  modulesReady = true;
-
-  if (!gIPC) {
-    gIPC = std::make_unique<IPC>();
-  }
-
+    : ALabel(config, "language", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   // get the active layout when open
   initLanguage();
 
@@ -24,11 +18,11 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   update();
 
   // register for hyprland ipc
-  gIPC->registerForIPC("activelayout", this);
+  m_ipc.registerForIPC("activelayout", this);
 }
 
 Language::~Language() {
-  gIPC->unregisterForIPC(this);
+  m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
 }
@@ -96,8 +90,35 @@ auto Language::update() -> void {
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
-  auto layoutName = ev.substr(ev.find_last_of(',') + 1);
+  const auto payloadStart = ev.find(">>");
+  if (payloadStart == std::string::npos) {
+    spdlog::warn("hyprland language received malformed event: {}", ev);
+    return;
+  }
+  const auto payload = ev.substr(payloadStart + 2);
+  const auto kbSeparator = payload.find(',');
+  if (kbSeparator == std::string::npos) {
+    spdlog::warn("hyprland language received malformed event payload: {}", ev);
+    return;
+  }
+  std::string kbName = payload.substr(0, kbSeparator);
+
+  // Last comma before variants parenthesis, eg:
+  // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
+  // with dead keys)
+  std::string beforeParenthesis;
+  auto parenthesisPos = payload.find_last_of('(');
+  if (parenthesisPos == std::string::npos) {
+    beforeParenthesis = payload;
+  } else {
+    beforeParenthesis = payload.substr(0, parenthesisPos);
+  }
+  const auto layoutSeparator = beforeParenthesis.find_last_of(',');
+  if (layoutSeparator == std::string::npos) {
+    spdlog::warn("hyprland language received malformed layout payload: {}", ev);
+    return;
+  }
+  auto layoutName = payload.substr(layoutSeparator + 1);
 
   if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
     return;  // ignore
@@ -112,7 +133,7 @@ void Language::onEvent(const std::string& ev) {
 }
 
 void Language::initLanguage() {
-  const auto inputDevices = gIPC->getSocket1Reply("devices");
+  const auto inputDevices = m_ipc.getSocket1Reply("devices");
 
   const auto kbName = config_["keyboard-name"].asString();
 

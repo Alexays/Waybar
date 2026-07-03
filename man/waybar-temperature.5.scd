@@ -40,7 +40,7 @@ Addressed by *temperature*
 	The threshold before it is considered critical (Celsius).
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 10 ++
 	The interval in which the information gets polled.
 
@@ -132,6 +132,11 @@ Addressed by *temperature*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{temperatureC}*: Temperature in Celsius.
@@ -155,4 +160,5 @@ Addressed by *temperature*
 # STYLE
 
 - *#temperature*
+- *#temperature.warning*
 - *#temperature.critical*

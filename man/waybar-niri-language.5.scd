@@ -33,6 +33,11 @@ Addressed by *niri/language*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{short}*: Short name of layout (e.g. "us"). Equals to {}.
@@ -47,8 +52,8 @@ Addressed by *niri/language*
 
 ```
 "niri/language": {
-	"format": "Lang: {long}"
-	"format-en": "AMERICA, HELL YEAH!"
+	"format": "Lang: {long}",
+	"format-en": "AMERICA, HELL YEAH!",
 	"format-tr": "As bayrakları"
 }
 ```
@@ -56,3 +61,12 @@ Addressed by *niri/language*
 # STYLE
 
 - *#language*
+
+Additionally, a CSS class matching the current layout's short name is added to the widget. This
+allows per-language styling, for example:
+
+```
+#language.us { color: #00ff00; }
+#language.de { color: #ff0000; }
+#language.fr { color: #0000ff; }
+```

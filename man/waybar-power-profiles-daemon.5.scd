@@ -35,6 +35,13 @@ $XDG_CONFIG_HOME/waybar/config
 :[ object
 :[ See default value in the example below.
 :[ Icons used to represent the various power-profile. *Note*: the default configuration uses the font-awesome icons. You may want to override it if you don't have this font installed on your system.
+|[ *expand*:
+:[ bool
+:[ false
+:[ Enables this module to consume all left over space dynamically.
+
+
+
 
 
 # CONFIGURATION EXAMPLES

@@ -26,6 +26,16 @@ Addressed by *river/tags*
 	default: false ++
 	If set to false, you can left-click to set focused tag. Right-click to toggle tag focus. If set to true this behaviour is disabled.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
+*hide-vacant*: ++
+	typeof: bool ++
+	default: false ++
+	Only show relevant tags: tags that are either focused or have a window on them.
+
 # EXAMPLE
 
 ```

@@ -29,14 +29,14 @@ PowerProfilesDaemon::PowerProfilesDaemon(const std::string& id, const Json::Valu
   // method on the proxy to see whether or not something's responding
   // on the other side.
 
-  // NOTE: the DBus adresses are under migration. They should be
+  // NOTE: the DBus addresses are under migration. They should be
   // changed to org.freedesktop.UPower.PowerProfiles at some point.
   //
   // See
   // https://gitlab.freedesktop.org/upower/power-profiles-daemon/-/releases/0.20
   //
   // The old name is still announced for now. Let's rather use the old
-  // adresses for compatibility sake.
+  // addresses for compatibility sake.
   //
   // Revisit this in 2026, systems should be updated by then.
 
@@ -157,7 +157,7 @@ auto PowerProfilesDaemon::update() -> void {
     store.push_back(fmt::arg("icon", getIcon(0, profile.name)));
     label_.set_markup(fmt::vformat(format_, store));
     if (tooltipEnabled()) {
-      label_.set_tooltip_text(fmt::vformat(tooltipFormat_, store));
+      label_.set_tooltip_markup(fmt::vformat(tooltipFormat_, store));
     }
 
     // Set CSS class
@@ -176,6 +176,10 @@ auto PowerProfilesDaemon::update() -> void {
 
 bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
   if (e->type == GdkEventType::GDK_BUTTON_PRESS && connected_) {
+    if (availableProfiles_.empty()) return true;
+    if (activeProfile_ == availableProfiles_.end()) {
+      activeProfile_ = availableProfiles_.begin();
+    }
     if (e->button == 1) /* left click */ {
       activeProfile_++;
       if (activeProfile_ == availableProfiles_.end()) {
