@@ -41,6 +41,9 @@ auto waybar::modules::Cpu::update() -> void {
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load", load1));
+    store.push_back(fmt::arg("load1", load1));
+    store.push_back(fmt::arg("load5", load5));
+    store.push_back(fmt::arg("load15", load15));
     store.push_back(fmt::arg("usage", total_usage));
     store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
     store.push_back(fmt::arg("max_frequency", max_frequency));
@@ -58,9 +61,14 @@ auto waybar::modules::Cpu::update() -> void {
     label_.set_markup(fmt::vformat(format, store));
 
     if (tooltipEnabled()) {
-      if (config_["tooltip-format"].isString()) {
-        tooltip = config_["tooltip-format"].asString();
-        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
+      std::string tooltip_format;
+      if (!state.empty() && config_["tooltip-format-" + state].isString()) {
+        tooltip_format = config_["tooltip-format-" + state].asString();
+      } else if (config_["tooltip-format"].isString()) {
+        tooltip_format = config_["tooltip-format"].asString();
+      }
+      if (!tooltip_format.empty()) {
+        label_.set_tooltip_markup(fmt::vformat(tooltip_format, store));
       } else {
         label_.set_tooltip_markup(tooltip);
       }
