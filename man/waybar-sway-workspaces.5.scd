@@ -31,6 +31,11 @@ Addressed by *sway/workspaces*
 	default: false ++
 	If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
 
+*reverse-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, scrolling up will switch to the previous workspace and scrolling down will switch to the next workspace. If set to true, the behavior will be reversed.
+
 *disable-click*: ++
 	typeof: bool ++
 	default: false ++
@@ -180,7 +185,6 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
   "format": "<span size='larger'>{name}</span> {windows}",
   "format-window-separator": " | ",
   "window-rewrite-default": "{name}",
-  "window-format": "<span color='#e0e0e0'>{name}</span>",
   "window-rewrite": {
     "class<firefox>": "",
     "class<kitty>": "k",

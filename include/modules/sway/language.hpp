@@ -21,7 +21,7 @@ class Language : public ALabel, public sigc::trackable {
   auto update() -> void override;
 
  private:
-  enum class DispayedShortFlag { None = 0, ShortName = 1, ShortDescription = 1 << 1 };
+  enum class DisplayedShortFlag { None = 0, ShortName = 1, ShortDescription = 1 << 1 };
 
   struct Layout {
     std::string full_name;
@@ -47,7 +47,7 @@ class Language : public ALabel, public sigc::trackable {
   void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
 
-  auto set_current_layout(std::string current_layout) -> void;
+  auto set_current_layout(const std::string& current_layout) -> void;
   auto init_layouts_map(const std::vector<std::string>& used_layouts) -> void;
 
   const static std::string XKB_LAYOUT_NAMES_KEY;
@@ -58,7 +58,7 @@ class Language : public ALabel, public sigc::trackable {
   std::map<std::string, Layout> layouts_map_;
   bool hide_single_;
   bool is_variant_displayed;
-  std::byte displayed_short_flag = static_cast<std::byte>(DispayedShortFlag::None);
+  std::byte displayed_short_flag = static_cast<std::byte>(DisplayedShortFlag::None);
 
   util::JsonParser parser_;
   std::mutex mutex_;
