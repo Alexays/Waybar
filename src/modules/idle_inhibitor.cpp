@@ -23,7 +23,7 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   // Read the wait-for-activity config option
   if (config_["wait-for-activity"].isBool()) {
     wait_for_activity_ = config_["wait-for-activity"].asBool();
-    
+
     // Check if ext-idle-notify protocol is available when wait-for-activity is enabled
     if (wait_for_activity_ && waybar::Client::inst()->idle_notifier == nullptr) {
       throw std::runtime_error("wait-for-activity requires ext-idle-notify-v1 protocol support");
@@ -162,31 +162,31 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
   return true;
 }
 
-void waybar::modules::IdleInhibitor::handleIdled(void* data, 
-                                                  ext_idle_notification_v1* /*notification*/) {
+void waybar::modules::IdleInhibitor::handleIdled(void* data,
+                                                 ext_idle_notification_v1* /*notification*/) {
   spdlog::info("deactivating idle_inhibitor due to user inactivity");
   status = false;
-  
+
   // Clean up the notification since we're deactivating
   auto* self = static_cast<IdleInhibitor*>(data);
   if (self != nullptr) {
     self->teardownIdleNotification();
   }
-  
+
   for (auto const& module : waybar::modules::IdleInhibitor::modules) {
     module->update();
   }
 }
 
 void waybar::modules::IdleInhibitor::handleResumed(void* data,
-                                                    ext_idle_notification_v1* /*notification*/) {
+                                                   ext_idle_notification_v1* /*notification*/) {
   // User became active again - notification will continue monitoring
   spdlog::debug("user activity detected, idle_inhibitor still active");
 }
 
 void waybar::modules::IdleInhibitor::setupIdleNotification() {
   spdlog::debug("idle_inhibitor: setting up idle notification");
-  
+
   // Clean up any existing notification first
   if (idle_notification_ != nullptr) {
     spdlog::debug("idle_inhibitor: cleaning up existing notification before setup");
@@ -208,11 +208,12 @@ void waybar::modules::IdleInhibitor::setupIdleNotification() {
   auto* wl_seat = gdk_wayland_seat_get_wl_seat(gdk_seat);
 
   // Check protocol version to determine which function to use
-  uint32_t version = wl_proxy_get_version(reinterpret_cast<struct wl_proxy*>(client->idle_notifier));
-  
-  spdlog::debug("idle_inhibitor: creating notification with timeout {} ms (protocol version {})", 
+  uint32_t version =
+      wl_proxy_get_version(reinterpret_cast<struct wl_proxy*>(client->idle_notifier));
+
+  spdlog::debug("idle_inhibitor: creating notification with timeout {} ms (protocol version {})",
                 idle_timeout_ms_, version);
-  
+
   if (version >= 2) {
     // Version 2+: Use get_input_idle_notification which ignores idle inhibitors
     // This allows us to detect actual user inactivity even while the inhibitor is active
@@ -222,10 +223,13 @@ void waybar::modules::IdleInhibitor::setupIdleNotification() {
   } else {
     // Version 1: Fall back to get_idle_notification
     // WARNING: This respects idle inhibitors, so it won't fire while inhibitor is active
-    spdlog::warn("idle_inhibitor: ext-idle-notifier-v1 version {} doesn't support get_input_idle_notification, "
-                 "wait-for-activity may not work correctly", version);
-    idle_notification_ = ext_idle_notifier_v1_get_idle_notification(
-        client->idle_notifier, idle_timeout_ms_, wl_seat);
+    spdlog::warn(
+        "idle_inhibitor: ext-idle-notifier-v1 version {} doesn't support "
+        "get_input_idle_notification, "
+        "wait-for-activity may not work correctly",
+        version);
+    idle_notification_ = ext_idle_notifier_v1_get_idle_notification(client->idle_notifier,
+                                                                    idle_timeout_ms_, wl_seat);
   }
 
   if (idle_notification_ == nullptr) {
