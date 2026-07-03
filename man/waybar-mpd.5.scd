@@ -29,6 +29,11 @@ Addressed by *mpd*
 	default: 5 ++
 	The interval in which the connection to the MPD server is retried
 
+*playing-interval*: ++
+	typeof: integer++
+	default: 1000 ++
+	The interval (in milliseconds) in which the playing state is updated.
+
 *timeout*: ++
 	typeof: integer++
 	default: 30 ++
@@ -203,6 +208,10 @@ Addressed by *mpd*
 *{songPosition}*: The position of the current song.
 
 *{queueLength}*: The length of the current queue.
+
+*{uri}*: The URI of the song relative to the MPD music directory.
+
+*{filename}* The last part of the URI.
 
 *{stateIcon}*: The icon corresponding to the playing or paused status of the player (see *state-icons* option)
 

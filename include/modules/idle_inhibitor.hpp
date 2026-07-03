@@ -6,15 +6,20 @@
 #include "bar.hpp"
 #include "client.hpp"
 
+struct ext_idle_notification_v1;
+
 namespace waybar::modules {
 
 class IdleInhibitor : public ALabel {
   sigc::connection timeout_;
+  ext_idle_notification_v1* idle_notification_;
+  uint32_t idle_timeout_ms_;
 
  public:
   IdleInhibitor(const std::string&, const waybar::Bar&, const Json::Value&);
   virtual ~IdleInhibitor();
   auto update() -> void override;
+  auto refresh(int) -> void override;
   static std::list<waybar::AModule*> modules;
   static bool status;
   static long deactivationTime;
@@ -24,6 +29,10 @@ class IdleInhibitor : public ALabel {
   bool handleScroll(GdkEventScroll* e) override;
 
   void toggleStatus(int force_status = -1);
+  void setupIdleNotification();
+  void teardownIdleNotification();
+  static void handleIdled(void* data, ext_idle_notification_v1* notification);
+  static void handleResumed(void* data, ext_idle_notification_v1* notification);
 
   const Bar& bar_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
@@ -32,6 +41,7 @@ class IdleInhibitor : public ALabel {
   bool dynamicTimeout;
   short timeout;
   short timeout_step;
+  bool wait_for_activity_;
 };
 
 }  // namespace waybar::modules

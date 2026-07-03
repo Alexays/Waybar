@@ -19,7 +19,7 @@ Valid locations for this file are:
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.jsonc
 Also, a minimal example configuration can be found at the bottom of this man page.
 
-The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(5)* for details.
+The visual display elements for waybar use a CSS stylesheet. Waybar supports *style.css* and the appearance-specific *style-light.css* and *style-dark.css* files; see *waybar-styles(5)* for details.
 
 # BAR CONFIGURATION
 
@@ -36,7 +36,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *expand-right* ++
 	typeof: bool ++
 	default: false ++
-	Enables the modules-left to consume all left over space dynamically.
+	Enables the modules-right to consume all left over space dynamically.
 
 *layer* ++
 	typeof: string ++
@@ -86,7 +86,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *no-center* ++
 	typeof: bool ++
 	default: false ++
-	Option to disable the center modules fully usefull together with expand-\*.
+	Option to disable the center modules fully useful together with expand-\*.
 
 *spacing* ++
 	typeof: integer ++
@@ -151,9 +151,24 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 	default: *false* ++
 	Option to enable reloading the css style if a modification is detected on the style sheet file or any imported css files.
 
+*on-sigusr1* ++
+	typeof: string ++
+	default: *toggle* ++
+	Action that is performed when receiving SIGUSR1 kill signal. ++
+	Possible values: *show*, *hide*, *toggle*, *reload*, *noop*. ++
+	Default value: *toggle*.
+
+*on-sigusr2* ++
+	typeof: string ++
+	default: *reload* ++
+	Action that is performed when receiving SIGUSR2 kill signal. ++
+	Possible values: *show*, *hide*, *toggle*, *reload*, *noop*. ++
+	Default value: *reload*.
+
 # MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
+Tooltip appearance is generally controlled globally via CSS and cannot be truly scoped per module. Some modules (such as the clock) provide limited workarounds for customization.
 
 e.g.
 
@@ -206,13 +221,35 @@ A minimal *config* file could look like this:
 Waybar accepts the following signals:
 
 *SIGUSR1*
-	Toggles the bar visibility (hides if shown, shows if hidden)
+	By default toggles the bar visibility (hides if shown, shows if hidden)
 *SIGUSR2*
-	Reloads (resets) the bar
+	By default reloads (resets) the bar
 *SIGINT*
 	Quits the bar
 
 For example, to toggle the bar programmatically, you can invoke `killall -SIGUSR1 waybar`.
+
+## User signal configuration
+
+Config parameters *on-sigusr1* and *on-sigusr2* change what happens when bars receive
+*SIGUSR1* and *SIGUSR2* signals.
+
+This means that commands `killall -SIGUSR1 waybar` and `killall -SIGUSR2 waybar`
+can perform user-configured action.
+
+It also means that if an external script has the PID of the bar then it can
+perform more complex `show`/`hide`/`reload` logic for each instance of Waybar.
+One can find the PID e.g. by doing `pgrep -a waybar` which could then match
+by config name or other parameters.
+
+## Kill parameter meanings
+
+*show*    Switches state to visible (per bar).
+*hide*    Switches state to hidden (per bar).
+*toggle*  Switches state between visible and hidden (per bar).
+*reload*  Reloads all waybars of current waybar process (basically equivalent to
+restarting with updated config which sets initial visibility values).
+*noop*    Does nothing when the kill signal is received.
 
 # MULTI OUTPUT CONFIGURATION
 
@@ -272,6 +309,17 @@ When positioning Waybar on the left or right side of the screen, sometimes it's 
 
 Valid options for the "rotate" property are: 0, 90, 180, and 270.
 
+## Swapping icon and label
+
+If a module displays both a label and an icon, it might be desirable to swap them (for instance, for panels on the left or right of the screen, or for user adopting a right-to-left script). This can be achieved with the "swap-icon-label" property, taking a boolean. Example:
+```
+{
+	"sway/window": {
+		"swap-icon-label": true
+	}
+}
+```
+
 ## Grouping modules
 
 Module groups allow stacking modules in any direction. By default, when the bar is positioned on the top or bottom of the screen, modules in a group are stacked vertically. Likewise, when positioned on the left or right, modules in a group are stacked horizontally. This can be changed with the "orientation" property.
@@ -316,11 +364,23 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
 
+*start-expanded*: ++
+	typeof: bool ++
+	default: false ++
+	Defines whether the drawer should initialize in an expanded state.
+
 *transition-left-to-right*: ++
 	typeof: bool ++
 	default: true ++
 	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
 	When the bar is vertical, it reads as top-to-bottom.
+
+*reveal-by-default*: ++
+	typeof: bool ++
+	default: false ++
+	Whether the child should be revealed when Waybar starts up. This has to be used with click-to-reveal to take effect.
+
+Group drawers are also given the `.expanded` CSS class when they are expanded.
 
 ```
 "group/power": {
@@ -390,4 +450,4 @@ A group may hide all but one element, showing them only on mouse hover. In order
 # SEE ALSO
 
 *sway-output(5)*
-*waybar-styles(5)"
+*waybar-styles(5)*
