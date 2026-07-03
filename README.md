@@ -6,7 +6,7 @@
 
 #### Current features
 - Sway (Workspaces, Binding mode, Focused window name)
-- River (Mapping mode, Tags, Focused window name)
+- River (Mapping mode, Tags, Focused window name, Layout)
 - Hyprland (Window Icons, Workspaces, Focused window name)
 - Niri (Workspaces, Focused window name, Language)
 - Mango (Workspaces, Focused window name, Language, Keymode)
