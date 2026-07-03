@@ -9,10 +9,18 @@ namespace waybar::modules {
 
 struct Profile {
   std::string name;
+  // Legacy driver field, kept for backward compatibility with the
+  // `{driver}` format placeholder and with older power-profiles-daemon
+  // versions that only expose a single `Driver` DBus property.
+  std::string driver;
   std::string cpuDriver;
   std::string platformDriver;
 
-  Profile(std::string n, std::string cd, std::string pd) : name(std::move(n)), cpuDriver(std::move(cd)), platformDriver(std::move(pd)) {}
+  Profile(std::string n, std::string d, std::string cd, std::string pd)
+      : name(std::move(n)),
+        driver(std::move(d)),
+        cpuDriver(std::move(cd)),
+        platformDriver(std::move(pd)) {}
 };
 
 class PowerProfilesDaemon : public ALabel {

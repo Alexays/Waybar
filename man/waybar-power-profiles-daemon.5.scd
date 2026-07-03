@@ -26,7 +26,7 @@ $XDG_CONFIG_HOME/waybar/config
 |[ *tooltip-format*
 :[ string
 :[ "Power profile: {profile}\\nCPU driver: {cpu_driver}\\nPlatform driver: {platform_driver}"
-:[ Messaged displayed in the module tooltip. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name.
+:[ Messaged displayed in the module tooltip. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name. {cpu_driver} and {platform_driver} are substituted with the CPU and platform drivers reported by recent power-profiles-daemon versions. {driver} is kept for backward compatibility: it resolves to the legacy single driver on older daemons and falls back to the CPU driver on recent ones.
 |[ *tooltip*
 :[ bool
 :[ true
