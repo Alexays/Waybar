@@ -69,6 +69,26 @@ class ALabel : public AModule {
     updateLabelAndTooltipForState("", labelFormat, tooltipDefault, std::forward<Args>(args)...);
   }
 
+  // Overloads accepting a pre-built argument store, for modules that must
+  // assemble a dynamic set of format arguments (e.g. per-core CPU stats) that
+  // cannot be expressed through a fixed variadic call.
+  // A non-const reference is used so this overload is preferred over the
+  // variadic template above (which would otherwise bind the store as a single
+  // forwarded argument).
+  void updateLabelAndTooltipForState(const std::string& state, const std::string& labelFormat,
+                                     const std::string& tooltipDefault,
+                                     fmt::dynamic_format_arg_store<fmt::format_context>& store) {
+    setLabelMarkup(fmt::vformat(labelFormat, store));
+    if (tooltipEnabled()) {
+      setTooltipMarkup(fmt::vformat(resolveTooltipFormat(tooltipDefault, state), store));
+    }
+  }
+
+  void updateLabelAndTooltip(const std::string& labelFormat, const std::string& tooltipDefault,
+                             fmt::dynamic_format_arg_store<fmt::format_context>& store) {
+    updateLabelAndTooltipForState("", labelFormat, tooltipDefault, store);
+  }
+
   bool handleToggle(GdkEventButton* const& e) override;
   void copyToClipboard(const std::string&);
   virtual std::string getState(uint8_t value, bool lesser = false);
