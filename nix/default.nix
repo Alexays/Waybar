@@ -6,16 +6,17 @@
 }:
 let
   libcava = rec {
-    version = "0.10.4";
+    version = "0.10.7";
     src = pkgs.fetchFromGitHub {
       owner = "LukashonakV";
       repo = "cava";
-      tag = version;
-      hash = "sha256-9eTDqM+O1tA/3bEfd1apm8LbEcR9CVgELTIspSVPMKM=";
+      # NOTE: Needs to match the cava.wrap
+      tag = "${version}";
+      hash = "sha256-zkyj1vBzHtoypX4Bxdh1Vmwh967DKKxN751v79hzmgQ=";
     };
   };
 in
-(waybar.overrideAttrs (oldAttrs: {
+waybar.overrideAttrs (oldAttrs: {
   inherit version;
 
   src = lib.cleanSourceWith {
@@ -30,13 +31,12 @@ in
   # nixpkgs checks version, no need when building locally
   nativeInstallCheckInputs = [ ];
 
-  buildInputs = (builtins.filter (p:
-    p.pname != "wireplumber" &&
-    p.pname != "gps"
-  ) oldAttrs.buildInputs) ++ [
-    pkgs.wireplumber
-    pkgs.gpsd
-  ];
+  buildInputs =
+    (builtins.filter (p: p.pname != "wireplumber" && p.pname != "gps") oldAttrs.buildInputs)
+    ++ [
+      pkgs.wireplumber
+      pkgs.gpsd
+    ];
 
   postUnpack = ''
     pushd "$sourceRoot"
@@ -44,4 +44,4 @@ in
     patchShebangs .
     popd
   '';
-}))
+})

@@ -84,6 +84,33 @@ TEST_CASE("Load simple config with include", "[config]") {
   }
 }
 
+TEST_CASE("Load simple config with wildcard include", "[config]") {
+  waybar::Config conf;
+  conf.load("test/config/include-wildcard.json");
+
+  auto& data = conf.getConfig();
+  SECTION("validate cpu include file") { REQUIRE(data["cpu"]["format"].asString() == "goo"); }
+  SECTION("validate memory include file") { REQUIRE(data["memory"]["format"].asString() == "foo"); }
+}
+
+TEST_CASE("Load config using relative paths and wildcards", "[config]") {
+  waybar::Config conf;
+
+  const char* old_config_path = std::getenv(waybar::Config::CONFIG_PATH_ENV);
+  setenv(waybar::Config::CONFIG_PATH_ENV, "test/config", 1);
+
+  conf.load("test/config/include-relative-path.json");
+
+  auto& data = conf.getConfig();
+  SECTION("validate cpu include file") { REQUIRE(data["cpu"]["format"].asString() == "goo"); }
+  SECTION("validate memory include file") { REQUIRE(data["memory"]["format"].asString() == "foo"); }
+
+  if (old_config_path)
+    setenv(waybar::Config::CONFIG_PATH_ENV, old_config_path, 1);
+  else
+    unsetenv(waybar::Config::CONFIG_PATH_ENV);
+}
+
 TEST_CASE("Load multiple bar config with include", "[config]") {
   waybar::Config conf;
   conf.load("test/config/include-multi.json");
