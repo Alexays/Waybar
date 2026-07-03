@@ -322,8 +322,7 @@ auto waybar::modules::Network::update() -> void {
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
       label_.get_style_context()->remove_class(state_);
     }
-    if (!threshold_state.empty() &&
-        config_["format-" + state + "-" + threshold_state].isString()) {
+    if (!threshold_state.empty() && config_["format-" + state + "-" + threshold_state].isString()) {
       default_format_ = config_["format-" + state + "-" + threshold_state].asString();
     } else if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
