@@ -1,6 +1,7 @@
 #include "modules/wireplumber.hpp"
 
 #include <spdlog/spdlog.h>
+
 #include <cmath>
 #include <string>
 
@@ -450,7 +451,6 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("source-muted");
   }
 
-
   double vol_cube = pow(volume_, 3);
   double source_vol_cube = pow(source_volume_, 3);
 
@@ -459,7 +459,6 @@ auto waybar::modules::Wireplumber::update() -> void {
 
   double vol_db = 20.0 * log10(volume_);
   double source_vol_db = 20.0 * log10(source_volume_);
-
 
   // Get the state and apply state-specific format if available
   auto state = getState(vol);
@@ -492,8 +491,9 @@ auto waybar::modules::Wireplumber::update() -> void {
                   fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
                   fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_),
                   fmt::arg("volume_linear", volume_), fmt::arg("volume_cubic", vol_cube),
-                  fmt::arg("volume_db", vol_db),fmt::arg("source_volume_linear", source_volume_),
-                  fmt::arg("source_volume_cubic", source_vol_cube), fmt::arg("source_volume_db", source_vol_db));
+                  fmt::arg("volume_db", vol_db), fmt::arg("source_volume_linear", source_volume_),
+                  fmt::arg("source_volume_cubic", source_vol_cube),
+                  fmt::arg("source_volume_db", source_vol_db));
   label_.set_markup(markup);
 
   if (tooltipEnabled()) {
@@ -508,7 +508,8 @@ auto waybar::modules::Wireplumber::update() -> void {
           fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_),
           fmt::arg("volume_linear", volume_), fmt::arg("volume_cubic", vol_cube),
           fmt::arg("volume_db", vol_db), fmt::arg("source_volume_linear", source_volume_),
-          fmt::arg("source_volume_cubic", source_vol_cube), fmt::arg("source_volume_db", source_vol_db)));
+          fmt::arg("source_volume_cubic", source_vol_cube),
+          fmt::arg("source_volume_db", source_vol_db)));
     } else {
       label_.set_tooltip_markup(node_name_);
     }
@@ -543,14 +544,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
 
   if (scale == "cubic") {
     vol = pow(vol, 3);
-  }
-  else if (scale == "db") {
+  } else if (scale == "db") {
     vol = log10(vol) * 20.0;
-  }
-  else if (scale == "cubic_percent") {
+  } else if (scale == "cubic_percent") {
     vol = pow(vol, 3) * 100.0;
   }
-
 
   double newVol = vol;
   if (dir == SCROLL_DIR::UP) {
@@ -561,11 +559,9 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
 
   if (scale == "cubic") {
     newVol = cbrt(newVol);
-  }
-  else if (scale == "db") {
+  } else if (scale == "db") {
     newVol = exp10(newVol / 20.0);
-  }
-  else if (scale == "cubic_percent") {
+  } else if (scale == "cubic_percent") {
     newVol = cbrt(newVol / 100.0);
   }
 
@@ -579,8 +575,10 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     }
   }
 
-  if (newVol < 0) newVol = 0;
-  else if (newVol > maxVolume) newVol = maxVolume;
+  if (newVol < 0)
+    newVol = 0;
+  else if (newVol > maxVolume)
+    newVol = maxVolume;
 
   if (newVol != volume_) {
     if (mixer_api_ == nullptr) return true;
