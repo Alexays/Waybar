@@ -53,6 +53,11 @@ You must be a member of the input group to use this module.
 	default: [58, 69, 70] ++
 	Customize the key to trigger this module, the key number can be found in /usr/include/linux/input-event-codes.h or running sudo libinput debug-events --show-keycodes.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{name}*: Caps, Num, or Scroll.

@@ -15,7 +15,7 @@
 namespace date {
 #if HAVE_CHRONO_TIMEZONES
 using namespace std::chrono;
-using namespace std;
+using std::format;
 #else
 
 using system_clock = std::chrono::system_clock;
@@ -64,7 +64,7 @@ struct fmt::formatter<date::zoned_time<Duration, TimeZonePtr>> {
   }
 
   template <typename FormatContext>
-  auto format(const date::zoned_time<Duration, TimeZonePtr>& ztime, FormatContext& ctx) {
+  auto format(const date::zoned_time<Duration, TimeZonePtr>& ztime, FormatContext& ctx) const {
     if (ctx.locale()) {
       const auto loc = ctx.locale().template get<std::locale>();
       return fmt::format_to(ctx.out(), "{}", date::format(loc, fmt::to_string(specs), ztime));
@@ -73,5 +73,3 @@ struct fmt::formatter<date::zoned_time<Duration, TimeZonePtr>> {
   }
 };
 #endif
-
-using namespace date;

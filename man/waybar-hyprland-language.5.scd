@@ -38,6 +38,11 @@ Addressed by *hyprland/language*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 
 # FORMAT REPLACEMENTS
 
@@ -54,9 +59,9 @@ Addressed by *hyprland/language*
 
 ```
 "hyprland/language": {
-	"format": "Lang: {long}"
-	"format-en": "AMERICA, HELL YEAH!"
-	"format-tr": "As bayrakları"
+	"format": "Lang: {long}",
+	"format-en": "AMERICA, HELL YEAH!",
+	"format-tr": "As bayrakları",
 	"keyboard-name": "at-translated-set-2-keyboard"
 }
 ```

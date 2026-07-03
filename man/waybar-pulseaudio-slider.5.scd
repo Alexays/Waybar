@@ -27,6 +27,11 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: horizontal ++
     The orientation of the slider. Can be either `horizontal` or `vertical`.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # EXAMPLES
 
 ```
@@ -72,12 +77,12 @@ The slider is a component with multiple CSS Nodes, of which the following are ex
     min-height: 80px;
     min-width: 10px;
     border-radius: 5px;
-    background-color: black;
+    background: black;
 }
 
 #pulseaudio-slider highlight {
     min-width: 10px;
     border-radius: 5px;
-    background-color: green;
+    background: green;
 }
 ```

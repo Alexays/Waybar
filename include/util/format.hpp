@@ -6,7 +6,7 @@
 class pow_format {
  public:
   pow_format(long long val, std::string&& unit, bool binary = false)
-      : val_(val), unit_(unit), binary_(binary){};
+      : val_(val), unit_(unit), binary_(binary) {};
 
   long long val_;
   std::string unit_;
@@ -45,7 +45,7 @@ struct formatter<pow_format> {
   }
 
   template <class FormatContext>
-  auto format(const pow_format& s, FormatContext& ctx) -> decltype(ctx.out()) {
+  auto format(const pow_format& s, FormatContext& ctx) const -> decltype(ctx.out()) {
     const char* units[] = {"", "k", "M", "G", "T", "P", nullptr};
 
     auto base = s.binary_ ? 1024ull : 1000ll;
@@ -92,7 +92,7 @@ struct formatter<pow_format> {
 template <>
 struct formatter<Glib::ustring> : formatter<std::string> {
   template <typename FormatContext>
-  auto format(const Glib::ustring& value, FormatContext& ctx) {
+  auto format(const Glib::ustring& value, FormatContext& ctx) const {
     return formatter<std::string>::format(static_cast<std::string>(value), ctx);
   }
 };

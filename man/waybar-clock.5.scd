@@ -39,6 +39,12 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ A list of timezones (as in *timezone*) to use for time display, changed using
    the scroll wheel. Do not specify *timezone* option when *timezones* is specified.
    "" represents the system's local timezone
+|[ *timezone-tooltip-format*
+:[ string
+:[
+:[ Format to use for displaying timezones in the tooltip. When set, this allows showing
+   timezone information (like timezone abbreviations) in the tooltip while keeping the
+   main display clean. Uses the same format options as *format*
 |[ *locale*
 :[ string
 :[
@@ -51,7 +57,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 |[ *rotate*
 :[ integer
 :[
-:[ Positive value to rotate the text label
+:[ Positive value to rotate the text label (in 90 degree increments)
 |[ *on-click*
 :[ string
 :[
@@ -96,6 +102,10 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ array
 :[
 :[ The actions corresponding to the buttons of the menu.
+|[ *expand*:
+:[ bool
+:[ false
+:[ Enables this module to consume all left over space dynamically.
 
 View all valid format options in *strftime(3)* or have a look https://en.cppreference.com/w/cpp/chrono/duration/formatter
 
@@ -113,7 +123,7 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ 3
 :[ Relevant for *mode=year*. Count of months per row
 |[ *weeks-pos*
-:[ integer
+:[ string
 :[
 :[ The position where week numbers should be displayed. Disabled when is empty.
    Possible values: left|right
@@ -122,6 +132,12 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ 1
 :[ Value to scroll months/years forward/backward. Can be negative. Is
    configured under *on-scroll* option
+|[ *iso8601*
+:[ bool
+:[ false
+:[ When enabled, the calendar follows the ISO 8601 standard: weeks begin on
+   Monday, and the first week of the year is numbered 1. The default week format is
+   '{:%V}'.
 
 3. Addressed by *clock: calendar: format*
 [- *Option*
@@ -188,7 +204,7 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "<tt><small>{calendar}</small></tt>",
 	"calendar": {
 		"mode"          : "year",
@@ -225,6 +241,37 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 }
 ```
 
+4. Show timezone in tooltip only
+
+```
+"clock": {
+	"interval": 60,
+	"format": "{:%H:%M}",
+	"timezone-tooltip-format": "{:%H:%M %Z}",
+	"timezones": [
+		"",
+		"America/Chicago",
+		"America/Los_Angeles",
+		"Europe/Paris",
+		"UTC"
+	],
+	"tooltip": true,
+	"tooltip-format": "{tz_list}"
+}
+```
+5. Simple calendar tooltip
+
+```
+"clock": {
+"format": "{:%H:%M}",
+"tooltip-format": "<tt>{calendar}</tt>",
+"calendar": {
+"format": {
+"today": "<span color='#ffcc66'><b>{}</b></span>"
+}
+}
+}
+```
 # STYLE
 
 - *#clock*
@@ -252,7 +299,7 @@ Example of working config
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
 	"calendar": {
 		"mode"          : "year",

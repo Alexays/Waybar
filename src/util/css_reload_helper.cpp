@@ -2,7 +2,13 @@
 
 #include <poll.h>
 #include <spdlog/spdlog.h>
+#ifndef __OpenBSD__
 #include <sys/inotify.h>
+#else
+#include <sys/event.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#endif
 
 #include <filesystem>
 #include <fstream>
@@ -43,8 +49,14 @@ std::string waybar::CssReloadHelper::findPath(const std::string& filename) {
   }
 
   // File monitor does not work with symlinks, so resolve them
-  if (std::filesystem::is_symlink(result)) {
+  std::string original = result;
+  while (std::filesystem::is_symlink(result)) {
     result = std::filesystem::read_symlink(result);
+
+    // prevent infinite cycle
+    if (result == original) {
+      break;
+    }
   }
 
   return result;
@@ -103,10 +115,14 @@ std::vector<std::string> waybar::CssReloadHelper::parseImports(const std::string
   auto maxIterations = 100U;
   do {
     previousSize = imports.size();
+    std::vector<std::string> to_parse;
     for (const auto& [file, parsed] : imports) {
       if (!parsed) {
-        parseImports(file, imports);
+        to_parse.push_back(file);
       }
+    }
+    for (const auto& file : to_parse) {
+      parseImports(file, imports);
     }
 
   } while (imports.size() > previousSize && maxIterations-- > 0);
