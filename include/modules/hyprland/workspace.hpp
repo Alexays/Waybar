@@ -81,6 +81,7 @@ class Workspace {
 
   int m_id;
   std::string m_name;
+  std::string m_prevNameClass;
   std::string m_output;
   uint m_windows;
   bool m_isActive = false;

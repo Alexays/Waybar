@@ -10,6 +10,7 @@ static const unsigned RETRY_DELAY_MS = 200;
 static const unsigned MAX_RETRIES = 10;
 
 Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
+           const std::vector<std::string>& ignore_list,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
            const std::function<void(std::unique_ptr<Item>&)>& on_remove,
            const std::function<void()>& on_update)
@@ -20,6 +21,7 @@ Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
                                        sigc::mem_fun(*this, &Host::busAcquired))),
       config_(config),
       bar_(bar),
+      ignore_list_(ignore_list),
       on_add_(on_add),
       on_remove_(on_remove),
       on_update_(on_update) {}
@@ -37,6 +39,42 @@ Host::~Host() {
   g_cancellable_cancel(cancellable_);
   g_clear_object(&cancellable_);
   g_clear_object(&watcher_);
+}
+
+void Host::checkIgnoreList(const std::vector<std::string>& ignore_list,
+                           const std::function<void(std::unique_ptr<Item>&)>& on_remove) {
+  spdlog::debug("Host::checkIgnoreList - checking {} items against {} patterns", items_.size(),
+                ignore_list.size());
+
+  for (auto it = items_.begin(); it != items_.end();) {
+    auto& item = *it;
+    spdlog::debug("  Checking item: bus_name='{}', category='{}', icon_name='{}', title='{}'",
+                  item->bus_name, item->category, item->icon_name, item->title);
+
+    bool should_remove = false;
+
+    for (const auto& ignored : ignore_list) {
+      if (item->bus_name.find(ignored) != std::string::npos ||
+          item->category.find(ignored) != std::string::npos ||
+          item->icon_name.find(ignored) != std::string::npos ||
+          item->id.find(ignored) != std::string::npos ||
+          item->title.find(ignored) != std::string::npos) {
+        spdlog::info(
+            "Host: Ignoring item bus_name='{}', category='{}', icon_name='{}', title='{}' - "
+            "matched pattern '{}'",
+            item->bus_name, item->category, item->icon_name, item->title, ignored);
+        on_remove(item);
+        should_remove = true;
+        break;
+      }
+    }
+
+    if (should_remove) {
+      it = items_.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 void Host::busAcquired(const Glib::RefPtr<Gio::DBus::Connection>& conn, Glib::ustring name) {
@@ -82,7 +120,8 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
     spdlog::error("Host: {}", error->message);
     g_clear_object(&host->cancellable_);
     if (host->retry_count_ >= MAX_RETRIES) {
-      spdlog::warn("Host: giving up on watcher proxy creation after {} retries", host->retry_count_);
+      spdlog::warn("Host: giving up on watcher proxy creation after {} retries",
+                   host->retry_count_);
       return;
     }
     host->retry_count_ += 1;
@@ -127,7 +166,9 @@ void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
   g_signal_connect(host->watcher_, "item-unregistered", G_CALLBACK(&Host::itemUnregistered), data);
   auto items = sn_watcher_dup_registered_items(host->watcher_);
   if (items != nullptr) {
+    spdlog::info("Host: Found {} pre-registered SNI items", g_strv_length(items));
     for (uint32_t i = 0; items[i] != nullptr; i += 1) {
+      spdlog::info("Host: Processing pre-registered item: {}", items[i]);
       host->addRegisteredItem(items[i]);
     }
   }
@@ -136,7 +177,10 @@ void Host::registerHost(GObject* src, GAsyncResult* res, gpointer data) {
 
 void Host::itemRegistered(SnWatcher* watcher, const gchar* service, gpointer data) {
   auto host = static_cast<SNI::Host*>(data);
+  spdlog::info("Host::itemRegistered called with service: {}", service);
   host->addRegisteredItem(service);
+  // host->checkIgnoreList(host->ignore_list_, std::bind(&Host::itemUnregistered, host,
+  // std::placeholders::_1, std::placeholders::_2, data));
 }
 
 void Host::itemUnregistered(SnWatcher* watcher, const gchar* service, gpointer data) {
@@ -197,17 +241,25 @@ std::tuple<std::string, std::string> Host::getBusNameAndObjectPath(const std::st
 }
 
 void Host::addRegisteredItem(const std::string& service) {
+  // Check service string directly before parsing
+  for (const auto& ignored : ignore_list_) {
+    if (service.find(ignored) != std::string::npos) {
+      spdlog::info("Host: Ignoring service '{}' - matched pattern '{}'", service, ignored);
+      return;
+    }
+  }
   std::string bus_name, object_path;
   std::tie(bus_name, object_path) = getBusNameAndObjectPath(service);
+  spdlog::debug("SNI item registered: bus_name={}, object_path={}, full_service={}", bus_name,
+                object_path, service);
   auto it = std::find_if(items_.begin(), items_.end(), [&bus_name, &object_path](const auto& item) {
     return bus_name == item->bus_name && object_path == item->object_path;
   });
   if (it == items_.end()) {
+    spdlog::debug("Adding SNI item: {}", bus_name);
     items_.emplace_back(std::make_unique<Item>(
-      bus_name, object_path, config_, bar_,
-      [this](Item& item) { itemReady(item); },
-      [this](Item& item) { itemInvalidated(item); },
-      on_update_));
+        bus_name, object_path, config_, bar_, [this](Item& item) { itemReady(item); },
+        [this](Item& item) { itemInvalidated(item); }, on_update_));
   }
 }
 

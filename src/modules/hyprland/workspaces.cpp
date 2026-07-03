@@ -662,6 +662,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateBoolConfig(config, "special-visible-only", m_specialVisibleOnly);
   populateBoolConfig(config, "persistent-only", m_persistentOnly);
   populateBoolConfig(config, "active-only", m_activeOnly);
+  populateBoolConfig(config, "hide-active", m_hideActive);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
   populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
 
@@ -680,6 +681,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   }
 
   populateWindowRewriteConfig(config);
+  populateMaxWindowsConfig(config);
 
   if (withWindows) {
     populateWorkspaceTaskbarConfig(config);
@@ -759,6 +761,15 @@ auto Workspaces::populateWindowRewriteConfig(const Json::Value& config) -> void 
   m_windowRewriteRules = util::RegexCollection(
       windowRewrite, windowRewriteDefault,
       [this](std::string& window_rule) { return windowRewritePriorityFunction(window_rule); });
+}
+
+auto Workspaces::populateMaxWindowsConfig(const Json::Value& config) -> void {
+  if (config["max-windows"].isInt()) {
+    m_maxWindows = config["max-windows"].asInt();
+    if (m_maxWindows < 0) {
+      m_maxWindows = 0;
+    }
+  }
 }
 
 auto Workspaces::populateWorkspaceTaskbarConfig(const Json::Value& config) -> void {

@@ -42,6 +42,13 @@
 #include "modules/niri/window.hpp"
 #include "modules/niri/workspaces.hpp"
 #endif
+#ifdef HAVE_MANGO
+#include "modules/mango/language.hpp"
+#include "modules/mango/keymode.hpp"
+#include "modules/mango/window.hpp"
+#include "modules/mango/workspaces.hpp"
+#include "modules/mango/layout.hpp"
+#endif
 #ifdef HAVE_WAYFIRE
 #include "modules/wayfire/window.hpp"
 #include "modules/wayfire/workspaces.hpp"
@@ -229,6 +236,23 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "niri/workspaces") {
       return new waybar::modules::niri::Workspaces(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_MANGO
+    if (ref == "mango/window") {
+      return new waybar::modules::mango::Window(id, bar_, config_[name]);
+    }
+    if (ref == "mango/workspaces") {
+      return new waybar::modules::mango::Workspaces(id, bar_, config_[name]);
+    }
+    if (ref == "mango/language") {
+      return new waybar::modules::mango::Language(id, bar_, config_[name]);
+    }
+    if (ref == "mango/keymode") {
+      return new waybar::modules::mango::Keymode(id, bar_, config_[name]);
+    }
+    if (ref == "mango/layout") {
+      return new waybar::modules::mango::Layout(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_WAYFIRE

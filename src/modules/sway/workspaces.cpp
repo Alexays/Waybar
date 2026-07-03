@@ -69,6 +69,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     m_windowRewriteRules = waybar::util::RegexCollection(
         windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction);
   }
+  populateIgnoreWorkspacesConfig(config);
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
@@ -97,6 +98,36 @@ void Workspaces::onEvent(const struct Ipc::ipc_response& res) {
   }
 }
 
+auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value& config) -> void {
+  auto ignoreWorkspaces = config["ignore-workspaces"];
+  if (ignoreWorkspaces.isArray()) {
+    for (const auto& workspaceRegex : ignoreWorkspaces) {
+      if (workspaceRegex.isString()) {
+        std::string ruleString = workspaceRegex.asString();
+        try {
+          const std::regex rule{ruleString, std::regex_constants::icase};
+          m_ignoreWorkspaces.emplace_back(rule);
+        } catch (const std::regex_error& e) {
+          spdlog::error("Invalid rule {}: {}", ruleString, e.what());
+        }
+      } else {
+        spdlog::error("Not a string: '{}'", workspaceRegex);
+      }
+    }
+  }
+}
+
+bool Workspaces::isWorkspaceIgnored(std::string const& name) {
+  for (auto& rule : m_ignoreWorkspaces) {
+    if (std::regex_match(name, rule)) {
+      return true;
+      break;
+    }
+  }
+
+  return false;
+}
+
 void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
   if (res.type == IPC_GET_TREE) {
     try {
@@ -118,8 +149,9 @@ void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
                      });
 
         for (auto& output : outputs) {
-          std::copy(output["nodes"].begin(), output["nodes"].end(),
-                    std::back_inserter(workspaces_));
+          std::copy_if(
+              output["nodes"].begin(), output["nodes"].end(), std::back_inserter(workspaces_),
+              [&](const auto& node) { return !(isWorkspaceIgnored(node["name"].asString())); });
           std::copy(output["floating_nodes"].begin(), output["floating_nodes"].end(),
                     std::back_inserter(workspaces_));
         }
@@ -143,7 +175,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
             if (p_w.isArray() && !p_w.empty()) {
               // Adding to target outputs
               for (const Json::Value& output : p_w) {
-                if (output.asString() == bar_.output->name) {
+                auto output_name = output.asString();
+                if (output_name == bar_.output->name || output_name == bar_.output->identifier) {
                   Json::Value v;
                   v["name"] = p_w_name;
                   v["target_output"] = bar_.output->name;
@@ -324,6 +357,18 @@ auto Workspaces::update() -> void {
       button.get_style_context()->remove_class("empty");
     }
     if ((*it)["output"].isString()) {
+      // Simply attempt to remove all output classes every time to reset output classes. This works
+      // even if a class has not been previously added to the style context.
+      for (const auto &oclass : config_["output-classes"]) {
+        button.get_style_context()->remove_class(oclass.asString());
+      }
+      // If output-classes contains a class for output associated with current workspace button, add
+      // the class to its style context.
+      std::string output_name = (*it)["output"].asString();
+      if (config_["output-classes"].isMember(output_name) &&
+          config_["output-classes"][output_name].isString()) {
+        button.get_style_context()->add_class(config_["output-classes"][output_name].asString());
+      }
       if (((*it)["output"].asString()) == bar_.output->name) {
         button.get_style_context()->add_class("current_output");
       } else {
@@ -332,29 +377,44 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("current_output");
     }
-    std::string output;
+    std::string full_name;
     if (!config_["disable-markup"].asBool()) {
-      output = g_markup_escape_text((*it)["name"].asString().c_str(), -1);
+      full_name = g_markup_escape_text((*it)["name"].asString().c_str(), -1);
     } else {
-      output = (*it)["name"].asString();
+      full_name = (*it)["name"].asString();
     }
+
     std::string windows = "";
     if (config_["window-rewrite"].isObject()) {
       updateWindows((*it), windows);
     }
+
+    auto index = (*it)["num"].asInt();
+
     if (config_["format"].isString()) {
-      auto format = config_["format"].asString();
-      output = fmt::format(
-          fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)), fmt::arg("value", output),
-          fmt::arg("name", trimWorkspaceName(output)), fmt::arg("index", (*it)["num"].asString()),
-          fmt::arg("windows",
-                   windows.substr(0, windows.length() - m_formatWindowSeparator.length())),
-          fmt::arg("output", (*it)["output"].asString()));
+      std::string format;
+      if (config_["format-for-negative-index"].isString() && index < 0) {
+        format = config_["format-for-negative-index"].asString();
+      } else {
+        format = config_["format"].asString();
+      }
+
+      auto name = trimWorkspaceName(full_name);
+      auto output = (*it)["output"].asString();
+      auto icon = getIcon(full_name, *it);
+      auto separated_windows =
+          windows.substr(0, windows.length() - m_formatWindowSeparator.length());
+
+      full_name =
+          fmt::format(fmt::runtime(format), fmt::arg("index", index), fmt::arg("name", name),
+                      fmt::arg("value", full_name), fmt::arg("output", output),
+                      fmt::arg("icon", icon), fmt::arg("windows", separated_windows));
     }
+
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(output);
+      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(full_name);
     } else {
-      button.set_label(output);
+      button.set_label(full_name);
     }
     onButtonReady(*it, button);
   }
