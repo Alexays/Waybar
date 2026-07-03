@@ -89,8 +89,9 @@ class Clock final : public ALabel {
       {"shift_reset", &waybar::modules::Clock::cldShift_reset},
       {"tz_up", &waybar::modules::Clock::tz_up},
       {"tz_down", &waybar::modules::Clock::tz_down}};
-  static inline std::map<const std::string, void (waybar::modules::Clock::* const)(const std::string& action)> actionWithArgsMap_{
-      {"exec", &waybar::modules::Clock::action_exec}};
+  static inline std::map<const std::string,
+                         void (waybar::modules::Clock::* const)(const std::string& action)>
+      actionWithArgsMap_{{"exec", &waybar::modules::Clock::action_exec}};
 };
 
 }  // namespace waybar::modules

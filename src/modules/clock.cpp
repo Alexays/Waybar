@@ -550,7 +550,6 @@ void waybar::modules::Clock::action_exec(const std::string& action) {
   pid_children_.push_back(util::command::forkExec(cmd));
 }
 
-
 #ifdef HAVE_LANGINFO_1STDAY
 template <auto fn>
 using deleter_from_fn = std::integral_constant<decltype(fn), fn>;
