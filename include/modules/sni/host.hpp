@@ -14,10 +14,13 @@ namespace waybar::modules::SNI {
 
 class Host {
  public:
-  Host(const std::size_t id, const Json::Value&, const Bar&,
+  Host(const std::size_t id, const Json::Value&, const Bar&, const std::vector<std::string>&,
        const std::function<void(std::unique_ptr<Item>&)>&,
-       const std::function<void(std::unique_ptr<Item>&)>&);
+       const std::function<void(std::unique_ptr<Item>&)>&, const std::function<void()>&);
   ~Host();
+
+  void checkIgnoreList(const std::vector<std::string>& ignore_list,
+                       const std::function<void(std::unique_ptr<Item>&)>& on_remove);
 
  private:
   void busAcquired(const Glib::RefPtr<Gio::DBus::Connection>&, Glib::ustring);
@@ -28,9 +31,13 @@ class Host {
   static void registerHost(GObject*, GAsyncResult*, gpointer);
   static void itemRegistered(SnWatcher*, const gchar*, gpointer);
   static void itemUnregistered(SnWatcher*, const gchar*, gpointer);
+  void itemReady(Item&);
+  void itemInvalidated(Item&);
+  void removeItem(std::vector<std::unique_ptr<Item>>::iterator);
+  void clearItems();
 
   std::tuple<std::string, std::string> getBusNameAndObjectPath(const std::string);
-  void addRegisteredItem(std::string service);
+  void addRegisteredItem(const std::string& service);
 
   std::vector<std::unique_ptr<Item>> items_;
   const std::string bus_name_;
@@ -39,10 +46,14 @@ class Host {
   std::size_t watcher_id_;
   GCancellable* cancellable_ = nullptr;
   SnWatcher* watcher_ = nullptr;
+  sigc::connection retry_connection_;
+  unsigned retry_count_ = 0;
   const Json::Value& config_;
   const Bar& bar_;
+  const std::vector<std::string> ignore_list_;
   const std::function<void(std::unique_ptr<Item>&)> on_add_;
   const std::function<void(std::unique_ptr<Item>&)> on_remove_;
+  const std::function<void()> on_update_;
 };
 
 }  // namespace waybar::modules::SNI

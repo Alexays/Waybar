@@ -17,6 +17,28 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
 
+*sort-by-name*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by name (numeric sort when all names are numbers). Unnamed workspaces fall back to their index on the output.
+
+*sort-by-coordinates*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by output and index. If both *sort-by-name* and *sort-by-coordinates* are true, sorting by name is applied.
+
+*sort-by-id*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by id, taking precedence over other sort options.
+
+*sort-by-number*: ++
+	typeof: bool ++
+	default: false ++
+	Deprecated alias for *sort-by-id*; prefer *sort-by-id* instead.
+
+If none of the sorting options are enabled, workspaces keep their output/index order.
+
 *format*: ++
 	typeof: string ++
 	default: {value} ++
@@ -31,6 +53,11 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, you can click to change workspace. If set to true this behaviour is disabled.
 
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
 *disable-markup*: ++
 	typeof: bool ++
 	default: false ++
@@ -40,6 +67,11 @@ Addressed by *niri/workspaces*
 	typeof: bool ++
 	default: false ++
 	If set to true, only the active or focused workspace will be shown.
+
+*hide-empty*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, empty workspaces will not be shown.
 
 *on-update*: ++
 	typeof: string ++
@@ -67,6 +99,8 @@ as defined by niri.
 *{index}*: Index of the workspace on its output.
 
 *{output}*: Output where the workspace is located.
+
+*{total}*: The total number of workspaces.
 
 # ICONS
 

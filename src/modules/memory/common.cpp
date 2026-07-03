@@ -1,11 +1,30 @@
 #include "modules/memory.hpp"
 
+namespace {
+const std::unordered_map<std::string, float> kUnits = {{"kB", 1.000},
+                                                       {"kiB", 1.024},
+                                                       {"MB", 1.000 * 1000.0},
+                                                       {"MiB", 1.024 * 1024.0},
+                                                       {"GB", 1.000 * 1000.0 * 1000.0},
+                                                       {"GiB", 1.024 * 1024.0 * 1024.0},
+                                                       {"TB", 1.000 * 1000.0 * 1000.0 * 1000.0},
+                                                       {"TiB", 1.024 * 1024.0 * 1024.0 * 1024.0}};
+}
+
 waybar::modules::Memory::Memory(const std::string& id, const Json::Value& config)
     : ALabel(config, "memory", id, "{}%", 30) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
   };
+  if (config["unit"].isString()) {
+    unit_ = config["unit"].asString();
+    if (!kUnits.contains(unit_)) {
+      unit_ = "GiB";
+    }
+  } else {
+    unit_ = "GiB";
+  }
 }
 
 auto waybar::modules::Memory::update() -> void {
@@ -13,15 +32,15 @@ auto waybar::modules::Memory::update() -> void {
 
   unsigned long memtotal = meminfo_["MemTotal"];
   unsigned long swaptotal = 0;
-  if (meminfo_.count("SwapTotal")) {
+  if (meminfo_.contains("SwapTotal")) {
     swaptotal = meminfo_["SwapTotal"];
   }
   unsigned long memfree;
   unsigned long swapfree = 0;
-  if (meminfo_.count("SwapFree")) {
+  if (meminfo_.contains("SwapFree")) {
     swapfree = meminfo_["SwapFree"];
   }
-  if (meminfo_.count("MemAvailable")) {
+  if (meminfo_.contains("MemAvailable")) {
     // New kernels (3.4+) have an accurate available memory field.
     memfree = meminfo_["MemAvailable"] + meminfo_["zfs_size"];
   } else {
@@ -31,18 +50,19 @@ auto waybar::modules::Memory::update() -> void {
   }
 
   if (memtotal > 0 && memfree >= 0) {
-    float total_ram_gigabytes =
-        0.01 * round(memtotal / 10485.76);  // 100*10485.76 = 2^20 = 1024^2 = GiB/KiB
-    float total_swap_gigabytes = 0.01 * round(swaptotal / 10485.76);
     int used_ram_percentage = 100 * (memtotal - memfree) / memtotal;
     int used_swap_percentage = 0;
-    if (swaptotal && swapfree) {
+    if ((bool)swaptotal) {
       used_swap_percentage = 100 * (swaptotal - swapfree) / swaptotal;
     }
-    float used_ram_gigabytes = 0.01 * round((memtotal - memfree) / 10485.76);
-    float used_swap_gigabytes = 0.01 * round((swaptotal - swapfree) / 10485.76);
-    float available_ram_gigabytes = 0.01 * round(memfree / 10485.76);
-    float available_swap_gigabytes = 0.01 * round(swapfree / 10485.76);
+
+    float divisor = kUnits.at(unit_);
+    float total_ram = memtotal / divisor;
+    float total_swap = swaptotal / divisor;
+    float used_ram = (memtotal - memfree) / divisor;
+    float used_swap = (swaptotal - swapfree) / divisor;
+    float available_ram = memfree / divisor;
+    float available_swap = swapfree / divisor;
 
     auto format = format_;
     auto state = getState(used_ram_percentage);
@@ -55,31 +75,14 @@ auto waybar::modules::Memory::update() -> void {
     } else {
       event_box_.show();
       auto icons = std::vector<std::string>{state};
-      label_.set_markup(fmt::format(
-          fmt::runtime(format), used_ram_percentage,
-          fmt::arg("icon", getIcon(used_ram_percentage, icons)),
-          fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
-          fmt::arg("percentage", used_ram_percentage),
+      updateLabelAndTooltip(
+          format, fmt::format("{:.{}f}{} used", used_ram, 1, unit_), used_ram_percentage,
+          fmt::arg("icon", getIcon(used_ram_percentage, icons)), fmt::arg("total", total_ram),
+          fmt::arg("swapTotal", total_swap), fmt::arg("percentage", used_ram_percentage),
           fmt::arg("swapState", swaptotal == 0 ? "Off" : "On"),
-          fmt::arg("swapPercentage", used_swap_percentage), fmt::arg("used", used_ram_gigabytes),
-          fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
-          fmt::arg("swapAvail", available_swap_gigabytes)));
-    }
-
-    if (tooltipEnabled()) {
-      if (config_["tooltip-format"].isString()) {
-        auto tooltip_format = config_["tooltip-format"].asString();
-        label_.set_tooltip_text(fmt::format(
-            fmt::runtime(tooltip_format), used_ram_percentage,
-            fmt::arg("total", total_ram_gigabytes), fmt::arg("swapTotal", total_swap_gigabytes),
-            fmt::arg("percentage", used_ram_percentage),
-            fmt::arg("swapState", swaptotal == 0 ? "Off" : "On"),
-            fmt::arg("swapPercentage", used_swap_percentage), fmt::arg("used", used_ram_gigabytes),
-            fmt::arg("swapUsed", used_swap_gigabytes), fmt::arg("avail", available_ram_gigabytes),
-            fmt::arg("swapAvail", available_swap_gigabytes)));
-      } else {
-        label_.set_tooltip_text(fmt::format("{:.{}f}GiB used", used_ram_gigabytes, 1));
-      }
+          fmt::arg("swapPercentage", used_swap_percentage), fmt::arg("used", used_ram),
+          fmt::arg("swapUsed", used_swap), fmt::arg("avail", available_ram),
+          fmt::arg("swapAvail", available_swap));
     }
   } else {
     event_box_.hide();

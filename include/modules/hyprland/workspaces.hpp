@@ -4,6 +4,7 @@
 #include <gtkmm/enums.h>
 #include <gtkmm/label.h>
 #include <json/value.h>
+#include <sigc++/connection.h>
 
 #include <cstdint>
 #include <map>
@@ -38,11 +39,13 @@ class Workspaces : public AModule, public EventHandler {
   auto allOutputs() const -> bool { return m_allOutputs; }
   auto showSpecial() const -> bool { return m_showSpecial; }
   auto activeOnly() const -> bool { return m_activeOnly; }
+  auto hideActive() const -> bool { return m_hideActive; }
   auto specialVisibleOnly() const -> bool { return m_specialVisibleOnly; }
   auto persistentOnly() const -> bool { return m_persistentOnly; }
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
   auto enableTaskbar() const -> bool { return m_enableTaskbar; }
   auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
+  auto barScroll() const -> bool { return m_barScroll; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
   auto formatBefore() const -> std::string { return m_formatBefore; }
@@ -54,12 +57,15 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarReverseDirection() const -> bool { return m_taskbarReverseDirection; }
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
   auto getIgnoredWindows() const -> std::vector<std::regex> { return m_ignoreWindows; }
+  auto maxWindows() const -> int { return m_maxWindows; }
 
   enum class ActiveWindowPosition { NONE, FIRST, LAST };
   auto activeWindowPosition() const -> ActiveWindowPosition { return m_activeWindowPosition; }
 
-  std::string getRewrite(std::string window_class, std::string window_title);
+  std::string getRewrite(const std::string& window_class, const std::string& window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
+  auto windowRewriteGroupThreshold() const -> int { return m_windowRewriteGroupThreshold; }
+  auto const& getWindowRewriteGroupFormat() const { return m_windowRewriteGroupFormat; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
   bool windowRewriteConfigUsesTitle() const { return m_anyWindowRewriteRuleUsesTitle; }
@@ -87,6 +93,7 @@ class Workspaces : public AModule, public EventHandler {
   auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
   auto populateFormatWindowSeparatorConfig(const Json::Value& config) -> void;
   auto populateWindowRewriteConfig(const Json::Value& config) -> void;
+  auto populateMaxWindowsConfig(const Json::Value& config) -> void;
   auto populateWorkspaceTaskbarConfig(const Json::Value& config) -> void;
 
   void registerIpc();
@@ -122,6 +129,8 @@ class Workspaces : public AModule, public EventHandler {
   static std::pair<std::string, std::string> splitDoublePayload(std::string const& payload);
   static std::tuple<std::string, std::string, std::string> splitTriplePayload(
       std::string const& payload);
+  // scroll events
+  bool handleScroll(GdkEventScroll* e) override;
 
   // Update methods
   void doUpdate();
@@ -142,9 +151,11 @@ class Workspaces : public AModule, public EventHandler {
   bool m_allOutputs = false;
   bool m_showSpecial = false;
   bool m_activeOnly = false;
+  bool m_hideActive = false;
   bool m_specialVisibleOnly = false;
   bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
+  bool m_barScroll = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
@@ -168,6 +179,8 @@ class Workspaces : public AModule, public EventHandler {
   util::RegexCollection m_windowRewriteRules;
   bool m_anyWindowRewriteRuleUsesTitle = false;
   std::string m_formatWindowSeparator;
+  int m_windowRewriteGroupThreshold = 0;
+  std::string m_windowRewriteGroupFormat = "{icon}×{count}";
 
   bool m_withIcon;
   uint64_t m_monitorId;
@@ -197,6 +210,7 @@ class Workspaces : public AModule, public EventHandler {
   };
   std::string m_onClickWindow;
   std::string m_currentActiveWindowAddress;
+  int m_maxWindows = 0;
 
   std::vector<std::regex> m_ignoreWorkspaces;
   std::vector<std::regex> m_ignoreWindows;
@@ -204,6 +218,7 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
+  sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
 };
 
