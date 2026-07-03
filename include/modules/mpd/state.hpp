@@ -197,7 +197,6 @@ class Context {
   void tryConnect() const;
   void checkErrors(mpd_connection*) const;
   void do_update();
-  void queryMPD() const;
   void fetchState() const;
   constexpr mpd_state state() const;
   void emit() const;

@@ -2,7 +2,7 @@
 
 namespace waybar::modules {
 
-JACK::JACK(const std::string &id, const Json::Value &config)
+JACK::JACK(const std::string& id, const Json::Value& config)
     : ALabel(config, "jack", id, "{load}%", 1) {
   running_ = false;
   client_ = NULL;
@@ -53,7 +53,7 @@ std::string JACK::JACKState() {
 auto JACK::update() -> void {
   std::string format;
   std::string state = JACKState();
-  float latency = 1000 * (float)bufsize_ / (float)samplerate_;
+  float latency = samplerate_ > 0 ? 1000.0f * (float)bufsize_ / (float)samplerate_ : 0.0f;
 
   if (label_.get_style_context()->has_class("xrun")) {
     label_.get_style_context()->remove_class("xrun");
@@ -80,7 +80,7 @@ auto JACK::update() -> void {
   if (tooltipEnabled()) {
     std::string tooltip_format = "{bufsize}/{samplerate} {latency}ms";
     if (config_["tooltip-format"].isString()) tooltip_format = config_["tooltip-format"].asString();
-    label_.set_tooltip_text(fmt::format(
+    label_.set_tooltip_markup(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("load", std::round(load_)),
         fmt::arg("bufsize", bufsize_), fmt::arg("samplerate", samplerate_),
         fmt::arg("latency", fmt::format("{:.2f}", latency)), fmt::arg("xruns", xruns_)));
@@ -91,16 +91,19 @@ auto JACK::update() -> void {
 }
 
 int JACK::bufSize(jack_nframes_t size) {
+  std::lock_guard<std::mutex> lock(mutex_);
   bufsize_ = size;
   return 0;
 }
 
 int JACK::sampleRate(jack_nframes_t rate) {
+  std::lock_guard<std::mutex> lock(mutex_);
   samplerate_ = rate;
   return 0;
 }
 
 int JACK::xrun() {
+  std::lock_guard<std::mutex> lock(mutex_);
   xruns_ += 1;
   state_ = "xrun";
   return 0;
@@ -113,14 +116,14 @@ void JACK::shutdown() {
 
 }  // namespace waybar::modules
 
-int bufSizeCallback(jack_nframes_t size, void *obj) {
-  return static_cast<waybar::modules::JACK *>(obj)->bufSize(size);
+int bufSizeCallback(jack_nframes_t size, void* obj) {
+  return static_cast<waybar::modules::JACK*>(obj)->bufSize(size);
 }
 
-int sampleRateCallback(jack_nframes_t rate, void *obj) {
-  return static_cast<waybar::modules::JACK *>(obj)->sampleRate(rate);
+int sampleRateCallback(jack_nframes_t rate, void* obj) {
+  return static_cast<waybar::modules::JACK*>(obj)->sampleRate(rate);
 }
 
-int xrunCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->xrun(); }
+int xrunCallback(void* obj) { return static_cast<waybar::modules::JACK*>(obj)->xrun(); }
 
-void shutdownCallback(void *obj) { return static_cast<waybar::modules::JACK *>(obj)->shutdown(); }
+void shutdownCallback(void* obj) { return static_cast<waybar::modules::JACK*>(obj)->shutdown(); }

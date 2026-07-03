@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.13.0',
+    version: '0.15.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -69,7 +69,7 @@ is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled', 'std_format=disabled', 'tests=disabled'])
+spdlog = dependency('spdlog', version : ['>=1.15.2'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['std_format=disabled', 'tests=disabled'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -183,8 +183,11 @@ src_files = files(
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
     'src/util/gtk_icon.cpp',
+    'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
-    'src/util/css_reload_helper.cpp'
+    'src/util/css_reload_helper.cpp',
+    'src/util/transform_8bit_to_rgba.cpp',
+    'src/util/utf8_string.cpp'
 )
 
 man_files = files(
@@ -274,6 +277,17 @@ if true
     add_project_arguments('-DHAVE_WLR_TASKBAR', language: 'cpp')
     src_files += files('src/modules/wlr/taskbar.cpp')
     man_files += files('man/waybar-wlr-taskbar.5.scd')
+endif
+
+if wayland_protos.version().version_compare('>=1.39')
+    add_project_arguments('-DHAVE_EXT_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/ext/workspace_manager.cpp',
+        'src/modules/ext/workspace_manager_binding.cpp',
+    )
+    man_files += files(
+        'man/waybar-ext-workspaces.5.scd',
+    )
 endif
 
 if true
@@ -485,27 +499,24 @@ else
     man_files += files('man/waybar-clock.5.scd')
 endif
 
-if get_option('experimental')
-    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
-    src_files += files(
-        'src/modules/wlr/workspace_manager.cpp',
-        'src/modules/wlr/workspace_manager_binding.cpp',
-    )
-    man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
-    )
-endif
-
-cava = dependency('cava',
-                  version : '>=0.10.4',
+cava = dependency('libcava',
+                  version : '>=0.10.7',
                   required: get_option('cava'),
-                  fallback : ['cava', 'cava_dep'],
+                  fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
+
+eproxy = dependency('epoxy', required: false)
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava.cpp')
+   src_files += files('src/modules/cava/cavaRaw.cpp',
+                      'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
+
+   if eproxy.found()
+      add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
+      src_files += files('src/modules/cava/cavaGLSL.cpp')
+   endif
 endif
 
 if libgps.found()
@@ -553,6 +564,7 @@ executable(
         tz_dep,
 		xkbregistry,
         cava,
+        eproxy,
         libgps
     ],
     include_directories: inc_dirs,

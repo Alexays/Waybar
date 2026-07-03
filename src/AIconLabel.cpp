@@ -5,8 +5,8 @@
 
 namespace waybar {
 
-AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const std::string &id,
-                       const std::string &format, uint16_t interval, bool ellipsize,
+AIconLabel::AIconLabel(const Json::Value& config, const std::string& name, const std::string& id,
+                       const std::string& format, uint16_t interval, bool ellipsize,
                        bool enable_click, bool enable_scroll)
     : ALabel(config, name, id, format, interval, ellipsize, enable_click, enable_scroll) {
   event_box_.remove();
@@ -36,10 +36,13 @@ AIconLabel::AIconLabel(const Json::Value &config, const std::string &name, const
   box_.set_spacing(spacing);
 
   bool swap_icon_label = false;
-  if (not config_["swap-icon-label"].isBool())
-    spdlog::warn("'swap-icon-label' must be a bool.");
-  else
+  if (config_["swap-icon-label"].isNull()) {
+  } else if (config_["swap-icon-label"].isBool()) {
     swap_icon_label = config_["swap-icon-label"].asBool();
+  } else {
+    spdlog::warn("'swap-icon-label' must be a bool, found '{}'. Using default value (false).",
+                 config_["swap-icon-label"].asString());
+  }
 
   if ((rot == 0 || rot == 3) ^ swap_icon_label) {
     box_.add(image_);

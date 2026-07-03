@@ -7,6 +7,7 @@
 #include <codecvt>
 #include <iostream>
 #include <locale>
+#include <memory>
 #include <regex>
 
 #if (FMT_VERSION >= 90000)
@@ -26,19 +27,25 @@ class JsonParser {
     Json::Value root;
 
     // replace all occurrences of "\x" with "\u00", because JSON doesn't allow "\x" escape sequences
-    std::string modifiedJsonStr = replaceHexadecimalEscape(jsonStr);
+    std::string modifiedJsonStr;
+    const std::string* json = &jsonStr;
+    if (jsonStr.find("\\x") != std::string::npos) {
+      modifiedJsonStr = replaceHexadecimalEscape(jsonStr);
+      json = &modifiedJsonStr;
+    }
 
-    std::istringstream jsonStream(modifiedJsonStr);
     std::string errs;
-    if (!Json::parseFromStream(m_readerBuilder, jsonStream, &root, &errs)) {
+    // Use local CharReaderBuilder for thread safety - the IPC singleton's
+    // parser can be called concurrently from multiple module threads
+    Json::CharReaderBuilder readerBuilder;
+    auto reader = std::unique_ptr<Json::CharReader>(readerBuilder.newCharReader());
+    if (!reader->parse(json->data(), json->data() + json->size(), &root, &errs)) {
       throw std::runtime_error("Error parsing JSON: " + errs);
     }
     return root;
   }
 
  private:
-  Json::CharReaderBuilder m_readerBuilder;
-
   static std::string replaceHexadecimalEscape(const std::string& str) {
     static std::regex re("\\\\x");
     return std::regex_replace(str, re, "\\u00");

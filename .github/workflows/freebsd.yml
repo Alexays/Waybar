@@ -12,13 +12,13 @@ jobs:
     # https://github.com/actions/runner/issues/385 - for FreeBSD runner support
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Test in FreeBSD VM
         uses: cross-platform-actions/action@v0.28.0
         timeout-minutes: 180
         env:
           CPPFLAGS: '-isystem/usr/local/include'
-          LDFLAGS:  '-L/usr/local/lib'
+          LDFLAGS: '-L/usr/local/lib'
         with:
           operating_system: freebsd
           version: "14.2"
