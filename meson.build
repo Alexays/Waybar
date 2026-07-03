@@ -186,7 +186,8 @@ src_files = files(
     'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
     'src/util/css_reload_helper.cpp',
-    'src/util/transform_8bit_to_rgba.cpp'
+    'src/util/transform_8bit_to_rgba.cpp',
+    'src/util/utf8_string.cpp'
 )
 
 man_files = files(
