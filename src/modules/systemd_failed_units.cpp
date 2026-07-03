@@ -297,7 +297,7 @@ auto SystemdFailedUnits::update() -> void {
           fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_),
           fmt::arg("failed_units_list", failed_list)));
     } else {
-      label_.set_tooltip_text("");
+      label_.set_tooltip_markup("");
     }
   }
   ALabel::update();
