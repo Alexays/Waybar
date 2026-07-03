@@ -320,7 +320,7 @@ std::string IPC::buildLuaDispatch(const std::string& dispatcher, const std::stri
   // New format:  /dispatch hl.dsp.focus({ workspace = "1" })
   //
   // Old format:  dispatch focusworkspaceoncurrentmonitor 2
-  // New format:  /dispatch hl.dsp.focus({ workspace = "2", monitor = "current" })
+  // New format:  /dispatch hl.dsp.focus({ workspace = "2", on_current_monitor = true })
   //
   // Old format:  dispatch togglespecialworkspace name
   // New format:  /dispatch hl.dsp.workspace.toggle_special("name")
@@ -329,7 +329,7 @@ std::string IPC::buildLuaDispatch(const std::string& dispatcher, const std::stri
     return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\" })";
   }
   if (dispatcher == "focusworkspaceoncurrentmonitor") {
-    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\", monitor = \"current\" })";
+    return "/dispatch hl.dsp.focus({ workspace = \"" + arg + "\", on_current_monitor = true })";
   }
   if (dispatcher == "togglespecialworkspace") {
     if (arg.empty()) {
