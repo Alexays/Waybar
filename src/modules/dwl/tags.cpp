@@ -70,32 +70,31 @@ static const zdwl_ipc_output_v2_listener output_status_listener_impl{
 
 static void handle_global(void* data, struct wl_registry* registry, uint32_t name,
                           const char* interface, uint32_t version) {
-  
-if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
-  auto* self = static_cast<Tags*>(data);
+  if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
+    auto* self = static_cast<Tags*>(data);
 
-  if (self->status_manager_) {
-  zdwl_ipc_manager_v2_destroy(self->status_manager_);
-  self->status_manager_ = nullptr;
-}
+    if (self->status_manager_) {
+      zdwl_ipc_manager_v2_destroy(self->status_manager_);
+      self->status_manager_ = nullptr;
+    }
 
-  self->status_manager_ = static_cast<struct zdwl_ipc_manager_v2*>(
-      wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
-}
-
-if (std::strcmp(interface, wl_seat_interface.name) == 0) {
-  auto* self = static_cast<Tags*>(data);
-
-  if (self->seat_) {
-    wl_seat_destroy(self->seat_);
-    self->seat_ = nullptr;
+    self->status_manager_ = static_cast<struct zdwl_ipc_manager_v2*>(
+        wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
   }
 
-  version = std::min<uint32_t>(version, 1);
+  if (std::strcmp(interface, wl_seat_interface.name) == 0) {
+    auto* self = static_cast<Tags*>(data);
 
-  self->seat_ = static_cast<struct wl_seat*>(
-      wl_registry_bind(registry, name, &wl_seat_interface, version));
-}
+    if (self->seat_) {
+      wl_seat_destroy(self->seat_);
+      self->seat_ = nullptr;
+    }
+
+    version = std::min<uint32_t>(version, 1);
+
+    self->seat_ =
+        static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
+  }
 }
 static void handle_global_remove(void* data, struct wl_registry* registry, uint32_t name) {
   /* Ignore event */
@@ -110,7 +109,11 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
       seat_{nullptr},
       bar_(bar),
       box_{bar.orientation, 0},
+      hide_vacant_(false),
       output_status_{nullptr} {
+  if (config_["hide-vacant"].asBool()) {
+    hide_vacant_ = config_["hide-vacant"].asBool();
+  }
   struct wl_display* display = Client::inst()->wl_display;
   struct wl_registry* registry = wl_display_get_registry(display);
 
@@ -220,6 +223,12 @@ void Tags::handle_view_tags(uint32_t tag, uint32_t state, uint32_t clients, uint
     button.get_style_context()->add_class("urgent");
   } else {
     button.get_style_context()->remove_class("urgent");
+  }
+
+  if (hide_vacant_ && !clients && !(state & TAG_ACTIVE)) {
+    button.set_visible(false);
+  } else {
+    button.set_visible(true);
   }
 }
 
