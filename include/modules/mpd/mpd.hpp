@@ -59,7 +59,6 @@ class MPD : public ALabel {
   void tryConnect();
   void checkErrors(mpd_connection* conn);
   void fetchState();
-  void queryMPD();
 
   inline bool stopped() const { return connection_ && state_ == MPD_STATE_STOP; }
   inline bool playing() const { return connection_ && state_ == MPD_STATE_PLAY; }
