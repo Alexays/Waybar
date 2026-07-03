@@ -160,7 +160,7 @@ TEST_CASE("buildLuaDispatch focusworkspaceoncurrentmonitor", "[buildLuaDispatch]
       IPCTestHelper::buildLuaDispatch("focusworkspaceoncurrentmonitor", "3");
   REQUIRE(
       result ==
-      "/dispatch hl.dsp.focus({ workspace = \"3\", monitor = \"current\" })");
+      "/dispatch hl.dsp.focus({ workspace = \"3\", on_current_monitor = true })");
 }
 
 TEST_CASE("buildLuaDispatch togglespecialworkspace", "[buildLuaDispatch]") {
