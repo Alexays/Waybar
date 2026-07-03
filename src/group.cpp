@@ -65,7 +65,12 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
+    const bool reveal_by_default =
+        (drawer_config["reveal-by-default"].isBool() ? drawer_config["reveal-by-default"].asBool()
+                                                     : false);
+
     click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    reveal_delay = drawer_config["reveal-delay"].asInt();
 
     const bool start_expanded =
         (drawer_config["start-expanded"].isBool() ? drawer_config["start-expanded"].asBool()
@@ -75,10 +80,11 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 
     revealer.set_transition_type(transition_type);
     revealer.set_transition_duration(transition_duration);
-    revealer.set_reveal_child(start_expanded);
-
-    if (start_expanded) {
+    if ((click_to_reveal && reveal_by_default) || start_expanded) {
       box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+      revealer.set_reveal_child(true);
+    } else {
+      revealer.set_reveal_child(false);
     }
 
     revealer.get_style_context()->add_class("drawer");
@@ -98,22 +104,41 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
 void Group::show_group() {
   box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);
+  box.get_style_context()->add_class("expanded");
 }
 
 void Group::hide_group() {
   box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(false);
+  box.get_style_context()->remove_class("expanded");
 }
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
   if (!click_to_reveal) {
-    show_group();
+    if (reveal_delay > 0) {
+      if (reveal_timeout_.connected()) {
+        reveal_timeout_.disconnect();
+      }
+
+      reveal_timeout_ = Glib::signal_timeout().connect(
+          [this]() {
+            show_group();
+            return false;
+          },
+          reveal_delay);
+    } else {
+      show_group();
+    }
   }
   return false;
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
   if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+    if (reveal_delay > 0 && reveal_timeout_.connected()) {
+      reveal_timeout_.disconnect();
+    }
+
     hide_group();
   }
   return false;

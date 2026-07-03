@@ -42,6 +42,13 @@
 #include "modules/niri/window.hpp"
 #include "modules/niri/workspaces.hpp"
 #endif
+#ifdef HAVE_MANGO
+#include "modules/mango/keymode.hpp"
+#include "modules/mango/language.hpp"
+#include "modules/mango/layout.hpp"
+#include "modules/mango/window.hpp"
+#include "modules/mango/workspaces.hpp"
+#endif
 #ifdef HAVE_WAYFIRE
 #include "modules/wayfire/window.hpp"
 #include "modules/wayfire/workspaces.hpp"
@@ -52,6 +59,7 @@
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
 #include "modules/cpu.hpp"
 #include "modules/cpu_frequency.hpp"
+#include "modules/cpu_graph.hpp"
 #include "modules/cpu_usage.hpp"
 #include "modules/load.hpp"
 #endif
@@ -113,6 +121,7 @@
 #endif
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
+#include "modules/custom_graph.hpp"
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
@@ -248,6 +257,23 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::niri::Workspaces(id, bar_, config_[name], reap_mtx, reap);
     }
 #endif
+#ifdef HAVE_MANGO
+    if (ref == "mango/window") {
+      return new waybar::modules::mango::Window(id, bar_, config_[name]);
+    }
+    if (ref == "mango/workspaces") {
+      return new waybar::modules::mango::Workspaces(id, bar_, config_[name]);
+    }
+    if (ref == "mango/language") {
+      return new waybar::modules::mango::Language(id, bar_, config_[name]);
+    }
+    if (ref == "mango/keymode") {
+      return new waybar::modules::mango::Keymode(id, bar_, config_[name]);
+    }
+    if (ref == "mango/layout") {
+      return new waybar::modules::mango::Layout(id, bar_, config_[name]);
+    }
+#endif
 #ifdef HAVE_WAYFIRE
     if (ref == "wayfire/window") {
       return new waybar::modules::wayfire::Window(id, bar_, config_[name], reap_mtx, reap);
@@ -267,6 +293,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name], reap_mtx, reap);
+    }
+    if (ref == "cpu_graph") {
+      return new waybar::modules::CpuGraph(id, config_[name]);
     }
 #if defined(HAVE_CPU_LINUX)
     if (ref == "cpu_frequency") {
@@ -383,6 +412,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name,
                                          reap_mtx, reap);
+    }
+    if (ref.compare(0, 13, "custom-graph/") == 0 && ref.size() > 13) {
+      return new waybar::modules::CustomGraph(ref.substr(13), id, config_[name], bar_.output->name);
     }
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name], reap_mtx, reap);

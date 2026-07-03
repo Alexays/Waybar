@@ -27,6 +27,11 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: false ++
 	Option to use the battery design capacity instead of its current maximal capacity.
 
+*full-at-plugged*: ++
+	typeof: bool ++
+	default: false ++
+	When enabled, a battery that is *Full* while the adapter is online is reported with the *Plugged* status instead of *Full* (so you can style/format it separately). Disabled by default to preserve the existing *Full* behaviour.
+
 *interval*: ++
 	typeof: integer ++
 	default: 60 ++

@@ -121,8 +121,7 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        GtkMenuEventData* data =
-            new GtkMenuEventData{reap_mtx, reap, menuActionsMap_[key].c_str()};
+        GtkMenuEventData* data = new GtkMenuEventData{reap_mtx, reap, menuActionsMap_[key].c_str()};
         g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
                          (gpointer)data);
       }
@@ -145,6 +144,26 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 }
 
 auto ALabel::update() -> void { AModule::update(); }
+
+bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
+  if (last_label_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_markup(markup);
+  last_label_markup_ = markup;
+  return true;
+}
+
+bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_tooltip_markup(markup);
+  last_tooltip_markup_ = markup;
+  return true;
+}
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
@@ -196,6 +215,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   return "";
 }
 
+void ALabel::copyToClipboard(const std::string& literal) {
+  Gtk::Clipboard::get()->set_text(literal);
+}
+
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
   if (config_["format-alt-click"].isUInt() && e->button == config_["format-alt-click"].asUInt()) {
     alt_ = !alt_;
@@ -204,6 +227,10 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
     } else {
       format_ = default_format_;
     }
+  }
+
+  if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
+    copyToClipboard(label_.get_text());
   }
   return AModule::handleToggle(e);
 }

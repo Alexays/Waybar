@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <chrono>
 
-#include "gdkmm/cursor.h"
 #include "gdkmm/event.h"
 #include "gdkmm/types.h"
 #include "glibmm/fileutils.h"

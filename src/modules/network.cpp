@@ -281,38 +281,61 @@ auto waybar::modules::Network::update() -> void {
   std::string tooltip_format;
   auto now = std::chrono::steady_clock::now();
   auto elapsed_seconds = std::chrono::duration<double>(now - bandwidth_last_sample_time_).count();
-  if (elapsed_seconds <= 0.0) {
-    elapsed_seconds = std::chrono::duration<double>(interval_).count();
-  }
-  bandwidth_last_sample_time_ = now;
 
-  auto bandwidth = readBandwidthUsage();
   auto bandwidth_down = 0ull;
   auto bandwidth_up = 0ull;
-  if (bandwidth.has_value()) {
-    auto down_octets = (*bandwidth).first;
-    auto up_octets = (*bandwidth).second;
 
-    bandwidth_down = down_octets - bandwidth_down_total_;
-    bandwidth_down_total_ = down_octets;
+  // Only recalculate bandwidth when enough time has elapsed since the last
+  // sample.  Event-driven dp.emit() calls (link/addr/route changes) can
+  // trigger update() between timer intervals, which would consume the byte
+  // delta prematurely and show near-zero bandwidth.
+  auto min_elapsed = std::chrono::duration<double>(interval_).count() * 0.5;
+  if (elapsed_seconds >= min_elapsed) {
+    if (elapsed_seconds <= 0.0) {
+      elapsed_seconds = std::chrono::duration<double>(interval_).count();
+    }
+    bandwidth_last_sample_time_ = now;
 
-    bandwidth_up = up_octets - bandwidth_up_total_;
-    bandwidth_up_total_ = up_octets;
+    auto bandwidth = readBandwidthUsage();
+    if (bandwidth.has_value()) {
+      auto down_octets = (*bandwidth).first;
+      auto up_octets = (*bandwidth).second;
+
+      bandwidth_down = down_octets - bandwidth_down_total_;
+      bandwidth_down_total_ = down_octets;
+
+      bandwidth_up = up_octets - bandwidth_up_total_;
+      bandwidth_up_total_ = up_octets;
+
+      bandwidth_down_prev_ = bandwidth_down;
+      bandwidth_up_prev_ = bandwidth_up;
+    }
+  } else {
+    bandwidth_down = bandwidth_down_prev_;
+    bandwidth_up = bandwidth_up_prev_;
+    elapsed_seconds = std::chrono::duration<double>(interval_).count();
   }
+
+  auto threshold_state = getState(signal_strength_);
 
   if (!alt_) {
     auto state = getNetworkState();
     if (!state_.empty() && label_.get_style_context()->has_class(state_)) {
       label_.get_style_context()->remove_class(state_);
     }
-    if (config_["format-" + state].isString()) {
+    if (!threshold_state.empty() && config_["format-" + state + "-" + threshold_state].isString()) {
+      default_format_ = config_["format-" + state + "-" + threshold_state].asString();
+    } else if (config_["format-" + state].isString()) {
       default_format_ = config_["format-" + state].asString();
     } else if (config_["format"].isString()) {
       default_format_ = config_["format"].asString();
     } else {
       default_format_ = DEFAULT_FORMAT;
     }
-    if (config_["tooltip-format-" + state].isString()) {
+    if (!threshold_state.empty() &&
+        config_["tooltip-format-" + state + "-" + threshold_state].isString()) {
+      tooltip_format = config_["tooltip-format-" + state + "-" + threshold_state].asString();
+    } else if (config_["tooltip-format-" + state].isString()) {
       tooltip_format = config_["tooltip-format-" + state].asString();
     }
     if (!label_.get_style_context()->has_class(state)) {
@@ -321,7 +344,6 @@ auto waybar::modules::Network::update() -> void {
     format_ = default_format_;
     state_ = state;
   }
-  getState(signal_strength_);
 
   std::string final_ipaddr_;
   if (addr_pref_ == ip_addr_pref::IPV4) {
@@ -335,28 +357,45 @@ auto waybar::modules::Network::update() -> void {
     final_ipaddr_ += ipaddr6_;
   }
 
-  auto text = fmt::format(
-      fmt::runtime(format_), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
-      fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
-      fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
-      fmt::arg("netmask", netmask_), fmt::arg("netmask6", netmask6_),
-      fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
-      fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
-      fmt::arg("icon", getIcon(signal_strength_, state_)),
-      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")),
-      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")),
+  fmt::dynamic_format_arg_store<fmt::format_context> store;
+  store.push_back(fmt::arg("essid", essid_));
+  store.push_back(fmt::arg("bssid", bssid_));
+  store.push_back(fmt::arg("signaldBm", signal_strength_dbm_));
+  store.push_back(fmt::arg("signalStrength", signal_strength_));
+  store.push_back(fmt::arg("signalStrengthApp", signal_strength_app_));
+  store.push_back(fmt::arg("ifname", ifname_));
+  store.push_back(fmt::arg("netmask", netmask_));
+  store.push_back(fmt::arg("netmask6", netmask6_));
+  store.push_back(fmt::arg("ipaddr", final_ipaddr_));
+  store.push_back(fmt::arg("gwaddr", gwaddr_));
+  store.push_back(fmt::arg("cidr", cidr_));
+  store.push_back(fmt::arg("cidr6", cidr6_));
+  store.push_back(fmt::arg("frequency", fmt::format("{:.1f}", frequency_)));
+  store.push_back(fmt::arg("icon", getIcon(signal_strength_, state_)));
+  store.push_back(
+      fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")));
+  store.push_back(
+      fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")));
+  store.push_back(
       fmt::arg("bandwidthTotalBits",
-               pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")),
-      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")),
-      fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")),
-      fmt::arg("bandwidthTotalOctets",
-               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
-      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
-      fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
-      fmt::arg("bandwidthTotalBytes",
-               pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
-  if (text.compare(label_.get_label()) != 0) {
-    label_.set_markup(text);
+               pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")));
+  store.push_back(
+      fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")));
+  store.push_back(fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")));
+  store.push_back(fmt::arg("bandwidthTotalOctets",
+                           pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")));
+  store.push_back(
+      fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")));
+  store.push_back(fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")));
+  store.push_back(fmt::arg("bandwidthDownBytesCompact",
+                           pow_format(bandwidth_down / elapsed_seconds, "B", false, 2)));
+  store.push_back(fmt::arg("bandwidthUpBytesCompact",
+                           pow_format(bandwidth_up / elapsed_seconds, "B", false, 2)));
+  store.push_back(fmt::arg("bandwidthTotalBytes",
+                           pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
+
+  auto text = fmt::vformat(format_, store);
+  if (setLabelMarkup(text)) {
     if (text.empty()) {
       event_box_.hide();
     } else {
@@ -368,31 +407,9 @@ auto waybar::modules::Network::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      auto tooltip_text = fmt::format(
-          fmt::runtime(tooltip_format), fmt::arg("essid", essid_), fmt::arg("bssid", bssid_),
-          fmt::arg("signaldBm", signal_strength_dbm_), fmt::arg("signalStrength", signal_strength_),
-          fmt::arg("signalStrengthApp", signal_strength_app_), fmt::arg("ifname", ifname_),
-          fmt::arg("netmask", netmask_), fmt::arg("netmask6", netmask6_),
-          fmt::arg("ipaddr", final_ipaddr_), fmt::arg("gwaddr", gwaddr_), fmt::arg("cidr", cidr_),
-          fmt::arg("cidr6", cidr6_), fmt::arg("frequency", fmt::format("{:.1f}", frequency_)),
-          fmt::arg("icon", getIcon(signal_strength_, state_)),
-          fmt::arg("bandwidthDownBits", pow_format(bandwidth_down * 8ull / elapsed_seconds, "b/s")),
-          fmt::arg("bandwidthUpBits", pow_format(bandwidth_up * 8ull / elapsed_seconds, "b/s")),
-          fmt::arg("bandwidthTotalBits",
-                   pow_format((bandwidth_up + bandwidth_down) * 8ull / elapsed_seconds, "b/s")),
-          fmt::arg("bandwidthDownOctets", pow_format(bandwidth_down / elapsed_seconds, "o/s")),
-          fmt::arg("bandwidthUpOctets", pow_format(bandwidth_up / elapsed_seconds, "o/s")),
-          fmt::arg("bandwidthTotalOctets",
-                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
-          fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
-          fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
-          fmt::arg("bandwidthTotalBytes",
-                   pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
-      if (label_.get_tooltip_text() != tooltip_text) {
-        label_.set_tooltip_markup(tooltip_text);
-      }
-    } else if (label_.get_tooltip_text() != text) {
-      label_.set_tooltip_markup(text);
+      setTooltipMarkup(fmt::vformat(tooltip_format, store));
+    } else {
+      setTooltipMarkup(text);
     }
   }
 
@@ -678,12 +695,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                               changed_cidr);
               }
             } else {
-              net->ipaddr_.clear();
-              net->ipaddr6_.clear();
-              net->cidr_ = 0;
-              net->cidr6_ = 0;
-              net->netmask_.clear();
-              net->netmask6_.clear();
+              if (ifa->ifa_family == AF_INET) {
+                net->ipaddr_.clear();
+                net->cidr_ = 0;
+                net->netmask_.clear();
+              } else if (ifa->ifa_family == AF_INET6) {
+                net->ipaddr6_.clear();
+                net->cidr6_ = 0;
+                net->netmask6_.clear();
+              }
               spdlog::debug("network: {} addr deleted {}/{}", net->ifname_,
                             inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)),
                             ifa->ifa_prefixlen);

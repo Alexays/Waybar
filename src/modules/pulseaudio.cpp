@@ -8,6 +8,11 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value
 
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
+  backend->setSinkMapping(config_["sink-mapping"]);
+
+  if (config_["target"].isString() && config_["target"].asString() == "source") {
+    target = util::PulseaudioTarget::Source;
+  }
 }
 
 bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll* e) {
@@ -34,7 +39,7 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll* e) {
                          ? util::ChangeType::Increase
                          : util::ChangeType::Decrease;
 
-  backend->changeVolume(change_type, step, max_volume);
+  backend->changeVolume(change_type, step, max_volume, target);
   return true;
 }
 
@@ -69,7 +74,6 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
 
 auto waybar::modules::Pulseaudio::update() -> void {
   auto format = format_;
-  std::string tooltip_format;
   auto sink_volume = backend->getSinkVolume();
   if (!alt_) {
     std::string format_name = "format";
@@ -117,29 +121,29 @@ auto waybar::modules::Pulseaudio::update() -> void {
   auto source_desc = backend->getSourceDesc();
 
   format_source = fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_volume));
-  auto text = fmt::format(
-      fmt::runtime(format), fmt::arg("desc", sink_desc), fmt::arg("volume", sink_volume),
-      fmt::arg("format_source", format_source), fmt::arg("source_volume", source_volume),
-      fmt::arg("source_desc", source_desc), fmt::arg("icon", getIcon(sink_volume, getPulseIcon())));
+
+  fmt::dynamic_format_arg_store<fmt::format_context> store;
+  store.push_back(fmt::arg("desc", sink_desc));
+  store.push_back(fmt::arg("volume", sink_volume));
+  store.push_back(fmt::arg("format_source", format_source));
+  store.push_back(fmt::arg("source_volume", source_volume));
+  store.push_back(fmt::arg("source_desc", source_desc));
+  store.push_back(fmt::arg("icon", getIcon(sink_volume, getPulseIcon())));
+
+  auto text = fmt::vformat(format, store);
   if (text.empty()) {
     label_.hide();
   } else {
-    label_.set_markup(text);
+    setLabelMarkup(text);
     label_.show();
   }
 
   if (tooltipEnabled()) {
-    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
-      tooltip_format = config_["tooltip-format"].asString();
-    }
+    auto tooltip_format = resolveTooltipFormat("");
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_markup(fmt::format(
-          fmt::runtime(tooltip_format), fmt::arg("desc", sink_desc),
-          fmt::arg("volume", sink_volume), fmt::arg("format_source", format_source),
-          fmt::arg("source_volume", source_volume), fmt::arg("source_desc", source_desc),
-          fmt::arg("icon", getIcon(sink_volume, getPulseIcon()))));
+      setTooltipMarkup(fmt::vformat(tooltip_format, store));
     } else {
-      label_.set_tooltip_markup(sink_desc);
+      setTooltipMarkup(sink_desc);
     }
   }
 

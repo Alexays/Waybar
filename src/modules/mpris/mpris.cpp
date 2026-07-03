@@ -7,6 +7,7 @@
 #include <string>
 
 #include "util/scope_guard.hpp"
+#include "util/utf8_string.hpp"
 
 extern "C" {
 #include <playerctl/playerctl.h>
@@ -31,6 +32,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config, std::mutex& reap_
       dynamic_separator_(" - "),
       truncate_hours_(true),
       tooltip_len_limits_(false),
+      prefer_album_artist_(false),
       // this character is used in Gnome so it's fine to use it here
       ellipsis_("\u2026"),
       player_("playerctld"),
@@ -67,6 +69,9 @@ Mpris::Mpris(const std::string& id, const Json::Value& config, std::mutex& reap_
     }
     if (config_["enable-tooltip-len-limits"].isBool()) {
       tooltip_len_limits_ = config["enable-tooltip-len-limits"].asBool();
+    }
+    if (config_["prefer-album-artist"].isBool()) {
+      prefer_album_artist_ = config["prefer-album-artist"].asBool();
     }
   }
 
@@ -203,69 +208,28 @@ auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) ->
 // Wide characters count as two, zero-width characters count as zero
 // Modifies str in-place (unless width = std::string::npos)
 // Returns the total width of the string pre-truncating
-size_t utf8_truncate(std::string& str, size_t width = std::string::npos) {
-  if (str.length() == 0) return 0;
-
-  const gchar* trunc_end = nullptr;
-
-  size_t total_width = 0;
-
-  for (gchar *data = str.data(), *end = data + str.size(); data != nullptr;) {
-    gunichar c = g_utf8_get_char_validated(data, end - data);
-    if (c == -1U || c == -2U) {
-      // invalid unicode, treat string as ascii
-      if (width != std::string::npos && str.length() > width) str.resize(width);
-      return str.length();
-    } else if (g_unichar_iswide(c)) {
-      total_width += 2;
-    } else if (!g_unichar_iszerowidth(c) && c != 0xAD) {  // neither zero-width nor soft hyphen
-      total_width += 1;
-    }
-
-    data = g_utf8_find_next_char(data, end);
-    if (width != std::string::npos && total_width <= width && !g_unichar_isspace(c))
-      trunc_end = data;
-  }
-
-  if (trunc_end) str.resize(trunc_end - str.data());
-
-  return total_width;
-}
-
-size_t utf8_width(const std::string& str) { return utf8_truncate(const_cast<std::string&>(str)); }
-
-void truncate(std::string& s, const std::string& ellipsis, size_t max_len) {
-  if (max_len == 0) {
-    s.resize(0);
-    return;
-  }
-  size_t len = utf8_truncate(s, max_len);
-  if (len > max_len) {
-    size_t ellipsis_len = utf8_width(ellipsis);
-    if (max_len >= ellipsis_len) {
-      if (ellipsis_len) utf8_truncate(s, max_len - ellipsis_len);
-      s += ellipsis;
-    } else {
-      s.resize(0);
-    }
-  }
-}
 
 auto Mpris::getArtistStr(const PlayerInfo& info, bool truncated) -> std::string {
   auto artist = info.artist.value_or(std::string());
-  if (truncated && artist_len_ >= 0) truncate(artist, ellipsis_, artist_len_);
+  if (prefer_album_artist_) {
+    auto album_artist = info.album_artist.value_or(std::string());
+    if (!album_artist.empty()) {
+      artist = album_artist;
+    }
+  }
+  if (truncated && artist_len_ >= 0) waybar::util::utf8_truncate(artist, ellipsis_, artist_len_);
   return artist;
 }
 
 auto Mpris::getAlbumStr(const PlayerInfo& info, bool truncated) -> std::string {
   auto album = info.album.value_or(std::string());
-  if (truncated && album_len_ >= 0) truncate(album, ellipsis_, album_len_);
+  if (truncated && album_len_ >= 0) waybar::util::utf8_truncate(album, ellipsis_, album_len_);
   return album;
 }
 
 auto Mpris::getTitleStr(const PlayerInfo& info, bool truncated) -> std::string {
   auto title = info.title.value_or(std::string());
-  if (truncated && title_len_ >= 0) truncate(title, ellipsis_, title_len_);
+  if (truncated && title_len_ >= 0) waybar::util::utf8_truncate(title, ellipsis_, title_len_);
   return title;
 }
 
@@ -293,9 +257,9 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   // keep position format same as length format
   auto position = getPositionStr(info, truncated && truncate_hours_ && length.length() < 6);
 
-  size_t artistLen = utf8_width(artist);
-  size_t albumLen = utf8_width(album);
-  size_t titleLen = utf8_width(title);
+  size_t artistLen = waybar::util::utf8_width(artist);
+  size_t albumLen = waybar::util::utf8_width(album);
+  size_t titleLen = waybar::util::utf8_width(title);
   size_t lengthLen = length.length();
   size_t posLen = position.length();
 
@@ -314,7 +278,7 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
     // Since the first element doesn't present a separator and we don't know a priori which one
     // it will be, we add a "virtual separatorLen" to the dynamicLen, since we are adding the
     // separatorLen to all the other lengths.
-    size_t separatorLen = utf8_width(dynamic_separator_);
+    size_t separatorLen = waybar::util::utf8_width(dynamic_separator_);
     size_t dynamicLen = dynamic_len_ + separatorLen;
     if (showArtist) artistLen += separatorLen;
     if (showAlbum) albumLen += separatorLen;
@@ -568,6 +532,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .status_string = player_status,
       .artist = std::nullopt,
       .album = std::nullopt,
+      .album_artist = std::nullopt,
       .title = std::nullopt,
       .length = std::nullopt,
   };
@@ -578,6 +543,13 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     g_free(artist_);
   }
   if (error) goto errorexit;
+
+  if (auto* album_artist_ =
+          playerctl_player_print_metadata_prop(player, "xesam:albumArtist", &error)) {
+    spdlog::debug("mpris[{}]: albumArtist = {}", info.name, album_artist_);
+    info.album_artist = album_artist_;
+    g_free(album_artist_);
+  }
 
   if (auto* album_ = playerctl_player_get_album(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
@@ -764,7 +736,7 @@ auto Mpris::update() -> void {
     if (label_format.empty()) {
       label_.hide();
     } else {
-      label_.set_markup(label_format);
+      setLabelMarkup(label_format);
       label_.show();
     }
   } catch (fmt::format_error const& e) {
@@ -776,15 +748,18 @@ auto Mpris::update() -> void {
       auto tooltip_text = fmt::format(
           fmt::runtime(tooltipstr), fmt::arg("player", info.name),
           fmt::arg("status", info.status_string),
-          fmt::arg("artist", getArtistStr(info, tooltip_len_limits_)),
-          fmt::arg("title", getTitleStr(info, tooltip_len_limits_)),
-          fmt::arg("album", getAlbumStr(info, tooltip_len_limits_)),
+          fmt::arg("artist",
+                   std::string(Glib::Markup::escape_text(getArtistStr(info, tooltip_len_limits_)))),
+          fmt::arg("title",
+                   std::string(Glib::Markup::escape_text(getTitleStr(info, tooltip_len_limits_)))),
+          fmt::arg("album",
+                   std::string(Glib::Markup::escape_text(getAlbumStr(info, tooltip_len_limits_)))),
           fmt::arg("length", tooltipLength), fmt::arg("position", tooltipPosition),
           fmt::arg("dynamic", getDynamicStr(info, tooltip_len_limits_, false)),
           fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
           fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 
-      label_.set_tooltip_markup(tooltip_text);
+      setTooltipMarkup(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpris: format error (tooltip): {}", e.what());
     }

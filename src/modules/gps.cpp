@@ -149,7 +149,7 @@ auto waybar::modules::Gps::update() -> void {
   // Show the module
   if (!event_box_.get_visible()) event_box_.set_visible(true);
 
-  std::string tooltip_format;
+  std::string tooltip_state;
 
   if (!alt_) {
     auto state = getFixModeName();
@@ -163,57 +163,27 @@ auto waybar::modules::Gps::update() -> void {
     } else {
       default_format_ = DEFAULT_FORMAT;
     }
-    if (config_["tooltip-format-" + state].isString()) {
-      tooltip_format = config_["tooltip-format-" + state].asString();
-    }
     if (!label_.get_style_context()->has_class(state)) {
       label_.get_style_context()->add_class(state);
     }
     format_ = default_format_;
     state_ = state;
+    tooltip_state = state;
   }
 
   auto format = format_;
 
-  fmt::dynamic_format_arg_store<fmt::format_context> store;
-  store.push_back(fmt::arg("mode", getFixModeString()));
-  store.push_back(fmt::arg("status", getFixStatusString()));
-
-  store.push_back(fmt::arg("latitude", gps_data_.fix.latitude));
-  store.push_back(fmt::arg("latitude_error", gps_data_.fix.epy));
-
-  store.push_back(fmt::arg("longitude", gps_data_.fix.longitude));
-  store.push_back(fmt::arg("longitude_error", gps_data_.fix.epx));
-
-  store.push_back(fmt::arg("altitude_hae", gps_data_.fix.altHAE));
-  store.push_back(fmt::arg("altitude_msl", gps_data_.fix.altMSL));
-  store.push_back(fmt::arg("altitude_error", gps_data_.fix.epv));
-
-  store.push_back(fmt::arg("speed", gps_data_.fix.speed));
-  store.push_back(fmt::arg("speed_error", gps_data_.fix.eps));
-
-  store.push_back(fmt::arg("climb", gps_data_.fix.climb));
-  store.push_back(fmt::arg("climb_error", gps_data_.fix.epc));
-
-  store.push_back(fmt::arg("satellites_used", gps_data_.satellites_used));
-  store.push_back(fmt::arg("satellites_visible", gps_data_.satellites_visible));
-
-  auto text = fmt::vformat(format, store);
-
-  if (tooltipEnabled()) {
-    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
-      tooltip_format = config_["tooltip-format"].asString();
-    }
-    if (!tooltip_format.empty()) {
-      auto tooltip_text = fmt::vformat(tooltip_format, store);
-      if (label_.get_tooltip_text() != tooltip_text) {
-        label_.set_tooltip_markup(tooltip_text);
-      }
-    } else if (label_.get_tooltip_text() != text) {
-      label_.set_tooltip_markup(text);
-    }
-  }
-  label_.set_markup(text);
+  updateLabelAndTooltipForState(
+      tooltip_state, format, format, fmt::arg("mode", getFixModeString()),
+      fmt::arg("status", getFixStatusString()), fmt::arg("latitude", gps_data_.fix.latitude),
+      fmt::arg("latitude_error", gps_data_.fix.epy), fmt::arg("longitude", gps_data_.fix.longitude),
+      fmt::arg("longitude_error", gps_data_.fix.epx),
+      fmt::arg("altitude_hae", gps_data_.fix.altHAE),
+      fmt::arg("altitude_msl", gps_data_.fix.altMSL), fmt::arg("altitude_error", gps_data_.fix.epv),
+      fmt::arg("speed", gps_data_.fix.speed), fmt::arg("speed_error", gps_data_.fix.eps),
+      fmt::arg("climb", gps_data_.fix.climb), fmt::arg("climb_error", gps_data_.fix.epc),
+      fmt::arg("satellites_used", gps_data_.satellites_used),
+      fmt::arg("satellites_visible", gps_data_.satellites_visible));
   // Call parent update
   ALabel::update();
 }

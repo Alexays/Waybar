@@ -225,7 +225,7 @@ auto UPower::update() -> void {
     return;
   }
 
-  label_.set_markup(getText(upDevice_, format_));
+  setLabelMarkup(getText(upDevice_, format_));
   // Set icon
   if (upDevice_.icon_name == NULL || !gtkTheme_->has_icon(upDevice_.icon_name))
     upDevice_.icon_name = (char*)NO_BATTERY.c_str();

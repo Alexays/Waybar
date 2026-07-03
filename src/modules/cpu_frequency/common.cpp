@@ -33,24 +33,12 @@ auto waybar::modules::CpuFrequency::update() -> void {
   } else {
     event_box_.show();
     auto icons = std::vector<std::string>{state};
-    fmt::dynamic_format_arg_store<fmt::format_context> store;
-    store.push_back(fmt::arg("icon", getIcon(avg_frequency, icons)));
-    store.push_back(fmt::arg("max_frequency", max_frequency));
-    store.push_back(fmt::arg("min_frequency", min_frequency));
-    store.push_back(fmt::arg("avg_frequency", avg_frequency));
-    label_.set_markup(fmt::vformat(format, store));
-
-    if (tooltipEnabled()) {
-      std::string tooltip;
-      if (config_["tooltip-format"].isString()) {
-        tooltip = config_["tooltip-format"].asString();
-        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
-      } else {
-        tooltip = "Minimum frequency: {}\nAverage frequency: {}\nMaximum frequency: {}\n";
-        label_.set_tooltip_markup(
-            fmt::format(fmt::runtime(tooltip), min_frequency, avg_frequency, max_frequency));
-      }
-    }
+    updateLabelAndTooltip(
+        format,
+        "Minimum frequency: {min_frequency}\nAverage frequency: {avg_frequency}\nMaximum "
+        "frequency: {max_frequency}\n",
+        fmt::arg("icon", getIcon(avg_frequency, icons)), fmt::arg("max_frequency", max_frequency),
+        fmt::arg("min_frequency", min_frequency), fmt::arg("avg_frequency", avg_frequency));
   }
 
   // Call parent update

@@ -22,6 +22,8 @@ class Memory : public ALabel {
   std::unordered_map<std::string, unsigned long> meminfo_;
 
   util::SleeperThread thread_;
+
+  std::string unit_;
 };
 
 }  // namespace waybar::modules

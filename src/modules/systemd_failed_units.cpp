@@ -85,6 +85,9 @@ SystemdFailedUnits::SystemdFailedUnits(const std::string& id, const Json::Value&
     }
   }
 
+  if (!user_props_proxy_ && !system_props_proxy_)
+    throw std::runtime_error("Neither system nor user status is requested.");
+
   updateData();
   /* Always update for the first time. */
   dp.emit();
@@ -104,7 +107,7 @@ auto SystemdFailedUnits::notify_cb(const Glib::ustring& sender_name,
 void SystemdFailedUnits::RequestSystemState() {
   auto load = [](const char* kind, Glib::RefPtr<Gio::DBus::Proxy>& proxy) -> std::string {
     try {
-      if (!proxy) return "unknown";
+      if (!proxy) return "ignored";
       auto parameters = Glib::VariantContainerBase(
           g_variant_new("(ss)", "org.freedesktop.systemd1.Manager", "SystemState"));
       Glib::VariantContainerBase data = proxy->call_sync("Get", parameters);
@@ -123,7 +126,9 @@ void SystemdFailedUnits::RequestSystemState() {
 
   system_state_ = load("systemwide", system_props_proxy_);
   user_state_ = load("user", user_props_proxy_);
-  if (system_state_ == "running" && user_state_ == "running")
+
+  if ((system_state_ == "running" || system_state_ == "ignored") &&
+      (user_state_ == "running" || user_state_ == "ignored"))
     overall_state_ = "ok";
   else
     overall_state_ = "degraded";
@@ -277,7 +282,7 @@ auto SystemdFailedUnits::update() -> void {
 
   last_status_ = overall_state_;
 
-  label_.set_markup(fmt::format(
+  setLabelMarkup(fmt::format(
       fmt::runtime(nr_failed_ == 0 ? format_ok_ : format_), fmt::arg("nr_failed", nr_failed_),
       fmt::arg("nr_failed_system", nr_failed_system_), fmt::arg("nr_failed_user", nr_failed_user_),
       fmt::arg("system_state", system_state_), fmt::arg("user_state", user_state_),
@@ -286,14 +291,14 @@ auto SystemdFailedUnits::update() -> void {
     std::string failed_list = BuildTooltipFailedList();
     auto tooltip_template = overall_state_ == "ok" ? tooltip_format_ok_ : tooltip_format_;
     if (!tooltip_template.empty()) {
-      label_.set_tooltip_markup(fmt::format(
+      setTooltipMarkup(fmt::format(
           fmt::runtime(tooltip_template), fmt::arg("nr_failed", nr_failed_),
           fmt::arg("nr_failed_system", nr_failed_system_),
           fmt::arg("nr_failed_user", nr_failed_user_), fmt::arg("system_state", system_state_),
           fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_),
           fmt::arg("failed_units_list", failed_list)));
     } else {
-      label_.set_tooltip_text("");
+      setTooltipMarkup("");
     }
   }
   ALabel::update();
