@@ -1,5 +1,6 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
+#include <glibmm/main.h>
 
 #include <memory>
 #include <string>
@@ -30,6 +31,11 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
   }
 
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);
+  m_button.add_events(Gdk::ENTER_NOTIFY_MASK | Gdk::LEAVE_NOTIFY_MASK);
+
+  m_button.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Workspace::handleEnter));
+  m_button.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Workspace::handleLeave));
+
   m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
                                                false);
 
@@ -43,6 +49,12 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
   m_button.add(m_content);
 
   initializeWindowMap(clients_data);
+}
+
+Workspace::~Workspace() {
+  // Disconnect the hover-check timeout so it can't fire on this destroyed
+  // instance (Workspaces are removed at runtime while a check may be armed).
+  stopHoverCheck();
 }
 
 void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext>& context, bool condition,
@@ -66,6 +78,102 @@ std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const& addr) {
   return std::nullopt;
 }
 
+bool Workspace::pointerInsideButton() {
+  auto display = Gdk::Display::get_default();
+  if (!display) {
+    return false;
+  }
+
+  auto seat = display->get_default_seat();
+  if (!seat) {
+    return false;
+  }
+
+  auto pointer = seat->get_pointer();
+  if (!pointer) {
+    return false;
+  }
+
+  Glib::RefPtr<Gdk::Screen> screen;
+  int pointerRootX = 0;
+  int pointerRootY = 0;
+
+  pointer->get_position(screen, pointerRootX, pointerRootY);
+
+  Gtk::Widget* toplevel = m_button.get_toplevel();
+  if (toplevel == nullptr || !toplevel->get_window()) {
+    return false;
+  }
+
+  int buttonX = 0;
+  int buttonY = 0;
+
+  if (!m_button.translate_coordinates(*toplevel, 0, 0, buttonX, buttonY)) {
+    return false;
+  }
+
+  int windowRootX = 0;
+  int windowRootY = 0;
+  toplevel->get_window()->get_root_origin(windowRootX, windowRootY);
+
+  const auto allocation = m_button.get_allocation();
+
+  const int buttonRootX = windowRootX + buttonX;
+  const int buttonRootY = windowRootY + buttonY;
+  const int buttonWidth = allocation.get_width();
+  const int buttonHeight = allocation.get_height();
+
+  return pointerRootX >= buttonRootX && pointerRootY >= buttonRootY &&
+         pointerRootX < buttonRootX + buttonWidth &&
+         pointerRootY < buttonRootY + buttonHeight;
+}
+
+bool Workspace::syncHoverClass() {
+  auto styleContext = m_button.get_style_context();
+
+  if (pointerInsideButton()) {
+    styleContext->add_class("workspace-hover");
+    return true;
+  }
+
+  styleContext->remove_class("workspace-hover");
+  stopHoverCheck();
+  return false;
+}
+
+void Workspace::startHoverCheck() {
+  if (m_hoverCheckConnection.connected()) {
+    return;
+  }
+
+  m_hoverCheckConnection = Glib::signal_timeout().connect(
+      sigc::mem_fun(*this, &Workspace::syncHoverClass),
+      50);
+}
+
+void Workspace::stopHoverCheck() {
+  if (m_hoverCheckConnection.connected()) {
+    m_hoverCheckConnection.disconnect();
+  }
+}
+
+bool Workspace::handleEnter(GdkEventCrossing* /*event*/) {
+  m_button.get_style_context()->add_class("workspace-hover");
+  startHoverCheck();
+  return false;
+}
+
+bool Workspace::handleLeave(GdkEventCrossing* /*event*/) {
+  /*
+   * Do not remove immediately.
+   * Workspace taskbar children can fire misleading leave events while the
+   * pointer is still visually inside the workspace button.
+   *
+   * The polling check will remove the class once the pointer really leaves.
+   */
+  startHoverCheck();
+  return false;
+}
 bool Workspace::handleClicked(GdkEventButton* bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
     try {
