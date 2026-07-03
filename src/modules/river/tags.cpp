@@ -138,9 +138,10 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
     return;
   }
 
+  // Store the output this module belongs to; the river_output_status and
+  // river_seat_status objects (and their listeners) are created lazily in
+  // handle_show() to avoid leaking objects without listeners here.
   output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-  output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
-  seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
 
   box_.set_name("tags");
   if (!id.empty()) {
@@ -191,6 +192,10 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
 Tags::~Tags() {
   if (output_status_) {
     zriver_output_status_v1_destroy(output_status_);
+  }
+
+  if (seat_status_) {
+    zriver_seat_status_v1_destroy(seat_status_);
   }
 
   if (control_) {
