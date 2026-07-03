@@ -1,5 +1,7 @@
 #include "modules/image.hpp"
 
+#include <config.hpp>
+
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
     : AModule(config, "image", id), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
   box_.pack_start(image_);
@@ -14,20 +16,32 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
 
   size_ = config["size"].asInt();
 
-  interval_ = config_["interval"] == "once"
-                  ? std::chrono::milliseconds::max()
-                  : std::chrono::milliseconds(std::max(
-                        1L,  // Minimum 1ms due to millisecond precision
-                        static_cast<long>(
-                            (config_["interval"].isNumeric() ? config_["interval"].asDouble() : 0) *
-                            1000)));
+  const auto once = std::chrono::milliseconds::max();
+  if (!config_.isMember("interval") || config_["interval"].isNull() ||
+      config_["interval"] == "once") {
+    interval_ = once;
+  } else if (config_["interval"].isNumeric()) {
+    const auto interval_seconds = config_["interval"].asDouble();
+    if (interval_seconds <= 0) {
+      interval_ = once;
+    } else {
+      interval_ =
+          std::chrono::milliseconds(std::max(1L,  // Minimum 1ms due to millisecond precision
+                                             static_cast<long>(interval_seconds * 1000)));
+    }
+  } else {
+    interval_ = once;
+  }
 
   if (size_ == 0) {
     size_ = 16;
   }
 
-  if (interval_.count() == 0) {
-    interval_ = std::chrono::milliseconds::max();
+  if (config_["path"].isString()) {
+    auto result = Config::tryExpandPath(config_["path"].asString(), "");
+    path_ = result.empty() ? "" : result.front();
+  } else {
+    path_.clear();
   }
 
   delayWorker();
@@ -41,19 +55,20 @@ void waybar::modules::Image::delayWorker() {
 }
 
 void waybar::modules::Image::refresh(int sig) {
+#ifdef SIGRTMIN
   if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+#endif
 }
 
 auto waybar::modules::Image::update() -> void {
-  if (config_["path"].isString()) {
-    path_ = config_["path"].asString();
-  } else if (config_["exec"].isString()) {
+  if (config_["exec"].isString()) {
     output_ = util::command::exec(config_["exec"].asString(), "");
     parseOutputRaw();
-  } else {
-    path_ = "";
+    // expand path if "~" or "$HOME" is present in original path
+    auto result = Config::tryExpandPath(path_, "");
+    path_ = result.empty() ? "" : result.front();
   }
 
   if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS)) {

@@ -41,6 +41,19 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	The separator to be used between windows in a workspace. ++
 	This setting is ignored if *workspace-taskbar.enable* is set to true.
 
+*window-rewrite-group-threshold*: ++
+	typeof: int ++
+	default: 0 ++
+	When a workspace contains at least this many windows with the same rewrite result, they are collapsed into a single one using *window-rewrite-group-format*. ++
+	Set to 0 to disable grouping. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
+*window-rewrite-group-format*: ++
+	typeof: string ++
+	default: "{icon}×{count}" ++
+	The format used to represent a group of collapsed windows. Available placeholders are {icon} (the icon being grouped) and {count} (how many windows share it). ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
 *workspace-taskbar*: ++
 	typeof: object ++
 	Contains settings for the workspace taskbar, an alternative mode for the workspaces module which displays the window icons as images instead of text.
@@ -98,6 +111,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	  - {button} Pressed button number, see https://api.gtkd.org/gdk.c.types.GdkEventButton.button.html. ++
 	See https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#workspace-taskbars-example for a full example.
 
+*max-windows*: ++
+	typeof: int ++
+	default: 0 (unlimited) ++
+	Maximum number of windows to show per workspace. When set, newest windows beyond the limit are not shown. Set to 0 for unlimited windows.
+
 *show-special*: ++
 	typeof: bool ++
 	default: false ++
@@ -113,6 +131,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to true, only persistent workspaces will be shown on bar.
 
+*persistent-workspaces*: ++
+	typeof: object ++
+	default: empty ++
+	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
@@ -123,12 +146,30 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to true, only the active workspace will be shown.
 
+*hide-active*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, the active workspace will be hidden. Unless a workspace is persistent or special.
+
 *move-to-monitor*: ++
 	typeof: bool ++
 	default: false ++
 	If set to true, open the workspace on the current monitor when clicking on a workspace button.
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
 	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
+
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
+*on-scroll-up*: ++
+	typeof: string ++
+	Command to execute when scrolling up on the module. This replaces the default behaviour of workspace cycling.
+
+*on-scroll-down*: ++
+	typeof: string ++
+	Command to execute when scrolling down on the module. This replaces the default behaviour of workspace cycling.
 
 *ignore-workspaces*: ++
 	typeof: array ++
