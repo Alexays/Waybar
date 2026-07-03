@@ -98,6 +98,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	  - {button} Pressed button number, see https://api.gtkd.org/gdk.c.types.GdkEventButton.button.html. ++
 	See https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#workspace-taskbars-example for a full example.
 
+*max-windows*: ++
+	typeof: int ++
+	default: 0 (unlimited) ++
+	Maximum number of windows to show per workspace. When set, newest windows beyond the limit are not shown. Set to 0 for unlimited windows.
+
 *show-special*: ++
 	typeof: bool ++
 	default: false ++
