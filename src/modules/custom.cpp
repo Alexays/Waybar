@@ -39,6 +39,11 @@ waybar::modules::Custom::~Custom() {
 }
 
 void waybar::modules::Custom::delayWorker() {
+  if (!config_["exec"].isString() && !config_["exec-if"].isString()) {
+    dp.emit();
+    return;
+  }
+
   thread_ = [this] {
     for (int i : this->pid_children_) {
       int status;
