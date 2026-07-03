@@ -78,6 +78,53 @@ auto supportsLockStates(const libevdev* dev) -> bool {
          libevdev_has_event_code(dev, EV_LED, LED_SCROLLL);
 }
 
+auto isCommonFormatIcons(const Json::Value& config) -> bool {
+  return config["format-icons"].isObject() && (config["format-icons"]["locked"].isString() ||
+                                               config["format-icons"]["unlocked"].isString());
+}
+
+auto keyStateToIcons(const Json::Value& config)
+    -> std::unordered_map<std::string, std::vector<std::string>> {
+  std::unordered_map<std::string, std::vector<std::string>> key_icon_states;
+  std::vector<std::string> default_icons = {"unlocked", "locked"};
+
+  if (isCommonFormatIcons(config)) {
+    std::vector<std::string> icons = {
+        config["format-icons"]["unlocked"].isString()
+            ? config["format-icons"]["unlocked"].asString()
+            : "unlocked",
+        config["format-icons"]["locked"].isString() ? config["format-icons"]["locked"].asString()
+                                                    : "locked",
+    };
+    key_icon_states["Lock"] = icons;
+    return key_icon_states;
+  }
+
+  bool found_any = false;
+  for (const auto& key : std::vector<std::string>{"numlock", "capslock", "scrolllock"}) {
+    std::string map_key = key.substr(0, key.length() - 4);
+    map_key[0] = std::toupper(map_key[0]);
+    if (config["format-icons"].isObject() && config["format-icons"][key].isObject()) {
+      std::string unlocked = config["format-icons"][key]["unlocked"].isString()
+                                 ? config["format-icons"][key]["unlocked"].asString()
+                                 : "unlocked";
+      std::string locked = config["format-icons"][key]["locked"].isString()
+                               ? config["format-icons"][key]["locked"].asString()
+                               : "locked";
+      key_icon_states[map_key] = {unlocked, locked};
+      found_any = true;
+    }
+  }
+
+  if (!found_any) {
+    key_icon_states["Num"] = default_icons;
+    key_icon_states["Caps"] = default_icons;
+    key_icon_states["Scroll"] = default_icons;
+  }
+
+  return key_icon_states;
+}
+
 waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& bar,
                                               const Json::Value& config)
     : AModule(config, "keyboard-state", id, false, !config["disable-scroll"].asBool()),
@@ -98,12 +145,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
                              : "{name} {icon}"),
       interval_(
           std::chrono::seconds(config_["interval"].isUInt() ? config_["interval"].asUInt() : 1)),
-      icon_locked_(config_["format-icons"]["locked"].isString()
-                       ? config_["format-icons"]["locked"].asString()
-                       : "locked"),
-      icon_unlocked_(config_["format-icons"]["unlocked"].isString()
-                         ? config_["format-icons"]["unlocked"].asString()
-                         : "unlocked"),
+      key_icon_states_(keyStateToIcons(config_)),
       devices_path_("/dev/input/"),
       libinput_(nullptr),
       libinput_devices_({}) {
@@ -232,9 +274,12 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
           }
           tryAddDevice(dev_path);
         } else if (event->mask & IN_DELETE) {
+          std::lock_guard<std::mutex> lock(devices_mutex_);
           auto it = libinput_devices_.find(dev_path);
           if (it != libinput_devices_.end()) {
             spdlog::info("Keyboard {} has been removed.", dev_path);
+            libinput_path_remove_device(it->second);
+            libinput_device_unref(it->second);
             libinput_devices_.erase(it);
           }
         }
@@ -245,6 +290,7 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
 }
 
 waybar::modules::KeyboardState::~KeyboardState() {
+  std::lock_guard<std::mutex> lock(devices_mutex_);
   for (const auto& [_, dev_ptr] : libinput_devices_) {
     libinput_path_remove_device(dev_ptr);
   }
@@ -256,11 +302,17 @@ auto waybar::modules::KeyboardState::update() -> void {
 
   try {
     std::string dev_path;
-    if (config_["device-path"].isString() &&
-        libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
-      dev_path = config_["device-path"].asString();
-    } else {
-      dev_path = libinput_devices_.begin()->first;
+    {
+      std::lock_guard<std::mutex> lock(devices_mutex_);
+      if (libinput_devices_.empty()) {
+        return;
+      }
+      if (config_["device-path"].isString() &&
+          libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
+        dev_path = config_["device-path"].asString();
+      } else {
+        dev_path = libinput_devices_.begin()->first;
+      }
     }
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
     auto dev = openDevice(fd);
@@ -280,7 +332,7 @@ auto waybar::modules::KeyboardState::update() -> void {
     bool state;
     Gtk::Label& label;
     const std::string& format;
-    const char* name;
+    const std::string name;
   } label_states[] = {
       {(bool)numl, numlock_label_, numlock_format_, "Num"},
       {(bool)capsl, capslock_label_, capslock_format_, "Caps"},
@@ -288,8 +340,21 @@ auto waybar::modules::KeyboardState::update() -> void {
   };
   for (auto& label_state : label_states) {
     std::string text;
+    std::string map_key = isCommonFormatIcons(config_) ? "Lock" : label_state.name;
+
+    if (key_icon_states_.find(map_key) == key_icon_states_.end()) {
+      spdlog::warn("keyboard-state: Missing icon configuration for '{}'", map_key);
+      continue;
+    }
+
+    auto& icons = key_icon_states_[map_key];
+    if (icons.size() < 2) {
+      spdlog::warn("keyboard-state: Invalid icon vector size for '{}'", map_key);
+      continue;
+    }
+
     text = fmt::format(fmt::runtime(label_state.format),
-                       fmt::arg("icon", label_state.state ? icon_locked_ : icon_unlocked_),
+                       fmt::arg("icon", label_state.state ? icons[1] : icons[0]),
                        fmt::arg("name", label_state.name));
     label_state.label.set_markup(text);
     if (label_state.state) {
@@ -308,10 +373,15 @@ auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) 
     auto dev = openDevice(fd);
     if (supportsLockStates(dev)) {
       spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
+      std::lock_guard<std::mutex> lock(devices_mutex_);
       if (libinput_devices_.find(dev_path) == libinput_devices_.end()) {
         auto device = libinput_path_add_device(libinput_, dev_path.c_str());
-        libinput_device_ref(device);
-        libinput_devices_[dev_path] = device;
+        if (device) {
+          libinput_device_ref(device);
+          libinput_devices_[dev_path] = device;
+        } else {
+          spdlog::warn("keyboard-state: Failed to add device to libinput: {}", dev_path);
+        }
       }
     }
     libevdev_free(dev);

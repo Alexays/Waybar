@@ -1,15 +1,20 @@
 #include "modules/pulseaudio.hpp"
 
-waybar::modules::Pulseaudio::Pulseaudio(const std::string &id, const Json::Value &config)
+waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value& config)
     : ALabel(config, "pulseaudio", id, "{volume}%") {
   event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Pulseaudio::handleScroll));
 
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
+  backend->setSinkMapping(config_["sink-mapping"]);
+
+  if (config_["target"].isString() && config_["target"].asString() == "source") {
+    target = util::PulseaudioTarget::Source;
+  }
 }
 
-bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll* e) {
   // change the pulse volume only when no user provided
   // events are configured
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
@@ -33,7 +38,7 @@ bool waybar::modules::Pulseaudio::handleScroll(GdkEventScroll *e) {
                          ? util::ChangeType::Increase
                          : util::ChangeType::Decrease;
 
-  backend->changeVolume(change_type, step, max_volume);
+  backend->changeVolume(change_type, step, max_volume, target);
   return true;
 }
 
@@ -51,7 +56,7 @@ const std::vector<std::string> waybar::modules::Pulseaudio::getPulseIcon() const
   res.push_back(backend->getDefaultSourceName());
   std::string nameLC = backend->getSinkPortName() + backend->getFormFactor();
   std::transform(nameLC.begin(), nameLC.end(), nameLC.begin(), ::tolower);
-  for (auto const &port : ports) {
+  for (auto const& port : ports) {
     if (nameLC.find(port) != std::string::npos) {
       if (sink_muted) {
         res.emplace_back(port + "-muted");
@@ -138,7 +143,7 @@ auto waybar::modules::Pulseaudio::update() -> void {
           fmt::arg("source_volume", source_volume), fmt::arg("source_desc", source_desc),
           fmt::arg("icon", getIcon(sink_volume, getPulseIcon()))));
     } else {
-      label_.set_tooltip_text(sink_desc);
+      label_.set_tooltip_markup(sink_desc);
     }
   }
 

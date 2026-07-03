@@ -12,51 +12,58 @@ namespace waybar {
 
 class AModule : public IModule {
  public:
-  static constexpr const char *MODULE_CLASS = "module";
+  static constexpr const char* MODULE_CLASS = "module";
 
   ~AModule() override;
   auto update() -> void override;
   virtual auto refresh(int shouldRefresh) -> void {};
-  operator Gtk::Widget &() override;
-  auto doAction(const std::string &name) -> void override;
+  operator Gtk::Widget&() override;
+  auto doAction(const std::string& name) -> void override;
 
   /// Emitting on this dispatcher triggers a update() call
   Glib::Dispatcher dp;
 
   bool expandEnabled() const;
 
+  virtual void suspend() {};
+  virtual void resume() {};
+  bool shouldSuspend() const { return disable_on_sleep_; }
+
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
-  AModule(const Json::Value &, const std::string &, const std::string &, bool enable_click = false,
+  AModule(const Json::Value&, const std::string&, const std::string&, bool enable_click = false,
           bool enable_scroll = false);
 
   enum SCROLL_DIR { NONE, UP, DOWN, LEFT, RIGHT };
 
-  SCROLL_DIR getScrollDir(GdkEventScroll *e);
+  SCROLL_DIR getScrollDir(GdkEventScroll* e);
   bool tooltipEnabled() const;
 
   std::vector<int> pid_children_;
   const std::string name_;
-  const Json::Value &config_;
+  const Json::Value& config_;
   Gtk::EventBox event_box_;
 
-  virtual void setCursor(Gdk::CursorType const &c);
+  virtual void setCursor(Gdk::CursorType const& c);
 
-  virtual bool handleToggle(GdkEventButton *const &ev);
-  virtual bool handleMouseEnter(GdkEventCrossing *const &ev);
-  virtual bool handleMouseLeave(GdkEventCrossing *const &ev);
-  virtual bool handleScroll(GdkEventScroll *);
-  virtual bool handleRelease(GdkEventButton *const &ev);
-  GObject *menu_;
+  virtual bool handleToggle(GdkEventButton* const& ev);
+  virtual bool handleMouseEnter(GdkEventCrossing* const& ev);
+  virtual bool handleMouseLeave(GdkEventCrossing* const& ev);
+  virtual bool handleScroll(GdkEventScroll*);
+  virtual bool handleRelease(GdkEventButton* const& ev);
+
+  bool disable_on_sleep_{false};
+  GObject* menu_ = nullptr;
 
  private:
-  bool handleUserEvent(GdkEventButton *const &ev);
+  bool handleUserEvent(GdkEventButton* const& ev);
   const bool isTooltip;
   const bool isExpand;
   bool hasUserEvents_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
+  sigc::connection cursor_timeout_conn_;
   std::map<std::string, std::string> eventActionMap_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
@@ -78,7 +85,8 @@ class AModule : public IModule {
       {std::make_pair(9, GdkEventType::GDK_BUTTON_PRESS), "on-click-forward"},
       {std::make_pair(9, GdkEventType::GDK_BUTTON_RELEASE), "on-click-forward-release"},
       {std::make_pair(9, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-forward"},
-      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"}};
+      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"},
+      {std::make_pair(10, GdkEventType::GDK_BUTTON_PRESS), "on-click-copy"}};
 };
 
 }  // namespace waybar

@@ -13,7 +13,7 @@
 #include "util/backend_common.hpp"
 #include "util/backlight_backend.hpp"
 
-waybar::modules::Backlight::Backlight(const std::string &id, const Json::Value &config)
+waybar::modules::Backlight::Backlight(const std::string& id, const Json::Value& config)
     : ALabel(config, "backlight", id, "{percent}%", 2),
       preferred_device_(config["device"].isString() ? config["device"].asString() : ""),
       backend(interval_, [this] { dp.emit(); }) {
@@ -36,8 +36,14 @@ auto waybar::modules::Backlight::update() -> void {
 
     if (best->get_powered()) {
       event_box_.show();
+
       const uint8_t percent =
           best->get_max() == 0 ? 100 : round(best->get_actual() * 100.0f / best->get_max());
+
+      const uint8_t percent_exp =
+          best->get_max() == 0
+              ? 100
+              : roundf(powf((float)best->get_actual() / best->get_max(), 1.0f / 2.718f) * 100);
 
       // Get the state and apply state-specific format if available
       auto state = getState(percent);
@@ -49,8 +55,10 @@ auto waybar::modules::Backlight::update() -> void {
         }
       }
 
-      std::string desc = fmt::format(fmt::runtime(current_format), fmt::arg("percent", percent),
-                                     fmt::arg("icon", getIcon(percent)));
+      std::string desc =
+          fmt::format(fmt::runtime(current_format), fmt::arg("percent", percent),
+                      fmt::arg("percent_exp", percent_exp), fmt::arg("icon", getIcon(percent)),
+                      fmt::arg("icon_exp", getIcon(percent_exp)));
       label_.set_markup(desc);
       if (tooltipEnabled()) {
         std::string tooltip_format;
@@ -58,11 +66,11 @@ auto waybar::modules::Backlight::update() -> void {
           tooltip_format = config_["tooltip-format"].asString();
         }
         if (!tooltip_format.empty()) {
-          label_.set_tooltip_text(fmt::format(fmt::runtime(tooltip_format),
-                                              fmt::arg("percent", percent),
-                                              fmt::arg("icon", getIcon(percent))));
+          label_.set_tooltip_markup(fmt::format(fmt::runtime(tooltip_format),
+                                                fmt::arg("percent", percent),
+                                                fmt::arg("icon", getIcon(percent))));
         } else {
-          label_.set_tooltip_text(desc);
+          label_.set_tooltip_markup(desc);
         }
       }
     } else {
@@ -79,7 +87,7 @@ auto waybar::modules::Backlight::update() -> void {
   ALabel::update();
 }
 
-bool waybar::modules::Backlight::handleScroll(GdkEventScroll *e) {
+bool waybar::modules::Backlight::handleScroll(GdkEventScroll* e) {
   // Check if the user has set a custom command for scrolling
   if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
     return AModule::handleScroll(e);
