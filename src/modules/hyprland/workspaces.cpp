@@ -328,7 +328,7 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& c
     // 3. no monitor is specified in the rule => assume it needs to be persistent on every monitor
     if (allOutputs() || m_bar.output->name == monitor || monitor.empty()) {
       // => skip ignore-workspaces even if its a persistent
-      if(isWorkspaceIgnored(workspace)) {
+      if (isWorkspaceIgnored(workspace)) {
         continue;
       }
       // => persistent workspace should be shown on this monitor
@@ -390,15 +390,17 @@ void Workspaces::onEvent(const std::string& ev) {
   }
 
   m_updatePending = true;
-  m_debounceTimer = Glib::signal_timeout().connect([this]() {
-    if (!m_updatePending) return false;
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_updatePending) {
-      dp.emit();
-      m_updatePending = false;
-    }
-    return false;
-  }, 7);
+  m_debounceTimer = Glib::signal_timeout().connect(
+      [this]() {
+        if (!m_updatePending) return false;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_updatePending) {
+          dp.emit();
+          m_updatePending = false;
+        }
+        return false;
+      },
+      7);
 }
 
 void Workspaces::onWorkspaceActivated(std::string const& payload) {
@@ -680,6 +682,7 @@ auto Workspaces::parseConfig(const Json::Value& config) -> void {
   populateBoolConfig(config, "active-only", m_activeOnly);
   populateBoolConfig(config, "hide-active", m_hideActive);
   populateBoolConfig(config, "move-to-monitor", m_moveToMonitor);
+  populateBoolConfig(config, "unique-icons", m_uniqueIcons);
   populateBoolConfig(config, "enable-bar-scroll", m_barScroll);
 
   m_persistentWorkspaceConfig = config.get("persistent-workspaces", Json::Value());

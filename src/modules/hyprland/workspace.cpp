@@ -278,7 +278,10 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
       // If the vector contains the address, update the window representation, otherwise insert it
       if (it != m_windowMap.end()) {
         *it = repr;
-      } else {
+      } else if (!m_workspaceManager.uniqueIcons() || repr.repr_rewrite.empty() ||
+                 std::ranges::find_if(m_windowMap, [&repr](const auto& window) {
+                   return window.repr_rewrite == repr.repr_rewrite;
+                 }) == m_windowMap.end()) {
         m_windowMap.emplace_back(repr);
       }
     }
