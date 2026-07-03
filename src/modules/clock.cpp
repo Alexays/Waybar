@@ -214,7 +214,7 @@ auto waybar::modules::Clock::update() -> void {
         context->remove_class(css_class);
 
         const std::string replace_str = fmt::format("color='#{:02x}{:02x}{:02x}'",
-            static_cast<int>(color.get_red() * 255,
+            static_cast<int>(color.get_red() * 255),
             static_cast<int>(color.get_green() * 255),
             static_cast<int>(color.get_blue() * 255));
 
