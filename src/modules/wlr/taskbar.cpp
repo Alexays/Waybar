@@ -198,7 +198,7 @@ void Task::handle_title(const char* title) {
   title_ = title;
   hide_if_ignored();
 
-  if (!with_icon_ && !with_name_ || app_info_) {
+  if ((!with_icon_ && !with_name_) || app_info_) {
     return;
   }
 
@@ -437,7 +437,9 @@ void Task::handle_drag_data_get(const Glib::RefPtr<Gdk::DragContext>& context,
 void Task::handle_drag_data_received(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y,
                                      Gtk::SelectionData selection_data, guint info, guint time) {
   spdlog::debug("drag_data_received");
-  gpointer handle = *(gpointer*)selection_data.get_data();
+  auto* raw = selection_data.get_data();
+  if (!raw || selection_data.get_length() < static_cast<int>(sizeof(gpointer))) return;
+  gpointer handle = *(gpointer*)raw;
   auto dragged_button = (Gtk::Button*)handle;
 
   if (dragged_button == &this->button) return;
@@ -509,7 +511,7 @@ void Task::update() {
     if (markup)
       button.set_tooltip_markup(txt);
     else
-      button.set_tooltip_text(txt);
+      button.set_tooltip_markup(txt);
   }
 }
 

@@ -143,7 +143,9 @@ void WorkspaceManager::handle_finished() {
   ext_manager_ = nullptr;
 }
 
-void WorkspaceManager::commit() const { ext_workspace_manager_v1_commit(ext_manager_); }
+void WorkspaceManager::commit() const {
+  if (ext_manager_) ext_workspace_manager_v1_commit(ext_manager_);
+}
 
 void WorkspaceManager::update() {
   spdlog::debug("[ext/workspaces]: Updating state");
