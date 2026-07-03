@@ -47,7 +47,7 @@ class Language : public ALabel, public sigc::trackable {
   void onEvent(const struct Ipc::ipc_response&);
   void onCmd(const struct Ipc::ipc_response&);
 
-  auto set_current_layout(std::string current_layout) -> void;
+  auto set_current_layout(const std::string& current_layout) -> void;
   auto init_layouts_map(const std::vector<std::string>& used_layouts) -> void;
 
   const static std::string XKB_LAYOUT_NAMES_KEY;
