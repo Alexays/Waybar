@@ -1,7 +1,8 @@
+#include <glibmm/main.h>
 #include <json/value.h>
 #include <spdlog/spdlog.h>
-#include <glibmm/main.h>
 
+#include <algorithm>
 #include <cctype>
 #include <memory>
 #include <string>
@@ -152,8 +153,7 @@ bool Workspace::pointerInsideButton() {
   const int buttonHeight = allocation.get_height();
 
   return pointerRootX >= buttonRootX && pointerRootY >= buttonRootY &&
-         pointerRootX < buttonRootX + buttonWidth &&
-         pointerRootY < buttonRootY + buttonHeight;
+         pointerRootX < buttonRootX + buttonWidth && pointerRootY < buttonRootY + buttonHeight;
 }
 
 bool Workspace::syncHoverClass() {
@@ -174,9 +174,8 @@ void Workspace::startHoverCheck() {
     return;
   }
 
-  m_hoverCheckConnection = Glib::signal_timeout().connect(
-      sigc::mem_fun(*this, &Workspace::syncHoverClass),
-      50);
+  m_hoverCheckConnection =
+      Glib::signal_timeout().connect(sigc::mem_fun(*this, &Workspace::syncHoverClass), 50);
 }
 
 void Workspace::stopHoverCheck() {
@@ -252,8 +251,7 @@ void Workspace::setActiveWindow(WindowAddress const& addr) {
 
   auto activeWindowPos = m_workspaceManager.activeWindowPosition();
   const bool has_active_window =
-      activeIdx.has_value() &&
-      activeWindowPos != Workspaces::ActiveWindowPosition::NONE;
+      activeIdx.has_value() && activeWindowPos != Workspaces::ActiveWindowPosition::NONE;
 
   if (has_active_window) {
     auto window = std::move(m_windowMap[*activeIdx]);
@@ -270,8 +268,7 @@ void Workspace::insertWindow(WindowCreationPayload create_window_payload) {
   if (!create_window_payload.isEmpty(m_workspaceManager)) {
     auto repr = create_window_payload.repr(m_workspaceManager);
 
-    const bool should_display =
-        !repr.empty() || m_workspaceManager.enableTaskbar();
+    const bool should_display = !repr.empty() || m_workspaceManager.enableTaskbar();
 
     if (should_display) {
       auto addr = create_window_payload.getAddress();
@@ -337,7 +334,7 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
     if (specialNamedIconIt != icons_map.end()) {
       return specialNamedIconIt->second;
     }
-    
+
     auto specialIconIt = icons_map.find("special");
     if (specialIconIt != icons_map.end()) {
       return specialIconIt->second;
@@ -377,7 +374,6 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
 
   return m_name;
 }
-
 
 void Workspace::update(const std::string& workspace_icon) {
   if (this->m_workspaceManager.persistentOnly() && !this->isPersistent()) {
@@ -436,16 +432,56 @@ void Workspace::update(const std::string& workspace_icon) {
   // need to compute this if enableTaskbar() is true
   if (!m_workspaceManager.enableTaskbar()) {
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
+    auto groupThreshold = m_workspaceManager.windowRewriteGroupThreshold();
 
-    bool isNotFirst = false;
-    auto end_it = m_workspaceManager.maxWindows() == 0 ? m_windowMap.end() : m_windowMap.begin() + m_workspaceManager.maxWindows();
+    auto end_it = m_workspaceManager.maxWindows() == 0
+                      ? m_windowMap.end()
+                      : m_windowMap.begin() + m_workspaceManager.maxWindows();
 
-    for (auto it = m_windowMap.begin(); it != end_it; ++it) {
-      if (isNotFirst) {
-        windows.append(windowSeparator);
+    if (groupThreshold > 0) {
+      // Build ordered counts of each unique icon (including singular ones when threshold set to 1)
+      std::vector<std::pair<std::string, int>> iconCounts;
+      for (auto it = m_windowMap.begin(); it != end_it; ++it) {
+        const auto& window_repr = *it;
+        auto found = std::ranges::find_if(
+            iconCounts, [&](const auto& p) { return p.first == window_repr.repr_rewrite; });
+        if (found != iconCounts.end()) {
+          found->second++;
+        } else {
+          iconCounts.emplace_back(window_repr.repr_rewrite, 1);
+        }
       }
-      isNotFirst = true;
-      windows.append(it->repr_rewrite);
+
+      // Format the group string
+      auto groupFormat = m_workspaceManager.getWindowRewriteGroupFormat();
+      bool isNotFirst = false;
+      for (const auto& [icon, count] : iconCounts) {
+        if (count >= groupThreshold) {
+          if (isNotFirst) windows.append(windowSeparator);
+          isNotFirst = true;
+          try {
+            windows.append(fmt::format(fmt::runtime(groupFormat), fmt::arg("icon", icon),
+                                       fmt::arg("count", count)));
+          } catch (const fmt::format_error& e) {
+            spdlog::warn("Formatting window-rewrite-group-format error: {}", e.what());
+            windows.append(icon);
+          }
+        } else {
+          for (int i = 0; i < count; ++i) {
+            if (isNotFirst) windows.append(windowSeparator);
+            isNotFirst = true;
+            windows.append(icon);
+          }
+        }
+      }
+    } else {
+      // Not grouping icons
+      bool isNotFirst = false;
+      for (auto it = m_windowMap.begin(); it != end_it; ++it) {
+        if (isNotFirst) windows.append(windowSeparator);
+        isNotFirst = true;
+        windows.append(it->repr_rewrite);
+      }
     }
   }
 
@@ -505,8 +541,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
     if (m_workspaceManager.onClickWindow() != "") {
       button->signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address),
-          false);
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address), false);
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
@@ -536,13 +571,17 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
   };
 
   if (m_workspaceManager.taskbarReverseDirection()) {
-    auto rend_it = m_workspaceManager.maxWindows() == 0 ? m_windowMap.rend() : m_windowMap.rbegin() + m_workspaceManager.maxWindows();
+    auto rend_it = m_workspaceManager.maxWindows() == 0
+                       ? m_windowMap.rend()
+                       : m_windowMap.rbegin() + m_workspaceManager.maxWindows();
 
     for (auto it = m_windowMap.rbegin(); it != rend_it; ++it) {
       processWindow(*it);
     }
   } else {
-    auto end_it = m_workspaceManager.maxWindows() == 0 ? m_windowMap.end() : m_windowMap.begin() + m_workspaceManager.maxWindows();
+    auto end_it = m_workspaceManager.maxWindows() == 0
+                      ? m_windowMap.end()
+                      : m_windowMap.begin() + m_workspaceManager.maxWindows();
 
     for (auto it = m_windowMap.begin(); it != end_it; ++it) {
       processWindow(*it);
