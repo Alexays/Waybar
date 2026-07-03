@@ -33,6 +33,7 @@ class Wireplumber : public ALabel {
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
 
   bool handleScroll(GdkEventScroll* e) override;
+  std::vector<std::string> getWPIcon();
 
   static std::list<waybar::modules::Wireplumber*> modules;
 
@@ -61,6 +62,7 @@ class Wireplumber : public ALabel {
   gchar* default_source_name_;
   bool only_physical_;
   bool resolved_physical_;
+  std::string form_factor_;
 };
 
 }  // namespace waybar::modules

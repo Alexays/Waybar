@@ -4,9 +4,9 @@
 #depth = 1
 
 [wrap-file]
-directory = cava-0.10.7-beta
-source_url = https://github.com/LukashonakV/cava/archive/v0.10.7-beta.tar.gz
+directory = cava-0.10.7
+source_url = https://github.com/LukashonakV/cava/archive/0.10.7.tar.gz
 source_filename = cava-0.10.7.tar.gz
-source_hash = 8915d7214f2046554c158fe6f2ae518881dfb573e421ea848727be11a5dfa8c4
+source_hash = 50cc6413e9c96c503657f814744a2baf429a24ff9fed31a8343e0ed285269eff
 [provide]
 libcava = cava_dep

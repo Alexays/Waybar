@@ -9,6 +9,7 @@
 - River (Mapping mode, Tags, Focused window name)
 - Hyprland (Window Icons, Workspaces, Focused window name)
 - Niri (Workspaces, Focused window name, Language)
+- Mango (Workspaces, Focused window name, Language, Keymode)
 - DWL (Tags, Focused window name) [requires dwl ipc patch](https://codeberg.org/dwl/dwl-patches/src/branch/main/patches/ipc)
 - Tray [#21](https://github.com/Alexays/Waybar/issues/21)
 - Local time
@@ -119,7 +120,7 @@ sudo apt install \
 On Arch, you can use this command:
 
 ```
-pacman -S \
+pacman -S --asdeps \
   gtkmm3 \
   jsoncpp \
   libsigc++ \
@@ -150,6 +151,10 @@ pacman -S \
 Contributions welcome!<br>
 Have fun :)<br>
 The style guidelines are [Google's](https://google.github.io/styleguide/cppguide.html)
+
+> [!CAUTION]
+> Distributions of Waybar are only released on the [official GitHub page](https://github.com/Alexays/Waybar).<br/>
+> Waybar does **not** have an official website. Do not trust any sites that claim to be official.
 
 ## License
 

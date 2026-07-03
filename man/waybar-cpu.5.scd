@@ -83,6 +83,18 @@ The *cpu* module displays the current CPU utilization.
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*.
+
+*format-<state>*: ++
+	typeof: string ++
+	The format to use when the given *state* (see *states*) is active. Supports the same replacements as *format*.
+
+*tooltip-format-<state>*: ++
+	typeof: string ++
+	The tooltip format to use when the given *state* (see *states*) is active. Takes precedence over *tooltip-format*.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++
@@ -91,6 +103,12 @@ The *cpu* module displays the current CPU utilization.
 # FORMAT REPLACEMENTS
 
 *{load}*: Current CPU load.
+
+*{load1}*: CPU load average over the last minute.
+
+*{load5}*: CPU load average over the last 5 minutes.
+
+*{load15}*: CPU load average over the last 15 minutes.
 
 *{usage}*: Current overall CPU usage.
 
@@ -105,6 +123,8 @@ The *cpu* module displays the current CPU utilization.
 *{icon}*: Icon for overall CPU usage.
 
 *{icon*{n}*}*: Icon for CPU core n usage. Use like {icon0}.
+
+*{icon0}{icon1}{icon2}{icon3}*: All per-core icons concatenated. Equivalent to {icon0}{icon1}...{icon*N*} but adapts to the number of cores automatically.
 
 # EXAMPLES
 
@@ -124,6 +144,16 @@ CPU usage per core rendered as icons:
 "cpu": {
 	"interval": 1,
 	"format": "{icon0}{icon1}{icon2}{icon3} {usage:>2}% ",
+	"format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
+},
+```
+
+Automatically determine number of icons according to number of logical cores:
+
+```
+"cpu": {
+	"interval": 1,
+	"format": "{icons} {usage:>2}% ",
 	"format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
 },
 ```
