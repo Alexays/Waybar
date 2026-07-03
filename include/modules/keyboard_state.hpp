@@ -36,8 +36,7 @@ class KeyboardState : public AModule {
   std::string capslock_format_;
   std::string scrolllock_format_;
   const std::chrono::seconds interval_;
-  std::string icon_locked_;
-  std::string icon_unlocked_;
+  std::unordered_map<std::string, std::vector<std::string>> key_icon_states_;
   std::string devices_path_;
 
   struct libinput* libinput_;
