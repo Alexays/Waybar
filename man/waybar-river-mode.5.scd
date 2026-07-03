@@ -87,7 +87,7 @@ Addressed by *river/mode*
 
 ```
 "river/mode": {
-	"format": " {}"
+	"format": " {}"
 }
 ```
 
