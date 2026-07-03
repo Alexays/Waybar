@@ -75,6 +75,8 @@ class Bar : public sigc::trackable {
   util::KillSignalAction getOnSigusr1Action();
   util::KillSignalAction getOnSigusr2Action();
 
+  void toggleSuspend(bool suspend);
+
   struct waybar_output* output;
   Json::Value config;
   struct wl_surface* surface;
