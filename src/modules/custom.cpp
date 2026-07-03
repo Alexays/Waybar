@@ -193,7 +193,8 @@ auto waybar::modules::Custom::update() -> void {
       auto str = fmt::format(fmt::runtime(format_), fmt::arg("text", text_), fmt::arg("alt", alt_),
                              fmt::arg("icon", getIcon(percentage_, alt_)),
                              fmt::arg("percentage", percentage_));
-      if ((config_["hide-empty-text"].asBool() && text_.empty()) || (str.empty() && image_path_.empty() && image_name_.empty())) {
+      if ((config_["hide-empty-text"].asBool() && text_.empty()) ||
+          (str.empty() && image_path_.empty() && image_name_.empty())) {
         event_box_.hide();
       } else {
         label_.set_markup(str);
@@ -231,17 +232,16 @@ auto waybar::modules::Custom::update() -> void {
         auto image_style = image_.get_style_context();
         image_style->add_class("image-button");
         event_box_.show();
-        if (!image_path_.empty()) {            
-            auto pixbuf = Gdk::Pixbuf::create_from_file(image_path_, app_icon_size_, app_icon_size_);
-            image_.set(pixbuf);
-        } else if (!image_name_.empty()) {            
-            image_.set_from_icon_name(image_name_, Gtk::ICON_SIZE_INVALID);
-            image_.set_pixel_size(app_icon_size_);
-        } 
+        if (!image_path_.empty()) {
+          auto pixbuf = Gdk::Pixbuf::create_from_file(image_path_, app_icon_size_, app_icon_size_);
+          image_.set(pixbuf);
+        } else if (!image_name_.empty()) {
+          image_.set_from_icon_name(image_name_, Gtk::ICON_SIZE_INVALID);
+          image_.set_pixel_size(app_icon_size_);
+        }
 
         image_.set_visible(!image_name_.empty() || !image_path_.empty());
         label_.set_visible(!str.empty());
-        
       }
     } catch (const fmt::format_error& e) {
       if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
@@ -251,9 +251,6 @@ auto waybar::modules::Custom::update() -> void {
           "mixing manual and automatic argument indexing is no longer supported; "
           "try replacing \"{}\" with \"{text}\" in your format specifier");
     }
-    
-    
-    
   }
   // Call parent update
   AIconLabel::update();
@@ -322,7 +319,7 @@ void waybar::modules::Custom::parseOutputJson() {
         class_.push_back(c.asString());
       }
     }
-    
+
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
       percentage_ = (int)lround(parsed["percentage"].asFloat());
     } else {
