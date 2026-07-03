@@ -22,6 +22,10 @@ Addressed by *niri/workspaces*
 	default: {value} ++
 	The format, how information should be displayed.
 
+*format-named*: ++
+	typeof: string ++
+	If set, overrides *format* for named workspaces.
+
 *format-icons*: ++
 	typeof: array ++
 	Based on the workspace name, index and state, the corresponding icon gets selected. See *icons*.
