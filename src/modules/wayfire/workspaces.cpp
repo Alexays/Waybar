@@ -70,8 +70,12 @@ auto Workspaces::handleScroll(GdkEventScroll* e) -> bool {
   Json::Value data;
   {
     auto _ = ipc->lock_state();
-    const auto& output = ipc->get_outputs().at(bar_.output->name);
-    const auto& wset = ipc->get_wsets().at(output.wset_idx);
+    auto out_it = ipc->get_outputs().find(bar_.output->name);
+    if (out_it == ipc->get_outputs().end()) return true;
+    const auto& output = out_it->second;
+    auto wset_it = ipc->get_wsets().find(output.wset_idx);
+    if (wset_it == ipc->get_wsets().end()) return true;
+    const auto& wset = wset_it->second;
     auto n = wset.ws_w * wset.ws_h;
     auto i = (wset.ws_idx() + delta + n) % n;
     data["x"] = Json::Value((uint64_t)i % wset.ws_w);
@@ -92,8 +96,12 @@ auto Workspaces::update_box() -> void {
   auto _ = ipc->lock_state();
 
   const auto& output_name = bar_.output->name;
-  const auto& output = ipc->get_outputs().at(output_name);
-  const auto& wset = ipc->get_wsets().at(output.wset_idx);
+  auto out_it = ipc->get_outputs().find(output_name);
+  if (out_it == ipc->get_outputs().end()) return;
+  const auto& output = out_it->second;
+  auto wset_it = ipc->get_wsets().find(output.wset_idx);
+  if (wset_it == ipc->get_wsets().end()) return;
+  const auto& wset = wset_it->second;
 
   auto output_focused = ipc->get_focused_output_name() == output_name;
   auto ws_w = wset.ws_w;
