@@ -62,21 +62,7 @@ auto waybar::modules::Cpu::update() -> void {
       store.push_back(fmt::arg(arg_names.back().c_str(), core_icon));
     }
     store.push_back(fmt::arg("icons", all_icons));
-    label_.set_markup(fmt::vformat(format, store));
-
-    if (tooltipEnabled()) {
-      std::string tooltip_format;
-      if (!state.empty() && config_["tooltip-format-" + state].isString()) {
-        tooltip_format = config_["tooltip-format-" + state].asString();
-      } else if (config_["tooltip-format"].isString()) {
-        tooltip_format = config_["tooltip-format"].asString();
-      }
-      if (!tooltip_format.empty()) {
-        label_.set_tooltip_markup(fmt::vformat(tooltip_format, store));
-      } else {
-        label_.set_tooltip_markup(tooltip);
-      }
-    }
+    updateLabelAndTooltipForState(state, format, tooltip, store);
   }
 
   // Call parent update

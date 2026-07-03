@@ -49,16 +49,7 @@ auto waybar::modules::CpuUsage::update() -> void {
       store.push_back(fmt::arg(arg_names.back().c_str(), core_icon));
     }
     store.push_back(fmt::arg("icons", all_icons));
-    label_.set_markup(fmt::vformat(format, store));
-
-    if (tooltipEnabled()) {
-      if (config_["tooltip-format"].isString()) {
-        tooltip = config_["tooltip-format"].asString();
-        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
-      } else {
-        label_.set_tooltip_markup(tooltip);
-      }
-    }
+    updateLabelAndTooltip(format, tooltip, store);
   }
 
   // Call parent update
