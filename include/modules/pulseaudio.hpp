@@ -22,7 +22,7 @@ class Pulseaudio : public ALabel {
   const std::vector<std::string> getPulseIcon() const;
 
   std::shared_ptr<util::AudioBackend> backend = nullptr;
-  util::AudioTarget target = util::AudioTarget::Sink;
+  util::PulseaudioTarget target = util::PulseaudioTarget::Sink;
 };
 
 }  // namespace waybar::modules

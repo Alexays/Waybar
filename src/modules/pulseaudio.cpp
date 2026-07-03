@@ -9,7 +9,7 @@ waybar::modules::Pulseaudio::Pulseaudio(const std::string& id, const Json::Value
   backend->setIgnoredSinks(config_["ignored-sinks"]);
 
   if (config_["target"].isString() && config_["target"].asString() == "source") {
-    target = util::AudioTarget::Source;
+    target = util::PulseaudioTarget::Source;
   }
 }
 

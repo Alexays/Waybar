@@ -14,7 +14,7 @@
 
 namespace waybar::util {
 
-enum class AudioTarget {
+enum class PulseaudioTarget {
   Sink,
   Source,
 };
@@ -75,9 +75,9 @@ class AudioBackend {
   ~AudioBackend();
 
   void changeVolume(uint16_t volume, uint16_t min_volume = 0, uint16_t max_volume = 100,
-                    AudioTarget target = AudioTarget::Sink);
+                    PulseaudioTarget target = PulseaudioTarget::Sink);
   void changeVolume(ChangeType change_type, double step = 1, uint16_t max_volume = 100,
-                    AudioTarget target = AudioTarget::Sink);
+                    PulseaudioTarget target = PulseaudioTarget::Sink);
 
   void setIgnoredSinks(const Json::Value& config);
 
@@ -100,6 +100,10 @@ class AudioBackend {
 
   void toggleSourceMute();
   void toggleSourceMute(bool);
+
+  uint16_t getVolume(PulseaudioTarget) const;
+  bool getMuted(PulseaudioTarget) const;
+  void unmute(PulseaudioTarget);
 
   bool isBluetooth();
 };

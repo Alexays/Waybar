@@ -100,6 +100,8 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         g_object_unref(builder);
         throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
       }
+      // Keep the menu alive after dropping the transient GtkBuilder.
+      g_object_ref(menu_);
       submenus_ = std::map<std::string, GtkMenuItem*>();
       menuActionsMap_ = std::map<std::string, std::string>();
 
@@ -136,6 +138,26 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 }
 
 auto ALabel::update() -> void { AModule::update(); }
+
+bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
+  if (last_label_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_markup(markup);
+  last_label_markup_ = markup;
+  return true;
+}
+
+bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_tooltip_markup(markup);
+  last_tooltip_markup_ = markup;
+  return true;
+}
 
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];

@@ -100,15 +100,17 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
                            nullptr, nullptr);
       break;
     case PA_CONTEXT_FAILED:
-      // When pulseaudio server restarts, the connection is "failed". Try to reconnect.
-      // pa_threaded_mainloop_lock is already acquired in callback threads.
-      // So there is no need to lock it again.
-      if (backend->context_ != nullptr) {
-        pa_context_disconnect(backend->context_);
-        pa_context_unref(backend->context_);
-        backend->context_ = nullptr;
+      if (pa_context_errno(c) != PA_ERR_CONNECTIONREFUSED) {
+        // When pulseaudio server restarts, the connection is "failed". Try to reconnect.
+        // pa_threaded_mainloop_lock is already acquired in callback threads.
+        // So there is no need to lock it again.
+        if (backend->context_ != nullptr) {
+          pa_context_disconnect(backend->context_);
+          pa_context_unref(backend->context_);
+          backend->context_ = nullptr;
+        }
+        backend->connectContext();
       }
-      backend->connectContext();
       break;
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
@@ -278,15 +280,23 @@ void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, vo
   pa_context_get_source_info_list(context, sourceInfoCb, data);
 }
 
+uint16_t AudioBackend::getVolume(PulseaudioTarget target) const {
+  if (target == PulseaudioTarget::Source) {
+    return source_volume_;
+  } else {
+    return volume_;
+  }
+}
+
 void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t max_volume,
-                                AudioTarget target) {
+                                PulseaudioTarget target) {
   // Early return if context is not ready
   if ((context_ == nullptr) || pa_context_get_state(context_) != PA_CONTEXT_READY) {
     spdlog::error("PulseAudio context not ready");
     return;
   }
 
-  bool is_source = target == AudioTarget::Source;
+  bool is_source = target == PulseaudioTarget::Source;
 
   // Select the appropriate stored volume structure
   auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
@@ -326,14 +336,14 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
 }
 
 void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t max_volume,
-                                AudioTarget target) {
+                                PulseaudioTarget target) {
   // Early return if context is not ready
   if ((context_ == nullptr) || pa_context_get_state(context_) != PA_CONTEXT_READY) {
     spdlog::error("PulseAudio context not ready");
     return;
   }
 
-  bool is_source = target == AudioTarget::Source;
+  bool is_source = target == PulseaudioTarget::Source;
 
   // Select the appropriate stored volume structure and current volume
   auto& ref_volume = is_source ? pa_source_volume_ : pa_volume_;
@@ -361,8 +371,8 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
     // No need to continue with volume change if we had to create a new structure
     pa_threaded_mainloop_lock(mainloop_);
     if (is_source) {
-      pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume,
-                                            sourceVolumeModifyCb, this);
+      pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume, sourceVolumeModifyCb,
+                                            this);
     } else {
       pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
     }
@@ -415,6 +425,14 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
+bool AudioBackend::getMuted(PulseaudioTarget target) const {
+  if (target == PulseaudioTarget::Source) {
+    return source_muted_;
+  } else {
+    return muted_;
+  }
+}
+
 void AudioBackend::toggleSinkMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   muted_ = !muted_;
@@ -449,6 +467,14 @@ void AudioBackend::toggleSourceMute(bool mute) {
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
   pa_threaded_mainloop_unlock(mainloop_);
+}
+
+void AudioBackend::unmute(PulseaudioTarget target) {
+  if (target == PulseaudioTarget::Source) {
+    toggleSourceMute(false);
+  } else {
+    toggleSinkMute(false);
+  }
 }
 
 bool AudioBackend::isBluetooth() {
