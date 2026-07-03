@@ -179,7 +179,6 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
   "format": "<span size='larger'>{name}</span> {windows}",
   "format-window-separator": " | ",
   "window-rewrite-default": "{name}",
-  "window-format": "<span color='#e0e0e0'>{name}</span>",
   "window-rewrite": {
     "class<firefox>": "",
     "class<kitty>": "k",
