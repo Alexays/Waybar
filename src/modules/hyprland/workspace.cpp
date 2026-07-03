@@ -51,6 +51,12 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
   initializeWindowMap(clients_data);
 }
 
+Workspace::~Workspace() {
+  // Disconnect the hover-check timeout so it can't fire on this destroyed
+  // instance (Workspaces are removed at runtime while a check may be armed).
+  stopHoverCheck();
+}
+
 void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext>& context, bool condition,
                       const std::string& class_name) {
   if (condition) {
