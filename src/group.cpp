@@ -63,6 +63,7 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
     click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    reveal_delay = drawer_config["reveal-delay"].asInt();
 
     const bool start_expanded =
         (drawer_config["start-expanded"].isBool() ? drawer_config["start-expanded"].asBool()
@@ -104,13 +105,27 @@ void Group::hide_group() {
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
   if (!click_to_reveal) {
-    show_group();
+    if (reveal_delay > 0) {
+      if (reveal_timeout_.connected()) {
+        reveal_timeout_.disconnect();
+      }    
+
+      reveal_timeout_ = Glib::signal_timeout().connect(
+                          [this]() { show_group(); return false; }, 
+                        reveal_delay);
+    } else {
+      show_group();
+    }
   }
   return false;
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
   if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+    if (reveal_delay > 0 && reveal_timeout_.connected()) {
+      reveal_timeout_.disconnect();
+    }
+
     hide_group();
   }
   return false;

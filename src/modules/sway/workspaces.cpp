@@ -229,7 +229,10 @@ bool Workspaces::filterButtons() {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
                            [it](const auto& node) { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end() ||
-        (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
+        ((*ws).isMember("target_output") ? (*ws)["target_output"].asString() != bar_.output->name &&
+                                               (*ws)["target_output"].asString() != ""
+                                         : !config_["all-outputs"].asBool() &&
+                                               (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
       needReorder = true;
     } else {
@@ -329,24 +332,44 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("current_output");
     }
-    std::string output = (*it)["name"].asString();
+    std::string full_name;
+    if (!config_["disable-markup"].asBool()) {
+      full_name = g_markup_escape_text((*it)["name"].asString().c_str(), -1);
+    } else {
+      full_name = (*it)["name"].asString();
+    }
+
     std::string windows = "";
     if (config_["window-rewrite"].isObject()) {
       updateWindows((*it), windows);
     }
+
+    auto index = (*it)["num"].asInt();
+
     if (config_["format"].isString()) {
-      auto format = config_["format"].asString();
-      output = fmt::format(
-          fmt::runtime(format), fmt::arg("icon", getIcon(output, *it)), fmt::arg("value", output),
-          fmt::arg("name", trimWorkspaceName(output)), fmt::arg("index", (*it)["num"].asString()),
-          fmt::arg("windows",
-                   windows.substr(0, windows.length() - m_formatWindowSeparator.length())),
-          fmt::arg("output", (*it)["output"].asString()));
+      std::string format;
+      if (config_["format-for-negative-index"].isString() && index < 0) {
+        format = config_["format-for-negative-index"].asString();
+      } else {
+        format = config_["format"].asString();
+      }
+
+      auto name = trimWorkspaceName(full_name);
+      auto output = (*it)["output"].asString();
+      auto icon = getIcon(full_name, *it);
+      auto separated_windows =
+          windows.substr(0, windows.length() - m_formatWindowSeparator.length());
+
+      full_name =
+          fmt::format(fmt::runtime(format), fmt::arg("index", index), fmt::arg("name", name),
+                      fmt::arg("value", full_name), fmt::arg("output", output),
+                      fmt::arg("icon", icon), fmt::arg("windows", separated_windows));
     }
+
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(output);
+      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(full_name);
     } else {
-      button.set_label(output);
+      button.set_label(full_name);
     }
     onButtonReady(*it, button);
   }
@@ -369,11 +392,14 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
                                    node["name"].asString(), node["target_output"].asString(),
                                    "--no-auto-back-and-forth", node["name"].asString()));
         } else {
-          ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
-                                                config_["disable-auto-back-and-forth"].asBool()
-                                                    ? "--no-auto-back-and-forth"
-                                                    : "",
-                                                node["name"].asString()));
+          std::string flag = config_["disable-auto-back-and-forth"].asBool()
+                                ? "--no-auto-back-and-forth"
+                                : "";
+          if (node["num"].asInt() >= 0) {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
+          } else {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
+          }
         }
       } catch (const std::exception& e) {
         spdlog::error("Workspaces: {}", e.what());
