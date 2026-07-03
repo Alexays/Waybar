@@ -135,6 +135,14 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
 
+*on-scroll-up*: ++
+	typeof: string ++
+	Command to execute when scrolling up on the module. This replaces the default behaviour of workspace cycling.
+
+*on-scroll-down*: ++
+	typeof: string ++
+	Command to execute when scrolling down on the module. This replaces the default behaviour of workspace cycling.
+
 *ignore-workspaces*: ++
 	typeof: array ++
 	default: [] ++
