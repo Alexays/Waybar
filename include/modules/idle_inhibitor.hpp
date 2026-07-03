@@ -22,10 +22,13 @@ class IdleInhibitor : public ALabel {
   auto refresh(int) -> void override;
   static std::list<waybar::AModule*> modules;
   static bool status;
+  static long deactivationTime;
 
  private:
   bool handleToggle(GdkEventButton* const& e) override;
-  void toggleStatus();
+  bool handleScroll(GdkEventScroll* e) override;
+
+  void toggleStatus(int force_status = -1);
   void setupIdleNotification();
   void teardownIdleNotification();
   static void handleIdled(void* data, ext_idle_notification_v1* notification);
@@ -34,6 +37,10 @@ class IdleInhibitor : public ALabel {
   const Bar& bar_;
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
   int pid_;
+
+  bool dynamicTimeout;
+  short timeout;
+  short timeout_step;
   bool wait_for_activity_;
 };
 
