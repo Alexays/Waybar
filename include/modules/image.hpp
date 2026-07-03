@@ -31,7 +31,7 @@ class Image : public AModule {
   std::string path_;
   std::string tooltip_;
   int size_;
-  int interval_;
+  std::chrono::milliseconds interval_;
   util::command::res output_;
 
   util::SleeperThread thread_;

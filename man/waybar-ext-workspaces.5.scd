@@ -64,6 +64,8 @@ Addressed by *ext/workspaces*
 
 *activate*: Switch to workspace.
 
+*deactivate*: Deactivate the workspace.
+
 *close*: Close the workspace.
 
 # ICONS

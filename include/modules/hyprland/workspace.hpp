@@ -42,7 +42,6 @@ class Workspace {
   bool isPersistentConfig() const { return m_isPersistentConfig; };
   bool isPersistentRule() const { return m_isPersistentRule; };
   bool isVisible() const { return m_isVisible; };
-  bool isEmpty() const { return m_windows == 0; };
   bool isUrgent() const { return m_isUrgent; };
 
   bool handleClicked(GdkEventButton* bt) const;
@@ -88,6 +87,7 @@ class Workspace {
   Gtk::Label m_labelBefore;
   Gtk::Label m_labelAfter;
 
+  bool isEmpty() const;
   void updateTaskbar(const std::string& workspace_icon);
   bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
   bool shouldSkipWindow(const WindowRepr& window_repr) const;
