@@ -280,23 +280,39 @@ auto waybar::modules::Network::update() -> void {
   std::string tooltip_format;
   auto now = std::chrono::steady_clock::now();
   auto elapsed_seconds = std::chrono::duration<double>(now - bandwidth_last_sample_time_).count();
-  if (elapsed_seconds <= 0.0) {
-    elapsed_seconds = std::chrono::duration<double>(interval_).count();
-  }
-  bandwidth_last_sample_time_ = now;
 
-  auto bandwidth = readBandwidthUsage();
   auto bandwidth_down = 0ull;
   auto bandwidth_up = 0ull;
-  if (bandwidth.has_value()) {
-    auto down_octets = (*bandwidth).first;
-    auto up_octets = (*bandwidth).second;
 
-    bandwidth_down = down_octets - bandwidth_down_total_;
-    bandwidth_down_total_ = down_octets;
+  // Only recalculate bandwidth when enough time has elapsed since the last
+  // sample.  Event-driven dp.emit() calls (link/addr/route changes) can
+  // trigger update() between timer intervals, which would consume the byte
+  // delta prematurely and show near-zero bandwidth.
+  auto min_elapsed = std::chrono::duration<double>(interval_).count() * 0.5;
+  if (elapsed_seconds >= min_elapsed) {
+    if (elapsed_seconds <= 0.0) {
+      elapsed_seconds = std::chrono::duration<double>(interval_).count();
+    }
+    bandwidth_last_sample_time_ = now;
 
-    bandwidth_up = up_octets - bandwidth_up_total_;
-    bandwidth_up_total_ = up_octets;
+    auto bandwidth = readBandwidthUsage();
+    if (bandwidth.has_value()) {
+      auto down_octets = (*bandwidth).first;
+      auto up_octets = (*bandwidth).second;
+
+      bandwidth_down = down_octets - bandwidth_down_total_;
+      bandwidth_down_total_ = down_octets;
+
+      bandwidth_up = up_octets - bandwidth_up_total_;
+      bandwidth_up_total_ = up_octets;
+
+      bandwidth_down_prev_ = bandwidth_down;
+      bandwidth_up_prev_ = bandwidth_up;
+    }
+  } else {
+    bandwidth_down = bandwidth_down_prev_;
+    bandwidth_up = bandwidth_up_prev_;
+    elapsed_seconds = std::chrono::duration<double>(interval_).count();
   }
 
   if (!alt_) {
@@ -677,12 +693,15 @@ int waybar::modules::Network::handleEvents(struct nl_msg* msg, void* data) {
                               changed_cidr);
               }
             } else {
-              net->ipaddr_.clear();
-              net->ipaddr6_.clear();
-              net->cidr_ = 0;
-              net->cidr6_ = 0;
-              net->netmask_.clear();
-              net->netmask6_.clear();
+              if (ifa->ifa_family == AF_INET) {
+                net->ipaddr_.clear();
+                net->cidr_ = 0;
+                net->netmask_.clear();
+              } else if (ifa->ifa_family == AF_INET6) {
+                net->ipaddr6_.clear();
+                net->cidr6_ = 0;
+                net->netmask6_.clear();
+              }
               spdlog::debug("network: {} addr deleted {}/{}", net->ifname_,
                             inet_ntop(ifa->ifa_family, RTA_DATA(ifa_rta), ipaddr, sizeof(ipaddr)),
                             ifa->ifa_prefixlen);
