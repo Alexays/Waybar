@@ -200,12 +200,11 @@ auto waybar::modules::Clock::update() -> void {
     auto context = label_.get_style_context();
 
     static const std::vector<std::pair<std::string, std::string>> calendar_class_map = {
-        {"calendar-today",    "class='today'"},
-        {"calendar-days",     "class='days'"},
-        {"calendar-weeks",    "class='weeks'"},
+        {"calendar-today", "class='today'"},
+        {"calendar-days", "class='days'"},
+        {"calendar-weeks", "class='weeks'"},
         {"calendar-weekdays", "class='weekdays'"},
-        {"calendar-months",   "class='months'"}
-    };
+        {"calendar-months", "class='months'"}};
 
     for (const auto& [css_class, search_str] : calendar_class_map) {
       try {
@@ -213,18 +212,17 @@ auto waybar::modules::Clock::update() -> void {
         const Gdk::RGBA color = context->get_color();
         context->remove_class(css_class);
 
-        const std::string replace_str = fmt::format("color='#{:02x}{:02x}{:02x}'",
-            static_cast<int>(color.get_red() * 255),
-            static_cast<int>(color.get_green() * 255),
-            static_cast<int>(color.get_blue() * 255));
+        const std::string replace_str = fmt::format(
+            "color='#{:02x}{:02x}{:02x}'", static_cast<int>(color.get_red() * 255),
+            static_cast<int>(color.get_green() * 255), static_cast<int>(color.get_blue() * 255));
 
         m_tlpText_ = std::regex_replace(m_tlpText_, std::regex(search_str), replace_str);
       } catch (const Glib::Error& e) {
-          spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what().raw());
-          continue;
+        spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what().raw());
+        continue;
       } catch (...) {
-          // Catch-all for any other weirdness.
-          continue;
+        // Catch-all for any other weirdness.
+        continue;
       }
     }
 
