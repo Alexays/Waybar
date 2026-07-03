@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-/// Waybar ABI version. 1 is the latest version
+/// Waybar ABI version. 2 is the latest version
 extern const size_t wbcffi_version;
 
 /// Private Waybar CFFI module
@@ -35,7 +35,13 @@ typedef struct {
 typedef struct {
   /// Entry key
   const char* key;
-  /// Entry value as string. JSON object and arrays are serialized.
+  /// Entry value
+  ///
+  /// In ABI version 1, this may be either a bare string if the value is a
+  /// string, or the JSON representation of any other JSON object as a string.
+  ///
+  /// From ABI version 2 onwards, this is always the JSON representation of the
+  /// value as a string.
   const char* value;
 } wbcffi_config_entry;
 
