@@ -200,6 +200,8 @@ Addressed by *network*
 
 *{rx_bitrate}*: Link receive bitrate (e.g., 866.7 Mb/s).
 
+*{linkSpeed}*: Ethernet link speed.
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 # EXAMPLES

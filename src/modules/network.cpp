@@ -83,6 +83,21 @@ waybar::modules::Network::readBandwidthUsage() {
   return {{receivedBytes, transmittedBytes}};
 }
 
+uint32_t waybar::modules::Network::readLinkSpeed() const {
+  auto path = fmt::format("/sys/class/net/{}/speed", ifname_);
+  std::ifstream sysfs_speed(path);
+
+  if (!sysfs_speed) return 0;
+
+  uint32_t speed;
+  sysfs_speed >> speed;
+
+  if (sysfs_speed.bad())  // read fails on incompatible devices
+    return 0;
+
+  return speed;
+}
+
 waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
     : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
   // Start with some "text" in the module's label_. update() will then
@@ -329,6 +344,7 @@ auto waybar::modules::Network::update() -> void {
     elapsed_seconds = std::chrono::duration<double>(interval_).count();
   }
 
+  link_speed_ = readLinkSpeed();
   auto threshold_state = getState(signal_strength_);
 
   if (!alt_) {
@@ -401,13 +417,14 @@ auto waybar::modules::Network::update() -> void {
       fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")));
   store.push_back(fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")));
   store.push_back(fmt::arg("bandwidthDownBytesCompact",
-                           pow_format(bandwidth_down / elapsed_seconds, "B", false, 2)));
+                           pow_format(bandwidth_down / elapsed_seconds, "B", false, false, 2)));
   store.push_back(fmt::arg("bandwidthUpBytesCompact",
-                           pow_format(bandwidth_up / elapsed_seconds, "B", false, 2)));
+                           pow_format(bandwidth_up / elapsed_seconds, "B", false, false, 2)));
   store.push_back(fmt::arg("bandwidthTotalBytes",
                            pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
   store.push_back(fmt::arg("rxBitrate", pow_format(rx_bitrate_, "b/s")));
   store.push_back(fmt::arg("txBitrate", pow_format(tx_bitrate_, "b/s")));
+  store.push_back(fmt::arg("linkSpeed", pow_format(link_speed_ * 1000000ull, "b/s", false, true)));
 
   auto text = fmt::vformat(format_, store);
   if (setLabelMarkup(text)) {
@@ -511,6 +528,7 @@ void waybar::modules::Network::clearIface() {
   signal_strength_dbm_ = 0;
   signal_strength_ = 0;
   signal_strength_app_.clear();
+  link_speed_ = 0;
   frequency_ = 0.0;
   rx_bitrate_ = 0;
   tx_bitrate_ = 0;
