@@ -31,6 +31,7 @@ class ALabel : public AModule {
   bool setTooltipMarkup(const Glib::ustring& markup);
 
   bool handleToggle(GdkEventButton* const& e) override;
+  void copyToClipboard(const std::string&);
   virtual std::string getState(uint8_t value, bool lesser = false);
 
   std::map<std::string, GtkMenuItem*> submenus_;

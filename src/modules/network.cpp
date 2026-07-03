@@ -368,6 +368,10 @@ auto waybar::modules::Network::update() -> void {
                pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
       fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
       fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
+      fmt::arg("bandwidthDownBytesCompact",
+               pow_format(bandwidth_down / elapsed_seconds, "B", false, 2)),
+      fmt::arg("bandwidthUpBytesCompact",
+               pow_format(bandwidth_up / elapsed_seconds, "B", false, 2)),
       fmt::arg("bandwidthTotalBytes",
                pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
   if (text.compare(label_.get_label()) != 0) {
@@ -401,6 +405,10 @@ auto waybar::modules::Network::update() -> void {
                    pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "o/s")),
           fmt::arg("bandwidthDownBytes", pow_format(bandwidth_down / elapsed_seconds, "B/s")),
           fmt::arg("bandwidthUpBytes", pow_format(bandwidth_up / elapsed_seconds, "B/s")),
+          fmt::arg("bandwidthDownBytesCompact",
+                   pow_format(bandwidth_down / elapsed_seconds, "B", false, 2)),
+          fmt::arg("bandwidthUpBytesCompact",
+                   pow_format(bandwidth_up / elapsed_seconds, "B", false, 2)),
           fmt::arg("bandwidthTotalBytes",
                    pow_format((bandwidth_up + bandwidth_down) / elapsed_seconds, "B/s")));
       if (label_.get_tooltip_text() != tooltip_text) {
