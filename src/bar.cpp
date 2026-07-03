@@ -229,7 +229,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   gtk_layer_init_for_window(gtk_window);
   gtk_layer_set_keyboard_mode(gtk_window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
   gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
-  gtk_layer_set_namespace(gtk_window, "waybar");
+  gtk_layer_set_namespace(gtk_window,
+                          config["name"].isString() ? config["name"].asCString() : "waybar");
 
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
@@ -261,6 +262,16 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
+
+  window.signal_unmap().connect([this]() {
+    spdlog::debug("Output {} unmapped (DPMS off), suspending modules", output->name);
+    toggleSuspend(true);
+  });
+
+  window.signal_map().connect([this]() {
+    spdlog::debug("Output {} mapped (DPMS on), resuming modules", output->name);
+    toggleSuspend(false);
+  });
 
 #if HAVE_SWAY
   if (auto ipc = config["ipc"]; ipc.isBool() && ipc.asBool()) {
@@ -433,7 +444,18 @@ void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto* gdk_window = window.get_window()->gobj();
+  auto gdk_window_ref = window.get_window();
+  if (!gdk_window_ref) {
+    spdlog::warn("Failed to get GDK window during onMap, deferring surface initialization");
+    return;
+  }
+
+  auto* gdk_window = gdk_window_ref->gobj();
+  if (!gdk_window) {
+    spdlog::warn("GDK window object is null during onMap, deferring surface initialization");
+    return;
+  }
+
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
   configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
 
@@ -529,13 +551,15 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto vertical = (group != nullptr ? group->getBox().get_orientation()
                                             : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
 
-          auto group_config = config[ref];
+          const Json::Value& group_config = config[ref];
           if (group_config["modules"].isNull()) {
             spdlog::warn("Group definition '{}' has not been found, group will be hidden", ref);
           }
-          auto* group_module = new waybar::Group(id_name, class_name, group_config, vertical);
-          getModules(factory, ref, group_module);
-          module = group_module;
+          auto group_module =
+              std::make_unique<waybar::Group>(id_name, class_name, group_config, vertical);
+
+          getModules(factory, ref, group_module.get());
+          module = group_module.release();
         } else {
           module = factory.makeModule(ref, pos);
         }
@@ -681,4 +705,23 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
 
 void waybar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
+}
+
+void waybar::Bar::toggleSuspend(bool suspend) {
+  auto process_modules = [suspend](Gtk::Box& module_box) {
+    for (auto* widget : module_box.get_children()) {
+      auto* module = dynamic_cast<waybar::AModule*>(widget);
+      if (module && module->shouldSuspend()) {
+        if (suspend) {
+          module->suspend();
+        } else {
+          module->resume();
+        }
+      }
+    }
+  };
+
+  process_modules(left_);
+  process_modules(center_);
+  process_modules(right_);
 }

@@ -74,12 +74,14 @@ auto waybar::modules::Temperature::update() -> void {
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
     label_.get_style_context()->add_class("critical");
-  } else if (warning) {
-    format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
-    label_.get_style_context()->add_class("warning");
   } else {
     label_.get_style_context()->remove_class("critical");
-    label_.get_style_context()->remove_class("warning");
+    if (warning) {
+      format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
+      label_.get_style_context()->add_class("warning");
+    } else {
+      label_.get_style_context()->remove_class("warning");
+    }
   }
 
   if (format.empty()) {
@@ -99,7 +101,7 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(
+    label_.set_tooltip_markup(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("temperatureC", temperature_c),
         fmt::arg("temperatureF", temperature_f), fmt::arg("temperatureK", temperature_k)));
   }
@@ -153,3 +155,7 @@ bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {
   return config_["critical-threshold"].isInt() &&
          temperature_c >= config_["critical-threshold"].asInt();
 }
+
+void waybar::modules::Temperature::suspend() { thread_.pause(); }
+
+void waybar::modules::Temperature::resume() { thread_.resume(); }
