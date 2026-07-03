@@ -359,7 +359,7 @@ auto Workspaces::update() -> void {
     if ((*it)["output"].isString()) {
       // Simply attempt to remove all output classes every time to reset output classes. This works
       // even if a class has not been previously added to the style context.
-      for (const auto &oclass : config_["output-classes"]) {
+      for (const auto& oclass : config_["output-classes"]) {
         button.get_style_context()->remove_class(oclass.asString());
       }
       // If output-classes contains a class for output associated with current workspace button, add
@@ -437,13 +437,19 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
                                    node["name"].asString(), node["target_output"].asString(),
                                    "--no-auto-back-and-forth", node["name"].asString()));
         } else {
-          std::string flag = config_["disable-auto-back-and-forth"].asBool()
-                                ? "--no-auto-back-and-forth"
-                                : "";
-          if (node["num"].asInt() >= 0) {
-            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
+          std::string flag =
+              config_["disable-auto-back-and-forth"].asBool() ? "--no-auto-back-and-forth" : "";
+          if (config_["no-switch-output"].asBool()) {
+            ipc_.sendCmd(IPC_COMMAND,
+                         fmt::format("[workspace=\"^{}$\"] move workspace to output current; "
+                                     "workspace number {} \"{}\"",
+                                     node["name"].asString(), flag, node["name"].asString()));
+          } else if (node["num"].asInt() >= 0) {
+            ipc_.sendCmd(IPC_COMMAND,
+                         fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
           } else {
-            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
+            ipc_.sendCmd(IPC_COMMAND,
+                         fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
           }
         }
       } catch (const std::exception& e) {
