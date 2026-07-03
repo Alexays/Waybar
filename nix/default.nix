@@ -36,6 +36,7 @@ waybar.overrideAttrs (oldAttrs: {
     ++ [
       pkgs.wireplumber
       pkgs.gpsd
+      pkgs.modemmanager
     ];
 
   postUnpack = ''
