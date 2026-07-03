@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <utility>
+
 #include "util/scope_guard.hpp"
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
@@ -14,6 +16,9 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       percentage_(0),
       fp_(nullptr),
       pid_(-1) {
+  if (config.isNull()) {
+    spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
+  }
   dp.emit();
   if (!config_["signal"].empty() && config_["interval"].empty() &&
       config_["restart-interval"].empty()) {
@@ -34,7 +39,19 @@ waybar::modules::Custom::~Custom() {
 }
 
 void waybar::modules::Custom::delayWorker() {
+  if (!config_["exec"].isString() && !config_["exec-if"].isString()) {
+    dp.emit();
+    return;
+  }
+
   thread_ = [this] {
+    for (int i : this->pid_children_) {
+      int status;
+      waitpid(i, &status, 0);
+    }
+
+    this->pid_children_.clear();
+
     bool can_update = true;
     if (config_["exec-if"].isString()) {
       output_ = util::command::execNoRead(config_["exec-if"].asString());
@@ -62,7 +79,7 @@ void waybar::modules::Custom::continuousWorker() {
   }
   thread_ = [this, cmd] {
     char* buff = nullptr;
-    waybar::util::ScopeGuard buff_deleter([buff]() {
+    waybar::util::ScopeGuard buff_deleter([&buff]() {
       if (buff) {
         free(buff);
       }
@@ -79,9 +96,11 @@ void waybar::modules::Custom::continuousWorker() {
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
-      if (config_["restart-interval"].isUInt()) {
+      if (config_["restart-interval"].isNumeric()) {
         pid_ = -1;
-        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+        thread_.sleep_for(std::chrono::milliseconds(
+            std::max(1L,  // Minimum 1ms due to millisecond precision
+                     static_cast<long>(config_["restart-interval"].asDouble() * 1000))));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
@@ -124,9 +143,11 @@ void waybar::modules::Custom::waitingWorker() {
 }
 
 void waybar::modules::Custom::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+#ifdef SIGRTMIN
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+#endif
 }
 
 void waybar::modules::Custom::handleEvent() {
@@ -159,43 +180,54 @@ auto waybar::modules::Custom::update() -> void {
       parseOutputRaw();
     }
 
-    auto str = fmt::format(fmt::runtime(format_), text_, fmt::arg("alt", alt_),
-                           fmt::arg("icon", getIcon(percentage_, alt_)),
-                           fmt::arg("percentage", percentage_));
-    if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
-      event_box_.hide();
-    } else {
-      label_.set_markup(str);
-      if (tooltipEnabled()) {
-        if (tooltip_format_enabled_) {
-          auto tooltip = config_["tooltip-format"].asString();
-          tooltip = fmt::format(fmt::runtime(tooltip), text_, fmt::arg("alt", alt_),
-                                fmt::arg("icon", getIcon(percentage_, alt_)),
-                                fmt::arg("percentage", percentage_));
-          label_.set_tooltip_markup(tooltip);
-        } else if (text_ == tooltip_) {
-          if (label_.get_tooltip_markup() != str) {
-            label_.set_tooltip_markup(str);
+    try {
+      auto str = fmt::format(fmt::runtime(format_), fmt::arg("text", text_), fmt::arg("alt", alt_),
+                             fmt::arg("icon", getIcon(percentage_, alt_)),
+                             fmt::arg("percentage", percentage_));
+      if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
+        event_box_.hide();
+      } else {
+        label_.set_markup(str);
+        if (tooltipEnabled()) {
+          std::string tooltip_markup;
+          if (tooltip_format_enabled_) {
+            auto tooltip = config_["tooltip-format"].asString();
+            tooltip_markup = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
+                                         fmt::arg("tooltip", tooltip_), fmt::arg("alt", alt_),
+                                         fmt::arg("icon", getIcon(percentage_, alt_)),
+                                         fmt::arg("percentage", percentage_));
+          } else if (text_ == tooltip_) {
+            tooltip_markup = str;
+          } else {
+            tooltip_markup = tooltip_;
           }
-        } else {
-          if (label_.get_tooltip_markup() != tooltip_) {
-            label_.set_tooltip_markup(tooltip_);
+
+          if (last_tooltip_markup_ != tooltip_markup) {
+            label_.set_tooltip_markup(tooltip_markup);
+            last_tooltip_markup_ = std::move(tooltip_markup);
           }
         }
+        auto style = label_.get_style_context();
+        auto classes = style->list_classes();
+        for (auto const& c : classes) {
+          if (c == id_) continue;
+          style->remove_class(c);
+        }
+        for (auto const& c : class_) {
+          style->add_class(c);
+        }
+        style->add_class("flat");
+        style->add_class("text-button");
+        style->add_class(MODULE_CLASS);
+        event_box_.show();
       }
-      auto style = label_.get_style_context();
-      auto classes = style->list_classes();
-      for (auto const& c : classes) {
-        if (c == id_) continue;
-        style->remove_class(c);
-      }
-      for (auto const& c : class_) {
-        style->add_class(c);
-      }
-      style->add_class("flat");
-      style->add_class("text-button");
-      style->add_class(MODULE_CLASS);
-      event_box_.show();
+    } catch (const fmt::format_error& e) {
+      if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
+        throw;
+
+      throw fmt::format_error(
+          "mixing manual and automatic argument indexing is no longer supported; "
+          "try replacing \"{}\" with \"{text}\" in your format specifier");
     }
   }
   // Call parent update

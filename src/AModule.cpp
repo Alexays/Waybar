@@ -15,10 +15,15 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     : name_(name),
       config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
+      isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      distance_scrolled_x_(0.0),
+      cursor_timeout_conn_() {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
+  disable_on_sleep_ =
+      config_["disable-on-sleep"].isBool() ? config_["disable-on-sleep"].asBool() : false;
 
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
@@ -71,8 +76,12 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
-    if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
-      setCursor(Gdk::HAND2);
+    if (config_["cursor"].isBool()) {
+      if (config_["cursor"].asBool()) {
+        setCursor(Gdk::HAND2);
+      } else {
+        setCursor(Gdk::ARROW);
+      }
     } else if (config_["cursor"].isInt()) {
       setCursor(Gdk::CursorType(config_["cursor"].asInt()));
     } else {
@@ -82,25 +91,32 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 }
 
 AModule::~AModule() {
-  for (const auto& pid : pid_) {
+  if (cursor_timeout_conn_.connected()) {
+    cursor_timeout_conn_.disconnect();
+  }
+  for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
     }
+  }
+  if (menu_ != nullptr) {
+    g_object_unref(menu_);
+    menu_ = nullptr;
   }
 }
 
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
-    pid_.push_back(util::command::forkExec(config_["on-update"].asString()));
+    pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
 }
 // Get mapping between event name and module action name
-// Then call overrided doAction in order to call appropriate module action
+// Then call overridden doAction in order to call appropriate module action
 auto AModule::doAction(const std::string& name) -> void {
   if (!name.empty()) {
     const std::map<std::string, std::string>::const_iterator& recA{eventActionMap_.find(name)};
-    // Call overrided action if derrived class has implemented it
+    // Call overridden action if derived class has implemented it
     if (recA != eventActionMap_.cend() && name != recA->second) this->doAction(recA->second);
   }
 }
@@ -113,7 +129,7 @@ void AModule::setCursor(Gdk::CursorType const& c) {
   } else {
     // window may not be accessible yet, in this case,
     // schedule another call for setting the cursor in 1 sec
-    Glib::signal_timeout().connect_seconds(
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
         [this, c]() {
           setCursor(c);
           return false;
@@ -165,12 +181,16 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   }
 
   // Check that a menu has been configured
-  if (config_["menu"].isString()) {
+  if (rec != eventMap_.cend() && config_["menu"].isString()) {
     // Check if the event is the one specified for the "menu" option
-    if (rec->second == config_["menu"].asString()) {
+    if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
       // Popup the menu
       gtk_widget_show_all(GTK_WIDGET(menu_));
       gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+      // Manually reset prelight to make sure the module doesn't stay in a hover state
+      if (auto* module = event_box_.get_child(); module != nullptr) {
+        module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+      }
     }
   }
   // Second call user scripts
@@ -181,7 +201,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
       format.clear();
   }
   if (!format.empty()) {
-    pid_.push_back(util::command::forkExec(format));
+    pid_children_.push_back(util::command::forkExec(format));
   }
   dp.emit();
   return true;
@@ -266,13 +286,14 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   this->AModule::doAction(eventName);
   // Second call user scripts
   if (config_[eventName].isString())
-    pid_.push_back(util::command::forkExec(config_[eventName].asString()));
+    pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
 
   dp.emit();
   return true;
 }
 
 bool AModule::tooltipEnabled() const { return isTooltip; }
+bool AModule::expandEnabled() const { return isExpand; }
 
 AModule::operator Gtk::Widget&() { return event_box_; }
 

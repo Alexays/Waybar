@@ -17,7 +17,7 @@ void onclicked(GtkButton* button) {
 }
 
 // You must
-const size_t wbcffi_version = 1;
+const size_t wbcffi_version = 2;
 
 void* wbcffi_init(const wbcffi_init_info* init_info, const wbcffi_config_entry* config_entries,
                   size_t config_entries_len) {
