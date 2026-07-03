@@ -153,7 +153,7 @@ void waybar::modules::Battery::refreshBatteries() {
       }
     }
   } catch (fs::filesystem_error& e) {
-    throw std::runtime_error(e.what());
+    spdlog::warn("Battery directory tracking failed: {}", e.what());
   }
   if (warnFirstTime_ && batteries_.empty()) {
     if (config_["bat"].isString()) {
