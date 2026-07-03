@@ -7,6 +7,7 @@
 #include <string>
 
 #include "util/scope_guard.hpp"
+#include "util/utf8_string.hpp"
 
 extern "C" {
 #include <playerctl/playerctl.h>
@@ -109,6 +110,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
     player_ = config_["player"].asString();
   }
   if (config_["ignored-players"].isArray()) {
+    ignored_players_.reserve(config_["ignored-players"].size());
     for (const auto& item : config_["ignored-players"]) {
       if (item.isString()) {
         ignored_players_.push_back(item.asString());
@@ -117,7 +119,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   }
 
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error) {
       g_error_free(error);
     }
@@ -161,8 +163,7 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
   if (player) {
     g_object_connect(player, "signal::play", G_CALLBACK(onPlayerPlay), this, "signal::pause",
                      G_CALLBACK(onPlayerPause), this, "signal::stop", G_CALLBACK(onPlayerStop),
-                     this, "signal::stop", G_CALLBACK(onPlayerStop), this, "signal::metadata",
-                     G_CALLBACK(onPlayerMetadata), this, NULL);
+                     this, "signal::metadata", G_CALLBACK(onPlayerMetadata), this, NULL);
   }
 
   // allow setting an interval count that triggers periodic refreshes
@@ -178,8 +179,17 @@ Mpris::Mpris(const std::string& id, const Json::Value& config)
 }
 
 Mpris::~Mpris() {
-  if (manager != nullptr) g_object_unref(manager);
-  if (player != nullptr) g_object_unref(player);
+  if (manager != nullptr) {
+    g_signal_handlers_disconnect_by_data(manager, this);
+  }
+  if (player != nullptr) {
+    g_signal_handlers_disconnect_by_data(player, this);
+  }
+  if (last_active_player_ != nullptr && last_active_player_ != player) {
+    g_object_unref(last_active_player_);
+  }
+  g_clear_object(&manager);
+  g_clear_object(&player);
 }
 
 auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) -> std::string {
@@ -193,69 +203,22 @@ auto Mpris::getIconFromJson(const Json::Value& icons, const std::string& key) ->
 // Wide characters count as two, zero-width characters count as zero
 // Modifies str in-place (unless width = std::string::npos)
 // Returns the total width of the string pre-truncating
-size_t utf8_truncate(std::string& str, size_t width = std::string::npos) {
-  if (str.length() == 0) return 0;
-
-  const gchar* trunc_end = nullptr;
-
-  size_t total_width = 0;
-
-  for (gchar *data = str.data(), *end = data + str.size(); data != nullptr;) {
-    gunichar c = g_utf8_get_char_validated(data, end - data);
-    if (c == -1U || c == -2U) {
-      // invalid unicode, treat string as ascii
-      if (width != std::string::npos && str.length() > width) str.resize(width);
-      return str.length();
-    } else if (g_unichar_iswide(c)) {
-      total_width += 2;
-    } else if (!g_unichar_iszerowidth(c) && c != 0xAD) {  // neither zero-width nor soft hyphen
-      total_width += 1;
-    }
-
-    data = g_utf8_find_next_char(data, end);
-    if (width != std::string::npos && total_width <= width && !g_unichar_isspace(c))
-      trunc_end = data;
-  }
-
-  if (trunc_end) str.resize(trunc_end - str.data());
-
-  return total_width;
-}
-
-size_t utf8_width(const std::string& str) { return utf8_truncate(const_cast<std::string&>(str)); }
-
-void truncate(std::string& s, const std::string& ellipsis, size_t max_len) {
-  if (max_len == 0) {
-    s.resize(0);
-    return;
-  }
-  size_t len = utf8_truncate(s, max_len);
-  if (len > max_len) {
-    size_t ellipsis_len = utf8_width(ellipsis);
-    if (max_len >= ellipsis_len) {
-      if (ellipsis_len) utf8_truncate(s, max_len - ellipsis_len);
-      s += ellipsis;
-    } else {
-      s.resize(0);
-    }
-  }
-}
 
 auto Mpris::getArtistStr(const PlayerInfo& info, bool truncated) -> std::string {
   auto artist = info.artist.value_or(std::string());
-  if (truncated && artist_len_ >= 0) truncate(artist, ellipsis_, artist_len_);
+  if (truncated && artist_len_ >= 0) waybar::util::utf8_truncate(artist, ellipsis_, artist_len_);
   return artist;
 }
 
 auto Mpris::getAlbumStr(const PlayerInfo& info, bool truncated) -> std::string {
   auto album = info.album.value_or(std::string());
-  if (truncated && album_len_ >= 0) truncate(album, ellipsis_, album_len_);
+  if (truncated && album_len_ >= 0) waybar::util::utf8_truncate(album, ellipsis_, album_len_);
   return album;
 }
 
 auto Mpris::getTitleStr(const PlayerInfo& info, bool truncated) -> std::string {
   auto title = info.title.value_or(std::string());
-  if (truncated && title_len_ >= 0) truncate(title, ellipsis_, title_len_);
+  if (truncated && title_len_ >= 0) waybar::util::utf8_truncate(title, ellipsis_, title_len_);
   return title;
 }
 
@@ -283,9 +246,9 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
   // keep position format same as length format
   auto position = getPositionStr(info, truncated && truncate_hours_ && length.length() < 6);
 
-  size_t artistLen = utf8_width(artist);
-  size_t albumLen = utf8_width(album);
-  size_t titleLen = utf8_width(title);
+  size_t artistLen = waybar::util::utf8_width(artist);
+  size_t albumLen = waybar::util::utf8_width(album);
+  size_t titleLen = waybar::util::utf8_width(title);
   size_t lengthLen = length.length();
   size_t posLen = position.length();
 
@@ -304,7 +267,7 @@ auto Mpris::getDynamicStr(const PlayerInfo& info, bool truncated, bool html) -> 
     // Since the first element doesn't present a separator and we don't know a priori which one
     // it will be, we add a "virtual separatorLen" to the dynamicLen, since we are adding the
     // separatorLen to all the other lengths.
-    size_t separatorLen = utf8_width(dynamic_separator_);
+    size_t separatorLen = waybar::util::utf8_width(dynamic_separator_);
     size_t dynamicLen = dynamic_len_ + separatorLen;
     if (showArtist) artistLen += separatorLen;
     if (showAlbum) albumLen += separatorLen;
@@ -410,11 +373,14 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
     return;
   }
 
+  if (mpris->player != nullptr) {
+    g_signal_handlers_disconnect_by_data(mpris->player, mpris);
+    g_clear_object(&mpris->player);
+  }
   mpris->player = playerctl_player_new_from_name(player_name, nullptr);
   g_object_connect(mpris->player, "signal::play", G_CALLBACK(onPlayerPlay), mpris, "signal::pause",
                    G_CALLBACK(onPlayerPause), mpris, "signal::stop", G_CALLBACK(onPlayerStop),
-                   mpris, "signal::stop", G_CALLBACK(onPlayerStop), mpris, "signal::metadata",
-                   G_CALLBACK(onPlayerMetadata), mpris, NULL);
+                   mpris, "signal::metadata", G_CALLBACK(onPlayerMetadata), mpris, NULL);
 
   mpris->dp.emit();
 }
@@ -458,10 +424,7 @@ auto Mpris::onPlayerStop(PlayerctlPlayer* player, gpointer data) -> void {
   if (!mpris) return;
 
   spdlog::debug("mpris: player-stop callback");
-
-  // hide widget
-  mpris->event_box_.set_visible(false);
-  // update widget
+  // update widget (update() handles visibility)
   mpris->dp.emit();
 }
 
@@ -480,7 +443,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   }
 
   GError* error = nullptr;
-  waybar::util::ScopeGuard error_deleter([error]() {
+  waybar::util::ScopeGuard error_deleter([&error]() {
     if (error) {
       g_error_free(error);
     }
@@ -488,7 +451,12 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
 
   char* player_status = nullptr;
   auto player_playback_status = PLAYERCTL_PLAYBACK_STATUS_STOPPED;
-  g_object_get(player, "status", &player_status, "playback-status", &player_playback_status, NULL);
+
+  // Clean up previous fallback player
+  if (last_active_player_ && last_active_player_ != player) {
+    g_object_unref(last_active_player_);
+    last_active_player_ = nullptr;
+  }
 
   std::string player_name = player_;
   if (player_name == "playerctld") {
@@ -498,19 +466,52 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
     }
     // > get the list of players [..] in order of activity
     // https://github.com/altdesktop/playerctl/blob/b19a71cb9dba635df68d271bd2b3f6a99336a223/playerctl/playerctl-common.c#L248-L249
-    players = g_list_first(players);
-    if (players)
-      player_name = static_cast<PlayerctlPlayerName*>(players->data)->name;
-    else
-      return std::nullopt;  // no players found, hide the widget
-  }
-
-  if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
-                  [&](const std::string& pn) { return player_name == pn; })) {
+    PlayerctlPlayer* first_valid_player = nullptr;
+    std::string first_valid_name;
+    for (auto* p = g_list_first(players); p != nullptr; p = p->next) {
+      auto* pn = static_cast<PlayerctlPlayerName*>(p->data);
+      std::string name = pn->name;
+      if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
+                      [&](const std::string& ignored) { return name == ignored; })) {
+        spdlog::warn("mpris[{}]: ignoring player update", name);
+        continue;
+      }
+      auto* tmp = playerctl_player_new_from_name(pn, &error);
+      if (error || !tmp) continue;
+      if (!first_valid_player) {
+        first_valid_player = tmp;
+        first_valid_name = name;
+      }
+      PlayerctlPlaybackStatus status;
+      g_object_get(tmp, "playback-status", &status, NULL);
+      if (status == PLAYERCTL_PLAYBACK_STATUS_PLAYING) {
+        if (tmp != first_valid_player) g_object_unref(first_valid_player);
+        last_active_player_ = tmp;
+        player_name = name;
+        break;
+      }
+      if (tmp != first_valid_player) g_object_unref(tmp);
+    }
+    if (!last_active_player_) {
+      if (!first_valid_player) return std::nullopt;
+      last_active_player_ = first_valid_player;
+      player_name = first_valid_name;
+    }
+  } else if (std::any_of(ignored_players_.begin(), ignored_players_.end(),
+                         [&](const std::string& pn) { return player_name == pn; })) {
     spdlog::warn("mpris[{}]: ignoring player update", player_name);
     return std::nullopt;
+  } else {
+    last_active_player_ = player;
   }
 
+  g_object_get(last_active_player_, "status", &player_status, "playback-status",
+               &player_playback_status, NULL);
+
+  if (!player_status) {
+    spdlog::error("mpris: failed to get player status");
+    return std::nullopt;
+  }
   // make status lowercase
   player_status[0] = std::tolower(player_status[0]);
 
@@ -524,28 +525,29 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
       .length = std::nullopt,
   };
 
-  if (auto* artist_ = playerctl_player_get_artist(player, &error)) {
+  if (auto* artist_ = playerctl_player_get_artist(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: artist = {}", info.name, artist_);
     info.artist = artist_;
     g_free(artist_);
   }
   if (error) goto errorexit;
 
-  if (auto* album_ = playerctl_player_get_album(player, &error)) {
+  if (auto* album_ = playerctl_player_get_album(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
     info.album = album_;
     g_free(album_);
   }
   if (error) goto errorexit;
 
-  if (auto* title_ = playerctl_player_get_title(player, &error)) {
+  if (auto* title_ = playerctl_player_get_title(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: title = {}", info.name, title_);
     info.title = title_;
     g_free(title_);
   }
   if (error) goto errorexit;
 
-  if (auto* length_ = playerctl_player_print_metadata_prop(player, "mpris:length", &error)) {
+  if (auto* length_ =
+          playerctl_player_print_metadata_prop(last_active_player_, "mpris:length", &error)) {
     spdlog::debug("mpris[{}]: mpris:length = {}", info.name, length_);
     auto len = std::chrono::microseconds(std::strtol(length_, nullptr, 10));
     auto len_h = std::chrono::duration_cast<std::chrono::hours>(len);
@@ -557,7 +559,7 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (error) goto errorexit;
 
   {
-    auto position_ = playerctl_player_get_position(player, &error);
+    auto position_ = playerctl_player_get_position(last_active_player_, &error);
     if (error) {
       // it's fine to have an error here because not all players report a position
       g_error_free(error);
@@ -609,12 +611,13 @@ bool Mpris::handleToggle(GdkEventButton* const& e) {
   });
 
   // Command pattern: encapsulate each button's action
+  auto* target = last_active_player_ ? last_active_player_ : player;
   const ButtonAction actions[] = {
-      {1, "on-click", [&]() { playerctl_player_play_pause(player, &error); }},
-      {2, "on-click-middle", [&]() { playerctl_player_previous(player, &error); }},
-      {3, "on-click-right", [&]() { playerctl_player_next(player, &error); }},
-      {8, "on-click-backward", [&]() { playerctl_player_previous(player, &error); }},
-      {9, "on-click-forward", [&]() { playerctl_player_next(player, &error); }},
+      {1, "on-click", [&]() { playerctl_player_play_pause(target, &error); }},
+      {2, "on-click-middle", [&]() { playerctl_player_previous(target, &error); }},
+      {3, "on-click-right", [&]() { playerctl_player_next(target, &error); }},
+      {8, "on-click-backward", [&]() { playerctl_player_previous(target, &error); }},
+      {9, "on-click-forward", [&]() { playerctl_player_next(target, &error); }},
   };
 
   for (const auto& action : actions) {
@@ -726,15 +729,18 @@ auto Mpris::update() -> void {
       auto tooltip_text = fmt::format(
           fmt::runtime(tooltipstr), fmt::arg("player", info.name),
           fmt::arg("status", info.status_string),
-          fmt::arg("artist", getArtistStr(info, tooltip_len_limits_)),
-          fmt::arg("title", getTitleStr(info, tooltip_len_limits_)),
-          fmt::arg("album", getAlbumStr(info, tooltip_len_limits_)),
+          fmt::arg("artist",
+                   std::string(Glib::Markup::escape_text(getArtistStr(info, tooltip_len_limits_)))),
+          fmt::arg("title",
+                   std::string(Glib::Markup::escape_text(getTitleStr(info, tooltip_len_limits_)))),
+          fmt::arg("album",
+                   std::string(Glib::Markup::escape_text(getAlbumStr(info, tooltip_len_limits_)))),
           fmt::arg("length", tooltipLength), fmt::arg("position", tooltipPosition),
           fmt::arg("dynamic", getDynamicStr(info, tooltip_len_limits_, false)),
           fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
           fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 
-      label_.set_tooltip_text(tooltip_text);
+      label_.set_tooltip_markup(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpris: format error (tooltip): {}", e.what());
     }
