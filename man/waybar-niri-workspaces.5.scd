@@ -17,6 +17,23 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
 
+*sort-by-name*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by name (numeric sort when all names are numbers). Unnamed workspaces fall back to their index on the output.
+
+*sort-by-coordinates*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by output and index. If both *sort-by-name* and *sort-by-coordinates* are true, sorting by name is applied.
+
+*sort-by-id*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by id, taking precedence over other sort options.
+
+If none of the sorting options are enabled, workspaces keep their output/index order.
+
 *format*: ++
 	typeof: string ++
 	default: {value} ++
