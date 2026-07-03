@@ -33,7 +33,10 @@ static void writeSignalToPipe(int signum) {
 // to `signal_handler`.
 static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   int fd[2];
-  pipe(fd);
+  if (pipe(fd) != 0) {
+    spdlog::error("Failed to create signal pipe: {}", strerror(errno));
+    return;
+  }
 
   int signal_pipe_read_fd = fd[0];
   signal_pipe_write_fd = fd[1];
@@ -52,9 +55,11 @@ static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   std::signal(SIGINT, writeSignalToPipe);
   std::signal(SIGCHLD, writeSignalToPipe);
 
+#ifdef SIGRTMIN
   for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
     std::signal(sig, writeSignalToPipe);
   }
+#endif
 
   while (true) {
     int signum;
@@ -116,13 +121,15 @@ void handleUserSignal(int signal, bool& reload) {
 // If this signal should restart or close the bar, this function will write
 // `true` or `false`, respectively, into `reload`.
 static void handleSignalMainThread(int signum, bool& reload) {
+#ifdef SIGRTMIN
   if (signum >= SIGRTMIN + 1 && signum <= SIGRTMAX) {
     for (auto& bar : waybar::Client::inst()->bars) {
       bar->handleSignal(signum);
     }
     return;
   }
-
+#endif
+  
   switch (signum) {
     case SIGUSR1:
       handleUserSignal(SIGUSR1, reload);
@@ -137,15 +144,16 @@ static void handleSignalMainThread(int signum, bool& reload) {
       break;
     case SIGCHLD:
       spdlog::debug("Received SIGCHLD in signalThread");
-      if (!reap.empty()) {
-        reap_mtx.lock();
-        for (auto it = reap.begin(); it != reap.end(); ++it) {
+      {
+        std::lock_guard<std::mutex> lock(reap_mtx);
+        for (auto it = reap.begin(); it != reap.end();) {
           if (waitpid(*it, nullptr, WNOHANG) == *it) {
             spdlog::debug("Reaped child with PID: {}", *it);
             it = reap.erase(it);
+          } else {
+            ++it;
           }
         }
-        reap_mtx.unlock();
       }
       break;
     default:

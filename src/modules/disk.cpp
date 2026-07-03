@@ -67,7 +67,7 @@ auto waybar::modules::Disk::update() -> void {
       fs_used - File system used space
     */
 
-    if (err != 0) {
+    if (err != 0 || stats.f_blocks == 0) {
       spdlog::warn("Disk: statvfs failed for path '{}' (errno={})", path, errno);
       continue;
     }
@@ -135,13 +135,13 @@ auto waybar::modules::Disk::update() -> void {
   label_.set_markup(label);
 
   if (tooltipEnabled() && !tooltip_label.empty()) {
-    label_.set_tooltip_text(tooltip_label);
+    label_.set_tooltip_markup(tooltip_label);
   }
   // Call parent update
   ALabel::update();
 }
 
-float waybar::modules::Disk::calc_specific_divisor(std::string divisor) {
+float waybar::modules::Disk::calc_specific_divisor(const std::string& divisor) {
   if (divisor == "kB") {
     return 1000.0;
   } else if (divisor == "kiB") {
