@@ -1,10 +1,14 @@
 #pragma once
 
+#include <fmt/args.h>
+#include <fmt/format.h>
 #include <glibmm/markup.h>
 #include <gtkmm/label.h>
 #include <json/json.h>
 
 #include <optional>
+#include <string>
+#include <utility>
 
 #include "AModule.hpp"
 
@@ -29,6 +33,41 @@ class ALabel : public AModule {
 
   bool setLabelMarkup(const Glib::ustring& markup);
   bool setTooltipMarkup(const Glib::ustring& markup);
+
+  // Resolve the tooltip format string: prefers `tooltip-format-<state>` (when a
+  // non-empty state is given), then `tooltip-format`, then `defaultFormat`.
+  std::string resolveTooltipFormat(const std::string& defaultFormat,
+                                   const std::string& state = "") const {
+    if (!state.empty() && config_["tooltip-format-" + state].isString()) {
+      return config_["tooltip-format-" + state].asString();
+    }
+    if (config_["tooltip-format"].isString()) {
+      return config_["tooltip-format"].asString();
+    }
+    return defaultFormat;
+  }
+
+  // Combined label + tooltip helper. Builds a single fmt argument store from
+  // `args`, renders `labelFormat` into the label and the resolved tooltip format
+  // into the tooltip, both through the dedup-aware setters. Honors the `tooltip`
+  // toggle. This replaces the label/tooltip formatting boilerplate that modules
+  // used to duplicate. `state` selects `tooltip-format-<state>` when non-empty.
+  template <typename... Args>
+  void updateLabelAndTooltipForState(const std::string& state, const std::string& labelFormat,
+                                     const std::string& tooltipDefault, Args&&... args) {
+    fmt::dynamic_format_arg_store<fmt::format_context> store;
+    (store.push_back(std::forward<Args>(args)), ...);
+    setLabelMarkup(fmt::vformat(labelFormat, store));
+    if (tooltipEnabled()) {
+      setTooltipMarkup(fmt::vformat(resolveTooltipFormat(tooltipDefault, state), store));
+    }
+  }
+
+  template <typename... Args>
+  void updateLabelAndTooltip(const std::string& labelFormat, const std::string& tooltipDefault,
+                             Args&&... args) {
+    updateLabelAndTooltipForState("", labelFormat, tooltipDefault, std::forward<Args>(args)...);
+  }
 
   bool handleToggle(GdkEventButton* const& e) override;
   void copyToClipboard(const std::string&);

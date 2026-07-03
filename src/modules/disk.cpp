@@ -68,25 +68,13 @@ auto waybar::modules::Disk::update() -> void {
     event_box_.hide();
   } else {
     event_box_.show();
-    label_.set_markup(fmt::format(
-        fmt::runtime(format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
+    updateLabelAndTooltip(
+        format, "{used} used out of {total} on {path} ({percentage_used}%)",
+        stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
         fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks), fmt::arg("used", used),
         fmt::arg("percentage_used", percentage_used), fmt::arg("total", total),
         fmt::arg("path", path_), fmt::arg("specific_free", specific_free),
-        fmt::arg("specific_used", specific_used), fmt::arg("specific_total", specific_total)));
-  }
-
-  if (tooltipEnabled()) {
-    std::string tooltip_format = "{used} used out of {total} on {path} ({percentage_used}%)";
-    if (config_["tooltip-format"].isString()) {
-      tooltip_format = config_["tooltip-format"].asString();
-    }
-    label_.set_tooltip_markup(fmt::format(
-        fmt::runtime(tooltip_format), stats.f_bavail * 100 / stats.f_blocks, fmt::arg("free", free),
-        fmt::arg("percentage_free", stats.f_bavail * 100 / stats.f_blocks), fmt::arg("used", used),
-        fmt::arg("percentage_used", percentage_used), fmt::arg("total", total),
-        fmt::arg("path", path_), fmt::arg("specific_free", specific_free),
-        fmt::arg("specific_used", specific_used), fmt::arg("specific_total", specific_total)));
+        fmt::arg("specific_used", specific_used), fmt::arg("specific_total", specific_total));
   }
   // Call parent update
   ALabel::update();
