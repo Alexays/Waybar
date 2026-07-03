@@ -29,12 +29,14 @@ void PulseaudioSlider::update() {
   uint16_t display_value = backend->getVolume(target);
   bool is_muted = backend->getMuted(target);
 
-  if (is_muted && !previously_muted) {
+  if (is_muted) {
     if (zero_on_mute) {
       display_value = min_;
     }
-    scale_.get_style_context()->add_class("muted");
-  } else if (previously_muted && !is_muted) {
+    if (!previously_muted) {
+      scale_.get_style_context()->add_class("muted");
+    }
+  } else if (previously_muted) {
     scale_.get_style_context()->remove_class("muted");
   }
 
