@@ -71,6 +71,7 @@ CFFI::CFFI(const std::string& name, const std::string& id, const Json::Value& co
 
   // Prepare config_entries array
   std::vector<ffi::wbcffi_config_entry> config_entries;
+  config_entries.reserve(keys.size());
   for (size_t i = 0; i < keys.size(); i++) {
     config_entries.push_back({keys[i].c_str(), config_entries_stringstor[i].c_str()});
   }
