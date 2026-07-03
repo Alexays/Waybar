@@ -1,8 +1,6 @@
 #include "modules/niri/workspaces.hpp"
 
 #include <fmt/ranges.h>  // Needed for joining window representations
-#include <gtkmm/button.h>
-#include <gtkmm/label.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -73,6 +71,12 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
   gIPC->registerForIPC("WorkspaceUrgencyChanged", this);
 
+  gIPC->registerForIPC("WindowsChanged", this);
+  gIPC->registerForIPC("WindowOpenedOrChanged", this);
+  gIPC->registerForIPC("WindowLayoutsChanged", this);
+  gIPC->registerForIPC("WindowFocusChanged", this);
+  gIPC->registerForIPC("WindowClosed", this);
+
   if (config["enable-bar-scroll"].asBool()) {
     auto& window = const_cast<Bar&>(bar_).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
@@ -84,7 +88,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
 
 Workspaces::~Workspaces() { gIPC->unregisterForIPC(this); }
 
-void Workspaces::onEvent(const Json::Value& ev) { dp.emit(); }
+void Workspaces::onEvent(const Json::Value& /*ev*/) { dp.emit(); }
 
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
@@ -95,178 +99,78 @@ void Workspaces::doUpdate() {
 
   const auto alloutputs = config_["all-outputs"].asBool();
   const auto display_cond = config_["display-condition"].asString();
-  std::vector<Json::Value> my_workspaces;
-  const auto& workspaces = gIPC->workspaces();
-  std::copy_if(
-      workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
-      [&](const auto& ws) {
-        std::string name;
-        if (ws["name"]) {
-          name = ws["name"].asString();
-        } else {
-          name = std::to_string(ws["idx"].asUInt());
-        }
-        if (isWorkspaceIgnored(name)) {
-          return false;
-        }
+  const auto& all_workspaces = gIPC->workspaces();
+  const auto& all_windows = gIPC->windows();
 
-        if (display_cond == "only-populated") {
-          if (ws["active_window_id"].isNull() && !ws["is_active"].asBool()) return false;
-        } else if (display_cond == "keep-named") {
-          if (ws["name"].isNull() && ws["active_window_id"].isNull() && !ws["is_active"].asBool())
-            return false;
-        }
-
-        if (alloutputs) return true;
-        return ws["output"].asString() == bar_.output->name;
-      });
-
-  sortWorkspaces(my_workspaces);
-
-  // Remove buttons for removed workspaces.
-  for (auto it = buttons_.begin(); it != buttons_.end();) {
-    auto ws = std::find_if(my_workspaces.begin(), my_workspaces.end(),
-                           [it](const auto& ws) { return ws["id"].asUInt64() == it->first; });
-    if (ws == my_workspaces.end()) {
-      it = buttons_.erase(it);
-    } else {
-      ++it;
-    }
-  }
-
-  // Add buttons for new workspaces, update existing ones.
-  for (const auto& ws : my_workspaces) {
-    // Debug: print workspace JSON
-    spdlog::debug("[niri/workspaces] workspace id={} json={} ", ws["id"].asUInt64(),
-                  ws.toStyledString());
-
-    auto bit = buttons_.find(ws["id"].asUInt64());
-    auto& button = bit == buttons_.end() ? addButton(ws) : bit->second;
-    auto style_context = button.get_style_context();
-
-    if (ws["is_focused"].asBool())
-      style_context->add_class("focused");
-    else
-      style_context->remove_class("focused");
-
-    if (ws["is_active"].asBool())
-      style_context->add_class("active");
-    else
-      style_context->remove_class("active");
-
-    if (ws["is_urgent"].asBool())
-      style_context->add_class("urgent");
-    else
-      style_context->remove_class("urgent");
-
-    if (ws["output"]) {
-      if (ws["output"].asString() == bar_.output->name)
-        style_context->add_class("current_output");
-      else
-        style_context->remove_class("current_output");
-    } else {
-      style_context->remove_class("current_output");
-    }
-
-    if (ws["active_window_id"].isNull())
-      style_context->add_class("empty");
-    else
-      style_context->remove_class("empty");
-
-    // --- Start Window Rewrite Logic ---
-    std::vector<std::string> window_reps;
-    if (ws.isMember("windows") && ws["windows"].isArray()) {
-      spdlog::debug("[niri/workspaces] workspace id={} has {} windows", ws["id"].asUInt64(),
-                    ws["windows"].size());
-      for (const auto& win : ws["windows"]) {
-        spdlog::debug("[niri/workspaces] window json: {}", win.toStyledString());
-        std::string app_id =
-            win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
-        std::string title =
-            win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
-        if (!app_id.empty() || !title.empty()) {  // Only add if we have some identifier
-          auto rep = getRewrite(app_id, title);
-          spdlog::debug("[niri/workspaces] rewrite: app_id='{}' title='{}' => '{}'", app_id, title,
-                        rep);
-          window_reps.push_back(rep);
-        }
-      }
-    } else {
-      spdlog::debug(
-          "[niri/workspaces] workspace id={} has no 'windows' array, collecting from global "
-          "windows",
-          ws["id"].asUInt64());
-      // Fallback: collect from global windows list by matching workspace_id
-      for (const auto& win : gIPC->windows()) {
-        if (!win.isMember("workspace_id")) continue;
-        if (win["workspace_id"].asUInt64() != ws["id"].asUInt64()) continue;
-        spdlog::debug("[niri/workspaces] global window json: {}", win.toStyledString());
-        std::string app_id =
-            win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
-        std::string title =
-            win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
-        if (!app_id.empty() || !title.empty()) {
-          auto rep = getRewrite(app_id, title);
-          spdlog::debug("[niri/workspaces] rewrite (global): app_id='{}' title='{}' => '{}'",
-                        app_id, title, rep);
-          window_reps.push_back(rep);
-        }
-      }
-    }
-    // Join representations with the separator
-    auto windows_str = fmt::format("{}", fmt::join(window_reps, m_formatWindowSeparator));
-    spdlog::debug("[niri/workspaces] workspace id={} windows_str='{}'", ws["id"].asUInt64(),
-                  windows_str);
-    // --- End Window Rewrite Logic ---
-
+  std::vector<const Json::Value*> my_workspaces;
+  my_workspaces.reserve(all_workspaces.size());
+  for (const auto& ws : all_workspaces) {
     std::string name;
     if (ws["name"]) {
       name = ws["name"].asString();
     } else {
       name = std::to_string(ws["idx"].asUInt());
     }
-    button.set_name("niri-workspace-" + name);
-
-    if (config_["format"].isString()) {
-      auto format = config_["format"].asString();
-      name = fmt::format(
-          fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)), fmt::arg("value", name),
-          fmt::arg("name", ws["name"].asString()), fmt::arg("index", ws["idx"].asUInt()),
-          fmt::arg("output", ws["output"].asString()), fmt::arg("total", my_workspaces.size()),
-          fmt::arg("windows", windows_str));  // Added windows arg
-    }
-    if (!config_["disable-markup"].asBool()) {
-      auto* child = gtk_bin_get_child(GTK_BIN(button.gobj()));
-      if (child != nullptr && GTK_IS_LABEL(child))
-        gtk_label_set_markup(GTK_LABEL(child), name.c_str());
-    } else {
-      button.set_label(name);
+    if (isWorkspaceIgnored(name)) {
+      continue;
     }
 
-    if (config_["current-only"].asBool()) {
-      const auto* property = alloutputs ? "is_focused" : "is_active";
-      if (ws[property].asBool())
-        button.show();
-      else
-        button.hide();
-    } else if (config_["hide-empty"].asBool()) {
-      if (ws["active_window_id"].isNull() && !ws["is_focused"].asBool())
-        button.hide();
-      else
-        button.show();
-    } else {
-      button.show();
+    if (display_cond == "only-populated") {
+      if (ws["active_window_id"].isNull() && !ws["is_active"].asBool()) continue;
+    } else if (display_cond == "keep-named") {
+      if (ws["name"].isNull() && ws["active_window_id"].isNull() && !ws["is_active"].asBool())
+        continue;
+    }
+
+    if (alloutputs || ws["output"].asString() == bar_.output->name) {
+      my_workspaces.push_back(&ws);
     }
   }
 
-  // Refresh the button order.
-  for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
-    const auto& ws = *it;
+  sortWorkspaces(my_workspaces);
 
-    const auto pos = static_cast<int>(std::distance(my_workspaces.cbegin(), it));
+  workspaces_.erase(std::remove_if(workspaces_.begin(), workspaces_.end(),
+                                   [&](const std::unique_ptr<Workspace>& w) {
+                                     bool gone = std::none_of(
+                                         my_workspaces.begin(), my_workspaces.end(),
+                                         [&](const Json::Value* ws) {
+                                           return ws->operator[]("id").asUInt64() == w->id();
+                                         });
+                                     if (gone) box_.remove(w->button());
+                                     return gone;
+                                   }),
+                    workspaces_.end());
 
-    auto& button = buttons_[ws["id"].asUInt64()];
-    box_.reorder_child(button, pos);
+  for (const auto* ws_ptr : my_workspaces) {
+    const auto& ws = *ws_ptr;
+    const auto ws_id = ws.isMember("id") ? ws["id"].asUInt64() : 0;
+
+    auto it =
+        std::find_if(workspaces_.begin(), workspaces_.end(),
+                     [ws_id](const std::unique_ptr<Workspace>& w) { return w->id() == ws_id; });
+
+    if (it == workspaces_.end()) {
+      createWorkspace(ws);
+      it = workspaces_.end() - 1;
+    }
+
+    std::vector<Json::Value> windows_vec(all_windows.begin(), all_windows.end());
+    const auto windows_str = getWindowsRepresentation(ws);
+    (*it)->update(ws, windows_vec, windows_str, my_workspaces.size());
+  }
+
+  for (auto pos_it = my_workspaces.cbegin(); pos_it != my_workspaces.cend(); ++pos_it) {
+    const auto& ws = **pos_it;
+    const auto ws_id = ws.isMember("id") ? ws["id"].asUInt64() : 0;
+
+    const auto pos = static_cast<int>(std::distance(my_workspaces.cbegin(), pos_it));
+
+    auto it =
+        std::find_if(workspaces_.begin(), workspaces_.end(),
+                     [ws_id](const std::unique_ptr<Workspace>& w) { return w->id() == ws_id; });
+    if (it != workspaces_.end()) {
+      box_.reorder_child((*it)->button(), pos);
+    }
   }
 }
 
@@ -275,36 +179,10 @@ void Workspaces::update() {
   AModule::update();
 }
 
-Gtk::Button& Workspaces::addButton(const Json::Value& ws) {
-  std::string name;
-  if (ws["name"]) {
-    name = ws["name"].asString();
-  } else {
-    name = std::to_string(ws["idx"].asUInt());
-  }
-
-  auto pair = buttons_.emplace(ws["id"].asUInt64(), name);
-  auto&& button = pair.first->second;
-  box_.pack_start(button, false, false, 0);
-  button.set_relief(Gtk::RELIEF_NONE);
-  if (!config_["disable-click"].asBool()) {
-    const auto id = ws["id"].asUInt64();
-    button.signal_pressed().connect([=] {
-      try {
-        // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
-        Json::Value request(Json::objectValue);
-        auto& action = (request["Action"] = Json::Value(Json::objectValue));
-        auto& focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
-        auto& reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
-        reference["Id"] = id;
-
-        IPC::send(request);
-      } catch (const std::exception& e) {
-        spdlog::error("Error switching workspace: {}", e.what());
-      }
-    });
-  }
-  return button;
+void Workspaces::createWorkspace(const Json::Value& workspace_data) {
+  auto ws = std::make_unique<Workspace>(workspace_data, *this);
+  box_.pack_start(ws->button(), false, false, 0);
+  workspaces_.push_back(std::move(ws));
 }
 
 // --- Start New Helper Functions ---
@@ -383,18 +261,44 @@ std::string Workspaces::getRewrite(const std::string& app_id, const std::string&
   substitutions["title"] = title;
   return util::rewriteString(m_windowRewriteDefault, substitutions);
 }
+
+// Build the "{windows}" replacement string for a workspace using window-rewrite rules.
+std::string Workspaces::getWindowsRepresentation(const Json::Value& ws) {
+  std::vector<std::string> window_reps;
+  auto collect = [&](const Json::Value& win) {
+    std::string app_id =
+        win.isMember("app_id") && win["app_id"].isString() ? win["app_id"].asString() : "";
+    std::string title =
+        win.isMember("title") && win["title"].isString() ? win["title"].asString() : "";
+    if (!app_id.empty() || !title.empty()) {
+      window_reps.push_back(getRewrite(app_id, title));
+    }
+  };
+
+  if (ws.isMember("windows") && ws["windows"].isArray()) {
+    for (const auto& win : ws["windows"]) {
+      collect(win);
+    }
+  } else {
+    // Fallback: collect from global windows list by matching workspace_id.
+    for (const auto& win : gIPC->windows()) {
+      if (!win.isMember("workspace_id")) continue;
+      if (win["workspace_id"].asUInt64() != ws["id"].asUInt64()) continue;
+      collect(win);
+    }
+  }
+
+  return fmt::format("{}", fmt::join(window_reps, m_formatWindowSeparator));
+}
 // --- End New Helper Functions ---
 
-std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws) {
+std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws) const {
   const auto& icons = config_["format-icons"];
   if (!icons) return value;
 
   if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
-
   if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
-
   if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
-
   if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
 
   if (ws["name"]) {
@@ -458,7 +362,7 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
   return true;
 }
 
-void Workspaces::sortWorkspaces(std::vector<Json::Value>& workspaces) const {
+void Workspaces::sortWorkspaces(std::vector<const Json::Value*>& workspaces) const {
   auto get_name = [](const Json::Value& ws) -> std::string {
     if (ws["name"]) return ws["name"].asString();
     return std::to_string(ws["idx"].asUInt());
@@ -471,14 +375,16 @@ void Workspaces::sortWorkspaces(std::vector<Json::Value>& workspaces) const {
 
   const bool names_are_numeric =
       std::all_of(workspaces.begin(), workspaces.end(),
-                  [&](const auto& ws) { return is_numeric(get_name(ws)); });
+                  [&](const auto* ws) { return is_numeric(get_name(*ws)); });
 
   auto compare_numeric_strings = [](const std::string& a, const std::string& b) {
     if (a.size() != b.size()) return a.size() < b.size();
     return a < b;
   };
 
-  std::sort(workspaces.begin(), workspaces.end(), [&](const auto& a, const auto& b) {
+  std::sort(workspaces.begin(), workspaces.end(), [&](const auto* ap, const auto* bp) {
+    const auto& a = *ap;
+    const auto& b = *bp;
     if (sort_by_id_) {
       return a["id"].asUInt64() < b["id"].asUInt64();
     }
