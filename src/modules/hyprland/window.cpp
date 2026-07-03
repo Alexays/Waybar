@@ -1,5 +1,6 @@
 #include "modules/hyprland/window.hpp"
 
+#include <fmt/format.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
@@ -53,8 +54,15 @@ auto Window::update() -> void {
   std::string label_text;
   if (!format_.empty()) {
     label_.show();
+
+    // If the focused window name is empty and fallback is configured, use fallback text
+    std::string displayTitle = windowName;
+    if (displayTitle.empty() && config_["fallback"].isString()) {
+      displayTitle = config_["fallback"].asString();
+    }
+
     label_text = waybar::util::rewriteString(
-        fmt::format(fmt::runtime(format_), fmt::arg("title", windowName),
+        fmt::format(fmt::runtime(format_), fmt::arg("title", displayTitle),
                     fmt::arg("initialTitle", windowData_.initial_title),
                     fmt::arg("class", windowData_.class_name),
                     fmt::arg("initialClass", windowData_.initial_class_name)),
