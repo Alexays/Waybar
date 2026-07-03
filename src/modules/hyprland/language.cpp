@@ -77,9 +77,9 @@ auto Language::update() -> void {
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(layoutName);
+    setLabelMarkup(layoutName);
     if (tooltip_enabled) {
-      label_.set_tooltip_markup(tooltipContent);
+      setTooltipMarkup(tooltipContent);
     }
   } else {
     label_.hide();
@@ -93,12 +93,11 @@ auto Language::update() -> void {
     } else {
       tooltipFormat = "{long}";
     }
-    auto tooltipText = trim(fmt::format(
-        fmt::runtime(tooltipFormat),
-        fmt::arg("long", layout_.full_name),
-        fmt::arg("short", layout_.short_name),
-        fmt::arg("shortDescription", layout_.short_description),
-        fmt::arg("variant", layout_.variant)));
+    auto tooltipText =
+        trim(fmt::format(fmt::runtime(tooltipFormat), fmt::arg("long", layout_.full_name),
+                         fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
     label_.set_tooltip_text(tooltipText);
   } else {
     label_.set_tooltip_text("");
@@ -185,7 +184,8 @@ void Language::initLanguage() {
 
 auto Language::removeXkbLayoutCssClass() -> void {
   label_.get_style_context()->remove_class(layout_.short_name);
-  spdlog::debug("hyprland language try to remove currently short_name css class {}", layout_.short_name);
+  spdlog::debug("hyprland language try to remove currently short_name css class {}",
+                layout_.short_name);
 }
 auto Language::addXkbLayoutCssClass() -> void {
   label_.get_style_context()->add_class(layout_.short_name);
