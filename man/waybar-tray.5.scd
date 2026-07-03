@@ -49,6 +49,12 @@ Addressed by *tray*
 		- *string*: Custom icon name or path to icon file ++
 		- *false*: Hide this application's tray icon completely
 
+*orders*: ++
+	typeof: object ++
+	Orders for items to be placed in tray. When not set, orders are controlled by DBus. ++
+	Key: name of item. ++
+	Value: integer, higher value means to place this item to the right.
+
 # EXAMPLES
 
 ```
@@ -59,6 +65,9 @@ Addressed by *tray*
 		"blueman": "bluetooth",
 		"TelegramDesktop": "$HOME/.local/share/icons/hicolor/16x16/apps/telegram.png",
 		"spotify": false
+	},
+	"orders": {
+		"wechat": 99
 	}
 }
 
