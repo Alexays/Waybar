@@ -11,9 +11,10 @@ The *cpu* module displays the current CPU utilization.
 # CONFIGURATION
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 10 ++
-	The interval in which the information gets polled.
+	The interval in which the information gets polled. ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms.
 
 *format*: ++
 	typeof: string  ++
@@ -90,6 +91,12 @@ The *cpu* module displays the current CPU utilization.
 # FORMAT REPLACEMENTS
 
 *{load}*: Current CPU load.
+
+*{load1}*: CPU load average over the last minute.
+
+*{load5}*: CPU load average over the last 5 minutes.
+
+*{load15}*: CPU load average over the last 15 minutes.
 
 *{usage}*: Current overall CPU usage.
 

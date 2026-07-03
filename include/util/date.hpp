@@ -15,7 +15,7 @@
 namespace date {
 #if HAVE_CHRONO_TIMEZONES
 using namespace std::chrono;
-using namespace std;
+using std::format;
 #else
 
 using system_clock = std::chrono::system_clock;
@@ -73,5 +73,3 @@ struct fmt::formatter<date::zoned_time<Duration, TimeZonePtr>> {
   }
 };
 #endif
-
-using namespace date;

@@ -1,6 +1,6 @@
 # vim: ft=Dockerfile
 
-FROM debian:sid
+FROM debian:sid-slim
 
 RUN apt update && \
     apt install --no-install-recommends --no-install-suggests -y \
