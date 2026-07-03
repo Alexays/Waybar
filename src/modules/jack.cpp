@@ -53,7 +53,7 @@ std::string JACK::JACKState() {
 auto JACK::update() -> void {
   std::string format;
   std::string state = JACKState();
-  float latency = 1000 * (float)bufsize_ / (float)samplerate_;
+  float latency = samplerate_ > 0 ? 1000.0f * (float)bufsize_ / (float)samplerate_ : 0.0f;
 
   if (label_.get_style_context()->has_class("xrun")) {
     label_.get_style_context()->remove_class("xrun");
@@ -91,16 +91,19 @@ auto JACK::update() -> void {
 }
 
 int JACK::bufSize(jack_nframes_t size) {
+  std::lock_guard<std::mutex> lock(mutex_);
   bufsize_ = size;
   return 0;
 }
 
 int JACK::sampleRate(jack_nframes_t rate) {
+  std::lock_guard<std::mutex> lock(mutex_);
   samplerate_ = rate;
   return 0;
 }
 
 int JACK::xrun() {
+  std::lock_guard<std::mutex> lock(mutex_);
   xruns_ += 1;
   state_ = "xrun";
   return 0;

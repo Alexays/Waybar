@@ -155,3 +155,7 @@ bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {
   return config_["critical-threshold"].isInt() &&
          temperature_c >= config_["critical-threshold"].asInt();
 }
+
+void waybar::modules::Temperature::suspend() { thread_.pause(); }
+
+void waybar::modules::Temperature::resume() { thread_.resume(); }

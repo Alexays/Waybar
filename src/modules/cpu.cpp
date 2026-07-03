@@ -46,12 +46,14 @@ auto waybar::modules::Cpu::update() -> void {
     store.push_back(fmt::arg("max_frequency", max_frequency));
     store.push_back(fmt::arg("min_frequency", min_frequency));
     store.push_back(fmt::arg("avg_frequency", avg_frequency));
+    std::vector<std::string> arg_names;
+    arg_names.reserve(cpu_usage.size() * 2);
     for (size_t i = 1; i < cpu_usage.size(); ++i) {
       auto core_i = i - 1;
-      auto core_format = fmt::format("usage{}", core_i);
-      store.push_back(fmt::arg(core_format.c_str(), cpu_usage[i]));
-      auto icon_format = fmt::format("icon{}", core_i);
-      store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
+      arg_names.push_back(fmt::format("usage{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), cpu_usage[i]));
+      arg_names.push_back(fmt::format("icon{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), getIcon(cpu_usage[i], icons)));
     }
     label_.set_markup(fmt::vformat(format, store));
 

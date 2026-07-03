@@ -10,7 +10,7 @@ namespace waybar::modules::sway {
 
 // Helper function to assign a number to a workspace, just like sway. In fact
 // this is taken quite verbatim from `sway/ipc-json.c`.
-int Workspaces::convertWorkspaceNameToNum(std::string name) {
+int Workspaces::convertWorkspaceNameToNum(const std::string& name) {
   if (isdigit(name[0]) != 0) {
     errno = 0;
     char* endptr = nullptr;
@@ -229,7 +229,10 @@ bool Workspaces::filterButtons() {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
                            [it](const auto& node) { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end() ||
-        (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
+        ((*ws).isMember("target_output") ? (*ws)["target_output"].asString() != bar_.output->name &&
+                                               (*ws)["target_output"].asString() != ""
+                                         : !config_["all-outputs"].asBool() &&
+                                               (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
       needReorder = true;
     } else {
@@ -369,11 +372,14 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
                                    node["name"].asString(), node["target_output"].asString(),
                                    "--no-auto-back-and-forth", node["name"].asString()));
         } else {
-          ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
-                                                config_["disable-auto-back-and-forth"].asBool()
-                                                    ? "--no-auto-back-and-forth"
-                                                    : "",
-                                                node["name"].asString()));
+          std::string flag = config_["disable-auto-back-and-forth"].asBool()
+                                ? "--no-auto-back-and-forth"
+                                : "";
+          if (node["num"].asInt() >= 0) {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
+          } else {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
+          }
         }
       } catch (const std::exception& e) {
         spdlog::error("Workspaces: {}", e.what());
@@ -487,7 +493,7 @@ std::string Workspaces::getCycleWorkspace(std::vector<Json::Value>::iterator it,
   return (*it)["name"].asString();
 }
 
-std::string Workspaces::trimWorkspaceName(std::string name) {
+std::string Workspaces::trimWorkspaceName(const std::string& name) {
   std::size_t found = name.find(':');
   if (found != std::string::npos) {
     return name.substr(found + 1);

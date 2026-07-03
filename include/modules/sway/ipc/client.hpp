@@ -12,8 +12,9 @@
 #include <string>
 
 #include "ipc.hpp"
-#include "util/sleeper_thread.hpp"
 #include "util/SafeSignal.hpp"
+#include "util/scoped_fd.hpp"
+#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
@@ -45,8 +46,8 @@ class Ipc {
   struct ipc_response send(int fd, uint32_t type, const std::string& payload = "");
   struct ipc_response recv(int fd);
 
-  int fd_;
-  int fd_event_;
+  util::ScopedFd fd_;
+  util::ScopedFd fd_event_;
   std::mutex mutex_;
   util::SleeperThread thread_;
 };

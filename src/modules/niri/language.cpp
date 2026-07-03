@@ -32,6 +32,7 @@ void Language::updateFromIPC() {
   auto ipcLock = gIPC->lockData();
 
   layouts_.clear();
+  layouts_.reserve(gIPC->keyboardLayoutNames().size());
   for (const auto& fullName : gIPC->keyboardLayoutNames()) layouts_.push_back(getLayout(fullName));
 
   current_idx_ = gIPC->keyboardLayoutCurrent();
