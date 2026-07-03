@@ -110,6 +110,7 @@ With icons, this sets icons for the 4 layouts available in rivertile:
 
 - *#layout*
 - *#layout.focused* Applied when the output this module's bar belongs to is focused.
+- *#layout.<layout>* Applied when the output this module's bar belongs uses this layout.
 
 # SEE ALSO
 

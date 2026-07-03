@@ -26,9 +26,7 @@ auto waybar::modules::Cpu::update() -> void {
   auto [load1, load5, load15] = Load::getLoad();
   auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
   auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
-  if (tooltipEnabled()) {
-    label_.set_tooltip_text(tooltip);
-  }
+
   auto format = format_;
   auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
   auto state = getState(total_usage);
@@ -43,19 +41,28 @@ auto waybar::modules::Cpu::update() -> void {
     auto icons = std::vector<std::string>{state};
     fmt::dynamic_format_arg_store<fmt::format_context> store;
     store.push_back(fmt::arg("load", load1));
+    store.push_back(fmt::arg("load1", load1));
+    store.push_back(fmt::arg("load5", load5));
+    store.push_back(fmt::arg("load15", load15));
     store.push_back(fmt::arg("usage", total_usage));
     store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
     store.push_back(fmt::arg("max_frequency", max_frequency));
     store.push_back(fmt::arg("min_frequency", min_frequency));
     store.push_back(fmt::arg("avg_frequency", avg_frequency));
+    std::vector<std::string> arg_names;
+    arg_names.reserve(cpu_usage.size() * 2);
+    std::string all_icons;
     for (size_t i = 1; i < cpu_usage.size(); ++i) {
       auto core_i = i - 1;
-      auto core_format = fmt::format("usage{}", core_i);
-      store.push_back(fmt::arg(core_format.c_str(), cpu_usage[i]));
-      auto icon_format = fmt::format("icon{}", core_i);
-      store.push_back(fmt::arg(icon_format.c_str(), getIcon(cpu_usage[i], icons)));
+      arg_names.push_back(fmt::format("usage{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), cpu_usage[i]));
+      auto core_icon = getIcon(cpu_usage[i], icons);
+      all_icons += core_icon;
+      arg_names.push_back(fmt::format("icon{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), core_icon));
     }
-    label_.set_markup(fmt::vformat(format, store));
+    store.push_back(fmt::arg("icons", all_icons));
+    updateLabelAndTooltipForState(state, format, tooltip, store);
   }
 
   // Call parent update

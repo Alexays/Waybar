@@ -9,41 +9,37 @@
 #include <vector>
 
 #include "modules/hyprland/backend.hpp"
-#include "util/sanitize_str.hpp"
 
 namespace waybar::modules::hyprland {
 
 WindowCount::WindowCount(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AAppIconLabel(config, "windowcount", id, "{count}", 0, true), bar_(bar) {
-  modulesReady = true;
+    : AAppIconLabel(config, "windowcount", id, "{count}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   separateOutputs_ =
       config.isMember("separate-outputs") ? config["separate-outputs"].asBool() : true;
-
-  if (!gIPC) {
-    gIPC = std::make_unique<IPC>();
-  }
 
   queryActiveWorkspace();
   update();
   dp.emit();
 
   // register for hyprland ipc
-  gIPC->registerForIPC("fullscreen", this);
-  gIPC->registerForIPC("workspace", this);
-  gIPC->registerForIPC("focusedmon", this);
-  gIPC->registerForIPC("openwindow", this);
-  gIPC->registerForIPC("closewindow", this);
-  gIPC->registerForIPC("movewindow", this);
+  m_ipc.registerForIPC("fullscreen", this);
+  m_ipc.registerForIPC("workspace", this);
+  m_ipc.registerForIPC("focusedmon", this);
+  m_ipc.registerForIPC("openwindow", this);
+  m_ipc.registerForIPC("closewindow", this);
+  m_ipc.registerForIPC("movewindow", this);
 }
 
 WindowCount::~WindowCount() {
-  gIPC->unregisterForIPC(this);
+  m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
 }
 
 auto WindowCount::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
+
+  queryActiveWorkspace();
 
   std::string format = config_["format"].asString();
   std::string formatEmpty = config_["format-empty"].asString();
@@ -62,7 +58,7 @@ auto WindowCount::update() -> void {
   } else if (!format.empty()) {
     label_.set_markup(fmt::format(fmt::runtime(format), workspace_.windows));
   } else {
-    label_.set_text(fmt::format("{}", workspace_.windows));
+    label_.set_markup(fmt::format("{}", workspace_.windows));
   }
 
   label_.show();
@@ -70,7 +66,7 @@ auto WindowCount::update() -> void {
 }
 
 auto WindowCount::getActiveWorkspace() -> Workspace {
-  const auto workspace = gIPC->getSocket1JsonReply("activeworkspace");
+  const auto workspace = m_ipc.getSocket1JsonReply("activeworkspace");
 
   if (workspace.isObject()) {
     return Workspace::parse(workspace);
@@ -80,24 +76,31 @@ auto WindowCount::getActiveWorkspace() -> Workspace {
 }
 
 auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspace {
-  const auto monitors = gIPC->getSocket1JsonReply("monitors");
+  const auto monitors = m_ipc.getSocket1JsonReply("monitors");
   if (monitors.isArray()) {
-    auto monitor = std::find_if(monitors.begin(), monitors.end(), [&](Json::Value monitor) {
-      return monitor["name"] == monitorName;
-    });
+    auto monitor = std::ranges::find_if(
+        monitors, [&](const Json::Value& monitor) { return monitor["name"] == monitorName; });
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
-      return Workspace{-1, 0, false};
+      return Workspace{
+          .id = -1,
+          .windows = 0,
+          .hasfullscreen = false,
+      };
     }
     const int id = (*monitor)["activeWorkspace"]["id"].asInt();
 
-    const auto workspaces = gIPC->getSocket1JsonReply("workspaces");
+    const auto workspaces = m_ipc.getSocket1JsonReply("workspaces");
     if (workspaces.isArray()) {
-      auto workspace = std::find_if(workspaces.begin(), workspaces.end(),
-                                    [&](Json::Value workspace) { return workspace["id"] == id; });
+      auto workspace = std::ranges::find_if(
+          workspaces, [&](const Json::Value& workspace) { return workspace["id"] == id; });
       if (workspace == std::end(workspaces)) {
         spdlog::warn("No workspace with id {}", id);
-        return Workspace{-1, 0, false};
+        return Workspace{
+            .id = -1,
+            .windows = 0,
+            .hasfullscreen = false,
+        };
       }
       return Workspace::parse(*workspace);
     };
@@ -108,15 +111,13 @@ auto WindowCount::getActiveWorkspace(const std::string& monitorName) -> Workspac
 
 auto WindowCount::Workspace::parse(const Json::Value& value) -> WindowCount::Workspace {
   return Workspace{
-      value["id"].asInt(),
-      value["windows"].asInt(),
-      value["hasfullscreen"].asBool(),
+      .id = value["id"].asInt(),
+      .windows = value["windows"].asInt(),
+      .hasfullscreen = value["hasfullscreen"].asBool(),
   };
 }
 
 void WindowCount::queryActiveWorkspace() {
-  std::lock_guard<std::mutex> lg(mutex_);
-
   if (separateOutputs_) {
     workspace_ = getActiveWorkspace(this->bar_.output->name);
   } else {
@@ -124,10 +125,7 @@ void WindowCount::queryActiveWorkspace() {
   }
 }
 
-void WindowCount::onEvent(const std::string& ev) {
-  queryActiveWorkspace();
-  dp.emit();
-}
+void WindowCount::onEvent(const std::string& ev) { dp.emit(); }
 
 void WindowCount::setClass(const std::string& classname, bool enable) {
   if (enable) {

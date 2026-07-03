@@ -27,9 +27,20 @@ Addressed by *temperature*
 	The path of the hwmon-directory of the device, e.g. */sys/devices/pci0000:00/0000:00:18.3/hwmon*. (Note that the subdirectory *hwmon/hwmon#*, where *#* is a number is not part of the path!) Has to be used together with *input-filename*.
 	This can also be an array of strings, for which, it just works like *hwmon-path*.
 
+*hwmon-name*: ++
+	typeof: string ++
+	Select a hwmon device by its name (from /sys/class/hwmon/\*/name), e.g. *amdgpu*.
+	Requires *input-filename* to be set.
+	Cannot be used together with *hwmon-path* or *hwmon-path-abs*.
+
 *input-filename*: ++
 	typeof: string ++
-	The temperature filename of your *hwmon-path-abs*, e.g. *temp1_input*
+	The temperature filename of your *hwmon-path-abs* (also used by *hwmon-by-name*), e.g. *temp1_input*
+
+*hwmon-by-name*: ++
+	typeof: string ++
+	The substring to search for in */sys/class/hwmon/hwmonX/name* (where hwmonX is any folder in */sys/class/hwmon/*).
+	Waybar will search for every directory in */sys/class/hwmon/* and uses the directory in which the *name* matches *hwmon-by-name*.
 
 *warning-threshold*: ++
 	typeof: integer ++
@@ -40,7 +51,7 @@ Addressed by *temperature*
 	The threshold before it is considered critical (Celsius).
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 10 ++
 	The interval in which the information gets polled.
 
@@ -160,4 +171,5 @@ Addressed by *temperature*
 # STYLE
 
 - *#temperature*
+- *#temperature.warning*
 - *#temperature.critical*
