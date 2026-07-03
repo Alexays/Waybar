@@ -24,6 +24,10 @@ Addressed by *mango/language*
 	The value is used as the replacement for *{}* in the main *format*.
 	This option can be repeated for multiple languages.
 
+*format-<lang>-<variant>*: ++
+	typeof: string ++
+	Like *format-<lang>* but also matches the layout variant, taking precedence over *format-<lang>* when both the language and variant match.
+
 *menu*: ++
 	typeof: string ++
 	Action that pops up a menu.

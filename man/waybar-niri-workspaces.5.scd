@@ -32,6 +32,11 @@ Addressed by *niri/workspaces*
 	default: false ++
 	Sort workspaces by id, taking precedence over other sort options.
 
+*sort-by-number*: ++
+	typeof: bool ++
+	default: false ++
+	Deprecated alias for *sort-by-id*; prefer *sort-by-id* instead.
+
 If none of the sorting options are enabled, workspaces keep their output/index order.
 
 *format*: ++
@@ -57,6 +62,11 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 	typeof: bool ++
 	default: false ++
 	If set to true, only the active or focused workspace will be shown.
+
+*hide-empty*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, empty workspaces will not be shown.
 
 *on-update*: ++
 	typeof: string ++

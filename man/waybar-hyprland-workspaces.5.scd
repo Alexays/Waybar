@@ -118,6 +118,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to true, only persistent workspaces will be shown on bar.
 
+*persistent-workspaces*: ++
+	typeof: object ++
+	default: empty ++
+	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++

@@ -70,6 +70,11 @@ Addressed by *sway/workspaces*
 	default: false ++
 	If set to true. Only focused workspaces will be shown.
 
+*ignore-workspaces*: ++
+	typeof: array ++
+	default: empty ++
+	List of regular expressions. Workspaces whose name matches any of the given patterns are not shown.
+
 *persistent-workspaces*: ++
 	typeof: json (see below) ++
 	default: empty ++

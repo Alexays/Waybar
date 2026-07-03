@@ -21,6 +21,10 @@ Addressed by *niri/language*
 	typeof: string++
 	Provide an alternative name to display per language where <lang> is the language of your choosing. Can be passed multiple times with multiple languages as shown by the example below.
 
+*format-<lang>-<variant>* ++
+	typeof: string ++
+	Like *format-<lang>* but also matches the layout variant, taking precedence over *format-<lang>* when both the language and variant match.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.

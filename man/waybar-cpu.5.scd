@@ -83,6 +83,18 @@ The *cpu* module displays the current CPU utilization.
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*.
+
+*format-<state>*: ++
+	typeof: string ++
+	The format to use when the given *state* (see *states*) is active. Supports the same replacements as *format*.
+
+*tooltip-format-<state>*: ++
+	typeof: string ++
+	The tooltip format to use when the given *state* (see *states*) is active. Takes precedence over *tooltip-format*.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++

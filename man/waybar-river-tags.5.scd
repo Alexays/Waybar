@@ -26,6 +26,14 @@ Addressed by *river/tags*
 	default: false ++
 	If set to false, you can left-click to set focused tag. Right-click to toggle tag focus. If set to true this behaviour is disabled.
 
+*set-tags*: ++
+	typeof: array ++
+	An array of tag bitmasks, one per tag button. Left-clicking a tag sets the focused tags to the corresponding bitmask instead of the single tag. Requires *disable-click* to be false.
+
+*toggle-tags*: ++
+	typeof: array ++
+	An array of tag bitmasks, one per tag button. Right-clicking a tag toggles the corresponding bitmask in the focused tags instead of the single tag. Requires *disable-click* to be false.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++

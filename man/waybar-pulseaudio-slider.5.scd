@@ -48,6 +48,11 @@ The volume can be controlled by dragging the slider across the bar or clicking o
 	default: sink ++
 	The audio target to control. Can be either `sink` (output/speakers) or `source` (input/microphone).
 
+*ignored-sinks*: ++
+    typeof: array ++
+    default: empty ++
+    A list of sink descriptions to ignore when tracking the default sink, so switching to those sinks does not update the slider.
+
 # EXAMPLES
 
 ```
