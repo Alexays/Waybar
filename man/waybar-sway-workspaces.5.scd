@@ -22,6 +22,11 @@ Addressed by *sway/workspaces*
 	default: {value} ++
 	The format, how information should be displayed.
 
+*format-for-negative-index*: ++
+	typeof: string ++
+	default: *format* ++
+	An alternative format, which will be used for workspaces with no explict or negative index ("num" in sway terms). Requires *format* to be set.
+
 *format-icons*: ++
 	typeof: array ++
 	Based on the workspace name and state, the corresponding icon gets selected. See *icons*.
@@ -30,6 +35,11 @@ Addressed by *sway/workspaces*
 	typeof: bool ++
 	default: false ++
 	If set to false, you can scroll to cycle through workspaces. If set to true this behaviour is disabled.
+
+*reverse-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, scrolling up will switch to the previous workspace and scrolling down will switch to the next workspace. If set to true, the behavior will be reversed.
 
 *disable-click*: ++
 	typeof: bool ++
@@ -174,12 +184,18 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
   "format": "<span size='larger'>{name}</span> {windows}",
   "format-window-separator": " | ",
   "window-rewrite-default": "{name}",
-  "window-format": "<span color='#e0e0e0'>{name}</span>",
   "window-rewrite": {
     "class<firefox>": "",
     "class<kitty>": "k",
 	"title<.* - (.*) - VSCodium>": "codium $1"  // captures part of the window title and formats it into output
   }
+}
+```
+
+```
+"sway/workspaces": {
+	"format": "{index} - {name}",
+	"format-for-negative-index": "{name}"
 }
 ```
 
