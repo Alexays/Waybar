@@ -197,7 +197,7 @@ auto waybar::modules::Custom::update() -> void {
           (str.empty() && image_path_.empty() && image_name_.empty())) {
         event_box_.hide();
       } else {
-        label_.set_markup(str);
+        setLabelMarkup(str);
         if (tooltipEnabled()) {
           std::string tooltip_markup;
           if (tooltip_format_enabled_) {
@@ -212,10 +212,7 @@ auto waybar::modules::Custom::update() -> void {
             tooltip_markup = tooltip_;
           }
 
-          if (last_tooltip_markup_ != tooltip_markup) {
-            label_.set_tooltip_markup(tooltip_markup);
-            last_tooltip_markup_ = std::move(tooltip_markup);
-          }
+          setTooltipMarkup(tooltip_markup);
         }
         auto style = label_.get_style_context();
         auto classes = style->list_classes();

@@ -187,18 +187,14 @@ void PowerProfilesDaemon::switchToProfile(std::string const& str) {
 auto PowerProfilesDaemon::update() -> void {
   if (connected_ && activeProfile_ != availableProfiles_.end()) {
     auto profile = (*activeProfile_);
-    // Set label
-    fmt::dynamic_format_arg_store<fmt::format_context> store;
-    store.push_back(fmt::arg("profile", profile.name));
-    // Legacy placeholder, kept for backward compatibility with existing configs.
-    store.push_back(fmt::arg("driver", profile.driver));
-    store.push_back(fmt::arg("cpu_driver", profile.cpuDriver));
-    store.push_back(fmt::arg("platform_driver", profile.platformDriver));
-    store.push_back(fmt::arg("icon", getIcon(0, profile.name)));
-    label_.set_markup(fmt::vformat(format_, store));
-    if (tooltipEnabled()) {
-      label_.set_tooltip_markup(fmt::vformat(tooltipFormat_, store));
-    }
+    // Set label and tooltip
+    updateLabelAndTooltip(format_, tooltipFormat_, fmt::arg("profile", profile.name),
+                          // Legacy placeholder, kept for backward compatibility with existing
+                          // configs.
+                          fmt::arg("driver", profile.driver),
+                          fmt::arg("cpu_driver", profile.cpuDriver),
+                          fmt::arg("platform_driver", profile.platformDriver),
+                          fmt::arg("icon", getIcon(0, profile.name)));
 
     // Set CSS class
     if (!currentStyle_.empty()) {

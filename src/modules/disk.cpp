@@ -132,10 +132,10 @@ auto waybar::modules::Disk::update() -> void {
     event_box_.hide();
   }
 
-  label_.set_markup(label);
+  setLabelMarkup(label);
 
   if (tooltipEnabled() && !tooltip_label.empty()) {
-    label_.set_tooltip_markup(tooltip_label);
+    setTooltipMarkup(tooltip_label);
   }
   // Call parent update
   ALabel::update();

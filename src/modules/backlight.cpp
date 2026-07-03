@@ -55,24 +55,10 @@ auto waybar::modules::Backlight::update() -> void {
         }
       }
 
-      std::string desc =
-          fmt::format(fmt::runtime(current_format), fmt::arg("percent", percent),
-                      fmt::arg("percent_exp", percent_exp), fmt::arg("icon", getIcon(percent)),
-                      fmt::arg("icon_exp", getIcon(percent_exp)));
-      label_.set_markup(desc);
-      if (tooltipEnabled()) {
-        std::string tooltip_format;
-        if (config_["tooltip-format"].isString()) {
-          tooltip_format = config_["tooltip-format"].asString();
-        }
-        if (!tooltip_format.empty()) {
-          label_.set_tooltip_markup(fmt::format(fmt::runtime(tooltip_format),
-                                                fmt::arg("percent", percent),
-                                                fmt::arg("icon", getIcon(percent))));
-        } else {
-          label_.set_tooltip_markup(desc);
-        }
-      }
+      updateLabelAndTooltip(current_format, current_format, fmt::arg("percent", percent),
+                            fmt::arg("percent_exp", percent_exp),
+                            fmt::arg("icon", getIcon(percent)),
+                            fmt::arg("icon_exp", getIcon(percent_exp)));
     } else {
       event_box_.hide();
     }

@@ -67,7 +67,7 @@ auto Window::update() -> void {
                     fmt::arg("class", windowData_.class_name),
                     fmt::arg("initialClass", windowData_.initial_class_name)),
         config_["rewrite"]);
-    label_.set_markup(label_text);
+    setLabelMarkup(label_text);
   } else {
     label_.hide();
   }
@@ -78,13 +78,12 @@ auto Window::update() -> void {
       tooltip_format = config_["tooltip-format"].asString();
     }
     if (!tooltip_format.empty()) {
-      label_.set_tooltip_markup(
-          fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
-                      fmt::arg("initialTitle", windowData_.initial_title),
-                      fmt::arg("class", windowData_.class_name),
-                      fmt::arg("initialClass", windowData_.initial_class_name)));
+      setTooltipMarkup(fmt::format(fmt::runtime(tooltip_format), fmt::arg("title", windowName),
+                                   fmt::arg("initialTitle", windowData_.initial_title),
+                                   fmt::arg("class", windowData_.class_name),
+                                   fmt::arg("initialClass", windowData_.initial_class_name)));
     } else if (!label_text.empty()) {
-      label_.set_tooltip_markup(label_text);
+      setTooltipMarkup(label_text);
     }
   }
 
@@ -222,9 +221,9 @@ void Window::queryActiveWorkspace() {
   std::vector<Json::Value> visibleWindows;
   std::ranges::copy_if(workspaceWindows, std::back_inserter(visibleWindows),
                        [&](const Json::Value& window) { return !window["hidden"].asBool(); });
-  solo_ = 1 == std::count_if(
-                   visibleWindows.begin(), visibleWindows.end(),
-                   [&](const Json::Value& window) { return !window["floating"].asBool(); });
+  solo_ =
+      1 == std::count_if(visibleWindows.begin(), visibleWindows.end(),
+                         [&](const Json::Value& window) { return !window["floating"].asBool(); });
   allFloating_ = std::ranges::all_of(
       visibleWindows, [&](const Json::Value& window) { return window["floating"].asBool(); });
   fullscreen_ = windowData_.fullscreen;
