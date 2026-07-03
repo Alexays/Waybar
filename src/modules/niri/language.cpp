@@ -32,6 +32,7 @@ void Language::updateFromIPC() {
   auto ipcLock = gIPC->lockData();
 
   layouts_.clear();
+  layouts_.reserve(gIPC->keyboardLayoutNames().size());
   for (const auto& fullName : gIPC->keyboardLayoutNames()) layouts_.push_back(getLayout(fullName));
 
   current_idx_ = gIPC->keyboardLayoutCurrent();
@@ -84,7 +85,7 @@ void Language::doUpdate() {
 
   spdlog::debug("niri language formatted layout name {}", layoutName);
 
-  if (!format_.empty()) {
+  if (!layoutName.empty()) {
     label_.show();
     label_.set_markup(layoutName);
   } else {

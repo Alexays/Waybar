@@ -3,19 +3,14 @@
 #include <glibmm/dispatcher.h>
 #include <sigc++/signal.h>
 
+#include <cstddef>
 #include <functional>
 #include <mutex>
 #include <queue>
-#include <cstddef>
 #include <thread>
 #include <tuple>
 #include <type_traits>
 #include <utility>
-
-#ifdef __OpenBSD__
-#define SIGRTMIN SIGUSR1 - 1
-#define SIGRTMAX SIGUSR1 + 1
-#endif
 
 namespace waybar {
 

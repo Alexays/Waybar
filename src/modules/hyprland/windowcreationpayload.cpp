@@ -19,7 +19,7 @@ WindowCreationPayload::WindowCreationPayload(Json::Value const& client_data)
   clearWorkspaceName();
 }
 
-WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
+WindowCreationPayload::WindowCreationPayload(const std::string& workspace_name,
                                              WindowAddress window_address, WindowRepr window_repr)
     : m_window(std::move(window_repr)),
       m_windowAddress(std::move(window_address)),
@@ -28,9 +28,10 @@ WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
   clearWorkspaceName();
 }
 
-WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
-                                             WindowAddress window_address, std::string window_class,
-                                             std::string window_title, bool is_active)
+WindowCreationPayload::WindowCreationPayload(const std::string& workspace_name,
+                                             WindowAddress window_address,
+                                             const std::string& window_class,
+                                             const std::string& window_title, bool is_active)
     : m_window(std::make_pair(std::move(window_class), std::move(window_title))),
       m_windowAddress(std::move(window_address)),
       m_workspaceName(std::move(workspace_name)),

@@ -85,7 +85,8 @@ auto getInhibitors(const Json::Value& config) -> std::string {
   if (config["what"].isArray()) {
     inhibitors = checkInhibitor(config["what"][0].asString());
     for (decltype(config["what"].size()) i = 1; i < config["what"].size(); ++i) {
-      inhibitors += ":" + checkInhibitor(config["what"][i].asString());
+      inhibitors.append(":");
+      inhibitors.append(checkInhibitor(config["what"][i].asString()));
     }
     return inhibitors;
   }

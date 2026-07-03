@@ -72,14 +72,19 @@ class SleeperThread {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
     return condvar_.wait(lk, [this] {
-      return signal_.load(std::memory_order_relaxed) ||
-             !do_run_.load(std::memory_order_relaxed);
+      return signal_.load(std::memory_order_relaxed) || !do_run_.load(std::memory_order_relaxed);
     });
   }
 
   auto sleep_for(std::chrono::system_clock::duration dur) {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
+
+    condvar_.wait(lk, [this] {
+      return !is_paused_ || signal_.load(std::memory_order_relaxed) ||
+             !do_run_.load(std::memory_order_relaxed);
+    });
+
     constexpr auto max_time_point = std::chrono::steady_clock::time_point::max();
     auto wait_end = max_time_point;
     auto now = std::chrono::steady_clock::now();
@@ -87,8 +92,7 @@ class SleeperThread {
       wait_end = now + dur;
     }
     return condvar_.wait_until(lk, wait_end, [this] {
-      return signal_.load(std::memory_order_relaxed) ||
-             !do_run_.load(std::memory_order_relaxed);
+      return signal_.load(std::memory_order_relaxed) || !do_run_.load(std::memory_order_relaxed);
     });
   }
 
@@ -97,9 +101,14 @@ class SleeperThread {
           time_point) {
     std::unique_lock lk(mutex_);
     CancellationGuard cancel_lock;
-    return condvar_.wait_until(lk, time_point, [this] {
-      return signal_.load(std::memory_order_relaxed) ||
+
+    condvar_.wait(lk, [this] {
+      return !is_paused_ || signal_.load(std::memory_order_relaxed) ||
              !do_run_.load(std::memory_order_relaxed);
+    });
+
+    return condvar_.wait_until(lk, time_point, [this] {
+      return signal_.load(std::memory_order_relaxed) || !do_run_.load(std::memory_order_relaxed);
     });
   }
 
@@ -125,6 +134,17 @@ class SleeperThread {
     }
   }
 
+  void pause() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    is_paused_ = true;
+  }
+
+  void resume() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    is_paused_ = false;
+    condvar_.notify_all();
+  }
+
   ~SleeperThread() {
     connection_.disconnect();
     stop();
@@ -140,6 +160,7 @@ class SleeperThread {
   std::atomic<bool> do_run_ = true;
   std::atomic<bool> signal_ = false;
   sigc::connection connection_;
+  bool is_paused_{false};
 };
 
 }  // namespace waybar::util

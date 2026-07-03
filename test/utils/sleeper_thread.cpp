@@ -4,10 +4,11 @@
 #include <catch2/catch.hpp>
 #endif
 
-#include <chrono>
 #include <sys/wait.h>
-#include <thread>
 #include <unistd.h>
+
+#include <chrono>
+#include <thread>
 
 #include "util/sleeper_thread.hpp"
 
