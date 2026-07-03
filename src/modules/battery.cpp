@@ -706,7 +706,7 @@ auto waybar::modules::Battery::update() -> void {
   if (!adapter_.empty()) {
     std::ifstream(adapter_ / "online") >> adapter_online;
   }
-  if (status == "Full" && adapter_online) {
+  if (config_["full-at-plugged"].asBool() && status == "Full" && adapter_online) {
     status = "Plugged";
   }
   auto status_pretty = status;
