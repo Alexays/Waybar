@@ -635,6 +635,12 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
+  // Make task buttons distribute evenly across the available width.
+  if (config_["homogeneous"].isBool() && config_["homogeneous"].asBool()) {
+    box_.set_homogeneous(true);
+    box_.set_hexpand(true);
+  }
+
   struct wl_display* display = Client::inst()->wl_display;
   struct wl_registry* registry = wl_display_get_registry(display);
 
@@ -948,11 +954,18 @@ void Taskbar::handle_workspace_removed(struct ext_workspace_handle_v1* handle) {
 }
 
 void Taskbar::add_button(Gtk::Button& bt) {
-  /* Only let the buttons expand to fill the taskbar when "expand" is enabled
-   * and the bar is horizontal (see the Task constructor for details). */
+  /* When "homogeneous" is enabled, let every child expand and fill so the buttons
+   * divide the available width equally. Otherwise, only let the buttons expand to
+   * fill the taskbar when "expand" is enabled and the bar is horizontal (see the
+   * Task constructor for details). */
+  const bool homogeneous = config_["homogeneous"].isBool() && config_["homogeneous"].asBool();
   bool expand = config_["expand"].isBool() && config_["expand"].asBool();
   bool horizontal = bar_.orientation == Gtk::ORIENTATION_HORIZONTAL;
-  if (expand && horizontal) {
+  if (homogeneous) {
+    box_.pack_start(bt, true, true);
+    bt.set_hexpand(true);
+    bt.set_halign(Gtk::ALIGN_FILL);
+  } else if (expand && horizontal) {
     box_.pack_start(bt, true, true);
   } else {
     box_.pack_start(bt, false, false);

@@ -70,6 +70,11 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
 
+*homogeneous*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, distribute every task button evenly across the taskbar's allocated width. Buttons will automatically resize so that 'N' visible tasks each take '1/N' of the width.
+
 *justify*: ++
 	typeof: string ++
 	The alignment of the text within the module's box, allowing options 'left', 'right', or 'center' to define the positioning.
