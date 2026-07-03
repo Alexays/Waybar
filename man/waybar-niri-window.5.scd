@@ -48,6 +48,10 @@ See the output of "niri msg windows" for examples
 
 *{app_id}*: The current app ID of the focused window.
 
+*{col}*: The current column of the focused window in the workspace.
+
+*{max_col}*: The maximum column inside the workspace of the focused window.
+
 # REWRITE RULES
 
 *rewrite* is an object where keys are regular expressions and values are
