@@ -204,6 +204,10 @@ Addressed by *mpd*
 
 *{queueLength}*: The length of the current queue.
 
+*{uri}*: The URI of the song relative to the MPD music directory.
+
+*{filename}* The last part of the URI.
+
 *{stateIcon}*: The icon corresponding to the playing or paused status of the player (see *state-icons* option)
 
 *{consumeIcon}*: The icon corresponding the "consume" option (see *consume-icons* option)

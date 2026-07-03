@@ -71,7 +71,26 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
       auto* item = Gtk::make_managed<PrivacyItem>(module, nodeType, nodePtr, orientation, pos,
                                                   iconSize, transition_duration);
       box_.add(*item);
+      modules_.push_back(item);
     }
+  }
+
+  for (const auto& ignore_item : config_["ignore"]) {
+    if (!ignore_item.isObject() || !ignore_item["type"].isString() ||
+        !ignore_item["name"].isString())
+      continue;
+    const std::string type = ignore_item["type"].asString();
+    const std::string name = ignore_item["name"].asString();
+
+    auto iter = typeMap.find(type);
+    if (iter != typeMap.end()) {
+      auto& [_, nodeType] = iter->second;
+      ignore.emplace(nodeType, std::move(name));
+    }
+  }
+
+  if (config_["ignore-monitor"].isBool()) {
+    ignore_monitor = config_["ignore-monitor"].asBool();
   }
 
   backend = util::PipewireBackend::PipewireBackend::getInstance();
@@ -88,6 +107,11 @@ void Privacy::onPrivacyNodesChanged() {
   nodes_screenshare.clear();
 
   for (auto& node : backend->privacy_nodes) {
+    if (ignore_monitor && node.second->is_monitor) continue;
+
+    auto iter = ignore.find(std::pair(node.second->type, node.second->node_name));
+    if (iter != ignore.end()) continue;
+
     switch (node.second->state) {
       case PW_NODE_STATE_RUNNING:
         switch (node.second->type) {
@@ -125,9 +149,7 @@ auto Privacy::update() -> void {
   bool useAudioOut = false;
 
   mutex_.lock();
-  for (Gtk::Widget* widget : box_.get_children()) {
-    auto* module = dynamic_cast<PrivacyItem*>(widget);
-    if (module == nullptr) continue;
+  for (PrivacyItem* module : modules_) {
     switch (module->privacy_type) {
       case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
         setScreenshare = true;

@@ -65,7 +65,7 @@
           nativeBuildInputs =
             pkgs.waybar.nativeBuildInputs
             ++ (with pkgs; [
-              nixfmt-rfc-style
+              nixfmt
               clang-tools
               gdb
             ]);
@@ -75,28 +75,26 @@
       formatter = genSystems (
         pkgs:
         pkgs.treefmt.withConfig {
-          settings = [
-            {
-              formatter = {
-                clang-format = {
-                  options = [ "-i" ];
-                  command = lib.getExe' pkgs.clang-tools "clang-format";
-                  excludes = [ ];
-                  includes = [
-                    "*.c"
-                    "*.cpp"
-                    "*.h"
-                    "*.hpp"
-                  ];
-                };
-                nixfmt = {
-                  command = lib.getExe pkgs.nixfmt-rfc-style;
-                  includes = [ "*.nix" ];
-                };
+          settings = {
+            formatter = {
+              clang-format = {
+                options = [ "-i" ];
+                command = lib.getExe' pkgs.clang-tools "clang-format";
+                excludes = [ ];
+                includes = [
+                  "*.c"
+                  "*.cpp"
+                  "*.h"
+                  "*.hpp"
+                ];
               };
-              tree-root-file = ".git/index";
-            }
-          ];
+              nixfmt = {
+                command = lib.getExe pkgs.nixfmt;
+                includes = [ "*.nix" ];
+              };
+            };
+            tree-root-file = ".git/index";
+          };
         }
       );
 

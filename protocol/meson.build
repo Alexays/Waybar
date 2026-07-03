@@ -26,11 +26,16 @@ client_protocols = [
 	[wl_protocol_dir, 'unstable/xdg-output/xdg-output-unstable-v1.xml'],
 	[wl_protocol_dir, 'unstable/idle-inhibit/idle-inhibit-unstable-v1.xml'],
 	['wlr-foreign-toplevel-management-unstable-v1.xml'],
-	['ext-workspace-unstable-v1.xml'],
 	['river-status-unstable-v1.xml'],
 	['river-control-unstable-v1.xml'],
 	['dwl-ipc-unstable-v2.xml'],
 ]
+
+if wayland_protos.version().version_compare('>=1.39')
+    client_protocols += [
+        [wl_protocol_dir, 'staging/ext-workspace/ext-workspace-v1.xml']
+    ]
+endif
 
 client_protos_src = []
 client_protos_headers = []
