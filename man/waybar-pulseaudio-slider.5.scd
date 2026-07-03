@@ -43,18 +43,30 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: true ++
     Specifies whether to unmute a muted souce/sink when its volume is changed by the user moving the slider.
 
+*target*: ++
+	typeof: string ++
+	default: sink ++
+	The audio target to control. Can be either `sink` (output/speakers) or `source` (input/microphone).
+
 # EXAMPLES
 
 ```
 "modules-right": [
-    "pulseaudio/slider",
+    "pulseaudio/slider#out",
+    "pulseaudio/slider#in",
 ],
-"pulseaudio/slider": {
+"pulseaudio/slider#out": {
     "min": 0,
     "max": 100,
     "orientation": "horizontal",
     "zero-on-mute": false,
     "unmute-on-volume-change": false
+},
+"pulseaudio/slider#in": {
+    "min": 0,
+    "max": 100,
+    "orientation": "horizontal",
+    "target": "source"
 }
 ```
 
