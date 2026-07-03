@@ -129,10 +129,10 @@ void Workspaces::doUpdate() {
 
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
-                         fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
-                         fmt::arg("index", ws["idx"].asUInt()),
-                         fmt::arg("output", ws["output"].asString()));
+      name = fmt::format(
+          fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)), fmt::arg("value", name),
+          fmt::arg("name", ws["name"].asString()), fmt::arg("index", ws["idx"].asUInt()),
+          fmt::arg("output", ws["output"].asString()), fmt::arg("total", my_workspaces.size()));
     }
     if (!config_["disable-markup"].asBool()) {
       auto* child = gtk_bin_get_child(GTK_BIN(button.gobj()));
