@@ -68,6 +68,16 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 	default: false ++
 	If set to true, only the active or focused workspace will be shown.
 
+*display-condition*: ++
+	typeof: string ++
+	oneof: "show-all", "keep-named", "only-populated" ++
+	default: "show-all" ++
+	Specifies the conditions for showing workspace widgets. ++
+	++
+	*show-all*: displays widgets for all workspaces. ++
+	*keep-named*: always displays named workspaces, irrespective of whether they contain windows or not. ++
+	*only-populated*: only displays widgets for workspaces that have windows.
+
 *hide-empty*: ++
 	typeof: bool ++
 	default: false ++
