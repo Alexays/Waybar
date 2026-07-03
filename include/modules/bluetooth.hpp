@@ -63,7 +63,8 @@ class Bluetooth : public ALabel {
   auto getDeviceGattBatteryLevels(GDBusObject*, std::optional<unsigned char>&,
                                   std::optional<unsigned char>&) -> void;
   static auto processBatteryServiceCharacteristics(GList*, const std::string&, const std::string&,
-                                                   const std::string&, std::optional<unsigned char>&,
+                                                   const std::string&,
+                                                   std::optional<unsigned char>&,
                                                    std::optional<unsigned char>&) -> void;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
   auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;

@@ -92,8 +92,9 @@ auto readBatteryCharacteristicValue(GDBusProxy* proxy_char) -> std::optional<uns
   g_variant_builder_init(&builder, G_VARIANT_TYPE("a{sv}"));
 
   GError* error = nullptr;
-  GVariant* gvar = g_dbus_proxy_call_sync(proxy_char, "ReadValue", g_variant_new("(a{sv})", &builder),
-                                          G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &error);
+  GVariant* gvar =
+      g_dbus_proxy_call_sync(proxy_char, "ReadValue", g_variant_new("(a{sv})", &builder),
+                             G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &error);
   if (error != nullptr) {
     g_error_free(error);
     return std::nullopt;
@@ -104,8 +105,8 @@ auto readBatteryCharacteristicValue(GDBusProxy* proxy_char) -> std::optional<uns
 
   GVariant* value_array = g_variant_get_child_value(gvar, 0);
   gsize n_elements;
-  const auto* data =
-      static_cast<const guchar*>(g_variant_get_fixed_array(value_array, &n_elements, sizeof(guchar)));
+  const auto* data = static_cast<const guchar*>(
+      g_variant_get_fixed_array(value_array, &n_elements, sizeof(guchar)));
 
   std::optional<unsigned char> result;
   if (data != nullptr && n_elements > 0) {
@@ -136,7 +137,8 @@ auto hasUserDescriptionDescriptor(GList* objects, const std::string& char_path,
     auto desc_uuid = getOptionalStringProperty(proxy_desc, "UUID");
     g_object_unref(proxy_desc);
 
-    if (desc_uuid.has_value() && desc_uuid.value().find(user_description_uuid) != std::string::npos) {
+    if (desc_uuid.has_value() &&
+        desc_uuid.value().find(user_description_uuid) != std::string::npos) {
       return true;
     }
   }
@@ -496,7 +498,8 @@ auto waybar::modules::Bluetooth::getDeviceGattBatteryLevels(
     }
 
     processBatteryServiceCharacteristics(objects, service_path, BATTERY_LEVEL_UUID,
-                                         USER_DESCRIPTION_UUID, central_battery, peripheral_battery);
+                                         USER_DESCRIPTION_UUID, central_battery,
+                                         peripheral_battery);
   }
 
   g_list_free_full(objects, g_object_unref);
