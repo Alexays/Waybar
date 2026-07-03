@@ -145,6 +145,11 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
    locale settings. Possible values: *iso* (ISO 8601, {:%V}), *monday*
    (Monday-based, {:%W}), *sunday* (Sunday-based, {:%U}). When not set, the
    method is derived from *iso8601* or the locale.
+|[ *first-day-of-week*
+:[ integer
+:[
+:[ The first day of the week, where 0 is Sunday and 6 is Saturday.
+   When not set, the first day of the week is determined by the locale settings.
 
 3. Addressed by *clock: calendar: format*
 [- *Option*
@@ -188,6 +193,8 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ Switch to the next calendar month/year
 |[ *shift_down*
 :[ Switch to the previous calendar month/year
+|[ *exec <cmd>*
+:[ Execute the specified command
 
 # FORMAT REPLACEMENTS
 
@@ -215,11 +222,12 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "<tt><small>{calendar}</small></tt>",
 	"calendar": {
-		"mode"          : "year",
-		"mode-mon-col"  : 3,
-		"weeks-pos"     : "right",
-		"on-scroll"     : 1,
-		"on-click-right": "mode",
+		"mode"             : "year",
+		"mode-mon-col"     : 3,
+		"weeks-pos"        : "right",
+		"first-day-of-week": 1,
+		"on-scroll"        : 1,
+		"on-click-right"   : "mode",
 		"format": {
 			"months":     "<span color='#ffead3'><b>{}</b></span>",
 			"days":       "<span color='#ecc6d9'><b>{}</b></span>",
