@@ -17,8 +17,6 @@ static constexpr const char* PORTAL_NAMESPACE = "org.freedesktop.appearance";
 static constexpr const char* PORTAL_KEY = "color-scheme";
 }  // namespace waybar
 
-using namespace Gio;
-
 auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_context& ctx) const {
   string_view name;
   switch (c) {
@@ -36,8 +34,8 @@ auto fmt::formatter<waybar::Appearance>::format(waybar::Appearance c, format_con
 }
 
 waybar::Portal::Portal()
-    : DBus::Proxy(DBus::Connection::get_sync(DBus::BusType::BUS_TYPE_SESSION), PORTAL_BUS_NAME,
-                  PORTAL_OBJ_PATH, PORTAL_INTERFACE),
+    : Gio::DBus::Proxy(Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION),
+                       PORTAL_BUS_NAME, PORTAL_OBJ_PATH, PORTAL_INTERFACE),
       currentMode(Appearance::UNKNOWN) {
   refreshAppearance();
 };
@@ -60,21 +58,27 @@ void waybar::Portal::refreshAppearance() {
   // xdg-desktop-portal 1.17 will fix this issue with a new `ReadOne` method,
   // but this version is not yet released.
   // TODO(xdg-desktop-portal v1.17): switch to ReadOne
-  auto container = Glib::VariantBase::cast_dynamic<Glib::VariantContainerBase>(response);
-  Glib::VariantBase modev;
-  container.get_child(modev, 0);
-  auto mode =
-      Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::Variant<Glib::Variant<uint32_t>>>>(modev)
-          .get()
-          .get()
-          .get();
-  auto newMode = Appearance(mode);
-  if (newMode == currentMode) {
+  try {
+    auto container = Glib::VariantBase::cast_dynamic<Glib::VariantContainerBase>(response);
+    Glib::VariantBase modev;
+    container.get_child(modev, 0);
+    auto mode =
+        Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::Variant<Glib::Variant<uint32_t>>>>(
+            modev)
+            .get()
+            .get()
+            .get();
+    auto newMode = Appearance(mode);
+    if (newMode == currentMode) {
+      return;
+    }
+    spdlog::info("Discovered appearance '{}'", newMode);
+    currentMode = newMode;
+    m_signal_appearance_changed.emit(currentMode);
+  } catch (const std::bad_cast& e) {
+    spdlog::error("Unexpected appearance variant format: {}", e.what());
     return;
   }
-  spdlog::info("Discovered appearance '{}'", newMode);
-  currentMode = newMode;
-  m_signal_appearance_changed.emit(currentMode);
 }
 
 waybar::Appearance waybar::Portal::getAppearance() { return currentMode; };

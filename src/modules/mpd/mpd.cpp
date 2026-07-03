@@ -6,6 +6,7 @@
 
 #include <system_error>
 #include <util/sanitize_str.hpp>
+#include <util/utf8_string.hpp>
 using namespace waybar::util;
 
 #include "modules/mpd/state.hpp"
@@ -24,7 +25,8 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
       timeout_(config_["timeout"].isUInt() ? config_["timeout"].asUInt() * 1'000 : 30'000),
       connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
-      song_(nullptr, &mpd_song_free) {
+      song_(nullptr, &mpd_song_free),
+      ellipsis_(config_["ellipsis"].isString() ? config_["ellipsis"].asString() : "\u2026") {
   if (!config_["port"].isNull() && !config_["port"].isUInt()) {
     spdlog::warn("{}: `port` configuration should be an unsigned int", module_name_);
   }
@@ -49,21 +51,6 @@ auto waybar::modules::MPD::update() -> void {
 
   // Call parent update
   ALabel::update();
-}
-
-void waybar::modules::MPD::queryMPD() {
-  if (connection_ != nullptr) {
-    spdlog::trace("{}: fetching state information", module_name_);
-    try {
-      fetchState();
-      spdlog::trace("{}: fetch complete", module_name_);
-    } catch (std::exception const& e) {
-      spdlog::error("{}: {}", module_name_, e.what());
-      state_ = MPD_STATE_UNKNOWN;
-    }
-
-    dp.emit();
-  }
 }
 
 std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const {
@@ -98,7 +85,7 @@ void waybar::modules::MPD::setLabel() {
                       ? config_["format-disconnected"].asString()
                       : "disconnected";
     if (format.empty()) {
-      label_.set_markup(format);
+      setLabelMarkup(format);
       label_.show();
     } else {
       label_.hide();
@@ -110,22 +97,22 @@ void waybar::modules::MPD::setLabel() {
                            ? config_["tooltip-format-disconnected"].asString()
                            : "MPD (disconnected)";
       // Nothing to format
-      label_.set_tooltip_text(tooltip_format);
+      setTooltipMarkup(tooltip_format);
     }
     return;
   }
   label_.get_style_context()->remove_class("disconnected");
 
   auto format = format_;
-  Glib::ustring artist, album_artist, album, title;
-  std::string date, filename;
+  std::string date, filename, uri;
   int song_pos = 0, queue_length = 0, volume = 0;
   std::chrono::seconds elapsedTime, totalTime;
 
   std::string stateIcon = "";
   bool no_song = song_.get() == nullptr;
-  if (stopped() || no_song) {
-    if (no_song) spdlog::warn("Bug in mpd: no current song but state is not stopped.");
+  bool is_stopped = stopped();
+  if (is_stopped || no_song) {
+    if (no_song && !is_stopped) spdlog::warn("mpd: no current song while state is not stopped");
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
     label_.get_style_context()->add_class("stopped");
@@ -137,20 +124,18 @@ void waybar::modules::MPD::setLabel() {
       label_.get_style_context()->add_class("playing");
       label_.get_style_context()->remove_class("paused");
     } else if (paused()) {
-      format = config_["format-paused"].isString() ? config_["format-paused"].asString()
-                                                   : config_["format"].asString();
+      if (config_["format-paused"].isString()) {
+        format = config_["format-paused"].asString();
+      }
       label_.get_style_context()->add_class("paused");
       label_.get_style_context()->remove_class("playing");
     }
 
     stateIcon = getStateIcon();
 
-    artist = sanitize_string(getTag(MPD_TAG_ARTIST));
-    album_artist = sanitize_string(getTag(MPD_TAG_ALBUM_ARTIST));
-    album = sanitize_string(getTag(MPD_TAG_ALBUM));
-    title = sanitize_string(getTag(MPD_TAG_TITLE));
     date = sanitize_string(getTag(MPD_TAG_DATE));
     filename = sanitize_string(getFilename());
+    uri = mpd_song_get_uri(song_.get());
     song_pos = mpd_status_get_song_pos(status_.get()) + 1;
     volume = mpd_status_get_volume(status_.get());
     if (volume < 0) {
@@ -169,27 +154,22 @@ void waybar::modules::MPD::setLabel() {
   std::string repeatIcon = getOptionIcon("repeat", repeatActivated);
   bool singleActivated = mpd_status_get_single(status_.get());
   std::string singleIcon = getOptionIcon("single", singleActivated);
-  if (config_["artist-len"].isInt()) artist = artist.substr(0, config_["artist-len"].asInt());
-  if (config_["album-artist-len"].isInt())
-    album_artist = album_artist.substr(0, config_["album-artist-len"].asInt());
-  if (config_["album-len"].isInt()) album = album.substr(0, config_["album-len"].asInt());
-  if (config_["title-len"].isInt()) title = title.substr(0, config_["title-len"].asInt());
 
   try {
     auto text = fmt::format(
-        fmt::runtime(format), fmt::arg("artist", artist.raw()),
-        fmt::arg("albumArtist", album_artist.raw()), fmt::arg("album", album.raw()),
-        fmt::arg("title", title.raw()), fmt::arg("date", date), fmt::arg("volume", volume),
+        fmt::runtime(format), fmt::arg("artist", getArtistStr(true)),
+        fmt::arg("albumArtist", getAlbumArtistStr(true)), fmt::arg("album", getAlbumStr(true)),
+        fmt::arg("title", getTitleStr(true)), fmt::arg("date", date), fmt::arg("volume", volume),
         fmt::arg("elapsedTime", elapsedTime), fmt::arg("totalTime", totalTime),
         fmt::arg("songPosition", song_pos), fmt::arg("queueLength", queue_length),
         fmt::arg("stateIcon", stateIcon), fmt::arg("consumeIcon", consumeIcon),
         fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
-        fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename));
+        fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename), fmt::arg("uri", uri));
     if (text.empty()) {
       label_.hide();
     } else {
       label_.show();
-      label_.set_markup(text);
+      setLabelMarkup(text);
     }
   } catch (fmt::format_error const& e) {
     spdlog::warn("mpd: format error: {}", e.what());
@@ -200,16 +180,16 @@ void waybar::modules::MPD::setLabel() {
     tooltip_format = config_["tooltip-format"].isString() ? config_["tooltip-format"].asString()
                                                           : "MPD (connected)";
     try {
-      auto tooltip_text =
-          fmt::format(fmt::runtime(tooltip_format), fmt::arg("artist", artist.raw()),
-                      fmt::arg("albumArtist", album_artist.raw()), fmt::arg("album", album.raw()),
-                      fmt::arg("title", title.raw()), fmt::arg("date", date),
-                      fmt::arg("volume", volume), fmt::arg("elapsedTime", elapsedTime),
-                      fmt::arg("totalTime", totalTime), fmt::arg("songPosition", song_pos),
-                      fmt::arg("queueLength", queue_length), fmt::arg("stateIcon", stateIcon),
-                      fmt::arg("consumeIcon", consumeIcon), fmt::arg("randomIcon", randomIcon),
-                      fmt::arg("repeatIcon", repeatIcon), fmt::arg("singleIcon", singleIcon));
-      label_.set_tooltip_text(tooltip_text);
+      auto tooltip_text = fmt::format(
+          fmt::runtime(tooltip_format), fmt::arg("artist", getArtistStr(false)),
+          fmt::arg("albumArtist", getAlbumArtistStr(false)), fmt::arg("album", getAlbumStr(false)),
+          fmt::arg("title", getTitleStr(false)), fmt::arg("date", date), fmt::arg("volume", volume),
+          fmt::arg("elapsedTime", elapsedTime), fmt::arg("totalTime", totalTime),
+          fmt::arg("songPosition", song_pos), fmt::arg("queueLength", queue_length),
+          fmt::arg("stateIcon", stateIcon), fmt::arg("consumeIcon", consumeIcon),
+          fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
+          fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename), fmt::arg("uri", uri));
+      setTooltipMarkup(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpd: format error (tooltip): {}", e.what());
     }
@@ -238,7 +218,8 @@ std::string waybar::modules::MPD::getStateIcon() const {
   }
 }
 
-std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool activated) const {
+std::string waybar::modules::MPD::getOptionIcon(const std::string& optionName,
+                                                bool activated) const {
   if (!config_[optionName + "-icons"].isObject()) {
     return "";
   }
@@ -253,6 +234,38 @@ std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool act
   } else {
     return config_[optionName + "-icons"]["off"].asString();
   }
+}
+
+std::string waybar::modules::MPD::getArtistStr(bool truncated) const {
+  std::string artist = getTag(MPD_TAG_ARTIST);
+  if (truncated && config_["artist-len"].isInt()) {
+    waybar::util::utf8_truncate(artist, ellipsis_, config_["artist-len"].asInt());
+  }
+  return sanitize_string(artist);
+}
+
+std::string waybar::modules::MPD::getAlbumArtistStr(bool truncated) const {
+  std::string album_artist = getTag(MPD_TAG_ALBUM_ARTIST);
+  if (truncated && config_["album-artist-len"].isInt()) {
+    waybar::util::utf8_truncate(album_artist, ellipsis_, config_["album-artist-len"].asInt());
+  }
+  return sanitize_string(album_artist);
+}
+
+std::string waybar::modules::MPD::getAlbumStr(bool truncated) const {
+  std::string album = getTag(MPD_TAG_ALBUM);
+  if (truncated && config_["album-len"].isInt()) {
+    waybar::util::utf8_truncate(album, ellipsis_, config_["album-len"].asInt());
+  }
+  return sanitize_string(album);
+}
+
+std::string waybar::modules::MPD::getTitleStr(bool truncated) const {
+  std::string title = getTag(MPD_TAG_TITLE);
+  if (truncated && config_["title-len"].isInt()) {
+    waybar::util::utf8_truncate(title, ellipsis_, config_["title-len"].asInt());
+  }
+  return sanitize_string(title);
 }
 
 static bool isServerUnavailable(const std::error_code& ec) {
@@ -322,6 +335,7 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
     case MPD_ERROR_SYSTEM:
       if (auto ec = mpd_connection_get_system_error(conn); ec != 0) {
         mpd_connection_clear_error(conn);
+        connection_.reset();
         throw std::system_error(ec, std::system_category());
       }
       G_GNUC_FALLTHROUGH;

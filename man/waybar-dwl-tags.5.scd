@@ -43,6 +43,7 @@ Addressed by *dwl/tags*
 
 - *#tags button*
 - *#tags button.occupied*
+- *#tags button.empty*
 - *#tags button.focused*
 - *#tags button.urgent*
 

@@ -1,42 +1,47 @@
 #include "modules/battery.hpp"
 
 #include <algorithm>
+#include <cctype>
+
+#include "util/command.hpp"
 #if defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #endif
+#include <libudev.h>
+#include <poll.h>
 #include <spdlog/spdlog.h>
+#include <sys/signalfd.h>
 
-#include <iostream>
 waybar::modules::Battery::Battery(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "battery", id, "{capacity}%", 60), bar_(bar) {
+    : ALabel(config, "battery", id, "{capacity}%", 60), last_event_(""), bar_(bar) {
 #if defined(__linux__)
   battery_watch_fd_ = inotify_init1(IN_CLOEXEC);
   if (battery_watch_fd_ == -1) {
     throw std::runtime_error("Unable to listen batteries.");
   }
-
-  global_watch_fd_ = inotify_init1(IN_CLOEXEC);
-  if (global_watch_fd_ == -1) {
-    throw std::runtime_error("Unable to listen batteries.");
+  udev_ = std::unique_ptr<udev, util::UdevDeleter>(udev_new());
+  if (udev_ == nullptr) {
+    throw std::runtime_error("udev_new failed");
   }
-
-  // Watch the directory for any added or removed batteries
-  global_watch = inotify_add_watch(global_watch_fd_, data_dir_.c_str(), IN_CREATE | IN_DELETE);
-  if (global_watch < 0) {
-    throw std::runtime_error("Could not watch for battery plug/unplug");
+  mon_ = std::unique_ptr<udev_monitor, util::UdevMonitorDeleter>(
+      udev_monitor_new_from_netlink(udev_.get(), "kernel"));
+  if (mon_ == nullptr) {
+    throw std::runtime_error("udev monitor new failed");
   }
+  if (udev_monitor_filter_add_match_subsystem_devtype(mon_.get(), "power_supply", nullptr) < 0) {
+    throw std::runtime_error("udev failed to add monitor filter");
+  }
+  udev_monitor_enable_receiving(mon_.get());
+
+  if (config_["weighted-average"].isBool()) weightedAverage_ = config_["weighted-average"].asBool();
 #endif
+  spdlog::debug("battery: worker interval is {}", interval_.count());
   worker();
 }
 
 waybar::modules::Battery::~Battery() {
 #if defined(__linux__)
   std::lock_guard<std::mutex> guard(battery_list_mutex_);
-
-  if (global_watch >= 0) {
-    inotify_rm_watch(global_watch_fd_, global_watch);
-  }
-  close(global_watch_fd_);
 
   for (auto it = batteries_.cbegin(), next_it = it; it != batteries_.cend(); it = next_it) {
     ++next_it;
@@ -74,11 +79,17 @@ void waybar::modules::Battery::worker() {
     dp.emit();
   };
   thread_battery_update_ = [this] {
-    struct inotify_event event = {0};
-    int nbytes = read(global_watch_fd_, &event, sizeof(event));
-    if (nbytes != sizeof(event) || event.mask & IN_IGNORED) {
+    poll_fds_[0].revents = 0;
+    poll_fds_[0].events = POLLIN;
+    poll_fds_[0].fd = udev_monitor_get_fd(mon_.get());
+    int ret = poll(poll_fds_.data(), poll_fds_.size(), -1);
+    if (ret < 0) {
       thread_.stop();
       return;
+    }
+    if ((poll_fds_[0].revents & POLLIN) != 0) {
+      signalfd_siginfo signal_info;
+      read(poll_fds_[0].fd, &signal_info, sizeof(signal_info));
     }
     refreshBatteries();
     dp.emit();
@@ -106,17 +117,16 @@ void waybar::modules::Battery::refreshBatteries() {
       if (((bat_defined && dir_name == config_["bat"].asString()) || !bat_defined) &&
           (fs::exists(node.path() / "capacity") || fs::exists(node.path() / "charge_now")) &&
           fs::exists(node.path() / "uevent") &&
-          (fs::exists(node.path() / "status") || bat_compatibility) &&
-          fs::exists(node.path() / "type")) {
+          (fs::exists(node.path() / "status") || bat_compatibility)) {
         std::string type;
-        std::ifstream(node.path() / "type") >> type;
-
-        if (!type.compare("Battery")) {
+        if (std::ifstream{node.path() / "type"} >> type && !type.compare("Battery")) {
           // Ignore non-system power supplies unless explicitly requested
-          if (!bat_defined && fs::exists(node.path() / "scope")) {
+          if (!bat_defined) {
             std::string scope;
-            std::ifstream(node.path() / "scope") >> scope;
-            if (g_ascii_strcasecmp(scope.data(), "device") == 0) {
+            // for hotplug-in device, access it is always unstable because you may remove the
+            // device anytime so just allow failure happen and do nothing
+            if (std::ifstream{node.path() / "scope"} >> scope &&
+                g_ascii_strcasecmp(scope.data(), "device") == 0) {
               continue;
             }
           }
@@ -128,7 +138,9 @@ void waybar::modules::Battery::refreshBatteries() {
             auto event_path = (node.path() / "uevent");
             auto wd = inotify_add_watch(battery_watch_fd_, event_path.c_str(), IN_ACCESS);
             if (wd < 0) {
-              throw std::runtime_error("Could not watch events for " + node.path().string());
+              spdlog::warn("Could not watch events for {} (device may have been removed)",
+                           node.path().string());
+              continue;
             }
             batteries_[node.path()] = wd;
           }
@@ -141,7 +153,7 @@ void waybar::modules::Battery::refreshBatteries() {
       }
     }
   } catch (fs::filesystem_error& e) {
-    throw std::runtime_error(e.what());
+    spdlog::warn("Battery directory tracking failed: {}", e.what());
   }
   if (warnFirstTime_ && batteries_.empty()) {
     if (config_["bat"].isString()) {
@@ -262,11 +274,11 @@ waybar::modules::Battery::getInfos() {
       auto bat = item.first;
       std::string _status;
 
-      /* Check for adapter status if battery is not available */
-      if (!std::ifstream(bat / "status")) {
-        std::getline(std::ifstream(adapter_ / "status"), _status);
-      } else {
-        std::getline(std::ifstream(bat / "status"), _status);
+      {
+        std::ifstream f{bat / "status"};
+        if (!std::getline(f, _status)) {
+          std::getline(std::ifstream(adapter_ / "status"), _status);
+        }
       }
 
       // Some battery will report current and charge in μA/μAh.
@@ -275,64 +287,74 @@ waybar::modules::Battery::getInfos() {
       uint32_t current_now = 0;
       int32_t _current_now_int = 0;
       bool current_now_exists = false;
-      if (fs::exists(bat / "current_now")) {
-        current_now_exists = true;
-        std::ifstream(bat / "current_now") >> _current_now_int;
-      } else if (fs::exists(bat / "current_avg")) {
-        current_now_exists = true;
-        std::ifstream(bat / "current_avg") >> _current_now_int;
+      if (std::ifstream current_now_f{bat / "current_now"}) {
+        if (current_now_f >> _current_now_int) {
+          current_now_exists = true;
+        }
+      } else if (std::ifstream current_avg_f{bat / "current_avg"}) {
+        if (current_avg_f >> _current_now_int) {
+          current_now_exists = true;
+        }
       }
       // Documentation ABI allows a negative value when discharging, positive
       // value when charging.
       current_now = std::abs(_current_now_int);
 
-      if (fs::exists(bat / "time_to_empty_now")) {
-        time_to_empty_now_exists = true;
-        std::ifstream(bat / "time_to_empty_now") >> time_to_empty_now;
+      if (std::ifstream f{bat / "time_to_empty_now"}) {
+        if (f >> time_to_empty_now) {
+          time_to_empty_now_exists = true;
+        }
       }
 
-      if (fs::exists(bat / "time_to_full_now")) {
-        time_to_full_now_exists = true;
-        std::ifstream(bat / "time_to_full_now") >> time_to_full_now;
+      if (std::ifstream f{bat / "time_to_full_now"}) {
+        if (f >> time_to_full_now) {
+          time_to_full_now_exists = true;
+        }
       }
 
       uint32_t voltage_now = 0;
       bool voltage_now_exists = false;
-      if (fs::exists(bat / "voltage_now")) {
-        voltage_now_exists = true;
-        std::ifstream(bat / "voltage_now") >> voltage_now;
-      } else if (fs::exists(bat / "voltage_avg")) {
-        voltage_now_exists = true;
-        std::ifstream(bat / "voltage_avg") >> voltage_now;
+      if (std::ifstream voltage_now_f{bat / "voltage_now"}) {
+        if (voltage_now_f >> voltage_now) {
+          voltage_now_exists = true;
+        }
+      } else if (std::ifstream voltage_avg_f{bat / "voltage_avg"}) {
+        if (voltage_avg_f >> voltage_now) {
+          voltage_now_exists = true;
+        }
       }
 
       uint32_t charge_full = 0;
       bool charge_full_exists = false;
-      if (fs::exists(bat / "charge_full")) {
-        charge_full_exists = true;
-        std::ifstream(bat / "charge_full") >> charge_full;
+      if (std::ifstream f{bat / "charge_full"}) {
+        if (f >> charge_full) {
+          charge_full_exists = true;
+        }
       }
 
       uint32_t charge_full_design = 0;
       bool charge_full_design_exists = false;
-      if (fs::exists(bat / "charge_full_design")) {
-        charge_full_design_exists = true;
-        std::ifstream(bat / "charge_full_design") >> charge_full_design;
+      if (std::ifstream f{bat / "charge_full_design"}) {
+        if (f >> charge_full_design) {
+          charge_full_design_exists = true;
+        }
       }
 
       uint32_t charge_now = 0;
       bool charge_now_exists = false;
-      if (fs::exists(bat / "charge_now")) {
-        charge_now_exists = true;
-        std::ifstream(bat / "charge_now") >> charge_now;
+      if (std::ifstream f{bat / "charge_now"}) {
+        if (f >> charge_now) {
+          charge_now_exists = true;
+        }
       }
 
       uint32_t power_now = 0;
       int32_t _power_now_int = 0;
       bool power_now_exists = false;
-      if (fs::exists(bat / "power_now")) {
-        power_now_exists = true;
-        std::ifstream(bat / "power_now") >> _power_now_int;
+      if (std::ifstream f{bat / "power_now"}) {
+        if (f >> _power_now_int) {
+          power_now_exists = true;
+        }
       }
       // Some drivers (example: Qualcomm) exposes use a negative value when
       // discharging, positive value when charging.
@@ -340,28 +362,31 @@ waybar::modules::Battery::getInfos() {
 
       uint32_t energy_now = 0;
       bool energy_now_exists = false;
-      if (fs::exists(bat / "energy_now")) {
-        energy_now_exists = true;
-        std::ifstream(bat / "energy_now") >> energy_now;
+      if (std::ifstream f{bat / "energy_now"}) {
+        if (f >> energy_now) {
+          energy_now_exists = true;
+        }
       }
 
       uint32_t energy_full = 0;
       bool energy_full_exists = false;
-      if (fs::exists(bat / "energy_full")) {
-        energy_full_exists = true;
-        std::ifstream(bat / "energy_full") >> energy_full;
+      if (std::ifstream f{bat / "energy_full"}) {
+        if (f >> energy_full) {
+          energy_full_exists = true;
+        }
       }
 
       uint32_t energy_full_design = 0;
       bool energy_full_design_exists = false;
-      if (fs::exists(bat / "energy_full_design")) {
-        energy_full_design_exists = true;
-        std::ifstream(bat / "energy_full_design") >> energy_full_design;
+      if (std::ifstream f{bat / "energy_full_design"}) {
+        if (f >> energy_full_design) {
+          energy_full_design_exists = true;
+        }
       }
 
       uint16_t cycleCount = 0;
-      if (fs::exists(bat / "cycle_count")) {
-        std::ifstream(bat / "cycle_count") >> cycleCount;
+      if (std::ifstream f{bat / "cycle_count"}) {
+        f >> cycleCount;
       }
       if (charge_full_design >= largestDesignCapacity) {
         largestDesignCapacity = charge_full_design;
@@ -391,9 +416,10 @@ waybar::modules::Battery::getInfos() {
       } else if (energy_now_exists && energy_full_exists && energy_full != 0) {
         capacity_exists = true;
         capacity = 100 * (uint64_t)energy_now / (uint64_t)energy_full;
-      } else if (fs::exists(bat / "capacity")) {
-        capacity_exists = true;
-        std::ifstream(bat / "capacity") >> capacity;
+      } else if (std::ifstream f{bat / "capacity"}) {
+        if (f >> capacity) {
+          capacity_exists = true;
+        }
       }
 
       if (!voltage_now_exists) {
@@ -573,17 +599,17 @@ waybar::modules::Battery::getInfos() {
 
     float calculated_capacity{0.0f};
     if (total_capacity_exists) {
-      if (total_capacity > 0.0f)
+      if (total_capacity > 0.0f) {
         calculated_capacity = (float)total_capacity / batteries_.size();
-      else if (total_energy_full_exists && total_energy_exists) {
-        if (total_energy_full > 0.0f)
+      } else if (total_energy_full_exists && total_energy_exists) {
+        if (total_energy_full > 0.0f) {
           calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
+        }
       }
     }
 
     // Handle weighted-average
-    if ((config_["weighted-average"].isBool() ? config_["weighted-average"].asBool() : false) &&
-        total_energy_exists && total_energy_full_exists) {
+    if (weightedAverage_ && total_energy_exists && total_energy_full_exists) {
       if (total_energy_full > 0.0f)
         calculated_capacity = ((float)total_energy * 100.0f / (float)total_energy_full);
     }
@@ -675,20 +701,32 @@ auto waybar::modules::Battery::update() -> void {
   if (status == "Unknown") {
     status = getAdapterStatus(capacity);
   }
-  auto status_pretty = status;
-  // Transform to lowercase  and replace space with dash
-  std::transform(status.begin(), status.end(), status.begin(),
-                 [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
-  auto format = format_;
   auto state = getState(capacity, true);
+  bool adapter_online = false;
+  if (!adapter_.empty()) {
+    std::ifstream(adapter_ / "online") >> adapter_online;
+  }
+  if (config_["full-at-plugged"].asBool() && status == "Full" && adapter_online) {
+    status = "Plugged";
+  }
+  auto status_pretty = status;
+
+  // Transform to lowercase  and replace space with dash
+  std::ranges::transform(status.begin(), status.end(), status.begin(),
+                         [](char ch) { return ch == ' ' ? '-' : std::tolower(ch); });
+  auto format = format_;
+  processEvents(state, status, capacity);
   setBarClass(state);
   auto time_remaining_formatted = formatTimeRemaining(time_remaining);
   if (tooltipEnabled()) {
     std::string tooltip_text_default;
     std::string tooltip_format = "{timeTo}";
     if (time_remaining != 0) {
-      std::string time_to = std::string("Time to ") + ((time_remaining > 0) ? "empty" : "full");
-      tooltip_text_default = time_to + ": " + time_remaining_formatted;
+      if (time_remaining > 0) {
+        tooltip_text_default = std::string("Empty in ") + time_remaining_formatted;
+      } else {
+        tooltip_text_default = std::string("Full in ") + time_remaining_formatted;
+      }
     } else {
       tooltip_text_default = status_pretty;
     }
@@ -701,7 +739,7 @@ auto waybar::modules::Battery::update() -> void {
     } else if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(
+    label_.set_tooltip_markup(
         fmt::format(fmt::runtime(tooltip_format), fmt::arg("timeTo", tooltip_text_default),
                     fmt::arg("power", power), fmt::arg("capacity", capacity),
                     fmt::arg("time", time_remaining_formatted), fmt::arg("cycles", cycles),
@@ -765,5 +803,30 @@ void waybar::modules::Battery::setBarClass(std::string& state) {
   if (old_class != new_class) {
     bar_.window.get_style_context()->remove_class(old_class);
     bar_.window.get_style_context()->add_class(new_class);
+  }
+}
+
+void waybar::modules::Battery::processEvents(std::string& state, std::string& status,
+                                             uint8_t capacity) {
+  // There are no events specified, skip
+  auto events = config_["events"];
+  if (!events.isObject() || events.empty()) {
+    return;
+  }
+  auto exec = [](Json::Value const& event) {
+    if (!event.isString()) return;
+    if (auto command = event.asString(); !command.empty()) {
+      util::command::exec(command, "");
+    }
+  };
+  std::string status_name = status == "discharging" ? "on-discharging" : "on-charging";
+  std::string event_name = status_name + '-' + (state.empty() ? std::to_string(capacity) : state);
+  if (last_event_ != event_name) {
+    spdlog::debug("battery: triggering event {}", event_name);
+    exec(events[event_name]);
+    if (!last_event_.empty() && last_event_[3] != event_name[3]) {
+      exec(events[status_name]);
+    }
+    last_event_ = event_name;
   }
 }
