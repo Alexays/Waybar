@@ -8,6 +8,12 @@
 
 namespace waybar::modules::SNI {
 
+static void initIconsConfig(const Json::Value& config) {
+  if (config["icons"].isObject()) {
+    IconManager::instance().setIconsConfig(config["icons"]);
+  }
+}
+
 std::vector<std::string> Tray::parseIgnoreList(const Json::Value& config) {
   std::vector<std::string> ignore_list;
   if (config["ignore-list"].isArray()) {
@@ -29,7 +35,7 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
       box_(bar.orientation, 0),
       watcher_(SNI::Watcher::getInstance()),
       ignore_list_(parseIgnoreList(config)),
-      host_(nb_hosts_, config, bar, ignore_list_,
+      host_((initIconsConfig(config), nb_hosts_), config, bar, ignore_list_,
             std::bind(&Tray::onAdd, this, std::placeholders::_1),
             std::bind(&Tray::onRemove, this, std::placeholders::_1),
             std::bind(&Tray::queueUpdate, this)) {
@@ -43,9 +49,6 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
     box_.set_spacing(config_["spacing"].asUInt());
   }
   nb_hosts_ += 1;
-  if (config_["icons"].isObject()) {
-    IconManager::instance().setIconsConfig(config_["icons"]);
-  }
   dp.emit();
 }
 
