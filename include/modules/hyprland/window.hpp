@@ -20,8 +20,8 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
 
  private:
   struct Workspace {
-    int id;
-    int windows;
+    int id = 0;
+    int windows = 0;
     std::string last_window;
     std::string last_window_title;
 
@@ -29,14 +29,14 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   };
 
   struct WindowData {
-    bool floating;
+    bool floating = false;
     int monitor = -1;
     std::string class_name;
     std::string initial_class_name;
     std::string title;
     std::string initial_title;
-    bool fullscreen;
-    bool grouped;
+    bool fullscreen = false;
+    bool grouped = false;
 
     static auto parse(const Json::Value&) -> WindowData;
   };
@@ -47,7 +47,7 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   void queryActiveWorkspace();
   void setClass(const std::string&, bool enable);
 
-  bool separateOutputs_;
+  bool separateOutputs_ = false;
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
@@ -55,11 +55,11 @@ class Window : public waybar::AAppIconLabel, public EventHandler {
   Workspace workspace_;
   std::string soloClass_;
   std::string lastSoloClass_;
-  bool solo_;
-  bool allFloating_;
-  bool swallowing_;
-  bool fullscreen_;
-  bool focused_;
+  bool solo_ = false;
+  bool allFloating_ = false;
+  bool swallowing_ = false;
+  bool fullscreen_ = false;
+  bool focused_ = false;
 
   IPC& m_ipc;
 };
