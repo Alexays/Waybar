@@ -63,6 +63,7 @@ class AModule : public IModule {
   bool hasUserEvents_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
+  sigc::connection cursor_timeout_conn_;
   std::map<std::string, std::string> eventActionMap_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
