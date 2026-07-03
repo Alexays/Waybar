@@ -51,21 +51,6 @@ auto waybar::modules::MPD::update() -> void {
   ALabel::update();
 }
 
-void waybar::modules::MPD::queryMPD() {
-  if (connection_ != nullptr) {
-    spdlog::trace("{}: fetching state information", module_name_);
-    try {
-      fetchState();
-      spdlog::trace("{}: fetch complete", module_name_);
-    } catch (std::exception const& e) {
-      spdlog::error("{}: {}", module_name_, e.what());
-      state_ = MPD_STATE_UNKNOWN;
-    }
-
-    dp.emit();
-  }
-}
-
 std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const {
   std::string result =
       config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
