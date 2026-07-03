@@ -380,6 +380,13 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Defines whether the group should be assigned the "empty" CSS class when all modules inside the drawer are hidden or missing. If false, the group will not receive the "empty" class as long as the leader module remains visible. This allows users to dynamically style or hide the entire group using CSS when its drawer contents are unavailable.
 
+*reveal-by-default*: ++
+	typeof: bool ++
+	default: false ++
+	Whether the child should be revealed when Waybar starts up. This has to be used with click-to-reveal to take effect.
+
+Group drawers are also given the `.expanded` CSS class when they are expanded.
+
 ```
 "group/power": {
     "orientation": "inherit",

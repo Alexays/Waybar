@@ -45,7 +45,7 @@ class AModule : public IModule {
   const Json::Value& config_;
   Gtk::EventBox event_box_;
 
-  virtual void setCursor(Gdk::CursorType const& c);
+  virtual void setCursor(std::string const& c);
 
   virtual bool handleToggle(GdkEventButton* const& ev);
   virtual bool handleMouseEnter(GdkEventCrossing* const& ev);
@@ -85,7 +85,8 @@ class AModule : public IModule {
       {std::make_pair(9, GdkEventType::GDK_BUTTON_PRESS), "on-click-forward"},
       {std::make_pair(9, GdkEventType::GDK_BUTTON_RELEASE), "on-click-forward-release"},
       {std::make_pair(9, GdkEventType::GDK_2BUTTON_PRESS), "on-double-click-forward"},
-      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"}};
+      {std::make_pair(9, GdkEventType::GDK_3BUTTON_PRESS), "on-triple-click-forward"},
+      {std::make_pair(10, GdkEventType::GDK_BUTTON_PRESS), "on-click-copy"}};
 };
 
 }  // namespace waybar

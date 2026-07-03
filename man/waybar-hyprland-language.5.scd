@@ -21,6 +21,10 @@ Addressed by *hyprland/language*
 	typeof: string++
 	Provide an alternative name to display per language where <lang> is the language of your choosing. Can be passed multiple times with multiple languages as shown by the example below.
 
+*format-<lang>-<variant>* ++
+	typeof: string ++
+	Like *format-<lang>* but also matches the layout variant, taking precedence over *format-<lang>* when both the language and variant match.
+
 *keyboard-name*: ++
 	typeof: string ++
 	Specifies which keyboard to use from hyprctl devices output. Using the option that begins with "at-translated-set..." is recommended.
@@ -51,6 +55,10 @@ Addressed by *hyprland/language*
 *tooltip-format-<lang>*: ++
 	typeof: string ++
 	Allows specifying a different tooltip format for each language. The *<lang>* should be replaced with the language code. This can be used to provide a custom tooltip for each language.
+
+*tooltip-format-<lang>-<variant>*: ++
+	typeof: string ++
+	Like *tooltip-format-<lang>* but also matches the layout variant, taking precedence over *tooltip-format-<lang>* when both the language and variant match.
 
 *expand*: ++
 	typeof: bool ++

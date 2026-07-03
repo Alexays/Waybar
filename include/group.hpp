@@ -10,6 +10,8 @@
 namespace waybar {
 
 class Group : public AModule {
+  sigc::connection reveal_timeout_;
+
  public:
   Group(const std::string&, const std::string&, const Json::Value&, bool);
   ~Group() override = default;
@@ -27,6 +29,7 @@ class Group : public AModule {
   bool is_drawer = false;
   bool click_to_reveal = false;
   bool empty_if_drawer_empty = false;
+  int reveal_delay = 0;
   std::string add_class_to_drawer_children;
   bool handleMouseEnter(GdkEventCrossing* const& ev) override;
   bool handleMouseLeave(GdkEventCrossing* const& ev) override;
