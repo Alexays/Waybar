@@ -175,7 +175,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
             if (p_w.isArray() && !p_w.empty()) {
               // Adding to target outputs
               for (const Json::Value& output : p_w) {
-                if (output.asString() == bar_.output->name) {
+                auto output_name = output.asString();
+                if (output_name == bar_.output->name || output_name == bar_.output->identifier) {
                   Json::Value v;
                   v["name"] = p_w_name;
                   v["target_output"] = bar_.output->name;
