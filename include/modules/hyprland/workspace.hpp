@@ -30,6 +30,7 @@ class Workspace {
  public:
   explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
                      const Json::Value& clients_data = Json::Value::nullRef);
+  ~Workspace();
   std::string& selectIcon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return m_button; };
 
@@ -42,10 +43,18 @@ class Workspace {
   bool isPersistentConfig() const { return m_isPersistentConfig; };
   bool isPersistentRule() const { return m_isPersistentRule; };
   bool isVisible() const { return m_isVisible; };
-  bool isEmpty() const { return m_windows == 0; };
   bool isUrgent() const { return m_isUrgent; };
 
   bool handleClicked(GdkEventButton* bt) const;
+
+  bool handleEnter(GdkEventCrossing* event);
+  bool handleLeave(GdkEventCrossing* event);
+
+  void startHoverCheck();
+  void stopHoverCheck();
+  bool syncHoverClass();
+  bool pointerInsideButton();
+
   void setActive(bool value = true) { m_isActive = value; };
   void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
   void setPersistentConfig(bool value = true) { m_isPersistentConfig = value; };
@@ -81,6 +90,8 @@ class Workspace {
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
+  sigc::connection m_hoverCheckConnection;
+
   std::vector<WindowRepr> m_windowMap;
 
   Gtk::Button m_button;
@@ -88,6 +99,7 @@ class Workspace {
   Gtk::Label m_labelBefore;
   Gtk::Label m_labelAfter;
 
+  bool isEmpty() const;
   void updateTaskbar(const std::string& workspace_icon);
   bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
   bool shouldSkipWindow(const WindowRepr& window_repr) const;
