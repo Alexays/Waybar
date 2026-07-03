@@ -19,20 +19,19 @@ std::shared_mutex windowIpcSmtx;
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
     : AAppIconLabel(config, "window", id, "{title}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
-  std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
-
   separateOutputs_ = config["separate-outputs"].asBool();
 
+  update();
+
   // register for hyprland ipc
+  std::unique_lock<std::shared_mutex> windowIpcUniqueLock(windowIpcSmtx);
   m_ipc.registerForIPC("activewindow", this);
   m_ipc.registerForIPC("closewindow", this);
   m_ipc.registerForIPC("movewindow", this);
   m_ipc.registerForIPC("changefloatingmode", this);
   m_ipc.registerForIPC("fullscreen", this);
-
   windowIpcUniqueLock.unlock();
 
-  update();
   dp.emit();
 }
 
@@ -109,21 +108,14 @@ auto Window::update() -> void {
   AAppIconLabel::update();
 }
 
-auto Window::getActiveWorkspace() -> Workspace {
-  const auto workspace = IPC::inst().getSocket1JsonReply("activeworkspace");
-
-  if (workspace.isObject()) {
-    return Workspace::parse(workspace);
-  }
-
-  return {};
-}
+auto Window::getActiveWorkspace() -> Workspace { return getActiveWorkspace(""); }
 
 auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
   const auto monitors = IPC::inst().getSocket1JsonReply("monitors");
   if (monitors.isArray()) {
-    auto monitor = std::ranges::find_if(
-        monitors, [&](const Json::Value& monitor) { return monitor["name"] == monitorName; });
+    auto monitor = std::ranges::find_if(monitors, [&](const Json::Value& monitor) {
+      return monitorName.empty() ? monitor["focused"].asBool() : monitor["name"] == monitorName;
+    });
     if (monitor == std::end(monitors)) {
       spdlog::warn("Monitor not found: {}", monitorName);
       return Workspace{
@@ -133,7 +125,8 @@ auto Window::getActiveWorkspace(const std::string& monitorName) -> Workspace {
           .last_window_title = "",
       };
     }
-    const int id = (*monitor)["activeWorkspace"]["id"].asInt();
+    const int special_id = (*monitor)["specialWorkspace"]["id"].asInt();
+    const int id = special_id != 0 ? special_id : (*monitor)["activeWorkspace"]["id"].asInt();
 
     const auto workspaces = IPC::inst().getSocket1JsonReply("workspaces");
     if (workspaces.isArray()) {
