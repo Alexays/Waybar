@@ -1,5 +1,6 @@
 #include <json/value.h>
 #include <spdlog/spdlog.h>
+#include <glibmm/main.h>
 
 #include <memory>
 #include <string>
@@ -30,6 +31,11 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
   }
 
   m_button.add_events(Gdk::BUTTON_PRESS_MASK);
+  m_button.add_events(Gdk::ENTER_NOTIFY_MASK | Gdk::LEAVE_NOTIFY_MASK);
+
+  m_button.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Workspace::handleEnter));
+  m_button.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Workspace::handleLeave));
+
   m_button.signal_button_press_event().connect(sigc::mem_fun(*this, &Workspace::handleClicked),
                                                false);
 
@@ -43,6 +49,12 @@ Workspace::Workspace(const Json::Value& workspace_data, Workspaces& workspace_ma
   m_button.add(m_content);
 
   initializeWindowMap(clients_data);
+}
+
+Workspace::~Workspace() {
+  // Disconnect the hover-check timeout so it can't fire on this destroyed
+  // instance (Workspaces are removed at runtime while a check may be armed).
+  stopHoverCheck();
 }
 
 void addOrRemoveClass(const Glib::RefPtr<Gtk::StyleContext>& context, bool condition,
@@ -66,25 +78,121 @@ std::optional<WindowRepr> Workspace::closeWindow(WindowAddress const& addr) {
   return std::nullopt;
 }
 
+bool Workspace::pointerInsideButton() {
+  auto display = Gdk::Display::get_default();
+  if (!display) {
+    return false;
+  }
+
+  auto seat = display->get_default_seat();
+  if (!seat) {
+    return false;
+  }
+
+  auto pointer = seat->get_pointer();
+  if (!pointer) {
+    return false;
+  }
+
+  Glib::RefPtr<Gdk::Screen> screen;
+  int pointerRootX = 0;
+  int pointerRootY = 0;
+
+  pointer->get_position(screen, pointerRootX, pointerRootY);
+
+  Gtk::Widget* toplevel = m_button.get_toplevel();
+  if (toplevel == nullptr || !toplevel->get_window()) {
+    return false;
+  }
+
+  int buttonX = 0;
+  int buttonY = 0;
+
+  if (!m_button.translate_coordinates(*toplevel, 0, 0, buttonX, buttonY)) {
+    return false;
+  }
+
+  int windowRootX = 0;
+  int windowRootY = 0;
+  toplevel->get_window()->get_root_origin(windowRootX, windowRootY);
+
+  const auto allocation = m_button.get_allocation();
+
+  const int buttonRootX = windowRootX + buttonX;
+  const int buttonRootY = windowRootY + buttonY;
+  const int buttonWidth = allocation.get_width();
+  const int buttonHeight = allocation.get_height();
+
+  return pointerRootX >= buttonRootX && pointerRootY >= buttonRootY &&
+         pointerRootX < buttonRootX + buttonWidth &&
+         pointerRootY < buttonRootY + buttonHeight;
+}
+
+bool Workspace::syncHoverClass() {
+  auto styleContext = m_button.get_style_context();
+
+  if (pointerInsideButton()) {
+    styleContext->add_class("workspace-hover");
+    return true;
+  }
+
+  styleContext->remove_class("workspace-hover");
+  stopHoverCheck();
+  return false;
+}
+
+void Workspace::startHoverCheck() {
+  if (m_hoverCheckConnection.connected()) {
+    return;
+  }
+
+  m_hoverCheckConnection = Glib::signal_timeout().connect(
+      sigc::mem_fun(*this, &Workspace::syncHoverClass),
+      50);
+}
+
+void Workspace::stopHoverCheck() {
+  if (m_hoverCheckConnection.connected()) {
+    m_hoverCheckConnection.disconnect();
+  }
+}
+
+bool Workspace::handleEnter(GdkEventCrossing* /*event*/) {
+  m_button.get_style_context()->add_class("workspace-hover");
+  startHoverCheck();
+  return false;
+}
+
+bool Workspace::handleLeave(GdkEventCrossing* /*event*/) {
+  /*
+   * Do not remove immediately.
+   * Workspace taskbar children can fire misleading leave events while the
+   * pointer is still visually inside the workspace button.
+   *
+   * The polling check will remove the class once the pointer really leaves.
+   */
+  startHoverCheck();
+  return false;
+}
 bool Workspace::handleClicked(GdkEventButton* bt) const {
   if (bt->type == GDK_BUTTON_PRESS) {
     try {
       if (id() > 0) {  // normal
         if (m_workspaceManager.moveToMonitor()) {
-          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
+          IPC::dispatch("focusworkspaceoncurrentmonitor", std::to_string(id()));
         } else {
-          m_ipc.getSocket1Reply("dispatch workspace " + std::to_string(id()));
+          IPC::dispatch("workspace", std::to_string(id()));
         }
       } else if (!isSpecial()) {  // named (this includes persistent)
         if (m_workspaceManager.moveToMonitor()) {
-          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
+          IPC::dispatch("focusworkspaceoncurrentmonitor", "name:" + name());
         } else {
-          m_ipc.getSocket1Reply("dispatch workspace name:" + name());
+          IPC::dispatch("workspace", "name:" + name());
         }
       } else if (id() != -99) {  // named special
-        m_ipc.getSocket1Reply("dispatch togglespecialworkspace " + name());
+        IPC::dispatch("togglespecialworkspace", name());
       } else {  // special
-        m_ipc.getSocket1Reply("dispatch togglespecialworkspace");
+        IPC::dispatch("togglespecialworkspace", "");
       }
       return true;
     } catch (const std::exception& e) {
@@ -161,6 +269,17 @@ std::string& Workspace::selectIcon(std::map<std::string, std::string>& icons_map
     }
   }
 
+  if (isActive() && isSpecial()) {
+    auto activeIconIt = icons_map.find("active:" + name());
+    if (activeIconIt != icons_map.end()) {
+      return activeIconIt->second;
+    }
+    auto namedIconIt = icons_map.find(name());
+    if (namedIconIt != icons_map.end()) {
+      return namedIconIt->second;
+    }
+  }
+
   if (isActive()) {
     auto activeIconIt = icons_map.find("active");
     if (activeIconIt != icons_map.end()) {
@@ -234,6 +353,7 @@ void Workspace::update(const std::string& workspace_icon) {
   auto styleContext = m_button.get_style_context();
   addOrRemoveClass(styleContext, isActive(), "active");
   addOrRemoveClass(styleContext, isSpecial(), "special");
+  addOrRemoveClass(styleContext, isSpecial(), name());
   addOrRemoveClass(styleContext, isEmpty(), "empty");
   addOrRemoveClass(styleContext, isPersistent(), "persistent");
   addOrRemoveClass(styleContext, isUrgent(), "urgent");
@@ -301,15 +421,18 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
     window_box->set_tooltip_markup(window_repr.window_title);
-    window_box->get_style_context()->add_class("taskbar-window");
+
+    auto button = Gtk::manage(new Gtk::Button());
+    button->set_relief(Gtk::RELIEF_NONE);
+    button->add(*window_box);
+    button->get_style_context()->add_class("taskbar-window");
     if (window_repr.isActive) {
-      window_box->get_style_context()->add_class("active");
+      button->get_style_context()->add_class("active");
     }
-    auto event_box = Gtk::manage(new Gtk::EventBox());
-    event_box->add(*window_box);
     if (m_workspaceManager.onClickWindow() != "") {
-      event_box->signal_button_press_event().connect(
-          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address));
+      button->signal_button_press_event().connect(
+          sigc::bind(sigc::mem_fun(*this, &Workspace::handleClick), window_repr.address),
+          false);
     }
 
     auto text_before = fmt::format(fmt::runtime(m_workspaceManager.taskbarFormatBefore()),
@@ -334,8 +457,8 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
       window_box->pack_start(*window_label_after, true, true);
     }
 
-    m_content.pack_start(*event_box, true, false);
-    event_box->show_all();
+    m_content.pack_start(*button, true, false);
+    button->show_all();
   };
 
   if (m_workspaceManager.taskbarReverseDirection()) {
