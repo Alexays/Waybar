@@ -103,7 +103,9 @@ void Workspaces::doUpdate() {
                          fmt::arg("output", ws["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label*>(button.get_children()[0])->set_markup(name);
+      auto* child = gtk_bin_get_child(GTK_BIN(button.gobj()));
+      if (child != nullptr && GTK_IS_LABEL(child))
+        gtk_label_set_markup(GTK_LABEL(child), name.c_str());
     } else {
       button.set_label(name);
     }
@@ -114,6 +116,11 @@ void Workspaces::doUpdate() {
         button.show();
       else
         button.hide();
+    } else if (config_["hide-empty"].asBool()) {
+      if (ws["active_window_id"].isNull() && !ws["is_focused"].asBool())
+          button.hide();
+      else
+          button.show();
     } else {
       button.show();
     }
@@ -174,11 +181,11 @@ std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws)
 
   if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
 
-  if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
+  if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
 
   if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
 
-  if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
+  if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
 
   if (ws["name"]) {
     const auto& name = ws["name"].asString();

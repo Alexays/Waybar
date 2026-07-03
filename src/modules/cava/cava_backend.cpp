@@ -218,7 +218,7 @@ void waybar::modules::cava::CavaBackend::loadConfig() {
     prm_.input = ::cava::input_method_by_name(config_["method"].asString().c_str());
   if (config_["source"].isString()) {
     if (prm_.audio_source) free(prm_.audio_source);
-    prm_.audio_source = config_["source"].asString().data();
+    prm_.audio_source = strdup(config_["source"].asString().c_str());
   }
   if (config_["sample_rate"].isNumeric()) prm_.samplerate = config_["sample_rate"].asLargestInt();
   if (config_["sample_bits"].isInt()) prm_.samplebits = config_["sample_bits"].asInt();

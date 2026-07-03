@@ -31,7 +31,8 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
       ignore_list_(parseIgnoreList(config)),
       host_(nb_hosts_, config, bar, ignore_list_,
             std::bind(&Tray::onAdd, this, std::placeholders::_1),
-            std::bind(&Tray::onRemove, this, std::placeholders::_1)) {
+            std::bind(&Tray::onRemove, this, std::placeholders::_1),
+            std::bind(&Tray::queueUpdate, this)) {
   box_.set_name("tray");
   event_box_.add(box_);
   if (!id.empty()) {
@@ -40,9 +41,6 @@ Tray::Tray(const std::string& id, const Bar& bar, const Json::Value& config)
   box_.get_style_context()->add_class(MODULE_CLASS);
   if (config_["spacing"].isUInt()) {
     box_.set_spacing(config_["spacing"].asUInt());
-  }
-  if (config["show-passive-items"].isBool()) {
-    show_passive_ = config["show-passive-items"].asBool();
   }
   nb_hosts_ += 1;
   if (config_["icons"].isObject()) {
@@ -56,10 +54,12 @@ void Tray::checkIgnoreList(std::unique_ptr<Item>* item_ptr) {
   host_.checkIgnoreList(ignore_list_, std::bind(&Tray::onRemove, this, std::placeholders::_1));
 }
 
+void Tray::queueUpdate() { dp.emit(); }
+
 void Tray::onAdd(std::unique_ptr<Item>& item) {
-  spdlog::info("Tray::onAdd - item bus_name='{}', category='{}', icon_name='{}', title='{}'", 
-              item->bus_name, item->category, item->icon_name, item->title);
-  
+  spdlog::info("Tray::onAdd - item bus_name='{}', category='{}', icon_name='{}', title='{}'",
+               item->bus_name, item->category, item->icon_name, item->title);
+
   if (config_["reverse-direction"].isBool() && config_["reverse-direction"].asBool()) {
     box_.pack_end(item->event_box);
   } else {
@@ -68,7 +68,9 @@ void Tray::onAdd(std::unique_ptr<Item>& item) {
 
   spdlog::debug("Tray::onAdd deferred check - checking ignore list");
   host_.checkIgnoreList(ignore_list_, std::bind(&Tray::onRemove, this, std::placeholders::_1));
-  
+
+  item->event_box.signal_show().connect([this] { dp.emit(); });
+  item->event_box.signal_hide().connect([this] { dp.emit(); });
   dp.emit();
 }
 
@@ -83,18 +85,10 @@ auto Tray::update() -> void {
     spdlog::debug("Tray::update() - checking ignore list");
     host_.checkIgnoreList(ignore_list_, std::bind(&Tray::onRemove, this, std::placeholders::_1));
   }
-  
-  // Show tray only when items are available
-  std::vector<Gtk::Widget*> children = box_.get_children();
-  if (show_passive_) {
-    event_box_.set_visible(!children.empty());
-  } else {
-    event_box_.set_visible(!std::all_of(children.begin(), children.end(), [](Gtk::Widget* child) {
-      return child->get_style_context()->has_class("passive");
-    }));
-  }
 
-  // Call parent update
+  std::vector<Gtk::Widget*> children = box_.get_children();
+  event_box_.set_visible(std::any_of(children.begin(), children.end(),
+                                     [](Gtk::Widget* child) { return child->get_visible(); }));
   AModule::update();
 }
 

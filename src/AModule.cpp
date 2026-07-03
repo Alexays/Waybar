@@ -17,9 +17,13 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      distance_scrolled_x_(0.0),
+      cursor_timeout_conn_() {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
+  disable_on_sleep_ =
+      config_["disable-on-sleep"].isBool() ? config_["disable-on-sleep"].asBool() : false;
 
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
@@ -72,8 +76,12 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
-    if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
-      setCursor(Gdk::HAND2);
+    if (config_["cursor"].isBool()) {
+      if (config_["cursor"].asBool()) {
+        setCursor(Gdk::HAND2);
+      } else {
+        setCursor(Gdk::ARROW);
+      }
     } else if (config_["cursor"].isInt()) {
       setCursor(Gdk::CursorType(config_["cursor"].asInt()));
     } else {
@@ -83,10 +91,17 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 }
 
 AModule::~AModule() {
+  if (cursor_timeout_conn_.connected()) {
+    cursor_timeout_conn_.disconnect();
+  }
   for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
     }
+  }
+  if (menu_ != nullptr) {
+    g_object_unref(menu_);
+    menu_ = nullptr;
   }
 }
 
@@ -114,7 +129,7 @@ void AModule::setCursor(Gdk::CursorType const& c) {
   } else {
     // window may not be accessible yet, in this case,
     // schedule another call for setting the cursor in 1 sec
-    Glib::signal_timeout().connect_seconds(
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
         [this, c]() {
           setCursor(c);
           return false;
@@ -166,9 +181,9 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   }
 
   // Check that a menu has been configured
-  if (config_["menu"].isString()) {
+  if (rec != eventMap_.cend() && config_["menu"].isString()) {
     // Check if the event is the one specified for the "menu" option
-    if (rec->second == config_["menu"].asString()) {
+    if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
       // Popup the menu
       gtk_widget_show_all(GTK_WIDGET(menu_));
       gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));

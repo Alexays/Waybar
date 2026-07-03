@@ -77,6 +77,7 @@ Mode::Mode(const std::string& id, const waybar::Bar& bar, const Json::Value& con
 
   if (!seat_) {
     spdlog::error("wl_seat not advertised");
+    return;
   }
 
   label_.hide();
