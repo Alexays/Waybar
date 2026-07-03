@@ -5,16 +5,16 @@
 #include <csignal>
 #include <string>
 
-#include "ALabel.hpp"
+#include "AIconLabel.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Custom : public ALabel {
+class Custom : public AIconLabel {
  public:
-  Custom(const std::string&, const std::string&, const Json::Value&);
+  Custom(const std::string&, const std::string&, const Json::Value&, const std::string&);
   virtual ~Custom();
   auto update() -> void override;
   void refresh(int /*signal*/) override;
@@ -22,6 +22,7 @@ class Custom : public ALabel {
  private:
   void delayWorker();
   void continuousWorker();
+  void waitingWorker();
   void parseOutputRaw();
   void parseOutputJson();
   void handleEvent();
@@ -29,10 +30,16 @@ class Custom : public ALabel {
   bool handleToggle(GdkEventButton* const& e) override;
 
   const std::string name_;
+  const std::string output_name_;
   std::string text_;
   std::string id_;
   std::string alt_;
   std::string tooltip_;
+  std::string last_tooltip_markup_;
+  std::string image_path_;
+  std::string image_name_;
+  unsigned app_icon_size_{24};
+  const bool tooltip_format_enabled_;
   std::vector<std::string> class_;
   int percentage_;
   FILE* fp_;

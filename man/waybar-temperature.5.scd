@@ -19,23 +19,45 @@ Addressed by *temperature*
 *hwmon-path*: ++
 	typeof: string ++
 	The temperature path to use, e.g. */sys/class/hwmon/hwmon2/temp1_input* instead of one in */sys/class/thermal/*.
+	This can also be an array of strings. In this case, waybar will check each item in the array and use the first valid one.
+	This is suitable if you want to share the same configuration file among different machines with different hardware configurations.
 
 *hwmon-path-abs*: ++
 	typeof: string ++
 	The path of the hwmon-directory of the device, e.g. */sys/devices/pci0000:00/0000:00:18.3/hwmon*. (Note that the subdirectory *hwmon/hwmon#*, where *#* is a number is not part of the path!) Has to be used together with *input-filename*.
+	This can also be an array of strings, for which, it just works like *hwmon-path*.
+
+*hwmon-name*: ++
+	typeof: string ++
+	Select a hwmon device by its name (from /sys/class/hwmon/\*/name), e.g. *amdgpu*.
+	Requires *input-filename* to be set.
+	Cannot be used together with *hwmon-path* or *hwmon-path-abs*.
 
 *input-filename*: ++
 	typeof: string ++
-	The temperature filename of your *hwmon-path-abs*, e.g. *temp1_input*
+	The temperature filename of your *hwmon-path-abs* (also used by *hwmon-by-name*), e.g. *temp1_input*
+
+*hwmon-by-name*: ++
+	typeof: string ++
+	The substring to search for in */sys/class/hwmon/hwmonX/name* (where hwmonX is any folder in */sys/class/hwmon/*).
+	Waybar will search for every directory in */sys/class/hwmon/* and uses the directory in which the *name* matches *hwmon-by-name*.
+
+*warning-threshold*: ++
+	typeof: integer ++
+	The threshold before it is considered warning (Celsius).
 
 *critical-threshold*: ++
 	typeof: integer ++
 	The threshold before it is considered critical (Celsius).
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 10 ++
 	The interval in which the information gets polled.
+
+*format-warning*: ++
+	typeof: string ++
+	The format to use when temperature is considered warning
 
 *format-critical*: ++
 	typeof: string ++
@@ -57,23 +79,27 @@ Addressed by *temperature*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
 	The maximum length in characters the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should accept.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *on-click*: ++
 	typeof: string ++
-	Command to execute when you clicked on the module.
+	Command to execute when you click on the module.
 
 *on-click-middle*: ++
 	typeof: string ++
@@ -81,7 +107,7 @@ Addressed by *temperature*
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -104,6 +130,24 @@ Addressed by *temperature*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{temperatureC}*: Temperature in Celsius.
@@ -117,7 +161,7 @@ Addressed by *temperature*
 ```
  "temperature": {
 	// "thermal-zone": 2,
-	// "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
+	// "hwmon-path": ["/sys/class/hwmon/hwmon2/temp1_input", "/sys/class/thermal/thermal_zone0/temp"],
 	// "critical-threshold": 80,
 	// "format-critical": "{temperatureC}°C ",
 	"format": "{temperatureC}°C "
@@ -127,4 +171,5 @@ Addressed by *temperature*
 # STYLE
 
 - *#temperature*
+- *#temperature.warning*
 - *#temperature.critical*

@@ -29,6 +29,6 @@ RUN dnf install -y @c-development \
     'pkgconfig(wayland-client)' \
     'pkgconfig(wayland-cursor)' \
     'pkgconfig(wayland-protocols)' \
-    'pkgconfig(wireplumber-0.4)' \
+    'pkgconfig(wireplumber-0.5)' \
     'pkgconfig(xkbregistry)' && \
     dnf clean all -y

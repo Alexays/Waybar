@@ -1,65 +1,126 @@
 {
-  description = "Highly customizable Wayland bar for Sway and Wlroots based compositors.";
+  description = "Highly customizable Wayland bar for Sway and Wlroots based compositors";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    devshell.url = "github:numtide/devshell";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
-  outputs = { self, flake-utils, devshell, nixpkgs }:
+  outputs =
+    { self, nixpkgs, ... }:
     let
       inherit (nixpkgs) lib;
-      genSystems = lib.genAttrs [
-        "x86_64-linux"
-      ];
+      genSystems =
+        func:
+        lib.genAttrs
+          [
+            "x86_64-linux"
+            "aarch64-linux"
+          ]
+          (
+            system:
+            func (
+              import nixpkgs {
+                inherit system;
+                overlays = with self.overlays; [
+                  waybar
+                ];
+              }
+            )
+          );
 
-      pkgsFor = genSystems (system:
-        import nixpkgs {
-          inherit system;
-        });
-
-      mkDate = longDate: (lib.concatStringsSep "-" [
-        (builtins.substring 0 4 longDate)
-        (builtins.substring 4 2 longDate)
-        (builtins.substring 6 2 longDate)
-      ]);
+      mkDate =
+        longDate:
+        (lib.concatStringsSep "-" [
+          (builtins.substring 0 4 longDate)
+          (builtins.substring 4 2 longDate)
+          (builtins.substring 6 2 longDate)
+        ]);
     in
     {
-      overlays.default = _: prev: rec {
-        waybar = prev.callPackage ./nix/default.nix {
-          version = "0.9.16" + "+date=" + (mkDate (self.lastModifiedDate or "19700101")) + "_" + (self.shortRev or "dirty");
+      devShells = genSystems (pkgs: {
+        default = pkgs.mkShell {
+          name = "waybar-shell";
+
+          # inherit attributes from upstream nixpkgs derivation
+          inherit (pkgs.waybar)
+            buildInputs
+            depsBuildBuild
+            depsBuildBuildPropagated
+            depsBuildTarget
+            depsBuildTargetPropagated
+            depsHostHost
+            depsHostHostPropagated
+            depsTargetTarget
+            depsTargetTargetPropagated
+            propagatedBuildInputs
+            propagatedNativeBuildInputs
+            strictDeps
+            ;
+
+          # overrides for local development
+          nativeBuildInputs =
+            pkgs.waybar.nativeBuildInputs
+            ++ (with pkgs; [
+              nixfmt
+              clang-tools
+              gdb
+            ]);
+        };
+      });
+
+      formatter = genSystems (
+        pkgs:
+        pkgs.treefmt.withConfig {
+          settings = {
+            formatter = {
+              clang-format = {
+                options = [ "-i" ];
+                command = lib.getExe' pkgs.clang-tools "clang-format";
+                excludes = [ ];
+                includes = [
+                  "*.c"
+                  "*.cpp"
+                  "*.h"
+                  "*.hpp"
+                ];
+              };
+              nixfmt = {
+                command = lib.getExe pkgs.nixfmt;
+                includes = [ "*.nix" ];
+              };
+            };
+            tree-root-file = ".git/index";
+          };
+        }
+      );
+
+      overlays = {
+        default = self.overlays.waybar;
+        waybar = final: prev: {
+          waybar = final.callPackage ./nix/default.nix {
+            waybar = prev.waybar;
+            # take the first "version: '...'" from meson.build
+            version =
+              (builtins.head (
+                builtins.split "'" (
+                  builtins.elemAt (builtins.split " version: '" (builtins.readFile ./meson.build)) 2
+                )
+              ))
+              + "+date="
+              + (mkDate (self.lastModifiedDate or "19700101"))
+              + "_"
+              + (self.shortRev or "dirty");
+          };
         };
       };
-      packages = genSystems
-        (system:
-          (self.overlays.default null pkgsFor.${system})
-          // {
-            default = self.packages.${system}.waybar;
-          });
-    } //
-    flake-utils.lib.eachDefaultSystem (system: {
-      devShell =
-        let pkgs = import nixpkgs {
-          inherit system;
 
-          overlays = [ devshell.overlay ];
-        };
-        in
-        pkgs.devshell.mkShell {
-          imports = [ "${pkgs.devshell.extraModulesDir}/language/c.nix" ];
-          commands = [
-            {
-              package = pkgs.devshell.cli;
-              help = "Per project developer environments";
-            }
-          ];
-          devshell.packages = with pkgs; [
-            clang-tools
-            gdb
-          ];
-          language.c.libraries = with pkgs; [
-          ];
-        };
-    });
+      packages = genSystems (pkgs: {
+        default = self.packages.${pkgs.stdenv.hostPlatform.system}.waybar;
+        inherit (pkgs) waybar;
+      });
+    };
 }

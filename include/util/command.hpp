@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fcntl.h>
 #include <giomm.h>
 #include <spdlog/spdlog.h>
 #include <sys/wait.h>
@@ -18,6 +19,8 @@ extern std::mutex reap_mtx;
 extern std::list<pid_t> reap;
 
 namespace waybar::util::command {
+
+constexpr int kExecFailureExitCode = 127;
 
 struct res {
   int exit_code;
@@ -58,6 +61,7 @@ inline int close(FILE* fp, pid_t pid) {
       spdlog::debug("Cmd continued");
     } else if (ret == -1) {
       spdlog::debug("waitpid failed: {}", strerror(errno));
+      break;
     } else {
       break;
     }
@@ -65,10 +69,14 @@ inline int close(FILE* fp, pid_t pid) {
   return stat;
 }
 
-inline FILE* open(const std::string& cmd, int& pid) {
+inline FILE* open(const std::string& cmd, int& pid, const std::string& output_name) {
   if (cmd == "") return nullptr;
   int fd[2];
-  if (pipe(fd) != 0) {
+  // Open the pipe with the close-on-exec flag set, so it will not be inherited
+  // by any other subprocesses launched by other threads (which could result in
+  // the pipe staying open after this child dies, causing us to hang when trying
+  // to read from it)
+  if (pipe2(fd, O_CLOEXEC) != 0) {
     spdlog::error("Unable to pipe fd");
     return nullptr;
   }
@@ -77,6 +85,8 @@ inline FILE* open(const std::string& cmd, int& pid) {
 
   if (child_pid < 0) {
     spdlog::error("Unable to exec cmd {}, error {}", cmd.c_str(), strerror(errno));
+    ::close(fd[0]);
+    ::close(fd[1]);
     return nullptr;
   }
 
@@ -102,8 +112,13 @@ inline FILE* open(const std::string& cmd, int& pid) {
     ::close(fd[0]);
     dup2(fd[1], 1);
     setpgid(child_pid, child_pid);
+    if (!output_name.empty()) {
+      setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
+    }
     execlp("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
-    exit(0);
+    const int saved_errno = errno;
+    spdlog::error("execlp(/bin/sh) failed in open: {}", strerror(saved_errno));
+    _exit(kExecFailureExitCode);
   } else {
     ::close(fd[1]);
   }
@@ -111,9 +126,9 @@ inline FILE* open(const std::string& cmd, int& pid) {
   return fdopen(fd[0], "r");
 }
 
-inline struct res exec(const std::string& cmd) {
+inline struct res exec(const std::string& cmd, const std::string& output_name) {
   int pid;
-  auto fp = command::open(cmd, pid);
+  auto fp = command::open(cmd, pid, output_name);
   if (!fp) return {-1, ""};
   auto output = command::read(fp);
   auto stat = command::close(fp, pid);
@@ -122,13 +137,13 @@ inline struct res exec(const std::string& cmd) {
 
 inline struct res execNoRead(const std::string& cmd) {
   int pid;
-  auto fp = command::open(cmd, pid);
+  auto fp = command::open(cmd, pid, "");
   if (!fp) return {-1, ""};
   auto stat = command::close(fp, pid);
   return {WEXITSTATUS(stat), ""};
 }
 
-inline int32_t forkExec(const std::string& cmd) {
+inline int32_t forkExec(const std::string& cmd, const std::string& output_name) {
   if (cmd == "") return -1;
 
   pid_t pid = fork();
@@ -147,8 +162,13 @@ inline int32_t forkExec(const std::string& cmd) {
     err = pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
     if (err != 0) spdlog::error("pthread_sigmask in forkExec failed: {}", strerror(err));
     setpgid(pid, pid);
+    if (!output_name.empty()) {
+      setenv("WAYBAR_OUTPUT_NAME", output_name.c_str(), 1);
+    }
     execl("/bin/sh", "sh", "-c", cmd.c_str(), (char*)0);
-    exit(0);
+    const int saved_errno = errno;
+    spdlog::error("execl(/bin/sh) failed in forkExec: {}", strerror(saved_errno));
+    _exit(kExecFailureExitCode);
   } else {
     reap_mtx.lock();
     reap.push_back(pid);
@@ -158,5 +178,7 @@ inline int32_t forkExec(const std::string& cmd) {
 
   return pid;
 }
+
+inline int32_t forkExec(const std::string& cmd) { return forkExec(cmd, ""); }
 
 }  // namespace waybar::util::command

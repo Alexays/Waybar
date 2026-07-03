@@ -2,7 +2,7 @@ waybar-wlr-taskbar(5)
 
 # NAME
 
-wlroots - Taskbar module
+waybar - wlr taskbar module
 
 # DESCRIPTION
 
@@ -16,7 +16,14 @@ Addressed by *wlr/taskbar*
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
-	If set to false applications on the waybar's current output will be shown. Otherwise all applications are shown.
+	If set to false applications on the waybar's current output will be shown. Otherwise, all applications are shown.
+
+*bar-css-states*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, application state is exposed as CSS classes on the Waybar
+	window. Maximized and fullscreen state is aggregated across applications
+	known to belong to the active workspace. See *Bar state style* below.
 
 *format*: ++
 	typeof: string ++
@@ -52,10 +59,30 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, always reorder the tasks in the taskbar so that the currently active one is first. Otherwise don't reorder.
 
+*active-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only the currently active application button is shown.
+	Other applications remain tracked and reappear when activated.
+
 *sort-by-app-id*: ++
 	typeof: bool ++
 	default: false ++
 	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
+
+*homogeneous*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, distribute every task button evenly across the taskbar's allocated width. Buttons will automatically resize so that 'N' visible tasks each take '1/N' of the width.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's box, allowing options 'left', 'right', or 'center' to define the positioning.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, task buttons stretch to fill the available space in the taskbar and long titles are ellipsized to fit. Only takes effect on a horizontal bar; on a vertical bar the buttons keep their content-based size. If set to false, buttons are sized to their content.
 
 *on-click*: ++
 	typeof: string ++
@@ -81,11 +108,15 @@ Addressed by *wlr/taskbar*
 	typeof: object ++
 	Dictionary of app_id to be replaced with
 
+*rewrite*: ++
+	typeof: object ++
+	Rules to rewrite the module format output. See *rewrite rules*.
+
 # FORMAT REPLACEMENTS
 
 *{icon}*: The icon of the application.
 
-*{title}*: The application name as in desktop file if appropriate desktop fils found, otherwise same as {app_id}
+*{name}*: The application name as in desktop file if appropriate desktop files are found, otherwise same as {app_id}
 
 *{title}*: The title of the application.
 
@@ -109,6 +140,18 @@ Addressed by *wlr/taskbar*
 
 *close*: Close the application.
 
+# REWRITE RULES
+
+*rewrite* is an object where keys are regular expressions and values are
+rewrite rules if the expression matches. Rules may contain references to
+captures of the expression.
+
+Regular expression and replacement follow ECMA-script rules.
+
+If no expression matches, the format output is left unchanged.
+
+Invalid expressions (e.g., mismatched parentheses) are skipped.
+
 # EXAMPLES
 
 ```
@@ -124,6 +167,10 @@ Addressed by *wlr/taskbar*
 	],
 	"app_ids-mapping": {
 		"firefoxdeveloperedition": "firefox-developer-edition"
+	},
+	"rewrite": {
+		"Firefox Web Browser": "Firefox",
+		"Foot Server": "Terminal"
 	}
 }
 ```
@@ -136,3 +183,35 @@ Addressed by *wlr/taskbar*
 - *#taskbar button.minimized*
 - *#taskbar button.active*
 - *#taskbar button.fullscreen*
+
+# Bar state style
+
+When *bar-css-states* is enabled, the following classes are added to
+*window#waybar*:
+
+- *window#waybar.toplevel-active*
+- *window#waybar.toplevel-maximized*
+- *window#waybar.toplevel-minimized*
+- *window#waybar.toplevel-fullscreen*
+
+The active, minimized classes describe the active application. The maximized
+and fullscreen classes are set if any non-minimized application known to belong
+to the active workspace has that state.
+
+Workspace membership is learned when an application is activated and requires
+the compositor to support *ext-workspace-v1*. Before an application has been
+activated during the current Waybar session, its workspace may be unknown. On
+compositors without *ext-workspace-v1*, these classes fall back to the active
+application's state.
+
+For example:
+
+```
+window#waybar {
+	background-color: rgba(0, 0, 0, 0.5);
+}
+
+window#waybar.toplevel-maximized {
+	background-color: rgba(0, 0, 0, 1);
+}
+```

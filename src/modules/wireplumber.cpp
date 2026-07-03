@@ -2,7 +2,12 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cmath>
+#include <string>
+
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
+
+std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
 
 waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config)
     : ALabel(config, "wireplumber", id, "{volume}%"),
@@ -15,170 +20,293 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
       pending_plugins_(0),
       muted_(false),
       volume_(0.0),
-      node_id_(0) {
+      min_step_(0.0),
+      node_id_(0),
+      node_name_(""),
+      source_name_(""),
+      type_(nullptr),
+      source_node_id_(0),
+      source_muted_(false),
+      source_volume_(0.0),
+      default_source_name_(nullptr),
+      form_factor_("") {
+  waybar::modules::Wireplumber::modules.push_back(this);
+
   wp_init(WP_INIT_PIPEWIRE);
-  wp_core_ = wp_core_new(NULL, NULL);
+  wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
   apis_ = g_ptr_array_new_with_free_func(g_object_unref);
   om_ = wp_object_manager_new();
 
-  prepare();
+  type_ = g_strdup(config_["node-type"].isString() ? config_["node-type"].asString().c_str()
+                                                   : "Audio/Sink");
 
-  loadRequiredApiModules();
+  prepare(this);
 
-  spdlog::debug("[{}]: connecting to pipewire...", this->name_);
+  spdlog::debug("[{}]: connecting to pipewire: '{}'...", name_, type_);
 
-  if (!wp_core_connect(wp_core_)) {
-    spdlog::error("[{}]: Could not connect to PipeWire", this->name_);
+  if (wp_core_connect(wp_core_) == 0) {
+    spdlog::error("[{}]: Could not connect to PipeWire: '{}'", name_, type_);
     throw std::runtime_error("Could not connect to PipeWire\n");
   }
 
-  spdlog::debug("[{}]: connected!", this->name_);
+  spdlog::debug("[{}]: {} connected!", name_, type_);
 
   g_signal_connect_swapped(om_, "installed", (GCallback)onObjectManagerInstalled, this);
 
-  activatePlugins();
-
-  dp.emit();
+  asyncLoadRequiredApiModules();
 }
 
 waybar::modules::Wireplumber::~Wireplumber() {
+  waybar::modules::Wireplumber::modules.remove(this);
+  if (mixer_api_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(mixer_api_, this);
+  }
+  if (def_nodes_api_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(def_nodes_api_, this);
+  }
+  if (om_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(om_, this);
+  }
+  wp_core_disconnect(wp_core_);
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
   g_clear_object(&wp_core_);
   g_clear_object(&mixer_api_);
   g_clear_object(&def_nodes_api_);
   g_free(default_node_name_);
+  g_free(default_source_name_);
+  g_free(type_);
 }
 
 void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* self, uint32_t id) {
-  spdlog::debug("[{}]: updating node name with node.id {}", self->name_, id);
+  spdlog::debug("[{}]: updating '{}' node name with node.id {}", self->name_, self->type_, id);
 
   if (!isValidNodeId(id)) {
-    spdlog::warn("[{}]: '{}' is not a valid node ID. Ignoring node name update.", self->name_, id);
+    spdlog::warn("[{}]: '{}' is not a valid node ID. Ignoring '{}' node name update.", self->name_,
+                 id, self->type_);
     return;
   }
 
-  auto proxy = static_cast<WpProxy*>(wp_object_manager_lookup(
-      self->om_, WP_TYPE_GLOBAL_PROXY, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=u", id, NULL));
+  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
+                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
+                                                               "bound-id", "=u", id, nullptr));
 
-  if (!proxy) {
+  if (proxy == nullptr) {
     auto err = fmt::format("Object '{}' not found\n", id);
     spdlog::error("[{}]: {}", self->name_, err);
-    throw std::runtime_error(err);
+    return;
   }
 
   g_autoptr(WpProperties) properties =
-      WP_IS_PIPEWIRE_OBJECT(proxy) ? wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(proxy))
-                                   : wp_properties_new_empty();
-  g_autoptr(WpProperties) global_p = wp_global_proxy_get_global_properties(WP_GLOBAL_PROXY(proxy));
+      WP_IS_PIPEWIRE_OBJECT(proxy) != 0
+          ? wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(proxy))
+          : wp_properties_new_empty();
+  g_autoptr(WpProperties) globalP = wp_global_proxy_get_global_properties(WP_GLOBAL_PROXY(proxy));
   properties = wp_properties_ensure_unique_owner(properties);
-  wp_properties_add(properties, global_p);
-  wp_properties_set(properties, "object.id", NULL);
-  auto nick = wp_properties_get(properties, "node.nick");
-  auto description = wp_properties_get(properties, "node.description");
+  wp_properties_add(properties, globalP);
+  wp_properties_set(properties, "object.id", nullptr);
+  const auto* nick = wp_properties_get(properties, "node.nick");
+  const auto* description = wp_properties_get(properties, "node.description");
 
-  self->node_name_ = nick ? nick : description;
-  spdlog::debug("[{}]: Updating node name to: {}", self->name_, self->node_name_);
+  self->node_name_ = nick != nullptr          ? nick
+                     : description != nullptr ? description
+                                              : "Unknown node name";
+  spdlog::debug("[{}]: Updating '{}' node name to: {}", self->name_, self->type_, self->node_name_);
+
+  // find form-factor
+  const auto* devid = wp_properties_get(properties, "device.id");
+  spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
+
+  auto* dev = static_cast<WpDevice*>(wp_object_manager_lookup(
+      self->om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=s", devid, nullptr));
+
+  if (const auto* ff =
+          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(dev), "device.form-factor")) {
+    self->form_factor_ = ff;
+    spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
+  } else {
+    self->form_factor_ = "";
+  }
+}
+
+void waybar::modules::Wireplumber::updateSourceName(waybar::modules::Wireplumber* self,
+                                                    uint32_t id) {
+  spdlog::debug("[{}]: updating source name with node.id {}", self->name_, id);
+
+  if (!isValidNodeId(id)) {
+    spdlog::warn("[{}]: '{}' is not a valid source node ID. Ignoring source name update.",
+                 self->name_, id);
+    return;
+  }
+
+  auto* proxy = static_cast<WpProxy*>(wp_object_manager_lookup(self->om_, WP_TYPE_GLOBAL_PROXY,
+                                                               WP_CONSTRAINT_TYPE_G_PROPERTY,
+                                                               "bound-id", "=u", id, nullptr));
+
+  if (proxy == nullptr) {
+    auto err = fmt::format("Source object '{}' not found\n", id);
+    spdlog::error("[{}]: {}", self->name_, err);
+    return;
+  }
+
+  g_autoptr(WpProperties) properties =
+      WP_IS_PIPEWIRE_OBJECT(proxy) != 0
+          ? wp_pipewire_object_get_properties(WP_PIPEWIRE_OBJECT(proxy))
+          : wp_properties_new_empty();
+  g_autoptr(WpProperties) globalP = wp_global_proxy_get_global_properties(WP_GLOBAL_PROXY(proxy));
+  properties = wp_properties_ensure_unique_owner(properties);
+  wp_properties_add(properties, globalP);
+  wp_properties_set(properties, "object.id", nullptr);
+  const auto* nick = wp_properties_get(properties, "node.nick");
+  const auto* description = wp_properties_get(properties, "node.description");
+
+  self->source_name_ = nick != nullptr          ? nick
+                       : description != nullptr ? description
+                                                : "Unknown source name";
+  spdlog::debug("[{}]: Updating source name to: {}", self->name_, self->source_name_);
 }
 
 void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* self, uint32_t id) {
   spdlog::debug("[{}]: updating volume", self->name_);
-  double vol;
-  GVariant* variant = NULL;
+  GVariant* variant = nullptr;
 
   if (!isValidNodeId(id)) {
-    spdlog::error("[{}]: '{}' is not a valid node ID. Ignoring volume update.", self->name_, id);
+    spdlog::error("[{}]: '{}' is not a valid '{}' node ID. Ignoring volume update.", self->name_,
+                  id, self->type_);
     return;
   }
 
   g_signal_emit_by_name(self->mixer_api_, "get-volume", id, &variant);
 
-  if (!variant) {
+  if (variant == nullptr) {
     auto err = fmt::format("Node {} does not support volume\n", id);
     spdlog::error("[{}]: {}", self->name_, err);
-    throw std::runtime_error(err);
+    return;
   }
 
-  g_variant_lookup(variant, "volume", "d", &vol);
+  g_variant_lookup(variant, "volume", "d", &self->volume_);
+  g_variant_lookup(variant, "step", "d", &self->min_step_);
   g_variant_lookup(variant, "mute", "b", &self->muted_);
   g_clear_pointer(&variant, g_variant_unref);
 
-  self->volume_ = std::round(vol * 100.0F);
+  self->dp.emit();
+}
+
+void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumber* self,
+                                                      uint32_t id) {
+  spdlog::debug("[{}]: updating source volume", self->name_);
+  GVariant* variant = nullptr;
+
+  if (!isValidNodeId(id)) {
+    spdlog::error("[{}]: '{}' is not a valid source node ID. Ignoring source volume update.",
+                  self->name_, id);
+    return;
+  }
+
+  g_signal_emit_by_name(self->mixer_api_, "get-volume", id, &variant);
+
+  if (variant == nullptr) {
+    spdlog::debug("[{}]: Source node {} does not support volume", self->name_, id);
+    return;
+  }
+
+  g_variant_lookup(variant, "volume", "d", &self->source_volume_);
+  g_variant_lookup(variant, "mute", "b", &self->source_muted_);
+  g_clear_pointer(&variant, g_variant_unref);
+
   self->dp.emit();
 }
 
 void waybar::modules::Wireplumber::onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id) {
-  spdlog::debug("[{}]: (onMixerChanged) - id: {}", self->name_, id);
-
   g_autoptr(WpNode) node = static_cast<WpNode*>(wp_object_manager_lookup(
-      self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=u", id, NULL));
+      self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=u", id, nullptr));
 
-  if (!node) {
-    spdlog::warn("[{}]: (onMixerChanged) - Object with id {} not found", self->name_, id);
+  if (node == nullptr) {
+    // log a warning only if no other widget is targeting the id.
+    // this reduces log spam when multiple instances of the module are used on different node types.
+    if (id != self->node_id_ && id != self->source_node_id_) {
+      for (auto const& module : waybar::modules::Wireplumber::modules) {
+        if (module->node_id_ == id || module->source_node_id_ == id) {
+          return;
+        }
+      }
+      return;
+    }
+
+    spdlog::warn("[{}]: (onMixerChanged: {}) - Object with id {} not found", self->name_,
+                 self->type_, id);
     return;
   }
 
   const gchar* name = wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
 
-  if (self->node_id_ != id) {
-    spdlog::debug(
-        "[{}]: (onMixerChanged) - ignoring mixer update for node: id: {}, name: {} as it is not "
-        "the default node: {} with id: {}",
-        self->name_, id, name, self->default_node_name_, self->node_id_);
-    return;
+  if (self->node_id_ == id) {
+    spdlog::debug("[{}]: (onMixerChanged: {}) - updating sink volume for node: {}", self->name_,
+                  self->type_, name);
+    updateVolume(self, id);
+  } else if (self->source_node_id_ == id) {
+    spdlog::debug("[{}]: (onMixerChanged: {}) - updating source volume for node: {}", self->name_,
+                  self->type_, name);
+    updateSourceVolume(self, id);
   }
-
-  spdlog::debug("[{}]: (onMixerChanged) - Need to update volume for node with id {} and name {}",
-                self->name_, id, name);
-  updateVolume(self, id);
 }
 
 void waybar::modules::Wireplumber::onDefaultNodesApiChanged(waybar::modules::Wireplumber* self) {
-  spdlog::debug("[{}]: (onDefaultNodesApiChanged)", self->name_);
+  spdlog::debug("[{}]: (onDefaultNodesApiChanged: {})", self->name_, self->type_);
 
-  uint32_t default_node_id;
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Sink", &default_node_id);
+  // Handle sink
+  uint32_t defaultNodeId;
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &defaultNodeId);
 
-  if (!isValidNodeId(default_node_id)) {
-    spdlog::warn("[{}]: '{}' is not a valid node ID. Ignoring node change.", self->name_,
-                 default_node_id);
-    return;
+  if (isValidNodeId(defaultNodeId)) {
+    g_autoptr(WpNode) node = static_cast<WpNode*>(
+        wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
+                                 "=u", defaultNodeId, nullptr));
+
+    if (node != nullptr) {
+      const gchar* defaultNodeName =
+          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
+
+      if (g_strcmp0(self->default_node_name_, defaultNodeName) != 0 ||
+          self->node_id_ != defaultNodeId) {
+        spdlog::debug("[{}]: Default sink changed to -> Node(name: {}, id: {})", self->name_,
+                      defaultNodeName, defaultNodeId);
+
+        g_free(self->default_node_name_);
+        self->default_node_name_ = g_strdup(defaultNodeName);
+        self->node_id_ = defaultNodeId;
+        updateVolume(self, defaultNodeId);
+        updateNodeName(self, defaultNodeId);
+      }
+    }
   }
 
-  g_autoptr(WpNode) node = static_cast<WpNode*>(
-      wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-                               "=u", default_node_id, NULL));
+  // Handle source
+  uint32_t defaultSourceId;
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source", &defaultSourceId);
 
-  if (!node) {
-    spdlog::warn("[{}]: (onDefaultNodesApiChanged) - Object with id {} not found", self->name_,
-                 default_node_id);
-    return;
+  if (isValidNodeId(defaultSourceId)) {
+    g_autoptr(WpNode) sourceNode = static_cast<WpNode*>(
+        wp_object_manager_lookup(self->om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
+                                 "=u", defaultSourceId, nullptr));
+
+    if (sourceNode != nullptr) {
+      const gchar* defaultSourceName =
+          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(sourceNode), "node.name");
+
+      if (g_strcmp0(self->default_source_name_, defaultSourceName) != 0 ||
+          self->source_node_id_ != defaultSourceId) {
+        spdlog::debug("[{}]: Default source changed to -> Node(name: {}, id: {})", self->name_,
+                      defaultSourceName, defaultSourceId);
+
+        g_free(self->default_source_name_);
+        self->default_source_name_ = g_strdup(defaultSourceName);
+        self->source_node_id_ = defaultSourceId;
+        updateSourceVolume(self, defaultSourceId);
+        updateSourceName(self, defaultSourceId);
+      }
+    }
   }
-
-  const gchar* default_node_name =
-      wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(node), "node.name");
-
-  spdlog::debug(
-      "[{}]: (onDefaultNodesApiChanged) - got the following default node: Node(name: {}, id: {})",
-      self->name_, default_node_name, default_node_id);
-
-  if (g_strcmp0(self->default_node_name_, default_node_name) == 0) {
-    spdlog::debug(
-        "[{}]: (onDefaultNodesApiChanged) - Default node has not changed. Node(name: {}, id: {}). "
-        "Ignoring.",
-        self->name_, self->default_node_name_, default_node_id);
-    return;
-  }
-
-  spdlog::debug(
-      "[{}]: (onDefaultNodesApiChanged) - Default node changed to -> Node(name: {}, id: {})",
-      self->name_, default_node_name, default_node_id);
-
-  g_free(self->default_node_name_);
-  self->default_node_name_ = g_strdup(default_node_name);
-  self->node_id_ = default_node_id;
-  updateVolume(self, default_node_id);
-  updateNodeName(self, default_node_id);
 }
 
 void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wireplumber* self) {
@@ -186,29 +314,43 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
 
   self->def_nodes_api_ = wp_plugin_find(self->wp_core_, "default-nodes-api");
 
-  if (!self->def_nodes_api_) {
+  if (self->def_nodes_api_ == nullptr) {
     spdlog::error("[{}]: default nodes api is not loaded.", self->name_);
-    throw std::runtime_error("Default nodes API is not loaded\n");
+    return;
   }
 
   self->mixer_api_ = wp_plugin_find(self->wp_core_, "mixer-api");
 
-  if (!self->mixer_api_) {
+  if (self->mixer_api_ == nullptr) {
     spdlog::error("[{}]: mixer api is not loaded.", self->name_);
-    throw std::runtime_error("Mixer api is not loaded\n");
+    return;
   }
 
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Sink",
+  // Get default sink
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", self->type_,
                         &self->default_node_name_);
-  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Sink", &self->node_id_);
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", self->type_, &self->node_id_);
 
-  if (self->default_node_name_) {
-    spdlog::debug("[{}]: (onObjectManagerInstalled) - default configured node name: {} and id: {}",
-                  self->name_, self->default_node_name_, self->node_id_);
+  // Get default source
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-configured-node-name", "Audio/Source",
+                        &self->default_source_name_);
+  g_signal_emit_by_name(self->def_nodes_api_, "get-default-node", "Audio/Source",
+                        &self->source_node_id_);
+
+  if (self->default_node_name_ != nullptr) {
+    spdlog::debug(
+        "[{}]: (onObjectManagerInstalled: {}) - default configured node name: {} and id: {}",
+        self->name_, self->type_, self->default_node_name_, self->node_id_);
+  }
+  if (self->default_source_name_ != nullptr) {
+    spdlog::debug("[{}]: default source: {} (id: {})", self->name_, self->default_source_name_,
+                  self->source_node_id_);
   }
 
   updateVolume(self, self->node_id_);
   updateNodeName(self, self->node_id_);
+  updateSourceVolume(self, self->source_node_id_);
+  updateSourceName(self, self->source_node_id_);
 
   g_signal_connect_swapped(self->mixer_api_, "changed", (GCallback)onMixerChanged, self);
   g_signal_connect_swapped(self->def_nodes_api_, "changed", (GCallback)onDefaultNodesApiChanged,
@@ -217,13 +359,13 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
 
 void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
                                                      waybar::modules::Wireplumber* self) {
-  auto plugin_name = wp_plugin_get_name(WP_PLUGIN(p));
-  spdlog::debug("[{}]: onPluginActivated: {}", self->name_, plugin_name);
-  g_autoptr(GError) error = NULL;
+  const auto* pluginName = wp_plugin_get_name(WP_PLUGIN(p));
+  spdlog::debug("[{}]: onPluginActivated: {}", self->name_, pluginName);
+  g_autoptr(GError) error = nullptr;
 
-  if (!wp_object_activate_finish(p, res, &error)) {
+  if (wp_object_activate_finish(p, res, &error) == 0) {
     spdlog::error("[{}]: error activating plugin: {}", self->name_, error->message);
-    throw std::runtime_error(error->message);
+    return;
   }
 
   if (--self->pending_plugins_ == 0) {
@@ -236,70 +378,266 @@ void waybar::modules::Wireplumber::activatePlugins() {
   for (uint16_t i = 0; i < apis_->len; i++) {
     WpPlugin* plugin = static_cast<WpPlugin*>(g_ptr_array_index(apis_, i));
     pending_plugins_++;
-    wp_object_activate(WP_OBJECT(plugin), WP_PLUGIN_FEATURE_ENABLED, NULL,
+    wp_object_activate(WP_OBJECT(plugin), WP_PLUGIN_FEATURE_ENABLED, nullptr,
                        (GAsyncReadyCallback)onPluginActivated, this);
   }
 }
 
-void waybar::modules::Wireplumber::prepare() {
-  spdlog::debug("[{}]: preparing object manager", name_);
+void waybar::modules::Wireplumber::prepare(waybar::modules::Wireplumber* self) {
+  spdlog::debug("[{}]: preparing object manager: '{}'", name_, self->type_);
   wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
-                                 "=s", "Audio/Sink", NULL);
+                                 "=s", self->type_, nullptr);
+  wp_object_manager_add_interest(om_, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
+                                 "=s", "Audio/Source", nullptr);
+  wp_object_manager_add_interest(om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_PW_PROPERTY, "media.class",
+                                 "=s", "Audio/Device", nullptr);
 }
 
-void waybar::modules::Wireplumber::loadRequiredApiModules() {
-  spdlog::debug("[{}]: loading required modules", name_);
-  g_autoptr(GError) error = NULL;
+void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
+                                                           waybar::modules::Wireplumber* self) {
+  gboolean success = FALSE;
+  g_autoptr(GError) error = nullptr;
 
-  if (!wp_core_load_component(wp_core_, "libwireplumber-module-default-nodes-api", "module", NULL,
-                              &error)) {
-    throw std::runtime_error(error->message);
+  spdlog::debug("[{}]: callback loading default node api module", self->name_);
+
+  success = wp_core_load_component_finish(self->wp_core_, res, &error);
+
+  if (success == FALSE) {
+    spdlog::error("[{}]: default nodes API load failed", self->name_);
+    return;
+  }
+  spdlog::debug("[{}]: loaded default nodes api", self->name_);
+  g_ptr_array_add(self->apis_, wp_plugin_find(self->wp_core_, "default-nodes-api"));
+
+  spdlog::debug("[{}]: loading mixer api module", self->name_);
+  wp_core_load_component(self->wp_core_, "libwireplumber-module-mixer-api", "module", nullptr,
+                         "mixer-api", nullptr, (GAsyncReadyCallback)onMixerApiLoaded, self);
+}
+
+void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res,
+                                                    waybar::modules::Wireplumber* self) {
+  gboolean success = FALSE;
+  g_autoptr(GError) error = nullptr;
+
+  success = wp_core_load_component_finish(self->wp_core_, res, &error);
+
+  if (success == FALSE) {
+    spdlog::error("[{}]: mixer API load failed", self->name_);
+    return;
   }
 
-  if (!wp_core_load_component(wp_core_, "libwireplumber-module-mixer-api", "module", NULL,
-                              &error)) {
-    throw std::runtime_error(error->message);
-  }
-
-  g_ptr_array_add(apis_, wp_plugin_find(wp_core_, "default-nodes-api"));
-  g_ptr_array_add(apis_, ({
-                    WpPlugin* p = wp_plugin_find(wp_core_, "mixer-api");
-                    g_object_set(G_OBJECT(p), "scale", 1 /* cubic */, NULL);
+  spdlog::debug("[{}]: loaded mixer API", self->name_);
+  g_ptr_array_add(self->apis_, ({
+                    WpPlugin* p = wp_plugin_find(self->wp_core_, "mixer-api");
+                    g_object_set(G_OBJECT(p), "scale", 0 /* linear */, nullptr);
                     p;
                   }));
+
+  self->activatePlugins();
+
+  self->dp.emit();
+
+  self->event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  self->event_box_.signal_scroll_event().connect(sigc::mem_fun(*self, &Wireplumber::handleScroll));
+}
+
+void waybar::modules::Wireplumber::asyncLoadRequiredApiModules() {
+  spdlog::debug("[{}]: loading default nodes api module", name_);
+  wp_core_load_component(wp_core_, "libwireplumber-module-default-nodes-api", "module", nullptr,
+                         "default-nodes-api", nullptr, (GAsyncReadyCallback)onDefaultNodesApiLoaded,
+                         this);
+}
+
+static const std::array<std::string, 7> ports = {
+    "headphone", "speaker", "headset", "hands-free", "portable", "car", "hifi",
+};
+
+std::vector<std::string> waybar::modules::Wireplumber::getWPIcon() {
+  std::vector<std::string> res;
+  if (muted_) {
+    res.emplace_back(node_name_ + "-muted");
+  }
+  res.push_back(node_name_);
+  res.push_back(source_name_);
+  std::transform(form_factor_.begin(), form_factor_.end(), form_factor_.begin(), ::tolower);
+  for (auto const& port : ports) {
+    if (form_factor_.find(port) != std::string::npos) {
+      if (muted_) {
+        res.emplace_back(port + "-muted");
+      }
+      res.push_back(port);
+      break;
+    }
+  }
+  if (muted_) {
+    res.emplace_back("default-muted");
+  }
+  return res;
 }
 
 auto waybar::modules::Wireplumber::update() -> void {
   auto format = format_;
-  std::string tooltip_format;
+  std::string format_name = "format";
 
-  if (muted_) {
-    format = config_["format-muted"].isString() ? config_["format-muted"].asString() : format;
-    label_.get_style_context()->add_class("muted");
+  // Handle sink bluetooth state
+  const std::string name = default_node_name_ != nullptr ? default_node_name_ : "";
+
+  auto bt = name.find("bluez") != std::string::npos || name.find("a2dp-sink") != std::string::npos;
+  if (bt) {
+    format_name += "-bluetooth";
+    label_.get_style_context()->add_class("bluetooth");
   } else {
-    label_.get_style_context()->remove_class("muted");
+    label_.get_style_context()->remove_class("bluetooth");
   }
 
-  std::string markup = fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_),
-                                   fmt::arg("volume", volume_), fmt::arg("icon", getIcon(volume_)));
-  label_.set_markup(markup);
+  // Handle sink mute state
+  if (muted_) {
+    // Check muted bluetooth format exists, otherwise fall back to default muted format.
+    if (format_name != "format" && !config_[format_name + "-muted"].isString())
+      format_name = "format";
+    format_name += "-muted";
+    label_.get_style_context()->add_class("muted");
+    label_.get_style_context()->add_class("sink-muted");
+  } else {
+    label_.get_style_context()->remove_class("muted");
+    label_.get_style_context()->remove_class("sink-muted");
+  }
 
-  getState(volume_);
+  // Handle source mute state
+  if (source_muted_) {
+    label_.get_style_context()->add_class("source-muted");
+  } else {
+    label_.get_style_context()->remove_class("source-muted");
+  }
+
+  double vol_cube = pow(volume_, 3);
+  double source_vol_cube = pow(source_volume_, 3);
+
+  int vol = round(vol_cube * 100.0);
+  int source_vol = round(source_vol_cube * 100.0);
+
+  double vol_db = 20.0 * log10(volume_);
+  double source_vol_db = 20.0 * log10(source_volume_);
+
+  // Get the state and apply state-specific format if available
+  auto state = getState(vol);
+  if (!state.empty() && config_[format_name + "-" + state].isString())
+    format = config_[format_name + "-" + state].asString();
+  else if (config_[format_name].isString())
+    format = config_[format_name].asString();
+
+  // Prepare source format string (similar to PulseAudio)
+  std::string format_source = "{volume}%";
+  if (source_muted_) {
+    if (config_["format-source-muted"].isString()) {
+      format_source = config_["format-source-muted"].asString();
+    }
+  } else {
+    if (config_["format-source"].isString()) {
+      format_source = config_["format-source"].asString();
+    }
+  }
+
+  // Format the source string with actual volume
+  std::string formatted_source =
+      fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_vol));
+
+  fmt::dynamic_format_arg_store<fmt::format_context> store;
+  store.push_back(fmt::arg("node_name", node_name_));
+  store.push_back(fmt::arg("volume", vol));
+  store.push_back(fmt::arg("icon", getIcon(vol, getWPIcon())));
+  store.push_back(fmt::arg("format_source", formatted_source));
+  store.push_back(fmt::arg("source_volume", source_vol));
+  store.push_back(fmt::arg("source_desc", source_name_));
+  store.push_back(fmt::arg("volume_linear", volume_));
+  store.push_back(fmt::arg("volume_cubic", vol_cube));
+  store.push_back(fmt::arg("volume_db", vol_db));
+  store.push_back(fmt::arg("source_volume_linear", source_volume_));
+  store.push_back(fmt::arg("source_volume_cubic", source_vol_cube));
+  store.push_back(fmt::arg("source_volume_db", source_vol_db));
+
+  setLabelMarkup(fmt::vformat(format, store));
 
   if (tooltipEnabled()) {
-    if (tooltip_format.empty() && config_["tooltip-format"].isString()) {
-      tooltip_format = config_["tooltip-format"].asString();
-    }
-
-    if (!tooltip_format.empty()) {
-      label_.set_tooltip_text(
-          fmt::format(fmt::runtime(tooltip_format), fmt::arg("node_name", node_name_),
-                      fmt::arg("volume", volume_), fmt::arg("icon", getIcon(volume_))));
+    auto tooltipFormat = resolveTooltipFormat("");
+    if (!tooltipFormat.empty()) {
+      setTooltipMarkup(fmt::vformat(tooltipFormat, store));
     } else {
-      label_.set_tooltip_text(node_name_);
+      setTooltipMarkup(node_name_);
     }
   }
 
   // Call parent update
   ALabel::update();
+}
+
+bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+  double maxVolume = 1;
+  double step = 1.0;
+  if (config_["scroll-step"].isDouble()) {
+    step = config_["scroll-step"].asDouble();
+  }
+  if (config_["max-volume"].isDouble()) {
+    maxVolume = config_["max-volume"].asDouble();
+  }
+
+  double vol = volume_;
+  std::string scale = "cubic_percent";
+  if (config_["scroll-scale"].isString()) {
+    scale = config_["scroll-scale"].asString();
+  }
+
+  if (scale == "cubic") {
+    vol = pow(vol, 3);
+  } else if (scale == "db") {
+    vol = log10(vol) * 20.0;
+  } else if (scale == "cubic_percent") {
+    vol = pow(vol, 3) * 100.0;
+  }
+
+  double newVol = vol;
+  if (dir == SCROLL_DIR::UP) {
+    newVol = vol + step;
+  } else if (dir == SCROLL_DIR::DOWN) {
+    newVol = vol - step;
+  }
+
+  if (scale == "cubic") {
+    newVol = cbrt(newVol);
+  } else if (scale == "db") {
+    newVol = exp10(newVol / 20.0);
+  } else if (scale == "cubic_percent") {
+    newVol = cbrt(newVol / 100.0);
+  }
+
+  if (dir == SCROLL_DIR::UP) {
+    if (volume_ + min_step_ > newVol) {
+      newVol = volume_ + min_step_;
+    }
+  } else if (dir == SCROLL_DIR::DOWN) {
+    if (volume_ - min_step_ < newVol) {
+      newVol = volume_ - min_step_;
+    }
+  }
+
+  if (newVol < 0)
+    newVol = 0;
+  else if (newVol > maxVolume)
+    newVol = maxVolume;
+
+  if (newVol != volume_) {
+    if (mixer_api_ == nullptr) return true;
+    GVariant* variant = g_variant_new_double(newVol);
+    gboolean ret;
+    g_signal_emit_by_name(mixer_api_, "set-volume", node_id_, variant, &ret);
+    g_variant_unref(variant);
+  }
+  return true;
 }

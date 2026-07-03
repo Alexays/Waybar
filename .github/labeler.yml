@@ -1,0 +1,65 @@
+bug:
+  - "(crash|bug|error|coredump|freeze|segfault|issue|problem)"
+
+enhancement:
+  - "(feature|enhancement|improvement|request|suggestion)"
+
+hyprland:
+  - "(hyprland)"
+
+network:
+  - "(network|wifi|ethernet)"
+
+bluetooth:
+  - "(bluetooth|bluez)"
+
+sway:
+  - "(sway)"
+
+cpu:
+  - "(cpu)"
+
+memory:
+  - "(memory|ram)"
+
+disk:
+  - "(disk|storage)"
+
+battery:
+  - "(upower|battery)"
+
+sni:
+  - "(sni|tray)"
+
+dwl:
+  - "(dwl)"
+
+custom:
+  - "(custom|module|extension|plugin|script)"
+
+mpd:
+  - "(mpd|music)"
+
+audio:
+  - "(pulseaudio|alsa|jack|audio|pirewire|wireplumber)"
+
+temperature:
+  - "(temperature|thermal|hwmon)"
+
+clock:
+  - "(clock|time|date)"
+
+gamemode:
+  - "(gamemode|game|gaming)"
+
+inhibitor:
+  - "(inhibitor|idle|lock|suspend|hibernate|logout)"
+
+cava:
+  - "(cava|audio-visualizer)"
+
+backlight:
+  - "(backlight|brightness)"
+
+keyboard:
+  - "(keyboard|keymap|layout|shortcut)"

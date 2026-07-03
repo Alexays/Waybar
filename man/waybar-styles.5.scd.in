@@ -1,0 +1,90 @@
+waybar-styles(5)
+
+# NAME
+
+waybar-styles - using stylesheets for waybar
+
+# DESCRIPTION
+
+Waybar uses Cascading Style Sheets (CSS) to configure its appearance.
+
+When the system appearance is light, Waybar first looks for *style-light.css*.
+When the system appearance is dark, Waybar first looks for *style-dark.css*.
+If no appearance-specific stylesheet is found, it falls back to *style.css*.
+
+Waybar uses the first file found in this search order for each stylesheet name:
+
+- *$XDG_CONFIG_HOME/waybar/<stylesheet>*
+- *~/.config/waybar/<stylesheet>*
+- *~/waybar/<stylesheet>*
+- */etc/xdg/waybar/<stylesheet>*
+- *@sysconfdir@/xdg/waybar/<stylesheet>*
+
+For example, a light theme is loaded from the first available file among:
+
+- *$XDG_CONFIG_HOME/waybar/style-light.css*
+- *~/.config/waybar/style-light.css*
+- *~/waybar/style-light.css*
+- */etc/xdg/waybar/style-light.css*
+- *@sysconfdir@/xdg/waybar/style-light.css*
+
+If no file is found there, Waybar repeats the same search using *style.css*.
+
+# EXAMPLE
+
+An example user-controlled stylesheet that just changes the color of the clock to be green on black, while keeping the rest of the system config the same would be:
+
+```
+@import url("file:///etc/xdg/waybar/style.css");
+
+#clock {
+  background: #000000;
+  color: #00ff00;
+}
+```
+
+## Hover-effect
+
+You can apply special styling to any module for when the cursor hovers it.
+
+```
+#clock:hover {
+  background-color: #ffffff;
+}
+```
+
+## Setting cursor style
+
+Most, if not all, module types support setting the `cursor` option. This is
+configured in your `config.jsonc`. If set to `false`, when hovering the module a
+"pointer" (as commonly known from web CSS styling `cursor: pointer`) style cursor
+will not be shown. Default behavior is to indicate an interaction event is
+available.
+
+If set to a string value, it must be a valid cursor name
+(e.g. `"pointer"`, `"default"`, `"grab"`, `"text"`, `"crosshair"`, etc.),
+see the cursor-shape-v1 protocol for all possible cursor types:
+https://wayland.app/protocols/cursor-shape-v1#wp_cursor_shape_device_v1:enum:shape.
+Depending on the compositor and cursor theme used, cursors not listed in the protocol may also work.
+
+Example of disabling the cursor on a custom module:
+
+```
+"custom/my-custom-module": {
+    ...
+    "cursor": false,
+}
+```
+
+Example of setting the cursor type to `"grab"`:
+
+```
+"custom/my-custom-module": {
+    ...
+    "cursor": "grab",
+}
+```
+
+# SEE ALSO
+
+- *waybar(5)*

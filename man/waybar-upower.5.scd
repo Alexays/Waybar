@@ -11,6 +11,18 @@ compatible devices in the tooltip.
 
 # CONFIGURATION
 
+*native-path*: ++
+	typeof: string ++
+	default: ++
+	The battery to monitor. Refer to the https://upower.freedesktop.org/docs/UpDevice.html#UpDevice--native-path ++
+	Can be obtained using `upower --dump`
+
+*model*: ++
+	typeof: string ++
+	default: ++
+	The battery to monitor, based on the model. (this option is ignored if *native-path* is given). ++
+	Can be obtained using `upower --dump`
+
 *icon-size*: ++
 	typeof: integer ++
 	default: 20 ++
@@ -51,6 +63,24 @@ compatible devices in the tooltip.
 	typeof: string ++
 	Command to execute when clicked on the module.
 
+*show-icon*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable battery icon.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
 # FORMAT REPLACEMENTS
 
 *{percentage}*: The battery capacity in percentage
@@ -63,6 +93,34 @@ depending on the charging state.
 ```
 "upower": {
 	"icon-size": 20,
+	"hide-if-empty": true,
+	"tooltip": true,
+	"tooltip-spacing": 20
+}
+
+```
+```
+"upower": {
+	"native-path": "/org/bluez/hci0/dev_D4_AE_41_38_D0_EF",
+	"icon-size": 20,
+	"hide-if-empty": true,
+	"tooltip": true,
+	"tooltip-spacing": 20
+}
+
+```
+```
+"upower": {
+	"native-path": "battery_sony_controller_battery_d0o27o88o32ofcoee",
+	"icon-size": 20,
+	"hide-if-empty": true,
+	"tooltip": true,
+	"tooltip-spacing": 20
+}
+```
+```
+"upower": {
+	"show-icon": false,
 	"hide-if-empty": true,
 	"tooltip": true,
 	"tooltip-spacing": 20

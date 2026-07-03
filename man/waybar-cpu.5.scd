@@ -6,14 +6,15 @@ waybar - cpu module
 
 # DESCRIPTION
 
-The *cpu* module displays the current cpu utilization.
+The *cpu* module displays the current CPU utilization.
 
 # CONFIGURATION
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	default: 10 ++
-	The interval in which the information gets polled.
+	The interval in which the information gets polled. ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms.
 
 *format*: ++
 	typeof: string  ++
@@ -30,20 +31,24 @@ The *cpu* module displays the current cpu utilization.
 	The maximum length in character the module should display.
 
 *min-length*: ++
-    typeof: integer ++
-    The minimum length in characters the module should take up.
+	typeof: integer ++
+	The minimum length in characters the module should accept.
 
 *align*: ++
-    typeof: float ++
-    The alignment of the text, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+	typeof: float ++
+	The alignment of the label within the module, where 0 is left-aligned and 1 is right-aligned. If the module is rotated, it will follow the flow of the text.
+
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's label, allowing options 'left', 'right', or 'center' to define the positioning.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
-	A number of cpu usage states which get activated on certain usage levels. See *waybar-states(5)*.
+	A number of CPU usage states which get activated on certain usage levels. See *waybar-states(5)*.
 
 *on-click*: ++
 	typeof: string  ++
@@ -55,7 +60,7 @@ The *cpu* module displays the current cpu utilization.
 
 *on-click-right*: ++
 	typeof: string ++
-	Command to execute when you right clicked on the module.
+	Command to execute when you right-click on the module.
 
 *on-update*: ++
 	typeof: string ++
@@ -78,23 +83,48 @@ The *cpu* module displays the current cpu utilization.
 	default: true ++
 	Option to disable tooltip on hover.
 
+*tooltip-format*: ++
+	typeof: string ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*.
+
+*format-<state>*: ++
+	typeof: string ++
+	The format to use when the given *state* (see *states*) is active. Supports the same replacements as *format*.
+
+*tooltip-format-<state>*: ++
+	typeof: string ++
+	The tooltip format to use when the given *state* (see *states*) is active. Takes precedence over *tooltip-format*.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
-*{load}*: Current cpu load.
+*{load}*: Current CPU load.
 
-*{usage}*: Current overall cpu usage.
+*{load1}*: CPU load average over the last minute.
 
-*{usage*{n}*}*: Current cpu core n usage. Cores are numbered from zero, so first core will be {usage0} and 4th will be {usage3}.
+*{load5}*: CPU load average over the last 5 minutes.
 
-*{avg_frequency}*: Current cpu average frequency (based on all cores) in GHz.
+*{load15}*: CPU load average over the last 15 minutes.
 
-*{max_frequency}*: Current cpu max frequency (based on the core with the highest frequency) in GHz.
+*{usage}*: Current overall CPU usage.
 
-*{min_frequency}*: Current cpu min frequency (based on the core with the lowest frequency) in GHz.
+*{usage*{n}*}*: Current CPU core n usage. Cores are numbered from zero, so first core will be {usage0} and 4th will be {usage3}.
 
-*{icon}*: Icon for overall cpu usage.
+*{avg_frequency}*: Current CPU average frequency (based on all cores) in GHz.
 
-*{icon*{n}*}*: Icon for cpu core n usage. Use like {icon0}.
+*{max_frequency}*: Current CPU max frequency (based on the core with the highest frequency) in GHz.
+
+*{min_frequency}*: Current CPU min frequency (based on the core with the lowest frequency) in GHz.
+
+*{icon}*: Icon for overall CPU usage.
+
+*{icon*{n}*}*: Icon for CPU core n usage. Use like {icon0}.
+
+*{icon0}{icon1}{icon2}{icon3}*: All per-core icons concatenated. Equivalent to {icon0}{icon1}...{icon*N*} but adapts to the number of cores automatically.
 
 # EXAMPLES
 
@@ -108,12 +138,22 @@ Basic configuration:
 }
 ```
 
-Cpu usage per core rendered as icons:
+CPU usage per core rendered as icons:
 
 ```
 "cpu": {
 	"interval": 1,
 	"format": "{icon0}{icon1}{icon2}{icon3} {usage:>2}% ",
+	"format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
+},
+```
+
+Automatically determine number of icons according to number of logical cores:
+
+```
+"cpu": {
+	"interval": 1,
+	"format": "{icons} {usage:>2}% ",
 	"format-icons": ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"],
 },
 ```

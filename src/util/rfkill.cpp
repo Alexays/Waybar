@@ -63,7 +63,7 @@ bool waybar::util::Rfkill::on_event(Glib::IOCondition cond) {
       return false;
     }
 
-    if (len < RFKILL_EVENT_SIZE_V1) {
+    if (static_cast<size_t>(len) < RFKILL_EVENT_SIZE_V1) {
       spdlog::error("Wrong size of RFKILL event: {} < {}", len, RFKILL_EVENT_SIZE_V1);
       return true;
     }
@@ -73,10 +73,9 @@ bool waybar::util::Rfkill::on_event(Glib::IOCondition cond) {
       on_update.emit(event);
     }
     return true;
-  } else {
-    spdlog::error("Failed to poll RFKILL control device");
-    return false;
   }
+  spdlog::error("Failed to poll RFKILL control device");
+  return false;
 }
 
 bool waybar::util::Rfkill::getState() const { return state_; }

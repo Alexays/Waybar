@@ -38,6 +38,7 @@ class Mpris : public ALabel {
 
     std::optional<std::string> artist;
     std::optional<std::string> album;
+    std::optional<std::string> album_artist;
     std::optional<std::string> title;
     std::optional<std::string> length;    // as HH:MM:SS
     std::optional<std::string> position;  // same format
@@ -67,6 +68,8 @@ class Mpris : public ALabel {
   int title_len_;
   int dynamic_len_;
   std::vector<std::string> dynamic_prio_;
+  std::vector<std::string> dynamic_order_;
+  std::string dynamic_separator_;
   bool truncate_hours_;
   bool tooltip_len_limits_;
   std::string ellipsis_;
@@ -74,12 +77,16 @@ class Mpris : public ALabel {
   std::string player_;
   std::vector<std::string> ignored_players_;
 
+  bool prefer_album_artist_;
+
   PlayerctlPlayerManager* manager;
   PlayerctlPlayer* player;
+  PlayerctlPlayer* last_active_player_ = nullptr;
   std::string lastStatus;
   std::string lastPlayer;
 
   util::SleeperThread thread_;
+  std::chrono::time_point<std::chrono::system_clock> last_update_;
 };
 
 }  // namespace waybar::modules::mpris

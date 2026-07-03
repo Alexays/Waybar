@@ -41,6 +41,7 @@ class Bluetooth : public ALabel {
     bool services_resolved;
     // NOTE: experimental feature in bluez
     std::optional<unsigned char> battery_percentage;
+    std::optional<unsigned char> battery_percentage_peripheral;
   };
 
  public:
@@ -49,6 +50,9 @@ class Bluetooth : public ALabel {
   auto update() -> void override;
 
  private:
+  static auto onObjectAdded(GDBusObjectManager*, GDBusObject*, gpointer) -> void;
+  static auto onObjectRemoved(GDBusObjectManager*, GDBusObject*, gpointer) -> void;
+
   static auto onInterfaceAddedOrRemoved(GDBusObjectManager*, GDBusObject*, GDBusInterface*,
                                         gpointer) -> void;
   static auto onInterfaceProxyPropertiesChanged(GDBusObjectManagerClient*, GDBusObjectProxy*,
@@ -56,10 +60,17 @@ class Bluetooth : public ALabel {
                                                 gpointer) -> void;
 
   auto getDeviceBatteryPercentage(GDBusObject*) -> std::optional<unsigned char>;
+  auto getDeviceGattBatteryLevels(GDBusObject*, std::optional<unsigned char>&,
+                                  std::optional<unsigned char>&) -> void;
+  static auto processBatteryServiceCharacteristics(GList*, const std::string&, const std::string&,
+                                                   const std::string&,
+                                                   std::optional<unsigned char>&,
+                                                   std::optional<unsigned char>&) -> void;
   auto getDeviceProperties(GDBusObject*, DeviceInfo&) -> bool;
   auto getControllerProperties(GDBusObject*, ControllerInfo&) -> bool;
 
-  auto findCurController(ControllerInfo&) -> bool;
+  // Returns std::nullopt if no controller could be found
+  auto findCurController() -> std::optional<ControllerInfo>;
   auto findConnectedDevices(const std::string&, std::vector<DeviceInfo>&) -> void;
 
 #ifdef WANT_RFKILL
@@ -68,7 +79,7 @@ class Bluetooth : public ALabel {
   const std::unique_ptr<GDBusObjectManager, void (*)(GDBusObjectManager*)> manager_;
 
   std::string state_;
-  ControllerInfo cur_controller_;
+  std::optional<ControllerInfo> cur_controller_;
   std::vector<DeviceInfo> connected_devices_;
   DeviceInfo cur_focussed_device_;
   std::string device_enumerate_;

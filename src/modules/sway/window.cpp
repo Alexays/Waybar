@@ -5,25 +5,19 @@
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
 #include <gtkmm/enums.h>
-#include <gtkmm/icontheme.h>
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
 #include <regex>
 #include <string>
 
+#include "util/gtk_icon.hpp"
 #include "util/rewrite_string.hpp"
 
 namespace waybar::modules::sway {
 
 Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
-    : AIconLabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
-  // Icon size
-  if (config_["icon-size"].isUInt()) {
-    app_icon_size_ = config["icon-size"].asUInt();
-  }
-  image_.set_pixel_size(app_icon_size_);
-
+    : AAppIconLabel(config, "window", id, "{}", 0, true), bar_(bar), windowId_(-1) {
   ipc_.subscribe(R"(["window","workspace"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Window::onEvent));
   ipc_.signal_cmd.connect(sigc::mem_fun(*this, &Window::onCmd));
@@ -47,113 +41,13 @@ void Window::onCmd(const struct Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
     auto output = payload["output"].isString() ? payload["output"].asString() : "";
-    std::tie(app_nb_, floating_count_, windowId_, window_, app_id_, app_class_, shell_, layout_) =
-        getFocusedNode(payload["nodes"], output);
-    updateAppIconName();
+    std::tie(app_nb_, floating_count_, windowId_, window_, app_id_, app_class_, shell_, layout_,
+             marks_) = getFocusedNode(payload["nodes"], output);
+    updateAppIconName(app_id_, app_class_);
     dp.emit();
   } catch (const std::exception& e) {
     spdlog::error("Window: {}", e.what());
     spdlog::trace("Window::onCmd exception");
-  }
-}
-
-std::optional<std::string> getDesktopFilePath(const std::string& app_id,
-                                              const std::string& app_class) {
-  const auto data_dirs = Glib::get_system_data_dirs();
-  for (const auto& data_dir : data_dirs) {
-    const auto data_app_dir = data_dir + "applications/";
-    auto desktop_file_path = data_app_dir + app_id + ".desktop";
-    if (std::filesystem::exists(desktop_file_path)) {
-      return desktop_file_path;
-    }
-    if (!app_class.empty()) {
-      desktop_file_path = data_app_dir + app_class + ".desktop";
-      if (std::filesystem::exists(desktop_file_path)) {
-        return desktop_file_path;
-      }
-    }
-  }
-  return {};
-}
-
-std::optional<Glib::ustring> getIconName(const std::string& app_id, const std::string& app_class) {
-  const auto desktop_file_path = getDesktopFilePath(app_id, app_class);
-  if (!desktop_file_path.has_value()) {
-    // Try some heuristics to find a matching icon
-
-    const auto default_icon_theme = Gtk::IconTheme::get_default();
-    if (default_icon_theme->has_icon(app_id)) {
-      return app_id;
-    }
-
-    const auto app_id_desktop = app_id + "-desktop";
-    if (default_icon_theme->has_icon(app_id_desktop)) {
-      return app_id_desktop;
-    }
-
-    const auto to_lower = [](const std::string& str) {
-      auto str_cpy = str;
-      std::transform(str_cpy.begin(), str_cpy.end(), str_cpy.begin(),
-                     [](unsigned char c) { return std::tolower(c); });
-      return str;
-    };
-
-    const auto first_space = app_id.find_first_of(' ');
-    if (first_space != std::string::npos) {
-      const auto first_word = to_lower(app_id.substr(0, first_space));
-      if (default_icon_theme->has_icon(first_word)) {
-        return first_word;
-      }
-    }
-
-    const auto first_dash = app_id.find_first_of('-');
-    if (first_dash != std::string::npos) {
-      const auto first_word = to_lower(app_id.substr(0, first_dash));
-      if (default_icon_theme->has_icon(first_word)) {
-        return first_word;
-      }
-    }
-
-    return {};
-  }
-
-  try {
-    Glib::KeyFile desktop_file;
-    desktop_file.load_from_file(desktop_file_path.value());
-    return desktop_file.get_string("Desktop Entry", "Icon");
-  } catch (Glib::FileError& error) {
-    spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
-  } catch (Glib::KeyFileError& error) {
-    spdlog::warn("Error while loading desktop file {}: {}", desktop_file_path.value(),
-                 error.what().c_str());
-  }
-  return {};
-}
-
-void Window::updateAppIconName() {
-  if (!iconEnabled()) {
-    return;
-  }
-
-  const auto icon_name = getIconName(app_id_, app_class_);
-  if (icon_name.has_value()) {
-    app_icon_name_ = icon_name.value();
-  } else {
-    app_icon_name_ = "";
-  }
-  update_app_icon_ = true;
-}
-
-void Window::updateAppIcon() {
-  if (update_app_icon_) {
-    update_app_icon_ = false;
-    if (app_icon_name_.empty()) {
-      image_.set_visible(false);
-    } else {
-      image_.set_from_icon_name(app_icon_name_, Gtk::ICON_SIZE_INVALID);
-      image_.set_visible(true);
-    }
   }
 }
 
@@ -178,10 +72,6 @@ auto Window::update() -> void {
     } else {
       mode += 32;
     }
-    if (!app_id_.empty() && !bar_.window.get_style_context()->has_class(app_id_)) {
-      bar_.window.get_style_context()->add_class(app_id_);
-      old_app_id_ = app_id_;
-    }
   }
 
   if (!old_app_id_.empty() && ((mode & 2) == 0 || old_app_id_ != app_id_) &&
@@ -204,21 +94,21 @@ auto Window::update() -> void {
     old_app_id_ = app_id_;
   }
 
-  label_.set_markup(waybar::util::rewriteString(
+  setLabelMarkup(waybar::util::rewriteString(
       fmt::format(fmt::runtime(format_), fmt::arg("title", window_), fmt::arg("app_id", app_id_),
-                  fmt::arg("shell", shell_)),
+                  fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
-    label_.set_tooltip_text(window_);
+    setTooltipMarkup(window_);
   }
 
   updateAppIcon();
 
   // Call parent update
-  AIconLabel::update();
+  AAppIconLabel::update();
 }
 
-void Window::setClass(std::string classname, bool enable) {
+void Window::setClass(const std::string& classname, bool enable) {
   if (enable) {
     if (!bar_.window.get_style_context()->has_class(classname)) {
       bar_.window.get_style_context()->add_class(classname);
@@ -255,7 +145,55 @@ std::pair<int, int> leafNodesInWorkspace(const Json::Value& node) {
   return {sum, floating_sum};
 }
 
-std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string>
+std::optional<std::reference_wrapper<const Json::Value>> getSingleChildNode(
+    const Json::Value& node) {
+  auto const& nodes = node["nodes"];
+  if (nodes.empty()) {
+    if (node["type"].asString() == "workspace")
+      return {};
+    else if (node["type"].asString() == "floating_con") {
+      return {};
+    } else {
+      return {std::cref(node)};
+    }
+  }
+  auto it = std::cbegin(nodes);
+  if (it == std::cend(nodes)) {
+    return {};
+  }
+  auto const& child = *it;
+  ++it;
+  if (it != std::cend(nodes)) {
+    return {};
+  }
+  return {getSingleChildNode(child)};
+}
+
+std::tuple<std::string, std::string, std::string, std::string> getWindowInfo(
+    const Json::Value& node, bool showHidden) {
+  const auto app_id = node["app_id"].isString() ? node["app_id"].asString()
+                                                : node["window_properties"]["instance"].asString();
+  const auto app_class = node["window_properties"]["class"].isString()
+                             ? node["window_properties"]["class"].asString()
+                             : "";
+  const auto shell = node["shell"].isString() ? node["shell"].asString() : "";
+  std::string marks = "";
+  if (node["marks"].isArray()) {
+    for (const auto& m : node["marks"]) {
+      if (!m.isString() || (!showHidden && m.asString().at(0) == '_')) {
+        continue;
+      }
+      if (!marks.empty()) {
+        marks.append(",");
+      }
+      marks.append(m.asString());
+    }
+  }
+  return {app_id, app_class, shell, marks};
+}
+
+std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string,
+           std::string>
 gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Value& config_,
                  const Bar& bar_, Json::Value& parentWorkspace,
                  const Json::Value& immediateParent) {
@@ -283,7 +221,8 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
                 "",
                 "",
                 "",
-                node["layout"].asString()};
+                node["layout"].asString(),
+                ""};
       }
       parentWorkspace = node;
     } else if ((node["type"].asString() == "con" || node["type"].asString() == "floating_con") &&
@@ -291,12 +230,8 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
       // found node
       spdlog::trace("actual output {}, output found {}, node (focused) found {}", bar_.output->name,
                     output, node["name"].asString());
-      auto app_id = node["app_id"].isString() ? node["app_id"].asString()
-                                              : node["window_properties"]["instance"].asString();
-      const auto app_class = node["window_properties"]["class"].isString()
-                                 ? node["window_properties"]["class"].asString()
-                                 : "";
-      const auto shell = node["shell"].isString() ? node["shell"].asString() : "";
+      const auto [app_id, app_class, shell, marks] =
+          getWindowInfo(node, config_["show-hidden-marks"].asBool());
       int nb = node.size();
       int floating_count = 0;
       std::string workspace_layout = "";
@@ -313,20 +248,21 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
               app_id,
               app_class,
               shell,
-              workspace_layout};
+              workspace_layout,
+              marks};
     }
 
     // iterate
-    auto [nb, f, id, name, app_id, app_class, shell, workspace_layout] =
+    auto [nb, f, id, name, app_id, app_class, shell, workspace_layout, marks] =
         gfnWithWorkspace(node["nodes"], output, config_, bar_, parentWorkspace, node);
-    auto [nb2, f2, id2, name2, app_id2, app_class2, shell2, workspace_layout2] =
+    auto [nb2, f2, id2, name2, app_id2, app_class2, shell2, workspace_layout2, marks2] =
         gfnWithWorkspace(node["floating_nodes"], output, config_, bar_, parentWorkspace, node);
 
     //    if ((id > 0 || ((id2 < 0 || name2.empty()) && id > -1)) && !name.empty()) {
     if ((id > 0) || (id2 < 0 && id > -1)) {
-      return {nb, f, id, name, app_id, app_class, shell, workspace_layout};
+      return {nb, f, id, name, app_id, app_class, shell, workspace_layout, marks};
     } else if (id2 > 0 && !name2.empty()) {
-      return {nb2, f2, id2, name2, app_id2, app_class, shell2, workspace_layout2};
+      return {nb2, f2, id2, name2, app_id2, app_class, shell2, workspace_layout2, marks2};
     }
   }
 
@@ -336,22 +272,35 @@ gfnWithWorkspace(const Json::Value& nodes, std::string& output, const Json::Valu
     std::pair all_leaf_nodes = leafNodesInWorkspace(immediateParent);
     // using an empty string as default ensures that no window depending styles are set due to the
     // checks above for !name.empty()
+    std::string app_id = "";
+    std::string app_class = "";
+    std::string workspace_layout = "";
+    std::string marks = "";
+    if (all_leaf_nodes.first == 1) {
+      const auto single_child = getSingleChildNode(immediateParent);
+      if (single_child.has_value()) {
+        std::tie(app_id, app_class, workspace_layout, marks) =
+            getWindowInfo(single_child.value(), config_["show-hidden-marks"].asBool());
+      }
+    }
     return {all_leaf_nodes.first,
             all_leaf_nodes.second,
             0,
             (all_leaf_nodes.first > 0 || all_leaf_nodes.second > 0)
                 ? config_["offscreen-css-text"].asString()
                 : "",
-            "",
-            "",
-            "",
-            immediateParent["layout"].asString()};
+            app_id,
+            app_class,
+            workspace_layout,
+            immediateParent["layout"].asString(),
+            marks};
   }
 
-  return {0, 0, -1, "", "", "", "", ""};
+  return {0, 0, -1, "", "", "", "", "", ""};
 }
 
-std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string>
+std::tuple<std::size_t, int, int, std::string, std::string, std::string, std::string, std::string,
+           std::string>
 Window::getFocusedNode(const Json::Value& nodes, std::string& output) {
   Json::Value placeholder = Json::Value::null;
   return gfnWithWorkspace(nodes, output, config_, bar_, placeholder, placeholder);

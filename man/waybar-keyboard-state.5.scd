@@ -13,7 +13,7 @@ You must be a member of the input group to use this module.
 # CONFIGURATION
 
 *interval*: ++
-	Deprecated, this module use event loop now, the interval has no effect.
+	Deprecated, this module uses event loop now, the interval has no effect.
 	typeof: integer ++
 	default: 1 ++
 	The interval, in seconds, to poll the keyboard state.
@@ -26,7 +26,10 @@ You must be a member of the input group to use this module.
 *format-icons*: ++
 	typeof: object ++
 	default: {"locked": "locked", "unlocked": "unlocked"} ++
-	Based on the keyboard state, the corresponding icon gets selected. The same set of icons is used for number, caps, and scroll lock, but the icon is selected from the set independently for each. See *icons*.
+	Based on the keyboard state, the corresponding icon gets selected. Supports two syntaxes:
+	- Common format-icons: "locked" and "unlocked" keys apply to all lock types.
+	- Per-lock-type format-icons: per-lock-type objects with "numlock", "capslock", "scrolllock" keys, each containing "locked" and "unlocked" icons.
+	See *icons*.
 
 *numlock*: ++
 	typeof: bool ++
@@ -48,6 +51,16 @@ You must be a member of the input group to use this module.
 	default: chooses first valid input device ++
 	Which libevdev input device to show the state of. Libevdev devices can be found in /dev/input. The device should support number lock, caps lock, and scroll lock events.
 
+*binding-keys*: ++
+	typeof: array ++
+	default: [58, 69, 70] ++
+	Customize the key to trigger this module, the key number can be found in /usr/include/linux/input-event-codes.h or running sudo libinput debug-events --show-keycodes.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{name}*: Caps, Num, or Scroll.
@@ -58,20 +71,50 @@ You must be a member of the input group to use this module.
 
 The following *format-icons* can be set.
 
+## Common format-icons for all lock types:
 - *locked*: Will be shown when the keyboard state is locked. Default "locked".
-- *unlocked*: Will be shown when the keyboard state is not locked. Default "unlocked"
+- *unlocked*: Will be shown when the keyboard state is not locked. Default "unlocked".
+
+## Per-lock-type format-icons:
+- *numlock*, *capslock*, *scrolllock*: Object containing "locked" and "unlocked" keys for lock-type-specific icons. Defaults to {"locked": "locked", "unlocked": "unlocked"} for each lock type.
 
 # EXAMPLE:
 
+## Common format-icons for all lock types:
 ```
 "keyboard-state": {
-    "numlock": true,
-    "capslock": true,
-    "format": "{name} {icon}",
-    "format-icons": {
-        "locked": "",
-        "unlocked": ""
-    }
+	"numlock": true,
+	"capslock": true,
+	"scrolllock": true,
+	"format": "{name} {icon}",
+	"format-icons": {
+		"locked": "",
+		"unlocked": ""
+	}
+}
+```
+
+## Per-lock-type format-icons:
+```
+"keyboard-state": {
+	"numlock": true,
+	"capslock": true,
+	"scrolllock": true,
+	"format": "{name} {icon}",
+	"format-icons": {
+		"numlock": {
+			"locked": "1",
+			"unlocked": "0"
+		},
+		"capslock": {
+			"locked": "A",
+			"unlocked": "a"
+		},
+		"scrolllock": {
+			"locked": "S",
+			"unlocked": "s"
+		}
+	}
 }
 ```
 

@@ -1,7 +1,49 @@
 # vim: ft=Dockerfile
 
-FROM debian:sid
+FROM debian:sid-slim
 
-RUN apt-get update && \
-    apt-get install -y build-essential meson ninja-build git pkg-config libinput10 libpugixml-dev libinput-dev wayland-protocols libwayland-client0 libwayland-cursor0 libwayland-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libxkbcommon-dev libudev-dev libpixman-1-dev libgtkmm-3.0-dev libjsoncpp-dev scdoc libdbusmenu-gtk3-dev libnl-3-dev libnl-genl-3-dev libpulse-dev libmpdclient-dev gobject-introspection libgirepository1.0-dev libxkbcommon-dev libxkbregistry-dev libxkbregistry0 libplayerctl-dev && \
-    apt-get clean
+RUN apt update && \
+    apt install --no-install-recommends --no-install-suggests -y \
+        build-essential \
+        catch2 \
+        cmake \
+        git \
+        gobject-introspection \
+        libdbusmenu-gtk3-dev \
+        libegl1-mesa-dev \
+        libfmt-dev \
+        libgbm-dev \
+        libgirepository1.0-dev \
+        libgles2-mesa-dev \
+        libgtk-layer-shell-dev \
+        libgtkmm-3.0-dev \
+        libhowardhinnant-date-dev \
+        libiniparser-dev \
+        libinput-dev     \
+        libjack-jackd2-dev \
+        libjsoncpp-dev \
+        libmpdclient-dev \
+        libnl-3-dev \
+        libnl-genl-3-dev \
+        libpixman-1-dev  \
+        libplayerctl-dev \
+        libpugixml-dev \
+        libpulse-dev \
+        libsndio-dev \
+        libspdlog-dev \
+        libudev-dev \
+        libupower-glib-dev \
+        libwayland-dev \
+        libwireplumber-0.5-dev \
+        libxkbcommon-dev \
+        libxkbregistry-dev \
+        locales \
+        meson \
+        ninja-build \
+        pkg-config \
+        python3-pip \
+        python3-venv \
+        scdoc \
+        sudo \
+        wayland-protocols \
+    && apt clean

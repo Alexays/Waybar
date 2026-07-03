@@ -1,0 +1,37 @@
+[
+  {
+    "height": 20,
+    "layer": "bottom",
+    "output": [
+      "HDMI-0",
+      "DP-0"
+    ],
+    "hyprland/workspaces": {
+      "active-only": true,
+      "all-outputs": false,
+      "show-special": true,
+      "move-to-monitor": true,
+      "format": "{icon} {windows}",
+      "format-window-separator": " ",
+      "format-icons": {
+        "1": "󰎤",
+        "2": "󰎧",
+        "3": "󰎪",
+        "default": "",
+        "empty": "󱓼",
+        "urgent": "󱨇"
+      },
+      "persistent-workspaces": {
+        "1": "HDMI-0"
+      },
+      "on-scroll-down": "hyprctl dispatch workspace e-1",
+      "on-scroll-up": "hyprctl dispatch workspace e+1",
+      "window-rewrite": {
+        "title<Steam>": ""
+      },
+      "window-rewrite-default": "",
+      "window-rewrite-separator": " ",
+      "sort-by": "number"
+    }
+  }
+]
