@@ -51,21 +51,6 @@ auto waybar::modules::MPD::update() -> void {
   ALabel::update();
 }
 
-void waybar::modules::MPD::queryMPD() {
-  if (connection_ != nullptr) {
-    spdlog::trace("{}: fetching state information", module_name_);
-    try {
-      fetchState();
-      spdlog::trace("{}: fetch complete", module_name_);
-    } catch (std::exception const& e) {
-      spdlog::error("{}: {}", module_name_, e.what());
-      state_ = MPD_STATE_UNKNOWN;
-    }
-
-    dp.emit();
-  }
-}
-
 std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const {
   std::string result =
       config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
@@ -110,7 +95,7 @@ void waybar::modules::MPD::setLabel() {
                            ? config_["tooltip-format-disconnected"].asString()
                            : "MPD (disconnected)";
       // Nothing to format
-      label_.set_tooltip_text(tooltip_format);
+      label_.set_tooltip_markup(tooltip_format);
     }
     return;
   }
@@ -124,8 +109,9 @@ void waybar::modules::MPD::setLabel() {
 
   std::string stateIcon = "";
   bool no_song = song_.get() == nullptr;
-  if (stopped() || no_song) {
-    if (no_song) spdlog::warn("Bug in mpd: no current song but state is not stopped.");
+  bool is_stopped = stopped();
+  if (is_stopped || no_song) {
+    if (no_song && !is_stopped) spdlog::warn("mpd: no current song while state is not stopped");
     format =
         config_["format-stopped"].isString() ? config_["format-stopped"].asString() : "stopped";
     label_.get_style_context()->add_class("stopped");
@@ -210,7 +196,7 @@ void waybar::modules::MPD::setLabel() {
           fmt::arg("stateIcon", stateIcon), fmt::arg("consumeIcon", consumeIcon),
           fmt::arg("randomIcon", randomIcon), fmt::arg("repeatIcon", repeatIcon),
           fmt::arg("singleIcon", singleIcon), fmt::arg("filename", filename), fmt::arg("uri", uri));
-      label_.set_tooltip_text(tooltip_text);
+      label_.set_tooltip_markup(tooltip_text);
     } catch (fmt::format_error const& e) {
       spdlog::warn("mpd: format error (tooltip): {}", e.what());
     }
@@ -239,7 +225,8 @@ std::string waybar::modules::MPD::getStateIcon() const {
   }
 }
 
-std::string waybar::modules::MPD::getOptionIcon(std::string optionName, bool activated) const {
+std::string waybar::modules::MPD::getOptionIcon(const std::string& optionName,
+                                                bool activated) const {
   if (!config_[optionName + "-icons"].isObject()) {
     return "";
   }
@@ -323,6 +310,7 @@ void waybar::modules::MPD::checkErrors(mpd_connection* conn) {
     case MPD_ERROR_SYSTEM:
       if (auto ec = mpd_connection_get_system_error(conn); ec != 0) {
         mpd_connection_clear_error(conn);
+        connection_.reset();
         throw std::system_error(ec, std::system_category());
       }
       G_GNUC_FALLTHROUGH;

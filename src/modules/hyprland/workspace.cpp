@@ -71,20 +71,20 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
     try {
       if (id() > 0) {  // normal
         if (m_workspaceManager.moveToMonitor()) {
-          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor " + std::to_string(id()));
+          IPC::dispatch("focusworkspaceoncurrentmonitor", std::to_string(id()));
         } else {
-          m_ipc.getSocket1Reply("dispatch workspace " + std::to_string(id()));
+          IPC::dispatch("workspace", std::to_string(id()));
         }
       } else if (!isSpecial()) {  // named (this includes persistent)
         if (m_workspaceManager.moveToMonitor()) {
-          m_ipc.getSocket1Reply("dispatch focusworkspaceoncurrentmonitor name:" + name());
+          IPC::dispatch("focusworkspaceoncurrentmonitor", "name:" + name());
         } else {
-          m_ipc.getSocket1Reply("dispatch workspace name:" + name());
+          IPC::dispatch("workspace", "name:" + name());
         }
       } else if (id() != -99) {  // named special
-        m_ipc.getSocket1Reply("dispatch togglespecialworkspace " + name());
+        IPC::dispatch("togglespecialworkspace", name());
       } else {  // special
-        m_ipc.getSocket1Reply("dispatch togglespecialworkspace");
+        IPC::dispatch("togglespecialworkspace", "");
       }
       return true;
     } catch (const std::exception& e) {
@@ -96,7 +96,7 @@ bool Workspace::handleClicked(GdkEventButton* bt) const {
 
 void Workspace::initializeWindowMap(const Json::Value& clients_data) {
   m_windowMap.clear();
-  for (auto client : clients_data) {
+  for (const auto& client : clients_data) {
     if (client["workspace"]["id"].asInt() == id()) {
       insertWindow({client});
     }
@@ -300,7 +300,7 @@ void Workspace::updateTaskbar(const std::string& workspace_icon) {
     }
 
     auto window_box = Gtk::make_managed<Gtk::Box>(Gtk::ORIENTATION_HORIZONTAL);
-    window_box->set_tooltip_text(window_repr.window_title);
+    window_box->set_tooltip_markup(window_repr.window_title);
     window_box->get_style_context()->add_class("taskbar-window");
     if (window_repr.isActive) {
       window_box->get_style_context()->add_class("active");

@@ -44,7 +44,7 @@ class MPD : public ALabel {
   std::string getFilename() const;
   void setLabel();
   std::string getStateIcon() const;
-  std::string getOptionIcon(std::string optionName, bool activated) const;
+  std::string getOptionIcon(const std::string& optionName, bool activated) const;
 
   // GUI-side methods
   bool handlePlayPause(GdkEventButton* const&);
@@ -54,7 +54,6 @@ class MPD : public ALabel {
   void tryConnect();
   void checkErrors(mpd_connection* conn);
   void fetchState();
-  void queryMPD();
 
   inline bool stopped() const { return connection_ && state_ == MPD_STATE_STOP; }
   inline bool playing() const { return connection_ && state_ == MPD_STATE_PLAY; }
