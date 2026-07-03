@@ -281,7 +281,7 @@ auto SystemdFailedUnits::update() -> void {
 
   last_status_ = overall_state_;
 
-  label_.set_markup(fmt::format(
+  setLabelMarkup(fmt::format(
       fmt::runtime(nr_failed_ == 0 ? format_ok_ : format_), fmt::arg("nr_failed", nr_failed_),
       fmt::arg("nr_failed_system", nr_failed_system_), fmt::arg("nr_failed_user", nr_failed_user_),
       fmt::arg("system_state", system_state_), fmt::arg("user_state", user_state_),
@@ -290,14 +290,14 @@ auto SystemdFailedUnits::update() -> void {
     std::string failed_list = BuildTooltipFailedList();
     auto tooltip_template = overall_state_ == "ok" ? tooltip_format_ok_ : tooltip_format_;
     if (!tooltip_template.empty()) {
-      label_.set_tooltip_markup(fmt::format(
+      setTooltipMarkup(fmt::format(
           fmt::runtime(tooltip_template), fmt::arg("nr_failed", nr_failed_),
           fmt::arg("nr_failed_system", nr_failed_system_),
           fmt::arg("nr_failed_user", nr_failed_user_), fmt::arg("system_state", system_state_),
           fmt::arg("user_state", user_state_), fmt::arg("overall_state", overall_state_),
           fmt::arg("failed_units_list", failed_list)));
     } else {
-      label_.set_tooltip_markup("");
+      setTooltipMarkup("");
     }
   }
   ALabel::update();
