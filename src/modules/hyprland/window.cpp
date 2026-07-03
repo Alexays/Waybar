@@ -1,5 +1,6 @@
 #include "modules/hyprland/window.hpp"
 
+#include <fmt/format.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/keyfile.h>
 #include <glibmm/miscutils.h>
@@ -12,8 +13,6 @@
 #include "modules/hyprland/backend.hpp"
 #include "util/rewrite_string.hpp"
 #include "util/sanitize_str.hpp"
-
-#include <fmt/format.h>
 
 namespace waybar::modules::hyprland {
 
@@ -56,11 +55,11 @@ auto Window::update() -> void {
   if (!format_.empty()) {
     label_.show();
 
-	// If the focused window name is empty and fallback is configured, use fallback text
-	std::string displayTitle = windowName;
-	if (displayTitle.empty() && config_["fallback"].isString()) {
-		displayTitle = config_["fallback"].asString();
-	}
+    // If the focused window name is empty and fallback is configured, use fallback text
+    std::string displayTitle = windowName;
+    if (displayTitle.empty() && config_["fallback"].isString()) {
+      displayTitle = config_["fallback"].asString();
+    }
 
     label_text = waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", displayTitle),
