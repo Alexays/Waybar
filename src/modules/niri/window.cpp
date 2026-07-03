@@ -17,6 +17,7 @@ Window::Window(const std::string& id, const Bar& bar, const Json::Value& config)
   gIPC->registerForIPC("WindowOpenedOrChanged", this);
   gIPC->registerForIPC("WindowClosed", this);
   gIPC->registerForIPC("WindowFocusChanged", this);
+  gIPC->registerForIPC("WindowLayoutsChanged", this);
 
   dp.emit();
 }
@@ -54,15 +55,25 @@ void Window::doUpdate() {
   if (it != windows.cend()) {
     const auto& window = *it;
 
+    auto max_col = -1;
+    for (const auto &win : windows) {
+      if (win["workspace_id"].asUInt64() != window["workspace_id"].asUInt64()) {
+        continue;
+      }
+      const auto col = win["layout"]["pos_in_scrolling_layout"][0].asInt64();
+      if (col > max_col) max_col = col;
+    }
     const auto title = window["title"].asString();
     const auto appId = window["app_id"].asString();
+    const auto col = window["layout"]["pos_in_scrolling_layout"][0].asInt64();
     const auto sanitizedTitle = waybar::util::sanitize_string(title);
     const auto sanitizedAppId = waybar::util::sanitize_string(appId);
 
     label_.show();
     label_.set_markup(waybar::util::rewriteString(
         fmt::format(fmt::runtime(format_), fmt::arg("title", sanitizedTitle),
-                    fmt::arg("app_id", sanitizedAppId)),
+                    fmt::arg("app_id", sanitizedAppId), fmt::arg("col", col),
+                    fmt::arg("max_col", max_col)),
         config_["rewrite"]));
 
     updateAppIconName(appId, "");
