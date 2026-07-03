@@ -59,6 +59,7 @@ Addressed by *river/tags*
 - *#tags button.focused*
 - *#tags button.urgent*
 - *#tags button.output*
+- *#tags button.tag-N*
 
 Note that occupied/focused/urgent/output status may overlap. That is, a tag may be
 both occupied and focused at the same time.
