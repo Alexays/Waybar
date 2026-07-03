@@ -54,6 +54,7 @@ class Network : public ALabel {
   const std::string getNetworkState() const;
   void clearIface();
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
+  uint32_t readLinkSpeed() const;
 
   int ifid_{-1};
   ip_addr_pref addr_pref_{ip_addr_pref::IPV4};
@@ -94,6 +95,7 @@ class Network : public ALabel {
   uint8_t signal_strength_;
   std::string signal_strength_app_;
   uint32_t route_priority;
+  uint32_t link_speed_{0};
 
   util::SleeperThread thread_;
   util::SleeperThread thread_timer_;
