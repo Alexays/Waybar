@@ -13,6 +13,8 @@ test_src = files(
     '../../src/config.cpp',
     'JsonParser.cpp',
     'SafeSignal.cpp',
+    'sleeper_thread.cpp',
+    'command.cpp',
     'css_reload_helper.cpp',
     '../../src/util/css_reload_helper.cpp',
 )
