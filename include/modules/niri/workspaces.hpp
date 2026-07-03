@@ -3,6 +3,7 @@
 #include <gtkmm/button.h>
 #include <json/value.h>
 
+#include <regex>
 #include <vector>
 
 #include "AModule.hpp"
@@ -23,12 +24,15 @@ class Workspaces : public AModule, public EventHandler {
   void sortWorkspaces(std::vector<Json::Value>& workspaces) const;
   Gtk::Button& addButton(const Json::Value& ws);
   std::string getIcon(const std::string& value, const Json::Value& ws);
+  bool isWorkspaceIgnored(const std::string& name);
   bool handleScroll(GdkEventScroll* /*unused*/) override;
 
   const Bar& bar_;
   Gtk::Box box_;
   // Map from niri workspace id to button.
   std::unordered_map<uint64_t, Gtk::Button> buttons_;
+  // Vec of regex rules to ignore workspaces.
+  std::vector<std::regex> ignoreWorkspaces_;
 
   bool sort_by_id_ = false;
   bool sort_by_name_ = false;

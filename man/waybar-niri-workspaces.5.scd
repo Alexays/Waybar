@@ -82,6 +82,11 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*ignore-workspaces*: ++
+	typeof: array ++
+	default: [] ++
+	Regexes to match against workspaces names and index's. If there's a match, the workspace will not be shown.
+
 # FORMAT REPLACEMENTS
 
 *{value}*: Name of the workspace, or index for unnamed workspaces,
