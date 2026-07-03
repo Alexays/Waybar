@@ -138,6 +138,11 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ When enabled, the calendar follows the ISO 8601 standard: weeks begin on
    Monday, and the first week of the year is numbered 1. The default week format is
    '{:%V}'.
+|[ *first-day-of-week*
+:[ integer
+:[
+:[ The first day of the week, where 0 is Sunday and 6 is Saturday.
+   When not set, the first day of the week is determined by the locale settings.
 
 3. Addressed by *clock: calendar: format*
 [- *Option*
@@ -180,6 +185,8 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ Switch to the next calendar month/year
 |[ *shift_down*
 :[ Switch to the previous calendar month/year
+|[ *exec <cmd>*
+:[ Execute the specified command
 
 # FORMAT REPLACEMENTS
 
@@ -204,14 +211,15 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "<tt><small>{calendar}</small></tt>",
 	"calendar": {
-		"mode"          : "year",
-		"mode-mon-col"  : 3,
-		"weeks-pos"     : "right",
-		"on-scroll"     : 1,
-		"on-click-right": "mode",
+		"mode"             : "year",
+		"mode-mon-col"     : 3,
+		"weeks-pos"        : "right",
+		"first-day-of-week": 1,
+		"on-scroll"        : 1,
+		"on-click-right"   : "mode",
 		"format": {
 			"months":     "<span color='#ffead3'><b>{}</b></span>",
 			"days":       "<span color='#ecc6d9'><b>{}</b></span>",
@@ -259,7 +267,19 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 	"tooltip-format": "{tz_list}"
 }
 ```
+5. Simple calendar tooltip
 
+```
+"clock": {
+"format": "{:%H:%M}",
+"tooltip-format": "<tt>{calendar}</tt>",
+"calendar": {
+"format": {
+"today": "<span color='#ffcc66'><b>{}</b></span>"
+}
+}
+}
+```
 # STYLE
 
 - *#clock*
@@ -287,7 +307,7 @@ Example of working config
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
 	"calendar": {
 		"mode"          : "year",

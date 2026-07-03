@@ -54,21 +54,28 @@ void Language::onCmd(const struct Ipc::ipc_response& res) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto payload = parser_.parse(res.payload);
     std::vector<std::string> used_layouts;
-    // Display current layout of a device with a maximum count of layouts, expecting that all will
-    // be OK
+    // Union layout names across every keyboard input so hot-plugged devices contribute their
+    // layouts to the map. Track the device with the most layouts to seed the initially displayed
+    // layout, matching the previous behaviour at startup.
     Json::ArrayIndex max_id = 0, max = 0;
     for (Json::ArrayIndex i = 0; i < payload.size(); i++) {
-      auto size = payload[i][XKB_LAYOUT_NAMES_KEY].size();
-      if (size > max) {
-        max = size;
+      if (payload[i]["type"].asString() != "keyboard") continue;
+      const auto& names = payload[i][XKB_LAYOUT_NAMES_KEY];
+      if (names.size() > max) {
+        max = names.size();
         max_id = i;
+      }
+      for (const auto& layout : names) {
+        const auto name = layout.asString();
+        if (std::find(used_layouts.begin(), used_layouts.end(), name) == used_layouts.end()) {
+          used_layouts.push_back(name);
+        }
       }
     }
 
-    for (const auto& layout : payload[max_id][XKB_LAYOUT_NAMES_KEY]) {
-      used_layouts.push_back(layout.asString());
-    }
-
+    // Rebuild from scratch so init_layouts_map's duplicate-suffix pass doesn't compound across
+    // refreshes (e.g. "us" -> "us1" -> "us11").
+    layouts_map_.clear();
     init_layouts_map(used_layouts);
     set_current_layout(payload[max_id][XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
     dp.emit();
@@ -82,13 +89,26 @@ void Language::onEvent(const struct Ipc::ipc_response& res) {
     return;
   }
 
+  bool refresh_inputs = false;
   try {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto payload = parser_.parse(res.payload)["input"];
-    if (payload["type"].asString() == "keyboard") {
-      set_current_layout(payload[XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      auto root = parser_.parse(res.payload);
+      auto change = root["change"].asString();
+      auto payload = root["input"];
+      if (payload["type"].asString() == "keyboard") {
+        // A device was added or its keymap changed - the layout set may have grown, so refresh
+        // layouts_map_ via IPC_GET_INPUTS once we've released mutex_.
+        refresh_inputs = (change == "added" || change == "xkb_keymap");
+        set_current_layout(payload[XKB_ACTIVE_LAYOUT_NAME_KEY].asString());
+      }
+      dp.emit();
     }
-    dp.emit();
+    // sendCmd is synchronous: it blocks on the IPC reply and then emits signal_cmd on this same
+    // thread, which lands in onCmd and re-locks mutex_. Must call it with mutex_ released.
+    if (refresh_inputs) {
+      ipc_.sendCmd(IPC_GET_INPUTS);
+    }
   } catch (const std::exception& e) {
     spdlog::error("Language: {}", e.what());
   }
@@ -104,7 +124,7 @@ auto Language::update() -> void {
       fmt::runtime(format_), fmt::arg("short", layout_.short_name),
       fmt::arg("shortDescription", layout_.short_description), fmt::arg("long", layout_.full_name),
       fmt::arg("variant", layout_.variant), fmt::arg("flag", layout_.country_flag())));
-  label_.set_markup(display_layout);
+  setLabelMarkup(display_layout);
   if (tooltipEnabled()) {
     if (tooltip_format_ != "") {
       auto tooltip_display_layout = trim(
@@ -112,9 +132,9 @@ auto Language::update() -> void {
                       fmt::arg("shortDescription", layout_.short_description),
                       fmt::arg("long", layout_.full_name), fmt::arg("variant", layout_.variant),
                       fmt::arg("flag", layout_.country_flag())));
-      label_.set_tooltip_markup(tooltip_display_layout);
+      setTooltipMarkup(tooltip_display_layout);
     } else {
-      label_.set_tooltip_markup(display_layout);
+      setTooltipMarkup(display_layout);
     }
   }
 
@@ -124,9 +144,16 @@ auto Language::update() -> void {
   ALabel::update();
 }
 
-auto Language::set_current_layout(std::string current_layout) -> void {
+auto Language::set_current_layout(const std::string& current_layout) -> void {
+  // Guard against unknown / empty layout names: transient virtual keyboards (e.g. wtype) and
+  // hot-plugged devices whose layouts haven't made it into the map yet would otherwise blank out
+  // layout_ via map::operator[]'s default-construct-on-miss.
+  auto it = layouts_map_.find(current_layout);
+  if (it == layouts_map_.end()) {
+    return;
+  }
   label_.get_style_context()->remove_class(layout_.short_name);
-  layout_ = layouts_map_[current_layout];
+  layout_ = it->second;
   label_.get_style_context()->add_class(layout_.short_name);
 }
 
