@@ -7,6 +7,7 @@
 namespace waybar::modules::SNI {
 
 static const unsigned RETRY_DELAY_MS = 200;
+static const unsigned MAX_RETRIES = 10;
 
 Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
@@ -24,6 +25,7 @@ Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
       on_update_(on_update) {}
 
 Host::~Host() {
+  retry_connection_.disconnect();
   if (bus_name_id_ > 0) {
     Gio::DBus::unown_name(bus_name_id_);
     bus_name_id_ = 0;
@@ -55,6 +57,8 @@ void Host::nameAppeared(const Glib::RefPtr<Gio::DBus::Connection>& conn, const G
 }
 
 void Host::nameVanished(const Glib::RefPtr<Gio::DBus::Connection>& conn, const Glib::ustring name) {
+  retry_connection_.disconnect();
+  retry_count_ = 0;
   g_cancellable_cancel(cancellable_);
   g_clear_object(&cancellable_);
   g_clear_object(&watcher_);
@@ -77,17 +81,26 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
   if (error != nullptr) {
     spdlog::error("Host: {}", error->message);
     g_clear_object(&host->cancellable_);
-    Glib::signal_timeout().connect_once(
+    if (host->retry_count_ >= MAX_RETRIES) {
+      spdlog::warn("Host: giving up on watcher proxy creation after {} retries", host->retry_count_);
+      return;
+    }
+    host->retry_count_ += 1;
+    // Store the timeout connection so it is disconnected in ~Host, avoiding a
+    // use-after-free if the Host is destroyed before the retry fires.
+    host->retry_connection_ = Glib::signal_timeout().connect(
         [host]() {
           if (host->watcher_ != nullptr) {
-            return;
+            return false;
           }
           auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
           host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+          return false;
         },
         RETRY_DELAY_MS);
     return;
   }
+  host->retry_count_ = 0;
   host->watcher_ = watcher;
   sn_watcher_call_register_host(host->watcher_, host->object_path_.c_str(), host->cancellable_,
                                 &Host::registerHost, data);
