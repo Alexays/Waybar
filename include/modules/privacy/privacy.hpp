@@ -28,6 +28,7 @@ class Privacy : public AModule {
 
   // Config
   Gtk::Box box_;
+  std::vector<PrivacyItem*> modules_;
   uint iconSpacing = 4;
   uint iconSize = 20;
   uint transition_duration = 250;

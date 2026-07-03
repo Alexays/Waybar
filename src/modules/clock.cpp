@@ -9,6 +9,7 @@
 #include <regex>
 #include <sstream>
 
+#include "util/command.hpp"
 #include "util/ustring_clen.hpp"
 
 #ifdef HAVE_LANGINFO_1STDAY
@@ -187,6 +188,45 @@ auto waybar::modules::Clock::update() -> void {
     }
 
     m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
+
+    // Pango doesn't support CSS classes but to continue using it while staying
+    // backwards compatible this approach uses post-posting to replace fake
+    // classes with attributes Pango does understand.
+    //
+    // The benefit of this approach is anyone using the original styling choices
+    // can continue doing that and folks can optionally opt into using classes.
+    //
+    // It's also forwards compatible to where if this implemention ever changes
+    // to support proper classes anyone using them will continue to work.
+    auto context = label_.get_style_context();
+
+    static const std::vector<std::pair<std::string, std::string>> calendar_class_map = {
+        {"calendar-today", "class='today'"},
+        {"calendar-days", "class='days'"},
+        {"calendar-weeks", "class='weeks'"},
+        {"calendar-weekdays", "class='weekdays'"},
+        {"calendar-months", "class='months'"}};
+
+    for (const auto& [css_class, search_str] : calendar_class_map) {
+      try {
+        context->add_class(css_class);
+        const Gdk::RGBA color = context->get_color();
+        context->remove_class(css_class);
+
+        const std::string replace_str = fmt::format(
+            "color='#{:02x}{:02x}{:02x}'", static_cast<int>(color.get_red() * 255),
+            static_cast<int>(color.get_green() * 255), static_cast<int>(color.get_blue() * 255));
+
+        m_tlpText_ = std::regex_replace(m_tlpText_, std::regex(search_str), replace_str);
+      } catch (const Glib::Error& e) {
+        spdlog::warn("Clock: Failed to fetch CSS color for {}: {}", css_class, e.what().raw());
+        continue;
+      } catch (...) {
+        // Catch-all for any other weirdness.
+        continue;
+      }
+    }
+
     m_tooltip_->set_markup(m_tlpText_);
     label_.trigger_tooltip_query();
   }
@@ -402,8 +442,13 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
               data = g_utf8_find_next_char(data, end);
             }
           }
+          // Note: the stream's default fill character is already a space (L' ' on
+          // libstdc++'s wide FormatStream, ' ' on libc++'s narrow one), so no
+          // std::setfill is needed. Passing std::setfill(' ')/std::setfill(L' ')
+          // here is not portable because the fill char type must match the
+          // FormatStream's char type, which differs between standard libraries.
           os << Glib::ustring::format(
-              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right, std::setfill(L' '),
+              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right,
               std::setw(cldMonColLen_ + ((line < 2) ? cldWnLen_ - wideCharCount : 0)),
               calendarLine);
 
@@ -472,6 +517,8 @@ auto waybar::modules::Clock::local_zone() -> const time_zone* {
 auto waybar::modules::Clock::doAction(const std::string& name) -> void {
   if (actionMap_[name]) {
     (this->*actionMap_[name])();
+  } else if (auto key = name.substr(0, name.find(" ")); actionWithArgsMap_[key]) {
+    (this->*actionWithArgsMap_[key])(name);
   } else
     spdlog::error("Clock. Unsupported action \"{0}\"", name);
 }
@@ -498,6 +545,10 @@ void waybar::modules::Clock::tz_down() {
   if (tzSize == 1) return;
   tzCurrIdx_ = (tzCurrIdx_ == 0) ? tzSize - 1 : tzCurrIdx_ - 1;
 }
+void waybar::modules::Clock::action_exec(const std::string& action) {
+  auto cmd = action.substr(strlen("exec "));
+  pid_children_.push_back(util::command::forkExec(cmd));
+}
 
 #ifdef HAVE_LANGINFO_1STDAY
 template <auto fn>
@@ -509,6 +560,18 @@ using deleting_unique_ptr = std::unique_ptr<T, deleter_from_fn<fn>>;
 
 // Computations done similarly to Linux cal utility.
 auto waybar::modules::Clock::first_day_of_week() -> weekday {
+  const auto firstdow = config_[kCldPlaceholder]["first-day-of-week"];
+  if (firstdow.isInt()) {
+    const int firstDay = firstdow.asInt();
+    if (!(firstDay >= 0 && firstDay <= 6)) {
+      spdlog::warn(
+          "Clock calender configuration first-day-of-week = {0} must be in range [0, 6]. Default "
+          "value is used instead",
+          firstDay);
+    } else {
+      return weekday{static_cast<unsigned>(firstDay)};
+    }
+  }
   if (iso8601Calendar_) {
     return Monday;
   }
