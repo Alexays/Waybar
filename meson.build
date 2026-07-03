@@ -349,6 +349,25 @@ if get_option('niri')
     )
 endif
 
+if get_option('mango')
+    add_project_arguments('-DHAVE_MANGO', language: 'cpp')
+    src_files += files(
+        'src/modules/mango/backend.cpp',
+        'src/modules/mango/language.cpp',
+        'src/modules/mango/keymode.cpp',
+        'src/modules/mango/window.cpp',
+        'src/modules/mango/workspaces.cpp',
+        'src/modules/mango/layout.cpp'
+    )
+    man_files += files(
+        'man/waybar-mango-language.5.scd',
+        'man/waybar-mango-keymode.5.scd',
+        'man/waybar-mango-window.5.scd',
+        'man/waybar-mango-workspaces.5.scd',
+        'man/waybar-mango-layout.5.scd'
+    )
+endif
+
 if true
     add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
     src_files += files(
