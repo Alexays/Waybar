@@ -384,6 +384,10 @@ if true
         'src/modules/wayfire/window.cpp',
         'src/modules/wayfire/workspaces.cpp',
     )
+    man_files += files(
+        'man/waybar-wayfire-window.5.scd',
+        'man/waybar-wayfire-workspaces.5.scd',
+    )
 endif
 
 if get_option('login-proxy')
