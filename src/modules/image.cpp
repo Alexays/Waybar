@@ -14,20 +14,25 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
 
   size_ = config["size"].asInt();
 
-  interval_ = config_["interval"] == "once"
-                  ? std::chrono::milliseconds::max()
-                  : std::chrono::milliseconds(std::max(
-                        1L,  // Minimum 1ms due to millisecond precision
-                        static_cast<long>(
-                            (config_["interval"].isNumeric() ? config_["interval"].asDouble() : 0) *
-                            1000)));
+  const auto once = std::chrono::milliseconds::max();
+  if (!config_.isMember("interval") || config_["interval"].isNull() ||
+      config_["interval"] == "once") {
+    interval_ = once;
+  } else if (config_["interval"].isNumeric()) {
+    const auto interval_seconds = config_["interval"].asDouble();
+    if (interval_seconds <= 0) {
+      interval_ = once;
+    } else {
+      interval_ =
+          std::chrono::milliseconds(std::max(1L,  // Minimum 1ms due to millisecond precision
+                                             static_cast<long>(interval_seconds * 1000)));
+    }
+  } else {
+    interval_ = once;
+  }
 
   if (size_ == 0) {
     size_ = 16;
-  }
-
-  if (interval_.count() == 0) {
-    interval_ = std::chrono::milliseconds::max();
   }
 
   delayWorker();
@@ -41,7 +46,7 @@ void waybar::modules::Image::delayWorker() {
 }
 
 void waybar::modules::Image::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }

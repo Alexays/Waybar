@@ -24,10 +24,11 @@ class Workspaces : public AModule, public sigc::trackable {
 
  private:
   static constexpr std::string_view workspace_switch_cmd_ = "workspace {} \"{}\"";
+  static constexpr std::string_view workspace_switch_number_cmd_ = "workspace {} number {}";
   static constexpr std::string_view persistent_workspace_switch_cmd_ =
       R"(workspace {} "{}"; move workspace to output "{}"; workspace {} "{}")";
 
-  static int convertWorkspaceNameToNum(std::string name);
+  static int convertWorkspaceNameToNum(const std::string& name);
   static int windowRewritePriorityFunction(std::string const& window_rule);
 
   void onCmd(const struct Ipc::ipc_response&);
@@ -40,7 +41,7 @@ class Workspaces : public AModule, public sigc::trackable {
   std::string getIcon(const std::string&, const Json::Value&);
   std::string getCycleWorkspace(std::vector<Json::Value>::iterator, bool prev) const;
   uint16_t getWorkspaceIndex(const std::string& name) const;
-  static std::string trimWorkspaceName(std::string);
+  static std::string trimWorkspaceName(const std::string&);
   bool handleScroll(GdkEventScroll* /*unused*/) override;
 
   const Bar& bar_;
