@@ -17,17 +17,24 @@ class Wireplumber : public ALabel {
   auto update() -> void override;
 
  private:
-  void loadRequiredApiModules();
-  void prepare();
+  void asyncLoadRequiredApiModules();
+  void prepare(waybar::modules::Wireplumber* self);
   void activatePlugins();
   static void updateVolume(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
+  static void updateSourceVolume(waybar::modules::Wireplumber* self, uint32_t id);
+  static void updateSourceName(waybar::modules::Wireplumber* self, uint32_t id);  // NEW
   static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
+  static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
+                                      waybar::modules::Wireplumber* self);
+  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
   static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
 
   bool handleScroll(GdkEventScroll* e) override;
+
+  static std::list<waybar::modules::Wireplumber*> modules;
 
   WpCore* wp_core_;
   GPtrArray* apis_;
@@ -41,6 +48,12 @@ class Wireplumber : public ALabel {
   double min_step_;
   uint32_t node_id_{0};
   std::string node_name_;
+  std::string source_name_;
+  gchar* type_;
+  uint32_t source_node_id_;
+  bool source_muted_;
+  double source_volume_;
+  gchar* default_source_name_;
 };
 
 }  // namespace waybar::modules

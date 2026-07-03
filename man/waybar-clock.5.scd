@@ -2,7 +2,7 @@ waybar-clock(5) "waybar-clock" "User Manual"
 
 # NAME
 
-clock
+waybar - clock module
 
 # DESCRIPTION
 
@@ -11,7 +11,7 @@ clock
 # FILES
 
 $XDG_CONFIG_HOME/waybar/config ++
-    Per user configuration file
+	Per user configuration file
 
 # CONFIGURATION
 
@@ -37,13 +37,19 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ list of strings
 :[
 :[ A list of timezones (as in *timezone*) to use for time display, changed using
-  the scroll wheel. Do not specify *timezone* option when *timezones* is specified.
+   the scroll wheel. Do not specify *timezone* option when *timezones* is specified.
    "" represents the system's local timezone
+|[ *timezone-tooltip-format*
+:[ string
+:[
+:[ Format to use for displaying timezones in the tooltip. When set, this allows showing
+   timezone information (like timezone abbreviations) in the tooltip while keeping the
+   main display clean. Uses the same format options as *format*
 |[ *locale*
 :[ string
 :[
 :[ A locale to be used to display the time. Intended to render times in custom
-  timezones with the proper language and format
+   timezones with the proper language and format
 |[ *max-length*
 :[ integer
 :[
@@ -51,7 +57,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 |[ *rotate*
 :[ integer
 :[
-:[ Positive value to rotate the text label
+:[ Positive value to rotate the text label (in 90 degree increments)
 |[ *on-click*
 :[ string
 :[
@@ -63,7 +69,7 @@ $XDG_CONFIG_HOME/waybar/config ++
 |[ *on-click-right*
 :[ string
 :[
-:[ Command to execute when you right clicked on the module
+:[ Command to execute when you right-click on the module
 |[ *on-scroll-up*
 :[ string
 :[
@@ -84,8 +90,24 @@ $XDG_CONFIG_HOME/waybar/config ++
 :[ string
 :[ same as format
 :[ Tooltip on hover
+|[ *menu*
+:[ string
+:[
+:[ Action that popups the menu.
+|[ *menu-file*
+:[ string
+:[
+:[ Location of the menu descriptor file. There need to be an element of type GtkMenu with id *menu*
+|[ *menu-actions*
+:[ array
+:[
+:[ The actions corresponding to the buttons of the menu.
+|[ *expand*:
+:[ bool
+:[ false
+:[ Enables this module to consume all left over space dynamically.
 
-View all valid format options in *strftime(3)* or have a look <https://fmt.dev/latest/syntax.html#chrono-specs>
+View all valid format options in *strftime(3)* or have a look https://en.cppreference.com/w/cpp/chrono/duration/formatter
 
 2. Addressed by *clock: calendar*
 [- *Option*
@@ -101,17 +123,23 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 :[ 3
 :[ Relevant for *mode=year*. Count of months per row
 |[ *weeks-pos*
-:[ integer
+:[ string
 :[
 :[ The position where week numbers should be displayed. Disabled when is empty.
-  Possible values: left|right
+   Possible values: left|right
 |[ *on-scroll*
 :[ integer
 :[ 1
 :[ Value to scroll months/years forward/backward. Can be negative. Is
-  configured under *on-scroll* option
+   configured under *on-scroll* option
+|[ *iso8601*
+:[ bool
+:[ false
+:[ When enabled, the calendar follows the ISO 8601 standard: weeks begin on
+   Monday, and the first week of the year is numbered 1. The default week format is
+   '{:%V}'.
 
-3. Adressed by *clock: calendar: format*
+3. Addressed by *clock: calendar: format*
 [- *Option*
 :- *Typeof*
 :- *Default*
@@ -147,7 +175,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 |[ *tz_up*
 :[ Switch to the next provided time zone
 |[ *tz_down*
-:[ Switch to the previous provided time zone
+:[ Switch to the previously provided time zone
 |[ *shift_up*
 :[ Switch to the next calendar month/year
 |[ *shift_down*
@@ -156,7 +184,8 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 # FORMAT REPLACEMENTS
 
 - *{calendar}*: Current month calendar
-- *{timezoned_time_list}*: List of time in the rest timezones, if more than one timezone is set in the config
+- *{tz_list}*: List of time in the rest timezones, if more than one timezone is set in the config
+- *{ordinal_date}*: The current day in (English) ordinal form, e.g. 21st
 
 # EXAMPLES
 
@@ -164,9 +193,9 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 
 ```
 "clock": {
-    "interval": 60,
-    "format": "{:%H:%M}",
-    "max-length": 25
+	"interval": 60,
+	"format": "{:%H:%M}",
+	"max-length": 25
 }
 ```
 
@@ -174,30 +203,30 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 
 ```
 "clock": {
-    "format": "{:%H:%M}  ",
-    "format-alt": "{:%A, %B %d, %Y (%R)}  ",
-    "tooltip-format": "<tt><small>{calendar}</small></tt>",
-    "calendar": {
-                "mode"          : "year",
-                "mode-mon-col"  : 3,
-                "weeks-pos"     : "right",
-                "on-scroll"     : 1,
-                "on-click-right": "mode",
-                "format": {
-                            "months":     "<span color='#ffead3'><b>{}</b></span>",
-                            "days":       "<span color='#ecc6d9'><b>{}</b></span>",
-                            "weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
-                            "weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
-                            "today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
-                            }
-                },
-    "actions":  {
-                "on-click-right": "mode",
-                "on-click-forward": "tz_up",
-                "on-click-backward": "tz_down",
-                "on-scroll-up": "shift_up",
-                "on-scroll-down": "shift_down"
-                }
+	"format": "{:%H:%M}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
+	"tooltip-format": "<tt><small>{calendar}</small></tt>",
+	"calendar": {
+		"mode"          : "year",
+		"mode-mon-col"  : 3,
+		"weeks-pos"     : "right",
+		"on-scroll"     : 1,
+		"on-click-right": "mode",
+		"format": {
+			"months":     "<span color='#ffead3'><b>{}</b></span>",
+			"days":       "<span color='#ecc6d9'><b>{}</b></span>",
+			"weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
+			"weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
+			"today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
+		}
+	},
+	"actions": {
+		"on-click-right": "mode",
+		"on-click-forward": "tz_up",
+		"on-click-backward": "tz_down",
+		"on-scroll-up": "shift_up",
+		"on-scroll-down": "shift_down"
+	}
 },
 ```
 
@@ -205,13 +234,44 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 
 ```
 "clock": {
-    "interval": 60,
-    "tooltip": true,
-    "format": "{:%H.%M}",
-    "tooltip-format": "{:%Y-%m-%d}",
+	"interval": 60,
+	"tooltip": true,
+	"format": "{:%H.%M}",
+	"tooltip-format": "{:%Y-%m-%d}",
 }
 ```
 
+4. Show timezone in tooltip only
+
+```
+"clock": {
+	"interval": 60,
+	"format": "{:%H:%M}",
+	"timezone-tooltip-format": "{:%H:%M %Z}",
+	"timezones": [
+		"",
+		"America/Chicago",
+		"America/Los_Angeles",
+		"Europe/Paris",
+		"UTC"
+	],
+	"tooltip": true,
+	"tooltip-format": "{tz_list}"
+}
+```
+5. Simple calendar tooltip
+
+```
+"clock": {
+"format": "{:%H:%M}",
+"tooltip-format": "<tt>{calendar}</tt>",
+"calendar": {
+"format": {
+"today": "<span color='#ffcc66'><b>{}</b></span>"
+}
+}
+}
+```
 # STYLE
 
 - *#clock*
@@ -219,7 +279,7 @@ View all valid format options in *strftime(3)* or have a look <https://fmt.dev/l
 # Troubleshooting
 
 If clock module is disabled at startup with locale::facet::\_S\_create\_c\_locale ++
-name not valid error message try one of the followings:
+name not valid error message try one of the following:
 
 - check if LC_TIME is set properly (glibc)
 - set locale to C in the config file (musl)
@@ -238,31 +298,31 @@ Example of working config
 
 ```
 "clock": {
-        "format": "{:%H:%M}  ",
-        "format-alt": "{:%A, %B %d, %Y (%R)}  ",
-        "tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
-        "calendar": {
-                    "mode"          : "year",
-                    "mode-mon-col"  : 3,
-                    "weeks-pos"     : "right",
-                    "on-scroll"     : 1,
-                    "on-click-right": "mode",
-                    "format": {
-                              "months":     "<span color='#ffead3'><b>{}</b></span>",
-                              "days":       "<span color='#ecc6d9'><b>{}</b></span>",
-                              "weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
-                              "weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
-                              "today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
-                              }
-                    },
-        "actions":  {
-                    "on-click-right": "mode",
-                    "on-click-forward": "tz_up",
-                    "on-click-backward": "tz_down",
-                    "on-scroll-up": "shift_up",
-                    "on-scroll-down": "shift_down"
-                    }
-    },
+	"format": "{:%H:%M}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
+	"tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
+	"calendar": {
+		"mode"          : "year",
+		"mode-mon-col"  : 3,
+		"weeks-pos"     : "right",
+		"on-scroll"     : 1,
+		"on-click-right": "mode",
+		"format": {
+			"months":     "<span color='#ffead3'><b>{}</b></span>",
+			"days":       "<span color='#ecc6d9'><b>{}</b></span>",
+			"weeks":      "<span color='#99ffdd'><b>W{}</b></span>",
+			"weekdays":   "<span color='#ffcc66'><b>{}</b></span>",
+			"today":      "<span color='#ff6699'><b><u>{}</u></b></span>"
+		}
+	},
+	"actions": {
+		"on-click-right": "mode",
+		"on-click-forward": "tz_up",
+		"on-click-backward": "tz_down",
+		"on-scroll-up": "shift_up",
+		"on-scroll-down": "shift_down"
+	}
+},
 ```
 
 # AUTHOR

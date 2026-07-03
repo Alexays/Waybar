@@ -2,7 +2,11 @@
 
 #include <spdlog/spdlog.h>
 #include <unistd.h>
+#ifndef __OpenBSD__
 #include <wordexp.h>
+#else
+#include <glob.h>
+#endif
 
 #include <filesystem>
 #include <fstream>
@@ -19,12 +23,13 @@ const std::vector<std::string> Config::CONFIG_DIRS = {
     "/etc/xdg/waybar/",         SYSCONFDIR "/xdg/waybar/", "./resources/",
 };
 
-const char *Config::CONFIG_PATH_ENV = "WAYBAR_CONFIG_DIR";
+const char* Config::CONFIG_PATH_ENV = "WAYBAR_CONFIG_DIR";
 
-std::optional<std::string> tryExpandPath(const std::string base, const std::string filename) {
+std::vector<std::string> Config::tryExpandPath(const std::string& base,
+                                               const std::string& filename) {
   fs::path path;
 
-  if (filename != "") {
+  if (!filename.empty()) {
     path = fs::path(base) / fs::path(filename);
   } else {
     path = fs::path(base);
@@ -32,40 +37,55 @@ std::optional<std::string> tryExpandPath(const std::string base, const std::stri
 
   spdlog::debug("Try expanding: {}", path.string());
 
+  std::vector<std::string> results;
+#ifndef __OpenBSD__
   wordexp_t p;
   if (wordexp(path.c_str(), &p, 0) == 0) {
-    if (access(*p.we_wordv, F_OK) == 0) {
-      std::string result = *p.we_wordv;
-      wordfree(&p);
-      spdlog::debug("Found config file: {}", path.string());
-      return result;
+    for (size_t i = 0; i < p.we_wordc; i++) {
+      if (access(p.we_wordv[i], F_OK) == 0) {
+        results.emplace_back(p.we_wordv[i]);
+        spdlog::debug("Found config file: {}", p.we_wordv[i]);
+      }
     }
     wordfree(&p);
   }
-  return std::nullopt;
+#else
+  glob_t p;
+  if (glob(path.c_str(), 0, NULL, &p) == 0) {
+    for (size_t i = 0; i < p.gl_pathc; i++) {
+      if (access(p.gl_pathv[i], F_OK) == 0) {
+        results.emplace_back(p.gl_pathv[i]);
+        spdlog::debug("Found config file: {}", p.gl_pathv[i]);
+      }
+    }
+    globfree(&p);
+  }
+#endif
+
+  return results;
 }
 
-std::optional<std::string> Config::findConfigPath(const std::vector<std::string> &names,
-                                                  const std::vector<std::string> &dirs) {
-  if (const char *dir = std::getenv(Config::CONFIG_PATH_ENV)) {
-    for (const auto &name : names) {
-      if (auto res = tryExpandPath(dir, name); res) {
-        return res;
+std::optional<std::string> Config::findConfigPath(const std::vector<std::string>& names,
+                                                  const std::vector<std::string>& dirs) {
+  if (const char* dir = std::getenv(Config::CONFIG_PATH_ENV)) {
+    for (const auto& name : names) {
+      if (auto res = tryExpandPath(dir, name); !res.empty()) {
+        return res.front();
       }
     }
   }
 
-  for (const auto &dir : dirs) {
-    for (const auto &name : names) {
-      if (auto res = tryExpandPath(dir, name); res) {
-        return res;
+  for (const auto& dir : dirs) {
+    for (const auto& name : names) {
+      if (auto res = tryExpandPath(dir, name); !res.empty()) {
+        return res.front();
       }
     }
   }
   return std::nullopt;
 }
 
-void Config::setupConfig(Json::Value &dst, const std::string &config_file, int depth) {
+void Config::setupConfig(Json::Value& dst, const std::string& config_file, int depth) {
   if (depth > 100) {
     throw std::runtime_error("Aborting due to likely recursive include in config files");
   }
@@ -77,7 +97,7 @@ void Config::setupConfig(Json::Value &dst, const std::string &config_file, int d
   util::JsonParser parser;
   Json::Value tmp_config = parser.parse(str);
   if (tmp_config.isArray()) {
-    for (auto &config_part : tmp_config) {
+    for (auto& config_part : tmp_config) {
       resolveConfigIncludes(config_part, depth);
     }
   } else {
@@ -86,25 +106,59 @@ void Config::setupConfig(Json::Value &dst, const std::string &config_file, int d
   mergeConfig(dst, tmp_config);
 }
 
-void Config::resolveConfigIncludes(Json::Value &config, int depth) {
+std::vector<std::string> Config::findIncludePath(const std::string& name,
+                                                 const std::vector<std::string>& dirs) {
+  auto match1 = tryExpandPath(name, "");
+  if (!match1.empty()) {
+    return match1;
+  }
+  if (const char* dir = std::getenv(Config::CONFIG_PATH_ENV)) {
+    if (auto res = tryExpandPath(dir, name); !res.empty()) {
+      return res;
+    }
+  }
+  for (const auto& dir : dirs) {
+    if (auto res = tryExpandPath(dir, name); !res.empty()) {
+      return res;
+    }
+  }
+
+  return {};
+}
+
+void Config::resolveConfigIncludes(Json::Value& config, int depth) {
   Json::Value includes = config["include"];
   if (includes.isArray()) {
-    for (const auto &include : includes) {
+    for (const auto& include : includes) {
       spdlog::info("Including resource file: {}", include.asString());
-      setupConfig(config, tryExpandPath(include.asString(), "").value_or(""), ++depth);
+      auto matches = findIncludePath(include.asString());
+      if (!matches.empty()) {
+        for (const auto& match : matches) {
+          setupConfig(config, match, depth + 1);
+        }
+      } else {
+        spdlog::warn("Unable to find resource file: {}", include.asString());
+      }
     }
   } else if (includes.isString()) {
     spdlog::info("Including resource file: {}", includes.asString());
-    setupConfig(config, tryExpandPath(includes.asString(), "").value_or(""), ++depth);
+    auto matches = findIncludePath(includes.asString());
+    if (!matches.empty()) {
+      for (const auto& match : matches) {
+        setupConfig(config, match, depth + 1);
+      }
+    } else {
+      spdlog::warn("Unable to find resource file: {}", includes.asString());
+    }
   }
 }
 
-void Config::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) {
+void Config::mergeConfig(Json::Value& a_config_, Json::Value& b_config_) {
   if (!a_config_) {
     // For the first config
     a_config_ = b_config_;
   } else if (a_config_.isObject() && b_config_.isObject()) {
-    for (const auto &key : b_config_.getMemberNames()) {
+    for (const auto& key : b_config_.getMemberNames()) {
       // [] creates key with default value. Use `get` to avoid that.
       if (a_config_.get(key, Json::Value::nullSingleton()).isObject() &&
           b_config_[key].isObject()) {
@@ -120,18 +174,18 @@ void Config::mergeConfig(Json::Value &a_config_, Json::Value &b_config_) {
     spdlog::error("Cannot merge config, conflicting or invalid JSON types");
   }
 }
-bool isValidOutput(const Json::Value &config, const std::string &name,
-                   const std::string &identifier) {
+bool isValidOutput(const Json::Value& config, const std::string& name,
+                   const std::string& identifier) {
   if (config["output"].isArray()) {
-    for (auto const &output_conf : config["output"]) {
+    for (auto const& output_conf : config["output"]) {
       if (output_conf.isString()) {
         auto config_output = output_conf.asString();
         if (config_output.substr(0, 1) == "!") {
           if (config_output.substr(1) == name || config_output.substr(1) == identifier) {
             return false;
-          } else {
-            continue;
           }
+
+          continue;
         }
         if (config_output == name || config_output == identifier) {
           return true;
@@ -142,7 +196,9 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
       }
     }
     return false;
-  } else if (config["output"].isString()) {
+  }
+
+  if (config["output"].isString()) {
     auto config_output = config["output"].asString();
     if (!config_output.empty()) {
       if (config_output.substr(0, 1) == "!") {
@@ -155,21 +211,22 @@ bool isValidOutput(const Json::Value &config, const std::string &name,
   return true;
 }
 
-void Config::load(const std::string &config) {
+void Config::load(const std::string& config) {
   auto file = config.empty() ? findConfigPath({"config", "config.jsonc"}) : config;
   if (!file) {
     throw std::runtime_error("Missing required resource files");
   }
   config_file_ = file.value();
   spdlog::info("Using configuration file {}", config_file_);
+  config_ = Json::Value();
   setupConfig(config_, config_file_, 0);
 }
 
-std::vector<Json::Value> Config::getOutputConfigs(const std::string &name,
-                                                  const std::string &identifier) {
+std::vector<Json::Value> Config::getOutputConfigs(const std::string& name,
+                                                  const std::string& identifier) {
   std::vector<Json::Value> configs;
   if (config_.isArray()) {
-    for (auto const &config : config_) {
+    for (auto const& config : config_) {
       if (config.isObject() && isValidOutput(config, name, identifier)) {
         configs.push_back(config);
       }

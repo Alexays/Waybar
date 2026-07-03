@@ -7,20 +7,32 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
   }
+  box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
 
   dp.emit();
 
   size_ = config["size"].asInt();
 
-  interval_ = config_["interval"].asInt();
+  const auto once = std::chrono::milliseconds::max();
+  if (!config_.isMember("interval") || config_["interval"].isNull() ||
+      config_["interval"] == "once") {
+    interval_ = once;
+  } else if (config_["interval"].isNumeric()) {
+    const auto interval_seconds = config_["interval"].asDouble();
+    if (interval_seconds <= 0) {
+      interval_ = once;
+    } else {
+      interval_ =
+          std::chrono::milliseconds(std::max(1L,  // Minimum 1ms due to millisecond precision
+                                             static_cast<long>(interval_seconds * 1000)));
+    }
+  } else {
+    interval_ = once;
+  }
 
   if (size_ == 0) {
     size_ = 16;
-  }
-
-  if (interval_ == 0) {
-    interval_ = INT_MAX;
   }
 
   delayWorker();
@@ -29,43 +41,50 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config)
 void waybar::modules::Image::delayWorker() {
   thread_ = [this] {
     dp.emit();
-    auto interval = std::chrono::seconds(interval_);
-    thread_.sleep_for(interval);
+    thread_.sleep_for(interval_);
   };
 }
 
 void waybar::modules::Image::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+#ifdef SIGRTMIN
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+#endif
 }
 
 auto waybar::modules::Image::update() -> void {
-  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
   if (config_["path"].isString()) {
     path_ = config_["path"].asString();
   } else if (config_["exec"].isString()) {
-    output_ = util::command::exec(config_["exec"].asString());
+    output_ = util::command::exec(config_["exec"].asString(), "");
     parseOutputRaw();
   } else {
     path_ = "";
   }
-  if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS))
-    pixbuf = Gdk::Pixbuf::create_from_file(path_, size_, size_);
-  else
-    pixbuf = {};
 
-  if (pixbuf) {
+  if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS)) {
+    Glib::RefPtr<Gdk::Pixbuf> pixbuf;
+
+    int scaled_icon_size = size_ * image_.get_scale_factor();
+    pixbuf = Gdk::Pixbuf::create_from_file(path_, scaled_icon_size, scaled_icon_size);
+
+    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
+                                                          image_.get_window());
+    image_.set(surface);
+    image_.show();
+
     if (tooltipEnabled() && !tooltip_.empty()) {
       if (box_.get_tooltip_markup() != tooltip_) {
         box_.set_tooltip_markup(tooltip_);
       }
     }
-    image_.set(pixbuf);
-    image_.show();
+
+    box_.get_style_context()->remove_class("empty");
   } else {
     image_.clear();
     image_.hide();
+    box_.get_style_context()->add_class("empty");
   }
 
   AModule::update();

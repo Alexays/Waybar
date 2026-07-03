@@ -1,4 +1,4 @@
-wl_protocol_dir = wayland_protos.get_pkgconfig_variable('pkgdatadir')
+wl_protocol_dir = wayland_protos.get_variable(pkgconfig: 'pkgdatadir')
 
 wayland_scanner = find_program('wayland-scanner')
 
@@ -25,13 +25,17 @@ client_protocols = [
 	[wl_protocol_dir, 'stable/xdg-shell/xdg-shell.xml'],
 	[wl_protocol_dir, 'unstable/xdg-output/xdg-output-unstable-v1.xml'],
 	[wl_protocol_dir, 'unstable/idle-inhibit/idle-inhibit-unstable-v1.xml'],
-	['wlr-layer-shell-unstable-v1.xml'],
 	['wlr-foreign-toplevel-management-unstable-v1.xml'],
-	['ext-workspace-unstable-v1.xml'],
 	['river-status-unstable-v1.xml'],
 	['river-control-unstable-v1.xml'],
 	['dwl-ipc-unstable-v2.xml'],
 ]
+
+if wayland_protos.version().version_compare('>=1.39')
+    client_protocols += [
+        [wl_protocol_dir, 'staging/ext-workspace/ext-workspace-v1.xml']
+    ]
+endif
 
 client_protos_src = []
 client_protos_headers = []
@@ -44,7 +48,7 @@ endforeach
 
 gdbus_codegen = find_program('gdbus-codegen')
 
-r = run_command(gdbus_codegen, '--body', '--output', '/dev/null')
+r = run_command(gdbus_codegen, '--body', '--output', '/dev/null', check: false)
 if r.returncode() != 0
   gdbus_code_dsnw = custom_target(
       'dbus-status-notifier-watcher.[ch]',

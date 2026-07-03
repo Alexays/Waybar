@@ -1,6 +1,7 @@
 #include "modules/sway/ipc/client.hpp"
 
 #include <fcntl.h>
+#include <spdlog/spdlog.h>
 
 #include <stdexcept>
 
@@ -8,8 +9,8 @@ namespace waybar::modules::sway {
 
 Ipc::Ipc() {
   const std::string& socketPath = getSocketPath();
-  fd_ = open(socketPath);
-  fd_event_ = open(socketPath);
+  fd_ = util::ScopedFd(open(socketPath));
+  fd_event_ = util::ScopedFd(open(socketPath));
 }
 
 Ipc::~Ipc() {
@@ -17,14 +18,14 @@ Ipc::~Ipc() {
 
   if (fd_ > 0) {
     // To fail the IPC header
-    write(fd_, "close-sway-ipc", 14);
-    close(fd_);
-    fd_ = -1;
+    if (write(fd_, "close-sway-ipc", 14) == -1) {
+      spdlog::error("Failed to close sway IPC");
+    }
   }
   if (fd_event_ > 0) {
-    write(fd_event_, "close-sway-ipc", 14);
-    close(fd_event_);
-    fd_event_ = -1;
+    if (write(fd_event_, "close-sway-ipc", 14) == -1) {
+      spdlog::error("Failed to close sway IPC event handler");
+    }
   }
 }
 
@@ -59,7 +60,7 @@ const std::string Ipc::getSocketPath() const {
 }
 
 int Ipc::open(const std::string& socketPath) const {
-  int32_t fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  util::ScopedFd fd(socket(AF_UNIX, SOCK_STREAM, 0));
   if (fd == -1) {
     throw std::runtime_error("Unable to open Unix socket");
   }
@@ -73,7 +74,7 @@ int Ipc::open(const std::string& socketPath) const {
   if (::connect(fd, reinterpret_cast<struct sockaddr*>(&addr), l) == -1) {
     throw std::runtime_error("Unable to connect to Sway");
   }
-  return fd;
+  return fd.release();
 }
 
 struct Ipc::ipc_response Ipc::recv(int fd) {

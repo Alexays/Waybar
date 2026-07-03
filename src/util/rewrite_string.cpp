@@ -17,8 +17,8 @@ std::string rewriteString(const std::string& value, const Json::Value& rules) {
       try {
         // malformated regexes will cause an exception.
         // in this case, log error and try the next rule.
-        const std::regex rule{it.key().asString()};
-        if (std::regex_match(value, rule)) {
+        const std::regex rule{it.key().asString(), std::regex_constants::icase};
+        if (std::regex_match(res, rule)) {
           res = std::regex_replace(res, rule, it->asString());
         }
       } catch (const std::regex_error& e) {

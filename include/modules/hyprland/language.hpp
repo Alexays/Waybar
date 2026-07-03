@@ -1,4 +1,8 @@
+#pragma once
+
 #include <fmt/format.h>
+
+#include <string>
 
 #include "ALabel.hpp"
 #include "bar.hpp"
@@ -26,13 +30,15 @@ class Language : public waybar::ALabel, public EventHandler {
     std::string short_description;
   };
 
-  auto getLayout(const std::string&) -> Layout;
+  static auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
   const Bar& bar_;
   util::JsonParser parser_;
 
   Layout layout_;
+
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

@@ -1,0 +1,80 @@
+#include "modules/cpu.hpp"
+
+#include "modules/cpu_frequency.hpp"
+#include "modules/cpu_usage.hpp"
+#include "modules/load.hpp"
+
+// In the 80000 version of fmt library authors decided to optimize imports
+// and moved declarations required for fmt::dynamic_format_arg_store in new
+// header fmt/args.h
+#if (FMT_VERSION >= 80000)
+#include <fmt/args.h>
+#else
+#include <fmt/core.h>
+#endif
+
+waybar::modules::Cpu::Cpu(const std::string& id, const Json::Value& config)
+    : ALabel(config, "cpu", id, "{usage}%", 10) {
+  thread_ = [this] {
+    dp.emit();
+    thread_.sleep_for(interval_);
+  };
+}
+
+auto waybar::modules::Cpu::update() -> void {
+  // TODO: as creating dynamic fmt::arg arrays is buggy we have to calc both
+  auto [load1, load5, load15] = Load::getLoad();
+  auto [cpu_usage, tooltip] = CpuUsage::getCpuUsage(prev_times_);
+  auto [max_frequency, min_frequency, avg_frequency] = CpuFrequency::getCpuFrequency();
+
+  auto format = format_;
+  auto total_usage = cpu_usage.empty() ? 0 : cpu_usage[0];
+  auto state = getState(total_usage);
+  if (!state.empty() && config_["format-" + state].isString()) {
+    format = config_["format-" + state].asString();
+  }
+
+  if (format.empty()) {
+    event_box_.hide();
+  } else {
+    event_box_.show();
+    auto icons = std::vector<std::string>{state};
+    fmt::dynamic_format_arg_store<fmt::format_context> store;
+    store.push_back(fmt::arg("load", load1));
+    store.push_back(fmt::arg("load1", load1));
+    store.push_back(fmt::arg("load5", load5));
+    store.push_back(fmt::arg("load15", load15));
+    store.push_back(fmt::arg("usage", total_usage));
+    store.push_back(fmt::arg("icon", getIcon(total_usage, icons)));
+    store.push_back(fmt::arg("max_frequency", max_frequency));
+    store.push_back(fmt::arg("min_frequency", min_frequency));
+    store.push_back(fmt::arg("avg_frequency", avg_frequency));
+    std::vector<std::string> arg_names;
+    arg_names.reserve(cpu_usage.size() * 2);
+    for (size_t i = 1; i < cpu_usage.size(); ++i) {
+      auto core_i = i - 1;
+      arg_names.push_back(fmt::format("usage{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), cpu_usage[i]));
+      arg_names.push_back(fmt::format("icon{}", core_i));
+      store.push_back(fmt::arg(arg_names.back().c_str(), getIcon(cpu_usage[i], icons)));
+    }
+    label_.set_markup(fmt::vformat(format, store));
+
+    if (tooltipEnabled()) {
+      std::string tooltip_format;
+      if (!state.empty() && config_["tooltip-format-" + state].isString()) {
+        tooltip_format = config_["tooltip-format-" + state].asString();
+      } else if (config_["tooltip-format"].isString()) {
+        tooltip_format = config_["tooltip-format"].asString();
+      }
+      if (!tooltip_format.empty()) {
+        label_.set_tooltip_markup(fmt::vformat(tooltip_format, store));
+      } else {
+        label_.set_tooltip_markup(tooltip);
+      }
+    }
+  }
+
+  // Call parent update
+  ALabel::update();
+}

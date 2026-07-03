@@ -1,7 +1,0 @@
-[wrap-file]
-directory = cava-0.8.4
-source_url = https://github.com/LukashonakV/cava/archive/0.8.4.tar.gz
-source_filename = cava-0.8.4.tar.gz
-source_hash = 523353f446570277d40b8e1efb84468d70fdec53e1356a555c14bf466557a3ed
-[provide]
-cava = cava_dep

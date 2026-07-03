@@ -7,6 +7,7 @@ vgcore.*
 *.swp
 packagecache
 /subprojects/**/
+/subprojects/.wraplock
 /build*
 /dist
 /meson.egg-info
@@ -44,3 +45,11 @@ packagecache
 *.out
 *.app
 /.direnv/
+
+# Nix
+result
+result-*
+
+.ccls-cache
+_codeql_detected_source_root
+heaptrack*

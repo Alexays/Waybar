@@ -43,7 +43,7 @@ Feral Gamemode optimizations.
 
 *glyph*: ++
 	typeof: string ++
-	default:  ++
+	default: 󰊴 ++
 	The string icon to display. Only visible if *use-icon* is set to false.
 
 *icon-name*: ++
@@ -61,15 +61,20 @@ Feral Gamemode optimizations.
 	default: 4 ++
 	Defines the spacing between the icon and the text.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{glyph}*: The string icon glyph to use instead.
 
-*{count}*: The amount of games running with gamemode optimizations.
+*{count}*: The number of games running with gamemode optimizations.
 
 # TOOLTIP FORMAT REPLACEMENTS
 
-*{count}*: The amount of games running with gamemode optimizations.
+*{count}*: The number of games running with gamemode optimizations.
 
 # EXAMPLES
 
@@ -77,7 +82,7 @@ Feral Gamemode optimizations.
 "gamemode": {
 	"format": "{glyph}",
 	"format-alt": "{glyph} {count}",
-	"glyph": "",
+	"glyph": "󰊴",
 	"hide-not-running": true,
 	"use-icon": true,
 	"icon-name": "input-gaming-symbolic",
