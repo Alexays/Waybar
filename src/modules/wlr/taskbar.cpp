@@ -93,20 +93,36 @@ Task::Task(const waybar::Bar& bar, const Json::Value& config, Taskbar* tbar,
   zwlr_foreign_toplevel_handle_v1_add_listener(handle_, &toplevel_handle_impl, this);
 
   button.set_relief(Gtk::RELIEF_NONE);
-  button.set_hexpand(true);
-  content_.set_hexpand(true);
-  text_before_.set_ellipsize(Pango::ELLIPSIZE_END);
-  text_before_.set_single_line_mode(true);
-  text_before_.set_width_chars(1);
-  text_before_.set_xalign(0.0);
-  text_after_.set_ellipsize(Pango::ELLIPSIZE_END);
-  text_after_.set_single_line_mode(true);
-  text_after_.set_width_chars(1);
-  text_after_.set_xalign(0.0);
 
-  content_.pack_start(text_before_, true, true, 0);
-  content_.pack_start(icon_, false, false, 0);
-  content_.pack_start(text_after_, true, true, 0);
+  /* When "expand" is enabled the buttons stretch to fill the taskbar and the
+   * titles ellipsize to fit within the available space. This only makes sense
+   * on a horizontal bar; on a vertical bar the box grows along the vertical
+   * axis, so ellipsizing/forcing width_chars(1) would truncate every title to
+   * "…". Keep the historical behavior (buttons sized to their content) as the
+   * default and when the bar is vertical. */
+  bool expand = config_["expand"].isBool() && config_["expand"].asBool();
+  bool horizontal = bar.orientation == Gtk::ORIENTATION_HORIZONTAL;
+
+  if (expand && horizontal) {
+    button.set_hexpand(true);
+    content_.set_hexpand(true);
+    text_before_.set_ellipsize(Pango::ELLIPSIZE_END);
+    text_before_.set_single_line_mode(true);
+    text_before_.set_width_chars(1);
+    text_before_.set_xalign(0.0);
+    text_after_.set_ellipsize(Pango::ELLIPSIZE_END);
+    text_after_.set_single_line_mode(true);
+    text_after_.set_width_chars(1);
+    text_after_.set_xalign(0.0);
+
+    content_.pack_start(text_before_, true, true, 0);
+    content_.pack_start(icon_, false, false, 0);
+    content_.pack_start(text_after_, true, true, 0);
+  } else {
+    content_.add(text_before_);
+    content_.add(icon_);
+    content_.add(text_after_);
+  }
 
   content_.show();
   button.add(content_);
@@ -728,7 +744,15 @@ void Taskbar::handle_finished() {
 }
 
 void Taskbar::add_button(Gtk::Button& bt) {
-  box_.pack_start(bt, true, true);
+  /* Only let the buttons expand to fill the taskbar when "expand" is enabled
+   * and the bar is horizontal (see the Task constructor for details). */
+  bool expand = config_["expand"].isBool() && config_["expand"].asBool();
+  bool horizontal = bar_.orientation == Gtk::ORIENTATION_HORIZONTAL;
+  if (expand && horizontal) {
+    box_.pack_start(bt, true, true);
+  } else {
+    box_.pack_start(bt, false, false);
+  }
   box_.get_style_context()->remove_class("empty");
 }
 
