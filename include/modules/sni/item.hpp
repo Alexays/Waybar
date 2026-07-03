@@ -42,6 +42,7 @@ class Item : public sigc::trackable {
   Gtk::EventBox event_box;
   std::string category;
   std::string id;
+  std::string sort_key;
 
   std::string title;
   std::string icon_name;

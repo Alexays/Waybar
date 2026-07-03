@@ -1,6 +1,10 @@
 #include "modules/sni/host.hpp"
 
+#include <glibmm/main.h>
 #include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <cctype>
 
 #include "util/scope_guard.hpp"
 
@@ -19,7 +23,22 @@ Host::Host(const std::size_t id, const Json::Value& config, const Bar& bar,
       bar_(bar),
       on_add_(on_add),
       on_remove_(on_remove),
-      on_update_(on_update) {}
+      on_update_(on_update) {
+  auto parse_list = [](const Json::Value& list,
+                       std::unordered_map<std::string, std::size_t>& out) {
+    if (!list.isArray()) return;
+    for (Json::ArrayIndex i = 0; i < list.size(); ++i) {
+      if (!list[i].isString()) continue;
+      out.emplace(toLowerAscii(list[i].asString()), static_cast<std::size_t>(i));
+    }
+  };
+  parse_list(config_["order-left"], order_left_);
+  parse_list(config_["order-right"], order_right_);
+
+  if (config_["reverse-direction"].isBool()) {
+    reverse_direction_ = config_["reverse-direction"].asBool();
+  }
+}
 
 Host::~Host() {
   if (bus_name_id_ > 0) {
@@ -130,6 +149,7 @@ void Host::itemReady(Item& item) {
                          [&item](const auto& candidate) { return candidate.get() == &item; });
   if (it != items_.end() && (*it)->isReady()) {
     on_add_(*it);
+    requestReorder();
   }
 }
 
@@ -184,6 +204,76 @@ void Host::addRegisteredItem(const std::string& service) {
       [this](Item& item) { itemInvalidated(item); },
       on_update_));
   }
+}
+
+std::string Host::toLowerAscii(std::string s) {
+  for (auto& ch : s) {
+    ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+  }
+  return s;
+}
+
+void Host::requestReorder() {
+  if (reorder_pending_) return;
+  reorder_pending_ = true;
+  Glib::signal_idle().connect_once([this] {
+    reorder_pending_ = false;
+    reorderItems();
+  });
+}
+
+void Host::reorderItems() {
+  // Classify each item into one of three buckets: configured-left, configured-right, or middle
+  // (alphabetical). Compute this once so the comparator stays cheap.
+  enum class Bucket { Left, Middle, Right };
+  struct Info {
+    Bucket bucket;
+    std::size_t cfg_index;  // only meaningful for Left/Right
+    std::string key;        // lowercased sort_key, empty if none
+  };
+
+  std::unordered_map<Item*, Info> info;
+  info.reserve(items_.size());
+  for (const auto& it : items_) {
+    const auto key = toLowerAscii(it->sort_key);
+    auto left_it = order_left_.find(key);
+    if (!key.empty() && left_it != order_left_.end()) {
+      info[it.get()] = {Bucket::Left, left_it->second, key};
+      continue;
+    }
+    auto right_it = order_right_.find(key);
+    if (!key.empty() && right_it != order_right_.end()) {
+      info[it.get()] = {Bucket::Right, right_it->second, key};
+      continue;
+    }
+    info[it.get()] = {Bucket::Middle, 0, key};
+  }
+
+  std::stable_sort(items_.begin(), items_.end(),
+                   [&info, this](const std::unique_ptr<Item>& a, const std::unique_ptr<Item>& b) {
+                     const auto& ia = info[a.get()];
+                     const auto& ib = info[b.get()];
+                     if (ia.bucket != ib.bucket) {
+                       return static_cast<int>(ia.bucket) < static_cast<int>(ib.bucket);
+                     }
+                     if (ia.bucket == Bucket::Left || ia.bucket == Bucket::Right) {
+                       return ia.cfg_index < ib.cfg_index;
+                     }
+                     // Middle: alphabetical (optionally reversed)
+                     if (ia.key != ib.key) {
+                       return reverse_direction_ ? ia.key > ib.key : ia.key < ib.key;
+                     }
+                     return false;
+                   });
+
+  // Rebuild UI: remove all ready items, then re-add in sorted order.
+  for (auto& it : items_) {
+    if (it->isReady()) on_remove_(it);
+  }
+  for (auto& it : items_) {
+    if (it->isReady()) on_add_(it);
+  }
+  on_update_();
 }
 
 }  // namespace waybar::modules::SNI
