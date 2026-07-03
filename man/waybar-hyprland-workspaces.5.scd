@@ -98,6 +98,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	  - {button} Pressed button number, see https://api.gtkd.org/gdk.c.types.GdkEventButton.button.html. ++
 	See https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#workspace-taskbars-example for a full example.
 
+*max-windows*: ++
+	typeof: int ++
+	default: 0 (unlimited) ++
+	Maximum number of windows to show per workspace. When set, newest windows beyond the limit are not shown. Set to 0 for unlimited windows.
+
 *show-special*: ++
 	typeof: bool ++
 	default: false ++
@@ -113,6 +118,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	If set to true, only persistent workspaces will be shown on bar.
 
+*persistent-workspaces*: ++
+	typeof: object ++
+	default: empty ++
+	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
@@ -122,6 +132,11 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	typeof: bool ++
 	default: false ++
 	If set to true, only the active workspace will be shown.
+
+*hide-active*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, the active workspace will be hidden. Unless a workspace is persistent or special.
 
 *move-to-monitor*: ++
 	typeof: bool ++

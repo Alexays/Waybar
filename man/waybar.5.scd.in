@@ -380,6 +380,8 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Whether the child should be revealed when Waybar starts up. This has to be used with click-to-reveal to take effect.
 
+Group drawers are also given the `.expanded` CSS class when they are expanded.
+
 ```
 "group/power": {
     "orientation": "inherit",
