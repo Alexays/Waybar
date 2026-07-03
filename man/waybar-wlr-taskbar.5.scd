@@ -70,6 +70,10 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
 
+*justify*: ++
+	typeof: string ++
+	The alignment of the text within the module's box, allowing options 'left', 'right', or 'center' to define the positioning.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++
