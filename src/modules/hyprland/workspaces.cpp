@@ -50,7 +50,8 @@ void Workspaces::init() {
   if (m_scrollEventConnection_.connected()) {
     m_scrollEventConnection_.disconnect();
   }
-  if (barScroll()) {
+  bool hasScrollConfig = config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString();
+  if (barScroll() || hasScrollConfig) {
     auto& window = const_cast<Bar&>(m_bar).window;
     window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     m_scrollEventConnection_ =
@@ -326,6 +327,10 @@ void Workspaces::loadPersistentWorkspacesFromWorkspaceRules(const Json::Value& c
     // 2. the rule's monitor is the current monitor
     // 3. no monitor is specified in the rule => assume it needs to be persistent on every monitor
     if (allOutputs() || m_bar.output->name == monitor || monitor.empty()) {
+      // => skip ignore-workspaces even if its a persistent
+      if(isWorkspaceIgnored(workspace)) {
+        continue;
+      }
       // => persistent workspace should be shown on this monitor
       auto workspaceData = createMonitorWorkspaceData(workspace, m_bar.output->name);
       workspaceData["persistent-rule"] = true;
@@ -1198,6 +1203,12 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
   if (gdk_event_get_pointer_emulated((GdkEvent*)e)) {
     return false;
   }
+
+  // Check for custom scroll commands first; delegate to base class
+  if (config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString()) {
+    return AModule::handleScroll(e);
+  }
+
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {
     return true;
@@ -1205,15 +1216,15 @@ bool Workspaces::handleScroll(GdkEventScroll* e) {
 
   if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
     if (allOutputs()) {
-      m_ipc.getSocket1Reply("dispatch workspace e+1");
+      IPC::dispatch("workspace", "e+1");
     } else {
-      m_ipc.getSocket1Reply("dispatch workspace m+1");
+      IPC::dispatch("workspace", "m+1");
     }
   } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
     if (allOutputs()) {
-      m_ipc.getSocket1Reply("dispatch workspace e-1");
+      IPC::dispatch("workspace", "e-1");
     } else {
-      m_ipc.getSocket1Reply("dispatch workspace m-1");
+      IPC::dispatch("workspace", "m-1");
     }
   }
 

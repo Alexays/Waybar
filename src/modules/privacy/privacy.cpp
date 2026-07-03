@@ -71,6 +71,7 @@ Privacy::Privacy(const std::string& id, const Json::Value& config, Gtk::Orientat
       auto* item = Gtk::make_managed<PrivacyItem>(module, nodeType, nodePtr, orientation, pos,
                                                   iconSize, transition_duration);
       box_.add(*item);
+      modules_.push_back(item);
     }
   }
 
@@ -148,9 +149,7 @@ auto Privacy::update() -> void {
   bool useAudioOut = false;
 
   mutex_.lock();
-  for (Gtk::Widget* widget : box_.get_children()) {
-    auto* module = dynamic_cast<PrivacyItem*>(widget);
-    if (module == nullptr) continue;
+  for (PrivacyItem* module : modules_) {
     switch (module->privacy_type) {
       case util::PipewireBackend::PRIVACY_NODE_TYPE_VIDEO_INPUT:
         setScreenshare = true;
