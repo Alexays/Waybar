@@ -432,7 +432,6 @@ void waybar::modules::Wireplumber::asyncLoadRequiredApiModules() {
 
 auto waybar::modules::Wireplumber::update() -> void {
   auto format = format_;
-  std::string tooltipFormat;
 
   // Handle sink mute state
   if (muted_) {
@@ -486,32 +485,28 @@ auto waybar::modules::Wireplumber::update() -> void {
   std::string formatted_source =
       fmt::format(fmt::runtime(format_source), fmt::arg("volume", source_vol));
 
-  std::string markup =
-      fmt::format(fmt::runtime(format), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
-                  fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
-                  fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_),
-                  fmt::arg("volume_linear", volume_), fmt::arg("volume_cubic", vol_cube),
-                  fmt::arg("volume_db", vol_db), fmt::arg("source_volume_linear", source_volume_),
-                  fmt::arg("source_volume_cubic", source_vol_cube),
-                  fmt::arg("source_volume_db", source_vol_db));
-  label_.set_markup(markup);
+  fmt::dynamic_format_arg_store<fmt::format_context> store;
+  store.push_back(fmt::arg("node_name", node_name_));
+  store.push_back(fmt::arg("volume", vol));
+  store.push_back(fmt::arg("icon", getIcon(vol)));
+  store.push_back(fmt::arg("format_source", formatted_source));
+  store.push_back(fmt::arg("source_volume", source_vol));
+  store.push_back(fmt::arg("source_desc", source_name_));
+  store.push_back(fmt::arg("volume_linear", volume_));
+  store.push_back(fmt::arg("volume_cubic", vol_cube));
+  store.push_back(fmt::arg("volume_db", vol_db));
+  store.push_back(fmt::arg("source_volume_linear", source_volume_));
+  store.push_back(fmt::arg("source_volume_cubic", source_vol_cube));
+  store.push_back(fmt::arg("source_volume_db", source_vol_db));
+
+  setLabelMarkup(fmt::vformat(format, store));
 
   if (tooltipEnabled()) {
-    if (tooltipFormat.empty() && config_["tooltip-format"].isString()) {
-      tooltipFormat = config_["tooltip-format"].asString();
-    }
-
+    auto tooltipFormat = resolveTooltipFormat("");
     if (!tooltipFormat.empty()) {
-      label_.set_tooltip_markup(fmt::format(
-          fmt::runtime(tooltipFormat), fmt::arg("node_name", node_name_), fmt::arg("volume", vol),
-          fmt::arg("icon", getIcon(vol)), fmt::arg("format_source", formatted_source),
-          fmt::arg("source_volume", source_vol), fmt::arg("source_desc", source_name_),
-          fmt::arg("volume_linear", volume_), fmt::arg("volume_cubic", vol_cube),
-          fmt::arg("volume_db", vol_db), fmt::arg("source_volume_linear", source_volume_),
-          fmt::arg("source_volume_cubic", source_vol_cube),
-          fmt::arg("source_volume_db", source_vol_db)));
+      setTooltipMarkup(fmt::vformat(tooltipFormat, store));
     } else {
-      label_.set_tooltip_markup(node_name_);
+      setTooltipMarkup(node_name_);
     }
   }
 
