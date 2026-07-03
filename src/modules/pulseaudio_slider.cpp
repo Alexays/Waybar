@@ -6,6 +6,7 @@ PulseaudioSlider::PulseaudioSlider(const std::string& id, const Json::Value& con
     : ASlider(config, "pulseaudio-slider", id) {
   backend = util::AudioBackend::getInstance([this] { this->dp.emit(); });
   backend->setIgnoredSinks(config_["ignored-sinks"]);
+  backend->setSinkMapping(config_["sink-mapping"]);
 
   if (config_["target"].isString()) {
     std::string target = config_["target"].asString();
