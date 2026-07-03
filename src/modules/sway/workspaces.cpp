@@ -69,6 +69,7 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
     m_windowRewriteRules = waybar::util::RegexCollection(
         windowRewrite, std::move(windowRewriteDefault), windowRewritePriorityFunction);
   }
+  populateIgnoreWorkspacesConfig(config);
   ipc_.subscribe(R"(["workspace"])");
   ipc_.subscribe(R"(["window"])");
   ipc_.signal_event.connect(sigc::mem_fun(*this, &Workspaces::onEvent));
@@ -97,6 +98,36 @@ void Workspaces::onEvent(const struct Ipc::ipc_response& res) {
   }
 }
 
+auto Workspaces::populateIgnoreWorkspacesConfig(const Json::Value& config) -> void {
+  auto ignoreWorkspaces = config["ignore-workspaces"];
+  if (ignoreWorkspaces.isArray()) {
+    for (const auto& workspaceRegex : ignoreWorkspaces) {
+      if (workspaceRegex.isString()) {
+        std::string ruleString = workspaceRegex.asString();
+        try {
+          const std::regex rule{ruleString, std::regex_constants::icase};
+          m_ignoreWorkspaces.emplace_back(rule);
+        } catch (const std::regex_error& e) {
+          spdlog::error("Invalid rule {}: {}", ruleString, e.what());
+        }
+      } else {
+        spdlog::error("Not a string: '{}'", workspaceRegex);
+      }
+    }
+  }
+}
+
+bool Workspaces::isWorkspaceIgnored(std::string const& name) {
+  for (auto& rule : m_ignoreWorkspaces) {
+    if (std::regex_match(name, rule)) {
+      return true;
+      break;
+    }
+  }
+
+  return false;
+}
+
 void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
   if (res.type == IPC_GET_TREE) {
     try {
@@ -118,8 +149,9 @@ void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
                      });
 
         for (auto& output : outputs) {
-          std::copy(output["nodes"].begin(), output["nodes"].end(),
-                    std::back_inserter(workspaces_));
+          std::copy_if(
+              output["nodes"].begin(), output["nodes"].end(), std::back_inserter(workspaces_),
+              [&](const auto& node) { return !(isWorkspaceIgnored(node["name"].asString())); });
           std::copy(output["floating_nodes"].begin(), output["floating_nodes"].end(),
                     std::back_inserter(workspaces_));
         }
@@ -143,7 +175,8 @@ void Workspaces::onCmd(const struct Ipc::ipc_response& res) {
             if (p_w.isArray() && !p_w.empty()) {
               // Adding to target outputs
               for (const Json::Value& output : p_w) {
-                if (output.asString() == bar_.output->name) {
+                auto output_name = output.asString();
+                if (output_name == bar_.output->name || output_name == bar_.output->identifier) {
                   Json::Value v;
                   v["name"] = p_w_name;
                   v["target_output"] = bar_.output->name;
@@ -324,6 +357,18 @@ auto Workspaces::update() -> void {
       button.get_style_context()->remove_class("empty");
     }
     if ((*it)["output"].isString()) {
+      // Simply attempt to remove all output classes every time to reset output classes. This works
+      // even if a class has not been previously added to the style context.
+      for (const auto &oclass : config_["output-classes"]) {
+        button.get_style_context()->remove_class(oclass.asString());
+      }
+      // If output-classes contains a class for output associated with current workspace button, add
+      // the class to its style context.
+      std::string output_name = (*it)["output"].asString();
+      if (config_["output-classes"].isMember(output_name) &&
+          config_["output-classes"][output_name].isString()) {
+        button.get_style_context()->add_class(config_["output-classes"][output_name].asString());
+      }
       if (((*it)["output"].asString()) == bar_.output->name) {
         button.get_style_context()->add_class("current_output");
       } else {
