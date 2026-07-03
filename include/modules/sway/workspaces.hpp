@@ -24,12 +24,15 @@ class Workspaces : public AModule, public sigc::trackable {
 
  private:
   static constexpr std::string_view workspace_switch_cmd_ = "workspace {} \"{}\"";
+  static constexpr std::string_view workspace_switch_number_cmd_ = "workspace {} number {}";
   static constexpr std::string_view persistent_workspace_switch_cmd_ =
       R"(workspace {} "{}"; move workspace to output "{}"; workspace {} "{}")";
 
   static int convertWorkspaceNameToNum(const std::string& name);
   static int windowRewritePriorityFunction(std::string const& window_rule);
 
+  auto populateIgnoreWorkspacesConfig(const Json::Value& config) -> void;
+  bool isWorkspaceIgnored(std::string const& name);
   void onCmd(const struct Ipc::ipc_response&);
   void onEvent(const struct Ipc::ipc_response&);
   bool filterButtons();
@@ -49,6 +52,7 @@ class Workspaces : public AModule, public sigc::trackable {
   std::vector<std::string> workspaces_order_;
   Gtk::Box box_;
   std::string m_formatWindowSeparator;
+  std::vector<std::regex> m_ignoreWorkspaces;
   util::RegexCollection m_windowRewriteRules;
   util::JsonParser parser_;
   std::unordered_map<std::string, Gtk::Button> buttons_;

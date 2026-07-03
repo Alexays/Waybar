@@ -17,9 +17,13 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      distance_scrolled_x_(0.0),
+      cursor_timeout_conn_() {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
+  disable_on_sleep_ =
+      config_["disable-on-sleep"].isBool() ? config_["disable-on-sleep"].asBool() : false;
 
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
@@ -42,7 +46,7 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
         // True if there is any non-release type event
         return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
-               config[eventEntry.second].isString();
+               (config[eventEntry.second].isString() || config[eventEntry.second].isBool());
       }) != eventMap_.cend();
 
   if (enable_click || hasUserEvents) {
@@ -72,10 +76,14 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 
   // Respect user configuration of cursor
   if (config_.isMember("cursor")) {
-    if (config_["cursor"].isBool() && config_["cursor"].asBool()) {
-      setCursor(Gdk::HAND2);
-    } else if (config_["cursor"].isInt()) {
-      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+    if (config_["cursor"].isBool()) {
+      if (config_["cursor"].asBool()) {
+        setCursor("pointer");
+      } else {
+        setCursor("default");
+      }
+    } else if (config_["cursor"].isString()) {
+      setCursor(config_["cursor"].asString());
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
@@ -83,6 +91,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 }
 
 AModule::~AModule() {
+  if (cursor_timeout_conn_.connected()) {
+    cursor_timeout_conn_.disconnect();
+  }
   for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
@@ -110,15 +121,15 @@ auto AModule::doAction(const std::string& name) -> void {
   }
 }
 
-void AModule::setCursor(Gdk::CursorType const& c) {
+void AModule::setCursor(std::string const& c) {
   auto gdk_window = event_box_.get_window();
   if (gdk_window) {
-    auto cursor = Gdk::Cursor::create(c);
+    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
     gdk_window->set_cursor(cursor);
   } else {
     // window may not be accessible yet, in this case,
     // schedule another call for setting the cursor in 1 sec
-    Glib::signal_timeout().connect_seconds(
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
         [this, c]() {
           setCursor(c);
           return false;
@@ -134,7 +145,7 @@ bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::HAND2);
+    setCursor("pointer");
   }
 
   return false;
@@ -147,7 +158,7 @@ bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
 
   // Default behavior indicating event availability
   if (hasUserEvents_ && !config_.isMember("cursor")) {
-    setCursor(Gdk::ARROW);
+    setCursor("default");
   }
 
   return false;
