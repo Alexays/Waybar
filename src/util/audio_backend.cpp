@@ -261,6 +261,14 @@ void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, vo
   pa_context_get_source_info_list(context, sourceInfoCb, data);
 }
 
+uint16_t AudioBackend::getVolume(PulseaudioTarget target) const {
+  if (target == PulseaudioTarget::Source) {
+    return source_volume_;
+  } else {
+    return volume_;
+  }
+}
+
 void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t max_volume) {
   // Early return if context is not ready
   if ((context_ == nullptr) || pa_context_get_state(context_) != PA_CONTEXT_READY) {
@@ -370,6 +378,14 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
+bool AudioBackend::getMuted(PulseaudioTarget target) const {
+  if (target == PulseaudioTarget::Source) {
+    return source_muted_;
+  } else {
+    return muted_;
+  }
+}
+
 void AudioBackend::toggleSinkMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   muted_ = !muted_;
@@ -404,6 +420,14 @@ void AudioBackend::toggleSourceMute(bool mute) {
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
   pa_threaded_mainloop_unlock(mainloop_);
+}
+
+void AudioBackend::unmute(PulseaudioTarget target) {
+  if (target == PulseaudioTarget::Source) {
+    toggleSourceMute(false);
+  } else {
+    toggleSinkMute(false);
+  }
 }
 
 bool AudioBackend::isBluetooth() {
