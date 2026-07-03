@@ -23,9 +23,9 @@ class Wwan : public ALabel {
 
   util::SleeperThread thread_;
   std::string state_;
-  GDBusConnection* connection;
-  MMManager* manager;
-  MMModem* current_modem;
+  GDBusConnection* connection = nullptr;
+  MMManager* manager = nullptr;
+  MMModem* current_modem = nullptr;
 
   bool hideDisconnected = true;
 
