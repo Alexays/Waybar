@@ -174,8 +174,8 @@ void Config::mergeConfig(Json::Value& a_config_, Json::Value& b_config_) {
     spdlog::error("Cannot merge config, conflicting or invalid JSON types");
   }
 }
-bool isValidOutput(const Json::Value& config, const std::string& name, const std::string& identifier,
-                   int32_t width, int32_t height) {
+bool isValidOutput(const Json::Value& config, const std::string& name,
+                   const std::string& identifier, int32_t width, int32_t height) {
   const auto isOutputMatches = [&](const std::string& output) -> bool {
     if (output.substr(0, 1) == "$") {
       auto* const environment_value = std::getenv(output.substr(1).c_str());
@@ -235,7 +235,7 @@ bool isValidOutput(const Json::Value& config, const std::string& name, const std
     config_output_dimensions = jsonArray;
   }
   if (config_output_dimensions.isArray()) {
-    for (auto const &config_output_dimension : config_output_dimensions) {
+    for (auto const& config_output_dimension : config_output_dimensions) {
       if (!config_output_dimension.isString()) {
         continue;
       }
@@ -250,13 +250,13 @@ bool isValidOutput(const Json::Value& config, const std::string& name, const std
       int comparison_value;
       if (dimension == "height") {
         comparison_value = height;
-      } else if (dimension == "weight") {
-        comparison_value = weight;
+      } else if (dimension == "width") {
+        comparison_value = width;
       } else {
         continue;
       }
 
-      if ((comparator == "<" && comparison_value >= value) || 
+      if ((comparator == "<" && comparison_value >= value) ||
           (comparator == ">" && comparison_value <= value)) {
         return false;
       }
