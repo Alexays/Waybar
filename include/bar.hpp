@@ -75,6 +75,8 @@ class Bar : public sigc::trackable {
   util::KillSignalAction getOnSigusr1Action();
   util::KillSignalAction getOnSigusr2Action();
 
+  void toggleSuspend(bool suspend);
+
   struct waybar_output* output;
   Json::Value config;
   struct wl_surface* surface;
@@ -99,6 +101,7 @@ class Bar : public sigc::trackable {
   void setMode(const bar_mode&);
   void setPassThrough(bool passthrough);
   void setPosition(Gtk::PositionType position);
+  void forceLayerCommit();
   void onConfigure(GdkEventConfigure* ev);
   void configureGlobalOffset(int width, int height);
   void onOutputGeometryChanged();
