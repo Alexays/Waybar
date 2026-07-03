@@ -5,22 +5,26 @@
 #include <gtkmm/tooltip.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <map>
 
+#include "gdk/gdk.h"
+#include "modules/sni/icon_manager.hpp"
 #include "util/format.hpp"
 #include "util/gtk_icon.hpp"
 
 template <>
 struct fmt::formatter<Glib::VariantBase> : formatter<std::string> {
-  bool is_printable(const Glib::VariantBase& value) {
+  bool is_printable(const Glib::VariantBase& value) const {
     auto type = value.get_type_string();
     /* Print only primitive (single character excluding 'v') and short complex types */
     return (type.length() == 1 && islower(type[0]) && type[0] != 'v') || value.get_size() <= 32;
   }
 
   template <typename FormatContext>
-  auto format(const Glib::VariantBase& value, FormatContext& ctx) {
+  auto format(const Glib::VariantBase& value, FormatContext& ctx) const {
     if (is_printable(value)) {
       return formatter<std::string>::format(static_cast<std::string>(value.print()), ctx);
     } else {
@@ -34,13 +38,18 @@ namespace waybar::modules::SNI {
 static const Glib::ustring SNI_INTERFACE_NAME = sn_item_interface_info()->name;
 static const unsigned UPDATE_DEBOUNCE_TIME = 10;
 
-Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar)
+Item::Item(const std::string& bn, const std::string& op, const Json::Value& config, const Bar& bar,
+           const std::function<void(Item&)>& on_ready,
+           const std::function<void(Item&)>& on_invalidate, const std::function<void()>& on_updated)
     : bus_name(bn),
       object_path(op),
       icon_size(16),
       effective_icon_size(0),
       icon_theme(Gtk::IconTheme::create()),
-      bar_(bar) {
+      bar_(bar),
+      on_ready_(on_ready),
+      on_invalidate_(on_invalidate),
+      on_updated_(on_updated) {
   if (config["icon-size"].isUInt()) {
     icon_size = config["icon-size"].asUInt();
   }
@@ -57,6 +66,8 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   event_box.add_events(Gdk::BUTTON_PRESS_MASK | Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
   event_box.signal_button_press_event().connect(sigc::mem_fun(*this, &Item::handleClick));
   event_box.signal_scroll_event().connect(sigc::mem_fun(*this, &Item::handleScroll));
+  event_box.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseEnter));
+  event_box.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Item::handleMouseLeave));
   // initial visibility
   event_box.show_all();
   event_box.set_visible(show_passive_);
@@ -67,6 +78,29 @@ Item::Item(const std::string& bn, const std::string& op, const Json::Value& conf
   Gio::DBus::Proxy::create_for_bus(Gio::DBus::BusType::BUS_TYPE_SESSION, bus_name, object_path,
                                    SNI_INTERFACE_NAME, sigc::mem_fun(*this, &Item::proxyReady),
                                    cancellable_, interface);
+}
+
+Item::~Item() {
+  if (this->gtk_menu != nullptr) {
+    this->gtk_menu->popdown();
+    this->gtk_menu->detach();
+  }
+  if (this->dbus_menu != nullptr) {
+    g_object_weak_unref(G_OBJECT(this->dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+    this->dbus_menu = nullptr;
+  }
+}
+
+bool Item::isReady() const { return ready_; }
+
+bool Item::handleMouseEnter(GdkEventCrossing* const& e) {
+  event_box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
+}
+
+bool Item::handleMouseLeave(GdkEventCrossing* const& e) {
+  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  return false;
 }
 
 void Item::onConfigure(GdkEventConfigure* ev) { this->updateImage(); }
@@ -86,14 +120,18 @@ void Item::proxyReady(Glib::RefPtr<Gio::AsyncResult>& result) {
 
     if (this->id.empty() || this->category.empty()) {
       spdlog::error("Invalid Status Notifier Item: {}, {}", bus_name, object_path);
+      invalidate();
       return;
     }
     this->updateImage();
+    setReady();
 
   } catch (const Glib::Error& err) {
     spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
+    invalidate();
   } catch (const std::exception& err) {
     spdlog::error("Failed to create DBus Proxy for {} {}: {}", bus_name, object_path, err.what());
+    invalidate();
   }
 }
 
@@ -111,7 +149,8 @@ ToolTip get_variant<ToolTip>(const Glib::VariantBase& value) {
   result.text = get_variant<Glib::ustring>(container.get_child(2));
   auto description = get_variant<Glib::ustring>(container.get_child(3));
   if (!description.empty()) {
-    result.text = fmt::format("<b>{}</b>\n{}", result.text, description);
+    auto escapedDescription = Glib::Markup::escape_text(description);
+    result.text = fmt::format("<b>{}</b>\n{}", result.text, escapedDescription);
   }
   return result;
 }
@@ -124,6 +163,25 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
       category = get_variant<std::string>(value);
     } else if (name == "Id") {
       id = get_variant<std::string>(value);
+
+      /*
+       * HACK: Electron apps seem to have the same ID, but tooltip seems correct, so use that as ID
+       * to pass as the custom icon option. I'm avoiding being disruptive and setting that to the ID
+       * itself as I've no idea what this would affect.
+       * The tooltip text is converted to lowercase since that's what (most?) themes expect?
+       * I still haven't found a way for it to pick from theme automatically, although
+       * it might be my theme.
+       */
+      if (id == "chrome_status_icon_1") {
+        Glib::VariantBase value;
+        this->proxy_->get_cached_property(value, "ToolTip");
+        tooltip = get_variant<ToolTip>(value);
+        if (!tooltip.text.empty()) {
+          setCustomIcon(tooltip.text.lowercase());
+        }
+      } else {
+        setCustomIcon(id);
+      }
     } else if (name == "Title") {
       title = get_variant<std::string>(value);
       if (tooltip.text.empty()) {
@@ -132,17 +190,25 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "Status") {
       setStatus(get_variant<Glib::ustring>(value));
     } else if (name == "IconName") {
-      icon_name = get_variant<std::string>(value);
+      if (has_custom_icon_) {
+        spdlog::trace("Item '{}': ignoring IconName update, custom icon is set", id);
+      } else {
+        icon_name = get_variant<std::string>(value);
+      }
     } else if (name == "IconPixmap") {
-      icon_pixmap = this->extractPixBuf(value.gobj());
+      if (has_custom_icon_) {
+        spdlog::trace("Item '{}': ignoring IconPixmap update, custom icon is set", id);
+      } else {
+        icon_pixmap = this->extractPixBuf(value.gobj());
+      }
     } else if (name == "OverlayIconName") {
       overlay_icon_name = get_variant<std::string>(value);
     } else if (name == "OverlayIconPixmap") {
-      // TODO: overlay_icon_pixmap
+      overlay_icon_pixmap = extractPixBuf(value.gobj());
     } else if (name == "AttentionIconName") {
       attention_icon_name = get_variant<std::string>(value);
     } else if (name == "AttentionIconPixmap") {
-      // TODO: attention_icon_pixmap
+      attention_icon_pixmap = extractPixBuf(value.gobj());
     } else if (name == "AttentionMovieName") {
       attention_movie_name = get_variant<std::string>(value);
     } else if (name == "ToolTip") {
@@ -171,18 +237,56 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
 }
 
 void Item::setStatus(const Glib::ustring& value) {
-  Glib::ustring lower = value.lowercase();
-  event_box.set_visible(show_passive_ || lower.compare("passive") != 0);
+  status_ = value.lowercase();
+  event_box.set_visible(show_passive_ || status_.compare("passive") != 0);
 
   auto style = event_box.get_style_context();
   for (const auto& class_name : style->list_classes()) {
     style->remove_class(class_name);
   }
-  if (lower.compare("needsattention") == 0) {
+  auto css_class = status_;
+  if (css_class.compare("needsattention") == 0) {
     // convert status to dash-case for CSS
-    lower = "needs-attention";
+    css_class = "needs-attention";
   }
-  style->add_class(lower);
+  style->add_class(css_class);
+  on_updated_();
+}
+
+void Item::setReady() {
+  if (ready_) {
+    return;
+  }
+  ready_ = true;
+  on_ready_(*this);
+}
+
+void Item::invalidate() {
+  if (ready_) {
+    ready_ = false;
+  }
+  on_invalidate_(*this);
+}
+
+void Item::setCustomIcon(const std::string& id) {
+  spdlog::debug("SNI tray id: {}", id);
+
+  std::string custom_icon = IconManager::instance().getIconForApp(id);
+  if (!custom_icon.empty()) {
+    if (std::filesystem::exists(custom_icon)) {
+      try {
+        Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
+        icon_name = "";  // icon_name has priority over pixmap
+        icon_pixmap = custom_pixbuf;
+        has_custom_icon_ = true;
+      } catch (const Glib::Error& e) {
+        spdlog::error("Failed to load custom icon {}: {}", custom_icon, e.what());
+      }
+    } else {  // if file doesn't exist it's most likely an icon_name
+      icon_name = custom_icon;
+      has_custom_icon_ = true;
+    }
+  }
 }
 
 void Item::getUpdatedProperties() {
@@ -222,8 +326,8 @@ void Item::processUpdatedProperties(Glib::RefPtr<Gio::AsyncResult>& _result) {
 static const std::map<std::string_view, std::set<std::string_view>> signal2props = {
     {"NewTitle", {"Title"}},
     {"NewIcon", {"IconName", "IconPixmap"}},
-    // {"NewAttentionIcon", {"AttentionIconName", "AttentionIconPixmap", "AttentionMovieName"}},
-    // {"NewOverlayIcon", {"OverlayIconName", "OverlayIconPixmap"}},
+    {"NewAttentionIcon", {"AttentionIconName", "AttentionIconPixmap", "AttentionMovieName"}},
+    {"NewOverlayIcon", {"OverlayIconName", "OverlayIconPixmap"}},
     {"NewIconThemePath", {"IconThemePath"}},
     {"NewToolTip", {"ToolTip"}},
     {"NewStatus", {"Status"}},
@@ -271,11 +375,20 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
           if (array != nullptr) {
             g_free(array);
           }
-#if GLIB_MAJOR_VERSION >= 2 && GLIB_MINOR_VERSION >= 68
-          array = static_cast<guchar*>(g_memdup2(data, size));
-#else
-          array = static_cast<guchar*>(g_memdup(data, size));
-#endif
+          // We must allocate our own array because the data from GVariant is read-only
+          // and we need to modify it to convert ARGB to RGBA.
+          array = static_cast<guchar*>(g_malloc(size));
+
+          // Copy and convert ARGB to RGBA in one pass to avoid g_memdup2 overhead
+          const guchar* src = static_cast<const guchar*>(data);
+          for (gsize i = 0; i < size; i += 4) {
+            guchar alpha = src[i];
+            array[i] = src[i + 1];
+            array[i + 1] = src[i + 2];
+            array[i + 2] = src[i + 3];
+            array[i + 3] = alpha;
+          }
+
           lwidth = width;
           lheight = height;
         }
@@ -284,14 +397,6 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
   }
   g_variant_iter_free(it);
   if (array != nullptr) {
-    /* argb to rgba */
-    for (uint32_t i = 0; i < 4U * lwidth * lheight; i += 4) {
-      guchar alpha = array[i];
-      array[i] = array[i + 1];
-      array[i + 1] = array[i + 2];
-      array[i + 2] = array[i + 3];
-      array[i + 3] = alpha;
-    }
     return Gdk::Pixbuf::create_from_data(array, Gdk::Colorspace::COLORSPACE_RGB, true, 8, lwidth,
                                          lheight, 4 * lwidth, &pixbuf_data_deleter);
   }
@@ -300,16 +405,19 @@ Glib::RefPtr<Gdk::Pixbuf> Item::extractPixBuf(GVariant* variant) {
 
 void Item::updateImage() {
   auto pixbuf = getIconPixbuf();
+  if (!pixbuf) return;
   auto scaled_icon_size = getScaledIconSize();
 
   // If the loaded icon is not square, assume that the icon height should match the
   // requested icon size, but the width is allowed to be different. As such, if the
   // height of the image does not match the requested icon size, resize the icon such that
   // the aspect ratio is maintained, but the height matches the requested icon size.
-  if (pixbuf->get_height() != scaled_icon_size) {
+  if (pixbuf->get_height() > 0 && pixbuf->get_height() != scaled_icon_size) {
     int width = scaled_icon_size * pixbuf->get_width() / pixbuf->get_height();
     pixbuf = pixbuf->scale_simple(width, scaled_icon_size, Gdk::InterpType::INTERP_BILINEAR);
   }
+
+  pixbuf = overlayPixbufs(pixbuf, getOverlayIconPixbuf());
 
   auto surface =
       Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image.get_scale_factor(), image.get_window());
@@ -317,30 +425,16 @@ void Item::updateImage() {
 }
 
 Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
-  if (!icon_name.empty()) {
-    try {
-      std::ifstream temp(icon_name);
-      if (temp.is_open()) {
-        return Gdk::Pixbuf::create_from_file(icon_name);
-      }
-    } catch (Glib::Error& e) {
-      // Ignore because we want to also try different methods of getting an icon.
-      //
-      // But a warning is logged, as the file apparently exists, but there was
-      // a failure in creating a pixbuf out of it.
-
-      spdlog::warn("Item '{}': {}", id, static_cast<std::string>(e.what()));
-    }
-
-    try {
-      // Will throw if it can not find an icon.
-      return getIconByName(icon_name, getScaledIconSize());
-    } catch (Glib::Error& e) {
-      spdlog::trace("Item '{}': {}", id, static_cast<std::string>(e.what()));
+  if (status_ == "needsattention") {
+    if (auto attention_pixbuf = getAttentionIconPixbuf()) {
+      return attention_pixbuf;
     }
   }
 
-  // Return the pixmap only if an icon for the given name could not be found.
+  if (auto pixbuf = loadIconFromNameOrFile(icon_name, true)) {
+    return pixbuf;
+  }
+
   if (icon_pixmap) {
     return icon_pixmap;
   }
@@ -355,17 +449,89 @@ Glib::RefPtr<Gdk::Pixbuf> Item::getIconPixbuf() {
   return getIconByName("image-missing", getScaledIconSize());
 }
 
-Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
-  icon_theme->rescan_if_needed();
+Glib::RefPtr<Gdk::Pixbuf> Item::getAttentionIconPixbuf() {
+  if (auto pixbuf = loadIconFromNameOrFile(attention_icon_name, false)) {
+    return pixbuf;
+  }
+  if (auto pixbuf = loadIconFromNameOrFile(attention_movie_name, false)) {
+    return pixbuf;
+  }
+  return attention_icon_pixmap;
+}
 
-  if (!icon_theme_path.empty() &&
-      icon_theme->lookup_icon(name.c_str(), request_size,
-                              Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE)) {
-    return icon_theme->load_icon(name.c_str(), request_size,
-                                 Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+Glib::RefPtr<Gdk::Pixbuf> Item::getOverlayIconPixbuf() {
+  if (auto pixbuf = loadIconFromNameOrFile(overlay_icon_name, false)) {
+    return pixbuf;
+  }
+  return overlay_icon_pixmap;
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::loadIconFromNameOrFile(const std::string& name, bool log_failure) {
+  if (name.empty()) {
+    return {};
+  }
+
+  try {
+    std::ifstream temp(name);
+    if (temp.is_open()) {
+      return Gdk::Pixbuf::create_from_file(name);
+    }
+  } catch (const Glib::Error& e) {
+    if (log_failure) {
+      spdlog::warn("Item '{}': {}", id, static_cast<std::string>(e.what()));
+    }
+  }
+
+  try {
+    return getIconByName(name, getScaledIconSize());
+  } catch (const Glib::Error& e) {
+    if (log_failure) {
+      spdlog::trace("Item '{}': {}", id, static_cast<std::string>(e.what()));
+    }
+  }
+
+  return {};
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::overlayPixbufs(const Glib::RefPtr<Gdk::Pixbuf>& base,
+                                               const Glib::RefPtr<Gdk::Pixbuf>& overlay) {
+  if (!base || !overlay) {
+    return base;
+  }
+
+  auto composed = base->copy();
+  if (!composed) {
+    return base;
+  }
+
+  int overlay_target_size =
+      std::max(1, std::min(composed->get_width(), composed->get_height()) / 2);
+  auto scaled_overlay = overlay->scale_simple(overlay_target_size, overlay_target_size,
+                                              Gdk::InterpType::INTERP_BILINEAR);
+  if (!scaled_overlay) {
+    return composed;
+  }
+
+  int dest_x = std::max(0, composed->get_width() - scaled_overlay->get_width());
+  int dest_y = std::max(0, composed->get_height() - scaled_overlay->get_height());
+  scaled_overlay->composite(composed, dest_x, dest_y, scaled_overlay->get_width(),
+                            scaled_overlay->get_height(), dest_x, dest_y, 1.0, 1.0,
+                            Gdk::InterpType::INTERP_BILINEAR, 255);
+  return composed;
+}
+
+Glib::RefPtr<Gdk::Pixbuf> Item::getIconByName(const std::string& name, int request_size) {
+  if (!icon_theme_path.empty()) {
+    auto icon_info = icon_theme->lookup_icon(name.c_str(), request_size,
+                                             Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+    if (icon_info) {
+      bool is_sym = false;
+      return icon_info.load_symbolic(event_box.get_style_context(), is_sym);
+    }
   }
   return DefaultGtkIconThemeWrapper::load_icon(name.c_str(), request_size,
-                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE);
+                                               Gtk::IconLookupFlags::ICON_LOOKUP_FORCE_SIZE,
+                                               event_box.get_style_context());
 }
 
 double Item::getScaledIconSize() {
@@ -390,9 +556,15 @@ void Item::makeMenu() {
       gtk_menu->attach_to_widget(event_box);
     }
   }
+  // Manually reset prelight to make sure the tray item doesn't stay in a hover state even though
+  // the menu is focused
+  event_box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
 }
 
 bool Item::handleClick(GdkEventButton* const& ev) {
+  if (!proxy_) {
+    return false;
+  }
   auto parameters = Glib::VariantContainerBase::create_tuple(
       {Glib::Variant<int>::create(ev->x_root + bar_.x_global),
        Glib::Variant<int>::create(ev->y_root + bar_.y_global)});
@@ -420,6 +592,9 @@ bool Item::handleClick(GdkEventButton* const& ev) {
 }
 
 bool Item::handleScroll(GdkEventScroll* const& ev) {
+  if (!proxy_) {
+    return false;
+  }
   int dx = 0, dy = 0;
   switch (ev->direction) {
     case GDK_SCROLL_UP:

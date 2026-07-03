@@ -2,7 +2,13 @@
 
 #include <poll.h>
 #include <spdlog/spdlog.h>
+#ifndef __OpenBSD__
 #include <sys/inotify.h>
+#else
+#include <sys/event.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#endif
 
 #include <filesystem>
 #include <fstream>
@@ -17,7 +23,8 @@ namespace {
 const std::regex IMPORT_REGEX(R"(@import\s+(?:url\()?(?:"|')([^"')]+)(?:"|')\)?;)");
 }
 
-waybar::CssReloadHelper::CssReloadHelper(std::string cssFile, std::function<void()> callback)
+waybar::CssReloadHelper::CssReloadHelper(std::string cssFile,
+                                         std::function<void(const std::string&)> callback)
     : m_cssFile(std::move(cssFile)), m_callback(std::move(callback)) {}
 
 std::string waybar::CssReloadHelper::getFileContents(const std::string& filename) {
@@ -43,8 +50,14 @@ std::string waybar::CssReloadHelper::findPath(const std::string& filename) {
   }
 
   // File monitor does not work with symlinks, so resolve them
-  if (std::filesystem::is_symlink(result)) {
+  std::string original = result;
+  while (std::filesystem::is_symlink(result)) {
     result = std::filesystem::read_symlink(result);
+
+    // prevent infinite cycle
+    if (result == original) {
+      break;
+    }
   }
 
   return result;
@@ -76,6 +89,12 @@ void waybar::CssReloadHelper::monitorChanges() {
   }
 }
 
+void waybar::CssReloadHelper::changeCssFile(const std::string& newCssFile) {
+  m_fileMonitors.clear();
+  m_cssFile = newCssFile;
+  monitorChanges();
+}
+
 void waybar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& file,
                                                Glib::RefPtr<Gio::File> const& other_type,
                                                Gio::FileMonitorEvent event_type) {
@@ -83,7 +102,7 @@ void waybar::CssReloadHelper::handleFileChange(Glib::RefPtr<Gio::File> const& fi
   // fire for one
   if (event_type == Gio::FileMonitorEvent::FILE_MONITOR_EVENT_CHANGES_DONE_HINT) {
     spdlog::debug("Reloading style, file changed: {}", file->get_path());
-    m_callback();
+    m_callback(m_cssFile);
   }
 }
 
@@ -103,10 +122,14 @@ std::vector<std::string> waybar::CssReloadHelper::parseImports(const std::string
   auto maxIterations = 100U;
   do {
     previousSize = imports.size();
+    std::vector<std::string> to_parse;
     for (const auto& [file, parsed] : imports) {
       if (!parsed) {
-        parseImports(file, imports);
+        to_parse.push_back(file);
       }
+    }
+    for (const auto& file : to_parse) {
+      parseImports(file, imports);
     }
 
   } while (imports.size() > previousSize && maxIterations-- > 0);

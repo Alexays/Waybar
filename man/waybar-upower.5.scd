@@ -17,6 +17,12 @@ compatible devices in the tooltip.
 	The battery to monitor. Refer to the https://upower.freedesktop.org/docs/UpDevice.html#UpDevice--native-path ++
 	Can be obtained using `upower --dump`
 
+*model*: ++
+	typeof: string ++
+	default: ++
+	The battery to monitor, based on the model. (this option is ignored if *native-path* is given). ++
+	Can be obtained using `upower --dump`
+
 *icon-size*: ++
 	typeof: integer ++
 	default: 20 ++
@@ -61,6 +67,19 @@ compatible devices in the tooltip.
 	typeof: bool ++
 	default: true ++
 	Option to disable battery icon.
+
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
 
 # FORMAT REPLACEMENTS
 

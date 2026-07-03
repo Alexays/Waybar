@@ -20,7 +20,7 @@
     std::scoped_lock<std::mutex> lock((backend).udev_thread_mutex_); \
     __devices = (backend).devices_;                                  \
   }                                                                  \
-  auto varname = (backend).best_device(__devices.cbegin(), __devices.cend(), preferred_device);
+  auto varname = (backend).best_device(__devices, preferred_device);
 
 namespace waybar::util {
 
@@ -36,7 +36,7 @@ class BacklightDevice {
   void set_max(int max);
   bool get_powered() const;
   void set_powered(bool powered);
-  friend inline bool operator==(const BacklightDevice &lhs, const BacklightDevice &rhs) {
+  friend inline bool operator==(const BacklightDevice& lhs, const BacklightDevice& rhs) {
     return lhs.name_ == rhs.name_ && lhs.actual_ == rhs.actual_ && lhs.max_ == rhs.max_;
   }
 
@@ -52,31 +52,25 @@ class BacklightBackend {
   BacklightBackend(std::chrono::milliseconds interval, std::function<void()> on_updated_cb = NOOP);
 
   // const inline BacklightDevice *get_best_device(std::string_view preferred_device);
-  const BacklightDevice *get_previous_best_device();
+  const BacklightDevice* get_previous_best_device();
 
-  void set_previous_best_device(const BacklightDevice *device);
+  void set_previous_best_device(const BacklightDevice* device);
 
-  void set_brightness(std::string preferred_device, ChangeType change_type, double step);
+  void set_brightness(const std::string& preferred_device, ChangeType change_type, double step);
 
-  void set_scaled_brightness(std::string preferred_device, int brightness);
-  int get_scaled_brightness(std::string preferred_device);
-
-  template <class ForwardIt, class Inserter>
-  static void upsert_device(ForwardIt first, ForwardIt last, Inserter inserter, udev_device *dev);
-
-  template <class ForwardIt, class Inserter>
-  static void enumerate_devices(ForwardIt first, ForwardIt last, Inserter inserter, udev *udev);
+  void set_scaled_brightness(const std::string& preferred_device, int brightness);
+  int get_scaled_brightness(const std::string& preferred_device);
 
   bool is_login_proxy_initialized() const { return static_cast<bool>(login_proxy_); }
 
-  template <class ForwardIt>
-  static const BacklightDevice *best_device(ForwardIt first, ForwardIt last, std::string_view);
+  static const BacklightDevice* best_device(const std::vector<BacklightDevice>& devices,
+                                            std::string_view);
 
   std::vector<BacklightDevice> devices_;
   std::mutex udev_thread_mutex_;
 
  private:
-  void set_brightness_internal(std::string device_name, int brightness, int max_brightness);
+  void set_brightness_internal(const std::string& device_name, int brightness, int max_brightness);
 
   std::function<void()> on_updated_cb_;
   std::chrono::milliseconds polling_interval_;

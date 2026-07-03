@@ -21,6 +21,10 @@ Addressed by *custom/<name>*
 	The path to a script, which determines if the script in *exec* should be executed. ++
 	*exec* will be executed if the exit code of *exec-if* equals 0.
 
+*hide-empty-text*: ++
+	typeof: bool ++
+	Disables the module when output is empty, but format might contain additional static content.
+
 *exec-on-event*: ++
 	typeof: bool ++
 	default: true ++
@@ -31,15 +35,17 @@ Addressed by *custom/<name>*
 	See *return-type*
 
 *interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	The interval (in seconds) in which the information gets polled. ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
 	Use *once* if you want to execute the module only on startup. ++
 	You can update it manually with a signal. If no *interval* or *signal* is defined, it is assumed that the out script loops itself. ++
 	If a *signal* is defined then the script will run once on startup and will only update with a signal.
 
 *restart-interval*: ++
-	typeof: integer ++
+	typeof: integer or float ++
 	The restart interval (in seconds). ++
+	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
 	Can't be used with the *interval* option, so only with continuous scripts. ++
 	Once the script exits, it'll be re-executed after the *restart-interval*.
 
@@ -51,8 +57,8 @@ Addressed by *custom/<name>*
 
 *format*: ++
 	typeof: string ++
-	default: {} ++
-	The format, how information should be displayed. On {} data gets inserted.
+	default: {text} ++
+	The format, how information should be displayed. On {text} data gets inserted.
 
 *format-icons*: ++
 	typeof: array ++
@@ -60,7 +66,7 @@ Addressed by *custom/<name>*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -121,6 +127,24 @@ Addressed by *custom/<name>*
 	default: false ++
 	Option to enable escaping of script output.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # RETURN-TYPE
 
 When *return-type* is set to *json*, Waybar expects the *exec*-script  to output its data in JSON format.
@@ -143,7 +167,7 @@ $text\\n$tooltip\\n$class*
 
 # FORMAT REPLACEMENTS
 
-*{}*: Output of the script.
+*{text}*: Output of the script.
 
 *{percentage}* Percentage which can be set via a json return type.
 
@@ -155,7 +179,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/spotify": {
-	"format": " {}",
+	"format": " {text}",
 	"max-length": 40,
 	"interval": 30, // Remove this if your script is endless and write in loop
 	"exec": "$HOME/.config/waybar/mediaplayer.sh 2> /dev/null", // Script in resources folder
@@ -168,7 +192,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/mpd": {
-	"format": "♪ {}",
+	"format": "♪ {text}",
 	//"max-length": 15,
 	"interval": 10,
 	"exec": "mpc current",
@@ -182,7 +206,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/cmus": {
-	"format": "♪ {}",
+	"format": "♪ {text}",
 	//"max-length": 15,
 	"interval": 10,
 	"exec": "cmus-remote -C \"format_print '%a - %t'\"", // artist - title
@@ -197,7 +221,7 @@ $text\\n$tooltip\\n$class*
 ```
 
 "custom/pacman": {
-	"format": "{}  ",
+	"format": "{text}  ",
 	"interval": "once",
 	"exec": "pacman_packages",
 	"on-click": "update-system",
@@ -209,8 +233,7 @@ $text\\n$tooltip\\n$class*
 
 ```
 "custom/pacman": {
-	"format": "{}  ",
-	"interval": 3600,                     // every hour
+	"format": "{text}  ",
 	"exec": "checkupdates | wc -l",       // # of updates
 	"exec-if": "exit 0",                  // always run; consider advanced run conditions
 	"on-click": "termite -e 'sudo pacman -Syu'; pkill -SIGRTMIN+8 waybar", // update system
@@ -218,7 +241,7 @@ $text\\n$tooltip\\n$class*
 }
 ```
 
-You can use the signal and update the number of available packages with *pkill -RTMIN+8 waybar*.
+Under the premise that interval is not defined, you can use the signal and update the number of available packages with *pkill -RTMIN+8 waybar*.
 
 # STYLE
 

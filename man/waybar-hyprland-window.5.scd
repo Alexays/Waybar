@@ -25,6 +25,15 @@ Addressed by *hyprland/window*
 	typeof: bool ++
 	Show the active window of the monitor the bar belongs to, instead of the focused window.
 
+*fallback*: ++
+	typeof: string ++
+	Text to display when the focused window title is empty (for example when no window is focused).
+
+*tooltip-format*: ++
+	typeof: string ++
+	default: {title} ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*. Requires *tooltip* to be enabled.
+
 *icon*: ++
 	typeof: bool ++
 	default: false ++
@@ -34,6 +43,11 @@ Addressed by *hyprland/window*
 	typeof: integer ++
 	default: 24 ++
 	Option to change the size of the application icon.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 See the output of "hyprctl clients" for examples

@@ -10,16 +10,16 @@
 namespace waybar {
 
 class Group : public AModule {
+  sigc::connection reveal_timeout_;
+
  public:
   Group(const std::string&, const std::string&, const Json::Value&, bool);
-  virtual ~Group() = default;
+  ~Group() override = default;
   auto update() -> void override;
   operator Gtk::Widget&() override;
 
   virtual Gtk::Box& getBox();
   void addWidget(Gtk::Widget& widget);
-
-  bool handleMouseHover(GdkEventCrossing* const& e);
 
  protected:
   Gtk::Box box;
@@ -27,9 +27,16 @@ class Group : public AModule {
   Gtk::Revealer revealer;
   bool is_first_widget = true;
   bool is_drawer = false;
+  bool click_to_reveal = false;
+  bool empty_if_drawer_empty = false;
+  int reveal_delay = 0;
   std::string add_class_to_drawer_children;
-
-  void addHoverHandlerTo(Gtk::Widget& widget);
+  bool handleMouseEnter(GdkEventCrossing* const& ev) override;
+  bool handleMouseLeave(GdkEventCrossing* const& ev) override;
+  bool handleToggle(GdkEventButton* const& ev) override;
+  bool handleScroll(GdkEventScroll* e) override;
+  void show_group();
+  void hide_group();
 };
 
 }  // namespace waybar

@@ -29,6 +29,11 @@ Addressed by *mpd*
 	default: 5 ++
 	The interval in which the connection to the MPD server is retried
 
+*playing-interval*: ++
+	typeof: integer++
+	default: 1000 ++
+	The interval (in milliseconds) in which the playing state is updated.
+
 *timeout*: ++
 	typeof: integer++
 	default: 30 ++
@@ -91,7 +96,7 @@ Addressed by *mpd*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -162,6 +167,24 @@ Addressed by *mpd*
 	default: {} ++
 	Icon to show depending on the "single" option (*{ "on": "...", "off": "..." }*)
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 ## WHEN PLAYING/PAUSED
@@ -185,6 +208,10 @@ Addressed by *mpd*
 *{songPosition}*: The position of the current song.
 
 *{queueLength}*: The length of the current queue.
+
+*{uri}*: The URI of the song relative to the MPD music directory.
+
+*{filename}* The last part of the URI.
 
 *{stateIcon}*: The icon corresponding to the playing or paused status of the player (see *state-icons* option)
 

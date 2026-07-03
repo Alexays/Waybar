@@ -1,6 +1,6 @@
 project(
     'waybar', 'cpp', 'c',
-    version: '0.10.0',
+    version: '0.15.0',
     license: 'MIT',
     meson_version: '>= 0.59.0',
     default_options : [
@@ -69,7 +69,7 @@ is_openbsd = host_machine.system() == 'openbsd'
 
 thread_dep = dependency('threads')
 fmt = dependency('fmt', version : ['>=8.1.1'], fallback : ['fmt', 'fmt_dep'])
-spdlog = dependency('spdlog', version : ['>=1.10.0'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['external_fmt=enabled'])
+spdlog = dependency('spdlog', version : ['>=1.15.2'], fallback : ['spdlog', 'spdlog_dep'], default_options : ['std_format=disabled', 'tests=disabled'])
 wayland_client = dependency('wayland-client')
 wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols')
@@ -92,7 +92,8 @@ libevdev = dependency('libevdev', required: get_option('libevdev'))
 libmpdclient = dependency('libmpdclient', required: get_option('mpd'))
 xkbregistry = dependency('xkbregistry')
 libjack = dependency('jack', required: get_option('jack'))
-libwireplumber = dependency('wireplumber-0.4', required: get_option('wireplumber'))
+libwireplumber = dependency('wireplumber-0.5', required: get_option('wireplumber'))
+libgps = dependency('libgps', required: get_option('gps'))
 
 libsndio = compiler.find_library('sndio', required: get_option('sndio'))
 if libsndio.found()
@@ -106,10 +107,14 @@ if libsndio.found()
     endif
 endif
 
-gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.6.0'],
+gtk_layer_shell = dependency('gtk-layer-shell-0', version: ['>=0.9.0'],
         default_options: ['introspection=false', 'vapi=false'],
         fallback: ['gtk-layer-shell', 'gtk_layer_shell'])
 systemd = dependency('systemd', required: get_option('systemd'))
+libsystemd = dependency('libsystemd', required: get_option('systemd'))
+if libsystemd.found()
+    add_project_arguments('-DHAVE_LIBSYSTEMD', language: 'cpp')
+endif
 
 cpp_lib_chrono = compiler.compute_int('__cpp_lib_chrono', prefix : '#include <chrono>')
 have_chrono_timezones = cpp_lib_chrono >= 201611
@@ -158,11 +163,13 @@ endif
 
 src_files = files(
     'src/factory.cpp',
+    'src/AGraph.cpp',
     'src/AModule.cpp',
     'src/ALabel.cpp',
     'src/AIconLabel.cpp',
     'src/AAppIconLabel.cpp',
     'src/modules/custom.cpp',
+    'src/modules/custom_graph.cpp',
     'src/modules/disk.cpp',
     'src/modules/idle_inhibitor.cpp',
     'src/modules/image.cpp',
@@ -181,9 +188,13 @@ src_files = files(
     'src/util/ustring_clen.cpp',
     'src/util/sanitize_str.cpp',
     'src/util/rewrite_string.cpp',
+    'src/util/hosts_check.cpp',
     'src/util/gtk_icon.cpp',
+    'src/util/icon_loader.cpp',
     'src/util/regex_collection.cpp',
-    'src/util/css_reload_helper.cpp'
+    'src/util/css_reload_helper.cpp',
+    'src/util/transform_8bit_to_rgba.cpp',
+    'src/util/utf8_string.cpp'
 )
 
 man_files = files(
@@ -192,6 +203,7 @@ man_files = files(
     'man/waybar-idle-inhibitor.5.scd',
     'man/waybar-image.5.scd',
     'man/waybar-states.5.scd',
+    'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
 )
 
@@ -206,6 +218,7 @@ if is_linux
         'src/modules/bluetooth.cpp',
         'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_frequency/linux.cpp',
         'src/modules/cpu_usage/common.cpp',
@@ -230,6 +243,7 @@ elif is_dragonfly or is_freebsd or is_netbsd or is_openbsd
     src_files += files(
         'src/modules/cffi.cpp',
         'src/modules/cpu.cpp',
+        'src/modules/cpu_graph.cpp',
         'src/modules/cpu_frequency/bsd.cpp',
         'src/modules/cpu_frequency/common.cpp',
         'src/modules/cpu_usage/bsd.cpp',
@@ -274,6 +288,17 @@ if true
     man_files += files('man/waybar-wlr-taskbar.5.scd')
 endif
 
+if wayland_protos.version().version_compare('>=1.39')
+    add_project_arguments('-DHAVE_EXT_WORKSPACES', language: 'cpp')
+    src_files += files(
+        'src/modules/ext/workspace_manager.cpp',
+        'src/modules/ext/workspace_manager_binding.cpp',
+    )
+    man_files += files(
+        'man/waybar-ext-workspaces.5.scd',
+    )
+endif
+
 if true
     add_project_arguments('-DHAVE_RIVER', language: 'cpp')
     src_files += files(
@@ -293,7 +318,9 @@ endif
 if true
     add_project_arguments('-DHAVE_DWL', language: 'cpp')
     src_files += files('src/modules/dwl/tags.cpp')
+    src_files += files('src/modules/dwl/window.cpp')
     man_files += files('man/waybar-dwl-tags.5.scd')
+    man_files += files('man/waybar-dwl-window.5.scd')
 endif
 
 if true
@@ -303,7 +330,10 @@ if true
         'src/modules/hyprland/language.cpp',
         'src/modules/hyprland/submap.cpp',
         'src/modules/hyprland/window.cpp',
+        'src/modules/hyprland/windowcount.cpp',
+        'src/modules/hyprland/workspace.cpp',
         'src/modules/hyprland/workspaces.cpp',
+        'src/modules/hyprland/windowcreationpayload.cpp',
     )
     man_files += files(
         'man/waybar-hyprland-language.5.scd',
@@ -311,6 +341,53 @@ if true
         'man/waybar-hyprland-window.5.scd',
         'man/waybar-hyprland-workspaces.5.scd',
     )
+endif
+
+if get_option('niri')
+    add_project_arguments('-DHAVE_NIRI', language: 'cpp')
+    src_files += files(
+        'src/modules/niri/backend.cpp',
+        'src/modules/niri/language.cpp',
+        'src/modules/niri/window.cpp',
+        'src/modules/niri/workspaces.cpp',
+    )
+    man_files += files(
+        'man/waybar-niri-language.5.scd',
+        'man/waybar-niri-window.5.scd',
+        'man/waybar-niri-workspaces.5.scd',
+    )
+endif
+
+if get_option('mango')
+    add_project_arguments('-DHAVE_MANGO', language: 'cpp')
+    src_files += files(
+        'src/modules/mango/backend.cpp',
+        'src/modules/mango/language.cpp',
+        'src/modules/mango/keymode.cpp',
+        'src/modules/mango/window.cpp',
+        'src/modules/mango/workspaces.cpp',
+        'src/modules/mango/layout.cpp'
+    )
+    man_files += files(
+        'man/waybar-mango-language.5.scd',
+        'man/waybar-mango-keymode.5.scd',
+        'man/waybar-mango-window.5.scd',
+        'man/waybar-mango-workspaces.5.scd',
+        'man/waybar-mango-layout.5.scd'
+    )
+endif
+
+if true
+    add_project_arguments('-DHAVE_WAYFIRE', language: 'cpp')
+    src_files += files(
+        'src/modules/wayfire/backend.cpp',
+        'src/modules/wayfire/window.cpp',
+        'src/modules/wayfire/workspaces.cpp',
+    )
+endif
+
+if get_option('login-proxy')
+    add_project_arguments('-DHAVE_LOGIN_PROXY', language: 'cpp')
 endif
 
 if libnl.found() and libnlgen.found()
@@ -333,10 +410,7 @@ endif
 
 if (upower_glib.found() and not get_option('logind').disabled())
     add_project_arguments('-DHAVE_UPOWER', language: 'cpp')
-    src_files += files(
-        'src/modules/upower/upower.cpp',
-        'src/modules/upower/upower_tooltip.cpp',
-    )
+    src_files += files('src/modules/upower.cpp')
     man_files += files('man/waybar-upower.5.scd')
 endif
 
@@ -346,7 +420,8 @@ if pipewire.found()
     src_files += files(
         'src/modules/privacy/privacy.cpp',
         'src/modules/privacy/privacy_item.cpp',
-        'src/util/pipewire_backend.cpp',
+        'src/util/pipewire/pipewire_backend.cpp',
+        'src/util/pipewire/privacy_node_info.cpp',
     )
     man_files += files('man/waybar-privacy.5.scd')
 endif
@@ -452,27 +527,30 @@ else
     man_files += files('man/waybar-clock.5.scd')
 endif
 
-if get_option('experimental')
-    add_project_arguments('-DHAVE_WLR_WORKSPACES', language: 'cpp')
-    src_files += files(
-        'src/modules/wlr/workspace_manager.cpp',
-        'src/modules/wlr/workspace_manager_binding.cpp',
-    )
-    man_files += files(
-        'man/waybar-wlr-workspaces.5.scd',
-    )
-endif
-
-cava = dependency('cava',
-                  version : '>=0.10.1',
+cava = dependency('libcava',
+                  version : '>=0.10.7',
                   required: get_option('cava'),
-                  fallback : ['cava', 'cava_dep'],
+                  fallback : ['libcava', 'cava_dep'],
                   not_found_message: 'cava is not found. Building waybar without cava')
+
+eproxy = dependency('epoxy', required: false)
 
 if cava.found()
    add_project_arguments('-DHAVE_LIBCAVA', language: 'cpp')
-   src_files += files('src/modules/cava.cpp')
+   src_files += files('src/modules/cava/cavaRaw.cpp',
+                      'src/modules/cava/cava_backend.cpp')
    man_files += files('man/waybar-cava.5.scd')
+
+   if eproxy.found()
+      add_project_arguments('-DHAVE_LIBCAVAGLSL', language: 'cpp')
+      src_files += files('src/modules/cava/cavaGLSL.cpp')
+   endif
+endif
+
+if libgps.found()
+   add_project_arguments('-DHAVE_LIBGPS', language: 'cpp')
+   src_files += files('src/modules/gps.cpp')
+   man_files += files('man/waybar-gps.5.scd')
 endif
 
 subdir('protocol')
@@ -501,6 +579,7 @@ executable(
         upower_glib,
         pipewire,
         playerctl,
+        libsystemd,
         libpulse,
         libjack,
         libwireplumber,
@@ -513,7 +592,9 @@ executable(
         libsndio,
         tz_dep,
 		xkbregistry,
-        cava
+        cava,
+        eproxy,
+        libgps
     ],
     include_directories: inc_dirs,
     install: true,
@@ -531,6 +612,14 @@ if scdoc.found()
     man_files += configure_file(
         input: 'man/waybar.5.scd.in',
         output: 'waybar.5.scd',
+        configuration: {
+            'sysconfdir': prefix / sysconfdir
+        }
+    )
+
+    man_files += configure_file(
+        input: 'man/waybar-styles.5.scd.in',
+        output: 'waybar-styles.5.scd',
         configuration: {
             'sysconfdir': prefix / sysconfdir
         }

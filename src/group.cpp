@@ -4,12 +4,12 @@
 
 #include <util/command.hpp>
 
-#include "gdkmm/device.h"
+#include "gtkmm/enums.h"
 #include "gtkmm/widget.h"
 
 namespace waybar {
 
-const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
+Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
   /* The transition direction of a drawer is not actually determined by the transition type,
    * but rather by the order of 'box' and 'revealer_box':
    *   'REVEALER_TRANSITION_TYPE_SLIDE_LEFT' and 'REVEALER_TRANSITION_TYPE_SLIDE_RIGHT'
@@ -19,17 +19,18 @@ const Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
 
   if (is_vertical) {
     return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_UP;
-  } else {
-    return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
   }
+
+  return Gtk::RevealerTransitionType::REVEALER_TRANSITION_TYPE_SLIDE_LEFT;
 }
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
              bool vertical)
-    : AModule(config, name, id, true, true),
+    : AModule(config, name, id, true, false),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   box.set_name(name_);
+  box.get_style_context()->add_class("empty");
   if (!id.empty()) {
     box.get_style_context()->add_class(id);
   }
@@ -62,12 +63,30 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     const bool left_to_right = (drawer_config["transition-left-to-right"].isBool()
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
+    const bool reveal_by_default =
+        (drawer_config["reveal-by-default"].isBool() ? drawer_config["reveal-by-default"].asBool()
+                                                     : false);
+
+    click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    reveal_delay = drawer_config["reveal-delay"].asInt();
+
+    const bool start_expanded =
+        (drawer_config["start-expanded"].isBool() ? drawer_config["start-expanded"].asBool()
+                                                  : false);
+    empty_if_drawer_empty = (drawer_config["empty-if-drawer-empty"].isBool()
+                                 ? drawer_config["empty-if-drawer-empty"].asBool()
+                                 : false);
 
     auto transition_type = getPreferredTransitionType(vertical);
 
     revealer.set_transition_type(transition_type);
     revealer.set_transition_duration(transition_duration);
-    revealer.set_reveal_child(false);
+    if ((click_to_reveal && reveal_by_default) || start_expanded) {
+      box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+      revealer.set_reveal_child(true);
+    } else {
+      revealer.set_reveal_child(false);
+    }
 
     revealer.get_style_context()->add_class("drawer");
 
@@ -78,34 +97,110 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
     } else {
       box.pack_start(revealer);
     }
-
-    addHoverHandlerTo(revealer);
   }
+
+  event_box_.add(box);
 }
 
-bool Group::handleMouseHover(GdkEventCrossing* const& e) {
-  switch (e->type) {
-    case GDK_ENTER_NOTIFY:
-      revealer.set_reveal_child(true);
-      break;
-    case GDK_LEAVE_NOTIFY:
-      revealer.set_reveal_child(false);
-      break;
-    default:
-      break;
-  }
+void Group::show_group() {
+  box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  revealer.set_reveal_child(true);
+  box.get_style_context()->add_class("expanded");
+}
 
+void Group::hide_group() {
+  box.unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  revealer.set_reveal_child(false);
+  box.get_style_context()->remove_class("expanded");
+}
+
+bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
+  if (!click_to_reveal) {
+    if (reveal_delay > 0) {
+      if (reveal_timeout_.connected()) {
+        reveal_timeout_.disconnect();
+      }
+
+      reveal_timeout_ = Glib::signal_timeout().connect(
+          [this]() {
+            show_group();
+            return false;
+          },
+          reveal_delay);
+    } else {
+      show_group();
+    }
+  }
+  return false;
+}
+
+bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
+  if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+    if (reveal_delay > 0 && reveal_timeout_.connected()) {
+      reveal_timeout_.disconnect();
+    }
+
+    hide_group();
+  }
+  return false;
+}
+
+bool Group::handleToggle(GdkEventButton* const& e) {
+  if (!click_to_reveal || e->button != 1) {
+    return false;
+  }
+  if ((box.get_state_flags() & Gtk::StateFlags::STATE_FLAG_PRELIGHT) != 0U) {
+    hide_group();
+  } else {
+    show_group();
+  }
   return true;
 }
 
-void Group::addHoverHandlerTo(Gtk::Widget& widget) {
-  widget.add_events(Gdk::EventMask::ENTER_NOTIFY_MASK | Gdk::EventMask::LEAVE_NOTIFY_MASK);
-  widget.signal_enter_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
-  widget.signal_leave_notify_event().connect(sigc::mem_fun(*this, &Group::handleMouseHover));
+auto Group::update() -> void {
+  bool has_visible_child = false;
+  bool has_visible_drawer_child = false;
+
+  if (is_drawer) {
+    for (auto* rev_child : revealer_box.get_children()) {
+      if (rev_child->get_visible()) {
+        has_visible_drawer_child = true;
+        break;
+      }
+    }
+  }
+
+  if (is_drawer && empty_if_drawer_empty) {
+    has_visible_child = has_visible_drawer_child;
+  } else {
+    for (auto* child : box.get_children()) {
+      if (child == &revealer) {
+        if (has_visible_drawer_child) {
+          has_visible_child = true;
+          break;
+        }
+      } else if (child->get_visible()) {
+        has_visible_child = true;
+        break;
+      }
+    }
+  }
+
+  auto style = box.get_style_context();
+  if (has_visible_child) {
+    if (style->has_class("empty")) {
+      style->remove_class("empty");
+    }
+  } else {
+    if (!style->has_class("empty")) {
+      style->add_class("empty");
+    }
+  }
 }
 
-auto Group::update() -> void {
-  // noop
+bool Group::handleScroll(GdkEventScroll* e) {
+  // no scroll.
+  return true;
 }
 
 Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
@@ -113,17 +208,15 @@ Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer
 void Group::addWidget(Gtk::Widget& widget) {
   getBox().pack_start(widget, false, false);
 
-  if (is_drawer) {
-    // Necessary because of GTK's hitbox detection
-    addHoverHandlerTo(widget);
-    if (!is_first_widget) {
-      widget.get_style_context()->add_class(add_class_to_drawer_children);
-    }
+  if (is_drawer && !is_first_widget) {
+    widget.get_style_context()->add_class(add_class_to_drawer_children);
   }
 
   is_first_widget = false;
+  widget.property_visible().signal_changed().connect(sigc::mem_fun(*this, &Group::update));
+  update();
 }
 
-Group::operator Gtk::Widget&() { return box; }
+Group::operator Gtk::Widget&() { return event_box_; }
 
 }  // namespace waybar

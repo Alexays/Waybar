@@ -26,21 +26,115 @@ Addressed by *hyprland/workspaces*
 	Regex rules to map window class to an icon or preferred method of representation for a workspace's window.
 	Keys are the rules, while the values are the methods of representation. Values may use the placeholders {class} and {title} to use the window's original class and/or title respectively.
 	Rules may specify `class<...>`, `title<...>`, or both in order to fine-tune the matching.
+	You may assign an empty value to a rule to have it ignored from generating any representation in workspaces. ++
+This setting is ignored if *workspace-taskbar.enable* is set to true.
 
-*window-rewrite-default*:
+*window-rewrite-default*: ++
 	typeof: string ++
 	default: "?" ++
-	The default method of representation for a workspace's window. This will be used for windows whose classes do not match any of the rules in *window-rewrite*.
+	The default method of representation for a workspace's window. This will be used for windows whose classes do not match any of the rules in *window-rewrite*. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
 
 *format-window-separator*: ++
 	typeof: string ++
 	default: " " ++
-	The separator to be used between windows in a workspace.
+	The separator to be used between windows in a workspace. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
+*window-rewrite-group-threshold*: ++
+	typeof: int ++
+	default: 0 ++
+	When a workspace contains at least this many windows with the same rewrite result, they are collapsed into a single one using *window-rewrite-group-format*. ++
+	Set to 0 to disable grouping. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
+*window-rewrite-group-format*: ++
+	typeof: string ++
+	default: "{icon}×{count}" ++
+	The format used to represent a group of collapsed windows. Available placeholders are {icon} (the icon being grouped) and {count} (how many windows share it). ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
+*workspace-taskbar*: ++
+	typeof: object ++
+	Contains settings for the workspace taskbar, an alternative mode for the workspaces module which displays the window icons as images instead of text.
+	
+		*enable*: ++
+	typeof: bool ++
+	default: false ++
+	Enables the workspace taskbar mode.
+
+		*update-active-window*: ++
+	typeof: bool ++
+	default: false ++
+	If true, the active/focused window will have an 'active' class. Could cause higher CPU usage due to more frequent redraws.
+
+		*reverse-direction*: ++
+	typeof: bool ++
+	default: false ++
+	If true, the taskbar windows will be added in reverse order (right to left if orientation is horizontal, bottom to top if vertical).
+
+		*active-window-position*: ++
+	typeof: "none" | "first" | "last" ++
+	default: "none" ++
+	If set to "first", the active window will be moved at the beginning of the taskbar. If set to "last", it will be moved at the end. It will only work if *update-active-window* is set to true.
+
+		*format*: ++
+	typeof: string ++
+	default: {icon} ++
+	Format to use for each window in the workspace taskbar. Available placeholders are {icon} and {title}.
+
+		*icon-size*: ++
+	typeof: int ++
+	default: 16 ++
+	Size of the icons in the workspace taskbar.
+
+		*icon-theme*: ++
+	typeof: string | array ++
+	default: [] ++
+	Icon theme to use for the workspace taskbar. If an array is provided, the first theme that is found for a given icon will be used. If no theme is found (or the array is empty), the default icon theme is used.
+
+		*orientation*: ++
+	typeof: "horizontal" | "vertical" ++
+	default: horizontal ++
+	Direction in which the workspace taskbar is displayed.
+
+		*ignore-list*: ++
+	typeof: array ++
+	default: [] ++
+	Regex patterns to match against window class or window title. If a window's class OR title matches any of the patterns, it will not be shown.
+
+		*on-click-window*: ++
+	typeof: string ++
+	default: "" ++
+	Command to run when a window is clicked. Available placeholders are: ++
+	  - {address} Hyprland address of the clicked window. ++
+	  - {button} Pressed button number, see https://api.gtkd.org/gdk.c.types.GdkEventButton.button.html. ++
+	See https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#workspace-taskbars-example for a full example.
+
+*max-windows*: ++
+	typeof: int ++
+	default: 0 (unlimited) ++
+	Maximum number of windows to show per workspace. When set, newest windows beyond the limit are not shown. Set to 0 for unlimited windows.
 
 *show-special*: ++
 	typeof: bool ++
 	default: false ++
 	If set to true, special workspaces will be shown.
+
+*special-visible-only*: ++
+	typeof: bool ++
+	default: false ++
+	If this and show-special are to true, special workspaces will be shown only if visible.
+
+*persistent-only*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, only persistent workspaces will be shown on bar.
+
+*persistent-workspaces*: ++
+	typeof: object ++
+	default: empty ++
+	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below.
 
 *all-outputs*: ++
 	typeof: bool ++
@@ -51,6 +145,31 @@ Addressed by *hyprland/workspaces*
 	typeof: bool ++
 	default: false ++
 	If set to true, only the active workspace will be shown.
+
+*hide-active*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, the active workspace will be hidden. Unless a workspace is persistent or special.
+
+*move-to-monitor*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, open the workspace on the current monitor when clicking on a workspace button.
+	Otherwise, the workspace will open on the monitor where it was previously assigned.
+	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
+
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
+*on-scroll-up*: ++
+	typeof: string ++
+	Command to execute when scrolling up on the module. This replaces the default behaviour of workspace cycling.
+
+*on-scroll-down*: ++
+	typeof: string ++
+	Command to execute when scrolling down on the module. This replaces the default behaviour of workspace cycling.
 
 *ignore-workspaces*: ++
 	typeof: array ++
@@ -63,6 +182,7 @@ Addressed by *hyprland/workspaces*
 	If set to number, workspaces will sort by number.
 	If set to name, workspaces will sort by name.
 	If set to id, workspaces will sort by id.
+	If set to special-centered, workspaces will sort by default with special workspaces in the center.
 	If none of those, workspaces will sort with default behavior.
 
 *tooltip*: ++
@@ -73,6 +193,11 @@ Addressed by *hyprland/workspaces*
 *tooltips*: ++
 	typeof: array ++
 	Based on the workspace ID and state, the corresponding tooltip gets selected. Selection works the same as *format-icons* do. Format replacements are supported. See *icons*.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
 
 # FORMAT REPLACEMENTS
 
@@ -144,6 +269,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 		"class<firefox> title<.*github.*>": "", // Windows whose class is "firefox" and title contains "github". Note that "class" always comes first.
 		"foot": "", // Windows that contain "foot" in either class or title. For optimization reasons, it will only match against a title if at least one other window explicitly matches against a title.
 		"code": "󰨞",
+		"title<.* - (.*) - VSCodium>": "codium $1"  // captures part of the window title and formats it into output
 	}
 }
 ```
@@ -213,3 +339,6 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.special*
 - *#workspaces button.urgent*
 - *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)
+- *#workspaces .workspace-label*
+- *#workspaces .taskbar-window* (each window in the taskbar, only if 'workspace-taskbar.enable' is true)
+- *#workspaces .taskbar-window.active* (applied to the focused window, only if 'workspace-taskbar.update-active-window' is true)

@@ -30,6 +30,8 @@ class Language : public waybar::ALabel, public EventHandler {
     std::string short_description;
   };
 
+  auto removeXkbLayoutCssClass() -> void;
+  auto addXkbLayoutCssClass() -> void;
   static auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
@@ -37,6 +39,8 @@ class Language : public waybar::ALabel, public EventHandler {
   util::JsonParser parser_;
 
   Layout layout_;
+
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland

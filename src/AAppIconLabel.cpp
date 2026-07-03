@@ -33,21 +33,21 @@ std::string toLowerCase(const std::string& input) {
 
 std::optional<std::string> getFileBySuffix(const std::string& dir, const std::string& suffix,
                                            bool check_lower_case) {
-  if (!std::filesystem::exists(dir)) {
-    return {};
-  }
-  for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
-    if (entry.is_regular_file()) {
-      std::string filename = entry.path().filename().string();
-      if (filename.size() < suffix.size()) {
-        continue;
-      }
-      if ((filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0) ||
-          (check_lower_case && filename.compare(filename.size() - suffix.size(), suffix.size(),
-                                                toLowerCase(suffix)) == 0)) {
-        return entry.path().string();
+  try {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(dir)) {
+      if (entry.is_regular_file()) {
+        std::string filename = entry.path().filename().string();
+        if (filename.size() < suffix.size()) {
+          continue;
+        }
+        if ((filename.compare(filename.size() - suffix.size(), suffix.size(), suffix) == 0) ||
+            (check_lower_case && filename.compare(filename.size() - suffix.size(), suffix.size(),
+                                                  toLowerCase(suffix)) == 0)) {
+          return entry.path().string();
+        }
       }
     }
+  } catch (const std::filesystem::filesystem_error&) {
   }
 
   return {};
@@ -63,7 +63,8 @@ std::optional<std::string> getDesktopFilePath(const std::string& app_identifier,
     return {};
   }
 
-  const auto data_dirs = Glib::get_system_data_dirs();
+  auto data_dirs = Glib::get_system_data_dirs();
+  data_dirs.insert(data_dirs.begin(), Glib::get_user_data_dir());
   for (const auto& data_dir : data_dirs) {
     const auto data_app_dir = data_dir + "/applications/";
     auto desktop_file_suffix = app_identifier + ".desktop";
@@ -96,14 +97,14 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
       return app_identifier;
     }
 
-    const auto app_identifier_desktop = app_identifier + "-desktop";
+    auto app_identifier_desktop = app_identifier + "-desktop";
     if (DefaultGtkIconThemeWrapper::has_icon(app_identifier_desktop)) {
       return app_identifier_desktop;
     }
 
-    const auto first_space = app_identifier.find_first_of(' ');
+    auto first_space = app_identifier.find_first_of(' ');
     if (first_space != std::string::npos) {
-      const auto first_word = toLowerCase(app_identifier.substr(0, first_space));
+      auto first_word = toLowerCase(app_identifier.substr(0, first_space));
       if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }
@@ -111,7 +112,7 @@ std::optional<Glib::ustring> getIconName(const std::string& app_identifier,
 
     const auto first_dash = app_identifier.find_first_of('-');
     if (first_dash != std::string::npos) {
-      const auto first_word = toLowerCase(app_identifier.substr(0, first_dash));
+      auto first_word = toLowerCase(app_identifier.substr(0, first_dash));
       if (DefaultGtkIconThemeWrapper::has_icon(first_word)) {
         return first_word;
       }
@@ -150,10 +151,24 @@ void AAppIconLabel::updateAppIconName(const std::string& app_identifier,
 }
 
 void AAppIconLabel::updateAppIcon() {
-  if (update_app_icon_) {
+  if (update_app_icon_ || (!iconEnabled() && image_.get_visible())) {
     update_app_icon_ = false;
     if (app_icon_name_.empty()) {
       image_.set_visible(false);
+    } else if (app_icon_name_.front() == '/') {
+      try {
+        int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
+        auto pixbuf =
+            Gdk::Pixbuf::create_from_file(app_icon_name_, scaled_icon_size, scaled_icon_size);
+
+        auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
+                                                              image_.get_window());
+        image_.set(surface);
+        image_.set_visible(true);
+      } catch (const Glib::Exception& e) {
+        spdlog::warn("Failed to load app icon {}: {}", app_icon_name_, std::string(e.what()));
+        image_.set_visible(false);
+      }
     } else {
       image_.set_from_icon_name(app_icon_name_, Gtk::ICON_SIZE_INVALID);
       image_.set_visible(true);

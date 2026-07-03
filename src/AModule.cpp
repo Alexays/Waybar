@@ -1,44 +1,60 @@
 #include "AModule.hpp"
 
 #include <fmt/format.h>
+#include <spdlog/spdlog.h>
 
 #include <util/command.hpp>
+
+#include "gdk/gdk.h"
+#include "gdkmm/cursor.h"
 
 namespace waybar {
 
 AModule::AModule(const Json::Value& config, const std::string& name, const std::string& id,
                  bool enable_click, bool enable_scroll)
-    : name_(std::move(name)),
-      config_(std::move(config)),
+    : name_(name),
+      config_(config),
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
+      isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      distance_scrolled_x_(0.0),
+      cursor_timeout_conn_() {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
+  disable_on_sleep_ =
+      config_["disable-on-sleep"].isBool() ? config_["disable-on-sleep"].asBool() : false;
+
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
-      if (eventActionMap_.count(it.key().asString()) == 0) {
+      if (!eventActionMap_.contains(it.key().asString())) {
         eventActionMap_.insert({it.key().asString(), it->asString()});
         enable_click = true;
         enable_scroll = true;
       } else
-        spdlog::warn("Dublicate action is ignored: {0}", it.key().asString());
+        spdlog::warn("Duplicate action is ignored: {0}", it.key().asString());
     else
       spdlog::warn("Wrong actions section configuration. See config by index: {}", it.index());
   }
 
+  event_box_.signal_enter_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseEnter));
+  event_box_.signal_leave_notify_event().connect(sigc::mem_fun(*this, &AModule::handleMouseLeave));
+
   // configure events' user commands
-  // hasUserEvent is true if any element from eventMap_ is satisfying the condition in the lambda
-  bool hasUserEvent =
+  // hasUserEvents is true if any element from eventMap_ is satisfying the condition in the lambda
+  bool hasUserEvents =
       std::find_if(eventMap_.cbegin(), eventMap_.cend(), [&config](const auto& eventEntry) {
         // True if there is any non-release type event
         return eventEntry.first.second != GdkEventType::GDK_BUTTON_RELEASE &&
-               config[eventEntry.second].isString();
+               (config[eventEntry.second].isString() || config[eventEntry.second].isBool());
       }) != eventMap_.cend();
 
-  if (enable_click || hasUserEvent) {
+  if (enable_click || hasUserEvents) {
+    hasUserEvents_ = true;
     event_box_.add_events(Gdk::BUTTON_PRESS_MASK);
     event_box_.signal_button_press_event().connect(sigc::mem_fun(*this, &AModule::handleToggle));
+  } else {
+    hasUserEvents_ = false;
   }
 
   bool hasReleaseEvent =
@@ -57,30 +73,95 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
     event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
     event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &AModule::handleScroll));
   }
+
+  // Respect user configuration of cursor
+  if (config_.isMember("cursor")) {
+    if (config_["cursor"].isBool()) {
+      if (config_["cursor"].asBool()) {
+        setCursor("pointer");
+      } else {
+        setCursor("default");
+      }
+    } else if (config_["cursor"].isString()) {
+      setCursor(config_["cursor"].asString());
+    } else {
+      spdlog::warn("unknown cursor option configured on module {}", name_);
+    }
+  }
 }
 
 AModule::~AModule() {
-  for (const auto& pid : pid_) {
+  if (cursor_timeout_conn_.connected()) {
+    cursor_timeout_conn_.disconnect();
+  }
+  for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
     }
+  }
+  if (menu_ != nullptr) {
+    g_object_unref(menu_);
+    menu_ = nullptr;
   }
 }
 
 auto AModule::update() -> void {
   // Run user-provided update handler if configured
   if (config_["on-update"].isString()) {
-    pid_.push_back(util::command::forkExec(config_["on-update"].asString()));
+    pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
 }
 // Get mapping between event name and module action name
-// Then call overrided doAction in order to call appropriate module action
+// Then call overridden doAction in order to call appropriate module action
 auto AModule::doAction(const std::string& name) -> void {
   if (!name.empty()) {
     const std::map<std::string, std::string>::const_iterator& recA{eventActionMap_.find(name)};
-    // Call overrided action if derrived class has implemented it
+    // Call overridden action if derived class has implemented it
     if (recA != eventActionMap_.cend() && name != recA->second) this->doAction(recA->second);
   }
+}
+
+void AModule::setCursor(std::string const& c) {
+  auto gdk_window = event_box_.get_window();
+  if (gdk_window) {
+    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
+    gdk_window->set_cursor(cursor);
+  } else {
+    // window may not be accessible yet, in this case,
+    // schedule another call for setting the cursor in 1 sec
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
+        [this, c]() {
+          setCursor(c);
+          return false;
+        },
+        1);
+  }
+}
+
+bool AModule::handleMouseEnter(GdkEventCrossing* const& e) {
+  if (auto* module = event_box_.get_child(); module != nullptr) {
+    module->set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  }
+
+  // Default behavior indicating event availability
+  if (hasUserEvents_ && !config_.isMember("cursor")) {
+    setCursor("pointer");
+  }
+
+  return false;
+}
+
+bool AModule::handleMouseLeave(GdkEventCrossing* const& e) {
+  if (auto* module = event_box_.get_child(); module != nullptr) {
+    module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+  }
+
+  // Default behavior indicating event availability
+  if (hasUserEvents_ && !config_.isMember("cursor")) {
+    setCursor("default");
+  }
+
+  return false;
 }
 
 bool AModule::handleToggle(GdkEventButton* const& e) { return handleUserEvent(e); }
@@ -91,11 +172,26 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   std::string format{};
   const std::map<std::pair<uint, GdkEventType>, std::string>::const_iterator& rec{
       eventMap_.find(std::pair(e->button, e->type))};
+
   if (rec != eventMap_.cend()) {
     // First call module actions
     this->AModule::doAction(rec->second);
 
     format = rec->second;
+  }
+
+  // Check that a menu has been configured
+  if (rec != eventMap_.cend() && config_["menu"].isString()) {
+    // Check if the event is the one specified for the "menu" option
+    if (rec->second == config_["menu"].asString() && menu_ != nullptr) {
+      // Popup the menu
+      gtk_widget_show_all(GTK_WIDGET(menu_));
+      gtk_menu_popup_at_pointer(GTK_MENU(menu_), reinterpret_cast<GdkEvent*>(e));
+      // Manually reset prelight to make sure the module doesn't stay in a hover state
+      if (auto* module = event_box_.get_child(); module != nullptr) {
+        module->unset_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+      }
+    }
   }
   // Second call user scripts
   if (!format.empty()) {
@@ -105,7 +201,7 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
       format.clear();
   }
   if (!format.empty()) {
-    pid_.push_back(util::command::forkExec(format));
+    pid_children_.push_back(util::command::forkExec(format));
   }
   dp.emit();
   return true;
@@ -118,7 +214,7 @@ AModule::SCROLL_DIR AModule::getScrollDir(GdkEventScroll* e) {
 
   // ignore reverse-scrolling if event comes from a mouse wheel
   GdkDevice* device = gdk_event_get_source_device((GdkEvent*)e);
-  if (device != NULL && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
+  if (device != nullptr && gdk_device_get_source(device) == GDK_SOURCE_MOUSE) {
     reverse = reverse_mouse;
   }
 
@@ -190,13 +286,14 @@ bool AModule::handleScroll(GdkEventScroll* e) {
   this->AModule::doAction(eventName);
   // Second call user scripts
   if (config_[eventName].isString())
-    pid_.push_back(util::command::forkExec(config_[eventName].asString()));
+    pid_children_.push_back(util::command::forkExec(config_[eventName].asString()));
 
   dp.emit();
   return true;
 }
 
-bool AModule::tooltipEnabled() { return isTooltip; }
+bool AModule::tooltipEnabled() const { return isTooltip; }
+bool AModule::expandEnabled() const { return isExpand; }
 
 AModule::operator Gtk::Widget&() { return event_box_; }
 

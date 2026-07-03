@@ -3,11 +3,15 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <ostream>
 #include <type_traits>
 
 #include "client.hpp"
 #include "factory.hpp"
 #include "group.hpp"
+#include "util/enum.hpp"
+#include "util/hosts_check.hpp"
+#include "util/kill_signal.hpp"
 
 #ifdef HAVE_SWAY
 #include "modules/sway/bar.hpp"
@@ -37,7 +41,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = true}},
     {"hide",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = false,
       .visible = true}},
@@ -49,7 +53,7 @@ const Bar::bar_mode_map Bar::PRESET_MODES = {  //
       .visible = false}},
     {"overlay",
      {//
-      .layer = bar_layer::TOP,
+      .layer = bar_layer::OVERLAY,
       .exclusive = false,
       .passthrough = true,
       .visible = true}}};
@@ -72,16 +76,16 @@ void from_json(const Json::Value& j, bar_layer& l) {
 /* Deserializer for struct bar_mode */
 void from_json(const Json::Value& j, bar_mode& m) {
   if (j.isObject()) {
-    if (auto v = j["layer"]; v.isString()) {
+    if (const auto& v = j["layer"]; v.isString()) {
       from_json(v, m.layer);
     }
-    if (auto v = j["exclusive"]; v.isBool()) {
+    if (const auto& v = j["exclusive"]; v.isBool()) {
       m.exclusive = v.asBool();
     }
-    if (auto v = j["passthrough"]; v.isBool()) {
+    if (const auto& v = j["passthrough"]; v.isBool()) {
       m.passthrough = v.asBool();
     }
-    if (auto v = j["visible"]; v.isBool()) {
+    if (const auto& v = j["visible"]; v.isBool()) {
       m.visible = v.asBool();
     }
   }
@@ -118,7 +122,7 @@ Glib::ustring to_string(Gtk::PositionType pos) {
  * Assumes that all the values in the object are deserializable to the same type.
  */
 template <typename Key, typename Value,
-          typename = std::enable_if_t<std::is_convertible<std::string, Key>::value>>
+          typename = std::enable_if_t<std::is_convertible_v<std::string, Key>>>
 void from_json(const Json::Value& j, std::map<Key, Value>& m) {
   if (j.isObject()) {
     for (auto it = j.begin(); it != j.end(); ++it) {
@@ -132,6 +136,7 @@ void from_json(const Json::Value& j, std::map<Key, Value>& m) {
 waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     : output(w_output),
       config(w_config),
+      surface(nullptr),
       window{Gtk::WindowType::WINDOW_TOPLEVEL},
       x_global(0),
       y_global(0),
@@ -167,6 +172,10 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
     left_.set_spacing(spacing);
     center_.set_spacing(spacing);
     right_.set_spacing(spacing);
+  }
+
+  if (config.isMember("height") && !config["height"].isUInt()) {
+    spdlog::warn("Invalid type for 'height', expected unsigned integer");
   }
 
   height_ = config["height"].isUInt() ? config["height"].asUInt() : 0;
@@ -226,7 +235,8 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   gtk_layer_init_for_window(gtk_window);
   gtk_layer_set_keyboard_mode(gtk_window, GTK_LAYER_SHELL_KEYBOARD_MODE_NONE);
   gtk_layer_set_monitor(gtk_window, output->monitor->gobj());
-  gtk_layer_set_namespace(gtk_window, "waybar");
+  gtk_layer_set_namespace(gtk_window,
+                          config["name"].isString() ? config["name"].asCString() : "waybar");
 
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_LEFT, margins_.left);
   gtk_layer_set_margin(gtk_window, GTK_LAYER_SHELL_EDGE_RIGHT, margins_.right);
@@ -259,6 +269,16 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
+  window.signal_unmap().connect([this]() {
+    spdlog::debug("Output {} unmapped (DPMS off), suspending modules", output->name);
+    toggleSuspend(true);
+  });
+
+  window.signal_map().connect([this]() {
+    spdlog::debug("Output {} mapped (DPMS on), resuming modules", output->name);
+    toggleSuspend(false);
+  });
+
 #if HAVE_SWAY
   if (auto ipc = config["ipc"]; ipc.isBool() && ipc.asBool()) {
     bar_id = Client::inst()->bar_id;
@@ -276,8 +296,47 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 #endif
 
+  waybar::util::EnumParser<util::KillSignalAction> m_signalActionEnumParser;
+  const auto& configSigusr1 = config["on-sigusr1"];
+  if (configSigusr1.isString()) {
+    auto strSigusr1 = configSigusr1.asString();
+    try {
+      onSigusr1 =
+          m_signalActionEnumParser.parseStringToEnum(strSigusr1, util::userKillSignalActions);
+    } catch (const std::invalid_argument& e) {
+      onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
+      spdlog::warn(
+          "Invalid string representation for on-sigusr1. Falling back to default mode (toggle).");
+    }
+  }
+  const auto& configSigusr2 = config["on-sigusr2"];
+  if (configSigusr2.isString()) {
+    auto strSigusr2 = configSigusr2.asString();
+    try {
+      onSigusr2 =
+          m_signalActionEnumParser.parseStringToEnum(strSigusr2, util::userKillSignalActions);
+    } catch (const std::invalid_argument& e) {
+      onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
+      spdlog::warn(
+          "Invalid string representation for on-sigusr2. Falling back to default mode (reload).");
+    }
+  }
+
   setupWidgets();
   window.show_all();
+
+  /*
+   * If gtk-layer-shell's synchronous wait for the initial configure timed out, show_all() can
+   * return with a configured but not-yet-presented surface. Kick GTK/layer-shell once control has
+   * returned to the main loop, when any late initial configure has been dispatched and widgets have
+   * had a chance to allocate/draw.
+   */
+  Glib::signal_idle().connect(sigc::track_obj([this] {
+    window.queue_resize();
+    window.queue_draw();
+    forceLayerCommit();
+    return false;
+  }, *this));
 
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
@@ -339,6 +398,20 @@ void waybar::Bar::setMode(const struct bar_mode& mode) {
     window.get_style_context()->add_class("hidden");
     window.set_opacity(0);
   }
+  /*
+   * All the changes above require `wl_surface_commit`.
+   * gtk-layer-shell schedules a commit on the next frame event in GTK, but this could fail in
+   * certain scenarios, such as fully occluded bar.
+   */
+  forceLayerCommit();
+}
+
+void waybar::Bar::forceLayerCommit() {
+  auto* gtk_window = window.gobj();
+  if (gtk_window != nullptr && gtk_widget_get_realized(GTK_WIDGET(gtk_window))) {
+    gtk_layer_try_force_commit(gtk_window);
+  }
+  wl_display_flush(Client::inst()->wl_display);
 }
 
 void waybar::Bar::setPassThrough(bool passthrough) {
@@ -393,11 +466,22 @@ void waybar::Bar::setPosition(Gtk::PositionType position) {
   }
 }
 
-void waybar::Bar::onMap(GdkEventAny*) {
+void waybar::Bar::onMap(GdkEventAny* /*unused*/) {
   /*
    * Obtain a pointer to the custom layer surface for modules that require it (idle_inhibitor).
    */
-  auto gdk_window = window.get_window()->gobj();
+  auto gdk_window_ref = window.get_window();
+  if (!gdk_window_ref) {
+    spdlog::warn("Failed to get GDK window during onMap, deferring surface initialization");
+    return;
+  }
+
+  auto* gdk_window = gdk_window_ref->gobj();
+  if (!gdk_window) {
+    spdlog::warn("GDK window object is null during onMap, deferring surface initialization");
+    return;
+  }
+
   surface = gdk_wayland_window_get_wl_surface(gdk_window);
   configureGlobalOffset(gdk_window_get_width(gdk_window), gdk_window_get_height(gdk_window));
 
@@ -414,6 +498,8 @@ void waybar::Bar::setVisible(bool value) {
 }
 
 void waybar::Bar::toggle() { setVisible(!visible); }
+void waybar::Bar::show() { setVisible(true); }
+void waybar::Bar::hide() { setVisible(false); }
 
 // Converting string to button code rn as to avoid doing it later
 void waybar::Bar::setupAltFormatKeyForModule(const std::string& module_name) {
@@ -449,7 +535,17 @@ void waybar::Bar::setupAltFormatKeyForModuleList(const char* module_list_name) {
     Json::Value& modules = config[module_list_name];
     for (const Json::Value& module_name : modules) {
       if (module_name.isString()) {
-        setupAltFormatKeyForModule(module_name.asString());
+        auto ref = module_name.asString();
+        if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
+          Json::Value& group_modules = config[ref]["modules"];
+          for (const Json::Value& module_name : group_modules) {
+            if (module_name.isString()) {
+              setupAltFormatKeyForModule(module_name.asString());
+            }
+          }
+        } else {
+          setupAltFormatKeyForModule(ref);
+        }
       }
     }
   }
@@ -461,13 +557,21 @@ void waybar::Bar::handleSignal(int signal) {
   }
 }
 
+waybar::util::KillSignalAction waybar::Bar::getOnSigusr1Action() { return this->onSigusr1; }
+waybar::util::KillSignalAction waybar::Bar::getOnSigusr2Action() { return this->onSigusr2; }
+
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
-  auto module_list = group ? config[pos]["modules"] : config[pos];
+  auto module_list = group != nullptr ? config[pos]["modules"] : config[pos];
   if (module_list.isArray()) {
     for (const auto& name : module_list) {
       try {
         auto ref = name.asString();
+
+        if (config[ref].isMember("hosts") && !waybar::util::valid_host(config[ref])) {
+          continue;
+        }
+
         AModule* module;
 
         if (ref.compare(0, 6, "group/") == 0 && ref.size() > 6) {
@@ -475,19 +579,25 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
           auto id_name = ref.substr(6, hash_pos - 6);
           auto class_name = hash_pos != std::string::npos ? ref.substr(hash_pos + 1) : "";
 
-          auto vertical = (group ? group->getBox().get_orientation() : box_.get_orientation()) ==
-                          Gtk::ORIENTATION_VERTICAL;
+          auto vertical = (group != nullptr ? group->getBox().get_orientation()
+                                            : box_.get_orientation()) == Gtk::ORIENTATION_VERTICAL;
 
-          auto group_module = new waybar::Group(id_name, class_name, config[ref], vertical);
-          getModules(factory, ref, group_module);
-          module = group_module;
+          const Json::Value& group_config = config[ref];
+          if (group_config["modules"].isNull()) {
+            spdlog::warn("Group definition '{}' has not been found, group will be hidden", ref);
+          }
+          auto group_module =
+              std::make_unique<waybar::Group>(id_name, class_name, group_config, vertical);
+
+          getModules(factory, ref, group_module.get());
+          module = group_module.release();
         } else {
           module = factory.makeModule(ref, pos);
         }
 
         std::shared_ptr<AModule> module_sp(module);
         modules_all_.emplace_back(module_sp);
-        if (group) {
+        if (group != nullptr) {
           group->addWidget(*module);
         } else {
           if (pos == "modules-left") {
@@ -516,13 +626,21 @@ void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
 
 auto waybar::Bar::setupWidgets() -> void {
   window.add(box_);
-  box_.pack_start(left_, false, false);
-  if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
-    box_.set_center_widget(center_);
-  } else {
-    box_.pack_start(center_, true, false);
+
+  bool expand_left = config["expand-left"].isBool() ? config["expand-left"].asBool() : false;
+  bool expand_center = config["expand-center"].isBool() ? config["expand-center"].asBool() : false;
+  bool expand_right = config["expand-right"].isBool() ? config["expand-right"].asBool() : false;
+  bool no_center = config["no-center"].isBool() ? config["no-center"].asBool() : false;
+
+  box_.pack_start(left_, expand_left, expand_left);
+  if (!no_center) {
+    if (config["fixed-center"].isBool() ? config["fixed-center"].asBool() : true) {
+      box_.set_center_widget(center_);
+    } else {
+      box_.pack_start(center_, true, expand_center);
+    }
   }
-  box_.pack_end(right_, false, false);
+  box_.pack_end(right_, expand_right, expand_right);
 
   // Convert to button code for every module that is used.
   setupAltFormatKeyForModuleList("modules-left");
@@ -531,17 +649,24 @@ auto waybar::Bar::setupWidgets() -> void {
 
   Factory factory(*this, config);
   getModules(factory, "modules-left");
-  getModules(factory, "modules-center");
+  if (!no_center) {
+    getModules(factory, "modules-center");
+  }
   getModules(factory, "modules-right");
+
   for (auto const& module : modules_left_) {
-    left_.pack_start(*module, false, false);
+    left_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
   }
-  for (auto const& module : modules_center_) {
-    center_.pack_start(*module, false, false);
+
+  if (!no_center) {
+    for (auto const& module : modules_center_) {
+      center_.pack_start(*module, module->expandEnabled(), module->expandEnabled());
+    }
   }
+
   std::reverse(modules_right_.begin(), modules_right_.end());
   for (auto const& module : modules_right_) {
-    right_.pack_end(*module, false, false);
+    right_.pack_end(*module, module->expandEnabled(), module->expandEnabled());
   }
 }
 
@@ -568,6 +693,17 @@ void waybar::Bar::onConfigure(GdkEventConfigure* ev) {
 
   configureGlobalOffset(ev->width, ev->height);
   spdlog::info(BAR_SIZE_MSG, ev->width, ev->height, output->name);
+
+  /*
+   * gtk-layer-shell waits for the compositor's initial configure while realizing the window. On a
+   * busy compositor (common during session startup) that wait can time out even though the initial
+   * configure arrives shortly afterwards. In that case GTK may not schedule the frame commit that
+   * presents the first layer-surface buffer, leaving an otherwise configured bar invisible. Force a
+   * commit after every configure so late initial configures, and later compositor-driven resizes,
+   * always result in a submitted surface state.
+   */
+  window.queue_draw();
+  forceLayerCommit();
 }
 
 void waybar::Bar::configureGlobalOffset(int width, int height) {
@@ -611,4 +747,23 @@ void waybar::Bar::configureGlobalOffset(int width, int height) {
 
 void waybar::Bar::onOutputGeometryChanged() {
   configureGlobalOffset(window.get_width(), window.get_height());
+}
+
+void waybar::Bar::toggleSuspend(bool suspend) {
+  auto process_modules = [suspend](Gtk::Box& module_box) {
+    for (auto* widget : module_box.get_children()) {
+      auto* module = dynamic_cast<waybar::AModule*>(widget);
+      if (module && module->shouldSuspend()) {
+        if (suspend) {
+          module->suspend();
+        } else {
+          module->resume();
+        }
+      }
+    }
+  };
+
+  process_modules(left_);
+  process_modules(center_);
+  process_modules(right_);
 }

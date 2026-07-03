@@ -21,7 +21,7 @@ Addressed by *river/layout*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -51,6 +51,24 @@ Addressed by *river/layout*
 	typeof: string ++
 	Command to execute when you right-click on the module.
 
+*menu*: ++
+	typeof: string ++
+	Action that popups the menu.
+
+*menu-file*: ++
+	typeof: string ++
+	Location of the menu descriptor file. There need to be an element of type
+	GtkMenu with id *menu*
+
+*menu-actions*: ++
+	typeof: array ++
+	The actions corresponding to the buttons of the menu.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # EXAMPLE
 
 ```
@@ -65,6 +83,7 @@ Addressed by *river/layout*
 
 - *#layout*
 - *#layout.focused* Applied when the output this module's bar belongs to is focused.
+- *#layout.<layout>* Applied when the output this module's bar belongs uses this layout.
 
 # SEE ALSO
 

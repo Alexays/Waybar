@@ -84,6 +84,33 @@ TEST_CASE("Load simple config with include", "[config]") {
   }
 }
 
+TEST_CASE("Load simple config with wildcard include", "[config]") {
+  waybar::Config conf;
+  conf.load("test/config/include-wildcard.json");
+
+  auto& data = conf.getConfig();
+  SECTION("validate cpu include file") { REQUIRE(data["cpu"]["format"].asString() == "goo"); }
+  SECTION("validate memory include file") { REQUIRE(data["memory"]["format"].asString() == "foo"); }
+}
+
+TEST_CASE("Load config using relative paths and wildcards", "[config]") {
+  waybar::Config conf;
+
+  const char* old_config_path = std::getenv(waybar::Config::CONFIG_PATH_ENV);
+  setenv(waybar::Config::CONFIG_PATH_ENV, "test/config", 1);
+
+  conf.load("test/config/include-relative-path.json");
+
+  auto& data = conf.getConfig();
+  SECTION("validate cpu include file") { REQUIRE(data["cpu"]["format"].asString() == "goo"); }
+  SECTION("validate memory include file") { REQUIRE(data["memory"]["format"].asString() == "foo"); }
+
+  if (old_config_path)
+    setenv(waybar::Config::CONFIG_PATH_ENV, old_config_path, 1);
+  else
+    unsetenv(waybar::Config::CONFIG_PATH_ENV);
+}
+
 TEST_CASE("Load multiple bar config with include", "[config]") {
   waybar::Config conf;
   conf.load("test/config/include-multi.json");
@@ -116,4 +143,43 @@ TEST_CASE("Load multiple bar config with include", "[config]") {
   REQUIRE(data.isArray());
   REQUIRE(data.size() == 4);
   REQUIRE(data[0]["output"].asString() == "OUT-0");
+}
+
+TEST_CASE("Load Hyprland Workspaces bar config", "[config]") {
+  waybar::Config conf;
+  conf.load("test/config/hyprland-workspaces.json");
+
+  auto& data = conf.getConfig();
+  auto hyprland = data[0]["hyprland/workspaces"];
+  auto hyprland_window_rewrite = data[0]["hyprland/workspaces"]["window-rewrite"];
+  auto hyprland_format_icons = data[0]["hyprland/workspaces"]["format-icons"];
+  auto hyprland_persistent_workspaces = data[0]["hyprland/workspaces"]["persistent-workspaces"];
+
+  REQUIRE(data.isArray());
+  REQUIRE(data.size() == 1);
+  REQUIRE(data[0]["height"].asInt() == 20);
+  REQUIRE(data[0]["layer"].asString() == "bottom");
+  REQUIRE(data[0]["output"].isArray());
+  REQUIRE(data[0]["output"][0].asString() == "HDMI-0");
+  REQUIRE(data[0]["output"][1].asString() == "DP-0");
+
+  REQUIRE(hyprland["active-only"].asBool() == true);
+  REQUIRE(hyprland["all-outputs"].asBool() == false);
+  REQUIRE(hyprland["move-to-monitor"].asBool() == true);
+  REQUIRE(hyprland["format"].asString() == "{icon} {windows}");
+  REQUIRE(hyprland["format-window-separator"].asString() == " ");
+  REQUIRE(hyprland["on-scroll-down"].asString() == "hyprctl dispatch workspace e-1");
+  REQUIRE(hyprland["on-scroll-up"].asString() == "hyprctl dispatch workspace e+1");
+  REQUIRE(hyprland["show-special"].asBool() == true);
+  REQUIRE(hyprland["window-rewrite-default"].asString() == "");
+  REQUIRE(hyprland["window-rewrite-separator"].asString() == " ");
+  REQUIRE(hyprland_format_icons["1"].asString() == "󰎤");
+  REQUIRE(hyprland_format_icons["2"].asString() == "󰎧");
+  REQUIRE(hyprland_format_icons["3"].asString() == "󰎪");
+  REQUIRE(hyprland_format_icons["default"].asString() == "");
+  REQUIRE(hyprland_format_icons["empty"].asString() == "󱓼");
+  REQUIRE(hyprland_format_icons["urgent"].asString() == "󱨇");
+  REQUIRE(hyprland_persistent_workspaces["1"].asString() == "HDMI-0");
+  REQUIRE(hyprland_window_rewrite["title<Steam>"].asString() == "");
+  REQUIRE(hyprland["sort-by"].asString() == "number");
 }

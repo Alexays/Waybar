@@ -5,12 +5,13 @@
 
 class pow_format {
  public:
-  pow_format(long long val, std::string&& unit, bool binary = false)
-      : val_(val), unit_(unit), binary_(binary){};
+  pow_format(long long val, std::string&& unit, bool binary = false, int min_pow_for_decimal = 0)
+      : val_(val), unit_(unit), binary_(binary), min_pow_for_decimal_(min_pow_for_decimal) {};
 
   long long val_;
   std::string unit_;
   bool binary_;
+  int min_pow_for_decimal_;
 };
 
 namespace fmt {
@@ -45,7 +46,7 @@ struct formatter<pow_format> {
   }
 
   template <class FormatContext>
-  auto format(const pow_format& s, FormatContext& ctx) -> decltype(ctx.out()) {
+  auto format(const pow_format& s, FormatContext& ctx) const -> decltype(ctx.out()) {
     const char* units[] = {"", "k", "M", "G", "T", "P", nullptr};
 
     auto base = s.binary_ ? 1024ull : 1000ll;
@@ -74,7 +75,8 @@ struct formatter<pow_format> {
         break;
       case 0:
       default:
-        format = "{coefficient:.1f}{prefix}{unit}";
+        format = pow < s.min_pow_for_decimal_ ? "{coefficient:.0f}{prefix}{unit}"
+                                              : "{coefficient:.1f}{prefix}{unit}";
         break;
     }
     return fmt::format_to(
@@ -92,7 +94,7 @@ struct formatter<pow_format> {
 template <>
 struct formatter<Glib::ustring> : formatter<std::string> {
   template <typename FormatContext>
-  auto format(const Glib::ustring& value, FormatContext& ctx) {
+  auto format(const Glib::ustring& value, FormatContext& ctx) const {
     return formatter<std::string>::format(static_cast<std::string>(value), ctx);
   }
 };
