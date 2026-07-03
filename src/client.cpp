@@ -3,10 +3,12 @@
 #include <gtk-layer-shell.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <iostream>
 #include <utility>
 
 #include "gtkmm/icontheme.h"
+#include "ext-idle-notify-v1-client-protocol.h"
 #include "idle-inhibit-unstable-v1-client-protocol.h"
 #include "util/clara.hpp"
 #include "util/format.hpp"
@@ -39,6 +41,12 @@ void waybar::Client::handleGlobal(void* data, struct wl_registry* registry, uint
 
     client->idle_inhibit_manager = static_cast<struct zwp_idle_inhibit_manager_v1*>(
         wl_registry_bind(registry, name, &zwp_idle_inhibit_manager_v1_interface, 1));
+  } else if (strcmp(interface, ext_idle_notifier_v1_interface.name) == 0) {
+    // Bind version 2 if available (for get_input_idle_notification), otherwise version 1
+    auto bind_version = std::min(version, 2u);
+    client->idle_notifier = static_cast<struct ext_idle_notifier_v1 *>(
+        wl_registry_bind(registry, name, &ext_idle_notifier_v1_interface, bind_version));
+    spdlog::debug("Bound ext-idle-notifier-v1 at version {}", bind_version);
   }
 }
 
@@ -91,16 +99,38 @@ void waybar::Client::handleOutputDone(void* data, struct zxdg_output_v1* /*xdg_o
       output.xdg_output.reset();
       spdlog::debug("Output detection done: {} ({})", output.name, output.identifier);
 
-      auto configs = client->getOutputConfigs(output);
-      if (!configs.empty()) {
-        for (const auto& config : configs) {
-          client->bars.emplace_back(std::make_unique<Bar>(&output, config));
-        }
+      client->pending_outputs_.push_back(&output);
+
+      if (!client->bars_scheduled_) {
+        client->bars_scheduled_ = true;
+
+        Glib::signal_idle().connect_once([client]() {
+          client->createBarsBatch();
+        }, Glib::PRIORITY_HIGH_IDLE);
       }
     }
   } catch (const std::exception& e) {
     spdlog::warn("caught exception in zxdg_output_v1_listener::done: {}", e.what());
   }
+}
+
+void waybar::Client::createBarsBatch() {
+  pending_outputs_.remove_if([this](auto* output) { return std::none_of(outputs_.begin(), outputs_.end(), [&output](const auto& o) { return &o == output; }); });
+  for (auto* output : pending_outputs_) {
+    try {
+      auto configs = getOutputConfigs(*output);
+      if (!configs.empty()) {
+        for (const auto& config : configs) {
+          bars.emplace_back(std::make_unique<Bar>(output, config));
+        }
+      }
+    } catch (const std::exception& e) {
+      spdlog::warn("Error creating bar: {}", e.what());
+    }
+  }
+
+  pending_outputs_.clear();
+  bars_scheduled_ = false;
 }
 
 void waybar::Client::handleOutputName(void* data, struct zxdg_output_v1* /*xdg_output*/,
@@ -306,9 +336,10 @@ int waybar::Client::main(int argc, char* argv[]) {
   }
   m_cssFile = getStyle(style_opt);
   setupCss(m_cssFile);
-  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&]() { setupCss(m_cssFile); });
+  m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&](const std::string& css_file) { setupCss(css_file); });
   portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
     auto css_file = getStyle(style_opt, appearance);
+    m_cssReloadHelper->changeCssFile(css_file);
     setupCss(css_file);
   });
 

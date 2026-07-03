@@ -9,6 +9,7 @@
 #include <poll.h>
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -51,6 +52,11 @@ class Battery : public ALabel {
   bool warnFirstTime_{true};
   bool weightedAverage_{true};
   const Bar& bar_;
+  bool smoothPowerEnable_{false};
+  double time_constant_s_{260.0};
+  double smooth_power_{0.0};  // µW
+  std::chrono::steady_clock::time_point last_t_{std::chrono::steady_clock::now()};
+  std::string old_status_raw_{""};
 
   util::SleeperThread thread_;
   util::SleeperThread thread_battery_update_;
