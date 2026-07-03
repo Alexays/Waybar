@@ -113,20 +113,10 @@ libmm-glib lives in:
 	typeof: string ++
 	Select only the modem with the corresponding hardware path.
 
-*hide-failed*: ++
+*hide-disconnected*: ++
 	typeof: bool ++
 	default: true ++
-	Defines if the module should be hidden if the modem cannot start.
-
-*hide-disabled*: ++
-	typeof: bool ++
-	default: false ++
-	Defines if the module should be hidden if the modem is disabled.
-
-*hide-not-registered*: ++
-	typeof: bool ++
-	default: false ++
-	Defines if the module should be hidden if the modem isn't registered with any carrier network.
+	Defines if the module should be hidden while the modem does not have an active data connection.
 
 
 # FORMAT REPLACEMENTS

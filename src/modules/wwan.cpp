@@ -69,7 +69,9 @@ void waybar::modules::Wwan::updateCurrentModem() {
 
     if (config_["path"].isString()) {
       std::string path = config_["path"].asString();
-      std::string other = mm_modem_dup_physdev(modem);
+      gchar* physdev = mm_modem_dup_physdev(modem);
+      std::string other = physdev ? physdev : "";
+      g_free(physdev);
 
       if (path != other) {
         g_object_unref(modem);
@@ -80,7 +82,9 @@ void waybar::modules::Wwan::updateCurrentModem() {
 
     if (config_["imei"].isString()) {
       std::string imei = config_["imei"].asString();
-      std::string other = mm_modem_dup_equipment_identifier(modem);
+      gchar* equipment_id = mm_modem_dup_equipment_identifier(modem);
+      std::string other = equipment_id ? equipment_id : "";
+      g_free(equipment_id);
 
       if (imei != other) {
         g_object_unref(modem);
@@ -210,7 +214,9 @@ std::string getOperatorNameString(MMModem* modem) {
     return "No SIM";
   }
 
-  std::string name = mm_sim_dup_operator_name(sim);
+  gchar* operator_name = mm_sim_dup_operator_name(sim);
+  std::string name = operator_name ? operator_name : "";
+  g_free(operator_name);
   g_object_unref(sim);
   return name;
 }
@@ -222,7 +228,7 @@ auto waybar::modules::Wwan::update() -> void {
     return;
   }
 
-  if (hideDisconnected) {
+  if (hideDisconnected && mm_modem_get_state(current_modem) != MM_MODEM_STATE_CONNECTED) {
     event_box_.set_visible(false);
 
     return;
@@ -268,7 +274,10 @@ auto waybar::modules::Wwan::update() -> void {
   store.push_back(fmt::arg("icon", getIcon(percentage)));
 
   store.push_back(fmt::arg("power_state", getPowerStateString(current_modem)));
-  store.push_back(fmt::arg("imei", mm_modem_dup_equipment_identifier(current_modem)));
+  gchar* imei_raw = mm_modem_dup_equipment_identifier(current_modem);
+  std::string imei = imei_raw ? imei_raw : "";
+  g_free(imei_raw);
+  store.push_back(fmt::arg("imei", imei));
 
   store.push_back(fmt::arg("operator_name", getOperatorNameString(current_modem)));
 

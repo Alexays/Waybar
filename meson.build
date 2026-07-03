@@ -561,7 +561,7 @@ endif
 if libmm_glib.found()
    add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
    src_files += files('src/modules/wwan.cpp')
-   #man_files += files('man/waybar-wwan.5.scd')
+   man_files += files('man/waybar-wwan.5.scd')
 endif
 
 subdir('protocol')
