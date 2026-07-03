@@ -74,8 +74,6 @@ void Language::onEvent(const std::string& ev) {
     spdlog::warn("hyprland language received malformed event payload: {}", ev);
     return;
   }
-  std::string kbName = payload.substr(0, kbSeparator);
-
   // Last comma before variants parenthesis, eg:
   // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
   // with dead keys)
@@ -93,8 +91,15 @@ void Language::onEvent(const std::string& ev) {
   }
   auto layoutName = payload.substr(layoutSeparator + 1);
 
-  if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
-    return;  // ignore
+  if (config_.isMember("keyboard-name")) {
+    const auto keyboardName = config_["keyboard-name"].asString();
+    // The keyboard name itself can contain commas, so match it as a full prefix
+    // (followed by the ',' separator) rather than comparing against the substring
+    // before the first comma, which would truncate such names and drop the event.
+    if (payload.size() <= keyboardName.size() || payload[keyboardName.size()] != ',' ||
+        payload.compare(0, keyboardName.size(), keyboardName) != 0)
+      return;  // ignore
+  }
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
