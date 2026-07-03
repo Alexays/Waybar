@@ -53,7 +53,7 @@ void PulseaudioSlider::onValueChanged() {
     if (unmute_on_volume_change) {
       backend->unmute(target);
     }
-    backend->changeVolume(slider_value, min_, max_);
+    backend->changeVolume(slider_value, min_, max_, target);
   }
 }
 

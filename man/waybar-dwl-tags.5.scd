@@ -21,6 +21,11 @@ Addressed by *dwl/tags*
 	typeof: array ++
 	The label to display for each tag.
 
+*hide-vacant*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, tags without clients and that are not active will be hidden.
+
 *disable-click*: ++
 	typeof: bool ++
 	default: false ++
@@ -46,8 +51,9 @@ Addressed by *dwl/tags*
 - *#tags button.empty*
 - *#tags button.focused*
 - *#tags button.urgent*
+- *#tags button.output*
 
-Note that occupied/focused/urgent status may overlap. That is, a tag may be
+Note that occupied/focused/urgent/output status may overlap. That is, a tag may be
 both occupied and focused at the same time.
 
 # SEE ALSO
