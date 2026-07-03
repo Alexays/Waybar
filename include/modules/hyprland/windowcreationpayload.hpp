@@ -40,10 +40,11 @@ struct WindowRepr {
 
 class WindowCreationPayload {
  public:
-  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
+  WindowCreationPayload(const std::string& workspace_name, WindowAddress window_address,
                         WindowRepr window_repr);
-  WindowCreationPayload(std::string workspace_name, WindowAddress window_address,
-                        std::string window_class, std::string window_title, bool is_active);
+  WindowCreationPayload(const std::string& workspace_name, WindowAddress window_address,
+                        const std::string& window_class, const std::string& window_title,
+                        bool is_active);
   WindowCreationPayload(Json::Value const& client_data);
 
   int incrementTimeSpentUncreated();
