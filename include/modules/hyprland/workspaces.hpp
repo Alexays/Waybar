@@ -4,6 +4,7 @@
 #include <gtkmm/enums.h>
 #include <gtkmm/label.h>
 #include <json/value.h>
+#include <sigc++/connection.h>
 
 #include <cstdint>
 #include <map>
@@ -43,6 +44,7 @@ class Workspaces : public AModule, public EventHandler {
   auto moveToMonitor() const -> bool { return m_moveToMonitor; }
   auto enableTaskbar() const -> bool { return m_enableTaskbar; }
   auto taskbarWithIcon() const -> bool { return m_taskbarWithIcon; }
+  auto barScroll() const -> bool { return m_barScroll; }
 
   auto getBarOutput() const -> std::string { return m_bar.output->name; }
   auto formatBefore() const -> std::string { return m_formatBefore; }
@@ -51,10 +53,14 @@ class Workspaces : public AModule, public EventHandler {
   auto taskbarFormatAfter() const -> std::string { return m_taskbarFormatAfter; }
   auto taskbarIconSize() const -> int { return m_taskbarIconSize; }
   auto taskbarOrientation() const -> Gtk::Orientation { return m_taskbarOrientation; }
+  auto taskbarReverseDirection() const -> bool { return m_taskbarReverseDirection; }
   auto onClickWindow() const -> std::string { return m_onClickWindow; }
   auto getIgnoredWindows() const -> std::vector<std::regex> { return m_ignoreWindows; }
 
-  std::string getRewrite(std::string window_class, std::string window_title);
+  enum class ActiveWindowPosition { NONE, FIRST, LAST };
+  auto activeWindowPosition() const -> ActiveWindowPosition { return m_activeWindowPosition; }
+
+  std::string getRewrite(const std::string& window_class, const std::string& window_title);
   std::string& getWindowSeparator() { return m_formatWindowSeparator; }
   bool isWorkspaceIgnored(std::string const& workspace_name);
 
@@ -118,6 +124,8 @@ class Workspaces : public AModule, public EventHandler {
   static std::pair<std::string, std::string> splitDoublePayload(std::string const& payload);
   static std::tuple<std::string, std::string, std::string> splitTriplePayload(
       std::string const& payload);
+  // scroll events
+  bool handleScroll(GdkEventScroll* e) override;
 
   // Update methods
   void doUpdate();
@@ -141,6 +149,7 @@ class Workspaces : public AModule, public EventHandler {
   bool m_specialVisibleOnly = false;
   bool m_persistentOnly = false;
   bool m_moveToMonitor = false;
+  bool m_barScroll = false;
   Json::Value m_persistentWorkspaceConfig;
 
   // Map for windows stored in workspaces not present in the current bar.
@@ -183,6 +192,14 @@ class Workspaces : public AModule, public EventHandler {
   std::string m_taskbarFormatAfter;
   int m_taskbarIconSize = 16;
   Gtk::Orientation m_taskbarOrientation = Gtk::ORIENTATION_HORIZONTAL;
+  bool m_taskbarReverseDirection = false;
+  util::EnumParser<ActiveWindowPosition> m_activeWindowEnumParser;
+  ActiveWindowPosition m_activeWindowPosition = ActiveWindowPosition::NONE;
+  std::map<std::string, ActiveWindowPosition> m_activeWindowPositionMap = {
+      {"NONE", ActiveWindowPosition::NONE},
+      {"FIRST", ActiveWindowPosition::FIRST},
+      {"LAST", ActiveWindowPosition::LAST},
+  };
   std::string m_onClickWindow;
   std::string m_currentActiveWindowAddress;
 
@@ -192,6 +209,7 @@ class Workspaces : public AModule, public EventHandler {
   std::mutex m_mutex;
   const Bar& m_bar;
   Gtk::Box m_box;
+  sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
 };
 

@@ -50,6 +50,21 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	default: false ++
 	Enables the workspace taskbar mode.
 
+		*update-active-window*: ++
+	typeof: bool ++
+	default: false ++
+	If true, the active/focused window will have an 'active' class. Could cause higher CPU usage due to more frequent redraws.
+
+		*reverse-direction*: ++
+	typeof: bool ++
+	default: false ++
+	If true, the taskbar windows will be added in reverse order (right to left if orientation is horizontal, bottom to top if vertical).
+
+		*active-window-position*: ++
+	typeof: "none" | "first" | "last" ++
+	default: "none" ++
+	If set to "first", the active window will be moved at the beginning of the taskbar. If set to "last", it will be moved at the end. It will only work if *update-active-window* is set to true.
+
 		*format*: ++
 	typeof: string ++
 	default: {icon} ++
@@ -69,6 +84,19 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	typeof: "horizontal" | "vertical" ++
 	default: horizontal ++
 	Direction in which the workspace taskbar is displayed.
+
+		*ignore-list*: ++
+	typeof: array ++
+	default: [] ++
+	Regex patterns to match against window class or window title. If a window's class OR title matches any of the patterns, it will not be shown.
+
+		*on-click-window*: ++
+	typeof: string ++
+	default: "" ++
+	Command to run when a window is clicked. Available placeholders are: ++
+	  - {address} Hyprland address of the clicked window. ++
+	  - {button} Pressed button number, see https://api.gtkd.org/gdk.c.types.GdkEventButton.button.html. ++
+	See https://github.com/Alexays/Waybar/wiki/Module:-Hyprland#workspace-taskbars-example for a full example.
 
 *show-special*: ++
 	typeof: bool ++
@@ -101,6 +129,19 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	If set to true, open the workspace on the current monitor when clicking on a workspace button.
 	Otherwise, the workspace will open on the monitor where it was previously assigned.
 	Analog to using `focusworkspaceoncurrentmonitor` dispatcher instead of `workspace` in Hyprland.
+
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
+*on-scroll-up*: ++
+	typeof: string ++
+	Command to execute when scrolling up on the module. This replaces the default behaviour of workspace cycling.
+
+*on-scroll-down*: ++
+	typeof: string ++
+	Command to execute when scrolling down on the module. This replaces the default behaviour of workspace cycling.
 
 *ignore-workspaces*: ++
 	typeof: array ++
@@ -216,4 +257,6 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.special*
 - *#workspaces button.urgent*
 - *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)
-- *#workspaces .taskbar-window* (each window in the taskbar)
+- *#workspaces .workspace-label*
+- *#workspaces .taskbar-window* (each window in the taskbar, only if 'workspace-taskbar.enable' is true)
+- *#workspaces .taskbar-window.active* (applied to the focused window, only if 'workspace-taskbar.update-active-window' is true)
