@@ -45,7 +45,7 @@ waybar::modules::Temperature::Temperature(const std::string& id, const Json::Val
     file_path_ = fmt::format("/sys/class/thermal/thermal_zone{}/temp", zone);
   }
 
-  // check if file_path_ can be used to retrive the temperature
+  // check if file_path_ can be used to retrieve the temperature
   std::ifstream temp(file_path_);
   if (!temp.is_open()) {
     throw std::runtime_error("Can't open " + file_path_);
@@ -74,12 +74,14 @@ auto waybar::modules::Temperature::update() -> void {
   if (critical) {
     format = config_["format-critical"].isString() ? config_["format-critical"].asString() : format;
     label_.get_style_context()->add_class("critical");
-  } else if (warning) {
-    format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
-    label_.get_style_context()->add_class("warning");
   } else {
     label_.get_style_context()->remove_class("critical");
-    label_.get_style_context()->remove_class("warning");
+    if (warning) {
+      format = config_["format-warning"].isString() ? config_["format-warning"].asString() : format;
+      label_.get_style_context()->add_class("warning");
+    } else {
+      label_.get_style_context()->remove_class("warning");
+    }
   }
 
   if (format.empty()) {
@@ -99,7 +101,7 @@ auto waybar::modules::Temperature::update() -> void {
     if (config_["tooltip-format"].isString()) {
       tooltip_format = config_["tooltip-format"].asString();
     }
-    label_.set_tooltip_text(fmt::format(
+    label_.set_tooltip_markup(fmt::format(
         fmt::runtime(tooltip_format), fmt::arg("temperatureC", temperature_c),
         fmt::arg("temperatureF", temperature_f), fmt::arg("temperatureK", temperature_k)));
   }
@@ -115,10 +117,10 @@ float waybar::modules::Temperature::getTemperature() {
   auto zone = config_["thermal-zone"].isInt() ? config_["thermal-zone"].asInt() : 0;
 
   // First, try with dev.cpu
-  if ( (sysctlbyname(fmt::format("dev.cpu.{}.temperature", zone).c_str(), &temp, &size,
-                     NULL, 0) == 0) ||
-       (sysctlbyname(fmt::format("hw.acpi.thermal.tz{}.temperature", zone).c_str(), &temp, &size,
-                     NULL, 0) == 0) ) {
+  if ((sysctlbyname(fmt::format("dev.cpu.{}.temperature", zone).c_str(), &temp, &size, NULL, 0) ==
+       0) ||
+      (sysctlbyname(fmt::format("hw.acpi.thermal.tz{}.temperature", zone).c_str(), &temp, &size,
+                    NULL, 0) == 0)) {
     auto temperature_c = ((float)temp - 2732) / 10;
     return temperature_c;
   }
@@ -153,3 +155,7 @@ bool waybar::modules::Temperature::isCritical(uint16_t temperature_c) {
   return config_["critical-threshold"].isInt() &&
          temperature_c >= config_["critical-threshold"].asInt();
 }
+
+void waybar::modules::Temperature::suspend() { thread_.pause(); }
+
+void waybar::modules::Temperature::resume() { thread_.resume(); }
