@@ -1,13 +1,14 @@
 #pragma once
 
 namespace detail {
+using namespace std::literals::chrono_literals;
 
 inline bool Context::is_connected() const { return mpd_module_->connection_ != nullptr; }
 inline bool Context::is_playing() const { return mpd_module_->playing(); }
 inline bool Context::is_paused() const { return mpd_module_->paused(); }
 inline bool Context::is_stopped() const { return mpd_module_->stopped(); }
 
-constexpr inline std::size_t Context::interval() const { return mpd_module_->interval_.count(); }
+constexpr inline std::size_t Context::interval() const { return mpd_module_->interval_ / 1s; }
 inline void Context::tryConnect() const { mpd_module_->tryConnect(); }
 inline unique_connection& Context::connection() { return mpd_module_->connection_; }
 constexpr inline mpd_state Context::state() const { return mpd_module_->state_; }
