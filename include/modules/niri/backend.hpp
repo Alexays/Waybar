@@ -17,7 +17,7 @@ class EventHandler {
 
 class IPC {
  public:
-  IPC() { startIPC(); }
+  IPC();
 
   void registerForIPC(const std::string& ev, EventHandler* ev_handler);
   void unregisterForIPC(EventHandler* handler);

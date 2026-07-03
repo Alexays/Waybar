@@ -77,12 +77,12 @@ The slider is a component with multiple CSS Nodes, of which the following are ex
     min-height: 80px;
     min-width: 10px;
     border-radius: 5px;
-    background-color: black;
+    background: black;
 }
 
 #pulseaudio-slider highlight {
     min-width: 10px;
     border-radius: 5px;
-    background-color: green;
+    background: green;
 }
 ```
