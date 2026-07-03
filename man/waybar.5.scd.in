@@ -50,6 +50,10 @@ The visual display elements for waybar use a CSS stylesheet. Waybar supports *st
 	Output specification follows sway's and can either be the output port such as "HDMI-A-1" or a string consisting of the make, model, and serial such as "Some Company ABC123 0x00000000". See *sway-output(5)* for details.
 	In an array, star '*\**' can be used at the end to accept all outputs, in case all previous entries are exclusions.
 
+*output-dimensions* ++
+	typeof: string|array ++
+	If *output* is not specified, allows selecting outputs by dimensions. Format "(width/height) (</>) (value)", e.g. "width > 1080". Multiple conditions can be chained.
+
 *position* ++
 	typeof: string ++
 	default: top ++
@@ -414,6 +418,24 @@ To hide the power group if it is empty, apply to #power and all its children:
     border: none;
     font-size: 0px;
     opacity: 0;
+}
+```
+
+## Select outputs by dimensions
+
+```
+{
+	"layer": "top",
+	"output-dimensions": "width > 1080",
+	...
+}
+```
+
+```
+{
+	"layer": "top",
+	"output-dimensions": ["width < 3840", "height < 2160"],
+	...
 }
 ```
 
