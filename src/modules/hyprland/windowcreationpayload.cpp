@@ -11,7 +11,7 @@
 
 namespace waybar::modules::hyprland {
 
-WindowCreationPayload::WindowCreationPayload(Json::Value const &client_data)
+WindowCreationPayload::WindowCreationPayload(Json::Value const& client_data)
     : m_window(std::make_pair(client_data["class"].asString(), client_data["title"].asString())),
       m_windowAddress(client_data["address"].asString()),
       m_workspaceName(client_data["workspace"]["name"].asString()) {
@@ -19,7 +19,7 @@ WindowCreationPayload::WindowCreationPayload(Json::Value const &client_data)
   clearWorkspaceName();
 }
 
-WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
+WindowCreationPayload::WindowCreationPayload(const std::string& workspace_name,
                                              WindowAddress window_address, WindowRepr window_repr)
     : m_window(std::move(window_repr)),
       m_windowAddress(std::move(window_address)),
@@ -28,9 +28,10 @@ WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
   clearWorkspaceName();
 }
 
-WindowCreationPayload::WindowCreationPayload(std::string workspace_name,
-                                             WindowAddress window_address, std::string window_class,
-                                             std::string window_title, bool is_active)
+WindowCreationPayload::WindowCreationPayload(const std::string& workspace_name,
+                                             WindowAddress window_address,
+                                             const std::string& window_class,
+                                             const std::string& window_title, bool is_active)
     : m_window(std::make_pair(std::move(window_class), std::move(window_title))),
       m_windowAddress(std::move(window_address)),
       m_workspaceName(std::move(workspace_name)),
@@ -73,7 +74,7 @@ void WindowCreationPayload::clearWorkspaceName() {
   }
 }
 
-bool WindowCreationPayload::isEmpty(Workspaces &workspace_manager) {
+bool WindowCreationPayload::isEmpty(Workspaces& workspace_manager) {
   if (std::holds_alternative<Repr>(m_window)) {
     return std::get<Repr>(m_window).empty();
   }
@@ -89,16 +90,16 @@ bool WindowCreationPayload::isEmpty(Workspaces &workspace_manager) {
 
 int WindowCreationPayload::incrementTimeSpentUncreated() { return m_timeSpentUncreated++; }
 
-void WindowCreationPayload::moveToWorkspace(std::string &new_workspace_name) {
+void WindowCreationPayload::moveToWorkspace(std::string& new_workspace_name) {
   m_workspaceName = new_workspace_name;
 }
 
-WindowRepr WindowCreationPayload::repr(Workspaces &workspace_manager) {
+WindowRepr WindowCreationPayload::repr(Workspaces& workspace_manager) {
   if (std::holds_alternative<Repr>(m_window)) {
     return std::get<Repr>(m_window);
   }
   if (std::holds_alternative<ClassAndTitle>(m_window)) {
-    auto const &[window_class, window_title] = std::get<ClassAndTitle>(m_window);
+    auto const& [window_class, window_title] = std::get<ClassAndTitle>(m_window);
     return {m_windowAddress, window_class, window_title,
             workspace_manager.getRewrite(window_class, window_title), m_isActive};
   }
