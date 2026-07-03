@@ -43,6 +43,8 @@ class Host {
   std::size_t watcher_id_;
   GCancellable* cancellable_ = nullptr;
   SnWatcher* watcher_ = nullptr;
+  sigc::connection retry_connection_;
+  unsigned retry_count_ = 0;
   const Json::Value& config_;
   const Bar& bar_;
   const std::function<void(std::unique_ptr<Item>&)> on_add_;
