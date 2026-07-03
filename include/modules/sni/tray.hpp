@@ -22,7 +22,6 @@ class Tray : public AModule {
   void queueUpdate();
 
   static inline std::size_t nb_hosts_ = 0;
-  bool show_passive_ = false;
   Gtk::Box box_;
   SNI::Watcher::singleton watcher_;
   SNI::Host host_;

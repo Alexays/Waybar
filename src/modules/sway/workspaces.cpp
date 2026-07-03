@@ -229,7 +229,10 @@ bool Workspaces::filterButtons() {
     auto ws = std::find_if(workspaces_.begin(), workspaces_.end(),
                            [it](const auto& node) { return node["name"].asString() == it->first; });
     if (ws == workspaces_.end() ||
-        (!config_["all-outputs"].asBool() && (*ws)["output"].asString() != bar_.output->name)) {
+        ((*ws).isMember("target_output") ? (*ws)["target_output"].asString() != bar_.output->name &&
+                                               (*ws)["target_output"].asString() != ""
+                                         : !config_["all-outputs"].asBool() &&
+                                               (*ws)["output"].asString() != bar_.output->name)) {
       it = buttons_.erase(it);
       needReorder = true;
     } else {
@@ -329,7 +332,12 @@ auto Workspaces::update() -> void {
     } else {
       button.get_style_context()->remove_class("current_output");
     }
-    std::string output = (*it)["name"].asString();
+    std::string output;
+    if (!config_["disable-markup"].asBool()) {
+      output = g_markup_escape_text((*it)["name"].asString().c_str(), -1);
+    } else {
+      output = (*it)["name"].asString();
+    }
     std::string windows = "";
     if (config_["window-rewrite"].isObject()) {
       updateWindows((*it), windows);
@@ -369,11 +377,14 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
                                    node["name"].asString(), node["target_output"].asString(),
                                    "--no-auto-back-and-forth", node["name"].asString()));
         } else {
-          ipc_.sendCmd(IPC_COMMAND, fmt::format("workspace {} \"{}\"",
-                                                config_["disable-auto-back-and-forth"].asBool()
-                                                    ? "--no-auto-back-and-forth"
-                                                    : "",
-                                                node["name"].asString()));
+          std::string flag = config_["disable-auto-back-and-forth"].asBool()
+                                ? "--no-auto-back-and-forth"
+                                : "";
+          if (node["num"].asInt() >= 0) {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
+          } else {
+            ipc_.sendCmd(IPC_COMMAND, fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
+          }
         }
       } catch (const std::exception& e) {
         spdlog::error("Workspaces: {}", e.what());

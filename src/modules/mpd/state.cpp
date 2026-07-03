@@ -183,7 +183,6 @@ bool Playing::on_timer() {
       return false;
     }
 
-    ctx_->queryMPD();
     ctx_->emit();
 
     idle();
