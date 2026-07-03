@@ -17,9 +17,13 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       isTooltip{config_["tooltip"].isBool() ? config_["tooltip"].asBool() : true},
       isExpand{config_["expand"].isBool() ? config_["expand"].asBool() : false},
       distance_scrolled_y_(0.0),
-      distance_scrolled_x_(0.0) {
+      distance_scrolled_x_(0.0),
+      cursor_timeout_conn_() {
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
+
+  disable_on_sleep_ =
+      config_["disable-on-sleep"].isBool() ? config_["disable-on-sleep"].asBool() : false;
 
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
@@ -87,6 +91,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
 }
 
 AModule::~AModule() {
+  if (cursor_timeout_conn_.connected()) {
+    cursor_timeout_conn_.disconnect();
+  }
   for (const auto& pid : pid_children_) {
     if (pid != -1) {
       killpg(pid, SIGTERM);
@@ -122,7 +129,7 @@ void AModule::setCursor(Gdk::CursorType const& c) {
   } else {
     // window may not be accessible yet, in this case,
     // schedule another call for setting the cursor in 1 sec
-    Glib::signal_timeout().connect_seconds(
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
         [this, c]() {
           setCursor(c);
           return false;
