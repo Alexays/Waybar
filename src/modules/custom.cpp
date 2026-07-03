@@ -2,11 +2,13 @@
 
 #include <spdlog/spdlog.h>
 
+#include <utility>
+
 #include "util/scope_guard.hpp"
 
 waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
                                 const Json::Value& config, const std::string& output_name)
-    : ALabel(config, "custom-" + name, id, "{}"),
+    : AIconLabel(config, "custom-" + name, id, "{}"),
       name_(name),
       output_name_(output_name),
       id_(id),
@@ -26,6 +28,15 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
   } else if (config_["exec"].isString()) {
     continuousWorker();
   }
+  if (config_["image-path"].isString()) {
+    image_path_ = config_["image-path"].asString();
+  }
+  if (config_["image-name"].isString()) {
+    image_name_ = config_["image-name"].asString();
+  }
+  if (config["icon-size"].isUInt()) {
+    app_icon_size_ = config["icon-size"].asUInt();
+  }
 }
 
 waybar::modules::Custom::~Custom() {
@@ -37,6 +48,11 @@ waybar::modules::Custom::~Custom() {
 }
 
 void waybar::modules::Custom::delayWorker() {
+  if (!config_["exec"].isString() && !config_["exec-if"].isString()) {
+    dp.emit();
+    return;
+  }
+
   thread_ = [this] {
     for (int i : this->pid_children_) {
       int status;
@@ -89,9 +105,11 @@ void waybar::modules::Custom::continuousWorker() {
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
-      if (config_["restart-interval"].isUInt()) {
+      if (config_["restart-interval"].isNumeric()) {
         pid_ = -1;
-        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
+        thread_.sleep_for(std::chrono::milliseconds(
+            std::max(1L,  // Minimum 1ms due to millisecond precision
+                     static_cast<long>(config_["restart-interval"].asDouble() * 1000))));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
@@ -134,9 +152,11 @@ void waybar::modules::Custom::waitingWorker() {
 }
 
 void waybar::modules::Custom::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+#ifdef SIGRTMIN
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
+#endif
 }
 
 void waybar::modules::Custom::handleEvent() {
@@ -173,26 +193,26 @@ auto waybar::modules::Custom::update() -> void {
       auto str = fmt::format(fmt::runtime(format_), fmt::arg("text", text_), fmt::arg("alt", alt_),
                              fmt::arg("icon", getIcon(percentage_, alt_)),
                              fmt::arg("percentage", percentage_));
-      if ((config_["hide-empty-text"].asBool() && text_.empty()) || str.empty()) {
+      if ((config_["hide-empty-text"].asBool() && text_.empty()) ||
+          (str.empty() && image_path_.empty() && image_name_.empty())) {
         event_box_.hide();
       } else {
-        label_.set_markup(str);
+        setLabelMarkup(str);
         if (tooltipEnabled()) {
+          std::string tooltip_markup;
           if (tooltip_format_enabled_) {
             auto tooltip = config_["tooltip-format"].asString();
-            tooltip = fmt::format(
-                fmt::runtime(tooltip), fmt::arg("text", text_), fmt::arg("alt", alt_),
-                fmt::arg("icon", getIcon(percentage_, alt_)), fmt::arg("percentage", percentage_));
-            label_.set_tooltip_markup(tooltip);
+            tooltip_markup = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
+                                         fmt::arg("tooltip", tooltip_), fmt::arg("alt", alt_),
+                                         fmt::arg("icon", getIcon(percentage_, alt_)),
+                                         fmt::arg("percentage", percentage_));
           } else if (text_ == tooltip_) {
-            if (label_.get_tooltip_markup() != str) {
-              label_.set_tooltip_markup(str);
-            }
+            tooltip_markup = str;
           } else {
-            if (label_.get_tooltip_markup() != tooltip_) {
-              label_.set_tooltip_markup(tooltip_);
-            }
+            tooltip_markup = tooltip_;
           }
+
+          setTooltipMarkup(tooltip_markup);
         }
         auto style = label_.get_style_context();
         auto classes = style->list_classes();
@@ -206,7 +226,19 @@ auto waybar::modules::Custom::update() -> void {
         style->add_class("flat");
         style->add_class("text-button");
         style->add_class(MODULE_CLASS);
+        auto image_style = image_.get_style_context();
+        image_style->add_class("image-button");
         event_box_.show();
+        if (!image_path_.empty()) {
+          auto pixbuf = Gdk::Pixbuf::create_from_file(image_path_, app_icon_size_, app_icon_size_);
+          image_.set(pixbuf);
+        } else if (!image_name_.empty()) {
+          image_.set_from_icon_name(image_name_, Gtk::ICON_SIZE_INVALID);
+          image_.set_pixel_size(app_icon_size_);
+        }
+
+        image_.set_visible(!image_name_.empty() || !image_path_.empty());
+        label_.set_visible(!str.empty());
       }
     } catch (const fmt::format_error& e) {
       if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
@@ -218,7 +250,7 @@ auto waybar::modules::Custom::update() -> void {
     }
   }
   // Call parent update
-  ALabel::update();
+  AIconLabel::update();
 }
 
 void waybar::modules::Custom::parseOutputRaw() {
@@ -284,6 +316,7 @@ void waybar::modules::Custom::parseOutputJson() {
         class_.push_back(c.asString());
       }
     }
+
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
       percentage_ = (int)lround(parsed["percentage"].asFloat());
     } else {

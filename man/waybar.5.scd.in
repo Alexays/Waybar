@@ -19,7 +19,7 @@ Valid locations for this file are:
 A good starting point is the default configuration found at https://github.com/Alexays/Waybar/blob/master/resources/config.jsonc
 Also, a minimal example configuration can be found at the bottom of this man page.
 
-The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(5)* for details.
+The visual display elements for waybar use a CSS stylesheet. Waybar supports *style.css* and the appearance-specific *style-light.css* and *style-dark.css* files; see *waybar-styles(5)* for details.
 
 # BAR CONFIGURATION
 
@@ -36,7 +36,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 *expand-right* ++
 	typeof: bool ++
 	default: false ++
-	Enables the modules-left to consume all left over space dynamically.
+	Enables the modules-right to consume all left over space dynamically.
 
 *layer* ++
 	typeof: string ++
@@ -168,6 +168,7 @@ The visual display elements for waybar use a CSS stylesheet, see *waybar-styles(
 # MODULE FORMAT
 
 You can use PangoMarkupFormat (See https://developer.gnome.org/pango/stable/PangoMarkupFormat.html#PangoMarkupFormat).
+Tooltip appearance is generally controlled globally via CSS and cannot be truly scoped per module. Some modules (such as the clock) provide limited workarounds for customization.
 
 e.g.
 
@@ -363,11 +364,23 @@ A group may hide all but one element, showing them only on mouse hover. In order
 	default: false ++
 	Whether left click should reveal the content rather than mouse over. Note that grouped modules may still process their own on-click events.
 
+*start-expanded*: ++
+	typeof: bool ++
+	default: false ++
+	Defines whether the drawer should initialize in an expanded state.
+
 *transition-left-to-right*: ++
 	typeof: bool ++
 	default: true ++
 	Defines the direction of the transition animation. If true, the hidden elements will slide from left to right. If false, they will slide from right to left.
 	When the bar is vertical, it reads as top-to-bottom.
+
+*reveal-by-default*: ++
+	typeof: bool ++
+	default: false ++
+	Whether the child should be revealed when Waybar starts up. This has to be used with click-to-reveal to take effect.
+
+Group drawers are also given the `.expanded` CSS class when they are expanded.
 
 ```
 "group/power": {
@@ -437,4 +450,4 @@ A group may hide all but one element, showing them only on mouse hover. In order
 # SEE ALSO
 
 *sway-output(5)*
-*waybar-styles(5)"
+*waybar-styles(5)*

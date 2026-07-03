@@ -17,10 +17,17 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
               config["format-alt"].isString() || config["menu"].isString() || enable_click,
               enable_scroll),
       format_(config_["format"].isString() ? config_["format"].asString() : format),
+
+      // Leave the default option outside of the std::max(1L, ...), because the zero value
+      // (default) is used in modules/custom.cpp to make the difference between
+      // two types of custom scripts. Fixes #4521.
       interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds::max()
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)),
+                    ? std::chrono::milliseconds::max()
+                    : std::chrono::milliseconds(
+                          (config_["interval"].isNumeric()
+                               ? std::max(1L,  // Minimum 1ms due to millisecond precision
+                                          static_cast<long>(config_["interval"].asDouble() * 1000))
+                               : 1000 * (long)interval))),
       default_format_(format_) {
   label_.set_name(name);
   if (!id.empty()) {
@@ -84,13 +91,17 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
       // Make the GtkBuilder and check for errors in his parsing
       if (gtk_builder_add_from_string(builder, fileContent.str().c_str(), -1, nullptr) == 0U) {
+        g_object_unref(builder);
         throw std::runtime_error("Error found in the file " + menuFile);
       }
 
       menu_ = gtk_builder_get_object(builder, "menu");
       if (menu_ == nullptr) {
+        g_object_unref(builder);
         throw std::runtime_error("Failed to get 'menu' object from GtkBuilder");
       }
+      // Keep the menu alive after dropping the transient GtkBuilder.
+      g_object_ref(menu_);
       submenus_ = std::map<std::string, GtkMenuItem*>();
       menuActionsMap_ = std::map<std::string, std::string>();
 
@@ -98,11 +109,17 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
       for (Json::Value::const_iterator it = config_["menu-actions"].begin();
            it != config_["menu-actions"].end(); ++it) {
         std::string key = it.key().asString();
-        submenus_[key] = GTK_MENU_ITEM(gtk_builder_get_object(builder, key.c_str()));
+        auto* item = gtk_builder_get_object(builder, key.c_str());
+        if (item == nullptr) {
+          spdlog::warn("Menu item '{}' not found in builder file", key);
+          continue;
+        }
+        submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
         g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)menuActionsMap_[key].c_str());
+                         (gpointer)g_strdup(menuActionsMap_[key].c_str()));
       }
+      g_object_unref(builder);
     } catch (std::runtime_error& e) {
       spdlog::warn("Error while creating the menu : {}. Menu popup not activated.", e.what());
     }
@@ -122,6 +139,26 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 
 auto ALabel::update() -> void { AModule::update(); }
 
+bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
+  if (last_label_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_markup(markup);
+  last_label_markup_ = markup;
+  return true;
+}
+
+bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup) {
+    return false;
+  }
+
+  label_.set_tooltip_markup(markup);
+  last_tooltip_markup_ = markup;
+  return true;
+}
+
 std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_t max) {
   auto format_icons = config_["format-icons"];
   if (format_icons.isObject()) {
@@ -133,8 +170,28 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
-      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn("format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", \"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
+      auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
+      auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
     }
   }
@@ -159,8 +216,28 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
   }
   if (format_icons.isArray()) {
     auto size = format_icons.size();
-    if (size != 0U) {
-      auto idx = std::clamp(percentage / ((max == 0 ? 100 : max) / size), 0U, size - 1);
+    if (size != 0U && format_icons[0].isObject()) {
+      std::string last_icon;
+      for (const auto& threshold : format_icons) {
+        if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
+          static bool warned = false;
+          if (!warned) {
+            spdlog::warn("format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", \"max\": N}");
+            warned = true;
+          }
+          continue;
+        }
+        last_icon = threshold["icon"].asString();
+        if (percentage <= threshold["max"].asUInt()) {
+          return last_icon;
+        }
+      }
+      if (!last_icon.empty()) {
+        return last_icon;
+      }
+    } else if (size != 0U) {
+      auto divisor = std::max(1U, (max == 0 ? 100U : static_cast<unsigned>(max)) / size);
+      auto idx = std::clamp(percentage / divisor, 0U, size - 1);
       format_icons = format_icons[idx];
     }
   }
@@ -168,6 +245,10 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
     return format_icons.asString();
   }
   return "";
+}
+
+void ALabel::copyToClipboard(const std::string& literal) {
+  Gtk::Clipboard::get()->set_text(literal);
 }
 
 bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
@@ -179,11 +260,15 @@ bool waybar::ALabel::handleToggle(GdkEventButton* const& e) {
       format_ = default_format_;
     }
   }
+
+  if (config_["on-click-copy"].isBool() && config_["on-click-copy"].asBool()) {
+    copyToClipboard(label_.get_text());
+  }
   return AModule::handleToggle(e);
 }
 
 void ALabel::handleGtkMenuEvent(GtkMenuItem* /*menuitem*/, gpointer data) {
-  waybar::util::command::res res = waybar::util::command::exec((char*)data, "GtkMenu");
+  waybar::util::command::forkExec((char*)data, "GtkMenu");
 }
 
 std::string ALabel::getState(uint8_t value, bool lesser) {

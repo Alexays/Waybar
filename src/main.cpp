@@ -7,6 +7,17 @@
 #include <list>
 #include <mutex>
 
+#ifdef HAVE_LIBSYSTEMD
+#include <spdlog/sinks/systemd_sink.h>
+#include <sys/stat.h>
+
+#include <cassert>
+#include <charconv>
+#include <cstddef>
+#include <cstdlib>
+#include <system_error>
+#endif
+
 #include "bar.hpp"
 #include "client.hpp"
 #include "util/SafeSignal.hpp"
@@ -33,7 +44,10 @@ static void writeSignalToPipe(int signum) {
 // to `signal_handler`.
 static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   int fd[2];
-  pipe(fd);
+  if (pipe(fd) != 0) {
+    spdlog::error("Failed to create signal pipe: {}", strerror(errno));
+    return;
+  }
 
   int signal_pipe_read_fd = fd[0];
   signal_pipe_write_fd = fd[1];
@@ -52,9 +66,11 @@ static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   std::signal(SIGINT, writeSignalToPipe);
   std::signal(SIGCHLD, writeSignalToPipe);
 
+#ifdef SIGRTMIN
   for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
     std::signal(sig, writeSignalToPipe);
   }
+#endif
 
   while (true) {
     int signum;
@@ -116,12 +132,14 @@ void handleUserSignal(int signal, bool& reload) {
 // If this signal should restart or close the bar, this function will write
 // `true` or `false`, respectively, into `reload`.
 static void handleSignalMainThread(int signum, bool& reload) {
+#ifdef SIGRTMIN
   if (signum >= SIGRTMIN + 1 && signum <= SIGRTMAX) {
     for (auto& bar : waybar::Client::inst()->bars) {
       bar->handleSignal(signum);
     }
     return;
   }
+#endif
 
   switch (signum) {
     case SIGUSR1:
@@ -137,15 +155,16 @@ static void handleSignalMainThread(int signum, bool& reload) {
       break;
     case SIGCHLD:
       spdlog::debug("Received SIGCHLD in signalThread");
-      if (!reap.empty()) {
-        reap_mtx.lock();
-        for (auto it = reap.begin(); it != reap.end(); ++it) {
+      {
+        std::lock_guard<std::mutex> lock(reap_mtx);
+        for (auto it = reap.begin(); it != reap.end();) {
           if (waitpid(*it, nullptr, WNOHANG) == *it) {
             spdlog::debug("Reaped child with PID: {}", *it);
             it = reap.erase(it);
+          } else {
+            ++it;
           }
         }
-        reap_mtx.unlock();
       }
       break;
     default:
@@ -154,7 +173,48 @@ static void handleSignalMainThread(int signum, bool& reload) {
   }
 }
 
+static void logToJournalIfRunAsService() {
+#ifdef HAVE_LIBSYSTEMD
+  /* Implementation of automatic protocol upgrading (from stderr to journal)
+  ** as described in https://systemd.io/JOURNAL_NATIVE_PROTOCOL */
+  char const* journal_stream = std::getenv("JOURNAL_STREAM");
+
+  if (journal_stream != nullptr) {
+    dev_t device;
+    ino_t inode;
+    size_t len = std::strlen(journal_stream);
+
+    auto result = std::from_chars(journal_stream, journal_stream + len, device);
+    if (result.ec == std::errc{})
+      result = std::from_chars(result.ptr + 1, journal_stream + len, inode);
+    if (result.ec != std::errc{}) {
+      spdlog::warn("malformed JOURNAL_STREAM (\"{}\"): {}, logging to console", journal_stream,
+                   std::make_error_condition(result.ec).message());
+    }
+
+    struct stat f_stderr;
+
+    if (fstat(STDERR_FILENO, &f_stderr) != 0) {
+      spdlog::warn("unable to check stderr device and inode numbers: {}", strerror(errno));
+    } else if (device == f_stderr.st_dev && inode == f_stderr.st_ino) {
+      auto journald = spdlog::systemd_logger_st("native_journal", "waybar", false);
+      /* systemd_logger_st is thread-safe with enable_formatter = false
+      ** thanks to underlying sd_journal_send being thread-safe
+      ** https://github.com/gabime/spdlog/issues/2320#issuecomment-1079766037
+      */
+      spdlog::set_default_logger(journald);
+    } else {
+      spdlog::info("JOURNAL_STREAM does not point to stderr, logging to console");
+    }
+  } else {
+    spdlog::info("no JOURNAL_STREAM, logging to console");
+  }
+#endif
+}
+
 int main(int argc, char* argv[]) {
+  logToJournalIfRunAsService();
+
   try {
     auto* client = waybar::Client::inst();
 
