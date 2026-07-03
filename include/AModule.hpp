@@ -25,6 +25,10 @@ class AModule : public IModule {
 
   bool expandEnabled() const;
 
+  virtual void suspend() {};
+  virtual void resume() {};
+  bool shouldSuspend() const { return disable_on_sleep_; }
+
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
@@ -48,6 +52,8 @@ class AModule : public IModule {
   virtual bool handleMouseLeave(GdkEventCrossing* const& ev);
   virtual bool handleScroll(GdkEventScroll*);
   virtual bool handleRelease(GdkEventButton* const& ev);
+
+  bool disable_on_sleep_{false};
   GObject* menu_ = nullptr;
 
  private:

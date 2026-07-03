@@ -21,6 +21,9 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
   // Configure module action Map
   const Json::Value actions{config_["actions"]};
 
+  disable_on_sleep_ =
+      config_["disable-on-sleep"].isBool() ? config_["disable-on-sleep"].asBool() : false;
+
   for (Json::Value::const_iterator it = actions.begin(); it != actions.end(); ++it) {
     if (it.key().isString() && it->isString())
       if (!eventActionMap_.contains(it.key().asString())) {
