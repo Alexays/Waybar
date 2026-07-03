@@ -17,8 +17,8 @@
 #ifdef HAVE_WLR_TASKBAR
 #include "modules/wlr/taskbar.hpp"
 #endif
-#ifdef HAVE_WLR_WORKSPACES
-#include "modules/wlr/workspace_manager.hpp"
+#ifdef HAVE_EXT_WORKSPACES
+#include "modules/ext/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
 #include "modules/river/layout.hpp"
@@ -108,15 +108,13 @@
 #ifdef HAVE_LIBWIREPLUMBER
 #include "modules/wireplumber.hpp"
 #endif
-#ifdef HAVE_LIBCAVA
-#include "modules/cava.hpp"
-#endif
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
 #ifdef HAVE_LIBGPS
 #include "modules/gps.hpp"
 #endif
+#include "modules/cava/cava_frontend.hpp"
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
 #include "modules/image.hpp"
@@ -178,9 +176,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
     }
 #endif
-#ifdef HAVE_WLR_WORKSPACES
-    if (ref == "wlr/workspaces") {
-      return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
+#ifdef HAVE_EXT_WORKSPACES
+    if (ref == "ext/workspaces") {
+      return new waybar::modules::ext::WorkspaceManager(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_RIVER
@@ -341,11 +339,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Wireplumber(id, config_[name]);
     }
 #endif
-#ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      return new waybar::modules::Cava(id, config_[name]);
+      return waybar::modules::cava::getModule(id, config_[name]);
     }
-#endif
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);

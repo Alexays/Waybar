@@ -35,6 +35,7 @@ class MPD : public ALabel {
   detail::unique_status status_;
   mpd_state state_;
   detail::unique_song song_;
+  std::string ellipsis_;
 
  public:
   MPD(const std::string&, const Json::Value&);
@@ -46,7 +47,11 @@ class MPD : public ALabel {
   std::string getFilename() const;
   void setLabel();
   std::string getStateIcon() const;
-  std::string getOptionIcon(std::string optionName, bool activated) const;
+  std::string getOptionIcon(const std::string& optionName, bool activated) const;
+  std::string getArtistStr(bool truncated) const;
+  std::string getAlbumArtistStr(bool truncated) const;
+  std::string getAlbumStr(bool truncated) const;
+  std::string getTitleStr(bool truncated) const;
 
   // GUI-side methods
   bool handlePlayPause(GdkEventButton* const&);
@@ -56,7 +61,6 @@ class MPD : public ALabel {
   void tryConnect();
   void checkErrors(mpd_connection* conn);
   void fetchState();
-  void queryMPD();
 
   inline bool stopped() const { return connection_ && state_ == MPD_STATE_STOP; }
   inline bool playing() const { return connection_ && state_ == MPD_STATE_PLAY; }

@@ -152,7 +152,6 @@ bool Playing::on_timer() {
       return false;
     }
 
-    ctx_->queryMPD();
     ctx_->emit();
   } catch (std::exception const& e) {
     spdlog::warn("mpd: Playing: error: {}", e.what());
