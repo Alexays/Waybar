@@ -17,8 +17,8 @@
 #ifdef HAVE_WLR_TASKBAR
 #include "modules/wlr/taskbar.hpp"
 #endif
-#ifdef HAVE_WLR_WORKSPACES
-#include "modules/wlr/workspace_manager.hpp"
+#ifdef HAVE_EXT_WORKSPACES
+#include "modules/ext/workspace_manager.hpp"
 #endif
 #ifdef HAVE_RIVER
 #include "modules/river/layout.hpp"
@@ -34,7 +34,24 @@
 #include "modules/hyprland/language.hpp"
 #include "modules/hyprland/submap.hpp"
 #include "modules/hyprland/window.hpp"
+#include "modules/hyprland/windowcount.hpp"
 #include "modules/hyprland/workspaces.hpp"
+#endif
+#ifdef HAVE_NIRI
+#include "modules/niri/language.hpp"
+#include "modules/niri/window.hpp"
+#include "modules/niri/workspaces.hpp"
+#endif
+#ifdef HAVE_MANGO
+#include "modules/mango/keymode.hpp"
+#include "modules/mango/language.hpp"
+#include "modules/mango/layout.hpp"
+#include "modules/mango/window.hpp"
+#include "modules/mango/workspaces.hpp"
+#endif
+#ifdef HAVE_WAYFIRE
+#include "modules/wayfire/window.hpp"
+#include "modules/wayfire/workspaces.hpp"
 #endif
 #if defined(__FreeBSD__) || defined(__linux__)
 #include "modules/battery.hpp"
@@ -42,6 +59,7 @@
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
 #include "modules/cpu.hpp"
 #include "modules/cpu_frequency.hpp"
+#include "modules/cpu_graph.hpp"
 #include "modules/cpu_usage.hpp"
 #include "modules/load.hpp"
 #endif
@@ -98,14 +116,16 @@
 #ifdef HAVE_LIBWIREPLUMBER
 #include "modules/wireplumber.hpp"
 #endif
-#ifdef HAVE_LIBCAVA
-#include "modules/cava.hpp"
-#endif
 #ifdef HAVE_SYSTEMD_MONITOR
 #include "modules/systemd_failed_units.hpp"
 #endif
+#ifdef HAVE_LIBGPS
+#include "modules/gps.hpp"
+#endif
+#include "modules/cava/cava_frontend.hpp"
 #include "modules/cffi.hpp"
 #include "modules/custom.hpp"
+#include "modules/custom_graph.hpp"
 #include "modules/image.hpp"
 #include "modules/temperature.hpp"
 #include "modules/user.hpp"
@@ -135,7 +155,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_PIPEWIRE
     if (ref == "privacy") {
-      return new waybar::modules::privacy::Privacy(id, config_[name], pos);
+      return new waybar::modules::privacy::Privacy(id, config_[name], bar_.orientation, pos);
     }
 #endif
 #ifdef HAVE_MPRIS
@@ -165,9 +185,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::wlr::Taskbar(id, bar_, config_[name]);
     }
 #endif
-#ifdef HAVE_WLR_WORKSPACES
-    if (ref == "wlr/workspaces") {
-      return new waybar::modules::wlr::WorkspaceManager(id, bar_, config_[name]);
+#ifdef HAVE_EXT_WORKSPACES
+    if (ref == "ext/workspaces") {
+      return new waybar::modules::ext::WorkspaceManager(id, bar_, config_[name]);
     }
 #endif
 #ifdef HAVE_RIVER
@@ -196,6 +216,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     if (ref == "hyprland/window") {
       return new waybar::modules::hyprland::Window(id, bar_, config_[name]);
     }
+    if (ref == "hyprland/windowcount") {
+      return new waybar::modules::hyprland::WindowCount(id, bar_, config_[name]);
+    }
     if (ref == "hyprland/language") {
       return new waybar::modules::hyprland::Language(id, bar_, config_[name]);
     }
@@ -204,6 +227,42 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref == "hyprland/workspaces") {
       return new waybar::modules::hyprland::Workspaces(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_NIRI
+    if (ref == "niri/language") {
+      return new waybar::modules::niri::Language(id, bar_, config_[name]);
+    }
+    if (ref == "niri/window") {
+      return new waybar::modules::niri::Window(id, bar_, config_[name]);
+    }
+    if (ref == "niri/workspaces") {
+      return new waybar::modules::niri::Workspaces(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_MANGO
+    if (ref == "mango/window") {
+      return new waybar::modules::mango::Window(id, bar_, config_[name]);
+    }
+    if (ref == "mango/workspaces") {
+      return new waybar::modules::mango::Workspaces(id, bar_, config_[name]);
+    }
+    if (ref == "mango/language") {
+      return new waybar::modules::mango::Language(id, bar_, config_[name]);
+    }
+    if (ref == "mango/keymode") {
+      return new waybar::modules::mango::Keymode(id, bar_, config_[name]);
+    }
+    if (ref == "mango/layout") {
+      return new waybar::modules::mango::Layout(id, bar_, config_[name]);
+    }
+#endif
+#ifdef HAVE_WAYFIRE
+    if (ref == "wayfire/window") {
+      return new waybar::modules::wayfire::Window(id, bar_, config_[name]);
+    }
+    if (ref == "wayfire/workspaces") {
+      return new waybar::modules::wayfire::Workspaces(id, bar_, config_[name]);
     }
 #endif
     if (ref == "idle_inhibitor") {
@@ -217,6 +276,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
     if (ref == "cpu") {
       return new waybar::modules::Cpu(id, config_[name]);
+    }
+    if (ref == "cpu_graph") {
+      return new waybar::modules::CpuGraph(id, config_[name]);
     }
 #if defined(HAVE_CPU_LINUX)
     if (ref == "cpu_frequency") {
@@ -306,14 +368,17 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Wireplumber(id, config_[name]);
     }
 #endif
-#ifdef HAVE_LIBCAVA
     if (ref == "cava") {
-      return new waybar::modules::Cava(id, config_[name]);
+      return waybar::modules::cava::getModule(id, config_[name]);
     }
-#endif
 #ifdef HAVE_SYSTEMD_MONITOR
     if (ref == "systemd-failed-units") {
       return new waybar::modules::SystemdFailedUnits(id, config_[name]);
+    }
+#endif
+#ifdef HAVE_LIBGPS
+    if (ref == "gps") {
+      return new waybar::modules::Gps(id, config_[name]);
     }
 #endif
     if (ref == "temperature") {
@@ -321,6 +386,9 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
     }
     if (ref.compare(0, 7, "custom/") == 0 && ref.size() > 7) {
       return new waybar::modules::Custom(ref.substr(7), id, config_[name], bar_.output->name);
+    }
+    if (ref.compare(0, 13, "custom-graph/") == 0 && ref.size() > 13) {
+      return new waybar::modules::CustomGraph(ref.substr(13), id, config_[name], bar_.output->name);
     }
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name]);

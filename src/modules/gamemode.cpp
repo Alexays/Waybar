@@ -53,7 +53,6 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   if (config_["icon-spacing"].isUInt()) {
     iconSpacing = config_["icon-spacing"].asUInt();
   }
-  box_.set_spacing(iconSpacing);
 
   // Whether to use icon or not
   if (config_["use-icon"].isBool()) {
@@ -64,7 +63,6 @@ Gamemode::Gamemode(const std::string& id, const Json::Value& config)
   if (config_["icon-size"].isUInt()) {
     iconSize = config_["icon-size"].asUInt();
   }
-  icon_.set_pixel_size(iconSize);
 
   // Format
   if (config_["format"].isString()) {
@@ -130,9 +128,9 @@ void Gamemode::getData() {
       Glib::VariantContainerBase data = gamemode_proxy->call_sync("Get", parameters);
       if (data && data.is_of_type(Glib::VariantType("(v)"))) {
         Glib::VariantBase variant;
-        g_variant_get(data.gobj_copy(), "(v)", &variant);
+        g_variant_get(const_cast<GVariant*>(data.gobj()), "(v)", &variant);
         if (variant && variant.is_of_type(Glib::VARIANT_TYPE_INT32)) {
-          g_variant_get(variant.gobj_copy(), "i", &gameCount);
+          g_variant_get(const_cast<GVariant*>(variant.gobj()), "i", &gameCount);
           return;
         }
       }
@@ -160,7 +158,7 @@ void Gamemode::prepareForSleep_cb(const Glib::RefPtr<Gio::DBus::Connection>& con
                                   const Glib::VariantContainerBase& parameters) {
   if (parameters.is_of_type(Glib::VariantType("(b)"))) {
     gboolean sleeping;
-    g_variant_get(parameters.gobj_copy(), "(b)", &sleeping);
+    g_variant_get(const_cast<GVariant*>(parameters.gobj()), "(b)", &sleeping);
     if (!sleeping) {
       getData();
       dp.emit();
@@ -212,10 +210,7 @@ auto Gamemode::update() -> void {
   lastStatus = status;
 
   // Tooltip
-  if (tooltip) {
-    std::string text = fmt::format(fmt::runtime(tooltip_format), fmt::arg("count", gameCount));
-    box_.set_tooltip_text(text);
-  }
+  updateTooltip(box_, tooltip_format, fmt::arg("count", gameCount));
 
   // Label format
   std::string str = fmt::format(fmt::runtime(showAltText ? format_alt : format),
@@ -228,6 +223,11 @@ auto Gamemode::update() -> void {
       iconName = DEFAULT_ICON_NAME;
     }
     icon_.set_from_icon_name(iconName, Gtk::ICON_SIZE_INVALID);
+    box_.set_spacing(iconSpacing);
+    icon_.set_pixel_size(iconSize);
+  } else {
+    box_.set_spacing(0);
+    icon_.set_pixel_size(0);
   }
 
   // Call parent update

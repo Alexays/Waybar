@@ -24,8 +24,8 @@ class IStrategy {
 
 class SingleImageStrategy : public IStrategy {
  public:
-  SingleImageStrategy(const std::string &, const Json::Value &, const std::string &,
-                      Gtk::EventBox &, bool);
+  SingleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&,
+                      bool);
   ~SingleImageStrategy() override = default;
   void update() override;
 
@@ -44,8 +44,7 @@ class SingleImageStrategy : public IStrategy {
 
 class MultipleImageStrategy : public IStrategy {
  public:
-  MultipleImageStrategy(const std::string &, const Json::Value &, const std::string &,
-                        Gtk::EventBox &);
+  MultipleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&);
   ~MultipleImageStrategy() override = default;
   void update() override;
 
@@ -59,10 +58,10 @@ class MultipleImageStrategy : public IStrategy {
     std::shared_ptr<Gtk::Button> btn;
   };
 
-  void setImagesData(const Json::Value &);
+  void setImagesData(const Json::Value&);
   void setupAndDraw();
   void resetBoxAndMemory();
-  void handleClick(const Glib::ustring &data);
+  void handleClick(const Glib::ustring& data);
 
   Json::Value config_;
   int size_;
@@ -74,7 +73,7 @@ class MultipleImageStrategy : public IStrategy {
 
 class Image : public AModule {
  public:
-  Image(const std::string &, const Json::Value &);
+  Image(const std::string&, const Json::Value&);
   virtual ~Image() = default;
   auto update() -> void override;
   void refresh(int /*signal*/) override;
@@ -82,10 +81,10 @@ class Image : public AModule {
  private:
   void delayWorker();
   void handleEvent();
-  static std::unique_ptr<image::IStrategy> getStrategy(const std::string &, const Json::Value &,
-                                                       const std::string &, Gtk::EventBox &, bool);
+  static std::unique_ptr<image::IStrategy> getStrategy(const std::string&, const Json::Value&,
+                                                       const std::string&, Gtk::EventBox&, bool);
 
-  int interval_;
+  std::chrono::milliseconds interval_;
   std::unique_ptr<image::IStrategy> strategy_;
   util::SleeperThread thread_;
 };

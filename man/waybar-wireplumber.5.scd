@@ -19,6 +19,11 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	typeof: string ++
 	This format is used when the sound is muted.
 
+*node-type*: ++
+	typeof: string ++
+	default: *Audio/Sink* ++
+	The WirePlumber node type to attach to. Use *Audio/Source* to manage microphones etc.
+
 *tooltip*: ++
 	typeof: bool ++
 	default: *true* ++
@@ -31,7 +36,7 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *states*: ++
 	typeof: object ++
@@ -57,6 +62,11 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	typeof: float ++
 	default: 1.0 ++
 	The speed at which to change the volume when scrolling.
+
+*scroll-scale*: ++
+	typeof: string ++
+	default: cubic_percent
+	The scale to use for the scrolling volume change. Options are 'linear', 'db', 'cubic', and 'cubic_percent'.
 
 *on-click*: ++
 	typeof: string ++
@@ -102,17 +112,55 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 
 # FORMAT REPLACEMENTS
 
-*{volume}*: Volume in percentage.
+*{volume}*: Volume in percentage, cubic scale as integer.
+
+*{volume_linear}*: Volume in linear scale as float.
+
+*{volume_cubic}*: Volume in cubic scale as float.
+
+*{volume_db}*: Volume in decibel scale as float.
 
 *{node_name}*: The node's nickname as reported by WirePlumber (*node.nick* property)
 
 # EXAMPLES
+
+## Basic:
 
 ```
 "wireplumber": {
 	"format": "{volume}%",
 	"format-muted": "",
 	"on-click": "helvum"
+}
+```
+
+## Separate Sink and Source Widgets
+
+```
+"wireplumber#sink": {
+    "format": "{volume}% {icon}",
+    "format-muted": "󰅶",
+    "format-icons": ["", "", ""],
+    "on-click": "helvum",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "scroll-step": 5
+},
+"wireplumber#source": {
+    "node-type": "Audio/Source",
+    "format": "{volume}% ",
+    "format-muted": "",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle",
+    "scroll-step": 5
+}
+```
+
+## Use a Different Scale
+
+```
+"wireplumber": {
+	"format": "{volume_db:.2f}dB",
+	"scroll-scale": "db",
+	"scroll-step": 2.5
 }
 ```
 

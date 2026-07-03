@@ -10,13 +10,7 @@
 namespace waybar::modules::hyprland {
 
 Language::Language(const std::string& id, const Bar& bar, const Json::Value& config)
-    : ALabel(config, "language", id, "{}", 0, true), bar_(bar) {
-  modulesReady = true;
-
-  if (!gIPC) {
-    gIPC = std::make_unique<IPC>();
-  }
-
+    : ALabel(config, "language", id, "{}", 0, true), bar_(bar), m_ipc(IPC::inst()) {
   // get the active layout when open
   initLanguage();
 
@@ -24,11 +18,11 @@ Language::Language(const std::string& id, const Bar& bar, const Json::Value& con
   update();
 
   // register for hyprland ipc
-  gIPC->registerForIPC("activelayout", this);
+  m_ipc.registerForIPC("activelayout", this);
 }
 
 Language::~Language() {
-  gIPC->unregisterForIPC(this);
+  m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(mutex_);
 }
@@ -54,14 +48,59 @@ auto Language::update() -> void {
                                   fmt::arg("shortDescription", layout_.short_description),
                                   fmt::arg("variant", layout_.variant)));
   }
-
   spdlog::debug("hyprland language formatted layout name {}", layoutName);
+
+  std::string tooltipContent = std::string{};
+  bool tooltip_enabled = tooltipEnabled();
+  if (tooltip_enabled) {
+    if (config_.isMember("tooltip-format")) {
+      auto tooltip_format = config_["tooltip-format"].asString();
+      if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
+        const auto propName = "tooltip-format-" + layout_.short_description + "-" + layout_.variant;
+        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
+      } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
+        const auto propName = "tooltip-format-" + layout_.short_description;
+        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
+      } else {
+        tooltipContent =
+            trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
+                             fmt::arg("short", layout_.short_name),
+                             fmt::arg("shortDescription", layout_.short_description),
+                             fmt::arg("variant", layout_.variant)));
+      }
+    } else {
+      // if no tooltip format is provided, use the same text as the module
+      tooltipContent = layoutName;
+    }
+    spdlog::debug("hyprland language formatted tooltip content {}", tooltipContent);
+  }
 
   if (!format_.empty()) {
     label_.show();
-    label_.set_markup(layoutName);
+    setLabelMarkup(layoutName);
+    if (tooltip_enabled) {
+      setTooltipMarkup(tooltipContent);
+    }
   } else {
     label_.hide();
+  }
+
+  // Tooltip support
+  if (tooltipEnabled()) {
+    std::string tooltipFormat;
+    if (config_["tooltip-format"].isString()) {
+      tooltipFormat = config_["tooltip-format"].asString();
+    } else {
+      tooltipFormat = "{long}";
+    }
+    auto tooltipText =
+        trim(fmt::format(fmt::runtime(tooltipFormat), fmt::arg("long", layout_.full_name),
+                         fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
+    label_.set_tooltip_text(tooltipText);
+  } else {
+    label_.set_tooltip_text("");
   }
 
   ALabel::update();
@@ -69,15 +108,49 @@ auto Language::update() -> void {
 
 void Language::onEvent(const std::string& ev) {
   std::lock_guard<std::mutex> lg(mutex_);
-  std::string kbName(begin(ev) + ev.find_last_of('>') + 1, begin(ev) + ev.find_first_of(','));
-  auto layoutName = ev.substr(ev.find_last_of(',') + 1);
+  const auto payloadStart = ev.find(">>");
+  if (payloadStart == std::string::npos) {
+    spdlog::warn("hyprland language received malformed event: {}", ev);
+    return;
+  }
+  const auto payload = ev.substr(payloadStart + 2);
+  const auto kbSeparator = payload.find(',');
+  if (kbSeparator == std::string::npos) {
+    spdlog::warn("hyprland language received malformed event payload: {}", ev);
+    return;
+  }
+  // Last comma before variants parenthesis, eg:
+  // activelayout>>micro-star-int'l-co.,-ltd.-msi-gk50-elite-gaming-keyboard,English (US, intl.,
+  // with dead keys)
+  std::string beforeParenthesis;
+  auto parenthesisPos = payload.find_last_of('(');
+  if (parenthesisPos == std::string::npos) {
+    beforeParenthesis = payload;
+  } else {
+    beforeParenthesis = payload.substr(0, parenthesisPos);
+  }
+  const auto layoutSeparator = beforeParenthesis.find_last_of(',');
+  if (layoutSeparator == std::string::npos) {
+    spdlog::warn("hyprland language received malformed layout payload: {}", ev);
+    return;
+  }
+  auto layoutName = payload.substr(layoutSeparator + 1);
 
-  if (config_.isMember("keyboard-name") && kbName != config_["keyboard-name"].asString())
-    return;  // ignore
+  if (config_.isMember("keyboard-name")) {
+    const auto keyboardName = config_["keyboard-name"].asString();
+    // The keyboard name itself can contain commas, so match it as a full prefix
+    // (followed by the ',' separator) rather than comparing against the substring
+    // before the first comma, which would truncate such names and drop the event.
+    if (payload.size() <= keyboardName.size() || payload[keyboardName.size()] != ',' ||
+        payload.compare(0, keyboardName.size(), keyboardName) != 0)
+      return;  // ignore
+  }
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
+  removeXkbLayoutCssClass();
   layout_ = getLayout(layoutName);
+  addXkbLayoutCssClass();
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -85,7 +158,7 @@ void Language::onEvent(const std::string& ev) {
 }
 
 void Language::initLanguage() {
-  const auto inputDevices = gIPC->getSocket1Reply("devices");
+  const auto inputDevices = m_ipc.getSocket1Reply("devices");
 
   const auto kbName = config_["keyboard-name"].asString();
 
@@ -99,6 +172,7 @@ void Language::initLanguage() {
     searcher = waybar::util::sanitize_string(searcher);
 
     layout_ = getLayout(searcher);
+    addXkbLayoutCssClass();
 
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
@@ -106,6 +180,16 @@ void Language::initLanguage() {
   } catch (std::exception& e) {
     spdlog::error("hyprland language initLanguage failed with {}", e.what());
   }
+}
+
+auto Language::removeXkbLayoutCssClass() -> void {
+  label_.get_style_context()->remove_class(layout_.short_name);
+  spdlog::debug("hyprland language try to remove currently short_name css class {}",
+                layout_.short_name);
+}
+auto Language::addXkbLayoutCssClass() -> void {
+  label_.get_style_context()->add_class(layout_.short_name);
+  spdlog::debug("hyprland language add new short_name css class {}", layout_.short_name);
 }
 
 auto Language::getLayout(const std::string& fullName) -> Layout {

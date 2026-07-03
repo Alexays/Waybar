@@ -25,8 +25,8 @@ $XDG_CONFIG_HOME/waybar/config
 :[ Message displayed on the bar. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name.
 |[ *tooltip-format*
 :[ string
-:[ "Power profile: {profile}\\nDriver: {driver}"
-:[ Messaged displayed in the module tooltip. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name.
+:[ "Power profile: {profile}\\nCPU driver: {cpu_driver}\\nPlatform driver: {platform_driver}"
+:[ Messaged displayed in the module tooltip. {icon} and {profile} are respectively substituted with the icon representing the active profile and its full name. {cpu_driver} and {platform_driver} are substituted with the CPU and platform drivers reported by recent power-profiles-daemon versions. {driver} is kept for backward compatibility: it resolves to the legacy single driver on older daemons and falls back to the CPU driver on recent ones.
 |[ *tooltip*
 :[ bool
 :[ true
@@ -35,6 +35,13 @@ $XDG_CONFIG_HOME/waybar/config
 :[ object
 :[ See default value in the example below.
 :[ Icons used to represent the various power-profile. *Note*: the default configuration uses the font-awesome icons. You may want to override it if you don't have this font installed on your system.
+|[ *expand*:
+:[ bool
+:[ false
+:[ Enables this module to consume all left over space dynamically.
+
+
+
 
 
 # CONFIGURATION EXAMPLES
@@ -44,7 +51,7 @@ Compact display (default config):
 ```
 "power-profiles-daemon": {
   "format": "{icon}",
-  "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+  "tooltip-format": "Power profile: {profile}\nCPU driver: {cpu_driver}\nPlatform driver: {platform_driver}",
   "tooltip": true,
   "format-icons": {
     "default": "",
@@ -60,7 +67,7 @@ Display the full profile name:
 ```
 "power-profiles-daemon": {
   "format": "{icon}   {profile}",
-  "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+  "tooltip-format": "Power profile: {profile}\nCPU driver: {cpu_driver}\nPlatform driver: {platform_driver}",
   "tooltip": true,
   "format-icons": {
     "default": "",
