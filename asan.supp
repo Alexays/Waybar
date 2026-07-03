@@ -1,0 +1,5 @@
+# Suppress common address sanitizer issues in dependencies, these are often non-fixable or not an issue.
+# Use it like this (when in repo root): ASAN_OPTIONS="suppressions=./asan.supp" ./build/waybar
+leak:libpangoft2-1.0.so.0
+leak:libgtk-3.so.0
+leak:libfontconfig.so.1

@@ -157,7 +157,7 @@ auto PowerProfilesDaemon::update() -> void {
     store.push_back(fmt::arg("icon", getIcon(0, profile.name)));
     label_.set_markup(fmt::vformat(format_, store));
     if (tooltipEnabled()) {
-      label_.set_tooltip_text(fmt::vformat(tooltipFormat_, store));
+      label_.set_tooltip_markup(fmt::vformat(tooltipFormat_, store));
     }
 
     // Set CSS class
@@ -176,6 +176,10 @@ auto PowerProfilesDaemon::update() -> void {
 
 bool PowerProfilesDaemon::handleToggle(GdkEventButton* const& e) {
   if (e->type == GdkEventType::GDK_BUTTON_PRESS && connected_) {
+    if (availableProfiles_.empty()) return true;
+    if (activeProfile_ == availableProfiles_.end()) {
+      activeProfile_ = availableProfiles_.begin();
+    }
     if (e->button == 1) /* left click */ {
       activeProfile_++;
       if (activeProfile_ == availableProfiles_.end()) {
