@@ -17,6 +17,11 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
 
+*hide-empty*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, workspaces will only be shown if they are nonempty (or focused).
+
 *format*: ++
 	typeof: string ++
 	default: {value} ++
