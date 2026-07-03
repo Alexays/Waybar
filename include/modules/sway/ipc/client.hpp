@@ -13,8 +13,8 @@
 
 #include "ipc.hpp"
 #include "util/SafeSignal.hpp"
-#include "util/sleeper_thread.hpp"
 #include "util/scoped_fd.hpp"
+#include "util/sleeper_thread.hpp"
 
 namespace waybar::modules::sway {
 
