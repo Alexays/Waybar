@@ -25,6 +25,10 @@ class AModule : public IModule {
 
   bool expandEnabled() const;
 
+  virtual void suspend() {};
+  virtual void resume() {};
+  bool shouldSuspend() const { return disable_on_sleep_; }
+
  protected:
   // Don't need to make an object directly
   // Derived classes are able to use it
@@ -48,6 +52,8 @@ class AModule : public IModule {
   virtual bool handleMouseLeave(GdkEventCrossing* const& ev);
   virtual bool handleScroll(GdkEventScroll*);
   virtual bool handleRelease(GdkEventButton* const& ev);
+
+  bool disable_on_sleep_{false};
   GObject* menu_ = nullptr;
 
  private:
@@ -57,6 +63,7 @@ class AModule : public IModule {
   bool hasUserEvents_;
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
+  sigc::connection cursor_timeout_conn_;
   std::map<std::string, std::string> eventActionMap_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},

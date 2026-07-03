@@ -4,6 +4,8 @@
 #include <gtkmm/label.h>
 #include <json/json.h>
 
+#include <optional>
+
 #include "AModule.hpp"
 
 namespace waybar {
@@ -25,6 +27,9 @@ class ALabel : public AModule {
   bool alt_ = false;
   std::string default_format_;
 
+  bool setLabelMarkup(const Glib::ustring& markup);
+  bool setTooltipMarkup(const Glib::ustring& markup);
+
   bool handleToggle(GdkEventButton* const& e) override;
   void copyToClipboard(const std::string&);
   virtual std::string getState(uint8_t value, bool lesser = false);
@@ -32,6 +37,10 @@ class ALabel : public AModule {
   std::map<std::string, GtkMenuItem*> submenus_;
   std::map<std::string, std::string> menuActionsMap_;
   static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
+
+ private:
+  std::optional<Glib::ustring> last_label_markup_;
+  std::optional<Glib::ustring> last_tooltip_markup_;
 };
 
 }  // namespace waybar
