@@ -124,8 +124,9 @@ void waybar::modules::MPD::setLabel() {
       label_.get_style_context()->add_class("playing");
       label_.get_style_context()->remove_class("paused");
     } else if (paused()) {
-      format = config_["format-paused"].isString() ? config_["format-paused"].asString()
-                                                   : config_["format"].asString();
+      if (config_["format-paused"].isString()) {
+        format = config_["format-paused"].asString();
+      }
       label_.get_style_context()->add_class("paused");
       label_.get_style_context()->remove_class("playing");
     }
