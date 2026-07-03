@@ -26,7 +26,7 @@ Gtk::RevealerTransitionType getPreferredTransitionType(bool is_vertical) {
 
 Group::Group(const std::string& name, const std::string& id, const Json::Value& config,
              bool vertical)
-    : AModule(config, name, id, true, true),
+    : AModule(config, name, id, true, false),
       box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0},
       revealer_box{vertical ? Gtk::ORIENTATION_VERTICAL : Gtk::ORIENTATION_HORIZONTAL, 0} {
   box.set_name(name_);
@@ -63,12 +63,21 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
                                     ? drawer_config["transition-left-to-right"].asBool()
                                     : true);
     click_to_reveal = drawer_config["click-to-reveal"].asBool();
+    reveal_delay = drawer_config["reveal-delay"].asInt();
+
+    const bool start_expanded =
+        (drawer_config["start-expanded"].isBool() ? drawer_config["start-expanded"].asBool()
+                                                  : false);
 
     auto transition_type = getPreferredTransitionType(vertical);
 
     revealer.set_transition_type(transition_type);
     revealer.set_transition_duration(transition_duration);
-    revealer.set_reveal_child(false);
+    revealer.set_reveal_child(start_expanded);
+
+    if (start_expanded) {
+      box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
+    }
 
     revealer.get_style_context()->add_class("drawer");
 
@@ -96,13 +105,27 @@ void Group::hide_group() {
 
 bool Group::handleMouseEnter(GdkEventCrossing* const& e) {
   if (!click_to_reveal) {
-    show_group();
+    if (reveal_delay > 0) {
+      if (reveal_timeout_.connected()) {
+        reveal_timeout_.disconnect();
+      }    
+
+      reveal_timeout_ = Glib::signal_timeout().connect(
+                          [this]() { show_group(); return false; }, 
+                        reveal_delay);
+    } else {
+      show_group();
+    }
   }
   return false;
 }
 
 bool Group::handleMouseLeave(GdkEventCrossing* const& e) {
   if (!click_to_reveal && e->detail != GDK_NOTIFY_INFERIOR) {
+    if (reveal_delay > 0 && reveal_timeout_.connected()) {
+      reveal_timeout_.disconnect();
+    }
+
     hide_group();
   }
   return false;
@@ -122,6 +145,11 @@ bool Group::handleToggle(GdkEventButton* const& e) {
 
 auto Group::update() -> void {
   // noop
+}
+
+bool Group::handleScroll(GdkEventScroll* e) {
+  // no scroll.
+  return true;
 }
 
 Gtk::Box& Group::getBox() { return is_drawer ? (is_first_widget ? box : revealer_box) : box; }
