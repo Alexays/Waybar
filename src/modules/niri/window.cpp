@@ -82,7 +82,12 @@ void Window::doUpdate() {
       oldAppId_ = appId;
     }
   } else {
-    label_.hide();
+    label_.show();
+    label_.set_markup(waybar::util::rewriteString(
+        fmt::format(fmt::runtime(format_), fmt::arg("title", ""),
+                    fmt::arg("app_id", "")),
+        config_["rewrite"]));
+
     updateAppIconName("", "");
     setClass("solo", false);
     if (!oldAppId_.empty()) setClass(oldAppId_, false);
