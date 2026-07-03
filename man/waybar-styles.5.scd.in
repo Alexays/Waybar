@@ -8,13 +8,27 @@ waybar-styles - using stylesheets for waybar
 
 Waybar uses Cascading Style Sheets (CSS) to configure its appearance.
 
-It uses the first file found in this search order:
+When the system appearance is light, Waybar first looks for *style-light.css*.
+When the system appearance is dark, Waybar first looks for *style-dark.css*.
+If no appearance-specific stylesheet is found, it falls back to *style.css*.
 
-- *$XDG_CONFIG_HOME/waybar/style.css*
-- *~/.config/waybar/style.css*
-- *~/waybar/style.css*
-- */etc/xdg/waybar/style.css*
-- *@sysconfdir@/xdg/waybar/style.css*
+Waybar uses the first file found in this search order for each stylesheet name:
+
+- *$XDG_CONFIG_HOME/waybar/<stylesheet>*
+- *~/.config/waybar/<stylesheet>*
+- *~/waybar/<stylesheet>*
+- */etc/xdg/waybar/<stylesheet>*
+- *@sysconfdir@/xdg/waybar/<stylesheet>*
+
+For example, a light theme is loaded from the first available file among:
+
+- *$XDG_CONFIG_HOME/waybar/style-light.css*
+- *~/.config/waybar/style-light.css*
+- *~/waybar/style-light.css*
+- */etc/xdg/waybar/style-light.css*
+- *@sysconfdir@/xdg/waybar/style-light.css*
+
+If no file is found there, Waybar repeats the same search using *style.css*.
 
 # EXAMPLE
 
