@@ -65,12 +65,12 @@ std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& 
   std::string icon_result = "";
   std::string label_result = input;
   try {
-    const std::regex icon_search(R"((?=\\0icon\\1f).+?(?=\\n))");
+    static const std::regex icon_search(R"((?=\\0icon\\1f).+?(?=\\n))");
     std::smatch icon_match;
     if (std::regex_search(input, icon_match, icon_search)) {
       icon_result = icon_match[0].str().substr(9);
-    
-      const std::regex clean_label_pattern(R"(\\0icon\\1f.+?\\n)");
+
+      static const std::regex clean_label_pattern(R"(\\0icon\\1f.+?\\n)");
       label_result = std::regex_replace(input, clean_label_pattern, "");
     }
   } catch (const std::exception& e) {
