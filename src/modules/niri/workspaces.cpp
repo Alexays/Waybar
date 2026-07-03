@@ -9,7 +9,7 @@
 
 namespace waybar::modules::niri {
 
-Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value &config)
+Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
     : AModule(config, "workspaces", id, false, false), bar_(bar), box_(bar.orientation, 0) {
   const auto config_sort_by_number = config_["sort-by-number"];
   if (config_sort_by_number.isBool()) {
@@ -51,16 +51,16 @@ Workspaces::Workspaces(const std::string &id, const Bar &bar, const Json::Value 
 
 Workspaces::~Workspaces() { gIPC->unregisterForIPC(this); }
 
-void Workspaces::onEvent(const Json::Value &ev) { dp.emit(); }
+void Workspaces::onEvent(const Json::Value& ev) { dp.emit(); }
 
 void Workspaces::doUpdate() {
   auto ipcLock = gIPC->lockData();
 
   const auto alloutputs = config_["all-outputs"].asBool();
   std::vector<Json::Value> my_workspaces;
-  const auto &workspaces = gIPC->workspaces();
+  const auto& workspaces = gIPC->workspaces();
   std::copy_if(workspaces.cbegin(), workspaces.cend(), std::back_inserter(my_workspaces),
-               [&](const auto &ws) {
+               [&](const auto& ws) {
                  if (alloutputs) return true;
                  return ws["output"].asString() == bar_.output->name;
                });
@@ -70,7 +70,7 @@ void Workspaces::doUpdate() {
   // Remove buttons for removed workspaces.
   for (auto it = buttons_.begin(); it != buttons_.end();) {
     auto ws = std::find_if(my_workspaces.begin(), my_workspaces.end(),
-                           [it](const auto &ws) { return ws["id"].asUInt64() == it->first; });
+                           [it](const auto& ws) { return ws["id"].asUInt64() == it->first; });
     if (ws == my_workspaces.end()) {
       it = buttons_.erase(it);
     } else {
@@ -79,9 +79,9 @@ void Workspaces::doUpdate() {
   }
 
   // Add buttons for new workspaces, update existing ones.
-  for (const auto &ws : my_workspaces) {
+  for (const auto& ws : my_workspaces) {
     auto bit = buttons_.find(ws["id"].asUInt64());
-    auto &button = bit == buttons_.end() ? addButton(ws) : bit->second;
+    auto& button = bit == buttons_.end() ? addButton(ws) : bit->second;
     auto style_context = button.get_style_context();
 
     if (ws["is_focused"].asBool())
@@ -129,17 +129,24 @@ void Workspaces::doUpdate() {
                          fmt::arg("output", ws["output"].asString()));
     }
     if (!config_["disable-markup"].asBool()) {
-      static_cast<Gtk::Label *>(button.get_children()[0])->set_markup(name);
+      auto* child = gtk_bin_get_child(GTK_BIN(button.gobj()));
+      if (child != nullptr && GTK_IS_LABEL(child))
+        gtk_label_set_markup(GTK_LABEL(child), name.c_str());
     } else {
       button.set_label(name);
     }
 
     if (config_["current-only"].asBool()) {
-      const auto *property = alloutputs ? "is_focused" : "is_active";
+      const auto* property = alloutputs ? "is_focused" : "is_active";
       if (ws[property].asBool())
         button.show();
       else
         button.hide();
+    } else if (config_["hide-empty"].asBool()) {
+      if (ws["active_window_id"].isNull() && !ws["is_focused"].asBool())
+        button.hide();
+      else
+        button.show();
     } else {
       button.show();
     }
@@ -147,11 +154,11 @@ void Workspaces::doUpdate() {
 
   // Refresh the button order.
   for (auto it = my_workspaces.cbegin(); it != my_workspaces.cend(); ++it) {
-    const auto &ws = *it;
+    const auto& ws = *it;
 
     const auto pos = static_cast<int>(std::distance(my_workspaces.cbegin(), it));
 
-    auto &button = buttons_[ws["id"].asUInt64()];
+    auto& button = buttons_[ws["id"].asUInt64()];
     box_.reorder_child(button, pos);
   }
 }
@@ -161,7 +168,7 @@ void Workspaces::update() {
   AModule::update();
 }
 
-Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
+Gtk::Button& Workspaces::addButton(const Json::Value& ws) {
   std::string name;
   if (ws["name"]) {
     name = ws["name"].asString();
@@ -170,7 +177,7 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
   }
 
   auto pair = buttons_.emplace(ws["id"].asUInt64(), name);
-  auto &&button = pair.first->second;
+  auto&& button = pair.first->second;
   box_.pack_start(button, false, false, 0);
   button.set_relief(Gtk::RELIEF_NONE);
   if (!config_["disable-click"].asBool()) {
@@ -179,13 +186,13 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
       try {
         // {"Action":{"FocusWorkspace":{"reference":{"Id":1}}}}
         Json::Value request(Json::objectValue);
-        auto &action = (request["Action"] = Json::Value(Json::objectValue));
-        auto &focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
-        auto &reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
+        auto& action = (request["Action"] = Json::Value(Json::objectValue));
+        auto& focusWorkspace = (action["FocusWorkspace"] = Json::Value(Json::objectValue));
+        auto& reference = (focusWorkspace["reference"] = Json::Value(Json::objectValue));
         reference["Id"] = id;
 
         IPC::send(request);
-      } catch (const std::exception &e) {
+      } catch (const std::exception& e) {
         spdlog::error("Error switching workspace: {}", e.what());
       }
     });
@@ -193,20 +200,20 @@ Gtk::Button &Workspaces::addButton(const Json::Value &ws) {
   return button;
 }
 
-std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws) {
-  const auto &icons = config_["format-icons"];
+std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws) {
+  const auto& icons = config_["format-icons"];
   if (!icons) return value;
 
   if (ws["is_urgent"].asBool() && icons["urgent"]) return icons["urgent"].asString();
 
-  if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
+  if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
 
   if (ws["is_focused"].asBool() && icons["focused"]) return icons["focused"].asString();
 
-  if (ws["is_active"].asBool() && icons["active"]) return icons["active"].asString();
+  if (ws["active_window_id"].isNull() && icons["empty"]) return icons["empty"].asString();
 
   if (ws["name"]) {
-    const auto &name = ws["name"].asString();
+    const auto& name = ws["name"].asString();
     if (icons[name]) return icons[name].asString();
   }
 
@@ -218,27 +225,27 @@ std::string Workspaces::getIcon(const std::string &value, const Json::Value &ws)
   return value;
 }
 
-void Workspaces::sortWorkspaces(std::vector<Json::Value> &workspaces) const {
-  auto get_name = [](const Json::Value &ws) -> std::string {
+void Workspaces::sortWorkspaces(std::vector<Json::Value>& workspaces) const {
+  auto get_name = [](const Json::Value& ws) -> std::string {
     if (ws["name"]) return ws["name"].asString();
     return std::to_string(ws["idx"].asUInt());
   };
 
-  auto is_numeric = [](const std::string &value) {
+  auto is_numeric = [](const std::string& value) {
     return !value.empty() &&
            std::all_of(value.begin(), value.end(), [](unsigned char c) { return std::isdigit(c); });
   };
 
   const bool names_are_numeric =
       std::all_of(workspaces.begin(), workspaces.end(),
-                  [&](const auto &ws) { return is_numeric(get_name(ws)); });
+                  [&](const auto& ws) { return is_numeric(get_name(ws)); });
 
-  auto compare_numeric_strings = [](const std::string &a, const std::string &b) {
+  auto compare_numeric_strings = [](const std::string& a, const std::string& b) {
     if (a.size() != b.size()) return a.size() < b.size();
     return a < b;
   };
 
-  std::sort(workspaces.begin(), workspaces.end(), [&](const auto &a, const auto &b) {
+  std::sort(workspaces.begin(), workspaces.end(), [&](const auto& a, const auto& b) {
     if (sort_by_id_) {
       return a["id"].asUInt64() < b["id"].asUInt64();
     }
@@ -252,8 +259,8 @@ void Workspaces::sortWorkspaces(std::vector<Json::Value> &workspaces) const {
     }
 
     if (sort_by_coordinates_) {
-      const auto &a_output = a["output"].asString();
-      const auto &b_output = b["output"].asString();
+      const auto& a_output = a["output"].asString();
+      const auto& b_output = b["output"].asString();
       if (a_output == b_output) {
         const auto a_idx = a["idx"].asUInt();
         const auto b_idx = b["idx"].asUInt();
@@ -264,8 +271,8 @@ void Workspaces::sortWorkspaces(std::vector<Json::Value> &workspaces) const {
     }
 
     // Default to sorting by workspace index on each output.
-    const auto &a_output = a["output"].asString();
-    const auto &b_output = b["output"].asString();
+    const auto& a_output = a["output"].asString();
+    const auto& b_output = b["output"].asString();
     const auto a_idx = a["idx"].asUInt();
     const auto b_idx = b["idx"].asUInt();
     if (a_output == b_output) return a_idx < b_idx;
