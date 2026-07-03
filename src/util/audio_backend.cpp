@@ -263,9 +263,9 @@ void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, vo
 
 uint16_t AudioBackend::getVolume(PulseaudioTarget target) const {
   if (target == PulseaudioTarget::Source) {
-      return source_volume_;
+    return source_volume_;
   } else {
-      return volume_;
+    return volume_;
   }
 }
 
@@ -380,9 +380,9 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
 
 bool AudioBackend::getMuted(PulseaudioTarget target) const {
   if (target == PulseaudioTarget::Source) {
-      return source_muted_;
+    return source_muted_;
   } else {
-      return muted_;
+    return muted_;
   }
 }
 
@@ -424,9 +424,9 @@ void AudioBackend::toggleSourceMute(bool mute) {
 
 void AudioBackend::unmute(PulseaudioTarget target) {
   if (target == PulseaudioTarget::Source) {
-      toggleSourceMute(false);
+    toggleSourceMute(false);
   } else {
-      toggleSinkMute(false);
+    toggleSinkMute(false);
   }
 }
 

@@ -6,7 +6,6 @@
 #include "util/audio_backend.hpp"
 namespace waybar::modules {
 
-
 class PulseaudioSlider : public ASlider {
  public:
   PulseaudioSlider(const std::string&, const Json::Value&);
