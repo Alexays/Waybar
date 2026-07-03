@@ -55,9 +55,11 @@ static void catchSignals(waybar::SafeSignal<int>& signal_handler) {
   std::signal(SIGINT, writeSignalToPipe);
   std::signal(SIGCHLD, writeSignalToPipe);
 
+#ifdef SIGRTMIN
   for (int sig = SIGRTMIN + 1; sig <= SIGRTMAX; ++sig) {
     std::signal(sig, writeSignalToPipe);
   }
+#endif
 
   while (true) {
     int signum;
@@ -119,13 +121,15 @@ void handleUserSignal(int signal, bool& reload) {
 // If this signal should restart or close the bar, this function will write
 // `true` or `false`, respectively, into `reload`.
 static void handleSignalMainThread(int signum, bool& reload) {
+#ifdef SIGRTMIN
   if (signum >= SIGRTMIN + 1 && signum <= SIGRTMAX) {
     for (auto& bar : waybar::Client::inst()->bars) {
       bar->handleSignal(signum);
     }
     return;
   }
-
+#endif
+  
   switch (signum) {
     case SIGUSR1:
       handleUserSignal(SIGUSR1, reload);
