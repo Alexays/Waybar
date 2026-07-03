@@ -25,6 +25,15 @@ Addressed by *hyprland/window*
 	typeof: bool ++
 	Show the active window of the monitor the bar belongs to, instead of the focused window.
 
+*fallback*: ++
+	typeof: string ++
+	Text to display when the focused window title is empty (for example when no window is focused).
+
+*tooltip-format*: ++
+	typeof: string ++
+	default: {title} ++
+	The format of the tooltip shown on hover. Supports the same replacements as *format*. Requires *tooltip* to be enabled.
+
 *icon*: ++
 	typeof: bool ++
 	default: false ++

@@ -22,6 +22,11 @@ Addressed by *sway/workspaces*
 	default: {value} ++
 	The format, how information should be displayed.
 
+*format-for-negative-index*: ++
+	typeof: string ++
+	default: *format* ++
+	An alternative format, which will be used for workspaces with no explict or negative index ("num" in sway terms). Requires *format* to be set.
+
 *format-icons*: ++
 	typeof: array ++
 	Based on the workspace name and state, the corresponding icon gets selected. See *icons*.
@@ -64,6 +69,11 @@ Addressed by *sway/workspaces*
 	typeof: bool ++
 	default: false ++
 	If set to true. Only focused workspaces will be shown.
+
+*ignore-workspaces*: ++
+	typeof: array ++
+	default: empty ++
+	List of regular expressions. Workspaces whose name matches any of the given patterns are not shown.
 
 *persistent-workspaces*: ++
 	typeof: json (see below) ++
@@ -110,6 +120,12 @@ warp-on-scroll: ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*output-classes*: ++
+	typeof: array ++
+	Specify additional CSS classes to be added to workspace indicators based on the output on which the associated workspace is located.
+	Keys are output names and values are class names like *${output}: {output-class}*.
+	Assignment in config is used to keep the stylesheet independent of the available outputs.
+
 
 # FORMAT REPLACEMENTS
 
@@ -147,6 +163,7 @@ an empty list denoting all outputs.
 		"3": [], // Always show a workspace with name '3', on all outputs if it does not exist
 		"4": ["eDP-1"], // Always show a workspace with name '4', on output 'eDP-1' if it does not exist
 		"5": ["eDP-1", "DP-2"] // Always show a workspace with name '5', on outputs 'eDP-1' and 'DP-2' if it does not exist
+		"6": ["MonitorMaker 3000 ABC0123"], // Always show a workspace with name '6' on outputs with an identifier 'MonitorMaker 3000 ABC0123' (usually a triple of vendor/model/serial)
 	}
 }
 ```
@@ -187,6 +204,13 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 }
 ```
 
+```
+"sway/workspaces": {
+	"format": "{index} - {name}",
+	"format-for-negative-index": "{name}"
+}
+```
+
 # Style
 
 - *#workspaces button*
@@ -197,3 +221,4 @@ n.b.: the list of outputs can be obtained from command line using *swaymsg -t ge
 - *#workspaces button.empty*
 - *#workspaces button.current_output*
 - *#workspaces button#sway-workspace-${name}*
+- *#workspaces button.${output-class}*
