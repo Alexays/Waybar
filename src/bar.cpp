@@ -173,7 +173,7 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
   }
 
   if (config.isMember("height") && !config["height"].isUInt()) {
-  spdlog::warn("Invalid type for 'height', expected unsigned integer");
+    spdlog::warn("Invalid type for 'height', expected unsigned integer");
   }
 
   height_ = config["height"].isUInt() ? config["height"].asUInt() : 0;
