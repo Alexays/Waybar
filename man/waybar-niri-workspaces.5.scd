@@ -17,6 +17,28 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, workspaces will only be shown on the output they are on. If set to true all workspaces will be shown on every output.
 
+*sort-by-name*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by name (numeric sort when all names are numbers). Unnamed workspaces fall back to their index on the output.
+
+*sort-by-coordinates*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by output and index. If both *sort-by-name* and *sort-by-coordinates* are true, sorting by name is applied.
+
+*sort-by-id*: ++
+	typeof: bool ++
+	default: false ++
+	Sort workspaces by id, taking precedence over other sort options.
+
+*sort-by-number*: ++
+	typeof: bool ++
+	default: false ++
+	Deprecated alias for *sort-by-id*; prefer *sort-by-id* instead.
+
+If none of the sorting options are enabled, workspaces keep their output/index order.
+
 *format*: ++
 	typeof: string ++
 	default: {value} ++
@@ -31,6 +53,11 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to false, you can click to change workspace. If set to true this behaviour is disabled.
 
+*enable-bar-scroll*: ++
+	typeof: bool ++
+	default: false ++
+	If set to false, you can't scroll to cycle throughout workspaces from the entire bar. If set to true this behaviour is enabled.
+
 *disable-markup*: ++
 	typeof: bool ++
 	default: false ++
@@ -41,6 +68,11 @@ Addressed by *niri/workspaces*
 	default: false ++
 	If set to true, only the active or focused workspace will be shown.
 
+*hide-empty*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, empty workspaces will not be shown.
+
 *on-update*: ++
 	typeof: string ++
 	Command to execute when the module is updated.
@@ -49,6 +81,11 @@ Addressed by *niri/workspaces*
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+
+*ignore-workspaces*: ++
+	typeof: array ++
+	default: [] ++
+	Regexes to match against workspaces names and index's. If there's a match, the workspace will not be shown.
 
 # FORMAT REPLACEMENTS
 
@@ -63,6 +100,8 @@ as defined by niri.
 
 *{output}*: Output where the workspace is located.
 
+*{total}*: The total number of workspaces.
+
 # ICONS
 
 Additional to workspace name matching, the following *format-icons* can be set.
@@ -70,6 +109,8 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *default*: Will be shown, when no string matches are found.
 - *focused*: Will be shown, when workspace is focused.
 - *active*: Will be shown, when workspace is active on its output.
+- *urgent*: Will be shown, when workspace has urgent windows.
+- *empty*: Will be shown, when workspace is empty.
 
 # EXAMPLES
 
@@ -95,6 +136,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button*
 - *#workspaces button.focused*: The single focused workspace.
 - *#workspaces button.active*: The workspace is active (visible) on its output.
+- *#workspaces button.urgent*: The workspace has one or more urgent windows.
 - *#workspaces button.empty*: The workspace is empty.
 - *#workspaces button.current_output*: The workspace is from the same output as
   the bar that it is displayed on.
