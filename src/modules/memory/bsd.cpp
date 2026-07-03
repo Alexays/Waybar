@@ -21,13 +21,13 @@ static uint64_t get_total_memory() {
   u_long physmem;
 #endif
   int mib[] = {
-    CTL_HW,
+      CTL_HW,
 #if defined(HW_MEMSIZE)
-    HW_MEMSIZE,
+      HW_MEMSIZE,
 #elif defined(HW_PHYSMEM64)
-    HW_PHYSMEM64,
+      HW_PHYSMEM64,
 #else
-    HW_PHYSMEM,
+      HW_PHYSMEM,
 #endif
   };
   u_int miblen = sizeof(mib) / sizeof(mib[0]);

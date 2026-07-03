@@ -26,6 +26,24 @@ Addressed by *river/tags*
 	default: false ++
 	If set to false, you can left-click to set focused tag. Right-click to toggle tag focus. If set to true this behaviour is disabled.
 
+*set-tags*: ++
+	typeof: array ++
+	An array of tag bitmasks, one per tag button. Left-clicking a tag sets the focused tags to the corresponding bitmask instead of the single tag. Requires *disable-click* to be false.
+
+*toggle-tags*: ++
+	typeof: array ++
+	An array of tag bitmasks, one per tag button. Right-clicking a tag toggles the corresponding bitmask in the focused tags instead of the single tag. Requires *disable-click* to be false.
+
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
+*hide-vacant*: ++
+	typeof: bool ++
+	default: false ++
+	Only show relevant tags: tags that are either focused or have a window on them.
+
 # EXAMPLE
 
 ```
@@ -40,9 +58,13 @@ Addressed by *river/tags*
 - *#tags button.occupied*
 - *#tags button.focused*
 - *#tags button.urgent*
+- *#tags button.output*
+- *#tags button.tag-N*
 
-Note that occupied/focused/urgent status may overlap. That is, a tag may be
+Note that occupied/focused/urgent/output status may overlap. That is, a tag may be
 both occupied and focused at the same time.
+
+The *output* style is applied when the river output (e.g. monitor) of the current bar is focused.
 
 # SEE ALSO
 

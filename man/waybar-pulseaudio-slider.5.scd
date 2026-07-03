@@ -22,21 +22,62 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: 100 ++
     The maximum volume value the slider should display and set.
 
+*target*: ++
+    typeof: string ++
+    default: sink ++
+    Whether the slider will control the default audio source or default audio sink. ++
+    Valid values are either "sink" or "source".
+
 *orientation*: ++
     typeof: string ++
     default: horizontal ++
     The orientation of the slider. Can be either `horizontal` or `vertical`.
 
+*expand*: ++
+    typeof: bool ++
+    default: false ++
+    Enables this module to consume all left over space dynamically.
+
+*zero-on-mute*: ++
+    typeof: bool ++
+    default: true ++
+    `true` = The slider will be set to `min` when the source/sink is muted. ++
+    `false` = The slider will continue to show the unmuted volume level when the source/sink is muted.
+
+*unmute-on-volume-change*: ++
+    typeof: bool ++
+    default: true ++
+    Specifies whether to unmute a muted souce/sink when its volume is changed by the user moving the slider.
+
+*target*: ++
+	typeof: string ++
+	default: sink ++
+	The audio target to control. Can be either `sink` (output/speakers) or `source` (input/microphone).
+
+*ignored-sinks*: ++
+    typeof: array ++
+    default: empty ++
+    A list of sink descriptions to ignore when tracking the default sink, so switching to those sinks does not update the slider.
+
 # EXAMPLES
 
 ```
 "modules-right": [
-    "pulseaudio/slider",
+    "pulseaudio/slider#out",
+    "pulseaudio/slider#in",
 ],
-"pulseaudio/slider": {
+"pulseaudio/slider#out": {
     "min": 0,
     "max": 100,
-    "orientation": "horizontal"
+    "orientation": "horizontal",
+    "zero-on-mute": false,
+    "unmute-on-volume-change": false
+},
+"pulseaudio/slider#in": {
+    "min": 0,
+    "max": 100,
+    "orientation": "horizontal",
+    "target": "source"
 }
 ```
 
@@ -46,6 +87,9 @@ The slider is a component with multiple CSS Nodes, of which the following are ex
 
 *#pulseaudio-slider*: ++
     Controls the style of the box *around* the slider and bar.
+
+*#pulseaudio-slider.muted*: ++
+    Controls the style when the audio source/sink is muted.
 
 *#pulseaudio-slider slider*: ++
     Controls the style of the slider handle.
@@ -72,12 +116,16 @@ The slider is a component with multiple CSS Nodes, of which the following are ex
     min-height: 80px;
     min-width: 10px;
     border-radius: 5px;
-    background-color: black;
+    background: black;
 }
 
 #pulseaudio-slider highlight {
     min-width: 10px;
     border-radius: 5px;
-    background-color: green;
+    background: green;
+}
+
+#pulseaudio-slider.muted highlight {
+    background-color: orange;
 }
 ```

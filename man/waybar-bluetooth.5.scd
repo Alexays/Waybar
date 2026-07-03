@@ -54,7 +54,7 @@ Addressed by *bluetooth*
 
 *rotate*: ++
 	typeof: integer ++
-	Positive value to rotate the text label.
+	Positive value to rotate the text label (in 90 degree increments).
 
 *max-length*: ++
 	typeof: integer ++
@@ -142,6 +142,11 @@ Addressed by *bluetooth*
 	typeof: array ++
 	The actions corresponding to the buttons of the menu.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	Enables this module to consume all left over space dynamically.
+
 # FORMAT REPLACEMENTS
 
 *{status}*: Status of the bluetooth device.
@@ -172,6 +177,9 @@ At the time of writing, the experimental features of BlueZ need to be turned on,
 ## FORMAT REPLACEMENT
 
 *{device_battery_percentage}*: Battery percentage of the displayed device if available. Use only in the config options defined below.
+
+*{device_battery_percentage_peripheral}*: Battery percentage of the peripheral half of a split keyboard (e.g., ZMK keyboards with separate central and peripheral batteries). ++
+This is read from GATT Battery Service characteristics that have a User Description descriptor. Use only in the config options defined below.
 
 ## CONFIGURATION
 
@@ -212,6 +220,17 @@ At the time of writing, the experimental features of BlueZ need to be turned on,
 	"tooltip-format-connected": "{controller_alias}\\t{controller_address}\\n\\n{num_connections} connected\\n\\n{device_enumerate}",
 	"tooltip-format-enumerate-connected": "{device_alias}\\t{device_address}",
 	"tooltip-format-enumerate-connected-battery": "{device_alias}\\t{device_address}\\t{device_battery_percentage}%"
+}
+```
+
+Split keyboard with separate central/peripheral batteries (e.g., ZMK):
+
+```
+"bluetooth": {
+	"format-device-preference": [ "Keyball44" ],
+	"format": "",
+	"format-connected-battery": " {device_battery_percentage}%|{device_battery_percentage_peripheral}%",
+	"tooltip-format-connected": "{device_alias}\\nCentral: {device_battery_percentage}%\\nPeripheral: {device_battery_percentage_peripheral}%"
 }
 ```
 
