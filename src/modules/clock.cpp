@@ -230,7 +230,7 @@ const unsigned cldRowsInMonth(const year_month& ym, const weekday& firstdow) {
 auto cldGetWeekForLine(const year_month& ym, const weekday& firstdow, const unsigned line)
     -> const year_month_weekday {
   const unsigned idx = line - 2;
-  const std::chrono::weekday_indexed indexed_first_day_of_week =
+  const auto indexed_first_day_of_week =
       weekday{ym / 1} == firstdow ? firstdow[idx + 1] : firstdow[idx];
 
   return ym / indexed_first_day_of_week;
@@ -402,8 +402,13 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
               data = g_utf8_find_next_char(data, end);
             }
           }
+          // Note: the stream's default fill character is already a space (L' ' on
+          // libstdc++'s wide FormatStream, ' ' on libc++'s narrow one), so no
+          // std::setfill is needed. Passing std::setfill(' ')/std::setfill(L' ')
+          // here is not portable because the fill char type must match the
+          // FormatStream's char type, which differs between standard libraries.
           os << Glib::ustring::format(
-              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right, std::setfill(L' '),
+              (cldWPos_ != WS::LEFT || line == 0) ? std::left : std::right,
               std::setw(cldMonColLen_ + ((line < 2) ? cldWnLen_ - wideCharCount : 0)),
               calendarLine);
 
