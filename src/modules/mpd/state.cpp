@@ -19,17 +19,17 @@ auto format_as(enum mpd_idle val) {
 
 namespace waybar::modules::detail {
 
-#define RUN_NOIDLE_AND_CMD(STATE, ...)                                      \
-  if (idle_connection_.connected()) {                                     \
-    idle_connection_.disconnect();                                        \
-    auto conn = ctx_->connection().get();                                 \
-    if (!mpd_run_noidle(conn)) {                                          \
-      if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {          \
+#define RUN_NOIDLE_AND_CMD(STATE, ...)                                     \
+  if (idle_connection_.connected()) {                                      \
+    idle_connection_.disconnect();                                         \
+    auto conn = ctx_->connection().get();                                  \
+    if (!mpd_run_noidle(conn)) {                                           \
+      if (mpd_connection_get_error(conn) != MPD_ERROR_SUCCESS) {           \
         spdlog::error("mpd: STATE: failed to unregister for IDLE events"); \
-        ctx_->checkErrors(conn);                                          \
-      }                                                                   \
-    }                                                                     \
-    __VA_ARGS__;                                                          \
+        ctx_->checkErrors(conn);                                           \
+      }                                                                    \
+    }                                                                      \
+    __VA_ARGS__;                                                           \
   }
 
 void Idle::play() {
@@ -49,7 +49,6 @@ void Idle::stop() {
 
   ctx_->setState(std::make_unique<Stopped>(ctx_));
 }
-
 
 void Idle::update() noexcept {
   // This is intentionally blank.
@@ -140,7 +139,6 @@ void Playing::timer() noexcept {
   timer_connection_ = Glib::signal_timeout().connect_seconds(timer_slot, 1);
 }
 
-
 void Playing::idle() noexcept {
   auto conn = ctx_->connection().get();
   assert(conn != nullptr);
@@ -218,7 +216,6 @@ bool Playing::on_io(Glib::IOCondition const&) {
       return false;
     }
 
-    ctx_->queryMPD();
     ctx_->emit();
 
     if (!mpd_send_idle_mask(
@@ -239,25 +236,23 @@ bool Playing::on_io(Glib::IOCondition const&) {
 }
 
 void Playing::stop() {
-  RUN_NOIDLE_AND_CMD(Playing,
-    if (timer_connection_.connected()) {
-      timer_connection_.disconnect();
+  RUN_NOIDLE_AND_CMD(
+      Playing, if (timer_connection_.connected()) {
+        timer_connection_.disconnect();
 
-      mpd_run_stop(ctx_->connection().get());
-    }
-  );
+        mpd_run_stop(ctx_->connection().get());
+      });
 
   ctx_->setState(std::make_unique<Stopped>(ctx_));
 }
 
 void Playing::pause() {
-  RUN_NOIDLE_AND_CMD(Playing,
-    if (timer_connection_.connected()) {
-      timer_connection_.disconnect();
+  RUN_NOIDLE_AND_CMD(
+      Playing, if (timer_connection_.connected()) {
+        timer_connection_.disconnect();
 
-      mpd_run_pause(ctx_->connection().get(), true);
-    }
-  );
+        mpd_run_pause(ctx_->connection().get(), true);
+      });
 
   ctx_->setState(std::make_unique<Paused>(ctx_));
 }
