@@ -57,6 +57,11 @@ Addressed by *wlr/taskbar*
 	default: false ++
 	If set to true, group tasks by their app_id. Cannot be used with 'active-first'.
 
+*expand*: ++
+	typeof: bool ++
+	default: false ++
+	If set to true, task buttons stretch to fill the available space in the taskbar and long titles are ellipsized to fit. Only takes effect on a horizontal bar; on a vertical bar the buttons keep their content-based size. If set to false, buttons are sized to their content.
+
 *on-click*: ++
 	typeof: string ++
 	The action which should be triggered when clicking on the application button with the left mouse button.

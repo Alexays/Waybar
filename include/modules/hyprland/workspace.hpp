@@ -30,6 +30,7 @@ class Workspace {
  public:
   explicit Workspace(const Json::Value& workspace_data, Workspaces& workspace_manager,
                      const Json::Value& clients_data = Json::Value::nullRef);
+  ~Workspace();
   std::string& selectIcon(std::map<std::string, std::string>& icons_map);
   Gtk::Button& button() { return m_button; };
 
@@ -42,10 +43,18 @@ class Workspace {
   bool isPersistentConfig() const { return m_isPersistentConfig; };
   bool isPersistentRule() const { return m_isPersistentRule; };
   bool isVisible() const { return m_isVisible; };
-  bool isEmpty() const { return m_windows == 0; };
   bool isUrgent() const { return m_isUrgent; };
 
   bool handleClicked(GdkEventButton* bt) const;
+
+  bool handleEnter(GdkEventCrossing* event);
+  bool handleLeave(GdkEventCrossing* event);
+
+  void startHoverCheck();
+  void stopHoverCheck();
+  bool syncHoverClass();
+  bool pointerInsideButton();
+
   void setActive(bool value = true) { m_isActive = value; };
   void setPersistentRule(bool value = true) { m_isPersistentRule = value; };
   void setPersistentConfig(bool value = true) { m_isPersistentConfig = value; };
@@ -54,15 +63,18 @@ class Workspace {
   void setWindows(uint value) { m_windows = value; };
   void setName(std::string const& value) { m_name = value; };
   void setOutput(std::string const& value) { m_output = value; };
-  bool containsWindow(WindowAddress const& addr) const { return m_windowMap.contains(addr); }
-  void insertWindow(WindowCreationPayload create_window_paylod);
-  std::string removeWindow(WindowAddress const& addr);
+  bool containsWindow(WindowAddress const& addr) const {
+    return std::ranges::any_of(m_windowMap,
+                               [&addr](const auto& window) { return window.address == addr; });
+  };
+  void insertWindow(WindowCreationPayload create_window_payload);
   void initializeWindowMap(const Json::Value& clients_data);
+  void setActiveWindow(WindowAddress const& addr);
 
-  bool onWindowOpened(WindowCreationPayload const& create_window_paylod);
-  std::optional<std::string> closeWindow(WindowAddress const& addr);
+  bool onWindowOpened(WindowCreationPayload const& create_window_payload);
+  std::optional<WindowRepr> closeWindow(WindowAddress const& addr);
 
-  void update(const std::string& format, const std::string& icon);
+  void update(const std::string& workspace_icon);
 
  private:
   Workspaces& m_workspaceManager;
@@ -78,11 +90,20 @@ class Workspace {
   bool m_isUrgent = false;
   bool m_isVisible = false;
 
-  std::map<WindowAddress, std::string> m_windowMap;
+  sigc::connection m_hoverCheckConnection;
+
+  std::vector<WindowRepr> m_windowMap;
 
   Gtk::Button m_button;
   Gtk::Box m_content;
-  Gtk::Label m_label;
+  Gtk::Label m_labelBefore;
+  Gtk::Label m_labelAfter;
+
+  bool isEmpty() const;
+  void updateTaskbar(const std::string& workspace_icon);
+  bool handleClick(const GdkEventButton* event_button, WindowAddress const& addr) const;
+  bool shouldSkipWindow(const WindowRepr& window_repr) const;
+  IPC& m_ipc;
 };
 
 }  // namespace waybar::modules::hyprland
