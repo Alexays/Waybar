@@ -190,9 +190,17 @@ void Item::setProperty(const Glib::ustring& name, Glib::VariantBase& value) {
     } else if (name == "Status") {
       setStatus(get_variant<Glib::ustring>(value));
     } else if (name == "IconName") {
-      icon_name = get_variant<std::string>(value);
+      if (has_custom_icon_) {
+        spdlog::trace("Item '{}': ignoring IconName update, custom icon is set", id);
+      } else {
+        icon_name = get_variant<std::string>(value);
+      }
     } else if (name == "IconPixmap") {
-      icon_pixmap = this->extractPixBuf(value.gobj());
+      if (has_custom_icon_) {
+        spdlog::trace("Item '{}': ignoring IconPixmap update, custom icon is set", id);
+      } else {
+        icon_pixmap = this->extractPixBuf(value.gobj());
+      }
     } else if (name == "OverlayIconName") {
       overlay_icon_name = get_variant<std::string>(value);
     } else if (name == "OverlayIconPixmap") {
@@ -270,11 +278,13 @@ void Item::setCustomIcon(const std::string& id) {
         Glib::RefPtr<Gdk::Pixbuf> custom_pixbuf = Gdk::Pixbuf::create_from_file(custom_icon);
         icon_name = "";  // icon_name has priority over pixmap
         icon_pixmap = custom_pixbuf;
+        has_custom_icon_ = true;
       } catch (const Glib::Error& e) {
         spdlog::error("Failed to load custom icon {}: {}", custom_icon, e.what());
       }
     } else {  // if file doesn't exist it's most likely an icon_name
       icon_name = custom_icon;
+      has_custom_icon_ = true;
     }
   }
 }

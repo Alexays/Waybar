@@ -58,9 +58,14 @@ auto waybar::modules::Cpu::update() -> void {
     label_.set_markup(fmt::vformat(format, store));
 
     if (tooltipEnabled()) {
-      if (config_["tooltip-format"].isString()) {
-        tooltip = config_["tooltip-format"].asString();
-        label_.set_tooltip_markup(fmt::vformat(tooltip, store));
+      std::string tooltip_format;
+      if (!state.empty() && config_["tooltip-format-" + state].isString()) {
+        tooltip_format = config_["tooltip-format-" + state].asString();
+      } else if (config_["tooltip-format"].isString()) {
+        tooltip_format = config_["tooltip-format"].asString();
+      }
+      if (!tooltip_format.empty()) {
+        label_.set_tooltip_markup(fmt::vformat(tooltip_format, store));
       } else {
         label_.set_tooltip_markup(tooltip);
       }
