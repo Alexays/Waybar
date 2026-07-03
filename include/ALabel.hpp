@@ -34,18 +34,7 @@ class ALabel : public AModule {
   bool setLabelMarkup(const Glib::ustring& markup);
   bool setTooltipMarkup(const Glib::ustring& markup);
 
-  // Resolve the tooltip format string: prefers `tooltip-format-<state>` (when a
-  // non-empty state is given), then `tooltip-format`, then `defaultFormat`.
-  std::string resolveTooltipFormat(const std::string& defaultFormat,
-                                   const std::string& state = "") const {
-    if (!state.empty() && config_["tooltip-format-" + state].isString()) {
-      return config_["tooltip-format-" + state].asString();
-    }
-    if (config_["tooltip-format"].isString()) {
-      return config_["tooltip-format"].asString();
-    }
-    return defaultFormat;
-  }
+  // resolveTooltipFormat() / resolveFormat() are inherited from AModule.
 
   // Combined label + tooltip helper. Builds a single fmt argument store from
   // `args`, renders `labelFormat` into the label and the resolved tooltip format

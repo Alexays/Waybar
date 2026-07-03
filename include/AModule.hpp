@@ -1,10 +1,15 @@
 #pragma once
 
+#include <fmt/args.h>
+#include <fmt/format.h>
 #include <glibmm/dispatcher.h>
 #include <glibmm/markup.h>
 #include <gtkmm.h>
 #include <gtkmm/eventbox.h>
 #include <json/json.h>
+
+#include <string>
+#include <utility>
 
 #include "IModule.hpp"
 
@@ -39,6 +44,40 @@ class AModule : public IModule {
 
   SCROLL_DIR getScrollDir(GdkEventScroll* e);
   bool tooltipEnabled() const;
+
+  // --- Generic format/tooltip resolution (config-only, usable by any module,
+  // ALabel-derived or not). Prefers `<key>-<state>`, then `<key>`, then default.
+  std::string resolveFormat(const std::string& defaultFormat, const std::string& state = "") const {
+    if (!state.empty() && config_["format-" + state].isString()) {
+      return config_["format-" + state].asString();
+    }
+    if (config_["format"].isString()) {
+      return config_["format"].asString();
+    }
+    return defaultFormat;
+  }
+  std::string resolveTooltipFormat(const std::string& defaultFormat,
+                                   const std::string& state = "") const {
+    if (!state.empty() && config_["tooltip-format-" + state].isString()) {
+      return config_["tooltip-format-" + state].asString();
+    }
+    if (config_["tooltip-format"].isString()) {
+      return config_["tooltip-format"].asString();
+    }
+    return defaultFormat;
+  }
+
+  // Generic tooltip for any widget: honors the `tooltip` toggle and
+  // `tooltip-format`, formats with the given args and applies it. Lets modules
+  // that are not ALabel-derived (e.g. gamemode) reuse the shared logic.
+  template <typename... Args>
+  void updateTooltip(Gtk::Widget& widget, const std::string& defaultFormat, Args&&... args) {
+    if (!tooltipEnabled()) {
+      return;
+    }
+    widget.set_tooltip_markup(
+        fmt::format(fmt::runtime(resolveTooltipFormat(defaultFormat)), std::forward<Args>(args)...));
+  }
 
   std::vector<int> pid_children_;
   const std::string name_;
