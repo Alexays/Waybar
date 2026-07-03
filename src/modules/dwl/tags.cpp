@@ -70,17 +70,33 @@ static const zdwl_ipc_output_v2_listener output_status_listener_impl{
 
 static void handle_global(void* data, struct wl_registry* registry, uint32_t name,
                           const char* interface, uint32_t version) {
-  if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
-    static_cast<Tags*>(data)->status_manager_ = static_cast<struct zdwl_ipc_manager_v2*>(
-        (zdwl_ipc_manager_v2*)wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
-  }
-  if (std::strcmp(interface, wl_seat_interface.name) == 0) {
-    version = std::min<uint32_t>(version, 1);
-    static_cast<Tags*>(data)->seat_ =
-        static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, version));
-  }
+  
+if (std::strcmp(interface, zdwl_ipc_manager_v2_interface.name) == 0) {
+  auto* self = static_cast<Tags*>(data);
+
+  if (self->status_manager_) {
+  zdwl_ipc_manager_v2_destroy(self->status_manager_);
+  self->status_manager_ = nullptr;
 }
 
+  self->status_manager_ = static_cast<struct zdwl_ipc_manager_v2*>(
+      wl_registry_bind(registry, name, &zdwl_ipc_manager_v2_interface, 1));
+}
+
+if (std::strcmp(interface, wl_seat_interface.name) == 0) {
+  auto* self = static_cast<Tags*>(data);
+
+  if (self->seat_) {
+    wl_seat_destroy(self->seat_);
+    self->seat_ = nullptr;
+  }
+
+  version = std::min<uint32_t>(version, 1);
+
+  self->seat_ = static_cast<struct wl_seat*>(
+      wl_registry_bind(registry, name, &wl_seat_interface, version));
+}
+}
 static void handle_global_remove(void* data, struct wl_registry* registry, uint32_t name) {
   /* Ignore event */
 }

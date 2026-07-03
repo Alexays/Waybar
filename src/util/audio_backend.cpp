@@ -40,12 +40,16 @@ AudioBackend::AudioBackend(std::function<void()> on_updated_cb, private_construc
 }
 
 AudioBackend::~AudioBackend() {
-  if (context_ != nullptr) {
-    pa_context_disconnect(context_);
-  }
-
   if (mainloop_ != nullptr) {
-    mainloop_api_->quit(mainloop_api_, 0);
+    // Lock the mainloop so we can safely disconnect the context.
+    // This must be done before stopping the thread.
+    pa_threaded_mainloop_lock(mainloop_);
+    if (context_ != nullptr) {
+      pa_context_disconnect(context_);
+      pa_context_unref(context_);
+      context_ = nullptr;
+    }
+    pa_threaded_mainloop_unlock(mainloop_);
     pa_threaded_mainloop_stop(mainloop_);
     pa_threaded_mainloop_free(mainloop_);
   }
@@ -73,7 +77,14 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   switch (pa_context_get_state(c)) {
     case PA_CONTEXT_TERMINATED:
-      backend->mainloop_api_->quit(backend->mainloop_api_, 0);
+      // Only quit the mainloop if this is still the active context.
+      // During reconnection, the old context fires TERMINATED after the new one
+      // has already been created; quitting in that case would kill the new context.
+      // Note: context_ is only written from PA callbacks (while the mainloop lock is
+      // held), so this comparison is safe within any PA callback.
+      if (backend->context_ == nullptr || backend->context_ == c) {
+        backend->mainloop_api_->quit(backend->mainloop_api_, 0);
+      }
       break;
     case PA_CONTEXT_READY:
       pa_context_get_server_info(c, serverInfoCb, data);
@@ -88,13 +99,17 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
                            nullptr, nullptr);
       break;
     case PA_CONTEXT_FAILED:
-      // When pulseaudio server restarts, the connection is "failed". Try to reconnect.
-      // pa_threaded_mainloop_lock is already acquired in callback threads.
-      // So there is no need to lock it again.
-      if (backend->context_ != nullptr) {
-        pa_context_disconnect(backend->context_);
+      if (pa_context_errno(c) != PA_ERR_CONNECTIONREFUSED) {
+        // When pulseaudio server restarts, the connection is "failed". Try to reconnect.
+        // pa_threaded_mainloop_lock is already acquired in callback threads.
+        // So there is no need to lock it again.
+        if (backend->context_ != nullptr) {
+          pa_context_disconnect(backend->context_);
+          pa_context_unref(backend->context_);
+          backend->context_ = nullptr;
+        }
+        backend->connectContext();
       }
-      backend->connectContext();
       break;
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
@@ -246,6 +261,14 @@ void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, vo
   pa_context_get_source_info_list(context, sourceInfoCb, data);
 }
 
+uint16_t AudioBackend::getVolume(PulseaudioTarget target) const {
+  if (target == PulseaudioTarget::Source) {
+    return source_volume_;
+  } else {
+    return volume_;
+  }
+}
+
 void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t max_volume) {
   // Early return if context is not ready
   if ((context_ == nullptr) || pa_context_get_state(context_) != PA_CONTEXT_READY) {
@@ -355,6 +378,14 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
+bool AudioBackend::getMuted(PulseaudioTarget target) const {
+  if (target == PulseaudioTarget::Source) {
+    return source_muted_;
+  } else {
+    return muted_;
+  }
+}
+
 void AudioBackend::toggleSinkMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   muted_ = !muted_;
@@ -389,6 +420,14 @@ void AudioBackend::toggleSourceMute(bool mute) {
   pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
                                       nullptr, nullptr);
   pa_threaded_mainloop_unlock(mainloop_);
+}
+
+void AudioBackend::unmute(PulseaudioTarget target) {
+  if (target == PulseaudioTarget::Source) {
+    toggleSourceMute(false);
+  } else {
+    toggleSinkMute(false);
+  }
 }
 
 bool AudioBackend::isBluetooth() {

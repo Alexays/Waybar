@@ -14,6 +14,11 @@
 
 namespace waybar::util {
 
+enum class PulseaudioTarget {
+  Sink,
+  Source,
+};
+
 class AudioBackend {
  private:
   static void subscribeCb(pa_context*, pa_subscription_event_type_t, uint32_t, void*);
@@ -91,6 +96,10 @@ class AudioBackend {
 
   void toggleSourceMute();
   void toggleSourceMute(bool);
+
+  uint16_t getVolume(PulseaudioTarget) const;
+  bool getMuted(PulseaudioTarget) const;
+  void unmute(PulseaudioTarget);
 
   bool isBluetooth();
 };

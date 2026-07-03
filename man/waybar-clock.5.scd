@@ -209,7 +209,7 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "<tt><small>{calendar}</small></tt>",
 	"calendar": {
 		"mode"             : "year",
@@ -265,7 +265,19 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 	"tooltip-format": "{tz_list}"
 }
 ```
+5. Simple calendar tooltip
 
+```
+"clock": {
+"format": "{:%H:%M}",
+"tooltip-format": "<tt>{calendar}</tt>",
+"calendar": {
+"format": {
+"today": "<span color='#ffcc66'><b>{}</b></span>"
+}
+}
+}
+```
 # STYLE
 
 - *#clock*
@@ -293,7 +305,7 @@ Example of working config
 ```
 "clock": {
 	"format": "{:%H:%M}  ",
-	"format-alt": "{:%A, %B %d, %Y (%R)}  ",
+	"format-alt": "{:%A, %B %d, %Y (%R)} 󰃰 ",
 	"tooltip-format": "\n<span size='9pt' font='WenQuanYi Zen Hei Mono'>{calendar}</span>",
 	"calendar": {
 		"mode"          : "year",

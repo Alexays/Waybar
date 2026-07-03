@@ -54,6 +54,15 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
 
 waybar::modules::Wireplumber::~Wireplumber() {
   waybar::modules::Wireplumber::modules.remove(this);
+  if (mixer_api_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(mixer_api_, this);
+  }
+  if (def_nodes_api_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(def_nodes_api_, this);
+  }
+  if (om_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(om_, this);
+  }
   wp_core_disconnect(wp_core_);
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
@@ -202,6 +211,7 @@ void waybar::modules::Wireplumber::onMixerChanged(waybar::modules::Wireplumber* 
           return;
         }
       }
+      return;
     }
 
     spdlog::warn("[{}]: (onMixerChanged: {}) - Object with id {} not found", self->name_,
@@ -528,6 +538,7 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     GVariant* variant = g_variant_new_double(newVol);
     gboolean ret;
     g_signal_emit_by_name(mixer_api_, "set-volume", node_id_, variant, &ret);
+    g_variant_unref(variant);
   }
   return true;
 }
