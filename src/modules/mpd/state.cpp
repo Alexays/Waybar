@@ -115,7 +115,7 @@ bool Idle::on_io(Glib::IOCondition const&) {
 void Playing::entry() noexcept {
   timer();
   idle();
-  spdlog::debug("mpd: Playing: enabled 1 second periodic timer.");
+  spdlog::debug("mpd: Playing: enabled {}ms periodic timer.", ctx_->playing_interval());
 }
 
 void Playing::exit() noexcept {
@@ -126,7 +126,7 @@ void Playing::exit() noexcept {
 
   if (timer_connection_.connected()) {
     timer_connection_.disconnect();
-    spdlog::debug("mpd: Playing: disabled 1 second periodic timer.");
+    spdlog::debug("mpd: Playing: disabled {}ms periodic timer.", ctx_->playing_interval());
   }
 }
 
@@ -136,7 +136,7 @@ void Playing::timer() noexcept {
   }
 
   sigc::slot<bool> timer_slot = sigc::mem_fun(*this, &Playing::on_timer);
-  timer_connection_ = Glib::signal_timeout().connect_seconds(timer_slot, 1);
+  timer_connection_ = Glib::signal_timeout().connect(timer_slot, ctx_->playing_interval());
 }
 
 void Playing::idle() noexcept {

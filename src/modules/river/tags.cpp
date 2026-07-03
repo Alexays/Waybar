@@ -35,12 +35,12 @@ static const zriver_output_status_v1_listener output_status_listener_impl{
 
 static void listen_focused_output(void* data, struct zriver_seat_status_v1* zriver_seat_status_v1,
                                   struct wl_output* output) {
-  static_cast<Tags *>(data)->handle_focused_output(output);
+  static_cast<Tags*>(data)->handle_focused_output(output);
 }
 
 static void listen_unfocused_output(void* data, struct zriver_seat_status_v1* zriver_seat_status_v1,
                                     struct wl_output* output) {
-  static_cast<Tags *>(data)->handle_unfocused_output(output);
+  static_cast<Tags*>(data)->handle_unfocused_output(output);
 }
 
 static void listen_focused_view(void* data, struct zriver_seat_status_v1* zriver_seat_status_v1,
@@ -183,6 +183,7 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
         button.signal_button_press_event().connect(
             sigc::bind(sigc::mem_fun(*this, &Tags::handle_button_press), (1 << tag)));
     }
+    button.get_style_context()->add_class("tag-" + std::to_string(tag + 1));
     button.show();
   }
 
@@ -306,7 +307,7 @@ void Tags::handle_urgent_tags(uint32_t tags) {
   }
 }
 
-void Tags::handle_focused_output(struct wl_output *output) {
+void Tags::handle_focused_output(struct wl_output* output) {
   if (output_ == output) {
     for (size_t i = 0; i < buttons_.size(); ++i) {
       buttons_[i].get_style_context()->add_class("output");
@@ -314,7 +315,7 @@ void Tags::handle_focused_output(struct wl_output *output) {
   }
 }
 
-void Tags::handle_unfocused_output(struct wl_output *output) {
+void Tags::handle_unfocused_output(struct wl_output* output) {
   if (output_ == output) {
     for (size_t i = 0; i < buttons_.size(); ++i) {
       buttons_[i].get_style_context()->remove_class("output");

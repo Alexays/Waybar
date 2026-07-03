@@ -5,17 +5,17 @@
 #include <csignal>
 #include <string>
 
-#include "AIconLabel.hpp"
+#include "AGraph.hpp"
 #include "util/command.hpp"
 #include "util/json.hpp"
 #include "util/sleeper_thread.hpp"
 
 namespace waybar::modules {
 
-class Custom : public AIconLabel {
+class CustomGraph : public AGraph {
  public:
-  Custom(const std::string&, const std::string&, const Json::Value&, const std::string&);
-  virtual ~Custom();
+  CustomGraph(const std::string&, const std::string&, const Json::Value&, const std::string&);
+  virtual ~CustomGraph();
   auto update() -> void override;
   void refresh(int /*signal*/) override;
 
@@ -35,10 +35,6 @@ class Custom : public AIconLabel {
   std::string id_;
   std::string alt_;
   std::string tooltip_;
-  std::string last_tooltip_markup_;
-  std::string image_path_;
-  std::string image_name_;
-  unsigned app_icon_size_{24};
   const bool tooltip_format_enabled_;
   std::vector<std::string> class_;
   int percentage_;

@@ -198,10 +198,18 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
     }
   }
 
+  if (const auto mapping = backend->sink_mapping_.find(backend->current_sink_name_);
+      mapping != backend->sink_mapping_.end()) {
+    if (i->name == mapping->second) {
+      backend->current_sink_name_ = i->name;
+    }
+  }
+
   backend->default_sink_running_ = backend->default_sink_name == i->name &&
                                    (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
 
-  if (i->name != backend->default_sink_name && !backend->default_sink_running_) {
+  if (i->name != backend->default_sink_name && i->name != backend->current_sink_name_ &&
+      !backend->default_sink_running_) {
     return;
   }
 
@@ -488,6 +496,16 @@ void AudioBackend::setIgnoredSinks(const Json::Value& config) {
     for (const auto& ignored_sink : config) {
       if (ignored_sink.isString()) {
         ignored_sinks_.push_back(ignored_sink.asString());
+      }
+    }
+  }
+}
+
+void AudioBackend::setSinkMapping(const Json::Value& config) {
+  if (config.isObject()) {
+    for (auto it = config.begin(); it != config.end(); ++it) {
+      if (it.key().isString() && it->isString()) {
+        sink_mapping_.emplace(it.key().asString(), it->asString());
       }
     }
   }

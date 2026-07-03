@@ -46,6 +46,12 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   gIPC->registerForIPC("WorkspaceActiveWindowChanged", this);
   gIPC->registerForIPC("WorkspaceUrgencyChanged", this);
 
+  if (config["enable-bar-scroll"].asBool()) {
+    auto& window = const_cast<Bar&>(bar_).window;
+    window.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+    window.signal_scroll_event().connect(sigc::mem_fun(*this, &Workspaces::handleScroll));
+  }
+
   dp.emit();
 }
 
@@ -123,10 +129,10 @@ void Workspaces::doUpdate() {
 
     if (config_["format"].isString()) {
       auto format = config_["format"].asString();
-      name = fmt::format(fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)),
-                         fmt::arg("value", name), fmt::arg("name", ws["name"].asString()),
-                         fmt::arg("index", ws["idx"].asUInt()),
-                         fmt::arg("output", ws["output"].asString()));
+      name = fmt::format(
+          fmt::runtime(format), fmt::arg("icon", getIcon(name, ws)), fmt::arg("value", name),
+          fmt::arg("name", ws["name"].asString()), fmt::arg("index", ws["idx"].asUInt()),
+          fmt::arg("output", ws["output"].asString()), fmt::arg("total", my_workspaces.size()));
     }
     if (!config_["disable-markup"].asBool()) {
       auto* child = gtk_bin_get_child(GTK_BIN(button.gobj()));
@@ -223,6 +229,45 @@ std::string Workspaces::getIcon(const std::string& value, const Json::Value& ws)
   if (icons["default"]) return icons["default"].asString();
 
   return value;
+}
+
+bool Workspaces::handleScroll(GdkEventScroll* e) {
+  if (gdk_event_get_pointer_emulated((GdkEvent*)e) != 0) {
+    /**
+     * Ignore emulated scroll events on window
+     */
+    return false;
+  }
+
+  auto dir = AModule::getScrollDir(e);
+  if (dir == SCROLL_DIR::NONE) {
+    return true;
+  }
+
+  try {
+    Json::Value request(Json::objectValue);
+    auto& action = (request["Action"] = Json::Value(Json::objectValue));
+
+    std::string action_name;
+
+    if (dir == SCROLL_DIR::DOWN || dir == SCROLL_DIR::RIGHT) {
+      action_name = "FocusWorkspaceDown";
+    } else if (dir == SCROLL_DIR::UP || dir == SCROLL_DIR::LEFT) {
+      action_name = "FocusWorkspaceUp";
+    } else {
+      return true;
+    }
+
+    action[action_name] = Json::Value(Json::objectValue);
+
+    IPC::send(request);
+
+  } catch (const std::exception& e) {
+    spdlog::error("Workspaces: {}", e.what());
+    return false;
+  }
+
+  return true;
 }
 
 void Workspaces::sortWorkspaces(std::vector<Json::Value>& workspaces) const {

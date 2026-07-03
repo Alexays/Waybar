@@ -1,14 +1,12 @@
-#include "modules/custom.hpp"
+#include "modules/custom_graph.hpp"
 
 #include <spdlog/spdlog.h>
 
-#include <utility>
-
 #include "util/scope_guard.hpp"
 
-waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
-                                const Json::Value& config, const std::string& output_name)
-    : AIconLabel(config, "custom-" + name, id, "{}"),
+waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
+                                          const Json::Value& config, const std::string& output_name)
+    : AGraph(config, "custom-graph-" + name, id),
       name_(name),
       output_name_(output_name),
       id_(id),
@@ -17,7 +15,7 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
       fp_(nullptr),
       pid_(-1) {
   if (config.isNull()) {
-    spdlog::warn("There is no configuration for 'custom/{}', element will be hidden", name);
+    spdlog::warn("There is no configuration for 'custom-graph/{}', element will be hidden", name);
   }
   dp.emit();
   if (!config_["signal"].empty() && config_["interval"].empty() &&
@@ -28,18 +26,9 @@ waybar::modules::Custom::Custom(const std::string& name, const std::string& id,
   } else if (config_["exec"].isString()) {
     continuousWorker();
   }
-  if (config_["image-path"].isString()) {
-    image_path_ = config_["image-path"].asString();
-  }
-  if (config_["image-name"].isString()) {
-    image_name_ = config_["image-name"].asString();
-  }
-  if (config["icon-size"].isUInt()) {
-    app_icon_size_ = config["icon-size"].asUInt();
-  }
 }
 
-waybar::modules::Custom::~Custom() {
+waybar::modules::CustomGraph::~CustomGraph() {
   if (pid_ != -1) {
     killpg(pid_, SIGTERM);
     waitpid(pid_, NULL, 0);
@@ -47,12 +36,7 @@ waybar::modules::Custom::~Custom() {
   }
 }
 
-void waybar::modules::Custom::delayWorker() {
-  if (!config_["exec"].isString() && !config_["exec-if"].isString()) {
-    dp.emit();
-    return;
-  }
-
+void waybar::modules::CustomGraph::delayWorker() {
   thread_ = [this] {
     for (int i : this->pid_children_) {
       int status;
@@ -79,7 +63,7 @@ void waybar::modules::Custom::delayWorker() {
   };
 }
 
-void waybar::modules::Custom::continuousWorker() {
+void waybar::modules::CustomGraph::continuousWorker() {
   auto cmd = config_["exec"].asString();
   pid_ = -1;
   fp_ = util::command::open(cmd, pid_, output_name_);
@@ -105,11 +89,9 @@ void waybar::modules::Custom::continuousWorker() {
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
-      if (config_["restart-interval"].isNumeric()) {
+      if (config_["restart-interval"].isUInt()) {
         pid_ = -1;
-        thread_.sleep_for(std::chrono::milliseconds(
-            std::max(1L,  // Minimum 1ms due to millisecond precision
-                     static_cast<long>(config_["restart-interval"].asDouble() * 1000))));
+        thread_.sleep_for(std::chrono::seconds(config_["restart-interval"].asUInt()));
         fp_ = util::command::open(cmd, pid_, output_name_);
         if (!fp_) {
           throw std::runtime_error("Unable to open " + cmd);
@@ -131,7 +113,7 @@ void waybar::modules::Custom::continuousWorker() {
   };
 }
 
-void waybar::modules::Custom::waitingWorker() {
+void waybar::modules::CustomGraph::waitingWorker() {
   thread_ = [this] {
     bool can_update = true;
     if (config_["exec-if"].isString()) {
@@ -151,33 +133,31 @@ void waybar::modules::Custom::waitingWorker() {
   };
 }
 
-void waybar::modules::Custom::refresh(int sig) {
-#ifdef SIGRTMIN
-  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
+void waybar::modules::CustomGraph::refresh(int sig) {
+  if (sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
-#endif
 }
 
-void waybar::modules::Custom::handleEvent() {
+void waybar::modules::CustomGraph::handleEvent() {
   if (!config_["exec-on-event"].isBool() || config_["exec-on-event"].asBool()) {
     thread_.wake_up();
   }
 }
 
-bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
-  auto ret = ALabel::handleScroll(e);
+bool waybar::modules::CustomGraph::handleScroll(GdkEventScroll* e) {
+  auto ret = AGraph::handleScroll(e);
   handleEvent();
   return ret;
 }
 
-bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
-  auto ret = ALabel::handleToggle(e);
+bool waybar::modules::CustomGraph::handleToggle(GdkEventButton* const& e) {
+  auto ret = AGraph::handleToggle(e);
   handleEvent();
   return ret;
 }
 
-auto waybar::modules::Custom::update() -> void {
+auto waybar::modules::CustomGraph::update() -> void {
   // Hide label if output is empty
   if ((config_["exec"].isString() || config_["exec-if"].isString()) &&
       (output_.out.empty() || output_.exit_code != 0)) {
@@ -190,56 +170,32 @@ auto waybar::modules::Custom::update() -> void {
     }
 
     try {
-      auto str = fmt::format(fmt::runtime(format_), fmt::arg("text", text_), fmt::arg("alt", alt_),
-                             fmt::arg("icon", getIcon(percentage_, alt_)),
-                             fmt::arg("percentage", percentage_));
-      if ((config_["hide-empty-text"].asBool() && text_.empty()) ||
-          (str.empty() && image_path_.empty() && image_name_.empty())) {
-        event_box_.hide();
-      } else {
-        setLabelMarkup(str);
-        if (tooltipEnabled()) {
-          std::string tooltip_markup;
-          if (tooltip_format_enabled_) {
-            auto tooltip = config_["tooltip-format"].asString();
-            tooltip_markup = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
-                                         fmt::arg("tooltip", tooltip_), fmt::arg("alt", alt_),
-                                         fmt::arg("icon", getIcon(percentage_, alt_)),
-                                         fmt::arg("percentage", percentage_));
-          } else if (text_ == tooltip_) {
-            tooltip_markup = str;
-          } else {
-            tooltip_markup = tooltip_;
+      addValue(percentage_);
+
+      if (tooltipEnabled()) {
+        if (tooltip_format_enabled_) {
+          auto tooltip = config_["tooltip-format"].asString();
+          tooltip = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
+                                fmt::arg("alt", alt_), fmt::arg("percentage", percentage_));
+          graph_.set_tooltip_markup(tooltip);
+        } else {
+          if (graph_.get_tooltip_markup() != tooltip_) {
+            graph_.set_tooltip_markup(tooltip_);
           }
-
-          setTooltipMarkup(tooltip_markup);
         }
-        auto style = label_.get_style_context();
-        auto classes = style->list_classes();
-        for (auto const& c : classes) {
-          if (c == id_) continue;
-          style->remove_class(c);
-        }
-        for (auto const& c : class_) {
-          style->add_class(c);
-        }
-        style->add_class("flat");
-        style->add_class("text-button");
-        style->add_class(MODULE_CLASS);
-        auto image_style = image_.get_style_context();
-        image_style->add_class("image-button");
-        event_box_.show();
-        if (!image_path_.empty()) {
-          auto pixbuf = Gdk::Pixbuf::create_from_file(image_path_, app_icon_size_, app_icon_size_);
-          image_.set(pixbuf);
-        } else if (!image_name_.empty()) {
-          image_.set_from_icon_name(image_name_, Gtk::ICON_SIZE_INVALID);
-          image_.set_pixel_size(app_icon_size_);
-        }
-
-        image_.set_visible(!image_name_.empty() || !image_path_.empty());
-        label_.set_visible(!str.empty());
       }
+      auto style = graph_.get_style_context();
+      auto classes = style->list_classes();
+      for (auto const& c : classes) {
+        if (c == id_) continue;
+        style->remove_class(c);
+      }
+      for (auto const& c : class_) {
+        style->add_class(c);
+      }
+      style->add_class("flat");
+      style->add_class(MODULE_CLASS);
+      event_box_.show();
     } catch (const fmt::format_error& e) {
       if (std::strcmp(e.what(), "cannot switch from manual to automatic argument indexing") != 0)
         throw;
@@ -250,10 +206,10 @@ auto waybar::modules::Custom::update() -> void {
     }
   }
   // Call parent update
-  AIconLabel::update();
+  AGraph::update();
 }
 
-void waybar::modules::Custom::parseOutputRaw() {
+void waybar::modules::CustomGraph::parseOutputRaw() {
   std::istringstream output(output_.out);
   std::string line;
   int i = 0;
@@ -271,7 +227,6 @@ void waybar::modules::Custom::parseOutputRaw() {
         text_ = validated_line;
         tooltip_ = validated_line;
       }
-      tooltip_ = validated_line;
       class_.clear();
     } else if (i == 1) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
@@ -288,7 +243,7 @@ void waybar::modules::Custom::parseOutputRaw() {
   }
 }
 
-void waybar::modules::Custom::parseOutputJson() {
+void waybar::modules::CustomGraph::parseOutputJson() {
   std::istringstream output(output_.out);
   std::string line;
   class_.clear();
@@ -316,7 +271,6 @@ void waybar::modules::Custom::parseOutputJson() {
         class_.push_back(c.asString());
       }
     }
-
     if (!parsed["percentage"].asString().empty() && parsed["percentage"].isNumeric()) {
       percentage_ = (int)lround(parsed["percentage"].asFloat());
     } else {

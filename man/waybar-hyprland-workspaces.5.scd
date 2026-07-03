@@ -41,6 +41,19 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	The separator to be used between windows in a workspace. ++
 	This setting is ignored if *workspace-taskbar.enable* is set to true.
 
+*window-rewrite-group-threshold*: ++
+	typeof: int ++
+	default: 0 ++
+	When a workspace contains at least this many windows with the same rewrite result, they are collapsed into a single one using *window-rewrite-group-format*. ++
+	Set to 0 to disable grouping. ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
+*window-rewrite-group-format*: ++
+	typeof: string ++
+	default: "{icon}×{count}" ++
+	The format used to represent a group of collapsed windows. Available placeholders are {icon} (the icon being grouped) and {count} (how many windows share it). ++
+	This setting is ignored if *workspace-taskbar.enable* is set to true.
+
 *workspace-taskbar*: ++
 	typeof: object ++
 	Contains settings for the workspace taskbar, an alternative mode for the workspaces module which displays the window icons as images instead of text.

@@ -23,6 +23,7 @@ class Workspaces : public AModule, public EventHandler {
   void sortWorkspaces(std::vector<Json::Value>& workspaces) const;
   Gtk::Button& addButton(const Json::Value& ws);
   std::string getIcon(const std::string& value, const Json::Value& ws);
+  bool handleScroll(GdkEventScroll* /*unused*/) override;
 
   const Bar& bar_;
   Gtk::Box box_;
