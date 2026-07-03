@@ -43,11 +43,11 @@
 #include "modules/niri/workspaces.hpp"
 #endif
 #ifdef HAVE_MANGO
-#include "modules/mango/language.hpp"
 #include "modules/mango/keymode.hpp"
+#include "modules/mango/language.hpp"
+#include "modules/mango/layout.hpp"
 #include "modules/mango/window.hpp"
 #include "modules/mango/workspaces.hpp"
-#include "modules/mango/layout.hpp"
 #endif
 #ifdef HAVE_WAYFIRE
 #include "modules/wayfire/window.hpp"
@@ -58,8 +58,8 @@
 #endif
 #if defined(HAVE_CPU_LINUX) || defined(HAVE_CPU_BSD)
 #include "modules/cpu.hpp"
-#include "modules/cpu_graph.hpp"
 #include "modules/cpu_frequency.hpp"
+#include "modules/cpu_graph.hpp"
 #include "modules/cpu_usage.hpp"
 #include "modules/load.hpp"
 #endif

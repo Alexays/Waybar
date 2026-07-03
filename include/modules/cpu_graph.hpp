@@ -21,9 +21,9 @@ class CpuGraph : public AGraph {
   auto update() -> void override;
 
  private:
-  static constexpr const char *MODERATE_CLASS = "cpu-moderate";
-  static constexpr const char *HIGH_CLASS = "cpu-high";
-  static constexpr const char *INTENSIVE_CLASS = "cpu-intensive";
+  static constexpr const char* MODERATE_CLASS = "cpu-moderate";
+  static constexpr const char* HIGH_CLASS = "cpu-high";
+  static constexpr const char* INTENSIVE_CLASS = "cpu-intensive";
 
   std::vector<std::tuple<size_t, size_t>> prev_times_;
   util::SleeperThread thread_;

@@ -5,7 +5,7 @@
 #include "util/scope_guard.hpp"
 
 waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
-                                const Json::Value& config, const std::string& output_name)
+                                          const Json::Value& config, const std::string& output_name)
     : AGraph(config, "custom-graph-" + name, id),
       name_(name),
       output_name_(output_name),
@@ -175,9 +175,8 @@ auto waybar::modules::CustomGraph::update() -> void {
       if (tooltipEnabled()) {
         if (tooltip_format_enabled_) {
           auto tooltip = config_["tooltip-format"].asString();
-          tooltip = fmt::format(
-              fmt::runtime(tooltip), fmt::arg("text", text_), fmt::arg("alt", alt_),
-              fmt::arg("percentage", percentage_));
+          tooltip = fmt::format(fmt::runtime(tooltip), fmt::arg("text", text_),
+                                fmt::arg("alt", alt_), fmt::arg("percentage", percentage_));
           graph_.set_tooltip_markup(tooltip);
         } else {
           if (graph_.get_tooltip_markup() != tooltip_) {
