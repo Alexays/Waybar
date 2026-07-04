@@ -56,6 +56,10 @@ Addressed by *network*
 	typeof: string ++
 	This format is used when rfkill is blocking wlan interfaces.
 
+*format-alt*: ++
+	typeof: string ++
+	On click, toggle between this format and the regular format. The click button is set with *format-alt-click* (defaults to the left button).
+
 *format-icons*: ++
 	typeof: array/object ++
 	Based on the current signal strength, the corresponding icon gets selected. ++

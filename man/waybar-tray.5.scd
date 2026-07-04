@@ -55,6 +55,9 @@ Addressed by *tray*
 	Key: name of item. ++
 	Value: integer, higher value means to place this item to the right.
 
+Note: custom *icons* only work with actual image files, not font-based icons. They
+might not work for some Electron apps (see https://github.com/electron/electron/issues/40936).
+
 *ignore-list*: ++
 	typeof: array ++
 	List of strings used to hide matching tray items. An item is hidden when any string in the list is found (as a substring) in the item's bus name, category, icon name, id or title.
@@ -80,6 +83,20 @@ Addressed by *tray*
 # STYLE
 
 - *#tray*
-- *#tray > .passive*
-- *#tray > .active*
-- *#tray > .needs-attention*
+- *#tray menu* for the context menu
+- *#tray widget>image* for icons
+- *#tray > .passive* for icons with status *Passive*
+- *#tray > .active* for icons with status *Active*
+- *#tray > .needs-attention* for icons with status *NeedsAttention*
+
+# TRAY APPLETS
+
+The following applets are known to work with the *tray* module:
+
+- *NetworkManager*: install networkmanager, enable it with
+  *systemctl enable NetworkManager.service*, and start the applet with
+  *nm-applet --indicator*.
+- *Blueman*: enable the Bluetooth daemon, install blueman, and start
+  *blueman-applet*.
+- *Electron apps*: apps like Slack, Telegram, Caprine and Discord should work
+  out of the box.

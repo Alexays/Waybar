@@ -17,6 +17,10 @@ Addressed by *hyprland/window*
 	default: {title} ++
 	The format, how information should be displayed. On {} the current window title is displayed.
 
+*max-length*: ++
+	typeof: integer ++
+	The maximum length in character the module should display.
+
 *rewrite*: ++
 	typeof: object ++
 	Rules to rewrite window title. See *rewrite rules*.

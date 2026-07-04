@@ -41,6 +41,17 @@ The brightness can be controlled by dragging the slider across the bar or clicki
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*Note*: As well as the JSON configuration, the slider modules are special in
+that they *require* styling to work. You *need* to set *min-width* and/or
+*min-height* (depending on whether your slider is vertical or not) for it to
+display correctly. That is a GTK detail, not an issue with Waybar. See the
+*STYLE* section below.
+
+*Warning*: If *min* is set to *0* (default), the slider can set brightness to
+*0*, which may completely disable the backlight on some devices, making the
+screen fully black. Consider setting a small minimum value (e.g. *10*) or
+configuring brightness keybinds as a fallback.
+
 # EXAMPLES
 
 ```

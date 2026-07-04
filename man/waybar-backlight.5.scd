@@ -78,7 +78,13 @@ The *backlight* module displays the current backlight level.
 
 *reverse-scrolling*: ++
 	typeof: bool ++
-	Option to reverse the scroll direction.
+	default: false ++
+	Option to reverse the scroll direction for devices other than a mouse (touchpad, trackpad, etc).
+
+*reverse-mouse-scrolling*: ++
+	typeof: bool ++
+	default: false ++
+	Option to reverse the scroll direction for mice.
 
 *scroll-step*: ++
 	typeof: float ++
@@ -89,6 +95,15 @@ The *backlight* module displays the current backlight level.
 	typeof: double ++
 	default: 0.0 ++
 	The minimum brightness of the backlight.
+
+*tooltip*: ++
+	typeof: bool ++
+	default: true ++
+	Option to disable tooltip on hover.
+
+*tooltip-format*: ++
+	typeof: string ++
+	Text to be displayed in the tooltip.
 
 *menu*: ++
 	typeof: string ++

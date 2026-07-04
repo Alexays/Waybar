@@ -8,6 +8,9 @@ waybar - wlr workspaces module
 
 The *workspaces* module displays the currently used workspaces in wayland compositor.
 
+To use this module, your compositor must implement the *ext-workspace-v1*
+Wayland protocol.
+
 # CONFIGURATION
 
 Addressed by *ext/workspaces*

@@ -44,6 +44,18 @@ $XDG_CONFIG_HOME/waybar/config
 
 
 
+# FORMAT REPLACEMENTS
+
+*{profile}*: Active profile full name.
+
+*{icon}*: Icon (from *format-icons*) representing the active profile.
+
+*{cpu_driver}*: The CPU driver reported by recent power-profiles-daemon versions. *(tooltip)*
+
+*{platform_driver}*: The platform driver reported by recent power-profiles-daemon versions. *(tooltip)*
+
+*{driver}*: Kept for backward compatibility: resolves to the legacy single driver on older daemons and falls back to the CPU driver on recent ones. *(tooltip)*
+
 # CONFIGURATION EXAMPLES
 
 Compact display (default config):

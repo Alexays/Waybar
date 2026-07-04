@@ -100,6 +100,29 @@ $path\\n$tooltip
 }
 ```
 
+Using *exec* to fetch the image via a script:
+
+```
+"image#album-art": {
+	"exec": "~/.config/waybar/custom/spotify/album_art.sh",
+	"size": 32,
+	"interval": 30
+}
+```
+
+Where *album\_art.sh* looks like this:
+
+```
+#!/bin/bash
+album_art=$(playerctl -p spotify metadata mpris:artUrl)
+if [[ -z $album_art ]]; then
+	# spotify is dead, we should die too.
+	exit
+fi
+curl -s "${album_art}" --output "/tmp/cover.jpeg"
+echo "/tmp/cover.jpeg"
+```
+
 # STYLE
 
 - *#image*

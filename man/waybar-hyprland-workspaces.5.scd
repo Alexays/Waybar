@@ -139,7 +139,8 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 *persistent-workspaces*: ++
 	typeof: object ++
 	default: empty ++
-	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below.
+	Lists workspaces that should always be shown, even when they do not exist. Keys are workspace names and values are arrays of output names on which the workspace should be shown (an empty array means all outputs). See the examples below. ++
+	Note: for persistent workspaces to actually work you must also declare them in your Hyprland config, e.g. *workspace = 1, monitor:eDP-1, persistent:true*.
 
 *all-outputs*: ++
 	typeof: bool ++
@@ -219,6 +220,32 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 
 *{windows}*: The windows in the workspace, formatted according to *window-rewrite* and joined with *format-window-separator*.
 
+# WINDOW REWRITE RULES
+
+The rules in *window-rewrite* are regexes that may match against a window's
+class, title, or both. There are four categories of rule, distinguished by how
+they are written in the config:
+
+[- *Rule*
+:- *Category*
+|[ *something*
+:[ Vague
+|[ *class<something>*
+:[ Class-only
+|[ *title<something>*
+:[ Title-only
+|[ *class<something1> title<something2>*
+:[ Hybrid
+
+When the config contains only "vague" rules, they are matched against window
+*classes* only. This is both for backwards compatibility and for performance:
+matching against the title requires listening to window title changes via
+Hyprland's IPC, which is unnecessary when no title rule is in use.
+
+When the config contains *at least one* "title-only" or "hybrid" rule, then all
+"vague" rules match against *both* class and title. This lets you define vague
+rules where it does not matter whether the class or the title matched.
+
 # ICONS
 
 Additional to workspace name matching, the following *format-icons* can be set.
@@ -229,6 +256,7 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *empty*: Will be shown on non-active, non-special empty persistent workspaces
 - *visible*: Will be shown on workspaces that are visible but not active. For example: this is useful if you want your visible workspaces on other monitors to have the same look as active.
 - *persistent*: Will be shown on non-empty persistent workspaces
+- *urgent*: Will be shown on non-active urgent workspaces
 
 # EXAMPLES
 

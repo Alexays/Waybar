@@ -216,7 +216,12 @@ Configuration can be provided as:
 # SOLVING ISSUES
 
 . On start Waybar throws an exception "error while loading shared libraries: libcava.so: cannot open shared object file: No such file or directory".
-  It might happen when libcava for some reason hasn't been registered in the system. sudo ldconfig should help
+  It might happen when libcava for some reason hasn't been registered in the system. sudo ldconfig should help.
+  It might also happen when Waybar was installed into /usr/local while libcava lives elsewhere. In that case:
+   1. Drop the local cava library: sudo rm -rfv /usr/local/include/cava /usr/local/lib64/pkgconfig/cava.pc /usr/local/lib64/libcava.so
+   2. Set the prefix where Waybar should be installed: meson configure build -Dprefix="/usr"
+   3. Build Waybar: make
+   4. Install Waybar into the system: sudo meson install -C build
 . Waybar is starting but cava module doesn't react to the music
    1. In such cases at first need to make sure usual cava application is working as well
    2. If so, need to comment all configuration options. Uncomment cava_config and provide the path to the working cava config

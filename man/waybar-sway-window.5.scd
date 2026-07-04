@@ -173,3 +173,11 @@ window widget:
 - *window#waybar.tabbed* When there is more than one window in the workspace and the workspace layout is tabbed
 - *window#waybar.tiled* When there is more than one window in the workspace and the workspace layout is splith or splitv
 - *window#waybar.<app_id>* Where *app_id* is the app_id or *instance* name like (*chromium*) of the only window in the workspace
+
+These additional classes are applied to the whole Waybar (an element with the
+name *window* and the id *waybar*) rather than to the module widget itself (an
+element with the name *box* and the id *window*). In most cases you therefore
+want to target *window#waybar.<stylename> #window* to style the module.
+
+Switching layouts does not change the style unless the focus is changed. Sway
+does not provide events for layout switching and the module does not poll.

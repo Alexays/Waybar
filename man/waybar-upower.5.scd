@@ -26,7 +26,7 @@ compatible devices in the tooltip.
 *icon-size*: ++
 	typeof: integer ++
 	default: 20 ++
-	Defines the size of the icons.
+	Defines the size of the icons. Set to *0* for automatic sizing.
 
 *format*: ++
 	typeof: string ++

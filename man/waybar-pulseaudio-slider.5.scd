@@ -87,6 +87,12 @@ The volume can be controlled by dragging the slider across the bar or clicking o
 
 # STYLE
 
+Unlike most modules, the slider modules *require* styling to display correctly.
+In particular you *need* to set *min-width* and/or *min-height* (depending on
+whether the slider is vertical or horizontal) on the *trough* node, otherwise
+the slider renders too small to be usable. This is a GTK detail, not a Waybar
+issue.
+
 The slider is a component with multiple CSS Nodes, of which the following are exposed:
 
 *#pulseaudio-slider*: ++

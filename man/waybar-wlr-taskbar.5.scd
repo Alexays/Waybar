@@ -135,6 +135,11 @@ Addressed by *wlr/taskbar*
 
 *{short_state}*: The state (minimize == m, maximized == M, active == A, fullscreen == F) represented as one character of the application.
 
+As with all format replacements in Waybar, a length limit such as *{title:.15}* is
+measured in bytes, not characters. This may produce invalid text if a multi-byte
+character is split, or (when *markup* is true) if the truncation cuts through a
+value that must be escaped in XML.
+
 # CLICK ACTIONS
 
 *activate*: Bring the application into foreground.
@@ -156,6 +161,8 @@ rewrite rules if the expression matches. Rules may contain references to
 captures of the expression.
 
 Regular expression and replacement follow ECMA-script rules.
+
+An expression must match the format output *fully* to trigger its replacement.
 
 If no expression matches, the format output is left unchanged.
 

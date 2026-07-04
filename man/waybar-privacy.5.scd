@@ -19,7 +19,7 @@ the screen or playing audio.
 *icon-size*: ++
 	typeof: integer ++
 	default: 20 ++
-	The size of each privacy icon.
+	The size of each privacy icon. Set to *0* for auto size.
 
 *transition-duration*: ++
 	typeof: integer ++
@@ -57,7 +57,8 @@ the screen or playing audio.
 
 *icon-name*: ++
 	typeof: string ++
-	If set, changes the modules icon.
+	If set, changes the modules icon. Accepts any valid GTK icon name. ++
+	Note: the icon is only visible when the resource is actively in use; the item is hidden when idle.
 
 *tooltip*: ++
 	typeof: bool ++

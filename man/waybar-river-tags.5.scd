@@ -52,6 +52,23 @@ Addressed by *river/tags*
 }
 ```
 
+Sticky tag: this enables 5 tags and, to support a sticky tag (tag 32),
+*set-tags* is given bitmasks with the 32nd bit set so that tag stays selected
+whichever button is clicked.
+
+```
+"river/tags": {
+	"num-tags": 5,
+	"set-tags": [
+		2147483649,
+		2147483650,
+		2147483652,
+		2147483656,
+		2147483664
+	]
+}
+```
+
 # STYLE
 
 - *#tags button*

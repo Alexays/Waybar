@@ -36,6 +36,10 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	typeof: string ++
 	The format used for the *{format_source}* sub-string when the source (microphone) is muted.
 
+*format-icons*: ++
+	typeof: array ++
+	Based on the current volume, the corresponding icon gets selected. The order is *low* to *high*.
+
 *node-type*: ++
 	typeof: string ++
 	default: *Audio/Sink* ++
@@ -90,6 +94,14 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 	default: cubic_percent
 	The scale to use for the scrolling volume change. Options are 'linear', 'db', 'cubic', and 'cubic_percent'.
 
+*reverse-scrolling*: ++
+	typeof: bool ++
+	Option to reverse the scroll direction for touchpads.
+
+*reverse-mouse-scrolling*: ++
+	typeof: bool ++
+	Option to reverse the scroll direction for mice.
+
 *on-click*: ++
 	typeof: string ++
 	Command to execute when clicked on the module.
@@ -141,6 +153,8 @@ The *wireplumber* module displays the current volume reported by WirePlumber.
 *{volume_cubic}*: Volume in cubic scale as float.
 
 *{volume_db}*: Volume in decibel scale as float.
+
+*{icon}*: Icon, as defined in *format-icons*.
 
 *{node_name}*: The node's nickname as reported by WirePlumber (*node.nick* property)
 

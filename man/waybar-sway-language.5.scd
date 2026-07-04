@@ -32,6 +32,18 @@ Addressed by *sway/language*
 	default: true ++
 	Option to disable tooltip on hover.
 
+*on-click*: ++
+	typeof: string ++
+	Command to execute when clicked on the module.
+
+*on-click-middle*: ++
+	typeof: string ++
+	Command to execute when you middle clicked on the module using mousewheel.
+
+*on-click-right*: ++
+	typeof: string ++
+	Command to execute when you right clicked on the module.
+
 *menu*: ++
 	typeof: string ++
 	Action that popups the menu.
@@ -67,6 +79,7 @@ Addressed by *sway/language*
 ```
 "sway/language": {
 	"format": "{}",
+	"on-click": "swaymsg input type:keyboard xkb_switch_layout next",
 },
 
 "sway/language": {

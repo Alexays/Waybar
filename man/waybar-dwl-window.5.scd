@@ -8,6 +8,9 @@ waybar - dwl window module
 
 The *window* module displays the title of the currently focused window in DWL
 
+Using this module requires patching dwl with the IPC patch
+<https://codeberg.org/dwl/dwl-patches/wiki/ipc>.
+
 # CONFIGURATION
 
 Addressed by *dwl/window*

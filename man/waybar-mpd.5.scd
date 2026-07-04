@@ -8,17 +8,19 @@ waybar - mpd module
 
 The *mpd* module displays information about a running "Music Player Daemon" instance.
 
+Note that Waybar must be compiled with MPD support in order to use this module.
+
 # CONFIGURATION
 
 Addressed by *mpd*
 
 *server*: ++
 	typeof: string ++
-	The network address or Unix socket path of the MPD server. If empty, connect to the default host.
+	The network address or Unix socket path of the MPD server. If empty, connect to the default host (`MPD_HOST`).
 
 *port*: ++
 	typeof: integer ++
-	The port MPD listens to. If empty, use the default port.
+	The port MPD listens to. If empty, use the default port (`MPD_PORT`).
 
 *password*: ++
 	typeof: string ++

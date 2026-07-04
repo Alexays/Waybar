@@ -156,6 +156,8 @@ Addressed by *temperature*
 
 *{temperatureK}*: Temperature in Kelvin.
 
+*{icon}*: Icon, as selected from *format-icons* based on the current temperature.
+
 # EXAMPLES
 
 ```
@@ -173,3 +175,24 @@ Addressed by *temperature*
 - *#temperature*
 - *#temperature.warning*
 - *#temperature.critical*
+
+# TROUBLESHOOTING
+
+## Finding your thermal zone
+
+To list all the thermal zone types, run:
+
+```
+for i in /sys/class/thermal/thermal_zone*; do echo "$i: $(<$i/type)"; done
+```
+
+## Finding an hwmon path
+
+If you do not have a thermal zone, use *sensors* to find the preferred
+temperature source, then run:
+
+```
+for i in /sys/class/hwmon/hwmon*/temp*_input; do echo "$(<$(dirname $i)/name): $(cat ${i%_*}_label 2>/dev/null || echo $(basename ${i%_*})) $(readlink -f $i)"; done
+```
+
+to find the path to the desired file, then set it in *hwmon-path*.
