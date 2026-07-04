@@ -31,7 +31,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install scdoc and pandoc
-        run: sudo apt-get update && sudo apt-get install -y scdoc pandoc
+        # pandoc is pinned: the distro package can be an old 2.x whose man reader
+        # mangles lists into blockquotes. Keep this in sync with local tooling.
+        env:
+          PANDOC_VERSION: "3.5"
+        run: |
+          sudo apt-get update && sudo apt-get install -y scdoc
+          curl -fsSL -o /tmp/pandoc.deb \
+            "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/pandoc-${PANDOC_VERSION}-1-amd64.deb"
+          sudo dpkg -i /tmp/pandoc.deb
+          pandoc --version | head -1
 
       - name: Clone the wiki
         run: |
