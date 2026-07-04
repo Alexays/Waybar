@@ -406,8 +406,11 @@ auto Mpris::onPlayerNameVanished(PlayerctlPlayerManager* manager, PlayerctlPlaye
   if (mpris->player_ == "playerctld") {
     mpris->dp.emit();
   } else if (mpris->player_ == player_name->name) {
+    // Don't touch GTK widgets directly from the playerctl callback: on resume
+    // from suspend this can run in a re-entrant / torn-down state and crash in
+    // Gtk::Widget::set_visible. Only update state + emit; update() (on the main
+    // thread) hides the module when there is no player. See #5124.
     mpris->player = nullptr;
-    mpris->event_box_.set_visible(false);
     mpris->dp.emit();
   }
 }
