@@ -286,6 +286,15 @@ void waybar::Client::bindInterfaces() {
   // Clear stale outputs from previous run
   outputs_.clear();
 
+  // Also drop any batch state that was left pending from the previous run. On
+  // reload the GApplication is swapped but the default main context (and its
+  // queued PRIORITY_HIGH_IDLE createBarsBatch source) survives; pending_outputs_
+  // would then hold dangling waybar_output* into the just-cleared outputs_ list,
+  // which createBarsBatch's address comparison can mis-match if the freed slot is
+  // reused. Reset so the next run schedules its batch from a clean state (#4129).
+  pending_outputs_.clear();
+  bars_scheduled_ = false;
+
   // add existing outputs and subscribe to updates
   for (auto i = 0; i < gdk_display->get_n_monitors(); ++i) {
     auto monitor = gdk_display->get_monitor(i);

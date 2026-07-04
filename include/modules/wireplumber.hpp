@@ -36,6 +36,9 @@ class Wireplumber : public ALabel {
   std::vector<std::string> getWPIcon();
 
   static std::list<waybar::modules::Wireplumber*> modules;
+  // Returns true while `self` is still a live module. Async load/activation callbacks use this to
+  // avoid dereferencing a `self` that was destroyed before the callback fired (see #3974).
+  static bool isModuleAlive(waybar::modules::Wireplumber* self);
 
   uint32_t resolvePhysicalSink(uint32_t start_id);
   uint32_t findPlaybackNodeId(const gchar* description);
