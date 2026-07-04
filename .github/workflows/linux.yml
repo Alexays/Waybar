@@ -58,6 +58,7 @@ jobs:
             libmm-glib-dev \
             libevdev-dev \
             libsystemd-dev \
+            systemd-dev \
             libepoxy-dev \
             libfftw3-dev
       - name: configure
