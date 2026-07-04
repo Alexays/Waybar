@@ -105,8 +105,7 @@ void waybar::modules::Custom::continuousWorker() {
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
-      if (config_["restart-interval"].isNumeric() &&
-          config_["restart-interval"].asDouble() > 0) {
+      if (config_["restart-interval"].isNumeric() && config_["restart-interval"].asDouble() > 0) {
         pid_ = -1;
         thread_.sleep_for(std::chrono::milliseconds(
             std::max(1L,  // Minimum 1ms due to millisecond precision

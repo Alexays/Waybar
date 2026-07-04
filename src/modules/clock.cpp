@@ -447,10 +447,9 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
                               (line == 2)
                                   ? static_cast<const zoned_seconds&&>(
                                         zoned_seconds{tz, local_days{ymTmp / 1}, choose::earliest})
-                                  : static_cast<const zoned_seconds&&>(
-                                        zoned_seconds{tz,
-                                                      local_days{cldGetWeekForLine(ymTmp, firstdow, line)},
-                                                      choose::earliest})))
+                                  : static_cast<const zoned_seconds&&>(zoned_seconds{
+                                        tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)},
+                                        choose::earliest})))
                    << ' ';
               } else {
                 os << pads;
@@ -489,11 +488,12 @@ auto waybar::modules::Clock::get_calendar(const year_month_day& today, const yea
                    << fmt_lib::vformat(
                           m_locale_, fmtMap_[4],
                           fmt_lib::make_format_args(
-                              (line == 2) ? static_cast<const zoned_seconds&&>(zoned_seconds{
-                                                tz, local_days{ymTmp / 1}, choose::earliest})
-                                          : static_cast<const zoned_seconds&&>(zoned_seconds{
-                                                tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)},
-                                                choose::earliest})));
+                              (line == 2)
+                                  ? static_cast<const zoned_seconds&&>(
+                                        zoned_seconds{tz, local_days{ymTmp / 1}, choose::earliest})
+                                  : static_cast<const zoned_seconds&&>(zoned_seconds{
+                                        tz, local_days{cldGetWeekForLine(ymTmp, firstdow, line)},
+                                        choose::earliest})));
               else
                 os << pads;
             }

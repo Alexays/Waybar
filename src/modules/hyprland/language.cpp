@@ -38,18 +38,18 @@ auto Language::update() -> void {
   std::string layoutName = std::string{};
   if (config_.isMember("format-" + layout_.short_description + "-" + layout_.variant)) {
     const auto propName = "format-" + layout_.short_description + "-" + layout_.variant;
-    layoutName = trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
-                                  fmt::arg("long", layout_.full_name),
-                                  fmt::arg("short", layout_.short_name),
-                                  fmt::arg("shortDescription", layout_.short_description),
-                                  fmt::arg("variant", layout_.variant)));
+    layoutName =
+        trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
+                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
   } else if (config_.isMember("format-" + layout_.short_description)) {
     const auto propName = "format-" + layout_.short_description;
-    layoutName = trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
-                                  fmt::arg("long", layout_.full_name),
-                                  fmt::arg("short", layout_.short_name),
-                                  fmt::arg("shortDescription", layout_.short_description),
-                                  fmt::arg("variant", layout_.variant)));
+    layoutName =
+        trim(fmt::format(fmt::runtime(format_), config_[propName].asString(),
+                         fmt::arg("long", layout_.full_name), fmt::arg("short", layout_.short_name),
+                         fmt::arg("shortDescription", layout_.short_description),
+                         fmt::arg("variant", layout_.variant)));
   } else {
     layoutName = trim(fmt::format(fmt::runtime(format_), fmt::arg("long", layout_.full_name),
                                   fmt::arg("short", layout_.short_name),
