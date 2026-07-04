@@ -1,0 +1,26 @@
+// Deterministic Waybar config for the CI smoke/screenshot test.
+// Uses only static custom modules (interval "once") so the rendered bar is
+// reproducible and can be compared against a reference image.
+{
+    "layer": "top",
+    "position": "top",
+    "height": 30,
+    "modules-left": ["custom/left"],
+    "modules-center": ["custom/center"],
+    "modules-right": ["custom/right"],
+    "custom/left": {
+        "format": "Waybar",
+        "exec": "echo",
+        "interval": "once"
+    },
+    "custom/center": {
+        "format": "CI smoke test",
+        "exec": "echo",
+        "interval": "once"
+    },
+    "custom/right": {
+        "format": "12:34",
+        "exec": "echo",
+        "interval": "once"
+    }
+}
