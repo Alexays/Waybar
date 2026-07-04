@@ -268,10 +268,16 @@ waybar::modules::KeyboardState::KeyboardState(const std::string& id, const Bar& 
           std::lock_guard<std::mutex> lock(devices_mutex_);
           auto it = libinput_devices_.find(dev_path);
           if (it != libinput_devices_.end()) {
-            spdlog::info("Keyboard {} has been removed.", dev_path);
-            libinput_path_remove_device(it->second);
-            libinput_device_unref(it->second);
+            struct libinput_device* device = it->second;
+            // Erase from the map first so that a second IN_DELETE event for the
+            // same path becomes a no-op. This keeps removal idempotent and
+            // ensures libinput_path_remove_device()/libinput_device_unref() are
+            // called exactly once per device, avoiding a libinput list_remove
+            // assertion abort on double removal.
             libinput_devices_.erase(it);
+            spdlog::info("Keyboard {} has been removed.", dev_path);
+            libinput_path_remove_device(device);
+            libinput_device_unref(device);
           }
         }
         i += sizeof(struct inotify_event) + event->len;
