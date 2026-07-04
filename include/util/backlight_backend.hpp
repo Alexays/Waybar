@@ -27,9 +27,11 @@ namespace waybar::util {
 class BacklightDevice {
  public:
   BacklightDevice() = default;
-  BacklightDevice(std::string name, int actual, int max, bool powered);
+  BacklightDevice(std::string name, int actual, int max, bool powered,
+                  std::string subsystem = "backlight");
 
   std::string name() const;
+  std::string subsystem() const;
   int get_actual() const;
   void set_actual(int actual);
   int get_max() const;
@@ -45,6 +47,7 @@ class BacklightDevice {
   int actual_ = 1;
   int max_ = 1;
   bool powered_ = true;
+  std::string subsystem_ = "backlight";
 };
 
 class BacklightBackend {
@@ -70,7 +73,8 @@ class BacklightBackend {
   std::mutex udev_thread_mutex_;
 
  private:
-  void set_brightness_internal(const std::string& device_name, int brightness, int max_brightness);
+  void set_brightness_internal(const std::string& device_name, int brightness, int max_brightness,
+                               const std::string& subsystem = "backlight");
 
   std::function<void()> on_updated_cb_;
   std::chrono::milliseconds polling_interval_;
