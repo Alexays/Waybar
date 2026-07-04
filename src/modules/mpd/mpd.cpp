@@ -294,13 +294,29 @@ void waybar::modules::MPD::tryConnect() {
     return;
   }
 
-  connection_ =
-      detail::unique_connection(mpd_connection_new(server_, port_, timeout_), &mpd_connection_free);
+  // tryConnect() runs on the GTK main thread (via Glib::signal_timeout), so a
+  // blocking connect freezes the whole bar. Bound the connect attempt to a
+  // short timeout so an unreachable MPD server fails fast instead of hanging
+  // the loop for the full user-facing `timeout_` (up to 30s by default, #1186).
+  // The third argument to mpd_connection_new() is also the default command
+  // read timeout, so restore `timeout_` once connected to avoid shortening
+  // reads for slow-but-alive servers.
+  static constexpr unsigned kConnectTimeoutMs = 2'000;
+  unsigned connect_timeout =
+      (timeout_ != 0 && timeout_ < kConnectTimeoutMs) ? timeout_ : kConnectTimeoutMs;
+
+  connection_ = detail::unique_connection(mpd_connection_new(server_, port_, connect_timeout),
+                                          &mpd_connection_free);
 
   if (connection_ == nullptr) {
     spdlog::error("{}: Failed to connect to MPD", module_name_);
     connection_.reset();
     return;
+  }
+
+  // Restore the user-configured timeout for subsequent command reads.
+  if (timeout_ != 0) {
+    mpd_connection_set_timeout(connection_.get(), timeout_);
   }
 
   try {

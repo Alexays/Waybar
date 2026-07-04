@@ -118,7 +118,7 @@ auto AModule::update() -> void {
   if (config_["on-update"].isString()) {
     pid_children_.push_back(util::command::forkExec(config_["on-update"].asString()));
   }
-  signal_updated.emit(this); 
+  signal_updated.emit(this);
 }
 // Get mapping between event name and module action name
 // Then call overridden doAction in order to call appropriate module action
@@ -222,10 +222,18 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   }
   // Second call user scripts
   if (!format.empty()) {
-    if (config_[format].isString())
-      format = config_[format].asString();
-    else
+    // If the configured value for this event is a recognized built-in module
+    // action (registered in eventActionMap_), it has already been dispatched
+    // via doAction() above / handled by the module itself. Don't additionally
+    // run it as a shell command (issue #3284). Any other value is still treated
+    // as a user shell command.
+    const auto actionIt = eventActionMap_.find(format);
+    const bool isModuleAction = actionIt != eventActionMap_.cend() && config_[format].isString() &&
+                                config_[format].asString() == actionIt->second;
+    if (isModuleAction || !config_[format].isString())
       format.clear();
+    else
+      format = config_[format].asString();
   }
   if (!format.empty()) {
     const int width = gdk_window_get_width(e->window);

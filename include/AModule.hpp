@@ -98,6 +98,13 @@ class AModule : public IModule {
   bool disable_on_sleep_{false};
   GObject* menu_ = nullptr;
 
+  // Maps a configured event name (e.g. "on-click-middle") to a built-in module
+  // action name. Populated from the `actions` config section, and by modules
+  // that interpret on-click* config values as internal actions (e.g.
+  // wlr/taskbar). Entries here are dispatched through doAction() instead of
+  // being run as shell commands.
+  std::map<std::string, std::string> eventActionMap_;
+
  private:
   bool handleUserEvent(GdkEventButton* const& ev);
   const bool isTooltip;
@@ -106,7 +113,6 @@ class AModule : public IModule {
   gdouble distance_scrolled_y_;
   gdouble distance_scrolled_x_;
   sigc::connection cursor_timeout_conn_;
-  std::map<std::string, std::string> eventActionMap_;
   static const inline std::map<std::pair<uint, GdkEventType>, std::string> eventMap_{
       {std::make_pair(1, GdkEventType::GDK_BUTTON_PRESS), "on-click"},
       {std::make_pair(1, GdkEventType::GDK_BUTTON_RELEASE), "on-click-release"},
