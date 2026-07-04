@@ -1,0 +1,56 @@
+name: Sync wiki from man pages
+
+# The scdoc man pages under man/ are the single source of truth for module
+# documentation. This workflow regenerates the corresponding GitHub wiki pages
+# whenever a man page (or the sync tooling) changes on the default branch.
+#
+# Only the pages listed in .github/wiki/mapping.json are (re)written; every
+# other wiki page (Home, Installation, user showcases, ...) is left untouched.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'man/**'
+      - '.github/wiki/**'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install scdoc and pandoc
+        run: sudo apt-get update && sudo apt-get install -y scdoc pandoc
+
+      - name: Clone the wiki
+        run: |
+          git clone \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" \
+            wiki
+
+      - name: Generate wiki pages from man pages
+        run: python3 .github/wiki/generate.py --man-dir man --out-dir wiki
+
+      - name: Commit and push if changed
+        working-directory: wiki
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "Wiki already up to date."
+          else
+            git commit -m "docs: sync module pages from man (${{ github.sha }})"
+            git push
+          fi
