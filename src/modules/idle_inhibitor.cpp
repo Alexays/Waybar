@@ -44,7 +44,14 @@ waybar::modules::IdleInhibitor::IdleInhibitor(const std::string& id, const Bar& 
   event_box_.signal_button_press_event().connect(
       sigc::mem_fun(*this, &IdleInhibitor::handleToggle));
 
-  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &IdleInhibitor::handleScroll));
+  // Only connect our own scroll handler when the user hasn't configured on-scroll-*
+  // commands. When on-scroll-* is set, AModule already connects a scroll handler that
+  // (via virtual dispatch) reaches IdleInhibitor::handleScroll; a second connection here
+  // would fire handleScroll twice per scroll event.
+  if (!(config_["on-scroll-up"].isString() || config_["on-scroll-down"].isString() ||
+        config_["on-scroll-left"].isString() || config_["on-scroll-right"].isString())) {
+    event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &IdleInhibitor::handleScroll));
+  }
 
   // Add this to the modules list
   waybar::modules::IdleInhibitor::modules.push_back(this);
@@ -157,8 +164,11 @@ void waybar::modules::IdleInhibitor::toggleStatus(int force_status) {
 }
 
 bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
+  // Accept both the documented "dynamic-timeouts" (plural) and the legacy
+  // "dynamic-timeout" (singular) key spellings.
+  const bool dynamic = config_["dynamic-timeouts"].asBool() || config_["dynamic-timeout"].asBool();
   if (e->button == 1) {
-    if (config_["dynamic-timeout"].asBool()) {
+    if (dynamic) {
       toggleStatus(1);
     } else {
       toggleStatus();
@@ -171,7 +181,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
       }
     }
   }
-  if (e->button == 3) {
+  if (e->button == 3 && dynamic) {
     toggleStatus(0);
 
     // Make all other idle inhibitor modules update
@@ -181,7 +191,7 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
       }
     }
   }
-  if (e->button == 2) {
+  if (e->button == 2 && dynamic) {
     toggleStatus(0);
     timeout = config_["timeout"].asDouble();
   }
@@ -190,8 +200,11 @@ bool waybar::modules::IdleInhibitor::handleToggle(GdkEventButton* const& e) {
 }
 
 bool waybar::modules::IdleInhibitor::handleScroll(GdkEventScroll* e) {
-  if (!config_["dynamic-timeout"].asBool()) {
-    return true;
+  // Accept both the documented "dynamic-timeouts" (plural) and the legacy
+  // "dynamic-timeout" (singular) key spellings.
+  if (!(config_["dynamic-timeouts"].asBool() || config_["dynamic-timeout"].asBool())) {
+    // Delegate to the base handler so any configured on-scroll-* command still runs.
+    return ALabel::handleScroll(e);
   }
   auto dir = AModule::getScrollDir(e);
   if (dir == SCROLL_DIR::NONE) {

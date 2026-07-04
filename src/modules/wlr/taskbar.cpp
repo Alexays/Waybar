@@ -627,7 +627,7 @@ void Task::update() {
     if (markup)
       button.set_tooltip_markup(txt);
     else
-      button.set_tooltip_markup(txt);
+      button.set_tooltip_text(txt);
   }
 }
 

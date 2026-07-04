@@ -86,7 +86,6 @@ auto isCommonFormatIcons(const Json::Value& config) -> bool {
 auto keyStateToIcons(const Json::Value& config)
     -> std::unordered_map<std::string, std::vector<std::string>> {
   std::unordered_map<std::string, std::vector<std::string>> key_icon_states;
-  std::vector<std::string> default_icons = {"unlocked", "locked"};
 
   if (isCommonFormatIcons(config)) {
     std::vector<std::string> icons = {
@@ -100,26 +99,18 @@ auto keyStateToIcons(const Json::Value& config)
     return key_icon_states;
   }
 
-  bool found_any = false;
+  const auto& format_icons = config["format-icons"];
   for (const auto& key : std::vector<std::string>{"numlock", "capslock", "scrolllock"}) {
     std::string map_key = key.substr(0, key.length() - 4);
     map_key[0] = std::toupper(map_key[0]);
-    if (config["format-icons"].isObject() && config["format-icons"][key].isObject()) {
-      std::string unlocked = config["format-icons"][key]["unlocked"].isString()
-                                 ? config["format-icons"][key]["unlocked"].asString()
-                                 : "unlocked";
-      std::string locked = config["format-icons"][key]["locked"].isString()
-                               ? config["format-icons"][key]["locked"].asString()
-                               : "locked";
-      key_icon_states[map_key] = {unlocked, locked};
-      found_any = true;
+    std::string unlocked = "unlocked";
+    std::string locked = "locked";
+    if (format_icons.isObject() && format_icons[key].isObject()) {
+      const auto& obj = format_icons[key];
+      if (obj["unlocked"].isString()) unlocked = obj["unlocked"].asString();
+      if (obj["locked"].isString()) locked = obj["locked"].asString();
     }
-  }
-
-  if (!found_any) {
-    key_icon_states["Num"] = default_icons;
-    key_icon_states["Caps"] = default_icons;
-    key_icon_states["Scroll"] = default_icons;
+    key_icon_states[map_key] = {unlocked, locked};
   }
 
   return key_icon_states;

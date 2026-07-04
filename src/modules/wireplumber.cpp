@@ -118,15 +118,23 @@ void waybar::modules::Wireplumber::updateNodeName(waybar::modules::Wireplumber* 
 
   // find form-factor
   const auto* devid = wp_properties_get(properties, "device.id");
-  spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
+  if (devid != nullptr) {
+    spdlog::debug("[{}]: '{}' device.id is {}", self->name_, self->type_, devid);
 
-  auto* dev = static_cast<WpDevice*>(wp_object_manager_lookup(
-      self->om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id", "=s", devid, nullptr));
+    g_autoptr(WpDevice) dev = static_cast<WpDevice*>(
+        wp_object_manager_lookup(self->om_, WP_TYPE_DEVICE, WP_CONSTRAINT_TYPE_G_PROPERTY,
+                                 "bound-id", "=s", devid, nullptr));
 
-  if (const auto* ff =
-          wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(dev), "device.form-factor")) {
-    self->form_factor_ = ff;
-    spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
+    const gchar* ff = dev != nullptr ? wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(dev),
+                                                                       "device.form-factor")
+                                     : nullptr;
+
+    if (ff != nullptr) {
+      self->form_factor_ = ff;
+      spdlog::debug("[{}]: Updating node form factor to: {}", self->name_, self->form_factor_);
+    } else {
+      self->form_factor_ = "";
+    }
   } else {
     self->form_factor_ = "";
   }
@@ -614,7 +622,10 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     step = config_["scroll-step"].asDouble();
   }
   if (config_["max-volume"].isDouble()) {
-    maxVolume = config_["max-volume"].asDouble();
+    // {volume} is displayed as cubic-percent (pow(volume_, 3) * 100), while volume_/newVol are
+    // linear gains. Map the documented cubic-percent ceiling into the linear domain the clamp
+    // operates in, restoring the 0.15.0 cap semantics (e.g. 130 -> cbrt(1.3) linear -> 130%).
+    maxVolume = cbrt(config_["max-volume"].asDouble() / 100.0);
   }
 
   double vol = volume_;

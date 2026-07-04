@@ -129,13 +129,15 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
   }
 
   if (!control_) {
+    // Keep going: without river_control_v1 the tags are still displayed read-only
+    // (0.15.0 behavior); only the click-to-select/toggle wiring is disabled below.
     spdlog::error("river_control_v1 not advertised");
-    return;
   }
 
   if (!seat_) {
+    // Keep going: wl_seat is only required for the focused-output ("output") class
+    // and for issuing control commands. Read-only tag display still works without it.
     spdlog::error("wl_seat not advertised");
-    return;
   }
 
   // Store the output this module belongs to; the river_output_status and
@@ -169,7 +171,7 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
     button.set_relief(Gtk::RELIEF_NONE);
     box_.pack_start(button, false, false, 0);
 
-    if (!config_["disable-click"].asBool()) {
+    if (control_ && seat_ && !config_["disable-click"].asBool()) {
       if (set_tags.isArray() && !set_tags.empty())
         button.signal_clicked().connect(sigc::bind(
             sigc::mem_fun(*this, &Tags::handle_primary_clicked), set_tags[tag].asUInt()));
@@ -213,14 +215,17 @@ void Tags::handle_show() {
   output_status_ = zriver_status_manager_v1_get_river_output_status(status_manager_, output_);
   zriver_output_status_v1_add_listener(output_status_, &output_status_listener_impl, this);
 
-  seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
-  zriver_seat_status_v1_add_listener(seat_status_, &seat_status_listener_impl, this);
+  if (seat_) {
+    seat_status_ = zriver_status_manager_v1_get_river_seat_status(status_manager_, seat_);
+    zriver_seat_status_v1_add_listener(seat_status_, &seat_status_listener_impl, this);
+  }
 
   zriver_status_manager_v1_destroy(status_manager_);
   status_manager_ = nullptr;
 }
 
 void Tags::handle_primary_clicked(uint32_t tag) {
+  if (!control_ || !seat_) return;
   // Send river command to select tag on left mouse click
   zriver_command_callback_v1* callback;
   zriver_control_v1_add_argument(control_, "set-focused-tags");
@@ -230,6 +235,7 @@ void Tags::handle_primary_clicked(uint32_t tag) {
 }
 
 bool Tags::handle_button_press(GdkEventButton* event_button, uint32_t tag) {
+  if (!control_ || !seat_) return true;
   if (event_button->type == GDK_BUTTON_PRESS && event_button->button == 3) {
     // Send river command to toggle tag on right mouse click
     zriver_command_callback_v1* callback;

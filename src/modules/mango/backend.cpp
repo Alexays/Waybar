@@ -204,18 +204,13 @@ void IPC::parseIPC(const std::string& line) {
       }
     }
 
-    std::vector<EventHandler*> handlers_to_notify;
     {
       std::lock_guard<std::mutex> lock(callback_mutex_);
       for (auto& [ev, handler] : callbacks_) {
         if (ev == "monitor") {
-          handlers_to_notify.push_back(handler);
+          handler->onEvent(root);
         }
       }
-    }
-
-    for (auto* handler : handlers_to_notify) {
-      handler->onEvent(root);
     }
 
     return;

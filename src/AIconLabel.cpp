@@ -90,13 +90,18 @@ auto AIconLabel::update() -> void {
     label_.set_markup(cleanLabel);
 
     if (iconLabel.front() == '/') {
-      int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
-      auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
+      try {
+        int scaled_icon_size = app_icon_size_ * image_.get_scale_factor();
+        auto pixbuf = Gdk::Pixbuf::create_from_file(iconLabel, scaled_icon_size, scaled_icon_size);
 
-      auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
-                                                            image_.get_window());
-      image_.set(surface);
-      image_.set_visible(true);
+        auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
+                                                              image_.get_window());
+        image_.set(surface);
+        image_.set_visible(true);
+      } catch (const Glib::Exception& e) {
+        spdlog::warn("Failed to load embedded icon {}: {}", iconLabel, std::string(e.what()));
+        image_.set_visible(false);
+      }
     } else {
       image_.set_from_icon_name(iconLabel, Gtk::ICON_SIZE_INVALID);
       image_.set_visible(true);

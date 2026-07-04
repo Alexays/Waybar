@@ -76,7 +76,7 @@ screensaver, also known as "presentation mode".
 	typeof: double ++
 	The number of minutes the inhibition should last.
 
-*timeout_step*: ++
+*timeout-step*: ++
 	typeof: double ++
 	default: 10 ++
 	The number of minutes to add or subtract when scrolling (when dynamic timeouts are enabled).

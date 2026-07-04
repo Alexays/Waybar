@@ -67,6 +67,11 @@ see the cursor-shape-v1 protocol for all possible cursor types:
 https://wayland.app/protocols/cursor-shape-v1#wp_cursor_shape_device_v1:enum:shape.
 Depending on the compositor and cursor theme used, cursors not listed in the protocol may also work.
 
+Prior to 0.16.0 the `cursor` option accepted a numeric _Gdk::CursorType_ value
+(e.g. `"cursor": 8`). Numeric values are deprecated but still honored for
+backward compatibility; a cursor-shape-v1 name string (e.g. `"grab"`) is now
+preferred.
+
 Example of disabling the cursor on a custom module:
 
 ```

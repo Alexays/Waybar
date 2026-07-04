@@ -78,7 +78,7 @@ void Window::doUpdate() {
 
     updateAppIconName(appId, "");
 
-    if (tooltipEnabled()) label_.set_tooltip_markup(title);
+    if (tooltipEnabled()) label_.set_tooltip_markup(sanitizedTitle);
 
     const auto id = window["id"].asUInt64();
     const auto workspaceId = window["workspace_id"].asUInt64();
@@ -93,11 +93,15 @@ void Window::doUpdate() {
       oldAppId_ = appId;
     }
   } else {
-    label_.show();
-    label_.set_markup(waybar::util::rewriteString(
-        fmt::format(fmt::runtime(format_), fmt::arg("title", ""),
-                    fmt::arg("app_id", "")),
-        config_["rewrite"]));
+    if (config_["show-empty"].asBool()) {
+      label_.show();
+      label_.set_markup(waybar::util::rewriteString(
+          fmt::format(fmt::runtime(format_), fmt::arg("title", ""), fmt::arg("app_id", ""),
+                      fmt::arg("col", -1), fmt::arg("max_col", -1)),
+          config_["rewrite"]));
+    } else {
+      label_.hide();
+    }
 
     updateAppIconName("", "");
     setClass("solo", false);

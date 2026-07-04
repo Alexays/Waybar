@@ -40,6 +40,11 @@ Addressed by *niri/window*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*show-empty*: ++
+	typeof: bool ++
+	default: false ++
+	When no window is focused (empty workspace or all windows closed), keep the module visible and render *format* with empty {title}/{app_id} and {col}/{max_col} set to -1. When false (the default), the module is hidden while no window is focused.
+
 # FORMAT REPLACEMENTS
 
 See the output of "niri msg windows" for examples

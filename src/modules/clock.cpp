@@ -568,8 +568,12 @@ void waybar::modules::Clock::tz_down() {
   tzCurrIdx_ = (tzCurrIdx_ == 0) ? tzSize - 1 : tzCurrIdx_ - 1;
 }
 void waybar::modules::Clock::action_exec(const std::string& action) {
-  auto cmd = action.substr(strlen("exec "));
-  pid_children_.push_back(util::command::forkExec(cmd));
+  const auto pos = action.find(" ");
+  if (pos == std::string::npos || action.find_first_not_of(" ", pos) == std::string::npos) {
+    spdlog::error("Clock: exec action requires a command argument");
+    return;
+  }
+  pid_children_.push_back(util::command::forkExec(action.substr(pos + 1)));
 }
 
 #ifdef HAVE_LANGINFO_1STDAY

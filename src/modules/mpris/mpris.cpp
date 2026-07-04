@@ -385,6 +385,7 @@ auto Mpris::onPlayerNameAppeared(PlayerctlPlayerManager* manager, PlayerctlPlaye
 
   if (mpris->player != nullptr) {
     g_signal_handlers_disconnect_by_data(mpris->player, mpris);
+    if (mpris->last_active_player_ == mpris->player) mpris->last_active_player_ = nullptr;
     g_clear_object(&mpris->player);
   }
   mpris->player = playerctl_player_new_from_name(player_name, nullptr);
@@ -544,11 +545,12 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
   if (error) goto errorexit;
 
   if (auto* album_artist_ =
-          playerctl_player_print_metadata_prop(player, "xesam:albumArtist", &error)) {
+          playerctl_player_print_metadata_prop(last_active_player_, "xesam:albumArtist", &error)) {
     spdlog::debug("mpris[{}]: albumArtist = {}", info.name, album_artist_);
     info.album_artist = album_artist_;
     g_free(album_artist_);
   }
+  if (error) goto errorexit;
 
   if (auto* album_ = playerctl_player_get_album(last_active_player_, &error)) {
     spdlog::debug("mpris[{}]: album = {}", info.name, album_);
@@ -745,7 +747,8 @@ auto Mpris::update() -> void {
   if (tooltipEnabled()) {
     try {
       auto tooltip_text = fmt::format(
-          fmt::runtime(tooltipstr), fmt::arg("player", info.name),
+          fmt::runtime(tooltipstr),
+          fmt::arg("player", std::string(Glib::Markup::escape_text(info.name))),
           fmt::arg("status", info.status_string),
           fmt::arg("artist",
                    std::string(Glib::Markup::escape_text(getArtistStr(info, tooltip_len_limits_)))),
@@ -754,7 +757,7 @@ auto Mpris::update() -> void {
           fmt::arg("album",
                    std::string(Glib::Markup::escape_text(getAlbumStr(info, tooltip_len_limits_)))),
           fmt::arg("length", tooltipLength), fmt::arg("position", tooltipPosition),
-          fmt::arg("dynamic", getDynamicStr(info, tooltip_len_limits_, false)),
+          fmt::arg("dynamic", getDynamicStr(info, tooltip_len_limits_, true)),
           fmt::arg("player_icon", getIconFromJson(config_["player-icons"], info.name)),
           fmt::arg("status_icon", getIconFromJson(config_["status-icons"], info.status_string)));
 

@@ -138,9 +138,7 @@ void Window::handle_frame() {
       box_.set_visible(true);
     } else {
       box_.get_style_context()->remove_class("active");
-      if (hide_inactive_) {
-        box_.set_visible(false);
-      }
+      box_.set_visible(!hide_inactive_);
     }
   }
 }

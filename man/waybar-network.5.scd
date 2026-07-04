@@ -196,9 +196,9 @@ Addressed by *network*
 
 *{bandwidthTotalBytes}*: Instant total speed in bytes/seconds.
 
-*{tx_bitrate}*: Link transmit bitrate (e.g., 866.7 Mb/s).
+*{txBitrate}*: Link transmit bitrate (e.g., 866.7 Mb/s).
 
-*{rx_bitrate}*: Link receive bitrate (e.g., 866.7 Mb/s).
+*{rxBitrate}*: Link receive bitrate (e.g., 866.7 Mb/s).
 
 *{linkSpeed}*: Ethernet link speed.
 
