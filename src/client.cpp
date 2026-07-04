@@ -211,7 +211,7 @@ const std::string waybar::Client::getStyle(const std::string& style,
 
   if (style.empty()) {
     std::vector<std::string> search_files;
-    switch (appearance.value_or(portal->getAppearance())) {
+    switch (appearance.value_or(portal ? portal->getAppearance() : waybar::Appearance::UNKNOWN)) {
       case waybar::Appearance::LIGHT:
         search_files.emplace_back("style-light.css");
         gtk_settings->property_gtk_application_prefer_dark_theme() = false;
@@ -344,16 +344,26 @@ int waybar::Client::main(int argc, char* argv[]) {
   wl_display = gdk_wayland_display_get_wl_display(gdk_display->gobj());
   config.load(config_opt);
   if (!portal) {
-    portal = std::make_unique<waybar::Portal>();
+    try {
+      portal = std::make_unique<waybar::Portal>();
+    } catch (const Glib::Error& e) {
+      spdlog::warn(
+          "Failed to connect to the desktop portal, light/dark theme detection disabled: {}",
+          std::string(e.what()));
+    } catch (...) {
+      spdlog::warn("Failed to connect to the desktop portal, light/dark theme detection disabled");
+    }
   }
   m_cssFile = getStyle(style_opt);
   setupCss(m_cssFile);
   m_cssReloadHelper = std::make_unique<CssReloadHelper>(m_cssFile, [&](const std::string& css_file) { setupCss(css_file); });
-  portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
-    auto css_file = getStyle(style_opt, appearance);
-    m_cssReloadHelper->changeCssFile(css_file);
-    setupCss(css_file);
-  });
+  if (portal) {
+    portal->signal_appearance_changed().connect([&](waybar::Appearance appearance) {
+      auto css_file = getStyle(style_opt, appearance);
+      m_cssReloadHelper->changeCssFile(css_file);
+      setupCss(css_file);
+    });
+  }
 
   auto m_config = config.getConfig();
   if (m_config.isObject() && m_config["reload_style_on_change"].asBool()) {
@@ -378,5 +388,7 @@ int waybar::Client::main(int argc, char* argv[]) {
 void waybar::Client::reset() {
   gtk_app->quit();
   // delete signal handler for css changes
-  portal->signal_appearance_changed().clear();
+  if (portal) {
+    portal->signal_appearance_changed().clear();
+  }
 }
