@@ -77,3 +77,12 @@ Display the full profile name:
   }
 }
 ```
+
+# STYLE
+
+- *#power-profiles-daemon*
+- *#power-profiles-daemon.performance* Applied when the *performance* profile is active.
+- *#power-profiles-daemon.balanced* Applied when the *balanced* profile is active.
+- *#power-profiles-daemon.power-saver* Applied when the *power-saver* profile is active.
+
+*Note*: the module applies a CSS class equal to the name of the active profile, so any additional profile exposed by power-profiles-daemon can be styled by its name.

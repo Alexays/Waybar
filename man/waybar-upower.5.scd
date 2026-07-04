@@ -59,6 +59,12 @@ compatible devices in the tooltip.
 	default: 4 ++
 	Defines the spacing between the tooltip window edge and the tooltip content.
 
+*tooltip-format*: ++
+	typeof: string ++
+	default: ++
+	The format used for each device line shown in the tooltip. Accepts the ++
+	same replacements as *format*.
+
 *on-click*: ++
 	typeof: string ++
 	Command to execute when clicked on the module.
@@ -87,6 +93,12 @@ compatible devices in the tooltip.
 
 *{time}*: An estimated time either until empty or until fully charged ++
 depending on the charging state.
+
+*{temperature}*: The battery temperature in degrees Celsius.
+
+*{model}*: The model name of the device.
+
+*{native-path}*: The native path of the device.
 
 # EXAMPLES
 

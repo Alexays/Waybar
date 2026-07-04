@@ -84,7 +84,8 @@ screensaver, also known as "presentation mode".
 *dynamic-timeouts*: ++
 	typeof: bool ++
 	default: false ++
-	Option to enable dynamic timeouts.
+	Option to enable dynamic timeouts. ++
+	The legacy singular spelling *dynamic-timeout* is also accepted as an alias.
 
 *wait-for-activity*: ++
 	typeof: bool ++

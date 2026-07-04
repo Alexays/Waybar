@@ -176,6 +176,8 @@ Addressed by *network*
 
 *{signaldBm}*: Signal strength of the wireless network in dBm.
 
+*{signalStrengthApp}*: Human-readable descriptor of the wireless connectivity derived from the signal strength (e.g. "Great Connectivity", "Streaming", "Poor Connectivity").
+
 *{frequency}*: Frequency of the wireless network in GHz.
 
 *{bandwidthUpBits}*: Instant up speed in bits/seconds.
@@ -193,6 +195,10 @@ Addressed by *network*
 *{bandwidthUpBytes}*: Instant up speed in bytes/seconds.
 
 *{bandwidthDownBytes}*: Instant down speed in bytes/seconds.
+
+*{bandwidthUpBytesCompact}*: Instant up speed in bytes/seconds, formatted compactly (e.g. 1.2K).
+
+*{bandwidthDownBytesCompact}*: Instant down speed in bytes/seconds, formatted compactly (e.g. 1.2K).
 
 *{bandwidthTotalBytes}*: Instant total speed in bytes/seconds.
 

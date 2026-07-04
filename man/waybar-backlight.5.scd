@@ -15,6 +15,10 @@ The *backlight* module displays the current backlight level.
 	default: 2 ++
 	The interval in which information gets polled.
 
+*device*: ++
+	typeof: string ++
+	The name of the preferred backlight device to display. If left empty, a device will be chosen automatically.
+
 *format*: ++
 	typeof: string ++
 	default: {percent}% ++
@@ -103,6 +107,16 @@ The *backlight* module displays the current backlight level.
 	typeof: bool ++
 	default: false ++
 	Enables this module to consume all left over space dynamically.
+
+# FORMAT REPLACEMENTS
+
+*{percent}*: The current brightness in percent.
+
+*{percent_exp}*: The current brightness in percent, adjusted with a power curve to better match perceived brightness.
+
+*{icon}*: The icon from *format-icons* chosen according to *{percent}*.
+
+*{icon_exp}*: The icon from *format-icons* chosen according to *{percent_exp}*.
 
 # EXAMPLE:
 

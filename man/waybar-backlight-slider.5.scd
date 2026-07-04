@@ -31,6 +31,11 @@ The brightness can be controlled by dragging the slider across the bar or clicki
     typeof: string ++
     The name of the preferred device to control. If left empty, a device will be chosen automatically.
 
+*interval*: ++
+    typeof: uint ++
+    default: 1000 ++
+    The interval in milliseconds at which the brightness is polled and the slider is updated.
+
 *expand*: ++
 	typeof: bool ++
 	default: false ++

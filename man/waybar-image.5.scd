@@ -110,16 +110,16 @@ $path\\n$tooltip
 For multiple *image*
 
 *size*: ++
-	typeof: string ++
+	typeof: integer ++
 	default: 16 ++
 	Minumum size of the rendered image in pixels.
 
 *interval*: ++
-	typeof: interger ++
-	default: INT_MAX ++
-	The interval in seconds to redraw module ++
-	Default value is max value of int and changing it is only recommended ++
-	if image path or other property is being changed overtime ++
+	typeof: integer or float ++
+	The interval (in seconds) to re-render the module. ++
+	If set to a positive value, the minimum is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
+	Zero or negative values (and the literal "once") are treated as "once". ++
+	This is useful if image path or other property is being changed over time. ++
 	If no *interval* is provided, the module will only be rendered once.
 
 *multiple*: ++
@@ -246,7 +246,7 @@ print(res)
 
 - *#image*
 - *#image*.empty /\*when image could not be rendered\*/
-- *#image*.button /\*when on-click is provided\*/
+- *#image* button /\*when on-click is provided; a Gtk::Button is matched by the element selector, not a class\*/
 - *#image*.*marker* /\*where *marker* is parameter from config\*/
-- *#image*.button.*marker*
+- *#image* button.*marker*
 

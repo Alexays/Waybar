@@ -77,3 +77,4 @@ Addressed by *sway/language*
 # STYLE
 
 - *#language*
+- *#language.<layout-short-name>* Where *layout-short-name* is the short name of the active layout (e.g. *#language.us* or *#language.de*).

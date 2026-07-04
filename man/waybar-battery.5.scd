@@ -37,6 +37,16 @@ The *battery* module displays the current capacity and state (eg. charging) of y
 	default: 60 ++
 	The interval in which the information gets polled.
 
+*smooth-power*: ++
+	typeof: bool ++
+	default: false ++
+	Enable exponential smoothing of the battery power reading used to estimate the *{time}* remaining, so the estimate fluctuates less between refreshes.
+
+*smooth-power-time-constant*: ++
+	typeof: double ++
+	default: 260.0 ++
+	The time constant (in seconds) of the *smooth-power* exponential filter. Only used when *smooth-power* is enabled. Values below 1.0 are clamped to 1.0.
+
 *states*: ++
 	typeof: object ++
 	A number of battery states which get activated on certain capacity levels. See *waybar-states(5)*.

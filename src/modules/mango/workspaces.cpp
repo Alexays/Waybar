@@ -175,7 +175,8 @@ void Workspaces::updateButtonState(Gtk::Button& button, const Json::Value& tag,
   if (config_["format"].isString()) {
     name = fmt::format(fmt::runtime(config_["format"].asString()),
                        fmt::arg("icon", getIcon(name, tag)), fmt::arg("value", name),
-                       fmt::arg("index", idx), fmt::arg("output", monitor["name"].asString()));
+                       fmt::arg("name", name), fmt::arg("index", idx),
+                       fmt::arg("output", monitor["name"].asString()));
   }
 
   if (!config_["disable-markup"].asBool()) {

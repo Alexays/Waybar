@@ -16,6 +16,10 @@ Addressed by *bluetooth*
 	typeof: string ++
 	Use the controller with the defined alias. Otherwise, a random controller is used. Recommended to define when there is more than 1 controller available to the system.
 
+*controller-alias*: ++
+	typeof: string ++
+	Synonym for *controller*. If both are set, *controller-alias* takes precedence.
+
 *format-device-preference*: ++
 	typeof: array ++
 	A ranking of bluetooth devices, addressed by their alias. The order is from *first displayed* to *last displayed*. ++
@@ -241,6 +245,7 @@ Split keyboard with separate central/peripheral batteries (e.g., ZMK):
 - *#bluetooth.off*
 - *#bluetooth.on*
 - *#bluetooth.connected*
+- *#bluetooth.no-controller*
 - *#bluetooth.discoverable*
 - *#bluetooth.discovering*
 - *#bluetooth.pairable*

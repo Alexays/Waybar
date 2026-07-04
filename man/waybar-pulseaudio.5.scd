@@ -150,6 +150,10 @@ Additionally, you can control the volume by scrolling *up* or *down* while the c
 
 *{volume}*: Volume in percentage.
 
+*{source_volume}*: Source (input/microphone) volume in percentage.
+
+*{source_desc}*: Source's description, for bluetooth it'll be the device name.
+
 *{icon}*: Icon, as defined in *format-icons*.
 
 *{format_source}*: Source format, *format-source*, *format-source-muted*.
@@ -205,3 +209,5 @@ to be selected when the corresponding audio device is muted. This applies to *de
 - *#pulseaudio*
 - *#pulseaudio.bluetooth*
 - *#pulseaudio.muted*
+- *#pulseaudio.sink-muted*
+- *#pulseaudio.source-muted*

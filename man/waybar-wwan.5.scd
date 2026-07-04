@@ -131,6 +131,12 @@ libmm-glib lives in:
 
 *{operator_name}*: Name of the network operator.
 
+*{icon}*: Icon selected from *format-icons* according to the signal quality.
+
+*{power_state}*: Modem power state (On/Off/Low/Unknown).
+
+*{imei}*: Modem equipment identifier (IMEI).
+
 # EXAMPLES
 
 ```
@@ -139,7 +145,7 @@ libmm-glib lives in:
 	"format-disabled": "", // an empty format will hide the module
 	"format-locked": "SIM Locked",
     "format-connected": "{operator_name} {preferred_mode} | {signal_quality}%"
-	"tooltip-format": "{mode}",
+	"tooltip-format": "{preferred_mode}",
 	"tooltip-format-connected": "{current_modes}",
 	"hide-disconnected": false
 }

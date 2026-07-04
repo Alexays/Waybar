@@ -14,7 +14,7 @@ Addressed by *dwl/window*
 
 *format*: ++
 	typeof: string ++
-	default: {title} ++
+	default: {} ++
 	The format, how information should be displayed.
 
 *hide-empty*: ++

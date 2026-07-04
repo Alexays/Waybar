@@ -28,7 +28,7 @@ Feral Gamemode optimizations.
 
 *tooltip-format*: ++
 	typeof: string ++
-	default: Games running: {glyph} ++
+	default: Games running: {count} ++
 	The text format of the tooltip.
 
 *hide-not-running*: ++

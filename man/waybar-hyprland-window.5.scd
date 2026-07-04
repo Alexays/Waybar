@@ -31,8 +31,8 @@ Addressed by *hyprland/window*
 
 *tooltip-format*: ++
 	typeof: string ++
-	default: {title} ++
-	The format of the tooltip shown on hover. Supports the same replacements as *format*. Requires *tooltip* to be enabled.
+	The format of the tooltip shown on hover. Supports the same replacements as *format*. Requires *tooltip* to be enabled. When unset, the tooltip falls back to the formatted label text. ++
+	default: (the formatted label text)
 
 *icon*: ++
 	typeof: bool ++

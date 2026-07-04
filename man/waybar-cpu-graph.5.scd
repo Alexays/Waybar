@@ -11,9 +11,14 @@ The *cpu graph* module displays a line graph with the CPU utilization.
 # CONFIGURATION
 
 *interval*: ++
-	typeof: integer ++
-	default: 10 ++
+	typeof: integer or float ++
+	default: 5 ++
 	The interval in which the information gets polled.
+
+*graph_type*: ++
+	typeof: string ++
+	default: line ++
+	The rendering style of the graph. One of 'line', 'bar', or 'gauge'.
 
 *width*: ++
 	typeof: integer ++

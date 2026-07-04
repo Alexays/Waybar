@@ -38,9 +38,8 @@ Addressed by *custom-graph/<name>*
 	If a *signal* is defined then the script will run once on startup and will only update with a signal.
 
 *restart-interval*: ++
-	typeof: integer or float ++
-	The restart interval (in seconds). ++
-	Minimum value is 0.001 (1ms). Values smaller than 1ms will be set to 1ms. ++
+	typeof: integer ++
+	The restart interval (in whole seconds). ++
 	Can't be used with the *interval* option, so only with continuous scripts. ++
 	Once the script exits, it'll be re-executed after the *restart-interval*.
 
@@ -50,18 +49,20 @@ Addressed by *custom-graph/<name>*
 	The number is valid between 1 and N, where *SIGRTMIN+N* = *SIGRTMAX*. ++
 	If no interval is defined then a signal will be the only way to update the module.
 
-*format*: ++
+*graph_type*: ++
 	typeof: string ++
-	default: {text} ++
-	The format, how information should be displayed. On {text} data gets inserted.
+	default: line ++
+	The style of graph to render. One of *line*, *bar* or *gauge*.
 
-*format-icons*: ++
-	typeof: array ++
-	Based on the set percentage, the corresponding icon gets selected. The order is *low* to *high*.
-
-*rotate*: ++
+*width*: ++
 	typeof: integer ++
-	Positive value to rotate the text label (in 90 degree increments).
+	default: 100 ++
+	The width of the graph in pixels.
+
+*datapoints*: ++
+	typeof: integer ++
+	default: 20 ++
+	The number of most recent values to retain and plot on the graph.
 
 *on-click*: ++
 	typeof: string ++
@@ -99,7 +100,7 @@ Addressed by *custom-graph/<name>*
 *tooltip-format*: ++
 	typeof: string ++
 	The tooltip format. If specified, overrides any tooltip output from the script in *exec*. ++
-	Uses the same format replacements as *format*.
+	See *FORMAT REPLACEMENTS*.
 
 *escape*: ++
 	typeof: bool ++
@@ -146,11 +147,13 @@ $text\\n$tooltip\\n$class*
 
 # FORMAT REPLACEMENTS
 
+These replacements are available in *tooltip-format*.
+
 *{text}*: Output of the script.
 
-*{percentage}* Percentage which can be set via a json return type.
+*{alt}*: The *alt* value from a json return type.
 
-*{icon}*: An icon from 'format-icons' according to percentage.
+*{percentage}* Percentage which can be set via a json return type.
 
 # EXAMPLES
 

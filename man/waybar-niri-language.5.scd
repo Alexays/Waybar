@@ -44,11 +44,11 @@ Addressed by *niri/language*
 
 # FORMAT REPLACEMENTS
 
-*{short}*: Short name of layout (e.g. "us"). Equals to {}.
+*{short}*: Short name of layout (e.g. "us").
 
 *{shortDescription}*: Short description of layout (e.g. "en").
 
-*{long}*: Long name of layout (e.g. "English (Dvorak)").
+*{long}*: Long name of layout (e.g. "English (Dvorak)"). Equals to {}.
 
 *{variant}*: Variant of layout (e.g. "dvorak").
 

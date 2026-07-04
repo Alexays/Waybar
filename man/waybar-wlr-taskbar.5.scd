@@ -109,6 +109,10 @@ Addressed by *wlr/taskbar*
 	typeof: array ++
 	List of app_id/titles to be invisible.
 
+*squash-list*: ++
+	typeof: array ++
+	List of app_id/titles whose multiple instances are collapsed into a single button. When more than one instance of a listed app is open, only one button is shown; when one instance closes, the next hidden instance reappears. The special value '\*' matches all applications.
+
 *app_ids-mapping*: ++
 	typeof: object ++
 	Dictionary of app_id to be replaced with
@@ -183,6 +187,7 @@ Invalid expressions (e.g., mismatched parentheses) are skipped.
 # Style
 
 - *#taskbar*
+- *#taskbar.empty*
 - *#taskbar button*
 - *#taskbar button.maximized*
 - *#taskbar button.minimized*

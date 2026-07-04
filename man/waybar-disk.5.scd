@@ -19,8 +19,8 @@ Addressed by *disk*
 
 *format*: ++
 	typeof: string ++
-	default: "{percentage_used}%" ++
-	The format, how information for each disk should be displayed.
+	default: "{}%" ++
+	The format, how information for each disk should be displayed. Note: in the default the positional field "{}" resolves to *{percentage_free}*.
 
 *rotate*: ++
 	typeof: integer ++
@@ -101,7 +101,7 @@ Addressed by *disk*
 
 *tooltip-format*: ++
 	typeof: string ++
-	default: "{used} out of {total} used ({percentage_used}%)" ++
+	default: "{used} used out of {total} on {path} ({percentage_used}%)" ++
 	The format of the information displayed in the tooltip.
 
 *unit*: ++

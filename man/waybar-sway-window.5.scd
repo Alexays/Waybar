@@ -14,7 +14,7 @@ Addressed by *sway/window*
 
 *format*: ++
 	typeof: string ++
-	default: {title} ++
+	default: {} ++
 	The format, how information should be displayed.
 
 *rotate*: ++
@@ -101,12 +101,22 @@ Addressed by *sway/window*
 *icon*: ++
 	typeof: bool ++
 	default: false ++
-	Option to hide the application icon.
+	Option to display the application icon.
 
 *icon-size*: ++
 	typeof: integer ++
 	default: 24 ++
 	Option to change the size of the application icon.
+
+*icon-spacing*: ++
+	typeof: integer ++
+	default: 8 ++
+	Spacing between the application icon and the label.
+
+*swap-icon-label*: ++
+	typeof: bool ++
+	default: false ++
+	Option to swap the order of the application icon and the label.
 
 *expand*: ++
 	typeof: bool ++

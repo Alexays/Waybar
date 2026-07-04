@@ -14,11 +14,11 @@ Addressed by *hyprland/workspaces*
 
 *format*: ++
 	typeof: string ++
-	default: {id} ++
+	default: {name} ++
 	The format, how information should be displayed.
 
 *format-icons*: ++
-	typeof: array ++
+	typeof: object ++
 	Based on the workspace ID and state, the corresponding icon gets selected. See *icons*.
 
 *window-rewrite*: ++
@@ -201,7 +201,7 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 	Option to disable tooltip on hover.
 
 *tooltips*: ++
-	typeof: array ++
+	typeof: object ++
 	Based on the workspace ID and state, the corresponding tooltip gets selected. Selection works the same as *format-icons* do. Format replacements are supported. See *icons*.
 
 *expand*: ++
@@ -216,6 +216,8 @@ This setting is ignored if *workspace-taskbar.enable* is set to true.
 *{name}*: workspace name assigned by compositor
 
 *{icon}*: Icon, as defined in *format-icons*.
+
+*{windows}*: The windows in the workspace, formatted according to *window-rewrite* and joined with *format-window-separator*.
 
 # ICONS
 
@@ -348,6 +350,8 @@ Additional to workspace name matching, the following *format-icons* can be set.
 - *#workspaces button.persistent*
 - *#workspaces button.special*
 - *#workspaces button.urgent*
+- *#workspaces button.workspace-hover* (applied while the pointer is over the button)
+- *#workspaces button.<workspace-name>* (per-workspace class derived from the workspace name, sanitized to a valid CSS class name, e.g. a workspace named "1" yields '.ws-1'; special workspaces also get the raw name class)
 - *#workspaces button.hosting-monitor* (gets applied if workspace-monitor == waybar-monitor)
 - *#workspaces .workspace-label*
 - *#workspaces .taskbar-window* (each window in the taskbar, only if 'workspace-taskbar.enable' is true)

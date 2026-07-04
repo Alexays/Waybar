@@ -360,8 +360,18 @@ A group may hide all but one element, showing them only on mouse hover. In order
 
 *children-class*: ++
 	typeof: string ++
-	default: "hidden" ++
+	default: "drawer-child" ++
 	Defines the CSS class to be applied to the hidden elements.
+
+*always-visible-class*: ++
+	typeof: string ++
+	default: "" ++
+	Defines the CSS class that marks a child module as always visible. The module carrying this class remains shown while the drawer is collapsed and drives the drawer's visibility management. When empty, the leader (first) module is used.
+
+*reveal-delay*: ++
+	typeof: integer ++
+	default: 0 ++
+	Delay in milliseconds to wait after the mouse enters the group before revealing the drawer. When 0, the drawer is revealed immediately.
 
 *click-to-reveal*: ++
 	typeof: bool ++

@@ -207,6 +207,7 @@ man_files = files(
     'man/waybar-states.5.scd',
     'man/waybar-menu.5.scd',
     'man/waybar-temperature.5.scd',
+    'man/waybar-user.5.scd',
 )
 
 inc_dirs = ['include']

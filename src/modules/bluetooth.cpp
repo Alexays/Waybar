@@ -87,6 +87,18 @@ auto isChildPath(const std::string& child, const std::string& parent) -> bool {
   return child.starts_with(parent);
 }
 
+// Returns the configured controller alias, accepting either the documented "controller" key or
+// its "controller-alias" synonym ("controller-alias" takes precedence when both are set).
+auto getConfiguredControllerAlias(const Json::Value& config) -> std::optional<std::string> {
+  if (config["controller-alias"].isString()) {
+    return config["controller-alias"].asString();
+  }
+  if (config["controller"].isString()) {
+    return config["controller"].asString();
+  }
+  return std::nullopt;
+}
+
 // Returns true only if some configured format/tooltip string actually references the peripheral
 // battery placeholder. The GATT battery scan issues over-the-air BLE reads, so it must stay
 // opt-in: users who don't display {device_battery_percentage_peripheral} pay zero cost.
@@ -176,9 +188,8 @@ waybar::modules::Bluetooth::Bluetooth(const std::string& id, const Json::Value& 
   }
 
   if (cur_controller_ = findCurController(); !cur_controller_) {
-    if (config_["controller-alias"].isString()) {
-      spdlog::warn("no bluetooth controller found with alias '{}'",
-                   config_["controller-alias"].asString());
+    if (auto controller_alias = getConfiguredControllerAlias(config_)) {
+      spdlog::warn("no bluetooth controller found with alias '{}'", *controller_alias);
     } else {
       spdlog::warn("no bluetooth controller found");
     }
@@ -372,9 +383,9 @@ auto waybar::modules::Bluetooth::onObjectAdded(GDBusObjectManager* manager, GDBu
   ControllerInfo info;
   Bluetooth* bt = static_cast<Bluetooth*>(user_data);
 
+  auto controller_alias = getConfiguredControllerAlias(bt->config_);
   if (!bt->cur_controller_.has_value() && bt->getControllerProperties(object, info) &&
-      (!bt->config_["controller-alias"].isString() ||
-       bt->config_["controller-alias"].asString() == info.alias)) {
+      (!controller_alias.has_value() || controller_alias.value() == info.alias)) {
     bt->cur_controller_ = std::move(info);
     bt->dp.emit();
   }
@@ -634,9 +645,9 @@ auto waybar::modules::Bluetooth::findCurController() -> std::optional<Controller
   for (GList* l = objects; l != NULL; l = l->next) {
     GDBusObject* object = G_DBUS_OBJECT(l->data);
     ControllerInfo info;
+    auto controller_alias = getConfiguredControllerAlias(config_);
     if (getControllerProperties(object, info) &&
-        (!config_["controller-alias"].isString() ||
-         config_["controller-alias"].asString() == info.alias)) {
+        (!controller_alias.has_value() || controller_alias.value() == info.alias)) {
       controller_info = std::move(info);
       break;
     }

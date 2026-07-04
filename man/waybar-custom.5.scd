@@ -145,6 +145,18 @@ Addressed by *custom/<name>*
 	default: false ++
 	Enables this module to consume all left over space dynamically.
 
+*image-path*: ++
+	typeof: string ++
+	Path to an image file to display in the module.
+
+*image-name*: ++
+	typeof: string ++
+	Name of a themed icon to display in the module.
+
+*icon-size*: ++
+	typeof: integer ++
+	The size (in pixels) of the image set via *image-path* or *image-name*.
+
 # RETURN-TYPE
 
 When *return-type* is set to *json*, Waybar expects the *exec*-script  to output its data in JSON format.
@@ -168,6 +180,8 @@ $text\\n$tooltip\\n$class*
 # FORMAT REPLACEMENTS
 
 *{text}*: Output of the script.
+
+*{alt}*: The *alt* value from a json return type.
 
 *{percentage}* Percentage which can be set via a json return type.
 
@@ -248,3 +262,5 @@ Under the premise that interval is not defined, you can use the signal and updat
 - *#custom-<name>*
 - *#custom-<name>.<class>*
 - *<class>* can be set by the script. For more information see *return-type*
+- *.flat* and *.text-button* are always applied to the module's label.
+- *.image-button* is always applied to the module's image (see *image-path*/*image-name*).

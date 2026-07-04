@@ -55,6 +55,10 @@ Addressed by *tray*
 	Key: name of item. ++
 	Value: integer, higher value means to place this item to the right.
 
+*ignore-list*: ++
+	typeof: array ++
+	List of strings used to hide matching tray items. An item is hidden when any string in the list is found (as a substring) in the item's bus name, category, icon name, id or title.
+
 # EXAMPLES
 
 ```

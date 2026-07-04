@@ -16,7 +16,7 @@ Addressed by *river/layout*
 
 *format*: ++
 	typeof: string ++
-	default: {layout} ++
+	default: {} ++
 	The format, how information should be displayed. On {} data gets inserted.
 
 *format-icons*: ++

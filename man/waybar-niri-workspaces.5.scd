@@ -103,7 +103,7 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 
 	*icon-size*: ++
 		typeof: int ++
-		default: 18 ++
+		default: 16 ++
 		Size of the icons in the workspace taskbar.
 
 *ignore-workspaces*: ++
@@ -203,3 +203,5 @@ Additional to workspace name matching, the following *format-icons* can be set.
   for unnamed workspaces.
 - *#workspaces button.niri-workspace*: The main container for the workspace.
 - *#workspaces button .niri-taskbar-btn*: The icon buttons within the taskbar.
+- *#workspaces button .niri-taskbar-btn.focused*: The taskbar icon button of the
+  currently focused window.

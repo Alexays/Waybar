@@ -37,6 +37,10 @@ Addressed by *ext/workspaces*
 	default: false ++
 	Should workspaces be sorted by ID. Workspace ID will be sorted numerically when all ID are numbers. Takes precedence over any other sort-by option.
 
+*sort-by-number*: ++
+	typeof: bool ++
+	Deprecated alias of *sort-by-id*. Setting it emits a warning; prefer *sort-by-id*.
+
 *all-outputs*: ++
 	typeof: bool ++
 	default: false ++
@@ -51,6 +55,18 @@ Addressed by *ext/workspaces*
 	typeof: bool ++
 	default: true ++
 	If set to false hidden workspaces will be shown.
+
+*on-click*: ++
+	typeof: string ++
+	The action to perform on left-click. See *CLICK ACTIONS* for the possible values.
+
+*on-click-middle*: ++
+	typeof: string ++
+	The action to perform on middle-click. See *CLICK ACTIONS* for the possible values.
+
+*on-click-right*: ++
+	typeof: string ++
+	The action to perform on right-click. See *CLICK ACTIONS* for the possible values.
 
 # FORMAT REPLACEMENTS
 

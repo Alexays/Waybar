@@ -59,6 +59,10 @@ The volume can be controlled by dragging the slider across the bar or clicking o
     default: empty ++
     A list of sink descriptions to ignore when tracking the default sink, so switching to those sinks does not update the slider.
 
+*sink-mapping*: ++
+    typeof: object ++
+    Sinks named by the values of this mapping will be considered to be the current sink instead of the sinks named by the respective keys.
+
 # EXAMPLES
 
 ```

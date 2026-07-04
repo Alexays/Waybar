@@ -14,11 +14,11 @@ Addressed by *wayfire/workspaces*
 
 *format*: ++
 	typeof: string ++
-	default: {value} ++
+	default: {index} ++
 	The format, how information should be displayed.
 
 *format-icons*: ++
-	typeof: array ++
+	typeof: object ++
 	Based on the workspace name, index and state, the corresponding icon gets selected. See *icons*.
 
 *disable-click*: ++

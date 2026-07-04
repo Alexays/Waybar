@@ -94,6 +94,11 @@ Addressed by *mpd*
 	typeof: integer ++
 	Maximum length of the Title tag.
 
+*ellipsis*: ++
+	typeof: string ++
+	default: "" ++
+	The string appended to the Artist, Album, Album Artist and Title tags when they are truncated by the corresponding length option (`artist-len`, `album-len`, `album-artist-len`, `title-len`).
+
 *rotate*: ++
 	typeof: integer ++
 	Positive value to rotate the text label (in 90 degree increments).

@@ -124,7 +124,7 @@ The *cpu* module displays the current CPU utilization.
 
 *{icon*{n}*}*: Icon for CPU core n usage. Use like {icon0}.
 
-*{icon0}{icon1}{icon2}{icon3}*: All per-core icons concatenated. Equivalent to {icon0}{icon1}...{icon*N*} but adapts to the number of cores automatically.
+*{icons}*: All per-core icons concatenated. Equivalent to {icon0}{icon1}...{icon*N*} but adapts to the number of cores automatically.
 
 # EXAMPLES
 

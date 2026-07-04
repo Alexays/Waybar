@@ -75,7 +75,7 @@ PrivacyItem::PrivacyItem(const Json::Value& config_, enum PrivacyNodeType privac
     tooltipIconSize = config_["tooltip-icon-size"].asUInt();
   }
   // Tooltip
-  if (config_["tooltip"].isString()) {
+  if (config_["tooltip"].isBool()) {
     tooltip = config_["tooltip"].asBool();
   }
   set_has_tooltip(tooltip);

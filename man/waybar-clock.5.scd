@@ -120,8 +120,9 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ Calendar view mode. Possible values: year|month
 |[ *mode-mon-col*
 :[ integer
-:[ 3
-:[ Relevant for *mode=year*. Count of months per row
+:[ 1
+:[ Relevant for *mode=year*. Count of months per row. Must be a divisor of 12
+   (one of 1, 2, 3, 4, 6, 12); an invalid value falls back to 3
 |[ *weeks-pos*
 :[ string
 :[
@@ -193,6 +194,8 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 :[ Switch to the next calendar month/year
 |[ *shift_down*
 :[ Switch to the previous calendar month/year
+|[ *shift_reset*
+:[ Reset the calendar shift back to the current month/year
 |[ *exec <cmd>*
 :[ Execute the specified command
 
@@ -291,6 +294,16 @@ View all valid format options in *strftime(3)* or have a look https://en.cpprefe
 # STYLE
 
 - *#clock*
+
+The following classes are used only inside the *{calendar}* tooltip. Their
+foreground *color* is read and applied to the corresponding calendar cells in
+the tooltip markup:
+
+- *.calendar-today*: The current day
+- *.calendar-days*: The day numbers
+- *.calendar-weeks*: The week numbers
+- *.calendar-weekdays*: The weekday header (Su, Mo, ...)
+- *.calendar-months*: The month header (January, February, ...)
 
 # Troubleshooting
 
