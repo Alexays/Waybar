@@ -696,6 +696,21 @@ Taskbar::Taskbar(const std::string& id, const waybar::Bar& bar, const Json::Valu
   box_.get_style_context()->add_class("empty");
   event_box_.add(box_);
 
+  // wlr/taskbar interprets on-click* config values as built-in actions, handled
+  // per-task in Task::handle_clicked. Register the recognized action names so
+  // AModule dispatches them via doAction() instead of also running them as shell
+  // commands (issue #3284). Values that are not built-in actions are left alone
+  // and still run as user shell commands.
+  const auto is_builtin_action = [](const std::string& v) {
+    return v == "activate" || v == "minimize" || v == "minimize-raise" || v == "maximize" ||
+           v == "fullscreen" || v == "close";
+  };
+  for (const auto* event : {"on-click", "on-click-middle", "on-click-right"}) {
+    if (config_[event].isString() && is_builtin_action(config_[event].asString())) {
+      eventActionMap_.insert({event, config_[event].asString()});
+    }
+  }
+
   // Make task buttons distribute evenly across the available width.
   if (config_["homogeneous"].isBool() && config_["homogeneous"].asBool()) {
     box_.set_homogeneous(true);
