@@ -297,31 +297,40 @@ auto waybar::modules::KeyboardState::update() -> void {
   sleep(0);  // Wait for keyboard status change
   int numl = 0, capsl = 0, scrolll = 0;
 
-  try {
-    std::string dev_path;
-    {
-      std::lock_guard<std::mutex> lock(devices_mutex_);
-      if (libinput_devices_.empty()) {
-        return;
-      }
-      if (config_["device-path"].isString() &&
-          libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
-        dev_path = config_["device-path"].asString();
-      } else {
-        dev_path = libinput_devices_.begin()->first;
+  std::vector<std::string> dev_paths;
+  {
+    std::lock_guard<std::mutex> lock(devices_mutex_);
+    if (libinput_devices_.empty()) {
+      return;
+    }
+    if (config_["device-path"].isString() &&
+        libinput_devices_.find(config_["device-path"].asString()) != libinput_devices_.end()) {
+      // An explicit device was configured: read lock state from just that device.
+      dev_paths.push_back(config_["device-path"].asString());
+    } else {
+      // No explicit device: a multi-node keyboard may expose several event
+      // devices where only one of them actually toggles the lock LEDs. OR the
+      // LED values across all devices so a lock is reported on if any device
+      // reports it on.
+      for (const auto& [dev_path, _] : libinput_devices_) {
+        dev_paths.push_back(dev_path);
       }
     }
-    int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    auto dev = openDevice(fd);
-    numl = libevdev_get_event_value(dev, EV_LED, LED_NUML);
-    capsl = libevdev_get_event_value(dev, EV_LED, LED_CAPSL);
-    scrolll = libevdev_get_event_value(dev, EV_LED, LED_SCROLLL);
-    libevdev_free(dev);
-    closeFile(fd);
-  } catch (const errno_error& e) {
-    // ENOTTY just means the device isn't an evdev device, skip it
-    if (e.code != ENOTTY) {
-      spdlog::warn(e.what());
+  }
+  for (const auto& dev_path : dev_paths) {
+    try {
+      int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
+      auto dev = openDevice(fd);
+      numl |= libevdev_get_event_value(dev, EV_LED, LED_NUML);
+      capsl |= libevdev_get_event_value(dev, EV_LED, LED_CAPSL);
+      scrolll |= libevdev_get_event_value(dev, EV_LED, LED_SCROLLL);
+      libevdev_free(dev);
+      closeFile(fd);
+    } catch (const errno_error& e) {
+      // ENOTTY just means the device isn't an evdev device, skip it
+      if (e.code != ENOTTY) {
+        spdlog::warn(e.what());
+      }
     }
   }
 
