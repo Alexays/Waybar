@@ -158,6 +158,15 @@ bool WindowIcon::on_motion_notify_event(GdkEventMotion* event) {
 
 bool WindowIcon::on_button_release_event(GdkEventButton* event) {
 
+    if (event->button == 2) {
+        std::string cmd =
+            "hyprctl dispatch closewindow address:" + window_.address;
+
+        std::system(cmd.c_str());
+
+        return true;
+    } 
+
     left_pressed_ = false;
 
     if (dragging_) {
