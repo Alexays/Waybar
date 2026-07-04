@@ -153,6 +153,35 @@ def fix_tables(md):
     return "\n".join(out)
 
 
+BQ_BULLET = re.compile(r"^>\s*[·•‣∙⋅]\s*$")
+
+
+def fix_blockquote_bullets(md):
+    """Turn pandoc's blockquote-wrapped bullet artifact into a real list.
+
+    Some pandoc versions render a scdoc bullet list (`- *#clock*`) as a series
+    of blockquotes, each `> ·` / `>` / `> item`, instead of a Markdown list.
+    Collapse every such block back into a `- item` bullet. A no-op when pandoc
+    already produced a clean list.
+    """
+    lines = md.split("\n")
+    out, i, n = [], 0, len(lines)
+    while i < n:
+        if BQ_BULLET.match(lines[i]):
+            j, content = i + 1, []
+            while j < n and lines[j].startswith(">"):
+                cell = lines[j][1:].strip()
+                if cell:
+                    content.append(cell)
+                j += 1
+            out.append(f"- {' '.join(content)}" if content else "-")
+            i = j
+        else:
+            out.append(lines[i])
+            i += 1
+    return "\n".join(out)
+
+
 def pretty(basename):
     """waybar-sway-mode -> sway/mode (submodule heading for aggregated pages)."""
     return basename.removeprefix("waybar-").replace("-", "/", 1)
@@ -173,7 +202,7 @@ def build_page(man_dir, sources, page, extras_dir):
     aggregated = len(sources) > 1
     for src in sources:
         scd = os.path.join(man_dir, src + ".5.scd")
-        body = fix_tables(strip_sections(man_to_gfm(scd)))
+        body = fix_blockquote_bullets(fix_tables(strip_sections(man_to_gfm(scd))))
         if aggregated:
             parts.append(f"\n# {pretty(src)}\n\n" + demote(body))
         else:
