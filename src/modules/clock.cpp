@@ -185,7 +185,26 @@ auto waybar::modules::Clock::update() -> void {
   const auto* tz = tzList_[tzCurrIdx_] != nullptr ? tzList_[tzCurrIdx_] : local_zone();
   const zoned_time now{tz, floor<seconds>(system_clock::now())};
 
-  setLabelMarkup(fmt_lib::vformat(m_locale_, format_, fmt_lib::make_format_args(now)));
+  try {
+    setLabelMarkup(fmt_lib::vformat(m_locale_, format_, fmt_lib::make_format_args(now)));
+  } catch (const std::exception& e) {
+    // An unsupported/invalid specifier (e.g. the %-I / %OI padding modifiers, which the
+    // date/std::chrono formatter does not implement) must not take the whole module down.
+    // Warn once and fall back to a safe default so the bar still loads.
+    static bool warned = false;
+    if (!warned) {
+      spdlog::warn(
+          "Clock: could not format \"{}\": {}. Falling back to a default; check your format "
+          "specifiers.",
+          format_, e.what());
+      warned = true;
+    }
+    try {
+      setLabelMarkup(fmt_lib::vformat(m_locale_, "{:%H:%M}", fmt_lib::make_format_args(now)));
+    } catch (...) {
+      setLabelMarkup("");
+    }
+  }
 
   if (tooltipEnabled()) {
     const year_month_day today{floor<days>(now.get_local_time())};
