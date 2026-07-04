@@ -527,28 +527,46 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("bluetooth");
   }
 
-  // Handle sink mute state
+  // A module configured with node-type "Audio/Source" tracks a source as its primary node, so its
+  // primary mute state (muted_) must drive the source-muted class rather than the sink classes.
+  const bool is_source_type = g_strcmp0(type_, "Audio/Source") == 0;
+
+  // Handle primary node mute state
   if (muted_) {
     // Check muted bluetooth format exists, otherwise fall back to default muted format.
     if (format_name != "format" && !config_[format_name + "-muted"].isString())
       format_name = "format";
     format_name += "-muted";
-    label_.get_style_context()->add_class("muted");
-    label_.get_style_context()->add_class("sink-muted");
+    if (is_source_type) {
+      label_.get_style_context()->add_class("source-muted");
+    } else {
+      label_.get_style_context()->add_class("muted");
+      label_.get_style_context()->add_class("sink-muted");
+    }
   } else {
-    label_.get_style_context()->remove_class("muted");
-    label_.get_style_context()->remove_class("sink-muted");
+    if (is_source_type) {
+      label_.get_style_context()->remove_class("source-muted");
+    } else {
+      label_.get_style_context()->remove_class("muted");
+      label_.get_style_context()->remove_class("sink-muted");
+    }
   }
 
-  // Handle source mute state
-  if (source_muted_) {
-    label_.get_style_context()->add_class("source-muted");
-  } else {
-    label_.get_style_context()->remove_class("source-muted");
+  // Handle the secondary source mute state (only relevant for sink modules, which additionally
+  // track the default source for {format_source}). A source module already owns source-muted above.
+  if (!is_source_type) {
+    if (source_muted_) {
+      label_.get_style_context()->add_class("source-muted");
+    } else {
+      label_.get_style_context()->remove_class("source-muted");
+    }
   }
 
-  double vol_cube = pow(volume_, 3);
-  double source_vol_cube = pow(source_volume_, 3);
+  // mixer-api is configured with the linear scale, so volume_ holds the raw linear gain. The
+  // perceptual "cubic" value shown by wpctl and used for {volume} is cbrt(linear), not linear^3.
+  // Cubing here drives small linear gains (typical for Bluetooth sinks) to 0%.
+  double vol_cube = cbrt(volume_);
+  double source_vol_cube = cbrt(source_volume_);
 
   int vol = round(vol_cube * 100.0);
   int source_vol = round(source_vol_cube * 100.0);
@@ -622,10 +640,10 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
     step = config_["scroll-step"].asDouble();
   }
   if (config_["max-volume"].isDouble()) {
-    // {volume} is displayed as cubic-percent (pow(volume_, 3) * 100), while volume_/newVol are
+    // {volume} is displayed as cubic-percent (cbrt(volume_) * 100), while volume_/newVol are
     // linear gains. Map the documented cubic-percent ceiling into the linear domain the clamp
-    // operates in, restoring the 0.15.0 cap semantics (e.g. 130 -> cbrt(1.3) linear -> 130%).
-    maxVolume = cbrt(config_["max-volume"].asDouble() / 100.0);
+    // operates in, restoring the 0.15.0 cap semantics (e.g. 130 -> pow(1.3, 3) linear -> 130%).
+    maxVolume = pow(config_["max-volume"].asDouble() / 100.0, 3);
   }
 
   double vol = volume_;
@@ -635,11 +653,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   }
 
   if (scale == "cubic") {
-    vol = pow(vol, 3);
+    vol = cbrt(vol);
   } else if (scale == "db") {
     vol = log10(vol) * 20.0;
   } else if (scale == "cubic_percent") {
-    vol = pow(vol, 3) * 100.0;
+    vol = cbrt(vol) * 100.0;
   }
 
   double newVol = vol;
@@ -650,11 +668,11 @@ bool waybar::modules::Wireplumber::handleScroll(GdkEventScroll* e) {
   }
 
   if (scale == "cubic") {
-    newVol = cbrt(newVol);
+    newVol = pow(newVol, 3);
   } else if (scale == "db") {
     newVol = exp10(newVol / 20.0);
   } else if (scale == "cubic_percent") {
-    newVol = cbrt(newVol / 100.0);
+    newVol = pow(newVol / 100.0, 3);
   }
 
   if (dir == SCROLL_DIR::UP) {
