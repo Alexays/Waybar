@@ -527,24 +527,39 @@ auto waybar::modules::Wireplumber::update() -> void {
     label_.get_style_context()->remove_class("bluetooth");
   }
 
-  // Handle sink mute state
+  // A module configured with node-type "Audio/Source" tracks a source as its primary node, so its
+  // primary mute state (muted_) must drive the source-muted class rather than the sink classes.
+  const bool is_source_type = g_strcmp0(type_, "Audio/Source") == 0;
+
+  // Handle primary node mute state
   if (muted_) {
     // Check muted bluetooth format exists, otherwise fall back to default muted format.
     if (format_name != "format" && !config_[format_name + "-muted"].isString())
       format_name = "format";
     format_name += "-muted";
-    label_.get_style_context()->add_class("muted");
-    label_.get_style_context()->add_class("sink-muted");
+    if (is_source_type) {
+      label_.get_style_context()->add_class("source-muted");
+    } else {
+      label_.get_style_context()->add_class("muted");
+      label_.get_style_context()->add_class("sink-muted");
+    }
   } else {
-    label_.get_style_context()->remove_class("muted");
-    label_.get_style_context()->remove_class("sink-muted");
+    if (is_source_type) {
+      label_.get_style_context()->remove_class("source-muted");
+    } else {
+      label_.get_style_context()->remove_class("muted");
+      label_.get_style_context()->remove_class("sink-muted");
+    }
   }
 
-  // Handle source mute state
-  if (source_muted_) {
-    label_.get_style_context()->add_class("source-muted");
-  } else {
-    label_.get_style_context()->remove_class("source-muted");
+  // Handle the secondary source mute state (only relevant for sink modules, which additionally
+  // track the default source for {format_source}). A source module already owns source-muted above.
+  if (!is_source_type) {
+    if (source_muted_) {
+      label_.get_style_context()->add_class("source-muted");
+    } else {
+      label_.get_style_context()->remove_class("source-muted");
+    }
   }
 
   // mixer-api is configured with the linear scale, so volume_ holds the raw linear gain. The
