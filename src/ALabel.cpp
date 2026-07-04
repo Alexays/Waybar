@@ -29,10 +29,11 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
                                       // Minimum 1ms due to millisecond precision
                                       ? std::max(1L, static_cast<long>(
                                                          config_["interval"].asDouble() * 1000))
-                                      // An explicit interval of 0 means "no periodic refresh"
-                                      // (event-driven only). Flooring it to 1ms busy-loops the
-                                      // main thread; keep it as the 0 sentinel (see custom.cpp).
-                                      : 0L)
+                                      // Only modules with no periodic default use 0 as an
+                                      // event-driven sentinel. Periodic modules fall back to their
+                                      // default interval so interval:0 cannot busy-loop or hit
+                                      // modulo-by-zero clock code.
+                                      : (interval == 0 ? 0L : 1000L * static_cast<long>(interval)))
                                : 1000 * (long)interval))),
       default_format_(format_) {
   label_.set_name(name);
