@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <list>
 #include <mutex>
 #include <string>
@@ -18,6 +19,7 @@ class EventHandler {
 class IPC {
  public:
   IPC();
+  ~IPC();
 
   void registerForIPC(const std::string& ev, EventHandler* ev_handler);
   void unregisterForIPC(EventHandler* handler);
@@ -45,6 +47,8 @@ class IPC {
   util::JsonParser parser_;
   std::mutex callbackMutex_;
   std::list<std::pair<std::string, EventHandler*>> callbacks_;
+
+  std::atomic<bool> running_{true};
 };
 
 inline std::unique_ptr<IPC> gIPC;

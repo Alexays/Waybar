@@ -74,6 +74,22 @@ void AudioBackend::connectContext() {
   }
 }
 
+// Reconnect the context without ever throwing. This is safe to call from within
+// a PulseAudio state callback (which runs in pure C libpulse frames), where an
+// escaping C++ exception cannot be unwound and would abort the process.
+bool AudioBackend::reconnectContext() noexcept {
+  try {
+    connectContext();
+    return true;
+  } catch (const std::exception& e) {
+    spdlog::error("PulseAudio reconnect failed: {}", e.what());
+    return false;
+  } catch (...) {
+    spdlog::error("PulseAudio reconnect failed: unknown error");
+    return false;
+  }
+}
+
 void AudioBackend::contextStateCb(pa_context* c, void* data) {
   auto* backend = static_cast<AudioBackend*>(data);
   switch (pa_context_get_state(c)) {
@@ -104,12 +120,29 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
         // When pulseaudio server restarts, the connection is "failed". Try to reconnect.
         // pa_threaded_mainloop_lock is already acquired in callback threads.
         // So there is no need to lock it again.
+        //
+        // Guard against re-entrancy: pa_context_connect() can fire this callback
+        // synchronously with PA_CONTEXT_FAILED again, which would otherwise
+        // recurse (FAILED -> connect -> FAILED -> ...) and busy-loop.
+        if (backend->reconnecting_) {
+          break;
+        }
         if (backend->context_ != nullptr) {
           pa_context_disconnect(backend->context_);
           pa_context_unref(backend->context_);
           backend->context_ = nullptr;
         }
-        backend->connectContext();
+        backend->reconnecting_ = true;
+        // Never throw across the libpulse C callback boundary: a failed reconnect
+        // is logged and left for a later PA event to retry instead of aborting.
+        if (!backend->reconnectContext()) {
+          spdlog::warn("PulseAudio context reconnect failed; will retry on next event");
+          if (backend->context_ != nullptr) {
+            pa_context_unref(backend->context_);
+            backend->context_ = nullptr;
+          }
+        }
+        backend->reconnecting_ = false;
       }
       break;
     case PA_CONTEXT_CONNECTING:

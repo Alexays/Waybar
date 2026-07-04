@@ -139,7 +139,7 @@ void waybar::modules::CustomGraph::waitingWorker() {
 }
 
 void waybar::modules::CustomGraph::refresh(int sig) {
-  if (sig == SIGRTMIN + config_["signal"].asInt()) {
+  if (config_["signal"].isInt() && sig == SIGRTMIN + config_["signal"].asInt()) {
     thread_.wake_up();
   }
 }

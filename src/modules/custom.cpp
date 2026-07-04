@@ -105,7 +105,7 @@ void waybar::modules::Custom::continuousWorker() {
         dp.emit();
         spdlog::error("{} stopped unexpectedly, is it endless?", name_);
       }
-      if (config_["restart-interval"].isNumeric()) {
+      if (config_["restart-interval"].isNumeric() && config_["restart-interval"].asDouble() > 0) {
         pid_ = -1;
         thread_.sleep_for(std::chrono::milliseconds(
             std::max(1L,  // Minimum 1ms due to millisecond precision
@@ -115,6 +115,8 @@ void waybar::modules::Custom::continuousWorker() {
           throw std::runtime_error("Unable to open " + cmd);
         }
       } else {
+        // A non-positive restart-interval must not busy-respawn the script
+        // (that starves the GTK main loop); treat it as "do not restart".
         thread_.stop();
         return;
       }
@@ -316,22 +318,32 @@ void waybar::modules::Custom::parseOutputJson() {
   std::istringstream output(output_.out);
   std::string line;
   class_.clear();
+  // A script can emit invalid UTF-8; passing it unchecked to Pango/GTK aborts
+  // the whole bar in g_utf8_* (see parseOutputRaw, which validates the same way).
+  auto sanitize = [](const std::string& s) -> Glib::ustring {
+    Glib::ustring value = s;
+    if (!value.validate()) {
+      value = value.make_valid();
+    }
+    return value;
+  };
   while (getline(output, line)) {
     auto parsed = parser_.parse(line);
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      text_ = Glib::Markup::escape_text(parsed["text"].asString());
+    const bool escape = config_["escape"].isBool() && config_["escape"].asBool();
+    if (escape) {
+      text_ = Glib::Markup::escape_text(sanitize(parsed["text"].asString()));
     } else {
-      text_ = parsed["text"].asString();
+      text_ = sanitize(parsed["text"].asString());
     }
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      alt_ = Glib::Markup::escape_text(parsed["alt"].asString());
+    if (escape) {
+      alt_ = Glib::Markup::escape_text(sanitize(parsed["alt"].asString()));
     } else {
-      alt_ = parsed["alt"].asString();
+      alt_ = sanitize(parsed["alt"].asString());
     }
-    if (config_["escape"].isBool() && config_["escape"].asBool()) {
-      tooltip_ = Glib::Markup::escape_text(parsed["tooltip"].asString());
+    if (escape) {
+      tooltip_ = Glib::Markup::escape_text(sanitize(parsed["tooltip"].asString()));
     } else {
-      tooltip_ = parsed["tooltip"].asString();
+      tooltip_ = sanitize(parsed["tooltip"].asString());
     }
     if (parsed["class"].isString()) {
       class_.push_back(parsed["class"].asString());
