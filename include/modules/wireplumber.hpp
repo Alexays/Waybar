@@ -17,6 +17,11 @@ class Wireplumber : public ALabel {
   auto update() -> void override;
 
  private:
+  bool setupConnection();
+  void teardownConnection();
+  void scheduleReconnect();
+  bool onReconnectTimeout();
+  static void onCoreDisconnected(waybar::modules::Wireplumber* self);
   void asyncLoadRequiredApiModules();
   void prepare(waybar::modules::Wireplumber* self);
   void activatePlugins();
@@ -66,6 +71,9 @@ class Wireplumber : public ALabel {
   bool only_physical_;
   bool resolved_physical_;
   std::string form_factor_;
+  // Timer used to retry connecting to PipeWire after it goes away; disconnected in the destructor
+  // so a pending attempt can't outlive the module. See #2882.
+  sigc::connection reconnect_timer_;
 };
 
 }  // namespace waybar::modules
