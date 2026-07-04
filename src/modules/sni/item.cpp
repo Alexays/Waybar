@@ -577,6 +577,15 @@ void Item::makeMenu() {
     if (dbus_menu != nullptr) {
       g_object_ref_sink(G_OBJECT(dbus_menu));
       g_object_weak_ref(G_OBJECT(dbus_menu), (GWeakNotify)onMenuDestroyed, this);
+      // Provide an accel group to the dbusmenu client. Without one, items that export menu
+      // accelerators (e.g. Mattermost) trigger gtk_widget_set_accel_path() with a NULL accel group,
+      // which raises a Gtk-CRITICAL and corrupts menu state (or aborts under fatal-criticals).
+      DbusmenuGtkClient* client = dbusmenu_gtkmenu_get_client(DBUSMENU_GTKMENU(dbus_menu));
+      if (client != nullptr) {
+        GtkAccelGroup* accel_group = gtk_accel_group_new();
+        dbusmenu_gtkclient_set_accel_group(client, accel_group);
+        g_object_unref(accel_group);
+      }
       gtk_menu = Glib::wrap(GTK_MENU(dbus_menu));
       gtk_menu->attach_to_widget(event_box);
     }
