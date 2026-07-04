@@ -1,4 +1,4 @@
-#include <iostream>
+
 #include "modules/hyprland/workbar/workspace_button.hpp"
 
 #include <unordered_set>
@@ -17,10 +17,6 @@ WorkspaceButton::WorkspaceButton(const WorkspaceState& workspace)
 
     get_style_context()->add_class("workspace");
 
-    std::cout << "Workspace classes:\n";
-    for (auto& c : get_style_context()->list_classes())
-        std::cout << "  " << c << '\n';
-
     box_.get_style_context()->add_class("workspace-content");
 
     icons_.get_style_context()->add_class("workspace-icons");
@@ -35,22 +31,9 @@ WorkspaceButton::WorkspaceButton(const WorkspaceState& workspace)
 
     show_all();
 
-    int min_h, nat_h;
-    get_preferred_height(min_h, nat_h);
-
-    std::cout
-        << "WorkspaceButton min=" << min_h
-        << " nat=" << nat_h
-        << '\n';
 }
 
 void WorkspaceButton::setWorkspace(const WorkspaceState& workspace) {
-
-    window_icons_.clear();
-
-    for (auto* child : icons_.get_children()) {
-        icons_.remove(*child);
-    }
 
     auto context = number_.style();
 
@@ -81,6 +64,7 @@ void WorkspaceButton::setWorkspace(const WorkspaceState& workspace) {
         auto icon = std::make_unique<WindowIcon>(window);
 
         icons_.pack_start(*icon, Gtk::PACK_SHRINK);
+        icon->show();
 
         window_icons_.emplace(window.address, std::move(icon));
     }
@@ -94,7 +78,7 @@ void WorkspaceButton::setWorkspace(const WorkspaceState& workspace) {
         }
     }
 
-    show_all();
+    show();
 }
 
 

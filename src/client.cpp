@@ -275,11 +275,9 @@ int waybar::Client::main(int argc, char* argv[]) {
     return 1;
   }
   if (show_help) {
-    std::cout << cli << '\n';
     return 0;
   }
   if (show_version) {
-    std::cout << "Waybar v" << VERSION << '\n';
     return 0;
   }
   if (!log_level.empty()) {

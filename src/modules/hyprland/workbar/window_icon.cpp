@@ -1,9 +1,7 @@
-#include <iostream>
 #include <cstdlib>
 #include <thread>
 #include <chrono>
 #include <gdk/gdk.h>
-#include <cstdlib>
 
 #include <gtkmm/icontheme.h>
 
@@ -27,21 +25,26 @@ WindowIcon::WindowIcon(const WindowState& window) {
         Gdk::POINTER_MOTION_MASK
     );
 
-    // Existing signal_clicked()
-    // Existing signal_button_press_event()
-    // ...
+    signal_clicked().connect([this]() {
+
+        std::string cmd =
+            std::string(std::getenv("HOME")) +
+            "/.config/hypr/scripts/smart-workspace " +
+            std::to_string(window_.workspace_id);
+
+        std::system(cmd.c_str());
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(40));
+
+        cmd = "hyprctl dispatch focuswindow address:" + window_.address;
+
+        std::system(cmd.c_str());
+    });
 
     setWindow(window);
 
     show_all();
 
-    int min_h, nat_h;
-    get_preferred_height(min_h, nat_h);
-
-    std::cout
-        << "WindowIcon min=" << min_h
-        << " nat=" << nat_h
-        << '\n';
 }
 
 void WindowIcon::setWindow(const WindowState& window) {
@@ -60,13 +63,6 @@ void WindowIcon::setWindow(const WindowState& window) {
             Gdk::INTERP_BILINEAR);
 
         image_.set(scaled);
-
-        std::cout
-            << "Image size: "
-            << image_.get_pixbuf()->get_width()
-            << "x"
-            << image_.get_pixbuf()->get_height()
-            << '\n';
             
     } catch (...) {
     }
@@ -80,30 +76,6 @@ void WindowIcon::setWindow(const WindowState& window) {
     } else {
         context->remove_class("active");
     }
-
-    show_all();
-
-    signal_clicked().connect([this]() {
-
-        std::string cmd =
-            std::string(std::getenv("HOME")) +
-            "/.config/hypr/scripts/smart-workspace " +
-            std::to_string(window_.workspace_id);
-
-        std::system(cmd.c_str());
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(40));
-
-        cmd = "hyprctl dispatch focuswindow address:" + window_.address;
-
-        std::system(cmd.c_str());
-    });
-
-    std::vector<Gtk::TargetEntry> targets = {
-        Gtk::TargetEntry("WORKBAR_WINDOW")
-    };
-
-    add_events(Gdk::BUTTON_PRESS_MASK);
 
     
 }

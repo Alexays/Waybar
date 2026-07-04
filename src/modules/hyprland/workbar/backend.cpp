@@ -1,4 +1,3 @@
-#include <iostream>
 #include <unordered_set>
 #include "modules/hyprland/workbar/backend.hpp"
 
@@ -21,6 +20,7 @@ Backend::Backend()
 WorkspaceList Backend::getWorkspaces() {
     auto json = ipc_.getSocket1JsonReply("workspaces");
     auto clients = ipc_.getSocket1JsonReply("clients");
+    // Determine the currently focused window so it can be highlighted in the workbar.
     auto active_window = ipc_.getSocket1JsonReply("activewindow");
     std::string active_address = active_window["address"].asString();
 
@@ -73,7 +73,7 @@ void Backend::setUpdateCallback(std::function<void()> callback) {
   update_callback_ = std::move(callback);
 }
 
-void Backend::onEvent(const std::string& ev) {
+void Backend::onEvent(const std::string&) {
 
     if (update_callback_) {
         update_callback_();
