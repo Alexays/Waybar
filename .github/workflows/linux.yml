@@ -14,10 +14,12 @@ jobs:
         distro:
           - alpine
           - archlinux
-          - debian
           - fedora
           - opensuse
           - gentoo
+        # NOTE: debian is intentionally omitted here — it is covered by the
+        # dedicated `build-full` job below, which uses the same Debian image
+        # but force-enables *every* optional module (a strict superset).
         cpp_std: [c++20]
 
     runs-on: ubuntu-latest
@@ -28,6 +30,68 @@ jobs:
       - uses: actions/checkout@v6
       - name: configure
         run: meson setup -Dman-pages=enabled -Dcpp_std=${{matrix.cpp_std}} build
+      - name: build
+        run: ninja -C build
+      - name: test
+        run: make test
+
+  # Feature-complete build: force-enable *every* optional module so a broken
+  # #include or regression in any module fails CI loudly, instead of being
+  # silently skipped by an `auto` feature when its dependency is absent.
+  # Runs on a Debian image with all optional dependencies installed inline
+  # (including pipewire/gps/wwan, which no CI image otherwise ships).
+  build-full:
+    runs-on: ubuntu-latest
+    container:
+      image: alexays/waybar:debian
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: install extra dependencies
+        # Deps not present in the base image, required to build the modules
+        # that are otherwise never compiled by CI.
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends --no-install-suggests -y \
+            libpipewire-0.3-dev \
+            libgps-dev \
+            libmm-glib-dev \
+            libevdev-dev \
+            libsystemd-dev \
+            libepoxy-dev \
+            libfftw3-dev
+      - name: configure
+        # Every feature forced to `enabled`/`true`: any missing dependency or
+        # broken module is now a hard configure/build error, not a silent skip.
+        run: |
+          meson setup build \
+            -Dcpp_std=c++20 \
+            -Dexperimental=true \
+            -Dman-pages=enabled \
+            -Dlibcxx=false \
+            -Dlibinput=enabled \
+            -Dlibnl=enabled \
+            -Dlibudev=enabled \
+            -Dlibevdev=enabled \
+            -Dpulseaudio=enabled \
+            -Dupower_glib=enabled \
+            -Dpipewire=enabled \
+            -Dmpris=enabled \
+            -Dsystemd=enabled \
+            -Ddbusmenu-gtk=enabled \
+            -Dmpd=enabled \
+            -Drfkill=enabled \
+            -Dsndio=enabled \
+            -Dlogind=enabled \
+            -Dtests=enabled \
+            -Djack=enabled \
+            -Dwireplumber=enabled \
+            -Dcava=enabled \
+            -Dgps=enabled \
+            -Dwwan=enabled \
+            -Dniri=true \
+            -Dmango=true \
+            -Dlogin-proxy=true
       - name: build
         run: ninja -C build
       - name: test
