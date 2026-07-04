@@ -85,6 +85,13 @@ AModule::AModule(const Json::Value& config, const std::string& name, const std::
       }
     } else if (config_["cursor"].isString()) {
       setCursor(config_["cursor"].asString());
+    } else if (config_["cursor"].isInt() || config_["cursor"].isUInt()) {
+      // Backward-compat: legacy numeric Gdk::CursorType values (pre-0.16)
+      setCursor(Gdk::CursorType(config_["cursor"].asInt()));
+      spdlog::warn(
+          "Numeric 'cursor' values are deprecated; use a cursor-shape-v1 name string instead "
+          "(module {})",
+          name_);
     } else {
       spdlog::warn("unknown cursor option configured on module {}", name_);
     }
@@ -124,6 +131,24 @@ auto AModule::doAction(const std::string& name) -> void {
 }
 
 void AModule::setCursor(std::string const& c) {
+  auto gdk_window = event_box_.get_window();
+  if (gdk_window) {
+    auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);
+    gdk_window->set_cursor(cursor);
+  } else {
+    // window may not be accessible yet, in this case,
+    // schedule another call for setting the cursor in 1 sec
+    cursor_timeout_conn_ = Glib::signal_timeout().connect_seconds(
+        [this, c]() {
+          setCursor(c);
+          return false;
+        },
+        1);
+  }
+}
+
+// Backward-compat overload: honor legacy numeric Gdk::CursorType configs (pre-0.16)
+void AModule::setCursor(Gdk::CursorType const& c) {
   auto gdk_window = event_box_.get_window();
   if (gdk_window) {
     auto cursor = Gdk::Cursor::create(gdk_window->get_display(), c);

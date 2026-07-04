@@ -223,6 +223,17 @@ auto waybar::modules::Custom::update() -> void {
         for (auto const& c : class_) {
           style->add_class(c);
         }
+        // Mirror the dynamic script classes onto box_, which now carries the
+        // #custom-<name> widget name (see AIconLabel), so #custom-<name>.<class>
+        // CSS selectors keep resolving as they did in 0.15.0.
+        auto box_style = box_.get_style_context();
+        for (auto const& c : box_style->list_classes()) {
+          if (c == id_ || c == MODULE_CLASS) continue;
+          box_style->remove_class(c);
+        }
+        for (auto const& c : class_) {
+          box_style->add_class(c);
+        }
         style->add_class("flat");
         style->add_class("text-button");
         style->add_class(MODULE_CLASS);
@@ -230,14 +241,20 @@ auto waybar::modules::Custom::update() -> void {
         image_style->add_class("image-button");
         event_box_.show();
         if (!image_path_.empty()) {
-          auto pixbuf = Gdk::Pixbuf::create_from_file(image_path_, app_icon_size_, app_icon_size_);
-          image_.set(pixbuf);
+          try {
+            auto pixbuf =
+                Gdk::Pixbuf::create_from_file(image_path_, app_icon_size_, app_icon_size_);
+            image_.set(pixbuf);
+          } catch (const Glib::Error& e) {
+            spdlog::warn("custom {}: failed to load image-path '{}': {}", name_, image_path_,
+                         std::string(e.what()));
+            image_.clear();
+          }
         } else if (!image_name_.empty()) {
           image_.set_from_icon_name(image_name_, Gtk::ICON_SIZE_INVALID);
           image_.set_pixel_size(app_icon_size_);
         }
 
-        image_.set_visible(!image_name_.empty() || !image_path_.empty());
         label_.set_visible(!str.empty());
       }
     } catch (const fmt::format_error& e) {
@@ -251,6 +268,13 @@ auto waybar::modules::Custom::update() -> void {
   }
   // Call parent update
   AIconLabel::update();
+
+  // Show a configured image-path/image-name image after the base update() so
+  // AIconLabel::update()'s icon gate cannot re-hide it. Leave the embedded-icon
+  // and "icon" cases to the base class (they have no image-path/image-name).
+  if (!image_name_.empty() || !image_path_.empty()) {
+    image_.set_visible(true);
+  }
 }
 
 void waybar::modules::Custom::parseOutputRaw() {

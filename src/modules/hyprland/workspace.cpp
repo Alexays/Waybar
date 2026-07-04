@@ -438,7 +438,8 @@ void Workspace::update(const std::string& workspace_icon, const std::string& wor
     auto windowSeparator = m_workspaceManager.getWindowSeparator();
     auto groupThreshold = m_workspaceManager.windowRewriteGroupThreshold();
 
-    auto end_it = m_workspaceManager.maxWindows() == 0
+    auto end_it = (m_workspaceManager.maxWindows() <= 0 ||
+                   static_cast<size_t>(m_workspaceManager.maxWindows()) >= m_windowMap.size())
                       ? m_windowMap.end()
                       : m_windowMap.begin() + m_workspaceManager.maxWindows();
 

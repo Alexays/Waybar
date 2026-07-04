@@ -28,7 +28,7 @@ waybar::modules::MPD::MPD(const std::string& id, const Json::Value& config)
       connection_(nullptr, &mpd_connection_free),
       status_(nullptr, &mpd_status_free),
       song_(nullptr, &mpd_song_free),
-      ellipsis_(config_["ellipsis"].isString() ? config_["ellipsis"].asString() : "\u2026") {
+      ellipsis_(config_["ellipsis"].isString() ? config_["ellipsis"].asString() : "") {
   if (!config_["port"].isNull() && !config_["port"].isUInt()) {
     spdlog::warn("{}: `port` configuration should be an unsigned int", module_name_);
   }

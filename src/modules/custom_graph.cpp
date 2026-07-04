@@ -2,6 +2,11 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+#include <string>
+
 #include "util/scope_guard.hpp"
 
 waybar::modules::CustomGraph::CustomGraph(const std::string& name, const std::string& id,
@@ -228,6 +233,22 @@ void waybar::modules::CustomGraph::parseOutputRaw() {
         tooltip_ = validated_line;
       }
       class_.clear();
+      // Derive the graph value from the first line's leading numeric value,
+      // since the raw (i3blocks) format has no dedicated percentage field.
+      std::string value = validated_line;
+      if (!value.empty() && value.back() == '%') {
+        value.pop_back();
+      }
+      try {
+        double parsed = std::stod(value);
+        if (std::isnan(parsed)) {
+          percentage_ = 0;
+        } else {
+          percentage_ = static_cast<int>(std::clamp(std::lround(parsed), 0L, 100L));
+        }
+      } catch (const std::exception&) {
+        percentage_ = 0;
+      }
     } else if (i == 1) {
       if (config_["escape"].isBool() && config_["escape"].asBool()) {
         tooltip_ = Glib::Markup::escape_text(validated_line);

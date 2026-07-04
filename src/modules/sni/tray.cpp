@@ -70,11 +70,14 @@ void Tray::onAdd(std::unique_ptr<Item>& item) {
   }
   items_.push_back(item.get());
 
+  item->event_box.signal_show().connect([this] { dp.emit(); });
+  item->event_box.signal_hide().connect([this] { dp.emit(); });
+
+  // After this point `item` may be erased/invalidated by the ignore-list check;
+  // do not touch it again below.
   spdlog::debug("Tray::onAdd deferred check - checking ignore list");
   host_.checkIgnoreList(ignore_list_, std::bind(&Tray::onRemove, this, std::placeholders::_1));
 
-  item->event_box.signal_show().connect([this] { dp.emit(); });
-  item->event_box.signal_hide().connect([this] { dp.emit(); });
   dp.emit();
 }
 

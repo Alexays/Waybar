@@ -3,6 +3,7 @@
 #include <cairomm/context.h>
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -17,10 +18,13 @@ AGraph::AGraph(const Json::Value& config, const std::string& name, const std::st
     : AModule(config, name, id,
               config["format-alt"].isString() || config["menu"].isString() || enable_click,
               enable_scroll),
-      interval_(config_["interval"] == "once"
-                    ? std::chrono::seconds::max()
-                    : std::chrono::seconds(
-                          config_["interval"].isUInt() ? config_["interval"].asUInt() : interval)) {
+      interval_(
+          config_["interval"] == "once"
+              ? std::chrono::milliseconds::max()
+              : std::chrono::milliseconds(
+                    config_["interval"].isNumeric()
+                        ? std::max(1L, static_cast<long>(config_["interval"].asDouble() * 1000))
+                        : 1000L * static_cast<long>(interval))) {
   graph_.signal_draw().connect(sigc::mem_fun(*this, &AGraph::onDraw));
   graph_.set_name(name);
   if (!id.empty()) {

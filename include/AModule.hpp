@@ -86,6 +86,8 @@ class AModule : public IModule {
   Gtk::EventBox event_box_;
 
   virtual void setCursor(std::string const& c);
+  // Backward-compat overload for legacy numeric Gdk::CursorType configs (pre-0.16)
+  virtual void setCursor(Gdk::CursorType const& c);
 
   virtual bool handleToggle(GdkEventButton* const& ev);
   virtual bool handleMouseEnter(GdkEventCrossing* const& ev);

@@ -96,15 +96,15 @@ If none of the sorting options are enabled, workspaces keep their output/index o
 	typeof: object ++
 	Contains settings for the workspace taskbar, which displays app icons within each workspace.
 
-		*enable*: ++
-	typeof: bool ++
-	default: false ++
-	Enables the workspace taskbar mode.
+	*enable*: ++
+		typeof: bool ++
+		default: false ++
+		Enables the workspace taskbar mode.
 
-		*icon-size*: ++
-	typeof: int ++
-	default: 18 ++
-	Size of the icons in the workspace taskbar.
+	*icon-size*: ++
+		typeof: int ++
+		default: 18 ++
+		Size of the icons in the workspace taskbar.
 
 *ignore-workspaces*: ++
 	typeof: array ++

@@ -126,7 +126,12 @@ void MultipleImageStrategy::setupAndDraw() {
     bool has_onclick = !data.on_click.empty();
 
     Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-    pixbuf = Gdk::Pixbuf::create_from_file(path, size_, size_);
+    try {
+      pixbuf = Gdk::Pixbuf::create_from_file(path, size_, size_);
+    } catch (const Glib::Error& e) {
+      spdlog::error("failed to load image '{}': {}", path, std::string(e.what()));
+      pixbuf.reset();  // fall through to the .empty branch
+    }
 
     if (has_onclick) {
       auto btn = images_data_[i].btn;
@@ -234,22 +239,32 @@ SingleImageStrategy::SingleImageStrategy(const std::string& id, const Json::Valu
 
 void SingleImageStrategy::update() {
   if (config_["path"].isString()) {
-    auto result = Config::tryExpandPath(config_["path"].asString(), "");
-    path_ = result.empty() ? "" : result.front();
+    auto p = config_["path"].asString();
+    auto result = Config::tryExpandPath(p, "");
+    // Only use the expanded path when it resolves to exactly one existing match;
+    // otherwise keep the literal path so paths with spaces/metacharacters still work.
+    path_ = (result.size() == 1) ? result.front() : p;
   } else if (config_["exec"].isString()) {
     output_ = util::command::exec(config_["exec"].asString(), "");
     parseOutputRaw();
     // expand path if "~" or "$HOME" is present in original path
     auto result = Config::tryExpandPath(path_, "");
-    path_ = result.empty() ? "" : result.front();
+    path_ = (result.size() == 1) ? result.front() : path_;
   }
 
+  Glib::RefPtr<Gdk::Pixbuf> pixbuf;
   if (Glib::file_test(path_, Glib::FILE_TEST_EXISTS)) {
-    Glib::RefPtr<Gdk::Pixbuf> pixbuf;
-
     int scaled_icon_size = size_ * image_.get_scale_factor();
-    pixbuf = Gdk::Pixbuf::create_from_file(path_, scaled_icon_size, scaled_icon_size);
+    try {
+      pixbuf = Gdk::Pixbuf::create_from_file(path_, scaled_icon_size, scaled_icon_size);
+    } catch (const Glib::Exception& e) {
+      // Existing but corrupt/non-image file: degrade to the empty state instead of crashing.
+      spdlog::warn("Failed to load image {}: {}", path_, std::string(e.what()));
+      pixbuf.reset();
+    }
+  }
 
+  if (pixbuf) {
     auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
                                                           image_.get_window());
     image_.set(surface);

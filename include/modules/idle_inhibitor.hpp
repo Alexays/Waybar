@@ -38,9 +38,9 @@ class IdleInhibitor : public ALabel {
   struct zwp_idle_inhibitor_v1* idle_inhibitor_;
   int pid_;
 
-  bool dynamicTimeout;
-  short timeout;
-  short timeout_step;
+  bool dynamicTimeout = false;
+  double timeout;
+  double timeout_step;
   bool wait_for_activity_;
 };
 

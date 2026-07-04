@@ -143,12 +143,24 @@ void Host::proxyReady(GObject* src, GAsyncResult* res, gpointer data) {
     // Store the timeout connection so it is disconnected in ~Host, avoiding a
     // use-after-free if the Host is destroyed before the retry fires.
     host->retry_connection_ = Glib::signal_timeout().connect(
-        [host]() {
+        [host]() -> bool {
           if (host->watcher_ != nullptr) {
             return false;
           }
-          auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
-          host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+          try {
+            auto conn = Gio::DBus::Connection::get_sync(Gio::DBus::BusType::BUS_TYPE_SESSION);
+            host->nameAppeared(conn, "org.kde.StatusNotifierWatcher", "");
+          } catch (const Glib::Error& e) {
+            spdlog::error("Host: retry get_sync failed: {}", static_cast<std::string>(e.what()));
+            if (host->retry_count_ < MAX_RETRIES) {
+              host->retry_count_ += 1;
+              return true;  // re-arm this timer; never let the exception escape
+            }
+            spdlog::warn("Host: giving up on watcher proxy creation after {} retries",
+                         host->retry_count_);
+          } catch (const std::exception& e) {
+            spdlog::error("Host: retry failed: {}", e.what());
+          }
           return false;
         },
         RETRY_DELAY_MS);

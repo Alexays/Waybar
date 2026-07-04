@@ -53,24 +53,29 @@ auto Language::update() -> void {
   std::string tooltipContent = std::string{};
   bool tooltip_enabled = tooltipEnabled();
   if (tooltip_enabled) {
-    if (config_.isMember("tooltip-format")) {
-      auto tooltip_format = config_["tooltip-format"].asString();
-      if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
-        const auto propName = "tooltip-format-" + layout_.short_description + "-" + layout_.variant;
-        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
-      } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
-        const auto propName = "tooltip-format-" + layout_.short_description;
-        tooltipContent = fmt::format(fmt::runtime(tooltip_format), config_[propName].asString());
-      } else {
-        tooltipContent =
-            trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
-                             fmt::arg("short", layout_.short_name),
-                             fmt::arg("shortDescription", layout_.short_description),
-                             fmt::arg("variant", layout_.variant)));
-      }
+    // Default to "{long}" when no tooltip-format is provided, matching the man page
+    auto tooltip_format =
+        config_.isMember("tooltip-format") ? config_["tooltip-format"].asString() : "{long}";
+    if (config_.isMember("tooltip-format-" + layout_.short_description + "-" + layout_.variant)) {
+      const auto propName = "tooltip-format-" + layout_.short_description + "-" + layout_.variant;
+      tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), config_[propName].asString(),
+                                        fmt::arg("long", layout_.full_name),
+                                        fmt::arg("short", layout_.short_name),
+                                        fmt::arg("shortDescription", layout_.short_description),
+                                        fmt::arg("variant", layout_.variant)));
+    } else if (config_.isMember("tooltip-format-" + layout_.short_description)) {
+      const auto propName = "tooltip-format-" + layout_.short_description;
+      tooltipContent = trim(fmt::format(fmt::runtime(tooltip_format), config_[propName].asString(),
+                                        fmt::arg("long", layout_.full_name),
+                                        fmt::arg("short", layout_.short_name),
+                                        fmt::arg("shortDescription", layout_.short_description),
+                                        fmt::arg("variant", layout_.variant)));
     } else {
-      // if no tooltip format is provided, use the same text as the module
-      tooltipContent = layoutName;
+      tooltipContent =
+          trim(fmt::format(fmt::runtime(tooltip_format), fmt::arg("long", layout_.full_name),
+                           fmt::arg("short", layout_.short_name),
+                           fmt::arg("shortDescription", layout_.short_description),
+                           fmt::arg("variant", layout_.variant)));
     }
     spdlog::debug("hyprland language formatted tooltip content {}", tooltipContent);
   }
@@ -83,24 +88,6 @@ auto Language::update() -> void {
     }
   } else {
     label_.hide();
-  }
-
-  // Tooltip support
-  if (tooltipEnabled()) {
-    std::string tooltipFormat;
-    if (config_["tooltip-format"].isString()) {
-      tooltipFormat = config_["tooltip-format"].asString();
-    } else {
-      tooltipFormat = "{long}";
-    }
-    auto tooltipText =
-        trim(fmt::format(fmt::runtime(tooltipFormat), fmt::arg("long", layout_.full_name),
-                         fmt::arg("short", layout_.short_name),
-                         fmt::arg("shortDescription", layout_.short_description),
-                         fmt::arg("variant", layout_.variant)));
-    label_.set_tooltip_text(tooltipText);
-  } else {
-    label_.set_tooltip_text("");
   }
 
   ALabel::update();
