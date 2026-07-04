@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <sstream>
@@ -288,6 +289,19 @@ void waybar::modules::Network::worker() {
   };
 }
 
+bool waybar::modules::Network::isWireless() const {
+  // The rfkill switch we monitor (and thus the "disabled" state) only applies
+  // to wireless radios. An interface is wireless if the kernel exposes an
+  // 802.11 phy (cfg80211/mac80211) or a legacy "wireless" node for it in sysfs.
+  if (ifname_.empty()) {
+    return false;
+  }
+  const auto base = "/sys/class/net/" + ifname_;
+  std::error_code ec;
+  return std::filesystem::exists(base + "/phy80211", ec) ||
+         std::filesystem::exists(base + "/wireless", ec);
+}
+
 const std::string waybar::modules::Network::getNetworkState() const {
   if (ifid_ == -1 || !carrier_) {
 #ifdef WANT_RFKILL
@@ -295,7 +309,14 @@ const std::string waybar::modules::Network::getNetworkState() const {
     if (config_["rfkill"].isBool()) {
       display_rfkill = config_["rfkill"].asBool();
     }
-    if (rfkill_.getState() && display_rfkill) return "disabled";
+    // The rfkill switch is for wireless (WLAN) radios only, so it must not mask
+    // a wired interface that merely lost its carrier (e.g. an unplugged ethernet
+    // cable): such an interface has to report "disconnected", not "disabled",
+    // otherwise cable-unplug detection breaks on ethernet modules (#4364).
+    // Only honor rfkill when there is no interface or the interface is wireless.
+    if (rfkill_.getState() && display_rfkill && (ifname_.empty() || isWireless())) {
+      return "disabled";
+    }
 #endif
     return "disconnected";
   }

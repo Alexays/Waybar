@@ -51,6 +51,7 @@ class Network : public ALabel {
   bool matchInterface(const std::string& ifname, const std::vector<std::string>& altnames,
                       std::string& matched) const;
   auto getInfo() -> void;
+  bool isWireless() const;
   const std::string getNetworkState() const;
   void clearIface();
   std::optional<std::pair<unsigned long long, unsigned long long>> readBandwidthUsage();
