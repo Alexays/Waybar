@@ -13,11 +13,16 @@ Backend::Backend()
     ipc_.registerForIPC("openwindow", this);
     ipc_.registerForIPC("closewindow", this);
     ipc_.registerForIPC("movewindowv2", this);
+
+    ipc_.registerForIPC("activewindowv2", this);
+    //ipc_.registerForIPC("windowtitlev2", this);//Turn this if you see bug
 }
 
 WorkspaceList Backend::getWorkspaces() {
     auto json = ipc_.getSocket1JsonReply("workspaces");
     auto clients = ipc_.getSocket1JsonReply("clients");
+    auto active_window = ipc_.getSocket1JsonReply("activewindow");
+    std::string active_address = active_window["address"].asString();
 
     WorkspaceList workspaces;
 
@@ -54,6 +59,7 @@ WorkspaceList Backend::getWorkspaces() {
                 client["class"].asString(),
                 client["title"].asString(),
                 state.id,
+                client["address"].asString() == active_address
             });
         }
 

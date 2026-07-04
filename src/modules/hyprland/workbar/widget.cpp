@@ -76,7 +76,7 @@ namespace waybar::modules::hyprland::workbar {
 
     WorkspaceButton* Widget::workspaceAt(int x, int y) {
 
-    std::cout << "Testing: " << x << ", " << y << std::endl;
+    
 
     auto children = get_children();
 
@@ -85,14 +85,9 @@ namespace waybar::modules::hyprland::workbar {
         auto* button = dynamic_cast<WorkspaceButton*>(children[i]);
 
         if (!button) {
-            std::cout << "Child " << i << " is NOT a WorkspaceButton" << std::endl;
+        
             continue;
         }
-
-        std::cout << "Child " << i
-                << " is workspace "
-                << button->id()
-                << std::endl;
 
         int left, top;
         button->translate_coordinates(*this, 0, 0, left, top);
@@ -115,26 +110,9 @@ namespace waybar::modules::hyprland::workbar {
             right = get_allocation().get_width();
         }
 
-        std::cout
-            << "Workspace "
-            << button->id()
-            << " left=" << left
-            << " right=" << right
-            << std::endl;
-
-        
-        std::cout
-            << "Check: "
-            << (x >= left)
-            << " "
-            << (x < right)
-            << std::endl;
-
 
         if (x >= left &&
             x < right) {
-            
-            std::cout << "MATCH " << button->id() << std::endl;
 
             return button;
         }
@@ -148,21 +126,14 @@ void Widget::beginDrag(const WindowState& window) {
     dragging_ = true;
     dragged_window_ = window;
     hovered_workspace_ = nullptr;
-
-    std::cout
-        << "Begin drag, hovered="
-        << hovered_workspace_
-        << '\n';
 }
 
 void Widget::updateDrag(double x, double y) {
 
     static int count = 0;
 
-    std::cout << "\n===== updateDrag #" << ++count << " =====\n";
-
     if (!dragging_) {
-        std::cout << "dragging = false\n";
+
         return;
     }
 
@@ -171,21 +142,10 @@ void Widget::updateDrag(double x, double y) {
 
     auto* ws = workspaceAt(x - wx, y - wy);
 
-    std::cout
-        << "ws      = " << ws << '\n'
-        << "hovered = " << hovered_workspace_ << '\n';
-
     if (ws != hovered_workspace_) {
-
-        std::cout << "ENTERED IF\n";
 
         hovered_workspace_ = ws;
 
-        if (ws) {
-            std::cout << "Hover workspace "
-                      << ws->id()
-                      << '\n';
-        }
     }
 }
 
@@ -197,10 +157,6 @@ void Widget::endDrag() {
     dragging_ = false;
 
     if (hovered_workspace_) {
-
-        std::cout << "Drop on "
-                << hovered_workspace_->id()
-                << std::endl;
 
         std::string cmd =
             "hyprctl dispatch movetoworkspacesilent "

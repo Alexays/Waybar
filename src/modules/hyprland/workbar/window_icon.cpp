@@ -19,6 +19,8 @@ WindowIcon::WindowIcon(const WindowState& window) {
 
     add(image_);
 
+    get_style_context()->add_class("window-icon");
+
     add_events(
         Gdk::BUTTON_PRESS_MASK |
         Gdk::BUTTON_RELEASE_MASK |
@@ -32,20 +34,52 @@ WindowIcon::WindowIcon(const WindowState& window) {
     setWindow(window);
 
     show_all();
+
+    int min_h, nat_h;
+    get_preferred_height(min_h, nat_h);
+
+    std::cout
+        << "WindowIcon min=" << min_h
+        << " nat=" << nat_h
+        << '\n';
 }
 
 void WindowIcon::setWindow(const WindowState& window) {
     auto theme = Gtk::IconTheme::get_default();
 
-    if (theme->has_icon(window.class_name)) {
-        image_.set_from_icon_name(window.class_name,
-                                Gtk::ICON_SIZE_MENU);
-    } else {
-        image_.set_from_icon_name("application-x-executable",
-                                Gtk::ICON_SIZE_MENU);
+    try {
+        auto pixbuf = theme->load_icon(
+            theme->has_icon(window.class_name)
+                ? window.class_name
+                : "application-x-executable",
+            64,   // load a large icon
+            Gtk::ICON_LOOKUP_FORCE_SIZE);
+
+        auto scaled = pixbuf->scale_simple(
+            16, 16,
+            Gdk::INTERP_BILINEAR);
+
+        image_.set(scaled);
+
+        std::cout
+            << "Image size: "
+            << image_.get_pixbuf()->get_width()
+            << "x"
+            << image_.get_pixbuf()->get_height()
+            << '\n';
+            
+    } catch (...) {
     }
 
     window_ = window;
+
+    auto context = get_style_context();
+
+    if (window.active) {
+        context->add_class("active");
+    } else {
+        context->remove_class("active");
+    }
 
     show_all();
 

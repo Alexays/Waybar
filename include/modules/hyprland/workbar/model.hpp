@@ -11,6 +11,8 @@ struct WindowState {
     std::string title;
 
     int workspace_id;
+
+    bool active = false;
 };
 
 struct WorkspaceState {

@@ -14,6 +14,12 @@ int WorkspaceNumber::workspaceId() const {
 WorkspaceNumber::WorkspaceNumber(int workspace_id) {
     add(label_);
 
+    get_style_context()->add_class("workspace-number");
+
+    std::cout << "Number classes:\n";
+    for (auto& c : get_style_context()->list_classes())
+        std::cout << "  " << c << '\n';
+
     add_events(
         Gdk::ENTER_NOTIFY_MASK |
         Gdk::LEAVE_NOTIFY_MASK
