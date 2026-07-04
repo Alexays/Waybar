@@ -8,12 +8,14 @@
 #include <unistd.h>
 
 #include <cerrno>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <stdexcept>
 #include <string_view>
+#include <thread>
 #include <utility>
 
 #include "modules/sway/ipc/ipc.hpp"
@@ -41,12 +43,15 @@ void sendAll(int fd, const char* data, size_t size, const char* what) {
 }  // namespace
 
 Ipc::Ipc() {
-  const std::string socketPath = getSocketPath();
-  fd_ = util::ScopedFd(open(socketPath));
-  fd_event_ = util::ScopedFd(open(socketPath));
+  socketPath_ = getSocketPath();
+  fd_ = util::ScopedFd(open(socketPath_));
+  fd_event_ = util::ScopedFd(open(socketPath_));
 }
 
 Ipc::~Ipc() {
+  // Signal the worker before stopping it so an in-flight recv/reconnect bails
+  // out instead of trying to reconnect to a socket we're tearing down.
+  running_ = false;
   thread_.stop();
 
   if (fd_ > 0) {
@@ -191,11 +196,48 @@ void Ipc::subscribe(const std::string& payload) {
   if (res.payload != "{\"success\": true}") {
     throw std::runtime_error("Unable to subscribe ipc event");
   }
+  // Remember the subscription so we can replay it if we have to reconnect.
+  subscribed_events_.push_back(payload);
+}
+
+void Ipc::reconnectEvent() {
+  // Sway closed our event connection (typically because its send buffer filled
+  // up during an event flood). Re-establish the socket and re-subscribe to the
+  // same events, backing off between attempts so we don't busy-loop and peg a
+  // CPU while sway is unavailable or keeps dropping us.
+  while (running_) {
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    if (!running_) {
+      return;
+    }
+    try {
+      fd_event_.reset(open(socketPath_));
+      for (const auto& payload : subscribed_events_) {
+        const auto res = Ipc::send(fd_event_, IPC_SUBSCRIBE, payload);
+        if (res.payload != "{\"success\": true}") {
+          throw std::runtime_error("Unable to re-subscribe ipc event");
+        }
+      }
+      spdlog::info("Reconnected to sway IPC event socket");
+      return;
+    } catch (const std::exception& e) {
+      spdlog::warn("Failed to reconnect to sway IPC ({}), retrying", e.what());
+    }
+  }
 }
 
 void Ipc::handleEvent() {
-  const auto res = Ipc::recv(fd_event_);
-  signal_event.emit(res);
+  try {
+    const auto res = Ipc::recv(fd_event_);
+    signal_event.emit(res);
+  } catch (const std::exception& e) {
+    if (!running_) {
+      // The Ipc is being torn down; the socket was closed on purpose.
+      return;
+    }
+    spdlog::warn("Lost sway IPC event connection ({}), reconnecting", e.what());
+    reconnectEvent();
+  }
 }
 
 }  // namespace waybar::modules::sway

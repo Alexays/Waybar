@@ -2,10 +2,12 @@
 
 #include <sigc++/sigc++.h>
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "ipc.hpp"
 #include "util/SafeSignal.hpp"
@@ -42,6 +44,14 @@ class Ipc {
 
   struct ipc_response send(int fd, uint32_t type, const std::string& payload = "");
   struct ipc_response recv(int fd);
+
+  // Re-establish the event socket and re-subscribe after sway drops us, backing
+  // off between attempts so we don't busy-loop while sway is unavailable.
+  void reconnectEvent();
+
+  std::string socketPath_;
+  std::vector<std::string> subscribed_events_;
+  std::atomic<bool> running_{true};
 
   util::ScopedFd fd_;
   util::ScopedFd fd_event_;
