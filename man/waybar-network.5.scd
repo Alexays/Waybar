@@ -214,6 +214,34 @@ Addressed by *network*
 
 *{icon}*: Icon, as defined in *format-icons*.
 
+# NUMBER FORMAT MODIFIERS
+
+The bandwidth/bitrate replacements above (*{bandwidth\*}*, *{txBitrate}*,
+*{rxBitrate}*, *{linkSpeed}*) auto-scale the number with an SI prefix (k, M, G,
+…). Their rendering can be tuned with fmt-style modifiers, e.g.
+*"{bandwidthDownBits:>}"* or *"{bandwidthDownBits:M}"*. Modifiers may be combined
+in any order:
+
+*<*, *=*, *>*: Alignment/padding (left, column-align, right) — as before.
+
+*u* / *U*: Hide (*u*) or show (*U*) the unit suffix. The unit is shown by default
+with an auto scale and hidden by default when a scale is forced (see below).
+
+*#*, *k*, *M*, *G*, *T*, *P*: Force a fixed scale instead of auto-selecting one
+(*#* = base scale, no prefix). Forcing a scale hides the scale prefix and, by
+default, the unit (re-enable it with *U*). E.g. *"{bandwidthDownBits:M}"* always
+shows the value in megabits.
+
+*i*: Force integer display (no decimals).
+
+*b* / *B*: Force decimal base 1000 (*b*) or binary base 1024 with an *i* marker
+(*B*), overriding the module default.
+
+A trailing number is a fixed width for the coefficient when a scale is forced; if
+the value does not fit, it is shown as *#* characters (e.g. *"{bandwidthDownBits:=3#}"*
+→ *###*). Without a forced scale the number is ignored (kept for config
+compatibility).
+
 # EXAMPLES
 
 ```

@@ -146,6 +146,29 @@ Addressed by *disk*
 
 *{specific_free}*: Amount of available disk space for normal users in a specific unit. Defaults to bytes.
 
+# NUMBER FORMAT MODIFIERS
+
+*{total}*, *{used}* and *{free}* auto-scale with a binary prefix (KiB, GiB, …).
+Their rendering can be tuned with fmt-style modifiers, e.g. *"{free:>}"* or
+*"{free:G}"*, combined in any order:
+
+*<*, *=*, *>*: Alignment/padding (left, column-align, right).
+
+*u* / *U*: Hide (*u*) or show (*U*) the unit suffix. Shown by default with an auto
+scale, hidden by default when a scale is forced.
+
+*#*, *k*, *M*, *G*, *T*, *P*: Force a fixed scale instead of auto-selecting
+(*#* = base scale). Forcing a scale hides the scale prefix and, by default, the
+unit. E.g. *"{free:G}"* always shows gibibytes.
+
+*i*: Force integer display (no decimals).
+
+*b* / *B*: Force decimal base 1000 (*b*) or binary base 1024 (*B*); disk values
+are binary by default.
+
+A trailing number is a fixed width for the coefficient when a scale is forced;
+overflow is shown as *#* characters (e.g. *"{free:=3#}"* → *###*).
+
 # EXAMPLES
 
 ```
