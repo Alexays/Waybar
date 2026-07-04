@@ -18,6 +18,12 @@ touches `man/**` or this tooling.
 - `extras/<Page>.md` — optional hand-maintained appendix (screenshots, showcase
   snippets that have no man equivalent), appended verbatim after the generated body.
 
+The generator also keeps `_Sidebar.md` in sync: any `Module:-*` page in the mapping
+that is not yet linked in the sidebar is inserted alphabetically into the `Modules:`
+list. Existing sidebar entries (custom labels, nested sub-entries, hand-written
+non-module links) are never modified — so a new module auto-appears in navigation
+without disturbing the curated structure.
+
 ## What it touches
 
 Only the pages listed in `mapping.json` are (re)written. Every other wiki page

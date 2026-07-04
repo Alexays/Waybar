@@ -90,6 +90,54 @@ def build_page(man_dir, sources, page, extras_dir):
     return "\n".join(parts).rstrip() + "\n"
 
 
+ENTRY_RE = re.compile(r"^    - \[([^\]]+)\]\(\./Module:-")
+LINK_RE = re.compile(r"\]\(\./(Module:-[^)]+)\)")
+
+
+def sync_sidebar(out_dir, mapping):
+    """Non-destructively add any mapped Module page missing from _Sidebar.md.
+
+    Only inserts links for pages absent from the sidebar; existing entries
+    (custom labels, nested sub-entries, hand-written non-module links) are
+    never modified. Insertion is alphabetical within the top-level module list.
+    """
+    path = os.path.join(out_dir, "_Sidebar.md")
+    if not os.path.exists(path):
+        print("  no _Sidebar.md; skipping sidebar sync")
+        return
+    lines = open(path).read().splitlines()
+    linked = set(LINK_RE.findall("\n".join(lines)))
+    missing = sorted((p for p in mapping
+                      if p.startswith("Module:-") and p not in linked),
+                     key=str.lower)
+    if not missing:
+        print("  sidebar up to date")
+        return
+
+    def entries():
+        return [i for i, l in enumerate(lines) if ENTRY_RE.match(l)]
+
+    if not entries():
+        print("  could not locate Modules section; skipping sidebar sync")
+        return
+    for page in missing:
+        label = page[len("Module:-"):].replace("-", " ")
+        new_line = f"    - [{label}](./{page})"
+        pos = None
+        for i in entries():
+            if ENTRY_RE.match(lines[i]).group(1).lower() > label.lower():
+                pos = i
+                break
+        if pos is None:  # after the last module entry and its sub-entries
+            j = entries()[-1] + 1
+            while j < len(lines) and lines[j].startswith("        "):
+                j += 1
+            pos = j
+        lines.insert(pos, new_line)
+        print(f"  sidebar += {label}")
+    open(path, "w").write("\n".join(lines) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--man-dir", default="man")
@@ -130,6 +178,7 @@ def main():
         out = os.path.join(args.out_dir, page + ".md")
         open(out, "w").write(build_page(args.man_dir, sources, page, extras_dir))
         print(f"  wrote {page}.md  ({', '.join(sources)})")
+    sync_sidebar(args.out_dir, mapping)
     return 0
 
 
