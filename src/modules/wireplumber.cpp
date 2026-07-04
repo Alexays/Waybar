@@ -10,6 +10,17 @@ bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
 std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
 
+// Async load/activation callbacks (onDefaultNodesApiLoaded, onMixerApiLoaded, onPluginActivated)
+// are handed a raw `self` pointer with no GCancellable, and WirePlumber has no way to withdraw an
+// in-flight callback. If the module is destroyed before such a callback fires (e.g. an output/bar
+// is removed while a component load is still pending, or during an audio route transition), the
+// callback would dereference a freed `self`. The destructor removes `this` from this registry
+// before any teardown, so a missing entry means `self` is dangling and the callback must bail out
+// without touching it. See https://github.com/Alexays/Waybar/issues/3974.
+bool waybar::modules::Wireplumber::isModuleAlive(waybar::modules::Wireplumber* self) {
+  return std::find(modules.begin(), modules.end(), self) != modules.end();
+}
+
 waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config)
     : ALabel(config, "wireplumber", id, "{volume}%"),
       wp_core_(nullptr),
@@ -387,6 +398,10 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
 
 void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
                                                      waybar::modules::Wireplumber* self) {
+  if (!isModuleAlive(self)) {
+    return;
+  }
+
   const auto* pluginName = wp_plugin_get_name(WP_PLUGIN(p));
   spdlog::debug("[{}]: onPluginActivated: {}", self->name_, pluginName);
   g_autoptr(GError) error = nullptr;
@@ -432,6 +447,10 @@ void waybar::modules::Wireplumber::prepare(waybar::modules::Wireplumber* self) {
 
 void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
                                                            waybar::modules::Wireplumber* self) {
+  if (!isModuleAlive(self)) {
+    return;
+  }
+
   gboolean success = FALSE;
   g_autoptr(GError) error = nullptr;
 
@@ -453,6 +472,10 @@ void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncRe
 
 void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res,
                                                     waybar::modules::Wireplumber* self) {
+  if (!isModuleAlive(self)) {
+    return;
+  }
+
   gboolean success = FALSE;
   g_autoptr(GError) error = nullptr;
 
