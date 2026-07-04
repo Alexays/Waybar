@@ -9,18 +9,15 @@
     "modules-center": ["custom/center"],
     "modules-right": ["custom/right"],
     "custom/left": {
-        "format": "Waybar",
-        "exec": "echo",
+        "exec": "echo Waybar",
         "interval": "once"
     },
     "custom/center": {
-        "format": "CI smoke test",
-        "exec": "echo",
+        "exec": "echo 'CI smoke test'",
         "interval": "once"
     },
     "custom/right": {
-        "format": "12:34",
-        "exec": "echo",
+        "exec": "echo 12:34",
         "interval": "once"
     }
 }
