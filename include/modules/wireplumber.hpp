@@ -29,10 +29,9 @@ class Wireplumber : public ALabel {
   static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateSourceVolume(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateSourceName(waybar::modules::Wireplumber* self, uint32_t id);  // NEW
-  static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
-  static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
-                                      waybar::modules::Wireplumber* self);
-  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
+  static void onPluginActivated(WpObject* p, GAsyncResult* res, gpointer data);
+  static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res, gpointer data);
+  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, gpointer data);
   static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
@@ -57,6 +56,10 @@ class Wireplumber : public ALabel {
   WpPlugin* def_nodes_api_;
   gchar* default_node_name_;
   uint32_t pending_plugins_;
+  // Bumped on every (re)connection. The async load/activate callbacks capture the generation they
+  // were scheduled under (via their user_data) and no-op if it no longer matches, so a completion
+  // from a connection that was already torn down cannot corrupt the new generation's state (#2882).
+  uint32_t connection_generation_{0};
   bool muted_;
   double volume_;
   double min_step_;
