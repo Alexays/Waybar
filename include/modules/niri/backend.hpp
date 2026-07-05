@@ -34,7 +34,7 @@ class IPC {
   unsigned keyboardLayoutCurrent() const { return keyboardLayoutCurrent_; }
 
  private:
-  void startIPC();
+  void startIPC(int initial_socketfd);
   static int connectToSocket();
   void parseIPC(const std::string&);
 
