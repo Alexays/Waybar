@@ -17,6 +17,11 @@ class Wireplumber : public ALabel {
   auto update() -> void override;
 
  private:
+  bool setupConnection();
+  void teardownConnection();
+  void scheduleReconnect();
+  bool onReconnectTimeout();
+  static void onCoreDisconnected(waybar::modules::Wireplumber* self);
   void asyncLoadRequiredApiModules();
   void prepare(waybar::modules::Wireplumber* self);
   void activatePlugins();
@@ -24,10 +29,9 @@ class Wireplumber : public ALabel {
   static void updateNodeName(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateSourceVolume(waybar::modules::Wireplumber* self, uint32_t id);
   static void updateSourceName(waybar::modules::Wireplumber* self, uint32_t id);  // NEW
-  static void onPluginActivated(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
-  static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
-                                      waybar::modules::Wireplumber* self);
-  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, waybar::modules::Wireplumber* self);
+  static void onPluginActivated(WpObject* p, GAsyncResult* res, gpointer data);
+  static void onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res, gpointer data);
+  static void onMixerApiLoaded(WpObject* p, GAsyncResult* res, gpointer data);
   static void onObjectManagerInstalled(waybar::modules::Wireplumber* self);
   static void onMixerChanged(waybar::modules::Wireplumber* self, uint32_t id);
   static void onDefaultNodesApiChanged(waybar::modules::Wireplumber* self);
@@ -52,6 +56,10 @@ class Wireplumber : public ALabel {
   WpPlugin* def_nodes_api_;
   gchar* default_node_name_;
   uint32_t pending_plugins_;
+  // Bumped on every (re)connection. The async load/activate callbacks capture the generation they
+  // were scheduled under (via their user_data) and no-op if it no longer matches, so a completion
+  // from a connection that was already torn down cannot corrupt the new generation's state (#2882).
+  uint32_t connection_generation_{0};
   bool muted_;
   double volume_;
   double min_step_;
@@ -66,6 +74,9 @@ class Wireplumber : public ALabel {
   bool only_physical_;
   bool resolved_physical_;
   std::string form_factor_;
+  // Timer used to retry connecting to PipeWire after it goes away; disconnected in the destructor
+  // so a pending attempt can't outlive the module. See #2882.
+  sigc::connection reconnect_timer_;
 };
 
 }  // namespace waybar::modules

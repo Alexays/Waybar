@@ -3,12 +3,18 @@
 #include <spdlog/spdlog.h>
 
 #include <cmath>
+#include <memory>
 #include <string>
 #include <unordered_set>
 
 bool isValidNodeId(uint32_t id) { return id > 0 && id < G_MAXUINT32; }
 
 std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
+
+// Interval between reconnect attempts after PipeWire/WirePlumber goes away. Fixed (rather than
+// growing) so the module recovers promptly whenever the service comes back, while still being
+// a bounded, main-loop-friendly poll rather than a busy loop.
+static constexpr unsigned kReconnectIntervalMs = 2000;
 
 // Async load/activation callbacks (onDefaultNodesApiLoaded, onMixerApiLoaded, onPluginActivated)
 // are handed a raw `self` pointer with no GCancellable, and WirePlumber has no way to withdraw an
@@ -20,6 +26,17 @@ std::list<waybar::modules::Wireplumber*> waybar::modules::Wireplumber::modules;
 bool waybar::modules::Wireplumber::isModuleAlive(waybar::modules::Wireplumber* self) {
   return std::find(modules.begin(), modules.end(), self) != modules.end();
 }
+
+namespace {
+// user_data for the async load/activate callbacks. Pairs the module with the connection generation
+// the call was scheduled under so a completion belonging to a torn-down connection can be dropped
+// (see Wireplumber::connection_generation_ and #2882). Heap-allocated per call; the callback takes
+// ownership and frees it.
+struct AsyncCall {
+  waybar::modules::Wireplumber* self;
+  uint32_t generation;
+};
+}  // namespace
 
 waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Value& config)
     : ALabel(config, "wireplumber", id, "{volume}%"),
@@ -46,21 +63,47 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
   waybar::modules::Wireplumber::modules.push_back(this);
 
   wp_init(WP_INIT_PIPEWIRE);
-  wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
-  apis_ = g_ptr_array_new_with_free_func(g_object_unref);
-  om_ = wp_object_manager_new();
 
   type_ = g_strdup(config_["node-type"].isString() ? config_["node-type"].asString().c_str()
                                                    : "Audio/Sink");
   only_physical_ = config_["only-physical"].isBool() ? config_["only-physical"].asBool() : false;
 
+  // Wire the scroll handler once, here, rather than in onMixerApiLoaded: the latter now re-runs on
+  // every reconnect and would accumulate duplicate handlers. handleScroll no-ops while mixer_api_
+  // is null, so wiring it before the first successful connect is safe.
+  event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
+  event_box_.signal_scroll_event().connect(sigc::mem_fun(*this, &Wireplumber::handleScroll));
+
+  if (!setupConnection()) {
+    spdlog::error("[{}]: Could not connect to PipeWire: '{}'", name_, type_);
+    throw std::runtime_error("Could not connect to PipeWire\n");
+  }
+}
+
+// Creates a fresh WpCore/object manager, connects to PipeWire and kicks off async API loading.
+// Used both at startup and when reconnecting after a PipeWire/WirePlumber restart, so all
+// connection-scoped state is (re)built here. Returns false if the connection could not be
+// initiated. See https://github.com/Alexays/Waybar/issues/2882.
+bool waybar::modules::Wireplumber::setupConnection() {
+  // New connection generation: any async load/activate callback still in flight from a previous
+  // connection will see a mismatched generation and bail out instead of mutating this one's state.
+  ++connection_generation_;
+
+  wp_core_ = wp_core_new(nullptr, nullptr, nullptr);
+  apis_ = g_ptr_array_new_with_free_func(g_object_unref);
+  om_ = wp_object_manager_new();
+  pending_plugins_ = 0;
+
   prepare(this);
+
+  // Recover when PipeWire/WirePlumber goes away (service restart, crash). The "disconnected"
+  // signal fires on the GTK main loop; from there we schedule a reconnect attempt.
+  g_signal_connect_swapped(wp_core_, "disconnected", (GCallback)onCoreDisconnected, this);
 
   spdlog::debug("[{}]: connecting to pipewire: '{}'...", name_, type_);
 
   if (wp_core_connect(wp_core_) == 0) {
-    spdlog::error("[{}]: Could not connect to PipeWire: '{}'", name_, type_);
-    throw std::runtime_error("Could not connect to PipeWire\n");
+    return false;
   }
 
   spdlog::debug("[{}]: {} connected!", name_, type_);
@@ -68,10 +111,13 @@ waybar::modules::Wireplumber::Wireplumber(const std::string& id, const Json::Val
   g_signal_connect_swapped(om_, "installed", (GCallback)onObjectManagerInstalled, this);
 
   asyncLoadRequiredApiModules();
+  return true;
 }
 
-waybar::modules::Wireplumber::~Wireplumber() {
-  waybar::modules::Wireplumber::modules.remove(this);
+// Disconnects signal handlers and releases all connection-scoped WirePlumber objects. Safe to call
+// when already partially/fully torn down (every pointer is null-checked and cleared), so it doubles
+// as the reconnect reset and the destructor's cleanup.
+void waybar::modules::Wireplumber::teardownConnection() {
   if (mixer_api_ != nullptr) {
     g_signal_handlers_disconnect_by_data(mixer_api_, this);
   }
@@ -81,12 +127,62 @@ waybar::modules::Wireplumber::~Wireplumber() {
   if (om_ != nullptr) {
     g_signal_handlers_disconnect_by_data(om_, this);
   }
-  wp_core_disconnect(wp_core_);
+  if (wp_core_ != nullptr) {
+    g_signal_handlers_disconnect_by_data(wp_core_, this);
+    wp_core_disconnect(wp_core_);
+  }
   g_clear_pointer(&apis_, g_ptr_array_unref);
   g_clear_object(&om_);
-  g_clear_object(&wp_core_);
   g_clear_object(&mixer_api_);
   g_clear_object(&def_nodes_api_);
+  g_clear_object(&wp_core_);
+  // onObjectManagerInstalled re-populates these via out-params (which don't free the previous
+  // value), so clear them here to avoid leaking the old strings across a reconnect.
+  g_clear_pointer(&default_node_name_, g_free);
+  g_clear_pointer(&default_source_name_, g_free);
+  pending_plugins_ = 0;
+}
+
+// "disconnected" signal handler on wp_core_. Runs during the core's own signal emission, so it must
+// not tear down the core here; it only schedules a reconnect, which performs the teardown/rebuild
+// once control has returned to the main loop.
+void waybar::modules::Wireplumber::onCoreDisconnected(waybar::modules::Wireplumber* self) {
+  if (!isModuleAlive(self)) {
+    return;
+  }
+  spdlog::warn("[{}]: PipeWire connection lost; will attempt to reconnect", self->name_);
+  self->scheduleReconnect();
+}
+
+void waybar::modules::Wireplumber::scheduleReconnect() {
+  if (reconnect_timer_.connected()) {
+    return;  // a reconnect attempt is already pending
+  }
+  reconnect_timer_ = Glib::signal_timeout().connect(
+      sigc::mem_fun(*this, &Wireplumber::onReconnectTimeout), kReconnectIntervalMs);
+}
+
+// Runs on the GTK main loop. Rebuilds the connection from scratch; returns true to keep retrying at
+// the fixed interval until PipeWire is back, or false to stop once reconnected (a future
+// "disconnected" signal will re-arm the timer if needed).
+bool waybar::modules::Wireplumber::onReconnectTimeout() {
+  teardownConnection();
+  spdlog::info("[{}]: attempting to reconnect to PipeWire...", name_);
+  if (setupConnection()) {
+    spdlog::info("[{}]: reconnected to PipeWire", name_);
+    return false;
+  }
+  teardownConnection();
+  spdlog::debug("[{}]: reconnect failed; retrying in {} ms", name_, kReconnectIntervalMs);
+  return true;
+}
+
+waybar::modules::Wireplumber::~Wireplumber() {
+  // Remove from the live-module registry first so any in-flight async callback bails out (#3974),
+  // then cancel a pending reconnect so onReconnectTimeout can't fire on a half-destroyed module.
+  waybar::modules::Wireplumber::modules.remove(this);
+  reconnect_timer_.disconnect();
+  teardownConnection();
   g_free(default_node_name_);
   g_free(default_source_name_);
   g_free(type_);
@@ -208,7 +304,12 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
 
   g_variant_lookup(variant, "volume", "d", &self->volume_);
   g_variant_lookup(variant, "step", "d", &self->min_step_);
-  g_variant_lookup(variant, "mute", "b", &self->muted_);
+  // GVariant "b" writes a gboolean (4 bytes); reading directly into the 1-byte bool member is an
+  // out-of-bounds write. Read into a gboolean temporary and assign back.
+  gboolean mute = FALSE;
+  if (g_variant_lookup(variant, "mute", "b", &mute)) {
+    self->muted_ = mute;
+  }
   g_clear_pointer(&variant, g_variant_unref);
 
   self->dp.emit();
@@ -233,7 +334,11 @@ void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumb
   }
 
   g_variant_lookup(variant, "volume", "d", &self->source_volume_);
-  g_variant_lookup(variant, "mute", "b", &self->source_muted_);
+  // See updateVolume: GVariant "b" writes a gboolean (4 bytes), not a 1-byte bool.
+  gboolean mute = FALSE;
+  if (g_variant_lookup(variant, "mute", "b", &mute)) {
+    self->source_muted_ = mute;
+  }
   g_clear_pointer(&variant, g_variant_unref);
 
   self->dp.emit();
@@ -397,8 +502,10 @@ void waybar::modules::Wireplumber::onObjectManagerInstalled(waybar::modules::Wir
 }
 
 void waybar::modules::Wireplumber::onPluginActivated(WpObject* p, GAsyncResult* res,
-                                                     waybar::modules::Wireplumber* self) {
-  if (!isModuleAlive(self)) {
+                                                     gpointer data) {
+  std::unique_ptr<AsyncCall> call(static_cast<AsyncCall*>(data));
+  auto* self = call->self;
+  if (!isModuleAlive(self) || call->generation != self->connection_generation_) {
     return;
   }
 
@@ -422,7 +529,8 @@ void waybar::modules::Wireplumber::activatePlugins() {
     WpPlugin* plugin = static_cast<WpPlugin*>(g_ptr_array_index(apis_, i));
     pending_plugins_++;
     wp_object_activate(WP_OBJECT(plugin), WP_PLUGIN_FEATURE_ENABLED, nullptr,
-                       (GAsyncReadyCallback)onPluginActivated, this);
+                       (GAsyncReadyCallback)onPluginActivated,
+                       new AsyncCall{this, connection_generation_});
   }
 }
 
@@ -446,8 +554,10 @@ void waybar::modules::Wireplumber::prepare(waybar::modules::Wireplumber* self) {
 }
 
 void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncResult* res,
-                                                           waybar::modules::Wireplumber* self) {
-  if (!isModuleAlive(self)) {
+                                                           gpointer data) {
+  std::unique_ptr<AsyncCall> call(static_cast<AsyncCall*>(data));
+  auto* self = call->self;
+  if (!isModuleAlive(self) || call->generation != self->connection_generation_) {
     return;
   }
 
@@ -467,12 +577,14 @@ void waybar::modules::Wireplumber::onDefaultNodesApiLoaded(WpObject* p, GAsyncRe
 
   spdlog::debug("[{}]: loading mixer api module", self->name_);
   wp_core_load_component(self->wp_core_, "libwireplumber-module-mixer-api", "module", nullptr,
-                         "mixer-api", nullptr, (GAsyncReadyCallback)onMixerApiLoaded, self);
+                         "mixer-api", nullptr, (GAsyncReadyCallback)onMixerApiLoaded,
+                         new AsyncCall{self, call->generation});
 }
 
-void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res,
-                                                    waybar::modules::Wireplumber* self) {
-  if (!isModuleAlive(self)) {
+void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* res, gpointer data) {
+  std::unique_ptr<AsyncCall> call(static_cast<AsyncCall*>(data));
+  auto* self = call->self;
+  if (!isModuleAlive(self) || call->generation != self->connection_generation_) {
     return;
   }
 
@@ -496,16 +608,13 @@ void waybar::modules::Wireplumber::onMixerApiLoaded(WpObject* p, GAsyncResult* r
   self->activatePlugins();
 
   self->dp.emit();
-
-  self->event_box_.add_events(Gdk::SCROLL_MASK | Gdk::SMOOTH_SCROLL_MASK);
-  self->event_box_.signal_scroll_event().connect(sigc::mem_fun(*self, &Wireplumber::handleScroll));
 }
 
 void waybar::modules::Wireplumber::asyncLoadRequiredApiModules() {
   spdlog::debug("[{}]: loading default nodes api module", name_);
   wp_core_load_component(wp_core_, "libwireplumber-module-default-nodes-api", "module", nullptr,
                          "default-nodes-api", nullptr, (GAsyncReadyCallback)onDefaultNodesApiLoaded,
-                         this);
+                         new AsyncCall{this, connection_generation_});
 }
 
 static const std::array<std::string, 7> ports = {
