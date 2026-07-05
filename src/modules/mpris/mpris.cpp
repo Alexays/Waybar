@@ -491,7 +491,13 @@ auto Mpris::getPlayerInfo() -> std::optional<PlayerInfo> {
         continue;
       }
       auto* tmp = playerctl_player_new_from_name(pn, &error);
-      if (error || !tmp) continue;
+      if (error || !tmp) {
+        // Discard any error from this candidate so it doesn't leak into the next
+        // playerctl_player_new_from_name() call or the post-loop metadata calls, which
+        // assert that the passed GError is NULL (otherwise: GLib-CRITICAL / spurious errorexit).
+        g_clear_error(&error);
+        continue;
+      }
       if (!first_valid_player) {
         first_valid_player = tmp;
         first_valid_name = name;
