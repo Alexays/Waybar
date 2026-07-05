@@ -101,7 +101,7 @@ auto Window::update() -> void {
                   fmt::arg("shell", shell_), fmt::arg("marks", marks_)),
       config_["rewrite"]));
   if (tooltipEnabled()) {
-    setTooltipMarkup(window_);
+    setTooltipMarkup(Glib::Markup::escape_text(window_));
   }
 
   // Resolve the app icon on the main thread to avoid racing with GTK draw on the
