@@ -71,6 +71,10 @@ class Task {
   bool button_visible_ = false;
   bool ignored_ = false;
   bool squashed_ = false;
+  /* Whether the toplevel is on this bar's output, per the protocol's
+   * output_enter/output_leave events */
+  bool on_bar_output_ = false;
+  bool size_allocate_connected_ = false;
 
   bool with_icon_ = false;
   bool with_name_ = false;
@@ -96,6 +100,8 @@ class Task {
   void on_button_size_allocated(Gtk::Allocation& alloc);
   void hide_if_ignored();
   void hide_if_duplicate();
+  void show_button();
+  void hide_button();
 
  public:
   /* Getter functions */
