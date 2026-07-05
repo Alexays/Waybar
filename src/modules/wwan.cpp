@@ -43,7 +43,7 @@ waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
   if (error) {
     spdlog::error("Failed to create ModemManager proxy: " + std::string(error->message));
     g_error_free(error);
-    g_object_unref(connection);
+    g_clear_object(&connection);
     return;
   }
 
@@ -302,7 +302,7 @@ auto waybar::modules::Wwan::update() -> void {
 }
 
 waybar::modules::Wwan::~Wwan() {
-  g_object_unref(current_modem);
-  g_object_unref(manager);
-  g_object_unref(connection);
+  g_clear_object(&current_modem);
+  g_clear_object(&manager);
+  g_clear_object(&connection);
 }
