@@ -304,7 +304,12 @@ void waybar::modules::Wireplumber::updateVolume(waybar::modules::Wireplumber* se
 
   g_variant_lookup(variant, "volume", "d", &self->volume_);
   g_variant_lookup(variant, "step", "d", &self->min_step_);
-  g_variant_lookup(variant, "mute", "b", &self->muted_);
+  // GVariant "b" writes a gboolean (4 bytes); reading directly into the 1-byte bool member is an
+  // out-of-bounds write. Read into a gboolean temporary and assign back.
+  gboolean mute = FALSE;
+  if (g_variant_lookup(variant, "mute", "b", &mute)) {
+    self->muted_ = mute;
+  }
   g_clear_pointer(&variant, g_variant_unref);
 
   self->dp.emit();
@@ -329,7 +334,11 @@ void waybar::modules::Wireplumber::updateSourceVolume(waybar::modules::Wireplumb
   }
 
   g_variant_lookup(variant, "volume", "d", &self->source_volume_);
-  g_variant_lookup(variant, "mute", "b", &self->source_muted_);
+  // See updateVolume: GVariant "b" writes a gboolean (4 bytes), not a 1-byte bool.
+  gboolean mute = FALSE;
+  if (g_variant_lookup(variant, "mute", "b", &mute)) {
+    self->source_muted_ = mute;
+  }
   g_clear_pointer(&variant, g_variant_unref);
 
   self->dp.emit();
