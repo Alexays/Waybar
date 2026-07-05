@@ -123,8 +123,9 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        g_signal_connect(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)g_strdup(menuActionsMap_[key].c_str()));
+        g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
+                              g_strdup(menuActionsMap_[key].c_str()), (GClosureNotify)g_free,
+                              (GConnectFlags)0);
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
@@ -183,7 +184,9 @@ std::string ALabel::getIcon(uint16_t percentage, const std::string& alt, uint16_
         if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
           static bool warned = false;
           if (!warned) {
-            spdlog::warn("format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", \"max\": N}");
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
             warned = true;
           }
           continue;
@@ -229,7 +232,9 @@ std::string ALabel::getIcon(uint16_t percentage, const std::vector<std::string>&
         if (!threshold.isObject() || !threshold["icon"].isString() || !threshold["max"].isUInt()) {
           static bool warned = false;
           if (!warned) {
-            spdlog::warn("format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", \"max\": N}");
+            spdlog::warn(
+                "format-icons: skipping invalid threshold object, expected {\"icon\": \"...\", "
+                "\"max\": N}");
             warned = true;
           }
           continue;

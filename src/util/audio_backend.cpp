@@ -4,6 +4,7 @@
 #include <pulse/def.h>
 #include <pulse/error.h>
 #include <pulse/introspect.h>
+#include <pulse/operation.h>
 #include <pulse/subscribe.h>
 #include <pulse/volume.h>
 #include <spdlog/spdlog.h>
@@ -104,16 +105,17 @@ void AudioBackend::contextStateCb(pa_context* c, void* data) {
       }
       break;
     case PA_CONTEXT_READY:
-      pa_context_get_server_info(c, serverInfoCb, data);
+      if (auto* o = pa_context_get_server_info(c, serverInfoCb, data)) pa_operation_unref(o);
       pa_context_set_subscribe_callback(c, subscribeCb, data);
-      pa_context_subscribe(c,
-                           static_cast<enum pa_subscription_mask>(
-                               static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
-                               static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
-                               static_cast<int>(PA_SUBSCRIPTION_MASK_SINK_INPUT) |
-                               static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE) |
-                               static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE_OUTPUT)),
-                           nullptr, nullptr);
+      if (auto* o = pa_context_subscribe(c,
+                                         static_cast<enum pa_subscription_mask>(
+                                             static_cast<int>(PA_SUBSCRIPTION_MASK_SERVER) |
+                                             static_cast<int>(PA_SUBSCRIPTION_MASK_SINK) |
+                                             static_cast<int>(PA_SUBSCRIPTION_MASK_SINK_INPUT) |
+                                             static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE) |
+                                             static_cast<int>(PA_SUBSCRIPTION_MASK_SOURCE_OUTPUT)),
+                                         nullptr, nullptr))
+        pa_operation_unref(o);
       break;
     case PA_CONTEXT_FAILED:
       if (pa_context_errno(c) != PA_ERR_CONNECTIONREFUSED) {
@@ -164,15 +166,18 @@ void AudioBackend::subscribeCb(pa_context* context, pa_subscription_event_type_t
     return;
   }
   if (facility == PA_SUBSCRIPTION_EVENT_SERVER) {
-    pa_context_get_server_info(context, serverInfoCb, data);
+    if (auto* o = pa_context_get_server_info(context, serverInfoCb, data)) pa_operation_unref(o);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SINK) {
-    pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data);
+    if (auto* o = pa_context_get_sink_info_by_index(context, idx, sinkInfoCb, data))
+      pa_operation_unref(o);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SINK_INPUT) {
-    pa_context_get_sink_info_list(context, sinkInfoCb, data);
+    if (auto* o = pa_context_get_sink_info_list(context, sinkInfoCb, data)) pa_operation_unref(o);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE) {
-    pa_context_get_source_info_by_index(context, idx, sourceInfoCb, data);
+    if (auto* o = pa_context_get_source_info_by_index(context, idx, sourceInfoCb, data))
+      pa_operation_unref(o);
   } else if (facility == PA_SUBSCRIPTION_EVENT_SOURCE_OUTPUT) {
-    pa_context_get_source_info_list(context, sourceInfoCb, data);
+    if (auto* o = pa_context_get_source_info_list(context, sourceInfoCb, data))
+      pa_operation_unref(o);
   }
 }
 
@@ -184,7 +189,9 @@ void AudioBackend::volumeModifyCb(pa_context* c, int success, void* data) {
   if (success != 0) {
     if ((backend->context_ != nullptr) &&
         pa_context_get_state(backend->context_) == PA_CONTEXT_READY) {
-      pa_context_get_sink_info_by_index(backend->context_, backend->sink_idx_, sinkInfoCb, data);
+      if (auto* o = pa_context_get_sink_info_by_index(backend->context_, backend->sink_idx_,
+                                                      sinkInfoCb, data))
+        pa_operation_unref(o);
     }
   } else {
     spdlog::debug("Volume modification failed");
@@ -196,8 +203,9 @@ void AudioBackend::sourceVolumeModifyCb(pa_context* c, int success, void* data) 
   if (success != 0) {
     if ((backend->context_ != nullptr) &&
         pa_context_get_state(backend->context_) == PA_CONTEXT_READY) {
-      pa_context_get_source_info_by_index(backend->context_, backend->source_idx_, sourceInfoCb,
-                                          data);
+      if (auto* o = pa_context_get_source_info_by_index(backend->context_, backend->source_idx_,
+                                                        sourceInfoCb, data))
+        pa_operation_unref(o);
     }
   } else {
     spdlog::debug("Source volume modification failed");
@@ -231,29 +239,45 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
     }
   }
 
-  if (const auto mapping = backend->sink_mapping_.find(backend->current_sink_name_);
+  // Resolve which sink to report deterministically, independent of the order in
+  // which PulseAudio enumerates sinks during a sink_info_list sweep.
+  //
+  // When the default sink has an explicit mapping, the mapped target sink is the
+  // definitive selection ("the sink named by the value is considered to be the
+  // current sink instead of the one named by the key"): only that target sink may
+  // write the reported volume/mute state. The mapping is keyed on the stable
+  // default_sink_name (set once per server-info update) rather than on the mutable
+  // current_sink_name_. Previously the mapping override and the "pick a running
+  // sink" fallback both mutated current_sink_name_ mid-sweep, so the mapping could
+  // be overridden by whichever running sink happened to be enumerated, and the
+  // reported volume depended on enumeration order.
+  if (const auto mapping = backend->sink_mapping_.find(backend->default_sink_name);
       mapping != backend->sink_mapping_.end()) {
-    if (i->name == mapping->second) {
-      backend->current_sink_name_ = i->name;
+    if (i->name != mapping->second) {
+      // A mapping is in effect but this is not the mapped target sink; ignore it so
+      // it can never override the target's reported volume.
+      return;
     }
-  }
-
-  backend->default_sink_running_ = backend->default_sink_name == i->name &&
-                                   (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
-
-  if (i->name != backend->default_sink_name && i->name != backend->current_sink_name_ &&
-      !backend->default_sink_running_) {
-    return;
-  }
-
-  if (backend->current_sink_name_ == i->name) {
-    backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
-  }
-
-  if (!backend->current_sink_running_ &&
-      (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE)) {
     backend->current_sink_name_ = i->name;
-    backend->current_sink_running_ = true;
+    backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+  } else {
+    backend->default_sink_running_ = backend->default_sink_name == i->name &&
+                                     (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+
+    if (i->name != backend->default_sink_name && i->name != backend->current_sink_name_ &&
+        !backend->default_sink_running_) {
+      return;
+    }
+
+    if (backend->current_sink_name_ == i->name) {
+      backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+    }
+
+    if (!backend->current_sink_running_ &&
+        (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE)) {
+      backend->current_sink_name_ = i->name;
+      backend->current_sink_running_ = true;
+    }
   }
 
   if (backend->current_sink_name_ == i->name) {
@@ -317,8 +341,8 @@ void AudioBackend::serverInfoCb(pa_context* context, const pa_server_info* i, vo
   backend->default_sink_name = i->default_sink_name ? i->default_sink_name : "";
   backend->default_source_name_ = i->default_source_name ? i->default_source_name : "";
 
-  pa_context_get_sink_info_list(context, sinkInfoCb, data);
-  pa_context_get_source_info_list(context, sourceInfoCb, data);
+  if (auto* o = pa_context_get_sink_info_list(context, sinkInfoCb, data)) pa_operation_unref(o);
+  if (auto* o = pa_context_get_source_info_list(context, sourceInfoCb, data)) pa_operation_unref(o);
 }
 
 uint16_t AudioBackend::getVolume(PulseaudioTarget target) const {
@@ -368,10 +392,13 @@ void AudioBackend::changeVolume(uint16_t volume, uint16_t min_volume, uint16_t m
   // Apply the volume change
   pa_threaded_mainloop_lock(mainloop_);
   if (is_source) {
-    pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume, sourceVolumeModifyCb,
-                                          this);
+    if (auto* o = pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume,
+                                                        sourceVolumeModifyCb, this))
+      pa_operation_unref(o);
   } else {
-    pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+    if (auto* o = pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume,
+                                                      volumeModifyCb, this))
+      pa_operation_unref(o);
   }
   pa_threaded_mainloop_unlock(mainloop_);
 }
@@ -412,10 +439,13 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
     // No need to continue with volume change if we had to create a new structure
     pa_threaded_mainloop_lock(mainloop_);
     if (is_source) {
-      pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume, sourceVolumeModifyCb,
-                                            this);
+      if (auto* o = pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume,
+                                                          sourceVolumeModifyCb, this))
+        pa_operation_unref(o);
     } else {
-      pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+      if (auto* o = pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume,
+                                                        volumeModifyCb, this))
+        pa_operation_unref(o);
     }
     pa_threaded_mainloop_unlock(mainloop_);
     return;
@@ -458,10 +488,13 @@ void AudioBackend::changeVolume(ChangeType change_type, double step, uint16_t ma
   // Apply the volume change
   pa_threaded_mainloop_lock(mainloop_);
   if (is_source) {
-    pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume, sourceVolumeModifyCb,
-                                          this);
+    if (auto* o = pa_context_set_source_volume_by_index(context_, source_idx_, &pa_volume,
+                                                        sourceVolumeModifyCb, this))
+      pa_operation_unref(o);
   } else {
-    pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume, volumeModifyCb, this);
+    if (auto* o = pa_context_set_sink_volume_by_index(context_, sink_idx_, &pa_volume,
+                                                      volumeModifyCb, this))
+      pa_operation_unref(o);
   }
   pa_threaded_mainloop_unlock(mainloop_);
 }
@@ -478,8 +511,9 @@ void AudioBackend::toggleSinkMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   muted_ = !muted_;
   pa_threaded_mainloop_lock(mainloop_);
-  pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
-                                    nullptr);
+  if (auto* o = pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_),
+                                                  nullptr, nullptr))
+    pa_operation_unref(o);
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
@@ -487,8 +521,9 @@ void AudioBackend::toggleSinkMute(bool mute) {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   muted_ = mute;
   pa_threaded_mainloop_lock(mainloop_);
-  pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_), nullptr,
-                                    nullptr);
+  if (auto* o = pa_context_set_sink_mute_by_index(context_, sink_idx_, static_cast<int>(muted_),
+                                                  nullptr, nullptr))
+    pa_operation_unref(o);
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
@@ -496,8 +531,9 @@ void AudioBackend::toggleSourceMute() {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   source_muted_ = !source_muted_;
   pa_threaded_mainloop_lock(mainloop_);
-  pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
-                                      nullptr, nullptr);
+  if (auto* o = pa_context_set_source_mute_by_index(
+          context_, source_idx_, static_cast<int>(source_muted_), nullptr, nullptr))
+    pa_operation_unref(o);
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
@@ -505,8 +541,9 @@ void AudioBackend::toggleSourceMute(bool mute) {
   if (context_ == nullptr || pa_context_get_state(context_) != PA_CONTEXT_READY) return;
   source_muted_ = mute;
   pa_threaded_mainloop_lock(mainloop_);
-  pa_context_set_source_mute_by_index(context_, source_idx_, static_cast<int>(source_muted_),
-                                      nullptr, nullptr);
+  if (auto* o = pa_context_set_source_mute_by_index(
+          context_, source_idx_, static_cast<int>(source_muted_), nullptr, nullptr))
+    pa_operation_unref(o);
   pa_threaded_mainloop_unlock(mainloop_);
 }
 
