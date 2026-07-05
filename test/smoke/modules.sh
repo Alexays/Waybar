@@ -47,13 +47,35 @@ EOF
         smoke::assert_not_blank "$SHOTDIR/$safe.png" || ok=0
     fi
     [ "$ok" = 1 ] || fails+=("$mod")
-    kill "$WAYBAR_PID" 2>/dev/null || true
-    sleep 1
+    # SIGINT teardown (not SIGTERM) so each module's destructor path is ASan-checked.
+    smoke::assert_clean_exit || fails+=("$mod (exit)")
     echo "::endgroup::"
 done
+
+# --- all modules inside a group -----------------------------------------
+# Group children have a different construct/destroy path than top-level modules
+# (#5179 crashed inside a group), so render the whole matrix wrapped in one.
+echo "::group::modules inside a group"
+mods_json="$(printf '%s\n' "${!MODULES[@]}" | jq -R . | jq -s .)"
+opts_json='{}'
+for mod in "${!MODULES[@]}"; do
+    opts_json="$(jq --arg k "$mod" --argjson v "${MODULES[$mod]}" '. + {($k):$v}' <<<"$opts_json")"
+done
+gcfg="$(mktemp --suffix=.json)"
+jq -n --argjson mods "$mods_json" --argjson opts "$opts_json" '
+  {layer:"top",position:"top",height:30,"modules-center":["group/g"],"group/g":{modules:$mods}} + $opts' \
+  > "$gcfg"
+smoke::launch_waybar "$gcfg" "$DIR/style.css" 5
+ok=1
+smoke::assert_alive || ok=0
+smoke::assert_clean || ok=0
+[ "$ok" = 1 ] && { smoke::screenshot "$SHOTDIR/_group.png"; smoke::assert_not_blank "$SHOTDIR/_group.png" || ok=0; }
+smoke::assert_clean_exit || ok=0
+[ "$ok" = 1 ] || fails+=("group")
+echo "::endgroup::"
 
 if [ "${#fails[@]}" -gt 0 ]; then
     echo "::error::modules failed to render cleanly: ${fails[*]}"
     exit 1
 fi
-echo "✓ all ${#MODULES[@]} modules rendered cleanly"
+echo "✓ all ${#MODULES[@]} modules rendered cleanly (standalone + grouped)"
