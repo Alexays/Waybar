@@ -12,6 +12,7 @@ class WindowIcon : public Gtk::Button {
   explicit WindowIcon(const WindowState& window);
 
   void setWindow(const WindowState& window);
+
  
  protected:
   bool on_button_press_event(GdkEventButton* event) override;
@@ -19,6 +20,8 @@ class WindowIcon : public Gtk::Button {
   bool on_button_release_event(GdkEventButton* event) override;
 
  private:
+    
+    void focusWindow();
     Gtk::Image image_;
     WindowState window_;
 

@@ -1,5 +1,6 @@
 #include "modules/hyprland/workbar/widget.hpp"
 #include "modules/hyprland/workbar/workspace_button.hpp"
+#include "modules/hyprland/backend.hpp"
 
 #include <iostream>
 #include <memory>
@@ -158,13 +159,10 @@ void Widget::endDrag() {
 
     if (hovered_workspace_) {
 
-        std::string cmd =
-            "hyprctl dispatch movetoworkspacesilent "
-            + std::to_string(hovered_workspace_->id())
-            + ",address:"
-            + dragged_window_.address;
-
-        std::system(cmd.c_str());
+        IPC::dispatch(
+            "movetoworkspacesilent",
+            std::to_string(hovered_workspace_->id()) +
+            ",address:" + dragged_window_.address);
     }
 
     hovered_workspace_ = nullptr;

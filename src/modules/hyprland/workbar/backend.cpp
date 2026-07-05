@@ -59,7 +59,8 @@ WorkspaceList Backend::getWorkspaces() {
                 client["class"].asString(),
                 client["title"].asString(),
                 state.id,
-                client["address"].asString() == active_address
+                client["address"].asString() == active_address,
+                state.visible
             });
         }
 

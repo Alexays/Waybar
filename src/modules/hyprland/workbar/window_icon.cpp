@@ -8,10 +8,27 @@
 #include "modules/hyprland/workbar/window_icon.hpp"
 #include "modules/hyprland/workbar/drag_state.hpp"
 #include "modules/hyprland/workbar/widget.hpp"
+#include "modules/hyprland/backend.hpp"
 
 using WorkbarWidget = waybar::modules::hyprland::workbar::Widget;
 
 namespace waybar::modules::hyprland::workbar {
+
+
+void WindowIcon::focusWindow() {
+    if (window_.workspace_visible) {
+        IPC::dispatch("workspace",
+                      std::to_string(window_.workspace_id));
+    } else {
+        IPC::dispatch("focusworkspaceoncurrentmonitor",
+                      std::to_string(window_.workspace_id));
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
+
+    IPC::dispatch("focuswindow",
+                  "address:" + window_.address);
+}
 
 WindowIcon::WindowIcon(const WindowState& window) {
 
@@ -26,19 +43,7 @@ WindowIcon::WindowIcon(const WindowState& window) {
     );
 
     signal_clicked().connect([this]() {
-
-        std::string cmd =
-            std::string(std::getenv("HOME")) +
-            "/.config/hypr/scripts/smart-workspace " +
-            std::to_string(window_.workspace_id);
-
-        std::system(cmd.c_str());
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(40));
-
-        cmd = "hyprctl dispatch focuswindow address:" + window_.address;
-
-        std::system(cmd.c_str());
+        focusWindow();
     });
 
     setWindow(window);
@@ -131,10 +136,8 @@ bool WindowIcon::on_motion_notify_event(GdkEventMotion* event) {
 bool WindowIcon::on_button_release_event(GdkEventButton* event) {
 
     if (event->button == 2) {
-        std::string cmd =
-            "hyprctl dispatch closewindow address:" + window_.address;
-
-        std::system(cmd.c_str());
+        IPC::dispatch("closewindow",
+                      "address:" + window_.address);
 
         return true;
     } 
@@ -152,18 +155,7 @@ bool WindowIcon::on_button_release_event(GdkEventButton* event) {
 
     } else if (event->button == 1) {
 
-        std::string cmd =
-            std::string(std::getenv("HOME")) +
-            "/.config/hypr/scripts/smart-workspace " +
-            std::to_string(window_.workspace_id);
-
-        std::system(cmd.c_str());
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(40));
-
-        cmd = "hyprctl dispatch focuswindow address:" + window_.address;
-
-        std::system(cmd.c_str());
+        focusWindow();
 
     }
 

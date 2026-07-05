@@ -13,6 +13,7 @@ struct WindowState {
     int workspace_id;
 
     bool active = false;
+    bool workspace_visible = false;
 };
 
 struct WorkspaceState {

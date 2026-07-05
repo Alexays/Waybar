@@ -3,6 +3,7 @@
 
 #include "modules/hyprland/workbar/workspace_number.hpp"
 #include "modules/hyprland/workbar/drag_state.hpp"
+#include "modules/hyprland/backend.hpp"
 
 namespace waybar::modules::hyprland::workbar {
 
@@ -35,12 +36,25 @@ WorkspaceNumber::WorkspaceNumber(int workspace_id) {
         });
 
     signal_clicked().connect([this]() {
-        std::string cmd =
-            std::string(std::getenv("HOME")) +
-            "/.config/hypr/scripts/smart-workspace " +
-            std::to_string(workspace_id_);
 
-        std::system(cmd.c_str());
+        auto monitors = IPC::inst().getSocket1JsonReply("monitors");
+
+        bool visible = false;
+
+        for (const auto& monitor : monitors) {
+            if (monitor["activeWorkspace"]["id"].asInt() == workspace_id_) {
+                visible = true;
+                break;
+            }
+        }
+
+        if (visible) {
+            IPC::dispatch("workspace",
+                        std::to_string(workspace_id_));
+        } else {
+            IPC::dispatch("focusworkspaceoncurrentmonitor",
+                        std::to_string(workspace_id_));
+        }
     });
 }
 
