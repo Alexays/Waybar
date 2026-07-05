@@ -29,10 +29,15 @@ jobs:
           sync_files: runner-to-vm
           run: |
             sudo pkg install -y git #  subprojects/date
-            sudo pkg install -y bzip2 catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
+            sudo pkg install -y catch evdev-proto gtk-layer-shell gtkmm30 jsoncpp \
               libdbusmenu libevdev libfmt libmpdclient libudev-devd meson \
               pkgconf pipewire pulseaudio scdoc sndio spdlog wayland-protocols upower \
               libinotify
+            # freetype2.pc declares a bzip2 pkg-config requirement that no FreeBSD
+            # package ships (bzip2 lives in the base system), which breaks the
+            # gtkmm-3.0 lookup. Drop in a minimal bzip2.pc pointing at base libbz2.
+            printf 'Name: bzip2\nDescription: bzip2\nVersion: 1.0.8\nLibs: -lbz2\nCflags:\n' \
+              | sudo tee /usr/local/libdata/pkgconfig/bzip2.pc >/dev/null
             meson setup build -Dman-pages=enabled
             ninja -C build
             meson test -C build --no-rebuild --print-errorlogs --suite waybar
