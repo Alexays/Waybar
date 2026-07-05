@@ -18,6 +18,9 @@ HEIGHT="${HEIGHT:-1080}"
 SCALE="${SCALE:-1}"
 COMPOSITOR="${COMPOSITOR:-sway}"
 WAYBAR_BIN="${WAYBAR_BIN:-waybar}"
+# Optional command prefix for the waybar launch (e.g. `umockdev-run -d dev --`),
+# used by the hardware tier to fake sysfs/udev devices. Empty by default.
+WAYBAR_WRAP="${WAYBAR_WRAP:-}"
 
 SMOKE_LOG=""
 COMP_PID=""
@@ -32,7 +35,9 @@ smoke::setup() {
     export LIBGL_ALWAYS_SOFTWARE=1
     # Keep ASan/UBSan noise low but fatal on real errors (leaks in GTK/glib are
     # too noisy to gate on, so only memory-corruption and UB abort the run).
-    export ASAN_OPTIONS="detect_leaks=0:halt_on_error=1:abort_on_error=1:detect_odr_violation=0"
+    # Leak detection is opt-in (leakcheck.sh sets SMOKE_DETECT_LEAKS=1) and needs
+    # a clean exit for LSan's atexit hook to run.
+    export ASAN_OPTIONS="detect_leaks=${SMOKE_DETECT_LEAKS:-0}:halt_on_error=1:abort_on_error=1:detect_odr_violation=0"
     export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 }
 
@@ -84,7 +89,10 @@ smoke::launch_waybar() {
     SMOKE_LOG="$(mktemp)"
     local args=(-c "$config" -l debug)
     [ -n "$style" ] && args+=(-s "$style")
-    "$WAYBAR_BIN" "${args[@]}" >"$SMOKE_LOG" 2>&1 &
+    local run=()
+    [ -n "$WAYBAR_WRAP" ] && read -ra run <<<"$WAYBAR_WRAP"
+    run+=("$WAYBAR_BIN" "${args[@]}")
+    "${run[@]}" >"$SMOKE_LOG" 2>&1 &
     WAYBAR_PID=$!
     sleep "$settle"
 }
@@ -103,7 +111,7 @@ smoke::assert_alive() {
 # Fail on sanitizer reports and GTK/GLib criticals in the log.
 smoke::assert_clean() {
     local bad
-    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer' "$SMOKE_LOG" || true)"
+    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer|ASan runtime does not come first' "$SMOKE_LOG" || true)"
     if [ -n "$bad" ]; then
         echo "::error::waybar reported sanitizer/critical issues:"
         echo "$bad"
@@ -129,8 +137,69 @@ smoke::assert_not_blank() {
     echo "✓ bar rendered content"
 }
 
+# Send a signal to waybar and give it a moment to act on it.
+# smoke::signal <SIGNAME|num> [settle_seconds]
+smoke::signal() {
+    kill -"$1" "$WAYBAR_PID" 2>/dev/null || true
+    sleep "${2:-2}"
+}
+
+# Reload waybar's config in place (recreates bars + modules).
+smoke::reload() { smoke::signal SIGUSR2 "${1:-3}"; }
+
+# Create a headless output at runtime (sway only). wlroots' headless backend
+# lets sway hotplug outputs, which makes waybar build a new Bar + module set.
+smoke::add_output() {
+    [ "$COMPOSITOR" = sway ] || { echo "(add_output: sway only, skipped)"; return 0; }
+    swaymsg create_output >/dev/null 2>&1 || echo "(create_output unsupported, skipped)"
+    sleep 2
+}
+
+# Remove every headless output except the primary HEADLESS-1. Destroying an
+# output tears down its Bar -> ~Bar -> GtkWindow unmap -> toggleSuspend(), i.e.
+# the exact runtime path that segfaulted in #5182 -- exercised here under ASan.
+smoke::remove_output() {
+    [ "$COMPOSITOR" = sway ] || return 0
+    local o
+    for o in $(swaymsg -t get_outputs 2>/dev/null | jq -r '.[].name' 2>/dev/null | grep -v '^HEADLESS-1$' || true); do
+        swaymsg output "$o" unplug >/dev/null 2>&1 || true
+    done
+    sleep 2
+}
+
+# Shut waybar down the clean way (SIGINT -> Client::reset -> gtk quit ->
+# bars.clear -> ~Bar) and assert the destructor path neither crashed nor tripped
+# a sanitizer report. A plain SIGTERM/kill never runs this path, which is why the
+# exit-time use-after-free (#5182) went unnoticed. Call instead of smoke::stop's
+# kill when you want the teardown itself checked.
+smoke::assert_clean_exit() {
+    [ -n "$WAYBAR_PID" ] || { echo "(no waybar running)"; return 0; }
+    kill -INT "$WAYBAR_PID" 2>/dev/null || true
+    local _ ; for _ in $(seq 1 20); do kill -0 "$WAYBAR_PID" 2>/dev/null || break; sleep 0.5; done
+    if kill -0 "$WAYBAR_PID" 2>/dev/null; then
+        echo "::error::waybar did not exit on SIGINT (hung during teardown)"
+        echo "::group::waybar log"; smoke::log; echo "::endgroup::"
+        kill -9 "$WAYBAR_PID" 2>/dev/null || true; WAYBAR_PID=""; return 1
+    fi
+    local st=0; wait "$WAYBAR_PID" 2>/dev/null || st=$?
+    WAYBAR_PID=""
+    if [ "$st" -ge 128 ]; then
+        echo "::error::waybar crashed on exit (killed by signal $((st - 128)))"
+        echo "::group::waybar log"; smoke::log; echo "::endgroup::"; return 1
+    fi
+    smoke::assert_clean || return 1
+    echo "✓ clean exit (status $st)"
+}
+
 smoke::stop() {
     kill "$WAYBAR_PID" 2>/dev/null || true
     swaymsg -q exit 2>/dev/null || kill "$COMP_PID" 2>/dev/null || true
-    wait 2>/dev/null || true
+    # Wait only on the processes we own. A bare `wait` reaps *every* background
+    # job of the caller's shell, so a tier that leaves an unrelated daemon
+    # running (state.sh's mpd, killed later in its own cleanup) would deadlock
+    # here until GitHub's 6h job timeout.
+    local p
+    for p in "$WAYBAR_PID" "$COMP_PID"; do
+        [ -n "$p" ] && wait "$p" 2>/dev/null || true
+    done
 }

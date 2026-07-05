@@ -29,6 +29,10 @@ env:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    # Safety net: the whole smoke job is minutes of work. Cap it so a hung tier
+    # (e.g. a daemon left running under a bare `wait`) fails fast instead of
+    # burning the default 6h runner budget.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 
@@ -38,6 +42,7 @@ jobs:
           sudo apt-get install --no-install-recommends -y \
             sway labwc grim imagemagick fonts-dejavu-core jq \
             at-spi2-core python3-pyatspi dbus-x11 \
+            mpd mpc pulseaudio pulseaudio-utils umockdev \
             meson ninja-build g++ pkg-config scdoc wayland-protocols \
             gobject-introspection libdbusmenu-gtk3-dev libevdev-dev libfmt-dev \
             libgirepository1.0-dev libgtk-3-dev libgtkmm-3.0-dev libinput-dev \
@@ -45,9 +50,17 @@ jobs:
             libpulse-dev libsigc++-2.0-dev libspdlog-dev libwayland-dev \
             upower libxkbregistry-dev libxkbcommon-dev
 
+      # Cheap static gate (source-only): every Factory module must be classified
+      # for smoke coverage. Runs before the build so it fails fast.
+      - name: Module coverage tripwire
+        run: ./test/smoke/coverage.sh
+
       - name: Build Waybar with AddressSanitizer
         run: |
-          meson setup build -Dman-pages=disabled -Db_sanitize=address
+          # _GLIBCXX_ASSERTIONS turns libstdc++ container bounds/precondition
+          # violations (e.g. out-of-range vector access) into aborts under ASan.
+          meson setup build -Dman-pages=disabled -Db_sanitize=address \
+            -Dcpp_args=-D_GLIBCXX_ASSERTIONS
           ninja -C build
 
       # --- Tier 0 + 2: render + sanitizer/critical gate ---
@@ -83,9 +96,35 @@ jobs:
             echo "::warning::No reference image; run this workflow via 'Run workflow' with bless=true to create it."
           fi
 
-      # --- Tier 1: per-module matrix ---
+      # --- Tier 1: per-module matrix (standalone + grouped) ---
       - name: Per-module render matrix
         run: ./test/smoke/modules.sh module-shots
+
+      # --- Tier 4: lifecycle / teardown (exit, output hotplug, reload) ---
+      # Runs the C++ destructor path a plain kill never touches (#5182).
+      - name: Lifecycle / teardown
+        run: ./test/smoke/lifecycle.sh
+
+      # --- Tier 4: custom-backend fuzz (pathological exec output) ---
+      - name: Custom-backend fuzz
+        run: ./test/smoke/fuzz.sh
+
+      # --- Tier 5: state transitions with real daemons (mpd/pulseaudio) ---
+      # Best-effort: daemon setup varies by runner; keep non-blocking for now.
+      - name: State transitions (mpd / pulseaudio)
+        continue-on-error: true
+        run: ./test/smoke/state.sh
+
+      # --- Tier 6: fake hardware via umockdev (backlight/slider, battery) ---
+      # Best-effort: the mock device descriptions may need per-distro tuning.
+      - name: Fake hardware (umockdev)
+        continue-on-error: true
+        run: ./test/smoke/hardware.sh
+
+      # --- Leak check (report-only) — we fixed several leaks recently ---
+      - name: Leak check (LSan, report-only)
+        continue-on-error: true
+        run: ./test/smoke/leakcheck.sh
 
       # --- Tier 2: pointer interaction (best-effort) ---
       # Headless seats may not expose a pointer capability, so injected clicks

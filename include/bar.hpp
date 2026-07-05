@@ -131,6 +131,10 @@ class Bar : public sigc::trackable {
 
   waybar::util::KillSignalAction onSigusr1 = util::SIGNALACTION_DEFAULT_SIGUSR1;
   waybar::util::KillSignalAction onSigusr2 = util::SIGNALACTION_DEFAULT_SIGUSR2;
+
+  /* Disconnected in ~Bar before the modules are destroyed (#5182). */
+  sigc::connection map_conn_;
+  sigc::connection unmap_conn_;
 };
 
 }  // namespace waybar

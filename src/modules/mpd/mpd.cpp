@@ -62,7 +62,8 @@ auto waybar::modules::MPD::update() -> void {
 std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const {
   std::string result =
       config_["unknown-tag"].isString() ? config_["unknown-tag"].asString() : "N/A";
-  const char* tag = mpd_song_get_tag(song_.get(), type, idx);
+  // song_ is null when there is no current song (e.g. after `mpc clear`) (#5183).
+  const char* tag = song_ ? mpd_song_get_tag(song_.get(), type, idx) : nullptr;
 
   // mpd_song_get_tag can return NULL, so make sure it's valid before setting
   if (tag) result = tag;
@@ -71,6 +72,9 @@ std::string waybar::modules::MPD::getTag(mpd_tag_type type, unsigned idx) const 
 }
 
 std::string waybar::modules::MPD::getFilename() const {
+  if (!song_) {
+    return "";
+  }
   std::string path = mpd_song_get_uri(song_.get());
   size_t position = path.find_last_of("/");
   if (position == std::string::npos) {

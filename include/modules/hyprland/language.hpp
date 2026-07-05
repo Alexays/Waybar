@@ -30,8 +30,6 @@ class Language : public waybar::ALabel, public EventHandler {
     std::string short_description;
   };
 
-  auto removeXkbLayoutCssClass() -> void;
-  auto addXkbLayoutCssClass() -> void;
   static auto getLayout(const std::string&) -> Layout;
 
   std::mutex mutex_;
@@ -39,6 +37,7 @@ class Language : public waybar::ALabel, public EventHandler {
   util::JsonParser parser_;
 
   Layout layout_;
+  std::string prev_short_name_;  // applied CSS class; touched only in update() (#4665)
 
   IPC& m_ipc;
 };

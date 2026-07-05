@@ -145,6 +145,12 @@ Tags::Tags(const std::string& id, const waybar::Bar& bar, const Json::Value& con
   // handle_show() to avoid leaking objects without listeners here.
   output_ = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
 
+  // Parse hide-vacant once here, not in the wl callbacks: jsoncpp's asBool()
+  // throws on a string value ("true"), and an exception unwinding through
+  // libwayland's C dispatch aborts (#4078). Accept the string form too.
+  const auto& hv = config_["hide-vacant"];
+  hide_vacant_ = hv.isString() ? hv.asString() == "true" : hv.asBool();
+
   box_.set_name("tags");
   if (!id.empty()) {
     box_.get_style_context()->add_class(id);
@@ -248,7 +254,7 @@ bool Tags::handle_button_press(GdkEventButton* event_button, uint32_t tag) {
 }
 
 void Tags::handle_focused_tags(uint32_t tags) {
-  auto hide_vacant = config_["hide-vacant"].asBool();
+  const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
     bool visible = buttons_[i].is_visible();
     bool occupied = buttons_[i].get_style_context()->has_class("occupied");
@@ -274,7 +280,7 @@ void Tags::handle_view_tags(struct wl_array* view_tags) {
   for (; view_tag < end; ++view_tag) {
     tags |= *view_tag;
   }
-  auto hide_vacant = config_["hide-vacant"].asBool();
+  const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
     bool visible = buttons_[i].is_visible();
     bool focused = buttons_[i].get_style_context()->has_class("focused");
@@ -294,7 +300,7 @@ void Tags::handle_view_tags(struct wl_array* view_tags) {
 }
 
 void Tags::handle_urgent_tags(uint32_t tags) {
-  auto hide_vacant = config_["hide-vacant"].asBool();
+  const bool hide_vacant = hide_vacant_;
   for (size_t i = 0; i < buttons_.size(); ++i) {
     bool visible = buttons_[i].is_visible();
     bool occupied = buttons_[i].get_style_context()->has_class("occupied");
