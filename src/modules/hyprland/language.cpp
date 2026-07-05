@@ -30,6 +30,18 @@ Language::~Language() {
 auto Language::update() -> void {
   std::lock_guard<std::mutex> lg(mutex_);
 
+  // Swap the layout CSS class here (main thread). onEvent() runs on the IPC
+  // thread and must never touch GTK -- that race corrupts the heap (#4665).
+  if (prev_short_name_ != layout_.short_name) {
+    if (!prev_short_name_.empty()) {
+      label_.get_style_context()->remove_class(prev_short_name_);
+    }
+    if (!layout_.short_name.empty()) {
+      label_.get_style_context()->add_class(layout_.short_name);
+    }
+    prev_short_name_ = layout_.short_name;
+  }
+
   spdlog::debug("hyprland language update with full name {}", layout_.full_name);
   spdlog::debug("hyprland language update with short name {}", layout_.short_name);
   spdlog::debug("hyprland language update with short description {}", layout_.short_description);
@@ -143,9 +155,8 @@ void Language::onEvent(const std::string& ev) {
 
   layoutName = waybar::util::sanitize_string(layoutName);
 
-  removeXkbLayoutCssClass();
+  // CSS class swap happens in update() on the main thread (#4665).
   layout_ = getLayout(layoutName);
-  addXkbLayoutCssClass();
 
   spdlog::debug("hyprland language onevent with {}", layoutName);
 
@@ -167,7 +178,6 @@ void Language::initLanguage() {
     searcher = waybar::util::sanitize_string(searcher);
 
     layout_ = getLayout(searcher);
-    addXkbLayoutCssClass();
 
     spdlog::debug("hyprland language initLanguage found {}", layout_.full_name);
 
@@ -175,16 +185,6 @@ void Language::initLanguage() {
   } catch (std::exception& e) {
     spdlog::error("hyprland language initLanguage failed with {}", e.what());
   }
-}
-
-auto Language::removeXkbLayoutCssClass() -> void {
-  label_.get_style_context()->remove_class(layout_.short_name);
-  spdlog::debug("hyprland language try to remove currently short_name css class {}",
-                layout_.short_name);
-}
-auto Language::addXkbLayoutCssClass() -> void {
-  label_.get_style_context()->add_class(layout_.short_name);
-  spdlog::debug("hyprland language add new short_name css class {}", layout_.short_name);
 }
 
 auto Language::getLayout(const std::string& fullName) -> Layout {
