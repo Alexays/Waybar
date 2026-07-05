@@ -20,9 +20,11 @@ MPD_PID=""
 PA_STARTED=""
 
 cleanup() {
-    smoke::stop
+    # Tear our daemons down first: smoke::stop waits on the compositor/waybar,
+    # and a still-running mpd/pulseaudio must not be left for anything to block on.
     [ -n "$MPD_PID" ] && kill "$MPD_PID" 2>/dev/null || true
     [ -n "$PA_STARTED" ] && pulseaudio --kill 2>/dev/null || true
+    smoke::stop
     return 0
 }
 
