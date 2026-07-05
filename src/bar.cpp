@@ -269,12 +269,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 
   window.signal_map_event().connect_notify(sigc::mem_fun(*this, &Bar::onMap));
 
-  window.signal_unmap().connect([this]() {
+  unmap_conn_ = window.signal_unmap().connect([this]() {
     spdlog::debug("Output {} unmapped (DPMS off), suspending modules", output->name);
     toggleSuspend(true);
   });
 
-  window.signal_map().connect([this]() {
+  map_conn_ = window.signal_map().connect([this]() {
     spdlog::debug("Output {} mapped (DPMS on), resuming modules", output->name);
     toggleSuspend(false);
   });
@@ -352,7 +352,12 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
 }
 
 /* Need to define it here because of forward declared members */
-waybar::Bar::~Bar() = default;
+waybar::Bar::~Bar() {
+  /* Destroying the window emits `unmap`, whose handler runs toggleSuspend() over
+   * modules_all_ -- already freed by this point. Disconnect first (#5182). */
+  unmap_conn_.disconnect();
+  map_conn_.disconnect();
+}
 
 void waybar::Bar::setMode(const std::string& mode) {
   using namespace std::literals::string_literals;
