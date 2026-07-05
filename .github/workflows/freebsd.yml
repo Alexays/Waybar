@@ -1,6 +1,9 @@
 name: freebsd
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-freebsd-${{ github.event.pull_request.number || github.ref }}

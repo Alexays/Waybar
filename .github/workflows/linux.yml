@@ -1,6 +1,9 @@
 name: linux
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-linux-${{ github.event.pull_request.number || github.ref }}
