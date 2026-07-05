@@ -31,6 +31,12 @@ class ALabel : public AModule {
   bool alt_ = false;
   std::string default_format_;
 
+  // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
+  // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
+  // no collation weight, so two different icons compare equal.
+  std::optional<std::string> last_label_markup_;
+  std::optional<std::string> last_tooltip_markup_;
+
   bool setLabelMarkup(const Glib::ustring& markup);
   bool setTooltipMarkup(const Glib::ustring& markup);
 
@@ -85,13 +91,6 @@ class ALabel : public AModule {
   std::map<std::string, GtkMenuItem*> submenus_;
   std::map<std::string, std::string> menuActionsMap_;
   static void handleGtkMenuEvent(GtkMenuItem* menuitem, gpointer data);
-
- private:
-  // Raw UTF-8 bytes, not Glib::ustring: ustring::operator== collates with
-  // g_utf8_collate(), which gives private-use codepoints (nerd-font icons)
-  // no collation weight, so two different icons compare equal.
-  std::optional<std::string> last_label_markup_;
-  std::optional<std::string> last_tooltip_markup_;
 };
 
 }  // namespace waybar

@@ -2,6 +2,7 @@
 
 #include <gdkmm/pixbuf.h>
 #include <spdlog/spdlog.h>
+
 #include <regex>
 #include <string>
 
@@ -74,7 +75,7 @@ std::tuple<std::string, std::string> AIconLabel::extractIcon(const std::string& 
       label_result = std::regex_replace(input, clean_label_pattern, "");
     }
   } catch (const std::exception& e) {
-      spdlog::warn("Error while parsing icon from label. {}", e.what());
+    spdlog::warn("Error while parsing icon from label. {}", e.what());
   }
 
   return std::make_tuple(icon_result, label_result);
@@ -110,6 +111,17 @@ auto AIconLabel::update() -> void {
 
   image_.set_visible(image_.get_visible() && iconEnabled());
   ALabel::update();
+}
+
+bool AIconLabel::setTooltipMarkup(const Glib::ustring& markup) {
+  if (last_tooltip_markup_ == markup) {
+    return false;
+  }
+
+  box_.set_tooltip_markup(markup);
+
+  last_tooltip_markup_ = markup;
+  return true;
 }
 
 bool AIconLabel::iconEnabled() const {
