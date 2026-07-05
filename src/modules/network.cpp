@@ -183,6 +183,12 @@ void waybar::modules::Network::createEventSocket() {
   if (nl_socket_set_nonblocking(ev_sock_)) {
     throw std::runtime_error("Can't set non-blocking on network socket");
   }
+  // Enlarge the socket receive buffer so that a burst of link/address/route
+  // change notifications (e.g. a router reboot or a PPPoE redial) is less likely
+  // to overflow it and make the kernel drop messages (ENOBUFS). Overruns are
+  // still handled in worker() by resynchronising the state, but a larger buffer
+  // avoids most of them. The kernel caps the request at net.core.rmem_max.
+  nl_socket_set_buffer_size(ev_sock_, 1024 * 1024, 0);
   nl_socket_add_memberships(ev_sock_, RTNLGRP_LINK, RTNLGRP_IPV4_IFADDR, RTNLGRP_IPV6_IFADDR, 0);
   if (!config_["interface"].isString()) {
     nl_socket_add_memberships(ev_sock_, RTNLGRP_IPV4_ROUTE, RTNLGRP_IPV6_ROUTE, 0);
@@ -276,6 +282,27 @@ void waybar::modules::Network::worker() {
             if (rc == -NLE_AGAIN || errno == EAGAIN) {
               rc = 0;
               break;
+            }
+            if (rc == -NLE_NOMEM || errno == ENOBUFS) {
+              // The kernel dropped multicast notifications because our receive
+              // buffer overflowed. This happens during a burst of
+              // link/address/route changes such as a router reboot or a PPPoE
+              // redial. We have lost track of the current state -- in
+              // particular the RTM_NEWADDR carrying the interface's new IP
+              // address may have been dropped -- so request a fresh dump to
+              // resynchronise. Without this the address (cleared by the
+              // preceding RTM_DELADDR) would stay blank until Waybar is
+              // restarted, because nothing else re-queries it (#5122).
+              spdlog::warn("network: netlink receive buffer overrun, resyncing state");
+              want_link_dump_ = true;
+              want_addr_dump_ = true;
+              if (!config_["interface"].isString()) {
+                want_route_dump_ = true;
+              }
+              askForStateDump();
+              // Keep draining; the next recv proceeds normally now that the
+              // overrun has been reported.
+              continue;
             }
           }
           if (rc < 0) {
