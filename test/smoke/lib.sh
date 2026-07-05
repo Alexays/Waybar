@@ -194,5 +194,12 @@ smoke::assert_clean_exit() {
 smoke::stop() {
     kill "$WAYBAR_PID" 2>/dev/null || true
     swaymsg -q exit 2>/dev/null || kill "$COMP_PID" 2>/dev/null || true
-    wait 2>/dev/null || true
+    # Wait only on the processes we own. A bare `wait` reaps *every* background
+    # job of the caller's shell, so a tier that leaves an unrelated daemon
+    # running (state.sh's mpd, killed later in its own cleanup) would deadlock
+    # here until GitHub's 6h job timeout.
+    local p
+    for p in "$WAYBAR_PID" "$COMP_PID"; do
+        [ -n "$p" ] && wait "$p" 2>/dev/null || true
+    done
 }

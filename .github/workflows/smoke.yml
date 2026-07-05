@@ -29,6 +29,10 @@ env:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    # Safety net: the whole smoke job is minutes of work. Cap it so a hung tier
+    # (e.g. a daemon left running under a bare `wait`) fails fast instead of
+    # burning the default 6h runner budget.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 
