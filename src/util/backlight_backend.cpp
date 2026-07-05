@@ -230,9 +230,21 @@ BacklightBackend::BacklightBackend(std::chrono::milliseconds interval,
         upsert_device(devices, dev.get());
       }
 
-      // Refresh state if timed out
+      // Refresh state if timed out. Only re-read the sysfs attributes of the
+      // devices we already track instead of re-enumerating the whole udev tree
+      // (udev_enumerate_scan_devices), which walks all of /sys/class/backlight
+      // and /sys/class/leds and floods the filesystem with open/close syscalls
+      // on every polling tick (#5020). Device add/remove is already delivered
+      // by the udev monitor above, so a periodic full re-scan is redundant.
       if (event_count == 0) {
-        enumerate_devices(devices, udev.get());
+        for (const auto& device : devices) {
+          std::unique_ptr<udev_device, UdevDeviceDeleter> dev{
+              udev_device_new_from_subsystem_sysname(udev.get(), device.subsystem().c_str(),
+                                                     device.name().c_str())};
+          if (dev) {
+            upsert_device(devices, dev.get());
+          }
+        }
       }
       {
         std::scoped_lock<std::mutex> lock(udev_thread_mutex_);
