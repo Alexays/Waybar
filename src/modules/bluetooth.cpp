@@ -352,8 +352,7 @@ auto waybar::modules::Bluetooth::update() -> void {
                        dev.battery_percentage_peripheral.value_or(0)),
               // Also accept the module-level placeholders so {status} etc. don't
               // throw "argument not found" in an enumerate format (#4384).
-              fmt::arg("status", state_),
-              fmt::arg("num_connections", connected_devices_.size()),
+              fmt::arg("status", state_), fmt::arg("num_connections", connected_devices_.size()),
               fmt::arg("controller_address", cur_controller_ ? cur_controller_->address : "null"),
               fmt::arg("controller_address_type",
                        cur_controller_ ? cur_controller_->address_type : "null"),
