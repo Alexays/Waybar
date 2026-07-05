@@ -147,22 +147,22 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
 auto ALabel::update() -> void { AModule::update(); }
 
 bool ALabel::setLabelMarkup(const Glib::ustring& markup) {
-  if (last_label_markup_ == markup) {
+  if (last_label_markup_ == markup.raw()) {
     return false;
   }
 
   label_.set_markup(markup);
-  last_label_markup_ = markup;
+  last_label_markup_ = markup.raw();
   return true;
 }
 
 bool ALabel::setTooltipMarkup(const Glib::ustring& markup) {
-  if (last_tooltip_markup_ == markup) {
+  if (last_tooltip_markup_ == markup.raw()) {
     return false;
   }
 
   label_.set_tooltip_markup(markup);
-  last_tooltip_markup_ = markup;
+  last_tooltip_markup_ = markup.raw();
   return true;
 }
 
