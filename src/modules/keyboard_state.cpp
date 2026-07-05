@@ -320,7 +320,14 @@ auto waybar::modules::KeyboardState::update() -> void {
   for (const auto& dev_path : dev_paths) {
     try {
       int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-      auto dev = openDevice(fd);
+      libevdev* dev;
+      try {
+        dev = openDevice(fd);
+      } catch (...) {
+        // openDevice does not close the fd if libevdev_new_from_fd fails.
+        closeFile(fd);
+        throw;
+      }
       numl |= libevdev_get_event_value(dev, EV_LED, LED_NUML);
       capsl |= libevdev_get_event_value(dev, EV_LED, LED_CAPSL);
       scrolll |= libevdev_get_event_value(dev, EV_LED, LED_SCROLLL);
@@ -376,7 +383,14 @@ auto waybar::modules::KeyboardState::update() -> void {
 auto waybar::modules ::KeyboardState::tryAddDevice(const std::string& dev_path) -> void {
   try {
     int fd = openFile(dev_path, O_NONBLOCK | O_CLOEXEC | O_RDONLY);
-    auto dev = openDevice(fd);
+    libevdev* dev;
+    try {
+      dev = openDevice(fd);
+    } catch (...) {
+      // openDevice does not close the fd if libevdev_new_from_fd fails.
+      closeFile(fd);
+      throw;
+    }
     if (supportsLockStates(dev)) {
       spdlog::info("Found device {} at '{}'", libevdev_get_name(dev), dev_path);
       std::lock_guard<std::mutex> lock(devices_mutex_);
