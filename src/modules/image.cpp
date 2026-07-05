@@ -265,9 +265,19 @@ void SingleImageStrategy::update() {
   }
 
   if (pixbuf) {
-    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
-                                                          image_.get_window());
-    image_.set(surface);
+    // Building a HiDPI-aware cairo surface requires a realized widget: it reads the
+    // GdkWindow and its scale factor. During startup update() can run before the
+    // Gtk::Image is realized, in which case get_window() is null; feeding that path a
+    // null window aborts startup. Fall back to setting the pixbuf directly while the
+    // widget is unrealized, and use the crisp surface path once a window is available.
+    auto window = image_.get_window();
+    if (window) {
+      auto surface =
+          Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(), window);
+      image_.set(surface);
+    } else {
+      image_.set(pixbuf);
+    }
     image_.show();
 
     if (hasTooltip_ && !tooltip_.empty()) {
