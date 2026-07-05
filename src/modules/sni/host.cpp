@@ -16,7 +16,7 @@ Host::Host(std::size_t id, const Json::Value& config, const Bar& bar,
            const std::vector<std::string>& ignore_list,
            const std::function<void(std::unique_ptr<Item>&)>& on_add,
            const std::function<void(std::unique_ptr<Item>&)>& on_remove,
-           const std::function<void()>& on_update)
+           const std::function<void()>& on_reorder, const std::function<void()>& on_update)
     : bus_name_("org.kde.StatusNotifierHost-" + std::to_string(getpid()) + "-" +
                 std::to_string(id)),
       object_path_("/StatusNotifierHost/" + std::to_string(id)),
@@ -27,6 +27,7 @@ Host::Host(std::size_t id, const Json::Value& config, const Bar& bar,
       ignore_list_(ignore_list),
       on_add_(on_add),
       on_remove_(on_remove),
+      on_reorder_(on_reorder),
       on_update_(on_update) {
   auto orders = config["orders"];
   if (!orders.isNull()) {
@@ -292,11 +293,15 @@ void Host::addRegisteredItem(const std::string& service) {
 }
 
 void Host::reorderItems() {
-  std::ranges::for_each(items_, on_remove_);
-  std::ranges::sort(items_, [](std::unique_ptr<Item>& item1, std::unique_ptr<Item>& item2) {
-    return item1->order_ < item2->order_;
-  });
-  std::ranges::for_each(items_, on_add_);
+  // Re-apply the configured ordering to the tray. This is invoked while an
+  // item's Id/order is first resolved (from Item::setCustomIcon), which happens
+  // *before* the item is marked ready and added. It must therefore only reorder
+  // the widgets that have already been added; re-running the full add path here
+  // would (a) re-parent widgets and reconnect signals for every item and (b)
+  // mutate items_ from within checkIgnoreList while it is being iterated,
+  // invalidating iterators/pointers. Delegating to on_reorder_ keeps this to a
+  // pure reordering of existing children.
+  on_reorder_();
 }
 
 }  // namespace waybar::modules::SNI

@@ -1,6 +1,10 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <sigc++/connection.h>
+
+#include <unordered_map>
+#include <utility>
 
 #include "AModule.hpp"
 #include "bar.hpp"
@@ -19,6 +23,9 @@ class Tray : public AModule {
  private:
   void onAdd(std::unique_ptr<Item>& item);
   void onRemove(std::unique_ptr<Item>& item);
+  // Reorders the already-added tray widgets by their configured order. Does not
+  // add or remove any widget.
+  void reorderBox();
   void checkIgnoreList(std::unique_ptr<Item>* item);
   std::vector<std::string> parseIgnoreList(const Json::Value& config);
   void queueUpdate();
@@ -29,6 +36,9 @@ class Tray : public AModule {
   std::vector<std::string> ignore_list_;
   SNI::Host host_;
   std::vector<Item*> items_;
+  // signal_show/signal_hide connections owned per added item, so they can be
+  // disconnected on removal instead of leaking and accumulating.
+  std::unordered_map<Item*, std::pair<sigc::connection, sigc::connection>> item_connections_;
 };
 
 }  // namespace waybar::modules::SNI

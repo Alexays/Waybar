@@ -1,6 +1,7 @@
 // include/modules/mango/backend.hpp
 #pragma once
 
+#include <atomic>
 #include <list>
 #include <mutex>
 #include <string>
@@ -52,6 +53,7 @@ class IPC {
 
   static Json::Value sendCommand(const std::string& cmd);
 
+  std::atomic<bool> running_ = true;
   int sockfd_ = -1;
   std::thread ipc_thread_;
   mutable std::mutex data_mutex_;

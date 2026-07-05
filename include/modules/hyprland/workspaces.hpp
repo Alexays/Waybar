@@ -227,8 +227,9 @@ class Workspaces : public AModule, public EventHandler {
   sigc::connection m_scrollEventConnection_;
   IPC& m_ipc;
 
+  // Coalesces bursts of Hyprland events into a single UI refresh. Armed and
+  // disconnected only on the GTK main thread (see Workspaces::update).
   sigc::connection m_debounceTimer;
-  bool m_updatePending = false;
 };
 
 }  // namespace waybar::modules::hyprland

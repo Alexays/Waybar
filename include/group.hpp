@@ -14,7 +14,7 @@ class Group : public AModule {
 
  public:
   Group(const std::string&, const std::string&, const Json::Value&, bool);
-  ~Group() override = default;
+  ~Group() override;
   auto update() -> void override;
   operator Gtk::Widget&() override;
 

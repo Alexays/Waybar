@@ -240,12 +240,33 @@ bool isValidOutput(const Json::Value& config, const std::string& name,
         continue;
       }
       std::string str = config_output_dimension.asString();
-      int i = str.find(" ");
-      std::string dimension = str.substr(0, i);
-      str = str.substr(i + 1);
-      i = str.find(" ");
-      std::string comparator = str.substr(0, i);
-      int value = std::stoi(str.substr(i));
+      auto first_space = str.find(' ');
+      if (first_space == std::string::npos) {
+        spdlog::warn(
+            "Ignoring malformed 'output-dimensions' entry (expected '<dimension> <comparator> "
+            "<value>'): '{}'",
+            str);
+        continue;
+      }
+      std::string dimension = str.substr(0, first_space);
+      str = str.substr(first_space + 1);
+      auto second_space = str.find(' ');
+      if (second_space == std::string::npos) {
+        spdlog::warn(
+            "Ignoring malformed 'output-dimensions' entry (expected '<dimension> <comparator> "
+            "<value>'): '{}'",
+            config_output_dimension.asString());
+        continue;
+      }
+      std::string comparator = str.substr(0, second_space);
+      int value;
+      try {
+        value = std::stoi(str.substr(second_space + 1));
+      } catch (const std::exception& e) {
+        spdlog::warn("Ignoring 'output-dimensions' entry with non-integer value: '{}'",
+                     config_output_dimension.asString());
+        continue;
+      }
 
       int comparison_value;
       if (dimension == "height") {

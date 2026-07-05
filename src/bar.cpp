@@ -331,12 +331,14 @@ waybar::Bar::Bar(struct waybar_output* w_output, const Json::Value& w_config)
    * returned to the main loop, when any late initial configure has been dispatched and widgets have
    * had a chance to allocate/draw.
    */
-  Glib::signal_idle().connect(sigc::track_obj([this] {
-    window.queue_resize();
-    window.queue_draw();
-    forceLayerCommit();
-    return false;
-  }, *this));
+  Glib::signal_idle().connect(sigc::track_obj(
+      [this] {
+        window.queue_resize();
+        window.queue_draw();
+        forceLayerCommit();
+        return false;
+      },
+      *this));
 
   if (spdlog::should_log(spdlog::level::debug)) {
     // Unfortunately, this function isn't in the C++ bindings, so we have to call the C version.
@@ -750,20 +752,18 @@ void waybar::Bar::onOutputGeometryChanged() {
 }
 
 void waybar::Bar::toggleSuspend(bool suspend) {
-  auto process_modules = [suspend](Gtk::Box& module_box) {
-    for (auto* widget : module_box.get_children()) {
-      auto* module = dynamic_cast<waybar::AModule*>(widget);
-      if (module && module->shouldSuspend()) {
-        if (suspend) {
-          module->suspend();
-        } else {
-          module->resume();
-        }
+  // Iterate the actual module objects. Modules are packed into the Gtk::Box via
+  // AModule::operator Gtk::Widget&(), which returns the member event_box_, so the
+  // box children are Gtk::EventBox, never AModule -- a dynamic_cast over them is
+  // always null and suspend()/resume() would never fire. modules_all_ holds the
+  // real module pointers (including group children), so use it instead.
+  for (auto const& module : modules_all_) {
+    if (module && module->shouldSuspend()) {
+      if (suspend) {
+        module->suspend();
+      } else {
+        module->resume();
       }
     }
-  };
-
-  process_modules(left_);
-  process_modules(center_);
-  process_modules(right_);
+  }
 }

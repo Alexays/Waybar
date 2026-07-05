@@ -90,13 +90,16 @@ uint32_t waybar::modules::Network::readLinkSpeed() const {
 
   if (!sysfs_speed) return 0;
 
-  uint32_t speed;
+  // Read into a signed type: /sys/class/net/<if>/speed reports -1 when there is
+  // no carrier. Extracting -1 into an unsigned type would wrap to a huge value
+  // (and would not set failbit), so use a signed type and validate the result.
+  int64_t speed = 0;
   sysfs_speed >> speed;
 
-  if (sysfs_speed.bad())  // read fails on incompatible devices
+  if (sysfs_speed.fail() || speed < 0)  // read fails on incompatible devices
     return 0;
 
-  return speed;
+  return static_cast<uint32_t>(speed);
 }
 
 waybar::modules::Network::Network(const std::string& id, const Json::Value& config)

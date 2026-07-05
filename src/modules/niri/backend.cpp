@@ -285,7 +285,7 @@ void IPC::unregisterForIPC(EventHandler* ev_handler) {
 Json::Value IPC::send(const Json::Value& request) {
   util::ScopedFd socketfd(connectToSocket());
 
-  auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
+  auto unix_istream = Gio::UnixInputStream::create(socketfd, false);
   auto unix_ostream = Gio::UnixOutputStream::create(socketfd, false);
   auto istream = Gio::DataInputStream::create(unix_istream);
   auto ostream = Gio::DataOutputStream::create(unix_ostream);

@@ -105,6 +105,14 @@ Group::Group(const std::string& name, const std::string& id, const Json::Value& 
   event_box_.add(box);
 }
 
+Group::~Group() {
+  // Disconnect any pending reveal timeout so it cannot fire on a destroyed
+  // instance (the GLib source is not removed by sigc::connection's destructor).
+  if (reveal_timeout_.connected()) {
+    reveal_timeout_.disconnect();
+  }
+}
+
 void Group::show_group() {
   box.set_state_flags(Gtk::StateFlags::STATE_FLAG_PRELIGHT);
   revealer.set_reveal_child(true);

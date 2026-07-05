@@ -37,6 +37,11 @@ Workspaces::~Workspaces() {
   if (m_scrollEventConnection_.connected()) {
     m_scrollEventConnection_.disconnect();
   }
+  // Cancel any pending debounce timeout so it cannot fire on a freed `this`.
+  // Runs on the main thread, same as where the timer is armed.
+  if (m_debounceTimer.connected()) {
+    m_debounceTimer.disconnect();
+  }
   m_ipc.unregisterForIPC(this);
   // wait for possible event handler to finish
   std::lock_guard<std::mutex> lg(m_mutex);
@@ -332,23 +337,11 @@ void Workspaces::onEvent(const std::string& ev) {
     }
   }
 
-  if (m_debounceTimer.connected()) {
-    m_debounceTimer.disconnect();
-    m_updatePending = false;
-  }
-
-  m_updatePending = true;
-  m_debounceTimer = Glib::signal_timeout().connect(
-      [this]() {
-        if (!m_updatePending) return false;
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_updatePending) {
-          dp.emit();
-          m_updatePending = false;
-        }
-        return false;
-      },
-      7);
+  // Notify the main thread. dp (Glib::Dispatcher) is the only thread-safe way to
+  // hand off to the GTK main loop; GLib timer state must never be touched from the
+  // IPC listener thread. The debounce timer is owned entirely by the main-thread
+  // update() path (see Workspaces::update).
+  dp.emit();
 }
 
 void Workspaces::onWorkspaceActivated(std::string const& payload) {
@@ -1041,8 +1034,20 @@ void Workspaces::setUrgentWorkspace(std::string const& windowaddress) {
 }
 
 auto Workspaces::update() -> void {
-  doUpdate();
-  AModule::update();
+  // Debounce rapid events (e.g. out-of-order create/destroy workspace events from
+  // Hyprland) to prevent workspace button flicker. This runs on the GTK main thread
+  // (invoked via the dp dispatcher), so arming/disconnecting the GLib timer here is
+  // thread-safe. Each event re-arms the timer, coalescing bursts into one refresh.
+  if (m_debounceTimer.connected()) {
+    m_debounceTimer.disconnect();
+  }
+  m_debounceTimer = Glib::signal_timeout().connect(
+      [this]() {
+        doUpdate();
+        AModule::update();
+        return false;
+      },
+      7);
 }
 
 void Workspaces::updateWindowCount() {

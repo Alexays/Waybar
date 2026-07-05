@@ -238,9 +238,23 @@ bool AModule::handleUserEvent(GdkEventButton* const& e) {
   if (!format.empty()) {
     const int width = gdk_window_get_width(e->window);
     const int height = gdk_window_get_height(e->window);
-    const std::string cmd =
-        fmt::format(fmt::runtime(format), fmt::arg("x", (int)round(100. * e->x / width)),
-                    fmt::arg("y", (int)round(100. * e->y / height)));
+    // Substitute {x}/{y} with the click position. The configured command is
+    // arbitrary user input that may contain literal braces which are not {x}/{y}
+    // (e.g. `echo ${HOME}`, `awk '{print $1}'`, brace expansions). Those make
+    // libfmt throw fmt::format_error; since we run inside a GTK signal handler an
+    // uncaught exception aborts the whole bar. Only format when a placeholder is
+    // actually present, and fall back to the raw command if formatting throws.
+    std::string cmd = format;
+    if (format.find("{x}") != std::string::npos || format.find("{y}") != std::string::npos) {
+      try {
+        cmd = fmt::format(fmt::runtime(format), fmt::arg("x", (int)round(100. * e->x / width)),
+                          fmt::arg("y", (int)round(100. * e->y / height)));
+      } catch (const fmt::format_error& err) {
+        spdlog::warn("Failed to format command '{}': {}. Running it unformatted.", format,
+                     err.what());
+        cmd = format;
+      }
+    }
     pid_children_.push_back(util::command::forkExec(cmd));
   }
   dp.emit();

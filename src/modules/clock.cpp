@@ -220,20 +220,35 @@ auto waybar::modules::Clock::update() -> void {
     if (tzInTooltip_) tzText_ = getTZtext(now.get_sys_time());
     if (cldInTooltip_) cldText_ = get_calendar(today, shiftedDay, tz);
     if (ordInTooltip_) ordText_ = get_ordinal_date(shiftedDay);
-    if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
-      // std::vformat doesn't support named arguments.
-      m_tlpText_ =
-          std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
-      m_tlpText_ = std::regex_replace(
-          m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"),
-          fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
-      m_tlpText_ =
-          std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
-    } else {
-      m_tlpText_ = m_tlpFmt_;
-    }
+    try {
+      if (tzInTooltip_ || cldInTooltip_ || ordInTooltip_) {
+        // std::vformat doesn't support named arguments.
+        m_tlpText_ =
+            std::regex_replace(m_tlpFmt_, std::regex("\\{" + kTZPlaceholder + "\\}"), tzText_);
+        m_tlpText_ = std::regex_replace(
+            m_tlpText_, std::regex("\\{" + kCldPlaceholder + "\\}"),
+            fmt_lib::vformat(m_locale_, cldText_, fmt_lib::make_format_args(shiftedNow)));
+        m_tlpText_ =
+            std::regex_replace(m_tlpText_, std::regex("\\{" + kOrdPlaceholder + "\\}"), ordText_);
+      } else {
+        m_tlpText_ = m_tlpFmt_;
+      }
 
-    m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
+      m_tlpText_ = fmt_lib::vformat(m_locale_, m_tlpText_, fmt_lib::make_format_args(now));
+    } catch (const std::exception& e) {
+      // An unsupported/invalid specifier (e.g. %-I / %OI) in the tooltip-format or the
+      // calendar format must not take the whole module down every tick. Warn once and skip
+      // the tooltip for this update so the bar keeps working.
+      static bool tlpWarned = false;
+      if (!tlpWarned) {
+        spdlog::warn(
+            "Clock: could not format tooltip \"{}\": {}. Skipping tooltip; check your "
+            "tooltip-format/calendar format specifiers.",
+            m_tlpFmt_, e.what());
+        tlpWarned = true;
+      }
+      m_tlpText_.clear();
+    }
 
     // Pango doesn't support CSS classes but to continue using it while staying
     // backwards compatible this approach uses post-posting to replace fake
