@@ -111,7 +111,7 @@ smoke::assert_alive() {
 # Fail on sanitizer reports and GTK/GLib criticals in the log.
 smoke::assert_clean() {
     local bad
-    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer' "$SMOKE_LOG" || true)"
+    bad="$(grep -iE 'AddressSanitizer|runtime error:|LeakSanitizer|Gtk-CRITICAL|GLib-CRITICAL|GLib-GObject-CRITICAL|assertion .*failed|segfault|terminate called|SUMMARY: .*Sanitizer|ASan runtime does not come first' "$SMOKE_LOG" || true)"
     if [ -n "$bad" ]; then
         echo "::error::waybar reported sanitizer/critical issues:"
         echo "$bad"

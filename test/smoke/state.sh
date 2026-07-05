@@ -15,13 +15,20 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$DIR/lib.sh"
 
-smoke::setup
-smoke::start_compositor
-trap 'smoke::stop; [ -n "${MPD_PID:-}" ] && kill "$MPD_PID" 2>/dev/null; [ -n "${PA_STARTED:-}" ] && pulseaudio --kill 2>/dev/null; true' EXIT
-
 fail=0
 MPD_PID=""
 PA_STARTED=""
+
+cleanup() {
+    smoke::stop
+    [ -n "$MPD_PID" ] && kill "$MPD_PID" 2>/dev/null || true
+    [ -n "$PA_STARTED" ] && pulseaudio --kill 2>/dev/null || true
+    return 0
+}
+
+smoke::setup
+smoke::start_compositor
+trap cleanup EXIT
 
 # ---------------------------------------------------------------- mpd -----
 mpd_tier() {
@@ -39,7 +46,10 @@ state_file "$d/state"
 pid_file "$d/pid"
 bind_to_address "127.0.0.1"
 port "6600"
-audio_output { type "null" name "null" }
+audio_output {
+    type "null"
+    name "null"
+}
 EOF
     mpd --no-daemon "$conf" >/tmp/mpd.log 2>&1 &
     MPD_PID=$!

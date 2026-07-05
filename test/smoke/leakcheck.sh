@@ -12,6 +12,9 @@ source "$DIR/lib.sh"
 
 export SMOKE_DETECT_LEAKS=1
 smoke::setup
+# Report leaks without aborting: abort_on_error=1 (the default gate) would turn
+# LSan's exit-time report into a core dump. This tier only reports.
+export ASAN_OPTIONS="detect_leaks=1:halt_on_error=0:abort_on_error=0:detect_odr_violation=0"
 smoke::start_compositor
 trap smoke::stop EXIT
 

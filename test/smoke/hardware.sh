@@ -19,6 +19,11 @@ if ! command -v umockdev-run >/dev/null; then
 fi
 
 smoke::setup
+# waybar is linked with ASan, but umockdev-run injects its own LD_PRELOAD, which
+# lands ahead of the ASan runtime and makes ASan abort before main() ("ASan
+# runtime does not come first"). Disabling the link-order check lets the
+# instrumented binary run under the preload.
+export ASAN_OPTIONS="${ASAN_OPTIONS}:verify_asan_link_order=0"
 smoke::start_compositor
 trap smoke::stop EXIT
 
