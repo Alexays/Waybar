@@ -19,6 +19,9 @@ namespace image {
 class IStrategy {
  public:
   virtual ~IStrategy() = default;
+  // Runs on the worker thread before update(). Use it for blocking work (e.g.
+  // spawning a user script) so the GTK main loop isn't stalled. Default no-op.
+  virtual void fetch() {}
   virtual void update() = 0;
 };
 
@@ -46,6 +49,7 @@ class MultipleImageStrategy : public IStrategy {
  public:
   MultipleImageStrategy(const std::string&, const Json::Value&, const std::string&, Gtk::EventBox&);
   ~MultipleImageStrategy() override = default;
+  void fetch() override;
   void update() override;
 
  private:
@@ -67,6 +71,8 @@ class MultipleImageStrategy : public IStrategy {
   int size_;
   Gtk::Box box_;
   std::vector<ImageData> images_data_;
+  // stdout captured by fetch() on the worker thread and consumed by update()
+  std::string exec_output_;
 };
 
 }  // namespace image

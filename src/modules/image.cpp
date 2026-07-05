@@ -45,6 +45,9 @@ auto waybar::modules::Image::getStrategy(const std::string& id, const Json::Valu
 
 void waybar::modules::Image::delayWorker() {
   thread_ = [this] {
+    // Do the blocking work (e.g. running a user script) here on the worker
+    // thread; update() then only parses the result and draws on the main thread.
+    strategy_->fetch();
     dp.emit();
     thread_.sleep_for(interval_);
   };
@@ -82,6 +85,15 @@ MultipleImageStrategy::MultipleImageStrategy(const std::string& id, const Json::
   }
 }
 
+void MultipleImageStrategy::fetch() {
+  // Run the (blocking) user script off the GTK main thread so the bar doesn't
+  // freeze for the script's duration on every interval. update() consumes the
+  // captured output. The static "entries" path takes priority and needs no exec.
+  if (config_["entries"].empty() && !config_["exec"].empty()) {
+    exec_output_ = util::command::exec(config_["exec"].asString(), "").out;
+  }
+}
+
 void MultipleImageStrategy::update() {
   // spdlog::info("update function run");
 
@@ -94,12 +106,12 @@ void MultipleImageStrategy::update() {
   if (!config_["entries"].empty()) {
     setImagesData(config_["entries"]);
   } else if (!config_["exec"].empty()) {
-    auto exec = util::command::exec(config_["exec"].asString(), "");
+    // exec output was captured by fetch() on the worker thread
     Json::Value as_json;
     Json::Reader reader;
 
-    if (!reader.parse(exec.out, as_json)) {
-      spdlog::error("invalid json from exec {}", exec.out);
+    if (!reader.parse(exec_output_, as_json)) {
+      spdlog::error("invalid json from exec {}", exec_output_);
       return;
     }
 
@@ -211,9 +223,8 @@ void MultipleImageStrategy::resetBoxAndMemory() {
 }
 
 void MultipleImageStrategy::handleClick(const Glib::ustring& data) {
-  auto msg = std::string(data);
-
-  auto exec = util::command::exec(data, "");
+  // Fire-and-forget: don't block the main loop waiting on the command's output.
+  util::command::forkExec(data);
 }
 
 SingleImageStrategy::SingleImageStrategy(const std::string& id, const Json::Value& config,
@@ -265,9 +276,19 @@ void SingleImageStrategy::update() {
   }
 
   if (pixbuf) {
-    auto surface = Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(),
-                                                          image_.get_window());
-    image_.set(surface);
+    // Building a HiDPI-aware cairo surface requires a realized widget: it reads the
+    // GdkWindow and its scale factor. During startup update() can run before the
+    // Gtk::Image is realized, in which case get_window() is null; feeding that path a
+    // null window aborts startup. Fall back to setting the pixbuf directly while the
+    // widget is unrealized, and use the crisp surface path once a window is available.
+    auto window = image_.get_window();
+    if (window) {
+      auto surface =
+          Gdk::Cairo::create_surface_from_pixbuf(pixbuf, image_.get_scale_factor(), window);
+      image_.set(surface);
+    } else {
+      image_.set(pixbuf);
+    }
     image_.show();
 
     if (hasTooltip_ && !tooltip_.empty()) {
