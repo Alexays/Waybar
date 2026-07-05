@@ -21,7 +21,13 @@
 
 namespace waybar::modules::niri {
 
-IPC::IPC() { startIPC(); }
+IPC::IPC() {
+  // Connect synchronously so a missing socket (this WM isn't the active
+  // compositor) throws here, same as before the reconnect loop below existed.
+  // That lets the module constructor fail and Factory disable the module,
+  // instead of the module always attaching with a permanently empty widget.
+  startIPC(connectToSocket());
+}
 
 IPC::~IPC() { running_ = false; }
 
@@ -54,22 +60,30 @@ int IPC::connectToSocket() {
   return socketfd.release();
 }
 
-void IPC::startIPC() {
+void IPC::startIPC(int initial_socketfd) {
   // will start IPC and relay events to parseIPC
 
-  std::thread([this]() {
+  std::thread([this, initial_socketfd]() {
     spdlog::info("Niri IPC starting");
 
-    // Reconnect loop: if the event stream drops we back off briefly and
-    // re-establish the socket instead of leaving the module frozen forever.
+    bool have_initial_fd = true;
+
+    // Reconnect loop: if the event stream drops *after* the initial connect
+    // above succeeded, we back off briefly and re-establish the socket
+    // instead of leaving the module frozen forever.
     while (running_) {
       int socketfd;
-      try {
-        socketfd = connectToSocket();
-      } catch (std::exception& e) {
-        spdlog::error("Niri IPC: failed to connect: {}", e.what());
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-        continue;
+      if (have_initial_fd) {
+        socketfd = initial_socketfd;
+        have_initial_fd = false;
+      } else {
+        try {
+          socketfd = connectToSocket();
+        } catch (std::exception& e) {
+          spdlog::error("Niri IPC: failed to connect: {}", e.what());
+          std::this_thread::sleep_for(std::chrono::seconds(2));
+          continue;
+        }
       }
 
       auto unix_istream = Gio::UnixInputStream::create(socketfd, true);
