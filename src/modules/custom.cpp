@@ -180,13 +180,13 @@ void waybar::modules::Custom::handleEvent() {
 }
 
 bool waybar::modules::Custom::handleScroll(GdkEventScroll* e) {
-  auto ret = ALabel::handleScroll(e);
+  auto ret = AIconLabel::handleScroll(e);
   handleEvent();
   return ret;
 }
 
 bool waybar::modules::Custom::handleToggle(GdkEventButton* const& e) {
-  auto ret = ALabel::handleToggle(e);
+  auto ret = AIconLabel::handleToggle(e);
   handleEvent();
   return ret;
 }

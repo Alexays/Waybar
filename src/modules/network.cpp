@@ -103,7 +103,7 @@ uint32_t waybar::modules::Network::readLinkSpeed() const {
 }
 
 waybar::modules::Network::Network(const std::string& id, const Json::Value& config)
-    : ALabel(config, "network", id, DEFAULT_FORMAT, 60) {
+    : AIconLabel(config, "network", id, DEFAULT_FORMAT, 60) {
   // Start with some "text" in the module's label_. update() will then
   // update it. Since the text should be different, update() will be able
   // to show or hide the event_box_. This is to work around the case where
@@ -497,7 +497,7 @@ auto waybar::modules::Network::update() -> void {
   }
 
   // Call parent update
-  ALabel::update();
+  AIconLabel::update();
 }
 
 // https://gist.github.com/rressi/92af77630faf055934c723ce93ae2495
