@@ -290,14 +290,14 @@ void Task::hide_if_ignored() {
   if (tbar_->ignore_list().count(app_id_) || tbar_->ignore_list().count(title_)) {
     ignored_ = true;
     hide_button();
+    return;
   }
 
-  if (!ignored_ && !squashed_) {
-    bool is_was_ignored = ignored_;
+  if (ignored_) {
+    /* The app_id/title changed to a value that is no longer ignored */
     ignored_ = false;
-    if (is_was_ignored) {
-      auto output = gdk_wayland_monitor_get_wl_output(bar_.output->monitor->gobj());
-      handle_output_enter(output);
+    if (!squashed_ && (tbar_->all_outputs() || on_bar_output_)) {
+      show_button();
     }
   }
 }
