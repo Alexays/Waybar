@@ -239,29 +239,45 @@ void AudioBackend::sinkInfoCb(pa_context* /*context*/, const pa_sink_info* i, in
     }
   }
 
-  if (const auto mapping = backend->sink_mapping_.find(backend->current_sink_name_);
+  // Resolve which sink to report deterministically, independent of the order in
+  // which PulseAudio enumerates sinks during a sink_info_list sweep.
+  //
+  // When the default sink has an explicit mapping, the mapped target sink is the
+  // definitive selection ("the sink named by the value is considered to be the
+  // current sink instead of the one named by the key"): only that target sink may
+  // write the reported volume/mute state. The mapping is keyed on the stable
+  // default_sink_name (set once per server-info update) rather than on the mutable
+  // current_sink_name_. Previously the mapping override and the "pick a running
+  // sink" fallback both mutated current_sink_name_ mid-sweep, so the mapping could
+  // be overridden by whichever running sink happened to be enumerated, and the
+  // reported volume depended on enumeration order.
+  if (const auto mapping = backend->sink_mapping_.find(backend->default_sink_name);
       mapping != backend->sink_mapping_.end()) {
-    if (i->name == mapping->second) {
-      backend->current_sink_name_ = i->name;
+    if (i->name != mapping->second) {
+      // A mapping is in effect but this is not the mapped target sink; ignore it so
+      // it can never override the target's reported volume.
+      return;
     }
-  }
-
-  backend->default_sink_running_ = backend->default_sink_name == i->name &&
-                                   (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
-
-  if (i->name != backend->default_sink_name && i->name != backend->current_sink_name_ &&
-      !backend->default_sink_running_) {
-    return;
-  }
-
-  if (backend->current_sink_name_ == i->name) {
-    backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
-  }
-
-  if (!backend->current_sink_running_ &&
-      (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE)) {
     backend->current_sink_name_ = i->name;
-    backend->current_sink_running_ = true;
+    backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+  } else {
+    backend->default_sink_running_ = backend->default_sink_name == i->name &&
+                                     (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+
+    if (i->name != backend->default_sink_name && i->name != backend->current_sink_name_ &&
+        !backend->default_sink_running_) {
+      return;
+    }
+
+    if (backend->current_sink_name_ == i->name) {
+      backend->current_sink_running_ = (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE);
+    }
+
+    if (!backend->current_sink_running_ &&
+        (i->state == PA_SINK_RUNNING || i->state == PA_SINK_IDLE)) {
+      backend->current_sink_name_ = i->name;
+      backend->current_sink_running_ = true;
+    }
   }
 
   if (backend->current_sink_name_ == i->name) {
