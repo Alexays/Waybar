@@ -474,6 +474,7 @@ To hide the power group if it is empty, apply to #power and all its children:
 - *waybar-inhibitor(5)*
 - *waybar-jack(5)*
 - *waybar-keyboard-state(5)*
+- *waybar-load(5)*
 - *waybar-memory(5)*
 - *waybar-mpd(5)*
 - *waybar-mpris(5)*

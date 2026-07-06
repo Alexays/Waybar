@@ -21,6 +21,7 @@
   "Module:-JACK": ["waybar-jack"],
   "Module:-Keyboard-State": ["waybar-keyboard-state"],
   "Module:-Language": ["waybar-sway-language", "waybar-hyprland-language", "waybar-niri-language", "waybar-mango-language"],
+  "Module:-Load": ["waybar-load"],
   "Module:-Mango": ["waybar-mango-window", "waybar-mango-workspaces", "waybar-mango-keymode", "waybar-mango-layout"],
   "Module:-Memory": ["waybar-memory"],
   "Module:-Menu": ["waybar-menu"],
