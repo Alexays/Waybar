@@ -71,6 +71,25 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value&
   }
   box_.get_style_context()->add_class(MODULE_CLASS);
   event_box_.add(box_);
+  overflow_button_.set_name("sway-workspaces-overflow");
+  overflow_button_.set_relief(Gtk::RELIEF_NONE);
+  overflow_button_.get_style_context()->add_class("overflow");
+  overflow_button_.signal_clicked().connect([this] {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      rebuildOverflowMenu();
+    }
+    const auto widget_anchor =
+        bar_.position == Gtk::POS_BOTTOM ? GDK_GRAVITY_NORTH_EAST : GDK_GRAVITY_SOUTH_EAST;
+    const auto menu_anchor =
+        bar_.position == Gtk::POS_BOTTOM ? GDK_GRAVITY_SOUTH_EAST : GDK_GRAVITY_NORTH_EAST;
+    gtk_menu_popup_at_widget(overflow_menu_.gobj(), GTK_WIDGET(overflow_button_.gobj()),
+                             widget_anchor, menu_anchor, nullptr);
+  });
+  box_.pack_end(overflow_button_, false, false, 0);
+  overflow_button_.hide();
+  const_cast<Bar&>(bar_).window.signal_size_allocate().connect(
+      sigc::mem_fun(*this, &Workspaces::onBarSizeAllocate));
   if (config_["format-window-separator"].isString()) {
     m_formatWindowSeparator = config_["format-window-separator"].asString();
   } else {
@@ -447,6 +466,7 @@ auto Workspaces::update() -> void {
     }
     onButtonReady(*it, button);
   }
+  updateOverflow();
   // Call parent update
   AModule::update();
 }
@@ -458,35 +478,129 @@ Gtk::Button& Workspaces::addButton(const Json::Value& node) {
   button.set_name("sway-workspace-" + node["name"].asString());
   button.set_relief(Gtk::RELIEF_NONE);
   if (!config_["disable-click"].asBool()) {
-    button.signal_pressed().connect([this, node] {
-      try {
-        if (node["target_output"].isString()) {
-          ipc_.sendCmd(IPC_COMMAND,
-                       fmt::format(persistent_workspace_switch_cmd_, "--no-auto-back-and-forth",
-                                   node["name"].asString(), node["target_output"].asString(),
-                                   "--no-auto-back-and-forth", node["name"].asString()));
-        } else {
-          std::string flag =
-              config_["disable-auto-back-and-forth"].asBool() ? "--no-auto-back-and-forth" : "";
-          if (config_["no-switch-output"].asBool()) {
-            ipc_.sendCmd(IPC_COMMAND,
-                         fmt::format("[workspace=\"^{}$\"] move workspace to output current; "
-                                     "workspace number {} \"{}\"",
-                                     node["name"].asString(), flag, node["name"].asString()));
-          } else if (node["num"].asInt() >= 0) {
-            ipc_.sendCmd(IPC_COMMAND,
-                         fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
-          } else {
-            ipc_.sendCmd(IPC_COMMAND,
-                         fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
-          }
-        }
-      } catch (const std::exception& e) {
-        spdlog::error("Workspaces: {}", e.what());
-      }
-    });
+    button.signal_pressed().connect([this, node] { switchToWorkspace(node); });
   }
   return button;
+}
+
+void Workspaces::switchToWorkspace(const Json::Value& node) {
+  try {
+    if (node["target_output"].isString()) {
+      ipc_.sendCmd(IPC_COMMAND,
+                   fmt::format(persistent_workspace_switch_cmd_, "--no-auto-back-and-forth",
+                               node["name"].asString(), node["target_output"].asString(),
+                               "--no-auto-back-and-forth", node["name"].asString()));
+    } else {
+      std::string flag =
+          config_["disable-auto-back-and-forth"].asBool() ? "--no-auto-back-and-forth" : "";
+      if (config_["no-switch-output"].asBool()) {
+        ipc_.sendCmd(IPC_COMMAND,
+                     fmt::format("[workspace=\"^{}$\"] move workspace to output current; "
+                                 "workspace number {} \"{}\"",
+                                 node["name"].asString(), flag, node["name"].asString()));
+      } else if (node["num"].asInt() >= 0) {
+        ipc_.sendCmd(IPC_COMMAND,
+                     fmt::format(workspace_switch_number_cmd_, flag, node["num"].asInt()));
+      } else {
+        ipc_.sendCmd(IPC_COMMAND,
+                     fmt::format(workspace_switch_cmd_, flag, node["name"].asString()));
+      }
+    }
+  } catch (const std::exception& e) {
+    spdlog::error("Workspaces: {}", e.what());
+  }
+}
+
+void Workspaces::rebuildOverflowMenu() {
+  for (auto* child : overflow_menu_.get_children()) {
+    overflow_menu_.remove(*child);
+  }
+
+  for (const auto& workspace : workspaces_) {
+    if (overflowed_.count(workspace["name"].asString()) == 0) {
+      continue;
+    }
+    auto* item = Gtk::manage(new Gtk::MenuItem(workspace["name"].asString()));
+    item->signal_activate().connect([this, workspace] { switchToWorkspace(workspace); });
+    overflow_menu_.append(*item);
+  }
+  overflow_menu_.show_all();
+}
+
+void Workspaces::onBarSizeAllocate(Gtk::Allocation& /*allocation*/) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  updateOverflow();
+}
+
+void Workspaces::updateOverflow() {
+  for (const auto& name : overflowed_) {
+    auto button = buttons_.find(name);
+    if (button != buttons_.end()) {
+      button->second.show();
+    }
+  }
+  overflowed_.clear();
+
+  if (config_["overflow"].isBool() && !config_["overflow"].asBool()) {
+    overflow_button_.hide();
+    return;
+  }
+
+  const int max_width = bar_.getAvailableWidthForLeftModule(this);
+
+  int overflow_min = 0;
+  int overflow_natural = 0;
+  overflow_button_.get_preferred_width(overflow_min, overflow_natural);
+
+  int used = 0;
+  int total = 0;
+  std::vector<std::pair<std::string, int>> shown;
+  for (const auto& workspace : workspaces_) {
+    auto it = buttons_.find(workspace["name"].asString());
+    if (it == buttons_.end()) {
+      continue;
+    }
+    auto& button = it->second;
+    if (!button.get_visible()) {
+      continue;
+    }
+    int minimum = 0;
+    int natural = 0;
+    button.get_preferred_width(minimum, natural);
+    total += natural;
+  }
+
+  if (total <= max_width) {
+    overflow_button_.hide();
+    return;
+  }
+
+  for (const auto& workspace : workspaces_) {
+    auto it = buttons_.find(workspace["name"].asString());
+    if (it == buttons_.end() || !it->second.get_visible()) {
+      continue;
+    }
+    auto& button = it->second;
+    int minimum = 0;
+    int natural = 0;
+    button.get_preferred_width(minimum, natural);
+    const bool focused = hasFlag(workspace, "focused");
+    while (focused && used + natural + overflow_natural > max_width && !shown.empty()) {
+      const auto& [name, width] = shown.back();
+      buttons_.at(name).hide();
+      overflowed_.insert(name);
+      used -= width;
+      shown.pop_back();
+    }
+    if (!focused && used + natural + overflow_natural > max_width) {
+      button.hide();
+      overflowed_.insert(workspace["name"].asString());
+    } else {
+      used += natural;
+      shown.emplace_back(workspace["name"].asString(), natural);
+    }
+  }
+  overflow_button_.show();
 }
 
 std::string Workspaces::getIcon(const std::string& name, const Json::Value& node) {

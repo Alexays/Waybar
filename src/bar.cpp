@@ -567,6 +567,28 @@ void waybar::Bar::handleSignal(int signal) {
 waybar::util::KillSignalAction waybar::Bar::getOnSigusr1Action() { return this->onSigusr1; }
 waybar::util::KillSignalAction waybar::Bar::getOnSigusr2Action() { return this->onSigusr2; }
 
+int waybar::Bar::getAvailableWidthForLeftModule(const AModule* target) const {
+  Gdk::Rectangle geometry;
+  output->monitor->get_geometry(geometry);
+
+  int minimum = 0;
+  int right_natural = 0;
+  right_.get_preferred_width(minimum, right_natural);
+
+  int sibling_width = 0;
+  for (const auto& module : modules_left_) {
+    if (module.get() == target) {
+      continue;
+    }
+    int natural = 0;
+    static_cast<Gtk::Widget&>(*module).get_preferred_width(minimum, natural);
+    sibling_width += natural;
+  }
+
+  const int gaps = std::max(0, static_cast<int>(modules_left_.size()) - 1) * left_.get_spacing();
+  return std::max(1, geometry.get_width() - right_natural - sibling_width - gaps);
+}
+
 void waybar::Bar::getModules(const Factory& factory, const std::string& pos,
                              waybar::Group* group = nullptr) {
   auto module_list = group != nullptr ? config[pos]["modules"] : config[pos];
