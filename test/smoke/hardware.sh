@@ -18,6 +18,11 @@ if ! command -v umockdev-run >/dev/null; then
     echo "(umockdev not installed, skipping hardware tier)"; exit 0
 fi
 
+# Kill only waybar between cases -- smoke::stop would `swaymsg exit` the shared
+# compositor, and the next case couldn't open the display (compositor teardown is
+# the EXIT trap's job).
+kill_waybar() { kill "$WAYBAR_PID" 2>/dev/null || true; sleep 1; WAYBAR_PID=""; }
+
 smoke::setup
 # waybar is linked with ASan, but umockdev-run injects its own LD_PRELOAD, which
 # lands ahead of the ASan runtime and makes ASan abort before main() ("ASan
@@ -65,7 +70,7 @@ EOF
     WAYBAR_WRAP="umockdev-run --device $dev --" smoke::launch_waybar "$cfg" "$DIR/style.css" 5
     smoke::assert_alive || fail=1
     smoke::assert_clean || fail=1
-    smoke::stop; WAYBAR_PID=""
+    kill_waybar
     echo "::endgroup::"
 }
 
@@ -85,7 +90,7 @@ EOF
 WAYBAR_WRAP="umockdev-run --device $BL_DEV --" smoke::launch_waybar "$cfg" "$DIR/style.css" 5
 smoke::assert_alive || fail=1
 smoke::assert_clean || fail=1
-smoke::stop; WAYBAR_PID=""
+kill_waybar
 echo "::endgroup::"
 
 [ "$fail" = 0 ] || { echo "::error::hardware tier failed"; exit 1; }
