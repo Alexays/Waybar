@@ -411,7 +411,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_LIBMM_GLIB
     if (ref == "wwan") {
-      return new waybar::modules::Wwan(id, config_[name]);
+      return new waybar::modules::Wwan(id, config_[name], reap_mtx, reap);
     }
 #endif
     if (ref == "temperature") {

@@ -22,8 +22,9 @@ using namespace waybar::util;
 constexpr const char* DEFAULT_FORMAT = "{state}";
 }  // namespace
 
-waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config)
-    : ALabel(config, "wwan", id, "{}", 5) {
+waybar::modules::Wwan::Wwan(const std::string& id, const Json::Value& config,
+                            std::mutex& reap_mtx, std::list<pid_t>& reap)
+    : ALabel(config, "wwan", id, "{}", reap_mtx, reap, 5) {
   thread_ = [this] {
     dp.emit();
     thread_.sleep_for(interval_);
