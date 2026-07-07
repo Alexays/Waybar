@@ -580,6 +580,12 @@ if libgps.found()
     man_files += files('man/waybar-gps.5.scd')
 endif
 
+if libmm_glib.found()
+   add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
+   src_files += files('src/modules/wwan.cpp')
+   man_files += files('man/waybar-wwan.5.scd')
+endif
+
 if cava.found()
     shared_library(
         'waybar-module-cava',
@@ -613,12 +619,6 @@ if libgps.found()
         include_directories: inc_dirs,
         install: true,
     )
-endif
-
-if libmm_glib.found()
-   add_project_arguments('-DHAVE_LIBMM_GLIB', language: 'cpp')
-   src_files += files('src/modules/wwan.cpp')
-   man_files += files('man/waybar-wwan.5.scd')
 endif
 
 subdir('protocol')
