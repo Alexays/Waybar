@@ -15,6 +15,10 @@ struct GtkMenuEventData {
   const char* menuActionItem;
 };
 
+void fake_gfree(void* freeable) {
+  delete freeable;
+}
+
 ALabel::ALabel(const Json::Value& config, const std::string& name, const std::string& id,
                const std::string& format, std::mutex& reap_mtx, std::list<pid_t>& reap,
                uint16_t interval, bool ellipsize, bool enable_click, bool enable_scroll)
@@ -128,12 +132,10 @@ ALabel::ALabel(const Json::Value& config, const std::string& name, const std::st
         }
         submenus_[key] = GTK_MENU_ITEM(item);
         menuActionsMap_[key] = it->asString();
-        GtkMenuEventData* data = g_new(GtkMenuEventData, 1);
-	data->reap_mtx = reap_mtx;
-	data->reap = reap;
-	data->menuActionItem = menuActionsMap_[key].c_str();
+        GtkMenuEventData* data = new GtkMenuEventData{reap_mtx, reap,
+		                                      menuActionsMap_[key].c_str()};
         g_signal_connect_data(submenus_[key], "activate", G_CALLBACK(handleGtkMenuEvent),
-                         (gpointer)data, (GClosureNotify)g_free, (GConnectFlags)0);
+                         (gpointer)data, (GClosureNotify)fake_gfree, (GConnectFlags)0);
       }
       g_object_unref(builder);
     } catch (std::runtime_error& e) {
