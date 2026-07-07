@@ -7,7 +7,7 @@
 waybar::modules::Image::Image(const std::string& id, const Json::Value& config,
                               std::mutex& reap_mtx, std::list<pid_t>& reap)
     : AModule(config, "image", id, reap_mtx, reap) {
-  strategy_ = getStrategy(id, config, MODULE_CLASS, event_box_, tooltipEnabled());
+  strategy_ = getStrategy(id, config, reap_mtx, reap, MODULE_CLASS, event_box_, tooltipEnabled());
 
   const auto once = std::chrono::milliseconds::max();
   if (!config_.isMember("interval") || config_["interval"].isNull() ||
@@ -30,12 +30,14 @@ waybar::modules::Image::Image(const std::string& id, const Json::Value& config,
 }
 
 auto waybar::modules::Image::getStrategy(const std::string& id, const Json::Value& cfg,
+                                         std::mutex& reap_mtx, std::list<pid_t>& reap,
                                          const std::string& module, Gtk::EventBox& evbox,
                                          bool hasTooltip)
     -> std::unique_ptr<waybar::modules::image::IStrategy> {
   std::unique_ptr<waybar::modules::image::IStrategy> strat;
   if (!cfg["multiple"].empty() && cfg["multiple"].asBool()) {
-    strat = std::make_unique<waybar::modules::image::MultipleImageStrategy>(id, cfg, module, evbox);
+    strat = std::make_unique<waybar::modules::image::MultipleImageStrategy>(id, cfg, reap_mtx, reap,
+		                                                            module, evbox);
   } else {
     strat = std::make_unique<waybar::modules::image::SingleImageStrategy>(id, cfg, module, evbox,
                                                                           hasTooltip);
@@ -71,8 +73,9 @@ auto waybar::modules::Image::update() -> void {
 namespace waybar::modules::image {
 
 MultipleImageStrategy::MultipleImageStrategy(const std::string& id, const Json::Value& config,
+                                             std::mutex& reap_mtx, std::list<pid_t>& reap,
                                              const std::string& module, Gtk::EventBox& evbox)
-    : IStrategy(), box_(Gtk::ORIENTATION_HORIZONTAL, 0) {
+    : IStrategy(), box_(Gtk::ORIENTATION_HORIZONTAL, 0), reap_mtx(reap_mtx), reap(reap) {
   config_ = config;
 
   box_.set_name("image");
@@ -225,7 +228,7 @@ void MultipleImageStrategy::resetBoxAndMemory() {
 
 void MultipleImageStrategy::handleClick(const Glib::ustring& data) {
   // Fire-and-forget: don't block the main loop waiting on the command's output.
-  util::command::forkExec(data);
+  util::command::forkExec(data, this->reap_mtx, this->reap);
 }
 
 SingleImageStrategy::SingleImageStrategy(const std::string& id, const Json::Value& config,

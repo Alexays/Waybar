@@ -615,7 +615,9 @@ void waybar::modules::Clock::action_exec(const std::string& action) {
     spdlog::error("Clock: exec action requires a command argument");
     return;
   }
-  pid_children_.push_back(util::command::forkExec(action.substr(pos + 1)));
+  pid_children_.push_back(
+    util::command::forkExec(action.substr(pos + 1), this->reap_mtx, this->reap)
+  );
 }
 
 #ifdef HAVE_LANGINFO_1STDAY

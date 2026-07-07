@@ -14,7 +14,8 @@ namespace waybar::modules {
 
 class CustomGraph : public AGraph {
  public:
-  CustomGraph(const std::string&, const std::string&, const Json::Value&, const std::string&);
+  CustomGraph(const std::string&, const std::string&, const Json::Value&, const std::string&,
+              std::mutex&, std::list<pid_t>&);
   virtual ~CustomGraph();
   auto update() -> void override;
   void refresh(int /*signal*/) override;

@@ -15,8 +15,9 @@ enum class GraphType { LINE, BAR, GAUGE };
 
 class AGraph : public AModule {
  public:
-  AGraph(const Json::Value&, const std::string&, const std::string&, uint16_t interval = 0,
-         bool enable_click = false, bool enable_scroll = false);
+  AGraph(const Json::Value&, const std::string&, const std::string&, std::mutex& reap_mtx,
+         std::list<pid_t>& reap, uint16_t interval = 0, bool enable_click = false,
+	 bool enable_scroll = false);
   virtual ~AGraph() = default;
   auto update() -> void override;
 

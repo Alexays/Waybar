@@ -262,19 +262,19 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
 #endif
 #ifdef HAVE_MANGO
     if (ref == "mango/window") {
-      return new waybar::modules::mango::Window(id, bar_, config_[name]);
+      return new waybar::modules::mango::Window(id, bar_, config_[name], reap_mtx, reap);
     }
     if (ref == "mango/workspaces") {
-      return new waybar::modules::mango::Workspaces(id, bar_, config_[name]);
+      return new waybar::modules::mango::Workspaces(id, bar_, config_[name], reap_mtx, reap);
     }
     if (ref == "mango/language") {
-      return new waybar::modules::mango::Language(id, bar_, config_[name]);
+      return new waybar::modules::mango::Language(id, bar_, config_[name], reap_mtx, reap);
     }
     if (ref == "mango/keymode") {
-      return new waybar::modules::mango::Keymode(id, bar_, config_[name]);
+      return new waybar::modules::mango::Keymode(id, bar_, config_[name], reap_mtx, reap);
     }
     if (ref == "mango/layout") {
-      return new waybar::modules::mango::Layout(id, bar_, config_[name]);
+      return new waybar::modules::mango::Layout(id, bar_, config_[name], reap_mtx, reap);
     }
 #endif
 #ifdef HAVE_WAYFIRE
@@ -298,7 +298,7 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
       return new waybar::modules::Cpu(id, config_[name], reap_mtx, reap);
     }
     if (ref == "cpu_graph") {
-      return new waybar::modules::CpuGraph(id, config_[name]);
+      return new waybar::modules::CpuGraph(id, config_[name], reap_mtx, reap);
     }
 #if defined(HAVE_CPU_LINUX)
     if (ref == "cpu_frequency") {
@@ -422,7 +422,8 @@ waybar::AModule* waybar::Factory::makeModule(const std::string& name,
                                          reap_mtx, reap);
     }
     if (ref.compare(0, 13, "custom-graph/") == 0 && ref.size() > 13) {
-      return new waybar::modules::CustomGraph(ref.substr(13), id, config_[name], bar_.output->name);
+      return new waybar::modules::CustomGraph(ref.substr(13), id, config_[name],
+		                              bar_.output->name, reap_mtx, reap);
     }
     if (ref.compare(0, 5, "cffi/") == 0 && ref.size() > 5) {
       return new waybar::modules::CFFI(ref.substr(5), id, config_[name], reap_mtx, reap);
