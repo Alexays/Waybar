@@ -37,7 +37,7 @@ auto waybar::modules::Image::getStrategy(const std::string& id, const Json::Valu
   std::unique_ptr<waybar::modules::image::IStrategy> strat;
   if (!cfg["multiple"].empty() && cfg["multiple"].asBool()) {
     strat = std::make_unique<waybar::modules::image::MultipleImageStrategy>(id, cfg, reap_mtx, reap,
-		                                                            module, evbox);
+                                                                            module, evbox);
   } else {
     strat = std::make_unique<waybar::modules::image::SingleImageStrategy>(id, cfg, module, evbox,
                                                                           hasTooltip);
